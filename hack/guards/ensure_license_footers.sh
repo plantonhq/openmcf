@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Guard: every component README (apis/dev/planton/**/<component>/v1/README.md),
-# every infra chart README (charts/<provider>/<name>/README.md), and every helm
-# chart README (helm/<chart>/README.md) must end with the canonical license
-# footer.
+# every infra chart README (the README.md beside a chart's Chart.yaml, at any
+# nesting depth), and every helm chart README (helm/<chart>/README.md) must end
+# with the canonical license footer.
 #
 # WHY THIS EXISTS
 # The realistic unit of copying for this catalog is one component directory,
@@ -40,11 +40,28 @@ done < <(
   # tree (path-shaped, so future domains are covered without editing this
   # guard). The pattern cannot match v1/docs/README.md or v1/iac/**/README.md.
   find apis/dev/planton -path '*/v1/README.md' 2>/dev/null
-  # Infra chart READMEs: charts/<provider>/<name>/README.md exactly.
-  find charts -mindepth 3 -maxdepth 3 -name README.md 2>/dev/null
   # Helm chart READMEs: helm/<chart>/README.md — published distribution surfaces.
   find helm -mindepth 2 -maxdepth 2 -name README.md 2>/dev/null
 )
+
+# Infra chart READMEs: the README beside each Chart.yaml, wherever the chart
+# nests in the tree (charts/<provider>/<name>/, charts/<cloud>/kubernetes/<name>/,
+# ...). Discovery keys off Chart.yaml presence exactly like the structure guard
+# and every chart loader, so nesting depth is never a blind spot. A chart with
+# no README at all fails too: the README is part of the chart's anatomy and the
+# footer is the attribution that travels with a copied chart directory.
+while IFS= read -r chart_yaml; do
+  [[ -z "$chart_yaml" ]] && continue
+  readme="$(dirname "$chart_yaml")/README.md"
+  if [[ ! -f "$readme" ]]; then
+    missing+=("$readme (README.md missing entirely)")
+    continue
+  fi
+  last_line="$(awk 'NF {line=$0} END {print line}' "$readme")"
+  if [[ "$last_line" != "$footer" ]]; then
+    missing+=("$readme")
+  fi
+done < <(find charts -type f -name 'Chart.yaml' -not -path '*/build/*' 2>/dev/null)
 
 if (( ${#missing[@]} > 0 )); then
   {

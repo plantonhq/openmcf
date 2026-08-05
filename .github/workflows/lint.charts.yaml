@@ -11,12 +11,16 @@
 #    catalog bundle depend on. See hack/guards/ensure_chart_structure.sh.
 #
 # 2. Offline render validation -- builds the CLI from this checkout and runs
-#    `planton chart validate` over the AWS charts: every template is rendered
-#    (defaults plus each bool toggle flipped), and every rendered manifest must
-#    load against the local kind registry, pass protovalidate, and have all its
-#    valueFrom references resolve. This makes proto/chart drift unshippable at
-#    PR time. Scoped to charts/aws; the authoritative Platform build remains
-#    the engine-of-record gate for publishing.
+#    `planton chart validate` over every chart in the tree: every template is
+#    rendered (defaults plus each bool toggle flipped), and every rendered
+#    manifest must load against the local kind registry, pass protovalidate,
+#    and have all its valueFrom references resolve. This makes proto/chart
+#    drift unshippable at PR time. The authoritative Platform build remains
+#    the engine-of-record gate for publishing. When the tree holds no charts,
+#    the step passes with an honest log line -- `chart validate --all`
+#    deliberately errors on zero discovered charts (typo protection for
+#    users), which is the wrong signal for CI on an intentionally chart-less
+#    tree.
 # =============================================================================
 
 name: lint.charts
@@ -67,5 +71,10 @@ jobs:
       - name: Build CLI
         run: go build -o /tmp/planton .
 
-      - name: Validate AWS charts offline
-        run: /tmp/planton chart validate --all charts/aws
+      - name: Validate all charts offline
+        run: |
+          if find charts -type f -name 'Chart.yaml' -not -path '*/build/*' | grep -q .; then
+            /tmp/planton chart validate --all charts/
+          else
+            echo "no charts in the tree; nothing to validate"
+          fi

@@ -818,7 +818,12 @@ type KubernetesSupersetCachePasswordSecret struct {
 	// resource's password Secret. Same-namespace constraint applies.
 	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// *
-	// Key inside the Secret holding the password. Empty = "password".
+	// Key inside the Secret holding the password. For a KubernetesValkey
+	// auth Secret this is the ACL username ("default" unless you declared
+	// users) — that Secret keys entries BY USERNAME, one key per user.
+	// Empty = "password" (the generic existing-Secret convention; wrong
+	// for Valkey auth Secrets, where an unset key deploys cleanly and
+	// then fails authentication at runtime).
 	SecretKey     *string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3,oneof" json:"secret_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

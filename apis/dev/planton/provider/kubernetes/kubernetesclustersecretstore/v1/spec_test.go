@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega"
 	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -75,6 +76,29 @@ var _ = ginkgo.Describe("KubernetesClusterSecretStore Validation Tests", func() 
 								Role: "external-secrets",
 							},
 						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
+		})
+
+		ginkgo.It("accepts an Azure Key Vault store with a referenced vault_url", func() {
+			// The composed-environment shape (what a one-run cluster chart
+			// renders): the vault's data-plane URI flows in by reference and
+			// the reference is also the deploy-ordering edge.
+			input.Spec.Config = &kubernetesprovider.ExternalSecretsStoreConfig{
+				Backend: &kubernetesprovider.ExternalSecretsStoreConfig_AzureKeyVault{
+					AzureKeyVault: &kubernetesprovider.ExternalSecretsStoreAzure{
+						VaultUrl: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+								ValueFrom: &foreignkeyv1.ValueFromRef{
+									Kind:      cloudresourcekind.CloudResourceKind_AzureKeyVault,
+									Name:      "platform-kv",
+									FieldPath: "status.outputs.vault_uri",
+								},
+							},
+						},
+						TenantId: "00000000-0000-0000-0000-000000000000",
 					},
 				},
 			}

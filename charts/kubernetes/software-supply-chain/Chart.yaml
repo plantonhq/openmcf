@@ -1,0 +1,21 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Kubernetes Software Supply Chain
+spec:
+  selector:
+    kind: platform
+  description: >-
+    Build it, store it, run it — inside your cluster. A Harbor registry
+    with Trivy scanning on and every data arm composed from first-class
+    kinds (PostgreSQL for metadata, an authenticated Valkey cache, an
+    in-cluster S3 object store for the blobs — the shape that lets the
+    registry scale out), Tekton pipelines for in-cluster CI, and an
+    optional GitHub Actions runner fleet that scales to zero. Secure by
+    default: generated admin credentials, authenticated stores, no public
+    chart defaults anywhere.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/kubernetes/kubernetesharbor/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/software-supply-chain
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/software-supply-chain/README.md

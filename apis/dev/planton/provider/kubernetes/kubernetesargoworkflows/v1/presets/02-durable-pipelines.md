@@ -7,13 +7,16 @@ themselves. With history safe in the database, the retention policy
 keeps only a working set of CRs in the cluster — the UI still shows
 everything, served from the archive.
 
-The composition is the point: the artifact endpoint and the database
-host are reference fields, so this preset's literals become
-`value_from` references at a KubernetesSeaweedFs and a
-KubernetesPostgres resource in a real chart — the store's credential
-Secret already carries the exact `accesskey`/`secretkey` pair the
-chart's selectors expect, and none of those credentials ever ride this
-manifest.
+The composition is the point: the artifact endpoint, the credentials
+Secret name, and the database host are reference fields, so this
+preset's literals become `value_from` references at a
+KubernetesSeaweedFs and a KubernetesPostgres resource in a real chart
+— the credential key-name defaults already match the SeaweedFS
+generated `-s3-secret` (its admin pair), so the store's Secret
+composes untouched, and none of those credentials ever ride this
+manifest. A generic Secret keyed `accesskey`/`secretkey` (the argo
+chart's documented example shape) works by setting the two key-name
+fields explicitly.
 
 Change first: on a cloud store, drop `insecure`, drop the declared
 Secret and set `use_ambient_credentials` with IRSA/workload identity

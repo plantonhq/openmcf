@@ -109,18 +109,33 @@ Two validation surfaces exist:
 ## Anatomy (all four files, every chart)
 
 ```
-charts/<provider>/<chart-name>/
+charts/<provider>/<chart-name>/              # the general home
+charts/<cloud>/kubernetes/<chart-name>/      # cluster charts: a managed
+                                             # Kubernetes cluster is the
+                                             # centerpiece (EKS/GKE/AKS
+                                             # platforms and their kin)
 ├── Chart.yaml      # catalog identity: name, description, VERIFIED iconUrl, web links
 ├── values.yaml     # the public input surface: typed params with dense descriptions
 ├── templates/      # richly-commented manifests rendering the Cloud Resources
 └── README.md       # component-docs-grade documentation
 ```
 
+The home rule: a chart lives under the provider that hosts its centerpiece;
+charts whose centerpiece is that cloud's managed Kubernetes cluster nest
+under the cloud's `kubernetes/` subfolder, and `charts/kubernetes/` holds
+charts that deploy onto an existing cluster. Every chart tool (discovery,
+the structure guard, validation, seeding) walks the tree by `Chart.yaml`
+presence, so nesting depth is not load-bearing — the layout exists for the
+human browsing the catalog.
+
 The chart directory name is kebab-case and names the ARCHITECTURE, not a
 product SKU (`hub-spoke-network-foundation`, not `firewall-chart`) — the name
-is the first word of the desirability pitch. It is also the chart's slug and
-its platform identity (platform charts upsert by a slug-derived deterministic
-id) — choose it as carefully as a kind name, and expect it to be permanent.
+is the first word of the desirability pitch. The chart's platform identity is
+the slugified `metadata.name` (platform charts upsert by a slug-derived
+deterministic id), and by convention the directory name matches it — so
+`metadata.name` must be globally unique across the WHOLE tree (not just
+within one provider folder); choose both as carefully as a kind name, and
+expect them to be permanent.
 
 ### Chart.yaml
 
@@ -136,12 +151,19 @@ spec:
   iconUrl: <VERIFIED live URL — see icon rules below>
   isReady: true
   webLinks:
-    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<provider>/<chart-name>
-    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<provider>/<chart-name>/README.md
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<path-to-chart>
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<path-to-chart>/README.md
 ```
 
+(`<path-to-chart>` is the chart's real tree path — `<provider>/<chart-name>`
+or `<cloud>/kubernetes/<chart-name>` — the web links always mirror the tree.)
+
 The description is catalog copy: concrete, outcome-first, no filler. Say what
-the deployed result IS, not what the chart "provides".
+the deployed result IS, not what the chart "provides". Write it as a folded
+block scalar (`description: >-`): catalog copy routinely carries colons, and
+an unquoted single-line scalar with `: ` inside fails the YAML parse — the
+validator reports it as a Chart.yaml parse failure, not a description
+problem.
 
 **Icon rules (mandatory).** Every chart carries the most appropriate icon for
 what it provisions, and the URL must be LIVE — the offline validator does not
@@ -210,6 +232,14 @@ the README. Conventions:
 
 - One file per architectural concern (e.g. `network.yaml`, `database.yaml`), not
   one file per resource; multiple documents separated by `---`.
+- **Template files may be grouped in subdirectories** — every loader (the
+  offline validator and the platform's project loader) walks `templates/`
+  recursively and identifies each file by its path relative to `templates/`.
+  Use folders when the chart's concerns form real architectural layers a
+  reader navigates (`templates/exposure/ingress.yaml` beside
+  `templates/exposure/gateway.yaml` makes an either/or arm legible at a
+  glance); a chart with a handful of files stays flat. Folders mirror the
+  architecture, never decorate it.
 - **Inline comments are part of the deliverable** — the same bar as IaC module
   comments. YAML `#` comments are render-safe. Teach the WHY at every non-obvious
   choice: why a default is what it is, what a hardcoded value protects, why one
@@ -249,6 +279,17 @@ the README. Conventions:
   the offline validator) resolve the annotated path. Never override the
   annotated path with a different one — that is exactly the mismatch class the
   validator rejects.
+- **Secret KEY names are part of the composition contract — read the
+  producing kind's Secret key shape, never trust the consumer's key
+  default.** A consumer's `secret_key`-style field defaults to a generic
+  convention (usually `password`), but some producers key their credential
+  Secrets differently — ACL-user stores (Valkey-class auth Secrets) key
+  entries BY USERNAME, one key per user. The mismatch renders cleanly,
+  validates cleanly, deploys cleanly, and fails authentication at runtime —
+  no gate catches it. Verify the key against the producing kind's
+  stack-output comments (its `*_secret` handles state their key) and set
+  the consumer's key explicitly wherever the producer's shape differs from
+  the consumer's default.
 - **Set `kind:` explicitly when referencing anything other than the field's
   default kind** (or when the field carries no `default_kind` — deliberately
   polymorphic references resolve nothing by default; writing the explicit
@@ -329,7 +370,25 @@ the README. Conventions:
   not-yet-created resources cannot appear in it anyway. Feed cross-resource
   values inside Structs from render-time params instead (e.g. an account id
   scoping a service-principal condition), and teach the post-deploy tightening
-  in the README when an exact-ARN form exists.
+  in the README when an exact-ARN form exists. Before settling for a wildcard,
+  check whether the target's identifier is DETERMINISTIC from values the chart
+  already holds: many AWS ARNs compose entirely from region + account id +
+  the resource's chart-controlled name (SQS queues, S3 buckets, IAM roles by
+  name), so a policy document can name its exact resource at render time —
+  scoped now, not tightened later. Wildcards remain the honest shape only
+  where the identifier embeds a server-generated segment (hosted-zone IDs,
+  OIDC issuer paths).
+- **Cloud-side discovery tags ride `metadata.labels`.** The catalog's cloud
+  kinds stamp user labels into the provider's resource tags (identity keys
+  winning on collision), so a controller that discovers infrastructure by
+  cloud tag — Karpenter's `karpenter.sh/discovery` subnet selector is the
+  canonical case — is wired by LABELING the producing resources and matching
+  the same render-known value in the consumer's selector. No spec-level tags
+  field and no reference is needed; both sides render from the same values
+  expression. For provider-created resources the chart cannot label (an EKS
+  cluster security group), select by the tag the provider itself stamps
+  (`aws:eks:cluster-name`, re-added by EKS if removed) — verify the stamped
+  tag in the provider's documentation before relying on it.
 - **Outputs only feed `StringValueOrRef` fields — every other field type takes
   render-time literals.** A plain `string`, `repeated string` (a DNS record's
   `values`), or `map<string,string>` (an alarm's `dimensions`, a pipeline
@@ -342,18 +401,25 @@ the README. Conventions:
   never from `arn_suffix`-class outputs), or make it an explicit day-2 recipe
   in the README with the exact outputs to read — a template that renders a
   placeholder where a real value belongs is a silent-failure ship.
-- **Selector-bound kinds are a weaker link than references — bundle them
-  deliberately or not at all.** Some kinds bind to their host by a by-name
-  selector rather than a `StringValueOrRef` (the Kubernetes workload/addon
-  kinds' `target_cluster` — a cluster-kind enum plus the cluster's resource
-  name in the same environment). A selector is not a resolved reference: the
-  offline gate cannot verify it, and no output flows through it. A chart that
-  owns the infrastructure layer (network, cluster, identity, registry) should
-  generally TEACH the selector pattern in its README rather than bundle
-  selector-bound resources — what runs ON a cluster is a separate, composable
-  decision from the cluster itself. If a chart does include one, pair the
-  selector with an explicit `metadata.relationships` edge so ordering is
-  still real.
+- **Kubernetes workloads bind to their cluster through a connection, never a
+  spec field — wire the annotation pair and a real ordering edge.** Kubernetes
+  kinds carry no cluster selector in their specs: the cluster a resource
+  deploys to is the provider connection the platform resolves for it
+  (precedence: explicit value → annotation → environment default →
+  organization default). In a one-run composition — a chart that provisions a
+  cluster AND deploys workloads onto it — the cluster resource publishes its
+  connection under a chart-controlled name (`planton.dev/connection-name`)
+  and every Kubernetes workload consumes it by the same value
+  (`planton.dev/connection`); drive both annotations from ONE values param so
+  the producer and its consumers can never drift. The annotation is
+  credentials, not ordering, and the offline gate cannot verify annotation
+  wiring: pair every in-chart workload with an explicit
+  `metadata.relationships` edge of type `runs_on` naming the cluster
+  resource, so the DAG edge is structural rather than incidental. A chart
+  that deploys onto an EXISTING cluster skips the producer side — the
+  deploying environment's connection default (or an explicit connection-slug
+  parameter feeding `planton.dev/connection`) selects the cluster; state
+  that expectation in the parameter description and the README.
 
 #### Renderer mechanics charts rely on
 
@@ -366,6 +432,16 @@ the control plane's engine:
   so in each param's description ("entry N serves AZ N"), because nothing else
   enforces the pairing. Literal indexing (`values.availability_zones[0]`) also
   works for "the first one" placements.
+- **Whole-document loops separate documents with a guarded leading `---`**:
+  a template that renders one full document per list entry (a topic per
+  name, a user per identity) emits the separator only BETWEEN iterations —
+  `{% if loop.index0 > 0 %}---{% endif %}` at the top of the loop body. A
+  fixed `---` at the start of every iteration puts a document boundary
+  after the file's header comments (an empty first document), and a
+  trailing `---` on the last iteration leaves an empty document at EOF —
+  both parser-dependent shapes the guarded separator avoids. When the loop
+  is followed by more documents in the same file, the trailing-`---`-inside-
+  the-loop shape works too (the next document absorbs the boundary).
 - **Arithmetic and template-literal lists render fine**: a `number` param can
   feed a differently-scaled field via inline arithmetic
   (`{{ values.scan_limit_gib * 1073741824 }}` — let users think in the unit
@@ -475,6 +551,14 @@ go build -o /tmp/planton . && /tmp/planton chart validate charts/<provider>/<cha
 
 # 4. Exercise specific parameter combinations beyond the automatic flips
 /tmp/planton chart validate charts/<provider>/<chart-name> --set dnsEnabled=false
+
+# 5. Probe the reserved env binding beyond its default. env is
+#    platform-injected and rides most rendered identifiers, and the default
+#    "dev" hides two failure classes at once: charset (some identifier
+#    fields forbid characters an environment name may carry — GCP IAM
+#    custom-role IDs reject hyphens, for example) and length (env-prefixed
+#    names against per-field budgets). A hyphenated env probes both cheaply.
+/tmp/planton chart validate charts/<provider>/<chart-name> --env my-env
 ```
 
 What it proves:
@@ -519,6 +603,13 @@ the engine-of-record gate for publishing — see `@publish-planton-infra-charts`
 - **Traceable to proto**: every field a template sets must exist in the kind's
   `spec.proto`, with values that satisfy its validation rules. Read the proto;
   never guess.
+- **Every identifier composed from `env` respects the target field's charset
+  and length budget.** Filter out what a field's charset forbids (e.g.
+  `{{ values.env | replace('-', '') }}` where hyphens are rejected) rather
+  than constraining what environments may be named, and state the tightest
+  length budget (which field binds, at what env length) in the README's
+  parameter section — the env-probe validation run above is what catches a
+  missed one.
 - **No silent data loss**: a toggle that skips a resource must skip every
   reference to it as well (the variant-aware target diagnosis flags this).
 - **Timeless public artifacts**: templates, values, and READMEs never narrate

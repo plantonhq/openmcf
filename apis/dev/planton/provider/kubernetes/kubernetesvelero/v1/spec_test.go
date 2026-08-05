@@ -101,7 +101,15 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		})
 
 		ginkgo.It("s3 with IRSA should be valid", func() {
-			input.Spec.BackupStorage.GetS3().IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("s3 IRSA role as an AwsIamRole reference should be valid", func() {
+			// The one-run composition shape: the backup role deploys in the
+			// same run and its ARN flows in by reference.
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = valueFrom(
+				cloudresourcekind.CloudResourceKind_AwsIamRole, "velero-backups", "status.outputs.role_arn")
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -126,7 +134,18 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("gcs with workload identity should be valid", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
+			})
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("gcs workload identity as a GcpServiceAccount reference should be valid", func() {
+			// The one-run composition shape: the backup identity deploys in
+			// the same run and its email flows in by reference.
+			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
+				Bucket: "velero-backups",
+				WorkloadIdentityServiceAccountEmail: valueFrom(
+					cloudresourcekind.CloudResourceKind_GcpServiceAccount, "velero-backups", "status.outputs.email"),
 			})
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -144,10 +163,19 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("azure with workload identity and client id should be valid", func() {
+		ginkgo.It("azure with a workload-identity client id should be valid", func() {
 			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
-			azure.WorkloadIdentityClientId = "55555555-6666-7777-8888-999999999999"
+			azure.WorkloadIdentityClientId = literal("55555555-6666-7777-8888-999999999999")
+			input.Spec.BackupStorage = azureBackend(azure)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("azure workload identity as an AzureUserAssignedIdentity reference should be valid", func() {
+			// The one-run composition shape: the backup identity deploys in
+			// the same run and its client id flows in by reference.
+			azure := validAzureBlob()
+			azure.WorkloadIdentityClientId = valueFrom(
+				cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity, "velero-backups", "status.outputs.client_id")
 			input.Spec.BackupStorage = azureBackend(azure)
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -249,7 +277,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 
 		ginkgo.It("s3 with both IRSA and access keys should fail (irsa_xor_keys)", func() {
 			s3 := input.Spec.BackupStorage.GetS3()
-			s3.IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			s3.IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
 			s3.AccessKeys = &KubernetesVeleroS3AccessKeys{
 				AccessKeyId:     "AKIAEXAMPLE",
 				SecretAccessKey: "secret",
@@ -260,7 +288,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("s3-compatible endpoint with IRSA should fail (compatible_needs_keys)", func() {
 			s3 := input.Spec.BackupStorage.GetS3()
 			s3.S3Url = "http://minio.minio.svc:9000"
-			s3.IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			s3.IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
@@ -269,8 +297,10 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("malformed IRSA role ARN should fail (irsa_role_arn_format)", func() {
-			input.Spec.BackupStorage.GetS3().IrsaRoleArn = "role/velero-backups"
+		ginkgo.It("IRSA role present but empty should fail (StringValueOrRef contract)", func() {
+			// The shared StringValueOrRef rule: a present message must carry a
+			// non-empty literal or a reference.
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = &foreignkeyv1.StringValueOrRef{}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
@@ -290,7 +320,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 
 		ginkgo.It("gcs without a bucket should fail", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -298,16 +328,18 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("gcs with both workload identity and a key should fail (wi_xor_key)", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
 				ServiceAccountKeyJson:               `{"type":"service_account"}`,
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("malformed GCP service-account email should fail (wi_email_format)", func() {
+		ginkgo.It("gcs workload identity present but empty should fail (StringValueOrRef contract)", func() {
+			// The shared StringValueOrRef rule: a present message must carry a
+			// non-empty literal or a reference.
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@example.com",
+				WorkloadIdentityServiceAccountEmail: &foreignkeyv1.StringValueOrRef{},
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -340,22 +372,14 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("azure with both workload identity and a service principal should fail (wi_xor_sp)", func() {
+		ginkgo.It("azure with both a workload-identity client id and a service principal should fail (wi_xor_sp)", func() {
 			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
-			azure.WorkloadIdentityClientId = "55555555-6666-7777-8888-999999999999"
+			azure.WorkloadIdentityClientId = literal("55555555-6666-7777-8888-999999999999")
 			azure.ServicePrincipal = &KubernetesVeleroAzureServicePrincipal{
 				TenantId:     "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 				ClientId:     "11111111-2222-3333-4444-555555555555",
 				ClientSecret: "sp-secret-value",
 			}
-			input.Spec.BackupStorage = azureBackend(azure)
-			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("azure workload identity without client id should fail (wi_needs_client_id)", func() {
-			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
 			input.Spec.BackupStorage = azureBackend(azure)
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})

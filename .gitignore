@@ -71,3 +71,7 @@ backend.tf
 
 # `go build .` at the repo root produces a binary named after the package (main)
 /main
+
+# Local upstream clones used as design-time reference material — disposable,
+# re-cloned on demand, never committed.
+/source_reference/

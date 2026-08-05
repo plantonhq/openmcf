@@ -260,13 +260,15 @@ message KubernetesVeleroS3Backend {
   /**
    * IAM role ARN for IRSA: annotates Velero's service account so it
    * reaches S3 without stored keys — the keyless posture on EKS.
-   * Mutually exclusive with access_keys.
+   * Reference an AwsIamRole's role_arn output -- the reference is also the
+   * deploy-ordering edge, so the role exists before Velero starts -- or
+   * pass a literal ARN (arn:aws:iam::<account>:role/<name>). Mutually
+   * exclusive with access_keys.
    */
-  string irsa_role_arn = 7 [(buf.validate.field).cel = {
-    id: "spec.s3.irsa_role_arn_format"
-    message: "irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)"
-    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')"
-  }];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef irsa_role_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
 
   /**
    * Static access keys, materialized into Velero's credentials Secret
@@ -279,12 +281,12 @@ message KubernetesVeleroS3Backend {
   option (buf.validate.message).cel = {
     id: "spec.s3.irsa_xor_keys"
     message: "irsa_role_arn and access_keys are alternative credential postures — set at most one (neither = ambient node credentials)"
-    expression: "!(this.irsa_role_arn != '' && has(this.access_keys))"
+    expression: "!(has(this.irsa_role_arn) && has(this.access_keys))"
   };
   option (buf.validate.message).cel = {
     id: "spec.s3.compatible_needs_keys"
     message: "an S3-compatible endpoint (s3_url) authenticates with access_keys — IRSA only mints AWS credentials"
-    expression: "this.s3_url == '' || this.irsa_role_arn == ''"
+    expression: "this.s3_url == '' || !has(this.irsa_role_arn)"
   };
 }
 
@@ -322,13 +324,16 @@ message KubernetesVeleroGcsBackend {
    * GCP service-account email for Workload Identity: annotates Velero's
    * Kubernetes service account (and is set on the storage location) so
    * Velero reaches GCS without a stored key — the keyless posture on
-   * GKE. Mutually exclusive with service_account_key_json.
+   * GKE. Reference a GcpServiceAccount's email output -- the reference is
+   * also the deploy-ordering edge, so the identity (and the grants riding
+   * it) exists before Velero starts -- or pass a literal email
+   * (<id>@<project>.iam.gserviceaccount.com). Mutually exclusive with
+   * service_account_key_json.
    */
-  string workload_identity_service_account_email = 2 [(buf.validate.field).cel = {
-    id: "spec.gcs.wi_email_format"
-    message: "workload_identity_service_account_email must be a GCP service-account email (…@…gserviceaccount.com)"
-    expression: "this == '' || this.matches('^[a-z0-9-]+@[a-z0-9-]+(\\\\.[a-z0-9-]+)*\\\\.gserviceaccount\\\\.com$')"
-  }];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workload_identity_service_account_email = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 
   /**
    * GCP service-account key (the JSON key file's content), materialized
@@ -340,7 +345,7 @@ message KubernetesVeleroGcsBackend {
   option (buf.validate.message).cel = {
     id: "spec.gcs.wi_xor_key"
     message: "workload_identity_service_account_email and service_account_key_json are alternative credential postures — set at most one (neither = ambient node credentials)"
-    expression: "!(this.workload_identity_service_account_email != '' && this.service_account_key_json != '')"
+    expression: "!(has(this.workload_identity_service_account_email) && this.service_account_key_json != '')"
   };
 }
 
@@ -369,33 +374,31 @@ message KubernetesVeleroAzureBlobBackend {
   string subscription_id = 4 [(buf.validate.field).required = true];
 
   /**
-   * Use Azure Workload Identity (federated Entra credentials on Velero's
-   * service account) — the keyless posture on AKS. Mutually exclusive
-   * with service_principal.
+   * Entra client ID for Azure AD Workload Identity: annotates Velero's
+   * Kubernetes service account (azure.workload.identity/client-id) and
+   * labels its pods (azure.workload.identity/use) so the AKS webhook
+   * injects a federated token — the keyless posture on AKS. Reference an
+   * AzureUserAssignedIdentity's client_id output -- the reference is also
+   * the deploy-ordering edge, so the identity (and the federated
+   * credential and grants riding it) exists before Velero starts -- or
+   * pass a literal client ID (GUID). Setting it selects the
+   * workload-identity posture; mutually exclusive with service_principal.
    */
-  bool use_workload_identity = 5;
-
-  /**
-   * Entra application (client) ID for the workload-identity annotation.
-   * Required with use_workload_identity.
-   */
-  string workload_identity_client_id = 6;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workload_identity_client_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.client_id"
+  ];
 
   /**
    * Service-principal credentials, materialized into Velero's
    * credentials Secret. The declared-credential arm.
    */
-  KubernetesVeleroAzureServicePrincipal service_principal = 7;
+  KubernetesVeleroAzureServicePrincipal service_principal = 6;
 
   option (buf.validate.message).cel = {
     id: "spec.azure.wi_xor_sp"
-    message: "use_workload_identity and service_principal are alternative credential postures — set at most one"
-    expression: "!(this.use_workload_identity && has(this.service_principal))"
-  };
-  option (buf.validate.message).cel = {
-    id: "spec.azure.wi_needs_client_id"
-    message: "use_workload_identity requires workload_identity_client_id — the federated credential is addressed by it"
-    expression: "!this.use_workload_identity || this.workload_identity_client_id != ''"
+    message: "workload_identity_client_id and service_principal are alternative credential postures — set at most one (neither = ambient node credentials)"
+    expression: "!(has(this.workload_identity_client_id) && has(this.service_principal))"
   };
 }
 

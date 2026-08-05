@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	iamrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1"
 	"github.com/plantonhq/planton/internal/valuefrom"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -21,11 +22,24 @@ func iamRole(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResour
 	roleName := locals.AwsIamRole.Metadata.Name
 	spec := locals.AwsIamRole.Spec
 
-	// trust_policy is a free-form JSON object (google.protobuf.Struct);
-	// iam.Role wants assume_role_policy as a JSON string, so encode it here.
-	trustPolicyString, err := structToJSONString(spec.TrustPolicy)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal trust policy JSON")
+	// The trust oneof: exactly one of trust_policy (free-form JSON) or
+	// oidc_trust (typed federated trust) is set — spec-enforced. iam.Role
+	// wants assume_role_policy as a JSON string either way: the oidc arm
+	// composes the web-identity document from the provider's outputs
+	// (references are resolved before the module runs), the free-form arm
+	// encodes the user's Struct as-is.
+	var trustPolicyString string
+	var err error
+	if oidcTrust := spec.GetOidcTrust(); oidcTrust != nil {
+		trustPolicyString, err = composeOidcTrustPolicy(oidcTrust)
+		if err != nil {
+			return errors.Wrap(err, "failed to compose oidc trust policy JSON")
+		}
+	} else {
+		trustPolicyString, err = structToJSONString(spec.GetTrustPolicy())
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal trust policy JSON")
+		}
 	}
 
 	roleArgs := &iam.RoleArgs{
@@ -111,6 +125,68 @@ func structToJSONString(s *structpb.Struct) (string, error) {
 		return "{}", nil
 	}
 	bytes, err := json.Marshal(s.AsMap())
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+// composeOidcTrustPolicy builds the sts:AssumeRoleWithWebIdentity trust
+// document from the typed oidc_trust arm, byte-equivalent in structure to the
+// Terraform module's composition. One statement PER CONDITION OPERATOR: IAM
+// ANDs condition operators inside a statement and ORs across statements, so
+// exact subjects (StringEquals) and wildcard subjects (StringLike) ride
+// separate statements — mixing both on the `sub` key in one statement would
+// require a token to satisfy both at once.
+func composeOidcTrustPolicy(oidcTrust *iamrolev1.AwsIamRoleOidcTrust) (string, error) {
+	providerArn := oidcTrust.GetProviderArn().GetValue()
+	providerUrl := oidcTrust.GetProviderUrl().GetValue()
+
+	// The audience condition defaults to sts.amazonaws.com — the audience EKS
+	// IRSA and GitHub Actions both present — so the common case needs no
+	// explicit audiences.
+	audiences := oidcTrust.GetAudiences()
+	if len(audiences) == 0 {
+		audiences = []string{"sts.amazonaws.com"}
+	}
+
+	statements := make([]interface{}, 0, 2)
+	if subjects := oidcTrust.GetSubjects(); len(subjects) > 0 {
+		statements = append(statements, map[string]interface{}{
+			"Effect":    "Allow",
+			"Principal": map[string]interface{}{"Federated": providerArn},
+			"Action":    "sts:AssumeRoleWithWebIdentity",
+			"Condition": map[string]interface{}{
+				"StringEquals": map[string]interface{}{
+					providerUrl + ":sub": subjects,
+					providerUrl + ":aud": audiences,
+				},
+			},
+		})
+	}
+	if wildcardSubjects := oidcTrust.GetWildcardSubjects(); len(wildcardSubjects) > 0 {
+		statements = append(statements, map[string]interface{}{
+			"Effect":    "Allow",
+			"Principal": map[string]interface{}{"Federated": providerArn},
+			"Action":    "sts:AssumeRoleWithWebIdentity",
+			"Condition": map[string]interface{}{
+				// The audience stays an exact match even on the
+				// wildcard-subject statement — only the subject pattern is
+				// fuzzy.
+				"StringEquals": map[string]interface{}{
+					providerUrl + ":aud": audiences,
+				},
+				"StringLike": map[string]interface{}{
+					providerUrl + ":sub": wildcardSubjects,
+				},
+			},
+		})
+	}
+
+	bytes, err := json.Marshal(map[string]interface{}{
+		"Version":   "2012-10-17",
+		"Statement": statements,
+	})
 	if err != nil {
 		return "", err
 	}

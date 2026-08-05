@@ -312,14 +312,12 @@ message KubernetesLocustSecretEnv {
   string secret_name = 1 [(buf.validate.field).required = true];
 
   /**
-   * Keys to inject — each becomes an environment variable with the
-   * SAME name (name your Secret keys like environment variables,
-   * e.g. "API_TOKEN").
+   * Key NAMES within the Secret (references, not secret material) to
+   * inject — each becomes an environment variable with the SAME name
+   * (name your Secret keys like environment variables, e.g.
+   * "API_TOKEN").
    */
-  repeated string keys = 2 [
-    (buf.validate.field).repeated.min_items = 1,
-    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAMES within an existing Secret (references), not secret material"
-  ];
+  repeated string keys = 2 [(buf.validate.field).repeated.min_items = 1];
 }
 
 /**

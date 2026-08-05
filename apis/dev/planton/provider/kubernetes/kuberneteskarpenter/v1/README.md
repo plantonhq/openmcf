@@ -128,7 +128,7 @@ keys:
 
 | Environment | Spec surface | Mechanism | Where it lands |
 |---|---|---|---|
-| EKS with IRSA | `aws.irsa_role_arn` (CEL-validated ARN shape) | IAM Roles for Service Accounts via the cluster's OIDC provider | `eks.amazonaws.com/role-arn` annotation on the chart's fixed `karpenter` service account |
+| EKS with IRSA | `aws.irsa_role_arn` (an AwsIamRole reference or a literal ARN) | IAM Roles for Service Accounts via the cluster's OIDC provider | `eks.amazonaws.com/role-arn` annotation on the chart's fixed `karpenter` service account |
 | EKS Pod Identity | leave `aws.irsa_role_arn` empty | the association is configured on the AWS side (namespace + `karpenter` service account) | no annotation rendered — nothing needed in the values |
 
 The cloud-side half of either contract (trust policy or Pod Identity
@@ -177,7 +177,8 @@ spec:
     name: my-eks-cluster
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::111111111111:role/karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::111111111111:role/karpenter-controller
 ```
 
 ### Production EKS (interruption handling, sizing, telemetry)
@@ -194,7 +195,8 @@ spec:
     name: my-eks-cluster
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::111111111111:role/karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::111111111111:role/karpenter-controller
     interruptionQueue: my-eks-cluster-karpenter
   controller:
     replicas: 2
@@ -223,7 +225,8 @@ spec:
     name: my-eks-cluster
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::111111111111:role/karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::111111111111:role/karpenter-controller
   batching:
     maxDuration: 30s
     idleDuration: 2s

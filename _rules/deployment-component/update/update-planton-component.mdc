@@ -246,7 +246,15 @@ misconfigurations fail at validation rather than at deploy.
    overwriting the committed local-run entrypoint file — review that file's
    diff after the proof (the built input from the hack manifest is usually a
    fine dev entrypoint, but never commit one carrying real credentials from
-   a populated provider-config). Like the tofu plan proof, the AWS provider
+   a populated provider-config). A third rewrite to watch: the CLI
+   REGENERATES `<module-dir>/Pulumi.yaml`'s `name` from the stack FQDN's
+   project segment before every run — a preview whose stack name does not
+   use the COMMITTED `Pulumi.yaml` name (which is why the stack-init
+   convention above says `organization/<Pulumi.yaml name>/proof`) leaves
+   the module dirty with a phantom project rename that is tool fallout,
+   not an edit. Check `git status` on the module dir after every proof and
+   revert anything the wrapper rewrote; never commit a `Pulumi.yaml` name
+   change you did not deliberately make. Like the tofu plan proof, the AWS provider
    resolves credentials at preview time, so the ambient chain must carry a
    live session (`aws sts get-caller-identity` proves it) even though
    nothing is created.

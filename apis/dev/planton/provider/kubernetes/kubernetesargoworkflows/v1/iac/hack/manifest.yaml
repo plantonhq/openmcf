@@ -40,14 +40,19 @@ spec:
       endpoint:
         value: objects-s3.storage.svc.cluster.local:8333
       insecure: true
-      credentialsSecretName: objects-s3-auth
+      credentialsSecret:
+        secretName:
+          value: objects-s3-auth
+        accessKeyIdKey: accesskey
+        secretAccessKeyKey: secretkey
   archive:
     engine: postgres
     host:
       value: workflows-db-rw.data.svc.cluster.local
     database: argo_archive
     credentialsSecret:
-      name: workflows-db-app
+      name:
+        value: workflows-db-app
       usernameKey: username
       passwordKey: password
     sslMode: require

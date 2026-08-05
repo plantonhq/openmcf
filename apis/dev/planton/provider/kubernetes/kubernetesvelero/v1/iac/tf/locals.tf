@@ -204,8 +204,10 @@ locals {
   # azure workload identity → unlike AWS/GCP the Azure plugin STILL reads
   # a `cloud` file for the non-credential parameters; the federated token
   # itself rides the client-id annotation + the azure.workload.identity/use
-  # pod label below.
-  azure_wi       = try(local.azure.use_workload_identity, false)
+  # pod label below. A present client id selects the posture (the same
+  # presence semantics as the S3 IRSA and GCS WI arms — the tfvars
+  # converter flattens the spec's reference to the resolved string).
+  azure_wi       = try(local.azure.workload_identity_client_id, "") != ""
   azure_wi_cloud = local.azure_wi ? "AZURE_SUBSCRIPTION_ID=${local.azure.subscription_id}\nAZURE_RESOURCE_GROUP=${local.azure.resource_group}\nAZURE_CLOUD_NAME=AzurePublicCloud\n" : null
 
   # At most one of these is non-null (spec-enforced credential XORs).

@@ -5,9 +5,10 @@
 **One installation per cluster.** metrics-server registers the cluster-wide
 `v1beta1.metrics.k8s.io` APIService — a singleton. Check whether your cluster
 already serves it before adding this component (a second installation would
-fight the first over the same APIService). **GKE ships metrics-server
-built-in — do not install this component there.** EKS, AKS, kind, k3s,
-kubeadm, and self-managed clusters need it.
+fight the first over the same APIService). **GKE and AKS ship
+metrics-server built-in as a managed component — do not install this
+component there.** EKS, kind, k3s, kubeadm, and self-managed clusters
+need it.
 
 Also not the right component when:
 

@@ -44,18 +44,37 @@ message AwsIamRoleSpec {
   // changing the path replaces the role.
   string path = 3 [(dev.planton.shared.options.recommended_default) = "/"];
 
-  // The trust policy as free-form JSON: the statement of WHO may assume this
-  // role (service principals, AWS accounts, federated identities) and under
-  // what conditions. This is the security-critical half of the role -- prefer
-  // exact principals and add conditions (aws:SourceAccount, aws:SourceArn,
-  // sts:ExternalId) to prevent confused-deputy access. Updatable in place.
-  // Example:
-  //   Version: "2012-10-17"
-  //   Statement:
-  //     - Effect: Allow
-  //       Principal: { Service: lambda.amazonaws.com }
-  //       Action: sts:AssumeRole
-  google.protobuf.Struct trust_policy = 4 [(buf.validate.field).required = true];
+  // The statement of WHO may assume this role, in exactly one of two forms.
+  // Most roles write the document directly as free-form JSON (trust_policy).
+  // Roles assumed through an IAM OIDC provider's federated tokens (EKS IRSA
+  // service accounts, CI pipelines like GitHub Actions) use the typed
+  // oidc_trust arm instead: the provider's ARN and issuer path exist only
+  // after the provider is created, so a same-run composition can only wire
+  // them by reference -- a free-form JSON document cannot carry references.
+  oneof trust {
+    option (buf.validate.oneof).required = true;
+
+    // The trust policy as free-form JSON: the statement of WHO may assume this
+    // role (service principals, AWS accounts, federated identities) and under
+    // what conditions. This is the security-critical half of the role -- prefer
+    // exact principals and add conditions (aws:SourceAccount, aws:SourceArn,
+    // sts:ExternalId) to prevent confused-deputy access. Updatable in place.
+    // Example:
+    //   Version: "2012-10-17"
+    //   Statement:
+    //     - Effect: Allow
+    //       Principal: { Service: lambda.amazonaws.com }
+    //       Action: sts:AssumeRole
+    google.protobuf.Struct trust_policy = 4;
+
+    // Typed federated trust against an IAM OIDC provider: the IaC modules
+    // compose the sts:AssumeRoleWithWebIdentity trust document from the
+    // provider's outputs and the subject/audience conditions declared here.
+    // The form that makes keyless workload identity composable -- provider,
+    // role, and consumer can deploy in one run with the trust wired by
+    // reference.
+    AwsIamRoleOidcTrust oidc_trust = 10;
+  }
 
   // Managed policies to attach, each a reference to an AwsIamPolicy's
   // policy_arn output or a literal ARN (literals are how AWS-managed policies
@@ -123,5 +142,81 @@ message AwsIamRoleSpec {
     id: "max_session_duration_range"
     message: "max_session_duration must be between 3600 (1h) and 43200 (12h) seconds"
     expression: "this.max_session_duration == 0 || (this.max_session_duration >= 3600 && this.max_session_duration <= 43200)"
+  };
+}
+
+// AwsIamRoleOidcTrust composes the role's trust policy from an IAM OIDC
+// provider -- the typed alternative to hand-writing the web-identity JSON,
+// and the only form that can trust a provider created in the same deployment
+// run: the `Federated` principal is the provider's ARN, which AWS generates
+// at create time, so no pre-written document can carry it.
+//
+// The composed document grants sts:AssumeRoleWithWebIdentity in one or two
+// statements -- a StringEquals statement for exact subjects and a StringLike
+// statement for wildcard subjects. They are SEPARATE statements deliberately:
+// IAM ANDs condition operators within a statement and ORs across statements,
+// so mixing both operators on the `sub` key in one statement would require a
+// token to satisfy both at once.
+message AwsIamRoleOidcTrust {
+  // The IAM OIDC provider this role trusts -- the `Federated` principal of
+  // the composed trust policy. Reference an AwsIamOidcProvider's
+  // provider_arn output or pass a literal provider ARN
+  // (arn:aws:iam::<account>:oidc-provider/<issuer-host-and-path>).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provider_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamOidcProvider,
+    (dev.planton.shared.options.diagram_label) = "trusts oidc provider",
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.provider_arn"
+  ];
+
+  // The provider's issuer URL with the scheme stripped (e.g.
+  // "oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED") -- the prefix of the
+  // `sub`/`aud` condition keys in the composed document. Reference the SAME
+  // AwsIamOidcProvider's provider_url output as provider_arn so the pair can
+  // never drift apart.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provider_url = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamOidcProvider,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.provider_url"
+  ];
+
+  // Exact-match `sub` claim values this role accepts (StringEquals). For EKS
+  // IRSA the subject is "system:serviceaccount:<namespace>:<serviceaccount>".
+  // At least one subject -- exact or wildcard -- is required.
+  repeated string subjects = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Wildcard `sub` claim patterns this role accepts (StringLike; `*` and `?`
+  // wildcards) -- the CI-federation shape, e.g. "repo:my-org/my-repo:*" for
+  // GitHub Actions. Rendered as its own statement so exact and wildcard
+  // subjects are ORed, never ANDed (see the message comment).
+  repeated string wildcard_subjects = 4 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // `aud` claim values this role accepts (StringEquals on the audience
+  // condition key). Empty defaults to ["sts.amazonaws.com"] -- the audience
+  // EKS IRSA and GitHub Actions both present. Set explicitly only for
+  // providers registered with a different client id.
+  repeated string audiences = 5 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // A role trusting every token the provider mints would be an open door --
+  // the subject condition is what scopes the trust to one workload.
+  option (buf.validate.message).cel = {
+    id: "oidc_trust_subjects_required"
+    message: "at least one subject is required -- exact (subjects, e.g. 'system:serviceaccount:<namespace>:<serviceaccount>') or wildcard (wildcard_subjects)"
+    expression: "size(this.subjects) > 0 || size(this.wildcard_subjects) > 0"
   };
 }

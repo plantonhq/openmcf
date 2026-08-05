@@ -22,7 +22,8 @@ spec:
     name: ${E2E_ENV:PLANTON_E2E_EKS_CLUSTER_NAME}
     eks_control_plane: true
   aws:
-    irsa_role_arn: ${E2E_ENV:PLANTON_E2E_KARPENTER_IRSA_ROLE_ARN}
+    irsa_role_arn:
+      value: ${E2E_ENV:PLANTON_E2E_KARPENTER_IRSA_ROLE_ARN}
     interruption_queue: ${E2E_ENV:PLANTON_E2E_KARPENTER_INTERRUPTION_QUEUE}
   controller:
     replicas: 1

@@ -168,12 +168,16 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			"port":      port,
 			"database":  archive.GetDatabase(),
 			"tableName": vars.ArchiveTableName,
+			// The Secret name resolves a KubernetesPostgres application
+			// Secret by reference (or a literal); its username/password
+			// keys are the selector defaults, so that Secret composes
+			// untouched.
 			"userNameSecret": map[string]interface{}{
-				"name": archive.GetCredentialsSecret().GetName(),
+				"name": archive.GetCredentialsSecret().GetName().GetValue(),
 				"key":  usernameKey,
 			},
 			"passwordSecret": map[string]interface{}{
-				"name": archive.GetCredentialsSecret().GetName(),
+				"name": archive.GetCredentialsSecret().GetName().GetValue(),
 				"key":  passwordKey,
 			},
 		}
@@ -295,13 +299,26 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 				// workload identity on the runner service account).
 				s3["useSDKCreds"] = true
 			} else {
+				// The Secret name resolves a KubernetesSeaweedFs
+				// credentials Secret by reference (or a literal); the key
+				// names default to that kind's generated `-s3-secret`
+				// convention so it composes with zero key configuration.
+				creds := backend.S3.GetCredentialsSecret()
+				accessKeyIdKey := creds.GetAccessKeyIdKey()
+				if accessKeyIdKey == "" {
+					accessKeyIdKey = vars.S3AccessKeyIdKeyDefault
+				}
+				secretAccessKeyKey := creds.GetSecretAccessKeyKey()
+				if secretAccessKeyKey == "" {
+					secretAccessKeyKey = vars.S3SecretAccessKeyKeyDefault
+				}
 				s3["accessKeySecret"] = map[string]interface{}{
-					"name": backend.S3.GetCredentialsSecretName(),
-					"key":  vars.S3AccessKeyKey,
+					"name": creds.GetSecretName().GetValue(),
+					"key":  accessKeyIdKey,
 				}
 				s3["secretKeySecret"] = map[string]interface{}{
-					"name": backend.S3.GetCredentialsSecretName(),
-					"key":  vars.S3SecretKeyKey,
+					"name": creds.GetSecretName().GetValue(),
+					"key":  secretAccessKeyKey,
 				}
 			}
 			repository["s3"] = s3

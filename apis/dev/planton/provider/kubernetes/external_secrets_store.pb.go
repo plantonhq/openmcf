@@ -513,8 +513,14 @@ func (x *ExternalSecretsStoreGcp) GetServiceAccountKeyJson() string {
 // Azure Key Vault backend.
 type ExternalSecretsStoreAzure struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Key Vault URL, e.g. "https://my-vault.vault.azure.net".
-	VaultUrl string `protobuf:"bytes,1,opt,name=vault_url,json=vaultUrl,proto3" json:"vault_url,omitempty"`
+	// Key Vault data-plane URL, e.g. "https://my-vault.vault.azure.net".
+	// Reference an AzureKeyVault's vault_uri output -- in a composed
+	// environment the reference is also the deploy-ordering edge, so the
+	// vault exists before the store starts validating against it -- or pass
+	// the literal URL of an existing vault. The store READS from the vault
+	// (access, not containment), which is why the reference does not nest
+	// the store inside it.
+	VaultUrl *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=vault_url,json=vaultUrl,proto3" json:"vault_url,omitempty"`
 	// Entra (Azure AD) tenant the identity lives in. Required for
 	// service-principal and workload-identity auth.
 	TenantId string `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
@@ -582,11 +588,11 @@ func (*ExternalSecretsStoreAzure) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ExternalSecretsStoreAzure) GetVaultUrl() string {
+func (x *ExternalSecretsStoreAzure) GetVaultUrl() *v1.StringValueOrRef {
 	if x != nil {
 		return x.VaultUrl
 	}
-	return ""
+	return nil
 }
 
 func (x *ExternalSecretsStoreAzure) GetTenantId() string {
@@ -1217,9 +1223,9 @@ const file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDesc 
 	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
 	"\x19service_account_namespace\x18\x04 \x01(\tR\x17serviceAccountNamespace\x12=\n" +
 	"\x18service_account_key_json\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJson:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
-	"\x1aesostore.gcp.one_auth_mode\x12jChoose ONE authentication mode: a ServiceAccount reference (keyless) or a service-account key — not both\x1aH!(has(this.service_account_name) && this.service_account_key_json != '')\"\xa5\a\n" +
-	"\x19ExternalSecretsStoreAzure\x12(\n" +
-	"\tvault_url\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x88\x01\x01R\bvaultUrl\x12\x1b\n" +
+	"\x1aesostore.gcp.one_auth_mode\x12jChoose ONE authentication mode: a ServiceAccount reference (keyless) or a service-account key — not both\x1aH!(has(this.service_account_name) && this.service_account_key_json != '')\"\xf9\a\n" +
+	"\x19ExternalSecretsStoreAzure\x12|\n" +
+	"\tvault_url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x18status.outputs.vault_uri\x98\xd4a\x01R\bvaultUrl\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12p\n" +
 	"\tauth_type\x18\x03 \x01(\tBN\xbaH7r5R\x10ServicePrincipalR\x0fManagedIdentityR\x10WorkloadIdentity\x8a\xa6\x1d\x10WorkloadIdentityH\x00R\bauthType\x88\x01\x01\x12\x1f\n" +
 	"\videntity_id\x18\x04 \x01(\tR\n" +
@@ -1317,18 +1323,19 @@ var file_dev_planton_provider_kubernetes_external_secrets_store_proto_depIdxs = 
 	12, // 8: dev.planton.provider.kubernetes.ExternalSecretsStoreAws.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	12, // 9: dev.planton.provider.kubernetes.ExternalSecretsStoreGcp.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	12, // 10: dev.planton.provider.kubernetes.ExternalSecretsStoreGcp.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 11: dev.planton.provider.kubernetes.ExternalSecretsStoreAzure.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 12: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.token:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultTokenAuth
-	7,  // 13: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.app_role:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultAppRoleAuth
-	8,  // 14: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.kubernetes:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultKubernetesAuth
-	12, // 15: dev.planton.provider.kubernetes.ExternalSecretsStoreVaultKubernetesAuth.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 16: dev.planton.provider.kubernetes.ExternalSecretsStoreKubernetes.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 17: dev.planton.provider.kubernetes.ExternalSecretsStoreFake.data:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreFakeEntry
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	12, // 11: dev.planton.provider.kubernetes.ExternalSecretsStoreAzure.vault_url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 12: dev.planton.provider.kubernetes.ExternalSecretsStoreAzure.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 13: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.token:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultTokenAuth
+	7,  // 14: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.app_role:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultAppRoleAuth
+	8,  // 15: dev.planton.provider.kubernetes.ExternalSecretsStoreVault.kubernetes:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreVaultKubernetesAuth
+	12, // 16: dev.planton.provider.kubernetes.ExternalSecretsStoreVaultKubernetesAuth.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 17: dev.planton.provider.kubernetes.ExternalSecretsStoreKubernetes.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 18: dev.planton.provider.kubernetes.ExternalSecretsStoreFake.data:type_name -> dev.planton.provider.kubernetes.ExternalSecretsStoreFakeEntry
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_external_secrets_store_proto_init() }

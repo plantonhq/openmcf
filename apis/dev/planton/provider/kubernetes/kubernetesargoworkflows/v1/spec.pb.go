@@ -700,12 +700,14 @@ type KubernetesArgoWorkflowsArtifactS3 struct {
 	// `credentials_secret` (enforced below).
 	UseAmbientCredentials bool `protobuf:"varint,5,opt,name=use_ambient_credentials,json=useAmbientCredentials,proto3" json:"use_ambient_credentials,omitempty"`
 	// *
-	// Existing Secret holding the access keys — keys `accesskey` and
-	// `secretkey` (a KubernetesSeaweedFs credentials Secret already has
-	// this shape). Required unless `use_ambient_credentials`.
-	CredentialsSecretName string `protobuf:"bytes,6,opt,name=credentials_secret_name,json=credentialsSecretName,proto3" json:"credentials_secret_name,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The existing Secret holding the access keys. Defaults compose a
+	// KubernetesSeaweedFs resource's generated credentials Secret
+	// (`<name>-s3-secret`) as-is — its name by reference, its admin key
+	// pair through the key-name defaults below. Required unless
+	// `use_ambient_credentials`.
+	CredentialsSecret *KubernetesArgoWorkflowsS3CredentialsSecret `protobuf:"bytes,6,opt,name=credentials_secret,json=credentialsSecret,proto3" json:"credentials_secret,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *KubernetesArgoWorkflowsArtifactS3) Reset() {
@@ -773,9 +775,90 @@ func (x *KubernetesArgoWorkflowsArtifactS3) GetUseAmbientCredentials() bool {
 	return false
 }
 
-func (x *KubernetesArgoWorkflowsArtifactS3) GetCredentialsSecretName() string {
+func (x *KubernetesArgoWorkflowsArtifactS3) GetCredentialsSecret() *KubernetesArgoWorkflowsS3CredentialsSecret {
 	if x != nil {
-		return x.CredentialsSecretName
+		return x.CredentialsSecret
+	}
+	return nil
+}
+
+// *
+// A reference to an existing Secret carrying S3 access keys in two
+// keys. Defaults compose a KubernetesSeaweedFs resource's generated
+// `-s3-secret` (its admin credential pair). The controller resolves
+// the keys at runtime through secret selectors — nothing
+// credential-bearing ever renders into chart values.
+type KubernetesArgoWorkflowsS3CredentialsSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of the Secret. Accepts a literal name or a reference to a
+	// KubernetesSeaweedFs resource (its S3 credentials Secret). The
+	// Secret must live in the install namespace (the controller reads
+	// it there).
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key NAME within the Secret (a reference, not secret material)
+	// holding the access key ID. Empty = "admin_access_key_id"
+	// (the KubernetesSeaweedFs convention — the generated `-s3-secret`
+	// composes with zero key configuration). For a Secret shaped to the
+	// argo-workflows chart's documented example (keys
+	// `accesskey`/`secretkey`), set both key names explicitly.
+	AccessKeyIdKey *string `protobuf:"bytes,2,opt,name=access_key_id_key,json=accessKeyIdKey,proto3,oneof" json:"access_key_id_key,omitempty"`
+	// *
+	// Key holding the secret access key. Empty =
+	// "admin_secret_access_key".
+	SecretAccessKeyKey *string `protobuf:"bytes,3,opt,name=secret_access_key_key,json=secretAccessKeyKey,proto3,oneof" json:"secret_access_key_key,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) Reset() {
+	*x = KubernetesArgoWorkflowsS3CredentialsSecret{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgoWorkflowsS3CredentialsSecret) ProtoMessage() {}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgoWorkflowsS3CredentialsSecret.ProtoReflect.Descriptor instead.
+func (*KubernetesArgoWorkflowsS3CredentialsSecret) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) GetAccessKeyIdKey() string {
+	if x != nil && x.AccessKeyIdKey != nil {
+		return *x.AccessKeyIdKey
+	}
+	return ""
+}
+
+func (x *KubernetesArgoWorkflowsS3CredentialsSecret) GetSecretAccessKeyKey() string {
+	if x != nil && x.SecretAccessKeyKey != nil {
+		return *x.SecretAccessKeyKey
 	}
 	return ""
 }
@@ -798,7 +881,7 @@ type KubernetesArgoWorkflowsArtifactGcs struct {
 
 func (x *KubernetesArgoWorkflowsArtifactGcs) Reset() {
 	*x = KubernetesArgoWorkflowsArtifactGcs{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -810,7 +893,7 @@ func (x *KubernetesArgoWorkflowsArtifactGcs) String() string {
 func (*KubernetesArgoWorkflowsArtifactGcs) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsArtifactGcs) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -823,7 +906,7 @@ func (x *KubernetesArgoWorkflowsArtifactGcs) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesArgoWorkflowsArtifactGcs.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsArtifactGcs) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesArgoWorkflowsArtifactGcs) GetBucket() string {
@@ -862,7 +945,7 @@ type KubernetesArgoWorkflowsArtifactAzure struct {
 
 func (x *KubernetesArgoWorkflowsArtifactAzure) Reset() {
 	*x = KubernetesArgoWorkflowsArtifactAzure{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +957,7 @@ func (x *KubernetesArgoWorkflowsArtifactAzure) String() string {
 func (*KubernetesArgoWorkflowsArtifactAzure) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsArtifactAzure) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +970,7 @@ func (x *KubernetesArgoWorkflowsArtifactAzure) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use KubernetesArgoWorkflowsArtifactAzure.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsArtifactAzure) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesArgoWorkflowsArtifactAzure) GetEndpoint() string {
@@ -947,7 +1030,7 @@ type KubernetesArgoWorkflowsArchive struct {
 
 func (x *KubernetesArgoWorkflowsArchive) Reset() {
 	*x = KubernetesArgoWorkflowsArchive{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -959,7 +1042,7 @@ func (x *KubernetesArgoWorkflowsArchive) String() string {
 func (*KubernetesArgoWorkflowsArchive) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsArchive) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -972,7 +1055,7 @@ func (x *KubernetesArgoWorkflowsArchive) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesArgoWorkflowsArchive.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsArchive) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesArgoWorkflowsArchive) GetEngine() KubernetesArgoWorkflowsArchiveEngine {
@@ -1022,9 +1105,12 @@ func (x *KubernetesArgoWorkflowsArchive) GetSslMode() string {
 type KubernetesArgoWorkflowsArchiveCredentials struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Secret name. The Secret must live in the install namespace (the
-	// controller reads it there).
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Secret name. Accepts a literal name or a reference to a
+	// KubernetesPostgres resource (its operator-maintained application
+	// Secret — whose `username`/`password` keys are exactly the key-name
+	// defaults below, so it composes untouched). The Secret must live in
+	// the install namespace (the controller reads it there).
+	Name *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
 	// Key holding the username. Empty = "username".
 	UsernameKey *string `protobuf:"bytes,2,opt,name=username_key,json=usernameKey,proto3,oneof" json:"username_key,omitempty"`
@@ -1037,7 +1123,7 @@ type KubernetesArgoWorkflowsArchiveCredentials struct {
 
 func (x *KubernetesArgoWorkflowsArchiveCredentials) Reset() {
 	*x = KubernetesArgoWorkflowsArchiveCredentials{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1049,7 +1135,7 @@ func (x *KubernetesArgoWorkflowsArchiveCredentials) String() string {
 func (*KubernetesArgoWorkflowsArchiveCredentials) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsArchiveCredentials) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1062,14 +1148,14 @@ func (x *KubernetesArgoWorkflowsArchiveCredentials) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesArgoWorkflowsArchiveCredentials.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsArchiveCredentials) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *KubernetesArgoWorkflowsArchiveCredentials) GetName() string {
+func (x *KubernetesArgoWorkflowsArchiveCredentials) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesArgoWorkflowsArchiveCredentials) GetUsernameKey() string {
@@ -1105,7 +1191,7 @@ type KubernetesArgoWorkflowsRetentionPolicy struct {
 
 func (x *KubernetesArgoWorkflowsRetentionPolicy) Reset() {
 	*x = KubernetesArgoWorkflowsRetentionPolicy{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1117,7 +1203,7 @@ func (x *KubernetesArgoWorkflowsRetentionPolicy) String() string {
 func (*KubernetesArgoWorkflowsRetentionPolicy) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsRetentionPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1130,7 +1216,7 @@ func (x *KubernetesArgoWorkflowsRetentionPolicy) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use KubernetesArgoWorkflowsRetentionPolicy.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsRetentionPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesArgoWorkflowsRetentionPolicy) GetCompleted() int32 {
@@ -1188,7 +1274,7 @@ type KubernetesArgoWorkflowsCrds struct {
 
 func (x *KubernetesArgoWorkflowsCrds) Reset() {
 	*x = KubernetesArgoWorkflowsCrds{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1200,7 +1286,7 @@ func (x *KubernetesArgoWorkflowsCrds) String() string {
 func (*KubernetesArgoWorkflowsCrds) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsCrds) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1213,7 +1299,7 @@ func (x *KubernetesArgoWorkflowsCrds) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesArgoWorkflowsCrds.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsCrds) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesArgoWorkflowsCrds) GetInstall() bool {
@@ -1273,7 +1359,7 @@ type KubernetesArgoWorkflowsImage struct {
 
 func (x *KubernetesArgoWorkflowsImage) Reset() {
 	*x = KubernetesArgoWorkflowsImage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1371,7 @@ func (x *KubernetesArgoWorkflowsImage) String() string {
 func (*KubernetesArgoWorkflowsImage) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1384,7 @@ func (x *KubernetesArgoWorkflowsImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesArgoWorkflowsImage.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesArgoWorkflowsImage) GetRegistry() string {
@@ -1342,7 +1428,7 @@ type KubernetesArgoWorkflowsScheduling struct {
 
 func (x *KubernetesArgoWorkflowsScheduling) Reset() {
 	*x = KubernetesArgoWorkflowsScheduling{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1354,7 +1440,7 @@ func (x *KubernetesArgoWorkflowsScheduling) String() string {
 func (*KubernetesArgoWorkflowsScheduling) ProtoMessage() {}
 
 func (x *KubernetesArgoWorkflowsScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1367,7 +1453,7 @@ func (x *KubernetesArgoWorkflowsScheduling) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesArgoWorkflowsScheduling.ProtoReflect.Descriptor instead.
 func (*KubernetesArgoWorkflowsScheduling) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *KubernetesArgoWorkflowsScheduling) GetNodeSelector() map[string]string {
@@ -1447,15 +1533,22 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\x02s3\x18\x02 \x01(\v2].dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3H\x00R\x02s3\x12r\n" +
 	"\x03gcs\x18\x03 \x01(\v2^.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactGcsH\x00R\x03gcs\x12x\n" +
 	"\x05azure\x18\x04 \x01(\v2`.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactAzureH\x00R\x05azureB\t\n" +
-	"\abackend\"\x89\x05\n" +
+	"\abackend\"\xd0\x05\n" +
 	"!KubernetesArgoWorkflowsArtifactS3\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12s\n" +
 	"\bendpoint\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x03 \x01(\tR\x06region\x12\x1a\n" +
 	"\binsecure\x18\x04 \x01(\bR\binsecure\x126\n" +
-	"\x17use_ambient_credentials\x18\x05 \x01(\bR\x15useAmbientCredentials\x126\n" +
-	"\x17credentials_secret_name\x18\x06 \x01(\tR\x15credentialsSecretName:\xaa\x02\xbaH\xa6\x02\x1a\xa3\x02\n" +
-	"'spec.artifact_repository.s3.credentials\x12\x86\x01declare exactly one credential path — credentials_secret_name for declared keys, or use_ambient_credentials for keyless pod identity\x1aothis.use_ambient_credentials ? size(this.credentials_secret_name) == 0 : size(this.credentials_secret_name) > 0\"|\n" +
+	"\x17use_ambient_credentials\x18\x05 \x01(\bR\x15useAmbientCredentials\x12\x95\x01\n" +
+	"\x12credentials_secret\x18\x06 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsS3CredentialsSecretR\x11credentialsSecret:\x91\x02\xbaH\x8d\x02\x1a\x8a\x02\n" +
+	"'spec.artifact_repository.s3.credentials\x12\x81\x01declare exactly one credential path — credentials_secret for declared keys, or use_ambient_credentials for keyless pod identity\x1a[this.use_ambient_credentials ? !has(this.credentials_secret) : has(this.credentials_secret)\"\xd4\x03\n" +
+	"*KubernetesArgoWorkflowsS3CredentialsSecret\x12\x8d\x01\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
+	"secretName\x12G\n" +
+	"\x11access_key_id_key\x18\x02 \x01(\tB\x17\x8a\xa6\x1d\x13admin_access_key_idH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x9c\x01\n" +
+	"\x15secret_access_key_key\x18\x03 \x01(\tBd\x8a\xa6\x1d\x17admin_secret_access_key\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x12secretAccessKeyKey\x88\x01\x01B\x14\n" +
+	"\x12_access_key_id_keyB\x18\n" +
+	"\x16_secret_access_key_key\"|\n" +
 	"\"KubernetesArgoWorkflowsArtifactGcs\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x126\n" +
 	"\x17credentials_secret_name\x18\x02 \x01(\tR\x15credentialsSecretName\"\xa8\x01\n" +
@@ -1470,9 +1563,9 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\bdatabase\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12\x9c\x01\n" +
 	"\x12credentials_secret\x18\x05 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentialsB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\x12L\n" +
 	"\bssl_mode\x18\x06 \x01(\tB1\xbaH.r,R\x00R\adisableR\arequireR\tverify-caR\vverify-fullR\asslModeB\a\n" +
-	"\x05_port\"\x95\x02\n" +
-	")KubernetesArgoWorkflowsArchiveCredentials\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x124\n" +
+	"\x05_port\"\xf5\x02\n" +
+	")KubernetesArgoWorkflowsArchiveCredentials\x12z\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x124\n" +
 	"\fusername_key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\busernameH\x00R\vusernameKey\x88\x01\x01\x12t\n" +
 	"\fpassword_key\x18\x03 \x01(\tBL\x8a\xa6\x1d\bpassword\xaa\xa6\x1d<Name of a key within an existing Secret, not secret materialH\x01R\vpasswordKey\x88\x01\x01B\x0f\n" +
 	"\r_username_keyB\x0f\n" +
@@ -1526,53 +1619,57 @@ func file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_
 }
 
 var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_goTypes = []any{
-	(KubernetesArgoWorkflowsArchiveEngine)(0),         // 0: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngine
-	(*KubernetesArgoWorkflowsSpec)(nil),               // 1: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec
-	(*KubernetesArgoWorkflowsController)(nil),         // 2: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsController
-	(*KubernetesArgoWorkflowsServer)(nil),             // 3: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsServer
-	(*KubernetesArgoWorkflowsArtifactRepository)(nil), // 4: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository
-	(*KubernetesArgoWorkflowsArtifactS3)(nil),         // 5: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3
-	(*KubernetesArgoWorkflowsArtifactGcs)(nil),        // 6: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactGcs
-	(*KubernetesArgoWorkflowsArtifactAzure)(nil),      // 7: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactAzure
-	(*KubernetesArgoWorkflowsArchive)(nil),            // 8: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive
-	(*KubernetesArgoWorkflowsArchiveCredentials)(nil), // 9: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials
-	(*KubernetesArgoWorkflowsRetentionPolicy)(nil),    // 10: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsRetentionPolicy
-	(*KubernetesArgoWorkflowsCrds)(nil),               // 11: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsCrds
-	(*KubernetesArgoWorkflowsImage)(nil),              // 12: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsImage
-	(*KubernetesArgoWorkflowsScheduling)(nil),         // 13: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling
-	nil,                                   // 14: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),           // 15: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 16: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil), // 17: dev.planton.provider.kubernetes.WorkloadToleration
+	(KubernetesArgoWorkflowsArchiveEngine)(0),          // 0: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngine
+	(*KubernetesArgoWorkflowsSpec)(nil),                // 1: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec
+	(*KubernetesArgoWorkflowsController)(nil),          // 2: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsController
+	(*KubernetesArgoWorkflowsServer)(nil),              // 3: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsServer
+	(*KubernetesArgoWorkflowsArtifactRepository)(nil),  // 4: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository
+	(*KubernetesArgoWorkflowsArtifactS3)(nil),          // 5: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3
+	(*KubernetesArgoWorkflowsS3CredentialsSecret)(nil), // 6: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsS3CredentialsSecret
+	(*KubernetesArgoWorkflowsArtifactGcs)(nil),         // 7: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactGcs
+	(*KubernetesArgoWorkflowsArtifactAzure)(nil),       // 8: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactAzure
+	(*KubernetesArgoWorkflowsArchive)(nil),             // 9: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive
+	(*KubernetesArgoWorkflowsArchiveCredentials)(nil),  // 10: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials
+	(*KubernetesArgoWorkflowsRetentionPolicy)(nil),     // 11: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsRetentionPolicy
+	(*KubernetesArgoWorkflowsCrds)(nil),                // 12: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsCrds
+	(*KubernetesArgoWorkflowsImage)(nil),               // 13: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsImage
+	(*KubernetesArgoWorkflowsScheduling)(nil),          // 14: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling
+	nil,                                   // 15: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),           // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 17: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 18: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_depIdxs = []int32{
-	15, // 0: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 0: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 1: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.controller:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsController
 	3,  // 2: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.server:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsServer
 	4,  // 3: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.artifact_repository:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository
-	8,  // 4: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.archive:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive
-	10, // 5: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.retention_policy:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsRetentionPolicy
-	11, // 6: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.crds:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsCrds
-	12, // 7: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.image:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsImage
-	13, // 8: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling
-	16, // 9: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsController.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	16, // 10: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsServer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	9,  // 4: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.archive:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive
+	11, // 5: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.retention_policy:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsRetentionPolicy
+	12, // 6: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.crds:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsCrds
+	13, // 7: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.image:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsImage
+	14, // 8: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling
+	17, // 9: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsController.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	17, // 10: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsServer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
 	5,  // 11: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository.s3:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3
-	6,  // 12: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository.gcs:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactGcs
-	7,  // 13: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository.azure:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactAzure
-	15, // 14: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3.endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 15: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.engine:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngine
-	15, // 16: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 17: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.credentials_secret:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials
-	14, // 18: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
-	17, // 19: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	7,  // 12: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository.gcs:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactGcs
+	8,  // 13: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactRepository.azure:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactAzure
+	16, // 14: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3.endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 15: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArtifactS3.credentials_secret:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsS3CredentialsSecret
+	16, // 16: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsS3CredentialsSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 17: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.engine:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngine
+	16, // 18: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 19: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.credentials_secret:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials
+	16, // 20: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 21: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
+	18, // 22: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_init() }
@@ -1588,17 +1685,18 @@ func file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_
 		(*KubernetesArgoWorkflowsArtifactRepository_Gcs)(nil),
 		(*KubernetesArgoWorkflowsArtifactRepository_Azure)(nil),
 	}
-	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

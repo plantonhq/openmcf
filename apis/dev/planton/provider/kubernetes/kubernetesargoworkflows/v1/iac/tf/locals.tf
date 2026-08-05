@@ -221,6 +221,21 @@ locals {
     local.s3_declared || local.gcs_declared || local.azure_declared
   )
 
+  # The s3 credentials Secret: its name resolves a KubernetesSeaweedFs
+  # credentials Secret by reference (the generator flattens the
+  # StringValueOrRef to a plain string); the key names default to that
+  # kind's generated `-s3-secret` convention (admin pair — mirror of the
+  # proto field options), so that Secret composes with zero key
+  # configuration. The key-name fields are proto `optional` scalars and
+  # arrive as null in tfvars — hence the coalesce-guarded reads.
+  s3_credentials_declared = try(var.spec.artifact_repository.s3.credentials_secret, null) != null
+  s3_access_key_id_key = local.s3_credentials_declared ? (
+    try(coalesce(var.spec.artifact_repository.s3.credentials_secret.access_key_id_key), "") != "" ? var.spec.artifact_repository.s3.credentials_secret.access_key_id_key : "admin_access_key_id"
+  ) : null
+  s3_secret_access_key_key = local.s3_credentials_declared ? (
+    try(coalesce(var.spec.artifact_repository.s3.credentials_secret.secret_access_key_key), "") != "" ? var.spec.artifact_repository.s3.credentials_secret.secret_access_key_key : "admin_secret_access_key"
+  ) : null
+
   s3_block = local.s3_declared ? {
     for k, v in {
       bucket   = var.spec.artifact_repository.s3.bucket
@@ -230,13 +245,13 @@ locals {
       # Keyless: sign with the pod's ambient identity (IRSA / workload
       # identity on the runner service account).
       useSDKCreds = try(var.spec.artifact_repository.s3.use_ambient_credentials, false) ? true : null
-      accessKeySecret = try(var.spec.artifact_repository.s3.credentials_secret_name, "") != "" ? {
-        name = var.spec.artifact_repository.s3.credentials_secret_name
-        key  = "accesskey"
+      accessKeySecret = local.s3_credentials_declared ? {
+        name = var.spec.artifact_repository.s3.credentials_secret.secret_name
+        key  = local.s3_access_key_id_key
       } : null
-      secretKeySecret = try(var.spec.artifact_repository.s3.credentials_secret_name, "") != "" ? {
-        name = var.spec.artifact_repository.s3.credentials_secret_name
-        key  = "secretkey"
+      secretKeySecret = local.s3_credentials_declared ? {
+        name = var.spec.artifact_repository.s3.credentials_secret.secret_name
+        key  = local.s3_secret_access_key_key
       } : null
     } : k => v if v != null
   } : null

@@ -1,8 +1,0 @@
-# One resource group for the static site, its edge, and its DNS zone.
-apiVersion: azure.planton.dev/v1
-kind: AzureResourceGroup
-metadata:
-  name: "{{ values.env }}-static-site"
-spec:
-  name: "{{ values.env }}-static-site"
-  region: "{{ values.region }}"

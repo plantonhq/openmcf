@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("KubernetesKarpenter Validation Tests", func() {
 
 		ginkgo.It("full AWS arm should be valid", func() {
 			input.Spec.Cloud = awsArm(&KubernetesKarpenterAws{
-				IrsaRoleArn:             "arn:aws:iam::123456789012:role/karpenter-controller",
+				IrsaRoleArn:             literal("arn:aws:iam::123456789012:role/karpenter-controller"),
 				InterruptionQueue:       "karpenter-interruptions",
 				IsolatedVpc:             true,
 				ReservedEnis:            int32Ptr(1),
@@ -109,7 +109,17 @@ var _ = ginkgo.Describe("KubernetesKarpenter Validation Tests", func() {
 
 		ginkgo.It("GovCloud IRSA role ARN partition should be valid", func() {
 			input.Spec.Cloud = awsArm(&KubernetesKarpenterAws{
-				IrsaRoleArn: "arn:aws-us-gov:iam::123456789012:role/karpenter-controller",
+				IrsaRoleArn: literal("arn:aws-us-gov:iam::123456789012:role/karpenter-controller"),
+			})
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("IRSA role ARN as an AwsIamRole reference should be valid", func() {
+			// The one-run composition shape: the controller's role deploys in
+			// the same run and its ARN flows in by reference.
+			input.Spec.Cloud = awsArm(&KubernetesKarpenterAws{
+				IrsaRoleArn: valueFrom(cloudresourcekind.CloudResourceKind_AwsIamRole,
+					"karpenter-controller", "status.outputs.role_arn"),
 			})
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -180,16 +190,11 @@ var _ = ginkgo.Describe("KubernetesKarpenter Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("malformed IRSA role ARN should fail", func() {
+		ginkgo.It("IRSA role ARN present but empty should fail (StringValueOrRef contract)", func() {
+			// The shared StringValueOrRef rule: a present message must carry a
+			// non-empty literal or a reference.
 			input.Spec.Cloud = awsArm(&KubernetesKarpenterAws{
-				IrsaRoleArn: "role/karpenter-controller",
-			})
-			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("IRSA ARN with non-role resource should fail", func() {
-			input.Spec.Cloud = awsArm(&KubernetesKarpenterAws{
-				IrsaRoleArn: "arn:aws:iam::123456789012:user/karpenter",
+				IrsaRoleArn: &foreignkeyv1.StringValueOrRef{},
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})

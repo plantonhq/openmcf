@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega"
 	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
@@ -19,6 +20,18 @@ func TestKubernetesSecretStore(t *testing.T) {
 func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Kind:      kind,
+				Name:      name,
+				FieldPath: fieldPath,
+			},
+		},
 	}
 }
 
@@ -53,7 +66,7 @@ var _ = ginkgo.Describe("KubernetesSecretStore Validation Tests", func() {
 			input.Spec.Config = &kubernetesprovider.ExternalSecretsStoreConfig{
 				Backend: &kubernetesprovider.ExternalSecretsStoreConfig_AzureKeyVault{
 					AzureKeyVault: &kubernetesprovider.ExternalSecretsStoreAzure{
-						VaultUrl:     "https://my-vault.vault.azure.net",
+						VaultUrl:     literal("https://my-vault.vault.azure.net"),
 						TenantId:     "00000000-0000-0000-0000-000000000000",
 						AuthType:     &authType,
 						ClientId:     "11111111-1111-1111-1111-111111111111",
@@ -110,7 +123,7 @@ var _ = ginkgo.Describe("KubernetesSecretStore Validation Tests", func() {
 			input.Spec.Config = &kubernetesprovider.ExternalSecretsStoreConfig{
 				Backend: &kubernetesprovider.ExternalSecretsStoreConfig_AzureKeyVault{
 					AzureKeyVault: &kubernetesprovider.ExternalSecretsStoreAzure{
-						VaultUrl: "https://my-vault.vault.azure.net",
+						VaultUrl: literal("https://my-vault.vault.azure.net"),
 						TenantId: "00000000-0000-0000-0000-000000000000",
 						AuthType: &authType,
 					},
@@ -119,12 +132,25 @@ var _ = ginkgo.Describe("KubernetesSecretStore Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())
 		})
 
-		ginkgo.It("rejects a non-URL vault_url", func() {
+		ginkgo.It("accepts a vault_url referencing an AzureKeyVault", func() {
+			// The composed-environment shape: the vault deploys in the same
+			// run and its data-plane URI flows in by reference.
 			input.Spec.Config = &kubernetesprovider.ExternalSecretsStoreConfig{
 				Backend: &kubernetesprovider.ExternalSecretsStoreConfig_AzureKeyVault{
 					AzureKeyVault: &kubernetesprovider.ExternalSecretsStoreAzure{
-						VaultUrl: "not a url",
+						VaultUrl: valueFrom(
+							cloudresourcekind.CloudResourceKind_AzureKeyVault, "platform-kv", "status.outputs.vault_uri"),
+						TenantId: "00000000-0000-0000-0000-000000000000",
 					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
+		})
+
+		ginkgo.It("rejects an Azure store without a vault_url", func() {
+			input.Spec.Config = &kubernetesprovider.ExternalSecretsStoreConfig{
+				Backend: &kubernetesprovider.ExternalSecretsStoreConfig_AzureKeyVault{
+					AzureKeyVault: &kubernetesprovider.ExternalSecretsStoreAzure{},
 				},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())

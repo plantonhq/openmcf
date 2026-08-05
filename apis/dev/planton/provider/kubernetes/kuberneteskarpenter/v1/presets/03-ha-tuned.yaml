@@ -14,7 +14,8 @@ spec:
     name: '<eks-cluster-name>'
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::123456789012:role/karpenter-controller # replace account id and role name
+    irsaRoleArn:
+      value: arn:aws:iam::123456789012:role/karpenter-controller # replace account id and role name
     interruptionQueue: karpenter-interruptions
   controller:
     # Chart default made explicit: an active leader plus a warm standby,

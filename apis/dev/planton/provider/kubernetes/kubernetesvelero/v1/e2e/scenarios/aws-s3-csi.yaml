@@ -22,7 +22,8 @@ spec:
     s3:
       bucket: ${E2E_ENV:PLANTON_E2E_VELERO_BUCKET}
       region: ${E2E_ENV:PLANTON_E2E_AWS_REGION}
-      irsa_role_arn: ${E2E_ENV:PLANTON_E2E_VELERO_IRSA_ROLE_ARN}
+      irsa_role_arn:
+        value: ${E2E_ENV:PLANTON_E2E_VELERO_IRSA_ROLE_ARN}
     prefix: e2e-aws-csi
   volume_snapshots:
     enabled: true

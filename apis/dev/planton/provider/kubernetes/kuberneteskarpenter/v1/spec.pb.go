@@ -454,10 +454,13 @@ type KubernetesKarpenterAws struct {
 	// IAM role ARN for IRSA: annotates Karpenter's service account so the
 	// controller calls EC2/EKS/SQS/Pricing without stored keys (the role's
 	// trust policy must allow the cluster's OIDC provider and the
-	// "karpenter" service account). Leave empty when using EKS Pod Identity
-	// — the association is configured on the AWS side and needs no
+	// "karpenter" service account). Reference an AwsIamRole's role_arn output
+	// -- the reference is also the deploy-ordering edge, so the role exists
+	// before the controller starts -- or pass a literal ARN
+	// (arn:aws:iam::<account>:role/<name>). Leave unset when using EKS Pod
+	// Identity — the association is configured on the AWS side and needs no
 	// annotation here.
-	IrsaRoleArn string `protobuf:"bytes,1,opt,name=irsa_role_arn,json=irsaRoleArn,proto3" json:"irsa_role_arn,omitempty"`
+	IrsaRoleArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=irsa_role_arn,json=irsaRoleArn,proto3" json:"irsa_role_arn,omitempty"`
 	// *
 	// Name of the SQS queue receiving EC2 interruption events (spot
 	// interruptions, scheduled maintenance, instance rebalance). Empty
@@ -521,11 +524,11 @@ func (*KubernetesKarpenterAws) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesKarpenterAws) GetIrsaRoleArn() string {
+func (x *KubernetesKarpenterAws) GetIrsaRoleArn() *v1.StringValueOrRef {
 	if x != nil {
 		return x.IrsaRoleArn
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesKarpenterAws) GetInterruptionQueue() string {
@@ -1042,10 +1045,9 @@ const file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_raw
 	"\bendpoint\x18\x02 \x01(\tB\xc6\x01\xbaH\xc2\x01\xba\x01\xbe\x01\n" +
 	"\x1cspec.cluster.endpoint_format\x12sendpoint must be an https URL (the cluster API server address, e.g. https://ABC123.gr7.us-east-1.eks.amazonaws.com)\x1a)this == '' || this.startsWith('https://')R\bendpoint\x12*\n" +
 	"\x11eks_control_plane\x18\x03 \x01(\bR\x0feksControlPlane\x12\x1b\n" +
-	"\tca_bundle\x18\x04 \x01(\tR\bcaBundle\"\xf4\x05\n" +
-	"\x16KubernetesKarpenterAws\x12\xe2\x01\n" +
-	"\rirsa_role_arn\x18\x01 \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
-	"\x1dspec.aws.irsa_role_arn_format\x12Jirsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)\x1aHthis == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')R\virsaRoleArn\x12-\n" +
+	"\tca_bundle\x18\x04 \x01(\tR\bcaBundle\"\x89\x05\n" +
+	"\x16KubernetesKarpenterAws\x12x\n" +
+	"\rirsa_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12-\n" +
 	"\x12interruption_queue\x18\x02 \x01(\tR\x11interruptionQueue\x12!\n" +
 	"\fisolated_vpc\x18\x03 \x01(\bR\visolatedVpc\x126\n" +
 	"\rreserved_enis\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x010H\x00R\freservedEnis\x88\x01\x01\x12,\n" +
@@ -1138,14 +1140,15 @@ var file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_depId
 	7,  // 7: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.feature_gates:type_name -> dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterFeatureGates
 	8,  // 8: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.controller_scheduling:type_name -> dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling
 	9,  // 9: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.prometheus:type_name -> dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterPrometheus
-	12, // 10: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterController.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	10, // 11: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.NodeSelectorEntry
-	13, // 12: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	11, // 10: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterAws.irsa_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 11: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterController.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	10, // 12: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.NodeSelectorEntry
+	13, // 13: dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterControllerScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_init() }

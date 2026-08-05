@@ -116,12 +116,14 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// Credential posture (spec-enforced: at most one of IRSA /
 		// access keys; an s3_url endpoint never rides IRSA).
 		switch {
-		case s3.GetIrsaRoleArn() != "":
+		case s3.GetIrsaRoleArn().GetValue() != "":
 			// Keyless EKS posture: the role-arn annotation on the server
 			// ServiceAccount makes the pod exchange its projected token
-			// for role credentials — no Secret exists at all.
+			// for role credentials — no Secret exists at all. A valueFrom
+			// reference is resolved to the AwsIamRole's role_arn before
+			// the module runs.
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"eks.amazonaws.com/role-arn": s3.GetIrsaRoleArn(),
+				"eks.amazonaws.com/role-arn": s3.GetIrsaRoleArn().GetValue(),
 			})
 			values["credentials"] = map[string]interface{}{"useSecret": false}
 		case s3.GetAccessKeys() != nil:
@@ -156,17 +158,17 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// only optional keys — project, snapshotLocation).
 
 		switch {
-		case gcs.GetWorkloadIdentityServiceAccountEmail() != "":
+		case gcs.GetWorkloadIdentityServiceAccountEmail().GetValue() != "":
 			// Keyless GKE posture: the WI annotation binds the pod to the
 			// GCP service account, and the BSL's config.serviceAccount
 			// (values.yaml: "Specify the service account here if you want
 			// to use workload identity instead of providing the key
 			// file") points the plugin at the same identity.
 			bsl["config"] = map[string]interface{}{
-				"serviceAccount": gcs.GetWorkloadIdentityServiceAccountEmail(),
+				"serviceAccount": gcs.GetWorkloadIdentityServiceAccountEmail().GetValue(),
 			}
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"iam.gke.io/gcp-service-account": gcs.GetWorkloadIdentityServiceAccountEmail(),
+				"iam.gke.io/gcp-service-account": gcs.GetWorkloadIdentityServiceAccountEmail().GetValue(),
 			})
 			values["credentials"] = map[string]interface{}{"useSecret": false}
 		case gcs.GetServiceAccountKeyJson() != "":
@@ -203,9 +205,11 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		vslConfig["subscriptionId"] = azure.GetSubscriptionId()
 
 		switch {
-		case azure.GetUseWorkloadIdentity():
-			// Keyless AKS posture. Unlike AWS/GCP, the Azure plugin STILL
-			// reads a `cloud` file for the non-credential parameters
+		case azure.GetWorkloadIdentityClientId().GetValue() != "":
+			// Keyless AKS posture, selected by the client id's presence
+			// (the same presence semantics as the S3 IRSA and GCS WI
+			// arms). Unlike AWS/GCP, the Azure plugin STILL reads a
+			// `cloud` file for the non-credential parameters
 			// (subscription, resource group, cloud name) — the chart
 			// README defers the file's contents to the Azure plugin's own
 			// README, which prescribes exactly these three lines for
@@ -222,7 +226,7 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 				},
 			}
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"azure.workload.identity/client-id": azure.GetWorkloadIdentityClientId(),
+				"azure.workload.identity/client-id": azure.GetWorkloadIdentityClientId().GetValue(),
 			})
 			values["podLabels"] = map[string]interface{}{
 				"azure.workload.identity/use": "true",

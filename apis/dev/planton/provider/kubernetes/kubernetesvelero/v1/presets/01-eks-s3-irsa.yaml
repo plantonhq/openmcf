@@ -19,7 +19,8 @@ spec:
       # IRSA: the keyless posture on EKS — the role's trust policy must
       # allow the cluster's OIDC provider and Velero's service account.
       # Replace the account id and role name.
-      irsaRoleArn: arn:aws:iam::123456789012:role/velero-backups
+      irsaRoleArn:
+        value: arn:aws:iam::123456789012:role/velero-backups
     # One bucket, one prefix per cluster — the multi-cluster pattern.
     prefix: '<cluster-name>'
   volumeSnapshots:

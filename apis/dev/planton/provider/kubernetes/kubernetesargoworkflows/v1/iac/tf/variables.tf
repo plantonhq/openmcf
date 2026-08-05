@@ -60,7 +60,11 @@ variable "spec" {
         region = optional(string, "")
         insecure = optional(bool, false)
         use_ambient_credentials = optional(bool, false)
-        credentials_secret_name = optional(string, "")
+        credentials_secret = optional(object({
+          secret_name = string
+          access_key_id_key = optional(string)
+          secret_access_key_key = optional(string)
+        }))
       }))
       gcs = optional(object({
         bucket = string

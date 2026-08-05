@@ -13,12 +13,33 @@
 
 ## What you get
 
-A curated catalog of production-ready infrastructure blueprints across AWS, GCP,
-Azure, OCI, DigitalOcean, Hetzner Cloud, Alibaba Cloud, Civo, Scaleway, and
-OpenStack. Instead of hand-wiring a VPC, subnets, gateways, a Kubernetes
-cluster, DNS, and certificates one resource at a time — and getting the
+A curated catalog of production-ready infrastructure blueprints — cluster
+platforms, data and streaming platforms, analytics and ML stacks,
+observability, GitOps delivery, CI and registry, identity and secrets — for
+Kubernetes and the major clouds. Instead of hand-wiring operators, databases,
+DNS, certificates, and credentials one resource at a time — and getting the
 dependencies right — you pick a chart, set a handful of values, and deploy the
 whole thing as one coherent unit.
+
+Every chart earns its place: the catalog is deliberately small enough that
+each entry is a complete architecture a team recognizes and wants, built only
+from components whose schemas and modules meet the catalog's full depth bar.
+
+## Where a chart lives
+
+The tree is provider-rooted, with one home rule:
+
+- **A chart lives under the provider that hosts its centerpiece.**
+- **Cluster charts nest under a `kubernetes/` subfolder inside their
+  cloud.** A chart whose centerpiece is a managed Kubernetes cluster —
+  the cluster plus everything wired onto it — lives at
+  `<cloud>/kubernetes/<chart>` (for example `aws/kubernetes/` for EKS
+  platforms, `gcp/kubernetes/` for GKE, `azure/kubernetes/` for AKS).
+  Non-Kubernetes cloud charts live directly under `<cloud>/`.
+- **[`kubernetes/`](kubernetes) holds charts that deploy onto a cluster you
+  already have**, whichever cloud or datacenter it runs in. Cross-cloud
+  combinations — a cluster on one provider, DNS or secrets on another — are
+  parameters inside these charts, never separate catalog entries.
 
 ## The mental model
 
@@ -35,7 +56,7 @@ And the runtime relationship mirrors Kubernetes and Helm:
 
 ## Using a chart
 
-1. Pick a chart under `<provider>/<chart>` (for example `aws/ecs-environment`).
+1. Pick a chart under `<provider>/<chart>`.
 2. Read its `README.md` for what it provisions, and `values.yaml` for every
    tunable parameter and its default.
 3. Provide your values and deploy it through Planton.
@@ -78,6 +99,17 @@ components in this repo.
   (private networking, identity-based auth, RBAC-only data planes,
   customer-managed keys), the chart defaults to it and makes relaxation the
   explicit parameter — never the reverse.
+- **Charts provision platforms; Service Hub deploys applications.** The
+  catalog contains no "deploy my app" charts — a chart ends where the
+  application begins. What a chart delivers is the platform an application
+  team lands on: the cluster, the addons, the databases, the pipelines.
+- **Kubernetes resources bind to their cluster through a connection.** A
+  chart that provisions a cluster AND deploys onto it publishes the cluster's
+  connection under a chart-controlled name (`planton.dev/connection-name`)
+  and every Kubernetes resource consumes it (`planton.dev/connection`), with
+  `runs_on` relationship edges making deploy order structural. A chart that
+  deploys onto an existing cluster selects it the same way — a connection
+  parameter, or the deploying environment's default.
 - **Documentation is part of the artifact.** Template comments, parameter
   descriptions, and READMEs render publicly and are held to the same bar as
   the component schemas' field comments.

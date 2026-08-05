@@ -50,7 +50,7 @@ Role assignments are real infrastructure with their own lifecycle:
 |-------|------|----------|-------------|
 | `scope` | StringValueOrRef | Yes | ARM scope of the grant (defaults to an AzureResourceGroup reference) |
 | `role_definition_name` | string | one-of | Built-in role name, e.g. "Reader" |
-| `role_definition_id` | string | one-of | Fully-scoped role definition ID (custom roles) |
+| `role_definition_id` | StringValueOrRef | one-of | Fully-scoped role definition ID (defaults to an AzureRoleDefinition reference — the composed custom-role path; literals bind existing definitions) |
 | `principal_id` | StringValueOrRef | Yes | Azure AD OBJECT ID of the grantee (defaults to an AzureUserAssignedIdentity reference) |
 | `principal_type` | enum | No | SERVICE_PRINCIPAL, USER, or GROUP; inferred by Azure when omitted |
 | `description` | string | No | Audit note recorded on the assignment |

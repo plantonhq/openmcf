@@ -1,0 +1,13 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: AWS EKS Baseline
+spec:
+  selector:
+    kind: platform
+  description: A production EKS cluster that provisions its own machines, consolidates them away when idle, and backs itself up on a schedule — with TLS, DNS, and ingress already wired.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsekscluster/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/kubernetes/eks-baseline
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/aws/kubernetes/eks-baseline/README.md

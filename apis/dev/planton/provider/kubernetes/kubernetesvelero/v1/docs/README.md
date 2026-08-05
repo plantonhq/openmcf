@@ -108,8 +108,9 @@ Credential posture per arm, spec-enforced as at-most-one:
   the federated token into labeled pods; a `cloud` file still carries
   the non-secret subscription/resource-group/cloud-name parameters, per
   the Azure plugin's own contract) XOR a service principal (AZURE_*
-  lines in the credentials Secret). Workload identity requires the
-  client ID — the federated credential is addressed by it (CEL-enforced).
+  lines in the credentials Secret). The client ID selects the posture by
+  its presence and accepts an AzureUserAssignedIdentity reference — in a
+  one-run composition the reference is also the deploy-ordering edge.
 
 Neither posture set means ambient node credentials (instance profile,
 GCE default service account, managed identity).

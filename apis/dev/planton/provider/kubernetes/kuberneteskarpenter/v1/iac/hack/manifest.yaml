@@ -19,7 +19,8 @@ spec:
     endpoint: https://ABC123DEF456.gr7.us-east-1.eks.amazonaws.com
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::123456789012:role/hack-karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::123456789012:role/hack-karpenter-controller
     interruptionQueue: hack-karpenter-interruptions
     isolatedVpc: true
     reservedEnis: 1
