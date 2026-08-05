@@ -18,5 +18,5 @@ func GroupVersion(kind cloudresourcekind.CloudResourceKind) string {
 		log.Errorf("failed to extract group meta by kind %s with error %s", kind.String(), err.Error())
 		return ""
 	}
-	return fmt.Sprintf("%s/%s", providerMeta.Group, kindMeta.Version.String())
+	return fmt.Sprintf("%s/%s", providerMeta.Group, kindMeta.Version)
 }

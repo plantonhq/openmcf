@@ -24,6 +24,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	gcpstorage "google.golang.org/api/storage/v1"
 )
 
@@ -762,14 +763,9 @@ func TestGcpProject_Terraform(t *testing.T) {
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
 
-	var moduleDir string
-	switch engine {
-	case "pulumi":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "gcp", component, "v1", "iac", "pulumi")
-	case "terraform":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "gcp", component, "v1", "iac", "tf")
-	default:
-		t.Fatalf("unsupported engine: %s", engine)
+	moduleDir, err := discovery.ModuleDir(repoRoot, "gcp", component, engine)
+	if err != nil {
+		t.Fatalf("failed to locate %s %s module: %v", component, engine, err)
 	}
 
 	if !fileExists(moduleDir) {
@@ -861,7 +857,7 @@ func stageCloudFunctionSource(t *testing.T, engine string) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Must mirror the values in gcpcloudfunction/v1/e2e/scenarios/*.yaml.
+	// Must mirror the values in gcpcloudfunction's e2e/scenarios/*.yaml.
 	bucketName := "planton-oss-e2e-cldfunc-src-" + runner.EngineScopedRunID(runID, engine)
 	const objectName = "functions/hello.zip"
 
@@ -872,8 +868,12 @@ func stageCloudFunctionSource(t *testing.T, engine string) {
 		t.Fatal("GOOGLE_PROJECT not set — harness Setup should have exported it")
 	}
 
+	fixtureVersionDir, err := crkreflect.ComponentVersionDir("gcpcloudfunction")
+	if err != nil {
+		t.Fatalf("failed to resolve gcpcloudfunction version dir: %v", err)
+	}
 	fixtureDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "gcp",
-		"gcpcloudfunction", "v1", "e2e", "fixtures", "function-source")
+		"gcpcloudfunction", fixtureVersionDir, "e2e", "fixtures", "function-source")
 	zipBytes, err := zipDirectory(fixtureDir)
 	if err != nil {
 		t.Fatalf("failed to zip function source fixture: %v", err)

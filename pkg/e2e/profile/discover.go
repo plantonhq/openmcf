@@ -58,7 +58,13 @@ func Discover(repoRoot, provider string, opts FilterOpts) (*DiscoverResult, erro
 		}
 		componentName := entry.Name()
 
-		profilePath := ComponentProfilePath(repoRoot, provider, componentName)
+		// A directory that does not resolve to a registered kind is not a
+		// component (e.g. the provider's aa_e2e/ or aa_import/ folders) —
+		// skip it, exactly as a component without a profile is skipped.
+		profilePath, err := ComponentProfilePath(repoRoot, provider, componentName)
+		if err != nil {
+			continue
+		}
 		if _, err := os.Stat(profilePath); err != nil {
 			continue
 		}

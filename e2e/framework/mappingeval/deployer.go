@@ -29,6 +29,7 @@ import (
 	tt "github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/importmap"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
 )
@@ -67,7 +68,11 @@ func DeploySuite(t testing.TB, repoRoot, provider string, suite *mappingeval.Loa
 		fmt.Printf("  [eval-seed] deploying %s %q\n", member.Component, member.Name)
 		start := time.Now()
 
-		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, "v1", "iac", "tf")
+		versionDir, err := crkreflect.ComponentVersionDir(member.Component)
+		if err != nil {
+			return deployed, nil, err
+		}
+		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, versionDir, "iac", "tf")
 		workDir, cleanup, err := runner.PrepareWorkDir(moduleDir)
 		if err != nil {
 			return deployed, nil, errors.Wrapf(err, "preparing workdir for %s", member.Component)
@@ -223,7 +228,11 @@ func ScanTypeNames(repoRoot, provider string, suite *mappingeval.LoadedSuite) ([
 	seen := map[string]bool{}
 	var typeNames []string
 	for _, member := range suite.Members {
-		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, "v1", "iac", "tf")
+		versionDir, err := crkreflect.ComponentVersionDir(member.Component)
+		if err != nil {
+			return nil, err
+		}
+		moduleDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, member.Component, versionDir, "iac", "tf")
 		moduleTypes, err := moduleResourceTypes(moduleDir)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module resource types of %s", member.Component)

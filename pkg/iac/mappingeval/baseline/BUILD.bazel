@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//apis/dev/planton/iac/importmappingproposal/v1:importmappingproposal",
+        "//pkg/crkreflect",
         "//pkg/iac/envpartition",
         "//pkg/iac/envpartition/awsscan",
         "//pkg/iac/mappingeval",

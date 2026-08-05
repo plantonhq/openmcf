@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
 // Component represents a discovered Planton component that can be E2E tested.
@@ -58,8 +59,18 @@ func DiscoverComponents(repoRoot string) ([]Component, error) {
 			}
 			componentName := componentEntry.Name()
 
-			// Components live at provider/{component}/v1/iac/
-			iacBase := filepath.Join(providerPath, componentName, "v1", "iac")
+			// A directory that does not resolve to a registered kind is not
+			// a component (e.g. a provider's aa_e2e/ folder) — skip it,
+			// exactly as a directory without a hack manifest is skipped.
+			versionDir, err := crkreflect.ComponentVersionDir(componentName)
+			if err != nil {
+				continue
+			}
+
+			// Components live at provider/{component}/{version}/iac/, where
+			// the version segment follows the kind's declared version in the
+			// registry — never a literal.
+			iacBase := filepath.Join(providerPath, componentName, versionDir, "iac")
 			manifestPath := filepath.Join(iacBase, "hack", "manifest.yaml")
 
 			if _, err := os.Stat(manifestPath); err != nil {
@@ -135,10 +146,34 @@ type TestScenario struct {
 	Provider string
 }
 
+// ModuleDir returns a component's IaC module directory for the given engine
+// ("pulumi" or "terraform"). The version segment follows the kind's declared
+// version in the registry — never a literal.
+func ModuleDir(repoRoot, provider, component, engine string) (string, error) {
+	versionDir, err := crkreflect.ComponentVersionDir(component)
+	if err != nil {
+		return "", err
+	}
+	var engineDir string
+	switch engine {
+	case "pulumi":
+		engineDir = "pulumi"
+	case "terraform":
+		engineDir = "tf"
+	default:
+		return "", errors.Errorf("unsupported engine %q: want pulumi or terraform", engine)
+	}
+	return filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, component, versionDir, "iac", engineDir), nil
+}
+
 // DiscoverTestScenarios scans the component's colocated e2e/scenarios/ directory for YAML manifests.
-// Path: apis/dev/planton/provider/{provider}/{component}/v1/e2e/scenarios/
+// Path: apis/dev/planton/provider/{provider}/{component}/{version}/e2e/scenarios/
 func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario, error) {
-	scenarioDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, component, "v1", "e2e", "scenarios")
+	versionDir, err := crkreflect.ComponentVersionDir(component)
+	if err != nil {
+		return nil, err
+	}
+	scenarioDir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", provider, component, versionDir, "e2e", "scenarios")
 
 	entries, err := os.ReadDir(scenarioDir)
 	if err != nil {

@@ -57,6 +57,10 @@ protos:
 buf-lint:
 	$(MAKE) -C apis buf-lint
 
+.PHONY: buf-breaking
+buf-breaking:
+	$(MAKE) -C apis buf-breaking
+
 .PHONY: bazel-mod-tidy
 bazel-mod-tidy:
 	${BAZEL} mod tidy

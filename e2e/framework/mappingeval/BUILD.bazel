@@ -10,6 +10,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//e2e/framework/runner",
+        "//pkg/crkreflect",
         "//pkg/iac/importmap",
         "//pkg/iac/mappingeval",
         "@com_github_gruntwork_io_terratest//modules/terraform",
