@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "defspack_lib",
+    srcs = [
+        "main.go",
+        "pack.go",
+        "tree.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/skills/defspack",
+    visibility = ["//visibility:private"],
+    deps = ["@in_gopkg_yaml_v3//:yaml_v3"],
+)
+
+go_binary(
+    name = "defspack",
+    embed = [":defspack_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "defspack_test",
+    srcs = ["defspack_test.go"],
+    embed = [":defspack_lib"],
+)

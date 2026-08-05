@@ -1,0 +1,58 @@
+# =============================================================================
+# Skills / Agent Definitions Structure Guard
+# =============================================================================
+# Fails the PR when the skills/ or agents/ definition trees violate the
+# structure contract documented in skills/README.md:
+#
+#   - SKILL.md frontmatter name must equal the directory slug (the serving
+#     engine derives the skill's identity from it).
+#   - Reference integrity is bidirectional: every references/<file>.md that
+#     SKILL.md cites must exist and be non-empty, and every file present
+#     under references/ must be cited. An empty or orphaned reference is
+#     content an agent would silently load blank at runtime.
+#   - Every agents/<slug>/ carries a non-empty instructions.md, and
+#     skills/compat.yaml declares a valid compatibility floor.
+#
+# The gate runs the same validator the release lane uses to package a
+# definitions release (pkg/skills/defspack), so a tree that passes here is
+# a tree that packages.
+# =============================================================================
+
+name: lint.skills
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'agents/**'
+      - 'pkg/skills/**'
+      - '.github/workflows/lint.skills.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'skills/**'
+      - 'agents/**'
+      - 'pkg/skills/**'
+      - '.github/workflows/lint.skills.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  skills-structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Validator unit tests
+        run: go test ./pkg/skills/...
+
+      - name: Validate the committed definition trees
+        run: go run ./pkg/skills/defspack

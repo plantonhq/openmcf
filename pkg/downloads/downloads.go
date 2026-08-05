@@ -37,3 +37,20 @@ func BuildTerraformDownloadURL(component, releaseVersion string) string {
 	artifact := fmt.Sprintf("%s.zip", strings.ToLower(component))
 	return fmt.Sprintf("%s/%s/modules/terraform/%s", BaseURL, releaseVersion, artifact)
 }
+
+// BuildDefinitionsDownloadURL constructs the R2 download URL for a file in
+// a definitions release (the skill/agent content packaged by
+// pkg/skills/defspack: per-skill zips, agent instruction files, and the
+// definitions-manifest.json that indexes them with checksums).
+//
+// URL format: https://downloads.planton.dev/releases/{version}/definitions/{file}
+//
+// Examples:
+//
+//	BuildDefinitionsDownloadURL("v0.4.0", "definitions-manifest.json")
+//	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/definitions-manifest.json
+//	BuildDefinitionsDownloadURL("v0.4.0", "skill-infra-chart-composer.zip")
+//	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/skill-infra-chart-composer.zip
+func BuildDefinitionsDownloadURL(releaseVersion, file string) string {
+	return fmt.Sprintf("%s/%s/definitions/%s", BaseURL, releaseVersion, file)
+}
