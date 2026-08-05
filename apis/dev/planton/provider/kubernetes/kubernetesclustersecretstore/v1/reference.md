@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesClusterSecretStoreSpec** creates a CLUSTER-scoped External
 Secrets Operator store — one backend connection (AWS Secrets Manager, GCP
 Secret Manager, Azure Key Vault, Vault/OpenBao, ...) that ExternalSecret

@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesMysqlSpec** declares a production-grade MySQL cluster
 reconciled by the Percona Operator for MySQL based on Percona XtraDB
 Cluster (KubernetesPerconaMysqlOperator must be on the cluster). The

@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesExternalSecretsOperatorSpec** installs the External Secrets
 Operator (ESO) — the controller that syncs secrets FROM external stores
 (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault/OpenBao,

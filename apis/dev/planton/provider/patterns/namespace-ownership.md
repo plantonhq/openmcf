@@ -107,6 +107,13 @@ correct ownership (the component IS the only tenant), one fewer moving part.
 Use the dedicated component the moment a second tenant appears or the
 namespace itself needs configuration.
 
+The canonical instances of this case are the cluster's shared
+infrastructure components — an ingress controller in "ingress-nginx",
+cert-manager in "cert-manager", ExternalDNS, a shared-chart operator in a
+namespace of its own. Each conventionally owns a dedicated namespace no
+other tenant will ever join, so the flag is the NORMAL shape there, not a
+violation of this pattern.
+
 ## See also
 
 - [KubernetesNamespace reference](../kubernetes/kubernetesnamespace/v1/reference.md)

@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesOpenBaoSpec** installs OpenBao — the open-source,
 Linux Foundation-governed secrets manager (MPL-2.0 fork of Vault) —
 from the official `openbao` chart

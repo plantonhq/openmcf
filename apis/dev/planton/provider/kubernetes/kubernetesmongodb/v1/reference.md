@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesMongodbSpec** declares a production-grade MongoDB cluster
 reconciled by the Percona Operator for MongoDB
 (KubernetesPerconaMongoOperator must be on the cluster). The spec

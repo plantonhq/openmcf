@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesPerconaMysqlOperatorSpec** installs the Percona Operator
 for MySQL — based on Percona XtraDB Cluster — from the official
 `pxc-operator` Helm chart

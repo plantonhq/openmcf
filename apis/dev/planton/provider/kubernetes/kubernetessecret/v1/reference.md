@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesSecretSpec** defines the configuration for creating and managing a Kubernetes Secret.
 This spec implements a "Secret-as-a-Service" pattern, providing type-safe configuration for all
 standard Kubernetes secret types while keeping values as plain strings matching the Kubernetes API.
