@@ -21,6 +21,7 @@
 #   - Terraform zips -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/modules/terraform/)
 #   - Content zips   -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/content/)
 #   - Chart catalog  -> GitHub Release (infra-charts.zip + .sha256 + version.txt)
+#   - Definitions    -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/definitions/)
 #
 # Trigger: git tag v0.1.0 && git push origin v0.1.0
 # Note: Only triggers on strict semver tags (v1.2.3), not auto-release tags (v1.2.3+cli.*)
@@ -91,4 +92,15 @@ jobs:
   charts:
     needs: cli
     uses: ./.github/workflows/release.charts.yaml
+
+  # ============================================================================
+  # Definitions - skill/agent definition trees (uploads to Cloudflare R2)
+  # ============================================================================
+  definitions:
+    needs: cli
+    uses: ./.github/workflows/release.definitions.yaml
+    secrets:
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
 

@@ -1,0 +1,59 @@
+# =============================================================================
+# Proto Contract Gate
+# =============================================================================
+# The protos under apis/ ARE the product's API contract: stored documents,
+# IaC modules, and every client surface are projections of them. This gate
+# runs the two buf checks on every PR that touches them:
+#
+#   buf-lint     (BLOCKING)  -- style/structure rules from apis/buf.yaml.
+#   buf-breaking (ADVISORY)  -- wire/API compatibility against main. Advisory
+#                 while every kind sits in the pre-launch alpha posture, where
+#                 breaking in place is legal but must never be invisible; it
+#                 becomes channel-aware blocking once kinds declare beta or
+#                 stable versions (their channels forbid in-place breaks).
+#
+# Local equivalents: `make buf-lint` and `make buf-breaking`.
+# =============================================================================
+
+name: lint.protos
+
+on:
+  pull_request:
+    paths:
+      - 'apis/**/*.proto'
+      - 'apis/buf.yaml'
+      - '.github/workflows/lint.protos.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  buf-lint:
+    name: buf lint (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: buf lint
+        working-directory: apis
+        run: buf lint
+
+  buf-breaking:
+    name: buf breaking vs main (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: buf breaking against main
+        working-directory: apis
+        run: |
+          if ! buf breaking --against '../.git#branch=origin/main,subdir=apis'; then
+            echo "::warning title=buf breaking::Breaking proto changes detected against main. Advisory while all kinds are alpha-posture; beta/stable channels make this blocking."
+          fi

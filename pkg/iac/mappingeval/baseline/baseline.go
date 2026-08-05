@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	proposalv1 "github.com/plantonhq/planton/apis/dev/planton/iac/importmappingproposal/v1"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/envpartition"
 	"github.com/plantonhq/planton/pkg/iac/envpartition/awsscan"
 	"github.com/plantonhq/planton/pkg/iac/mappingeval"
@@ -373,8 +374,16 @@ func (b *builder) emit(kind, name string, spec map[string]any, rationale string,
 	if env := b.instanceEnv(claims); env != "" {
 		metadata["env"] = env
 	}
+	// The apiVersion follows the kind's registry metadata, so proposals stay
+	// stamped with the version the kind actually serves.
+	apiVersion := crkreflect.GroupVersion(crkreflect.KindFromString(kind))
+	if apiVersion == "" {
+		// Every kind emitted here is one of this file's own mappers' AWS
+		// kinds; an unresolvable name is a programming error.
+		panic(fmt.Sprintf("baseline manifest kind %q does not resolve in the kind registry", kind))
+	}
 	manifest, err := structpb.NewStruct(map[string]any{
-		"apiVersion": "aws.planton.dev/v1",
+		"apiVersion": apiVersion,
 		"kind":       kind,
 		"metadata":   metadata,
 		"spec":       spec,

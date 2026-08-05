@@ -30,7 +30,8 @@ metadata:
   env: development
 spec:
   # Replace with actual store ID from OpenFgaStore deployment
-  storeId: "01HXYZ_REPLACE_WITH_ACTUAL_STORE_ID"
+  storeId:
+    value: 01HXYZ_REPLACE_WITH_ACTUAL_STORE_ID
   # Optional: specify authorization model ID (uses latest if not specified)
   # authorizationModelId: "01HXYZ_REPLACE_WITH_MODEL_ID"
   # Grant user:anne viewer access to document:budget-2024

@@ -10,23 +10,29 @@ extend google.protobuf.EnumValueOptions {
   CloudResourceKindMeta kind_meta = 10100;
 }
 
-//cloud-resource-kind version
-enum CloudResourceKindVersion {
-  cloud_resource_kind_version_unspecified = 0;
-  v1 = 1;
-}
-
 //api-resource-kind cloud-resource meta
 message CloudResourceKindMeta {
   //cloud-resource provider
   CloudResourceProvider provider = 1;
 
-  //cloud-resource kind version
-  CloudResourceKindVersion version = 2;
+  //the kind's API version — the version half of the manifest apiVersion
+  //(e.g. "aws.planton.dev/v1" carries version "v1"). the value must match
+  //the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
+  //the name declares the compatibility channel. this is the kind's sole
+  //served version; per-version metadata blocks arrive additively if a kind
+  //ever serves multiple versions at once. enum-value options are
+  //compile-time data, so the grammar is enforced by the crkreflect
+  //registry tests rather than protovalidate.
+  string version = 2;
 
-  //name of the kind. this might be different from the enum value.
-  // ex: AwsVpcV2 enum will still have "kind: AwsVpc" but groupVersion will have "aws.planton.dev/v2".
-  //this is only set in options when the name is different from enum value.
+  //name of the kind as written in manifests. set only when it differs from the
+  //enum value name; resolution falls back to the enum value name otherwise.
+  //a kind keeps one enum entry for its entire life: new schema versions never
+  //add sibling enum entries or version-suffixed names — version is a separate
+  //axis carried in kind metadata, and the name stays constant across versions.
+  //effective names must be unique across the registry (registry tests enforce
+  //this): resolution is keyed by name, so a duplicate would make manifests
+  //ambiguous about which kind they declare.
   string name = 3;
 
   //cloud-resource id-prefix
@@ -96,29 +102,29 @@ enum CloudResourceKind {
   // 1–49: Test/dev/custom
   TestCloudResourceGeneric = 1 [(kind_meta) = {
     provider: _test
-    version: v1
+    version: "v1"
     id_prefix: "tcrg"
   }];
   TestCloudResourceKubernetes = 2 [(kind_meta) = {
     provider: _test
-    version: v1
+    version: "v1"
     id_prefix: "tcrk"
   }];
 
   // 50–199: saas platform resources
   ConfluentKafka = 50 [(kind_meta) = {
     provider: confluent
-    version: v1
+    version: "v1"
     id_prefix: "conkaf"
   }];
   AtlasMongodb = 51 [(kind_meta) = {
     provider: atlas
-    version: v1
+    version: "v1"
     id_prefix: "atlmdb"
   }];
   SnowflakeDatabase = 52 [(kind_meta) = {
     provider: snowflake
-    version: v1
+    version: "v1"
     id_prefix: "snowdb"
   }];
 
@@ -128,33 +134,33 @@ enum CloudResourceKind {
   // resolve before the load balancer can be created.
   AwsAlb = 200 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsalb"
     prerequisites: [AwsSubnet]
   }];
   AwsCertManagerCert = 201 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "acmcert"
   }];
   AwsCloudFront = 202 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscf"
   }];
   AwsDynamodb = 203 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsdyn"
   }];
   AwsEcrRepo = 204 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecr"
   }];
   AwsEcsCluster = 205 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecsclu"
     container_kind: true
   }];
@@ -164,7 +170,7 @@ enum CloudResourceKind {
   // referenced subnets -- all three references must resolve first.
   AwsEcsService = 206 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecssvc"
     prerequisites: [
       AwsEcsCluster,
@@ -177,7 +183,7 @@ enum CloudResourceKind {
   // referenced cluster role that must already carry AmazonEKSClusterPolicy.
   AwsEksCluster = 207 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "eks"
     container_kind: true
     prerequisites: [
@@ -187,36 +193,36 @@ enum CloudResourceKind {
   }];
   AwsIamRole = 208 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "air"
   }];
   AwsLambda = 209 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lambda"
     prerequisites: [AwsIamRole]
   }];
   AwsRdsCluster = 210 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "rdsclu"
     prerequisites: [AwsSubnet]
   }];
   AwsRdsInstance = 211 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "rdsins"
     prerequisites: [AwsSubnet]
   }];
   AwsRoute53Zone = 212 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "r53z"
     container_kind: true
   }];
   AwsS3Bucket = 213 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "s3bkt"
   }];
   // AwsVpc is a prerequisite because a target group's health checks and
@@ -224,7 +230,7 @@ enum CloudResourceKind {
   // must resolve before the group can be created.
   AwsLbTargetGroup = 214 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lbtg"
     prerequisites: [AwsVpc]
   }];
@@ -232,13 +238,13 @@ enum CloudResourceKind {
   // VPC; the E2E install profile resolves vpc_id against the VPC prerequisite.
   AwsSecurityGroup = 215 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssg"
     prerequisites: [AwsVpc]
   }];
   AwsVpc = 216 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsvpc"
     container_kind: true
   }];
@@ -247,7 +253,7 @@ enum CloudResourceKind {
   // subnet references.
   AwsEksNodeGroup = 217 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "eksng"
     prerequisites: [
       AwsEksCluster,
@@ -257,17 +263,17 @@ enum CloudResourceKind {
   }];
   AwsIamUser = 218 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsuser"
   }];
   AwsKmsKey = 219 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awskms"
   }];
   AwsEc2Instance = 220 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ec2inst"
   }];
   // Every Client VPN endpoint requires an ACM server certificate at create
@@ -276,13 +282,13 @@ enum CloudResourceKind {
   // scenarios declare them via the e2e-prerequisites annotation.
   AwsClientVpn = 221 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsvpn"
     prerequisites: [AwsCertManagerCert]
   }];
   AwsDocumentDb = 222 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "docdb"
     prerequisites: [AwsSubnet]
   }];
@@ -291,7 +297,7 @@ enum CloudResourceKind {
   // record can be created.
   AwsRoute53DnsRecord = 223 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "r53rec"
     prerequisites: [AwsRoute53Zone]
   }];
@@ -299,39 +305,39 @@ enum CloudResourceKind {
   // is required -- objects cannot exist without the bucket that holds them.
   AwsS3ObjectSet = 224 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "s3objs"
     prerequisites: [AwsS3Bucket]
   }];
   AwsSqsQueue = 225 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssqs"
   }];
   AwsSnsTopic = 226 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssns"
   }];
   AwsEventBridgeBus = 227 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awseb"
     container_kind: true
   }];
   AwsEventBridgeRule = 228 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsebr"
   }];
   AwsIamOidcProvider = 229 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "oidcp"
   }];
   AwsIamPolicy = 230 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "iampol"
   }];
   // AwsIamRole is a prerequisite because an instance profile is a wrapper that
@@ -339,7 +345,7 @@ enum CloudResourceKind {
   // reference, so the role must be deployed first.
   AwsIamInstanceProfile = 231 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "iamip"
     prerequisites: [AwsIamRole]
   }];
@@ -349,7 +355,7 @@ enum CloudResourceKind {
   // listener can be created.
   AwsLbListener = 232 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lbl"
     prerequisites: [
       AwsAlb,
@@ -361,13 +367,13 @@ enum CloudResourceKind {
   // before the rule can be created.
   AwsLbListenerRule = 233 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lblr"
     prerequisites: [AwsLbListener]
   }];
   AwsLaunchTemplate = 234 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lt"
   }];
   // AwsSubnet and AwsLaunchTemplate are prerequisites because a group
@@ -376,7 +382,7 @@ enum CloudResourceKind {
   // references must resolve before the group can be created.
   AwsAutoScalingGroup = 235 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "asg"
     prerequisites: [
       AwsSubnet,
@@ -388,7 +394,7 @@ enum CloudResourceKind {
   // the add-on can be created.
   AwsEksAddon = 236 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "eksaddon"
     prerequisites: [AwsEksCluster]
   }];
@@ -398,7 +404,7 @@ enum CloudResourceKind {
   // private subnets -- all three references must resolve first.
   AwsEksFargateProfile = 237 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "eksfp"
     prerequisites: [
       AwsEksCluster,
@@ -411,7 +417,7 @@ enum CloudResourceKind {
   // both references must resolve before the entry can be created.
   AwsEksAccessEntry = 238 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "eksae"
     prerequisites: [
       AwsEksCluster,
@@ -423,13 +429,13 @@ enum CloudResourceKind {
   // registration time without an execution role the agent can assume.
   AwsEcsTaskDefinition = 239 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecstd"
     prerequisites: [AwsIamRole]
   }];
   AwsHttpApiGateway = 240 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awshttpapigw"
   }];
   // AwsIamRole is a prerequisite because a state machine cannot be created
@@ -437,7 +443,7 @@ enum CloudResourceKind {
   // must resolve before the CreateStateMachine call.
   AwsStepFunction = 241 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssfn"
     prerequisites: [AwsIamRole]
   }];
@@ -447,7 +453,7 @@ enum CloudResourceKind {
   // so they compose per-scenario rather than as a registry prerequisite.
   AwsHttpApiVpcLink = 356 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awshttpvpcl"
     prerequisites: [AwsSubnet]
   }];
@@ -456,7 +462,7 @@ enum CloudResourceKind {
   // -- the spec's certificate_arn reference must resolve first.
   AwsHttpApiDomain = 357 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awshttpdom"
     prerequisites: [AwsCertManagerCert]
   }];
@@ -466,7 +472,7 @@ enum CloudResourceKind {
   // endpoints), so both are genuine deploy-order prerequisites.
   AwsVpcEndpoint = 242 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "vpce"
     prerequisites: [
       AwsVpc,
@@ -475,7 +481,7 @@ enum CloudResourceKind {
   }];
   AwsElasticacheUser = 243 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecuser"
   }];
   // AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
@@ -483,13 +489,13 @@ enum CloudResourceKind {
   // composed E2E scenario must resolve a deployed user's outputs.
   AwsElasticacheUserGroup = 244 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "ecug"
     prerequisites: [AwsElasticacheUser]
   }];
   AwsRedshiftServerlessNamespace = 245 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "rsns"
     container_kind: true
   }];
@@ -500,7 +506,7 @@ enum CloudResourceKind {
   // subnets to span three availability zones.
   AwsRedshiftServerlessWorkgroup = 246 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "rswg"
     prerequisites: [
       AwsRedshiftServerlessNamespace,
@@ -512,24 +518,24 @@ enum CloudResourceKind {
   // must resolve before the replication group can deploy.
   AwsRedisElasticache = 250 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsredis"
     prerequisites: [AwsSubnet]
   }];
   AwsOpenSearchDomain = 251 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsos"
   }];
   AwsMemcachedElasticache = 252 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmemcached"
     prerequisites: [AwsSubnet]
   }];
   AwsServerlessElasticache = 253 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsslselc"
     prerequisites: [AwsSubnet]
   }];
@@ -538,35 +544,35 @@ enum CloudResourceKind {
   // balancer can be created.
   AwsNlb = 280 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsnlb"
     prerequisites: [AwsSubnet]
   }];
   AwsElasticIp = 281 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awseip"
   }];
   AwsTransitGateway = 282 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awstgw"
   }];
   AwsGlobalAccelerator = 283 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsga"
   }];
   AwsSubnet = 284 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssn"
     prerequisites: [AwsVpc]
     container_kind: true
   }];
   AwsInternetGateway = 285 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsigw"
     prerequisites: [AwsVpc]
   }];
@@ -575,7 +581,7 @@ enum CloudResourceKind {
   // (AWS rejects the create otherwise) -- so the gateway must be deployed first.
   AwsNatGateway = 286 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsnat"
     prerequisites: [
       AwsSubnet,
@@ -585,7 +591,7 @@ enum CloudResourceKind {
   }];
   AwsEgressOnlyInternetGateway = 287 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awseigw"
     prerequisites: [AwsVpc]
   }];
@@ -598,7 +604,7 @@ enum CloudResourceKind {
   // CreateMountTarget calls.
   AwsElasticFileSystem = 290 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsefs"
     prerequisites: [
       AwsSubnet,
@@ -612,14 +618,14 @@ enum CloudResourceKind {
   // resolve before the CreateAccessPoint call.
   AwsEfsAccessPoint = 360 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsefsap"
     prerequisites: [AwsElasticFileSystem]
   }];
 
   AwsFsxLustreFileSystem = 291 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxl"
     prerequisites: [AwsSubnet]
     container_kind: true
@@ -627,7 +633,7 @@ enum CloudResourceKind {
 
   AwsFsxOpenzfsFileSystem = 292 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxz"
     prerequisites: [AwsSubnet]
   }];
@@ -638,14 +644,14 @@ enum CloudResourceKind {
   // prerequisite.
   AwsFsxWindowsFileSystem = 293 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxw"
     prerequisites: [AwsSubnet]
   }];
 
   AwsFsxOntapFileSystem = 294 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxo"
     prerequisites: [AwsSubnet]
     container_kind: true
@@ -653,7 +659,7 @@ enum CloudResourceKind {
 
   AwsFsxOntapStorageVirtualMachine = 295 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxosvm"
     prerequisites: [AwsFsxOntapFileSystem]
     container_kind: true
@@ -661,14 +667,14 @@ enum CloudResourceKind {
 
   AwsFsxOntapVolume = 296 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxov"
     prerequisites: [AwsFsxOntapStorageVirtualMachine]
   }];
 
   AwsFsxDataRepositoryAssociation = 375 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsfxdra"
     prerequisites: [AwsFsxLustreFileSystem]
   }];
@@ -677,7 +683,7 @@ enum CloudResourceKind {
 
   AwsCognitoUserPool = 300 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscog"
     container_kind: true
   }];
@@ -687,7 +693,7 @@ enum CloudResourceKind {
   // resolve before the CreateIdentityProvider call.
   AwsCognitoIdentityProvider = 302 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscogidp"
     prerequisites: [AwsCognitoUserPool]
   }];
@@ -697,7 +703,7 @@ enum CloudResourceKind {
   // before the CreateUserPoolClient call.
   AwsCognitoUserPoolClient = 358 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscogclient"
     prerequisites: [AwsCognitoUserPool]
   }];
@@ -707,7 +713,7 @@ enum CloudResourceKind {
   // before the CreateResourceServer call.
   AwsCognitoResourceServer = 359 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscogrs"
     prerequisites: [AwsCognitoUserPool]
   }];
@@ -716,19 +722,19 @@ enum CloudResourceKind {
 
   AwsWafWebAcl = 301 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awswaf"
   }];
 
   AwsWafIpSet = 361 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awswafips"
   }];
 
   AwsWafRegexPatternSet = 362 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awswafregex"
   }];
 
@@ -736,19 +742,19 @@ enum CloudResourceKind {
 
   AwsCloudwatchLogGroup = 310 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscwlg"
   }];
 
   AwsCloudwatchAlarm = 311 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscwa"
   }];
 
   AwsCloudwatchCompositeAlarm = 355 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscwca"
     prerequisites: [AwsCloudwatchAlarm]
   }];
@@ -757,7 +763,7 @@ enum CloudResourceKind {
 
   AwsKinesisStream = 260 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awskin"
   }];
 
@@ -767,7 +773,7 @@ enum CloudResourceKind {
   // deploy prerequisites.
   AwsKinesisFirehose = 261 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awskfh"
     prerequisites: [
       AwsS3Bucket,
@@ -779,26 +785,26 @@ enum CloudResourceKind {
   // without it.
   AwsKinesisStreamConsumer = 262 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awskincon"
     prerequisites: [AwsKinesisStream]
   }];
 
   AwsAthenaWorkgroup = 263 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsath"
   }];
 
   AwsGlueCatalogDatabase = 264 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsglue"
   }];
 
   AwsRedshiftCluster = 265 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsrs"
     prerequisites: [AwsSubnet]
   }];
@@ -809,7 +815,7 @@ enum CloudResourceKind {
   // deploy prerequisites.
   AwsSagemakerDomain = 270 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "sgmkd"
     prerequisites: [
       AwsSubnet,
@@ -827,19 +833,19 @@ enum CloudResourceKind {
   // e2e-prerequisites annotation.
   AwsAppRunnerService = 320 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsar"
   }];
 
   AwsAppRunnerAutoScalingConfiguration = 368 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsarasc"
   }];
 
   AwsAppRunnerVpcConnector = 369 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsarvc"
     prerequisites: [
       AwsSubnet,
@@ -849,7 +855,7 @@ enum CloudResourceKind {
 
   AwsAppRunnerObservabilityConfiguration = 370 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsaroc"
   }];
 
@@ -859,7 +865,7 @@ enum CloudResourceKind {
   // through the subnet's own prerequisites).
   AwsTransitGatewayVpcAttachment = 371 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awstgwa"
     prerequisites: [
       AwsTransitGateway,
@@ -873,7 +879,7 @@ enum CloudResourceKind {
   // annotation.
   AwsTransitGatewayRouteTable = 372 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awstgwrt"
   }];
 
@@ -884,7 +890,7 @@ enum CloudResourceKind {
   // for the Fargate types -- scenario-declared, not a registry edge).
   AwsBatchComputeEnvironment = 321 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsbat"
     prerequisites: [AwsSubnet]
   }];
@@ -893,34 +899,34 @@ enum CloudResourceKind {
   // to map onto.
   AwsBatchJobQueue = 363 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsbatjq"
     prerequisites: [AwsBatchComputeEnvironment]
   }];
 
   AwsBatchSchedulingPolicy = 364 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsbatsp"
   }];
 
   AwsBatchJobDefinition = 365 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsbatjd"
   }];
 
   // CI/CD
   AwsCodeBuildProject = 330 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscb"
     prerequisites: [AwsIamRole]
   }];
 
   AwsCodePipeline = 331 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awscp"
     prerequisites: [
       AwsIamRole,
@@ -934,7 +940,7 @@ enum CloudResourceKind {
   // requires at least one attached security group at creation.
   AwsMwaaEnvironment = 340 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmwaa"
     prerequisites: [
       AwsSubnet,
@@ -945,7 +951,7 @@ enum CloudResourceKind {
   // Graph Database
   AwsNeptuneCluster = 341 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsnep"
     prerequisites: [AwsSubnet]
   }];
@@ -958,13 +964,13 @@ enum CloudResourceKind {
   // ACL/user chain via the e2e-prerequisites annotation.
   AwsMemorydbCluster = 342 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmdb"
     prerequisites: [AwsSubnet]
   }];
   AwsMemorydbUser = 373 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmdbuser"
   }];
   // An empty ACL is valid (MemoryDB has no mandatory "default" member), so
@@ -972,7 +978,7 @@ enum CloudResourceKind {
   // the e2e-prerequisites annotation, never a registry edge.
   AwsMemorydbAcl = 374 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmdbacl"
   }];
 
@@ -982,7 +988,7 @@ enum CloudResourceKind {
   // security group at creation.
   AwsMskCluster = 350 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmsk"
     prerequisites: [
       AwsSubnet,
@@ -995,7 +1001,7 @@ enum CloudResourceKind {
   // -- AWS attaches the VPC default group when none are referenced).
   AwsMskServerlessCluster = 351 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsmsksl"
     prerequisites: [AwsSubnet]
   }];
@@ -1006,7 +1012,7 @@ enum CloudResourceKind {
   // e2e-prerequisites annotation rather than taxing every consumer's chain.
   AwsLambdaEventSourceMapping = 352 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "lambdaesm"
     prerequisites: [AwsLambda]
   }];
@@ -1018,7 +1024,7 @@ enum CloudResourceKind {
   // every consumer's chain.
   AwsSnsSubscription = 353 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssnssub"
     prerequisites: [AwsSnsTopic]
   }];
@@ -1027,14 +1033,14 @@ enum CloudResourceKind {
   // must resolve before the appliance can deploy.
   AwsPlantonRunner = 354 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awsrun"
     prerequisites: [AwsSubnet]
   }];
 
   AwsRoute53HealthCheck = 376 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "r53hc"
   }];
 
@@ -1044,20 +1050,20 @@ enum CloudResourceKind {
   // destinations reference other kinds only optionally.
   AwsSesConfigurationSet = 366 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssescs"
   }];
 
   AwsSesEmailIdentity = 367 [(kind_meta) = {
     provider: aws
-    version: v1
+    version: "v1"
     id_prefix: "awssesid"
   }];
 
   // 400–599: Azure resources
   AzureResourceGroup = 400 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azrg"
     container_kind: true
   }];
@@ -1066,7 +1072,7 @@ enum CloudResourceKind {
   // node pool (AKS provisions managed networking when unset).
   AzureAksCluster = 401 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "aks"
     container_kind: true
     prerequisites: [AzureResourceGroup]
@@ -1075,7 +1081,7 @@ enum CloudResourceKind {
   // existing cluster by ARM ID; the resource group chains transitively.
   AzureAksNodePool = 402 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "aksnp"
     prerequisites: [AzureAksCluster]
   }];
@@ -1083,7 +1089,7 @@ enum CloudResourceKind {
   // created inside a resource group.
   AzureContainerRegistry = 403 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "acr"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1091,7 +1097,7 @@ enum CloudResourceKind {
   // inside a referenced resource group that must already exist.
   AzureDnsZone = 404 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azdns"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1100,7 +1106,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzureKeyVault = 405 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azkv"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1109,7 +1115,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzureVirtualNetwork = 406 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azvnet"
     container_kind: true
     prerequisites: [AzureResourceGroup]
@@ -1118,7 +1124,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzureNatGateway = 407 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "aznat"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1127,7 +1133,7 @@ enum CloudResourceKind {
   // chain transitively through the NIC's own prerequisites).
   AzureVirtualMachine = 408 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azvm"
     prerequisites: [AzureNetworkInterface]
   }];
@@ -1135,7 +1141,7 @@ enum CloudResourceKind {
   // created inside a referenced resource group in composed environments.
   AzureStorageAccount = 409 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsa"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1146,7 +1152,7 @@ enum CloudResourceKind {
   // zone fixture is safe to recreate across scenarios.
   AzureDnsRecord = 410 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azdrec"
     prerequisites: [AzureDnsZone]
   }];
@@ -1156,7 +1162,7 @@ enum CloudResourceKind {
   // network's own prerequisite declaration.)
   AzureSubnet = 411 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsub"
     prerequisites: [AzureVirtualNetwork]
     container_kind: true
@@ -1165,7 +1171,7 @@ enum CloudResourceKind {
   // created inside a referenced resource group in composed environments.
   AzureNetworkSecurityGroup = 412 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "aznsg"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1173,7 +1179,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzurePublicIp = 413 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpip"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1184,7 +1190,7 @@ enum CloudResourceKind {
   // so none of those are prerequisites.
   AzurePrivateEndpoint = 414 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpe"
     prerequisites: [AzureSubnet]
   }];
@@ -1192,7 +1198,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzurePrivateDnsZone = 415 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpdns"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1205,7 +1211,7 @@ enum CloudResourceKind {
   // prerequisite.
   AzureApplicationGateway = 416 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azagw"
     prerequisites: [AzureSubnet]
   }];
@@ -1215,7 +1221,7 @@ enum CloudResourceKind {
   // required, so they are not registry prerequisites).
   AzureLoadBalancer = 417 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azlb"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1223,7 +1229,7 @@ enum CloudResourceKind {
   // inside a referenced resource group in composed environments.
   AzureRouteTable = 418 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azrt"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1234,7 +1240,7 @@ enum CloudResourceKind {
   // network's own prerequisite declarations.)
   AzurePrivateDnsZoneVirtualNetworkLink = 419 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpdnslink"
     prerequisites: [
       AzurePrivateDnsZone,
@@ -1248,7 +1254,7 @@ enum CloudResourceKind {
   // declaration.)
   AzureVirtualNetworkPeering = 420 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpeer"
     prerequisites: [AzureVirtualNetwork]
   }];
@@ -1256,7 +1262,7 @@ enum CloudResourceKind {
   // created inside a referenced resource group in composed environments.
   AzurePublicIpPrefix = 421 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpippfx"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1265,7 +1271,7 @@ enum CloudResourceKind {
   // group chain transitively through the subnet's own prerequisite).
   AzureNetworkInterface = 422 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "aznic"
     prerequisites: [AzureSubnet]
   }];
@@ -1273,7 +1279,7 @@ enum CloudResourceKind {
   // inside a resource group.
   AzureManagedDisk = 423 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azdisk"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1283,7 +1289,7 @@ enum CloudResourceKind {
   // prerequisite).
   AzureVirtualMachineScaleSet = 424 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azvmss"
     prerequisites: [AzureSubnet]
   }];
@@ -1293,7 +1299,7 @@ enum CloudResourceKind {
   // prerequisite).
   AzureKeyVaultKey = 425 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azkvkey"
     prerequisites: [AzureKeyVault]
   }];
@@ -1303,7 +1309,7 @@ enum CloudResourceKind {
   // transitively through the vault's own prerequisite).
   AzureKeyVaultCertificate = 426 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azkvcert"
     prerequisites: [AzureKeyVault]
   }];
@@ -1312,7 +1318,7 @@ enum CloudResourceKind {
   // attach the policy reference it, never the reverse.
   AzureWebApplicationFirewallPolicy = 427 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azwafpol"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1322,7 +1328,7 @@ enum CloudResourceKind {
   // reference the group, never the reverse.
   AzureApplicationSecurityGroup = 428 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azasg"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1332,7 +1338,7 @@ enum CloudResourceKind {
   // at create time.
   AzureDiskEncryptionSet = 429 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azdes"
     prerequisites: [AzureKeyVaultKey]
   }];
@@ -1342,7 +1348,7 @@ enum CloudResourceKind {
   // required, so they are not registry prerequisites).
   AzurePostgresqlFlexibleServer = 430 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azpg"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1352,7 +1358,7 @@ enum CloudResourceKind {
   // registry prerequisite).
   AzureRedisCache = 431 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azred"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1360,7 +1366,7 @@ enum CloudResourceKind {
   // inside a referenced resource group.
   AzureCosmosdbAccount = 432 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcdb"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1369,7 +1375,7 @@ enum CloudResourceKind {
   // created inside a referenced resource group.
   AzureMssqlServer = 433 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmsql"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1380,7 +1386,7 @@ enum CloudResourceKind {
   // required, so they are not registry prerequisites).
   AzureMysqlFlexibleServer = 434 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmysql"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1390,14 +1396,14 @@ enum CloudResourceKind {
   // subtests never destroy and recreate the same globally unique server_name.
   AzureMssqlDatabase = 435 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmsqldb"
   }];
   // AzureMssqlServer is a prerequisite because every elastic pool lives on
   // a referenced logical server (the server's resource group is transitive).
   AzureMssqlElasticPool = 436 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmsqlpool"
     prerequisites: [AzureMssqlServer]
   }];
@@ -1408,7 +1414,7 @@ enum CloudResourceKind {
   // recreating a shared one per run.
   AzureRedisLinkedServer = 437 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azredlink"
   }];
   // The parent cache is referenced via redis_cache_id, not auto-deployed:
@@ -1418,7 +1424,7 @@ enum CloudResourceKind {
   // one per run.
   AzureRedisCacheAccessPolicy = 438 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azredpol"
   }];
   // The parent cache is referenced via redis_cache_id, not auto-deployed:
@@ -1428,14 +1434,14 @@ enum CloudResourceKind {
   // one per run.
   AzureRedisCacheAccessPolicyAssignment = 439 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azredpola"
   }];
   // AzureResourceGroup is a prerequisite because the environment is created
   // inside a referenced resource group that must already exist.
   AzureContainerAppEnvironment = 440 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcae"
     container_kind: true
     prerequisites: [AzureResourceGroup]
@@ -1445,7 +1451,7 @@ enum CloudResourceKind {
   // transitively through it).
   AzureContainerApp = 441 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azca"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1453,7 +1459,7 @@ enum CloudResourceKind {
   // a referenced resource group that must already exist.
   AzureServicePlan = 442 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsp"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1464,7 +1470,7 @@ enum CloudResourceKind {
   // bring their own scenario-local account fixtures.
   AzureFunctionApp = 443 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfn"
     prerequisites: [AzureServicePlan]
   }];
@@ -1473,7 +1479,7 @@ enum CloudResourceKind {
   // plan).
   AzureLinuxWebApp = 444 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azweb"
     prerequisites: [AzureServicePlan]
   }];
@@ -1482,7 +1488,7 @@ enum CloudResourceKind {
   // transitively through it).
   AzureContainerAppJob = 445 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcaj"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1493,7 +1499,7 @@ enum CloudResourceKind {
   // scenarios bring their own scenario-local account + share fixtures.
   AzureContainerAppEnvironmentStorage = 446 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcaes"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1501,7 +1507,7 @@ enum CloudResourceKind {
   // component is registered on a referenced environment.
   AzureContainerAppEnvironmentDaprComponent = 447 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcadapr"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1509,7 +1515,7 @@ enum CloudResourceKind {
   // certificate is stored on a referenced environment.
   AzureContainerAppEnvironmentCertificate = 448 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcacert"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1517,7 +1523,7 @@ enum CloudResourceKind {
   // certificate is provisioned on a referenced environment.
   AzureContainerAppEnvironmentManagedCertificate = 449 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcamgcert"
     prerequisites: [AzureContainerAppEnvironment]
   }];
@@ -1525,7 +1531,7 @@ enum CloudResourceKind {
   // inside a referenced resource group that must already exist.
   AzureLogAnalyticsWorkspace = 450 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azlaw"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1534,7 +1540,7 @@ enum CloudResourceKind {
   // (the resource group chains transitively through the workspace).
   AzureApplicationInsights = 451 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azai"
     prerequisites: [AzureLogAnalyticsWorkspace]
   }];
@@ -1543,7 +1549,7 @@ enum CloudResourceKind {
   // as target and destination); the target itself is polymorphic.
   AzureMonitorDiagnosticSetting = 452 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmondiag"
     prerequisites: [AzureLogAnalyticsWorkspace]
   }];
@@ -1551,7 +1557,7 @@ enum CloudResourceKind {
   // created inside a referenced resource group that must already exist.
   AzureMonitorActionGroup = 453 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmonag"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1560,7 +1566,7 @@ enum CloudResourceKind {
   // transitively); alert scopes are polymorphic.
   AzureMonitorMetricAlert = 454 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmalert"
     prerequisites: [AzureMonitorActionGroup]
   }];
@@ -1569,7 +1575,7 @@ enum CloudResourceKind {
   // fires into a referenced action group.
   AzureMonitorScheduledQueryAlert = 455 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsqalert"
     prerequisites: [
       AzureLogAnalyticsWorkspace,
@@ -1582,7 +1588,7 @@ enum CloudResourceKind {
   // and its scopes are polymorphic.
   AzureMonitorActivityLogAlert = 456 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azactalert"
     prerequisites: [AzureMonitorActionGroup]
   }];
@@ -1591,7 +1597,7 @@ enum CloudResourceKind {
   // group chains transitively through the component).
   AzureApplicationInsightsStandardWebTest = 457 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azwebtest"
     prerequisites: [AzureApplicationInsights]
   }];
@@ -1599,7 +1605,7 @@ enum CloudResourceKind {
   // inside a referenced resource group that must already exist.
   AzureUserAssignedIdentity = 460 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azid"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1609,7 +1615,7 @@ enum CloudResourceKind {
   // must exist before the grant can be written.
   AzureRoleAssignment = 461 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azra"
     prerequisites: [
       AzureResourceGroup,
@@ -1621,7 +1627,7 @@ enum CloudResourceKind {
   // environments -- the scope must exist before the definition can be written.
   AzureRoleDefinition = 462 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azrd"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1632,7 +1638,7 @@ enum CloudResourceKind {
   // prerequisite declaration.)
   AzureFederatedIdentityCredential = 463 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfic"
     prerequisites: [AzureUserAssignedIdentity]
   }];
@@ -1646,7 +1652,7 @@ enum CloudResourceKind {
   // fixtures instead of a shared recreate-per-scenario prerequisite.
   AzureServiceBusNamespace = 470 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsb"
     prerequisites: [AzureResourceGroup]
     container_kind: true
@@ -1662,51 +1668,51 @@ enum CloudResourceKind {
   // prerequisite.
   AzureEventHubNamespace = 471 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azeh"
     prerequisites: [AzureResourceGroup]
     container_kind: true
   }];
   AzureServiceBusQueue = 472 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsbque"
   }];
   AzureServiceBusTopic = 473 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsbtop"
     container_kind: true
   }];
   AzureServiceBusSubscription = 474 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsbsub"
   }];
   AzureServiceBusAuthorizationRule = 475 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsbauth"
   }];
   AzureServiceBusDisasterRecoveryConfig = 476 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsbdr"
   }];
   AzureEventHub = 477 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehub"
     container_kind: true
   }];
   AzureEventHubConsumerGroup = 478 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehcg"
   }];
   AzureEventHubAuthorizationRule = 479 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehauth"
   }];
 
@@ -1718,7 +1724,7 @@ enum CloudResourceKind {
   // (endpoint, origin group, origin, route) nests under.
   AzureFrontDoorProfile = 480 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfd"
     container_kind: true
     prerequisites: [AzureResourceGroup]
@@ -1729,7 +1735,7 @@ enum CloudResourceKind {
   // through the profile's own prerequisite declaration.)
   AzureFrontDoorEndpoint = 481 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfde"
     prerequisites: [AzureFrontDoorProfile]
     container_kind: true
@@ -1738,7 +1744,7 @@ enum CloudResourceKind {
   // ARM child of a referenced profile.
   AzureFrontDoorOriginGroup = 482 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdog"
     prerequisites: [AzureFrontDoorProfile]
   }];
@@ -1747,7 +1753,7 @@ enum CloudResourceKind {
   // group chain transitively).
   AzureFrontDoorOrigin = 483 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdo"
     prerequisites: [AzureFrontDoorOriginGroup]
   }];
@@ -1757,7 +1763,7 @@ enum CloudResourceKind {
   // prerequisites.
   AzureFrontDoorRoute = 484 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdrt"
     prerequisites: [
       AzureFrontDoorEndpoint,
@@ -1769,7 +1775,7 @@ enum CloudResourceKind {
   // form one ordered policy document); routes attach the set by ARM ID.
   AzureFrontDoorRuleSet = 485 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdrs"
     prerequisites: [AzureFrontDoorProfile]
   }];
@@ -1779,7 +1785,7 @@ enum CloudResourceKind {
   // references, not deploy-order prerequisites.
   AzureFrontDoorCustomDomain = 486 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdcd"
     prerequisites: [AzureFrontDoorProfile]
   }];
@@ -1789,7 +1795,7 @@ enum CloudResourceKind {
   // exercised through scenario-local fixtures in E2E.
   AzureFrontDoorSecret = 487 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdsec"
     prerequisites: [AzureFrontDoorProfile]
   }];
@@ -1800,7 +1806,7 @@ enum CloudResourceKind {
   // it to profiles; the policy itself depends on nothing else.
   AzureFrontDoorFirewallPolicy = 488 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdwaf"
     prerequisites: [AzureResourceGroup]
   }];
@@ -1811,7 +1817,7 @@ enum CloudResourceKind {
   // deploy-order prerequisites.
   AzureFrontDoorSecurityPolicy = 489 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfdsecpol"
     prerequisites: [
       AzureFrontDoorEndpoint,
@@ -1829,42 +1835,42 @@ enum CloudResourceKind {
   // reference itself.
   AzureStorageContainer = 490 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsc"
   }];
   AzureStorageShare = 491 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azshare"
   }];
   AzureStorageQueue = 492 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsq"
   }];
   AzureStorageTable = 493 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azst"
   }];
   AzureStorageEncryptionScope = 494 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azses"
   }];
   AzureStorageDataLakeGen2Filesystem = 495 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azadlsfs"
   }];
   AzureStorageLocalUser = 496 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azslu"
   }];
   AzureStorageObjectReplication = 497 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azsor"
   }];
 
@@ -1879,34 +1885,34 @@ enum CloudResourceKind {
   // references themselves.
   AzureCosmosdbSqlDatabase = 500 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcsqldb"
     container_kind: true
   }];
   AzureCosmosdbSqlContainer = 501 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcsqlct"
   }];
   AzureCosmosdbMongoDatabase = 502 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcmgodb"
     container_kind: true
   }];
   AzureCosmosdbMongoCollection = 503 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcmgocl"
   }];
   AzureCosmosdbSqlRoleDefinition = 504 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcsqlrdef"
   }];
   AzureCosmosdbSqlRoleAssignment = 505 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcsqlrasgn"
   }];
 
@@ -1922,18 +1928,18 @@ enum CloudResourceKind {
   // from the managed_redis_id references themselves.
   AzureManagedRedis = 510 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmredis"
     prerequisites: [AzureResourceGroup]
   }];
   AzureManagedRedisGeoReplication = 511 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmredisgeo"
   }];
   AzureManagedRedisAccessPolicyAssignment = 512 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmredisgrant"
   }];
 
@@ -1942,12 +1948,12 @@ enum CloudResourceKind {
 
   AzureEventHubDisasterRecoveryConfig = 520 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehdr"
   }];
   AzureEventHubSchemaGroup = 521 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehsg"
   }];
 
@@ -1958,14 +1964,14 @@ enum CloudResourceKind {
   // offline-gated.
   AzureEventHubCluster = 522 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehclu"
     prerequisites: [AzureResourceGroup]
     container_kind: true
   }];
   AzureEventHubNamespaceCustomerManagedKey = 523 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azehcmk"
   }];
 
@@ -1978,7 +1984,7 @@ enum CloudResourceKind {
   // exist before the group can be written.
   AzureMssqlFailoverGroup = 524 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azmsqlfog"
     prerequisites: [AzureMssqlServer]
   }];
@@ -1991,7 +1997,7 @@ enum CloudResourceKind {
   // resource group chain transitively through the app).
   AzureContainerAppCustomDomain = 525 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azcadom"
     prerequisites: [AzureContainerApp]
   }];
@@ -2000,7 +2006,7 @@ enum CloudResourceKind {
 
   AzureFirewallPolicy = 530 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfwpol"
     prerequisites: [AzureResourceGroup]
   }];
@@ -2010,7 +2016,7 @@ enum CloudResourceKind {
   // transitively through the policy).
   AzureFirewallPolicyRuleCollectionGroup = 531 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfwrcg"
     prerequisites: [AzureFirewallPolicy]
   }];
@@ -2022,14 +2028,14 @@ enum CloudResourceKind {
   // fixture subnet with that exact name and a /26 prefix.
   AzureFirewall = 532 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azfw"
     prerequisites: [AzureSubnet]
   }];
 
   AzureIpGroup = 533 [(kind_meta) = {
     provider: azure
-    version: v1
+    version: "v1"
     id_prefix: "azipg"
     prerequisites: [AzureResourceGroup]
   }];
@@ -2037,13 +2043,13 @@ enum CloudResourceKind {
   // 600–799: GCP resources
   GcpArtifactRegistryRepo = 600 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpart"
     prerequisites: [GcpServiceAccount]
   }];
   GcpTargetHttpsProxy = 601 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpthsp"
     prerequisites: [
       GcpUrlMap,
@@ -2055,38 +2061,38 @@ enum CloudResourceKind {
   }];
   GcpCloudFunction = 602 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "cldfunc"
     prerequisites: [GcpServerlessVpcConnector]
   }];
   GcpCloudRun = 603 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "cldrun"
   }];
   GcpCloudSql = 604 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsql"
     prerequisites: [GcpServiceNetworkingConnection]
     container_kind: true
   }];
   GcpDnsZone = 605 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpdns"
     prerequisites: [GcpVpcNetwork]
     container_kind: true
   }];
   GcpGcsBucket = 606 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcsbkt"
     prerequisites: [GcpServiceAccount]
   }];
   GcpGkeCluster = 607 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gke"
     container_kind: true
     prerequisites: [
@@ -2096,31 +2102,31 @@ enum CloudResourceKind {
   }];
   GcpIamCustomRole = 608 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcprole"
   }];
   GcpProject = 609 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpprj"
     container_kind: true
   }];
   GcpVpcNetwork = 610 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvpc"
     container_kind: true
   }];
   GcpSubnetwork = 611 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsnw"
     prerequisites: [GcpVpcNetwork]
     container_kind: true
   }];
   GcpRouterNat = 612 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcprnat"
     prerequisites: [
       GcpVpcNetwork,
@@ -2129,30 +2135,30 @@ enum CloudResourceKind {
   }];
   GcpGkeNodePool = 613 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gkenp"
     prerequisites: [GcpGkeCluster]
   }];
   GcpServiceAccount = 614 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gsa"
   }];
   GcpGkeWorkloadIdentityBinding = 615 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gkewib"
     prerequisites: [GcpServiceAccount]
   }];
   GcpCertManagerCert = 616 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcert"
     prerequisites: [GcpCertManagerDnsAuthorization]
   }];
   GcpComputeInstance = 617 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvm"
     prerequisites: [
       GcpVpcNetwork,
@@ -2163,13 +2169,13 @@ enum CloudResourceKind {
   }];
   GcpDnsRecord = 618 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpdrec"
     prerequisites: [GcpDnsZone]
   }];
   GcpProjectIamMember = 619 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcppim"
     prerequisites: [
       GcpServiceAccount,
@@ -2178,33 +2184,33 @@ enum CloudResourceKind {
   }];
   GcpFirewallRule = 620 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpfwr"
   }];
   GcpGlobalAddress = 621 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpgip"
   }];
   GcpCloudArmorPolicy = 622 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcap"
   }];
   GcpHealthCheck = 623 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcphc"
   }];
   GcpBackendBucket = 624 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbb"
     prerequisites: [GcpGcsBucket]
   }];
   GcpBackendService = 625 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbs"
     prerequisites: [
       GcpHealthCheck,
@@ -2213,97 +2219,97 @@ enum CloudResourceKind {
   }];
   GcpRegionNetworkEndpointGroup = 626 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcprneg"
   }];
   GcpUrlMap = 627 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpum"
     prerequisites: [GcpBackendService]
   }];
   GcpManagedSslCertificate = 628 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpmssl"
   }];
   GcpTargetHttpProxy = 629 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpthp"
     prerequisites: [GcpUrlMap]
   }];
   GcpAlloydbCluster = 630 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpadb"
     prerequisites: [GcpServiceNetworkingConnection]
     container_kind: true
   }];
   GcpRedisInstance = 631 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpred"
     prerequisites: [GcpServiceNetworkingConnection]
   }];
   GcpFirestoreDatabase = 632 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpfst"
     container_kind: true
   }];
   GcpSpannerInstance = 633 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpspn"
     container_kind: true
   }];
   GcpSpannerDatabase = 634 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpspdb"
     prerequisites: [GcpSpannerInstance]
     container_kind: true
   }];
   GcpBigtableInstance = 635 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbt"
     container_kind: true
   }];
   GcpMemorystoreInstance = 636 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpmsi"
     prerequisites: [GcpServiceConnectionPolicy]
   }];
   GcpCloudSqlDatabase = 637 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsqldb"
     prerequisites: [GcpCloudSql]
   }];
   GcpCloudSqlUser = 638 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsqlusr"
     prerequisites: [GcpCloudSql]
   }];
   GcpAlloydbInstance = 639 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpadbinst"
     prerequisites: [GcpAlloydbCluster]
   }];
   GcpAlloydbUser = 640 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpadbusr"
     prerequisites: [GcpAlloydbCluster]
   }];
   GcpSpannerBackupSchedule = 641 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsbs"
     prerequisites: [
       GcpSpannerInstance,
@@ -2312,31 +2318,31 @@ enum CloudResourceKind {
   }];
   GcpBigtableTable = 642 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbttbl"
     prerequisites: [GcpBigtableInstance]
   }];
   GcpFirestoreBackupSchedule = 643 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpfstbs"
     prerequisites: [GcpFirestoreDatabase]
   }];
   GcpFirestoreIndex = 644 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpfstidx"
     prerequisites: [GcpFirestoreDatabase]
   }];
   GcpBigQueryDataset = 650 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbqds"
     container_kind: true
   }];
   GcpDataprocCluster = 651 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpdpc"
     // Dataproc's minimum composition on a custom VPC: a subnetwork, a VM
     // runtime identity holding roles/dataproc.worker (hardened projects
@@ -2354,18 +2360,18 @@ enum CloudResourceKind {
   }];
   GcpDataprocAutoscalingPolicy = 652 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpdpasp"
   }];
   GcpBigQueryTable = 653 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpbqtbl"
     prerequisites: [GcpBigQueryDataset]
   }];
   GcpPubSubTopic = 660 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcppst"
     // The schema is optional in the spec, but schema-validated topics are
     // the composition the kind is designed around — installing the schema
@@ -2374,13 +2380,13 @@ enum CloudResourceKind {
   }];
   GcpPubSubSubscription = 661 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcppss"
     prerequisites: [GcpPubSubTopic]
   }];
   GcpCloudTasksQueue = 662 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcptq"
     // Queue-level HTTP task authentication (OIDC/OAuth tokens) dispatches as
     // a service account — the designed composition for secure targets.
@@ -2388,7 +2394,7 @@ enum CloudResourceKind {
   }];
   GcpCloudSchedulerJob = 663 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcsj"
     // The pubsub target publishes to a topic, and HTTP targets authenticate
     // as a service account (OIDC/OAuth) — the designed compositions.
@@ -2399,12 +2405,12 @@ enum CloudResourceKind {
   }];
   GcpPubSubSchema = 664 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcppsch"
   }];
   GcpVertexAiNotebook = 670 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvnb"
     // The notebook VM composes into a network (VPC + subnetwork) and runs
     // as a service account — the minimum production-shaped composition.
@@ -2416,25 +2422,25 @@ enum CloudResourceKind {
   }];
   GcpVertexAiEndpoint = 671 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvep"
   }];
   GcpVertexAiIndex = 672 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvaidx"
   }];
   // Vector Search IndexEndpoint — distinct from the online-prediction
   // GcpVertexAiEndpoint (671); different GCP resources, different kinds.
   GcpVertexAiIndexEndpoint = 673 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvaiep"
     container_kind: true
   }];
   GcpVertexAiDeployedIndex = 674 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvdidx"
     // The deployment joins an index onto an index endpoint — both must
     // exist before anything can be deployed.
@@ -2445,7 +2451,7 @@ enum CloudResourceKind {
   }];
   GcpCloudComposerEnvironment = 680 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcce"
     // Composer 3 requires an explicitly specified workloads service
     // account holding roles/composer.worker — the identity is part of
@@ -2459,31 +2465,31 @@ enum CloudResourceKind {
   }];
   GcpCloudComposerUserWorkloadsSecret = 681 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcuws"
     prerequisites: [GcpCloudComposerEnvironment]
   }];
   GcpCloudComposerUserWorkloadsConfigMap = 682 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcuwcm"
     prerequisites: [GcpCloudComposerEnvironment]
   }];
   GcpKmsKeyRing = 690 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpkr"
     container_kind: true
   }];
   GcpKmsKey = 691 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpkms"
     prerequisites: [GcpKmsKeyRing]
   }];
   GcpKmsKeyIamMember = 692 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpkim"
     prerequisites: [
       GcpKmsKeyRing,
@@ -2493,7 +2499,7 @@ enum CloudResourceKind {
   }];
   GcpFilestoreInstance = 700 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpnfs"
     prerequisites: [GcpVpcNetwork]
   }];
@@ -2501,19 +2507,19 @@ enum CloudResourceKind {
   // foundation/security sub-band is fully allocated)
   GcpWorkloadIdentityPool = 701 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpwip"
     container_kind: true
   }];
   GcpWorkloadIdentityPoolProvider = 702 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpwipp"
     prerequisites: [GcpWorkloadIdentityPool]
   }];
   GcpServiceAccountIamMember = 703 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsaim"
     prerequisites: [GcpServiceAccount]
   }];
@@ -2521,7 +2527,7 @@ enum CloudResourceKind {
   // LB sub-band is fully allocated)
   GcpGlobalForwardingRule = 710 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpgfr"
     prerequisites: [
       GcpTargetHttpsProxy,
@@ -2530,17 +2536,17 @@ enum CloudResourceKind {
   }];
   GcpSslPolicy = 711 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsslpol"
   }];
   GcpSslCertificate = 712 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsslcert"
   }];
   GcpServiceNetworkingConnection = 713 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpsnc"
     prerequisites: [
       GcpVpcNetwork,
@@ -2549,7 +2555,7 @@ enum CloudResourceKind {
   }];
   GcpAddress = 714 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpaddr"
     prerequisites: [
       GcpVpcNetwork,
@@ -2558,7 +2564,7 @@ enum CloudResourceKind {
   }];
   GcpServiceConnectionPolicy = 715 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpscp"
     prerequisites: [
       GcpVpcNetwork,
@@ -2567,19 +2573,19 @@ enum CloudResourceKind {
   }];
   GcpCertManagerDnsAuthorization = 716 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpcmda"
   }];
 
   // 720–729: GCP serverless overflow
   GcpCloudRunJob = 720 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "cldrunjob"
   }];
   GcpServerlessVpcConnector = 721 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpvpcconn"
     prerequisites: [
       GcpVpcNetwork,
@@ -2591,7 +2597,7 @@ enum CloudResourceKind {
   // holds GcpComputeInstance is fully allocated)
   GcpComputeDisk = 730 [(kind_meta) = {
     provider: gcp
-    version: v1
+    version: "v1"
     id_prefix: "gcpdisk"
   }];
 
@@ -2601,93 +2607,93 @@ enum CloudResourceKind {
   // 800–829: Kubernetes building blocks (core API primitives)
   KubernetesNamespace = 800 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sns"
     container_kind: true
   }];
   KubernetesDeployment = 801 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sdpl"
     is_service_kind: true
   }];
   KubernetesStatefulSet = 802 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssts"
     is_service_kind: true
   }];
   KubernetesDaemonSet = 803 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sds"
   }];
   KubernetesJob = 804 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sjob"
   }];
   KubernetesCronJob = 805 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scron"
     is_service_kind: true
   }];
   KubernetesService = 806 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssvc"
   }];
   KubernetesSecret = 807 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssec"
   }];
   KubernetesManifest = 808 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8smfst"
   }];
   KubernetesHelmRelease = 809 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8shelm"
   }];
   KubernetesConfigMap = 810 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scfg"
   }];
   KubernetesServiceAccount = 811 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssa"
   }];
   // Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
   // component: "grant these permissions to these subjects in this scope".
   KubernetesRbac = 812 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8srbac"
   }];
   KubernetesIngress = 813 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sing"
   }];
   KubernetesNetworkPolicy = 814 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8snp"
   }];
   KubernetesPersistentVolumeClaim = 815 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8spvc"
   }];
   KubernetesStorageClass = 816 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssc"
   }];
   // Manages the namespace-governance pair: the ResourceQuota plus an
@@ -2695,28 +2701,28 @@ enum CloudResourceKind {
   // objects, one governance story.
   KubernetesResourceQuota = 817 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8srq"
   }];
   KubernetesPriorityClass = 818 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8spc"
   }];
   KubernetesPodDisruptionBudget = 819 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8spdb"
   }];
   KubernetesHorizontalPodAutoscaler = 820 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8shpa"
   }];
   // 830–869: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
   KubernetesCertManager = 830 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scm"
   }];
   // KubernetesCertManager is a prerequisite for the three cert-manager CR
@@ -2724,30 +2730,30 @@ enum CloudResourceKind {
   // resources — without the controller and its CRDs they cannot be applied.
   KubernetesClusterIssuer = 831 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sci"
     prerequisites: [KubernetesCertManager]
   }];
   KubernetesIssuer = 832 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8siss"
     prerequisites: [KubernetesCertManager]
   }];
   KubernetesCertificate = 833 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scrt"
     prerequisites: [KubernetesCertManager]
   }];
   KubernetesExternalDns = 834 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sextdns"
   }];
   KubernetesExternalSecretsOperator = 835 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sextsec"
   }];
   // KubernetesExternalSecretsOperator is a prerequisite for the three
@@ -2756,35 +2762,35 @@ enum CloudResourceKind {
   // operator and its CRDs they cannot be applied.
   KubernetesClusterSecretStore = 836 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scss"
     prerequisites: [KubernetesExternalSecretsOperator]
   }];
   KubernetesSecretStore = 837 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssst"
     prerequisites: [KubernetesExternalSecretsOperator]
   }];
   KubernetesExternalSecret = 838 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sxsec"
     prerequisites: [KubernetesExternalSecretsOperator]
   }];
   KubernetesIngressNginx = 839 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sngx"
   }];
   KubernetesGatewayApiCrds = 840 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgwcrds"
   }];
   KubernetesGatewayClass = 841 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgwc"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2794,7 +2800,7 @@ enum CloudResourceKind {
   }];
   KubernetesGateway = 842 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgw"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2804,7 +2810,7 @@ enum CloudResourceKind {
   }];
   KubernetesListenerSet = 843 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8slset"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2814,7 +2820,7 @@ enum CloudResourceKind {
   }];
   KubernetesHttpRoute = 844 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8shrt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2824,7 +2830,7 @@ enum CloudResourceKind {
   }];
   KubernetesGrpcRoute = 845 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgrt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2834,7 +2840,7 @@ enum CloudResourceKind {
   }];
   KubernetesTcpRoute = 846 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8strt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2844,7 +2850,7 @@ enum CloudResourceKind {
   }];
   KubernetesUdpRoute = 847 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8surt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2854,7 +2860,7 @@ enum CloudResourceKind {
   }];
   KubernetesTlsRoute = 848 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stlsrt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2864,7 +2870,7 @@ enum CloudResourceKind {
   }];
   KubernetesReferenceGrant = 849 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8srefgrt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2874,7 +2880,7 @@ enum CloudResourceKind {
   }];
   KubernetesBackendTlsPolicy = 850 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sbtls"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
@@ -2884,12 +2890,12 @@ enum CloudResourceKind {
   }];
   KubernetesIstioBaseCrds = 851 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sistcrds"
   }];
   KubernetesIstio = 852 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sist"
   }];
   // Istio API components (mesh traffic policy, security, telemetry). The seven typed
@@ -2898,7 +2904,7 @@ enum CloudResourceKind {
   // KubernetesIstio (852).
   KubernetesDestinationRule = 853 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sdr"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2908,7 +2914,7 @@ enum CloudResourceKind {
   }];
   KubernetesServiceEntry = 854 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sse"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2918,7 +2924,7 @@ enum CloudResourceKind {
   }];
   KubernetesPeerAuthentication = 855 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8spa"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2928,7 +2934,7 @@ enum CloudResourceKind {
   }];
   KubernetesRequestAuthentication = 856 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sra"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2938,7 +2944,7 @@ enum CloudResourceKind {
   }];
   KubernetesAuthorizationPolicy = 857 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sauthz"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2948,7 +2954,7 @@ enum CloudResourceKind {
   }];
   KubernetesTelemetry = 858 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stel"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2958,7 +2964,7 @@ enum CloudResourceKind {
   }];
   KubernetesEnvoyFilter = 859 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sef"
     prerequisites: [KubernetesIstioBaseCrds]
     kubernetes_manifest_projection: {
@@ -2968,27 +2974,27 @@ enum CloudResourceKind {
   }];
   KubernetesMetricsServer = 860 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8smetsrv"
   }];
   KubernetesCilium = 861 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scil"
   }];
   KubernetesKeda = 862 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skeda"
   }];
   KubernetesKarpenter = 863 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skarp"
   }];
   KubernetesKarpenterNodePool = 864 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skarpnp"
     prerequisites: [KubernetesKarpenter]
     kubernetes_manifest_projection: {
@@ -2998,7 +3004,7 @@ enum CloudResourceKind {
   }];
   KubernetesKarpenterEc2NodeClass = 865 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skarpenc"
     prerequisites: [KubernetesKarpenter]
     kubernetes_manifest_projection: {
@@ -3008,23 +3014,23 @@ enum CloudResourceKind {
   }];
   KubernetesClusterAutoscaler = 866 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scas"
   }];
   KubernetesVelero = 867 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8svel"
   }];
   // 870–889: Kubernetes observability
   KubernetesKubePrometheusStack = 870 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skps"
   }];
   KubernetesGrafana = 871 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgfn"
   }];
   // KubernetesClickHouse is a prerequisite because SigNoz stores every
@@ -3032,18 +3038,18 @@ enum CloudResourceKind {
   // the telemetry store is composed, never bundled.
   KubernetesSignoz = 872 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssgz"
     prerequisites: [KubernetesClickHouse]
   }];
   KubernetesLoki = 873 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sloki"
   }];
   KubernetesTempo = 874 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stempo"
   }];
   // The operator's admission webhooks (failurePolicy Fail) are served
@@ -3051,25 +3057,25 @@ enum CloudResourceKind {
   // cert-manager must be running before the operator installs.
   KubernetesOtelOperator = 875 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sotelop"
     prerequisites: [KubernetesCertManager]
   }];
   KubernetesOtelCollector = 876 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sotelcol"
     prerequisites: [KubernetesOtelOperator]
   }];
   // 880–899: Kubernetes security, policy, and identity
   KubernetesKyverno = 880 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skyvrn"
   }];
   KubernetesGatekeeper = 881 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgtkpr"
   }];
   // Keycloak declarations compose the official Keycloak Operator (which
@@ -3078,7 +3084,7 @@ enum CloudResourceKind {
   // before the CR can converge.
   KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skc"
     prerequisites: [
       KubernetesKeycloakOperator,
@@ -3087,7 +3093,7 @@ enum CloudResourceKind {
   }];
   KubernetesOpenBao = 891 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sbao"
   }];
   // OpenFGA requires a datastore; the recommended arm composes a
@@ -3095,57 +3101,57 @@ enum CloudResourceKind {
   // but the registry declares the shape real deployments require).
   KubernetesOpenFga = 892 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sfga"
     prerequisites: [KubernetesPostgres]
   }];
   KubernetesKeycloakOperator = 893 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skcop"
   }];
   // 900–929: Kubernetes data platforms
   KubernetesCloudNativePgOperator = 900 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8scnpgop"
   }];
   KubernetesPostgres = 901 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8spg"
     prerequisites: [KubernetesCloudNativePgOperator]
   }];
   KubernetesValkey = 902 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8svlk"
   }];
   KubernetesPerconaMysqlOperator = 903 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sprcnmysqlop"
   }];
   KubernetesMysql = 904 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8smysql"
     prerequisites: [KubernetesPerconaMysqlOperator]
   }];
   KubernetesPerconaMongoOperator = 905 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sprcnmdbop"
   }];
   KubernetesMongodb = 906 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8smdb"
     prerequisites: [KubernetesPerconaMongoOperator]
   }];
   KubernetesStrimziKafkaOperator = 907 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sstzop"
   }];
   // container_kind: a Strimzi Kafka cluster is a place in the provider's
@@ -3155,20 +3161,20 @@ enum CloudResourceKind {
   // carry containment_exempt on their bootstrap/trust references.
   KubernetesKafka = 908 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skaf"
     container_kind: true
     prerequisites: [KubernetesStrimziKafkaOperator]
   }];
   KubernetesKafkaTopic = 909 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skaftop"
     prerequisites: [KubernetesKafka]
   }];
   KubernetesKafkaUser = 910 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skafusr"
     prerequisites: [KubernetesKafka]
   }];
@@ -3177,80 +3183,80 @@ enum CloudResourceKind {
   // cluster) — the same room shape as KubernetesKafka above.
   KubernetesKafkaConnect = 911 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skafcon"
     container_kind: true
     prerequisites: [KubernetesKafka]
   }];
   KubernetesKafkaConnector = 912 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skafcnr"
     prerequisites: [KubernetesKafkaConnect]
   }];
   KubernetesKafkaMirrorMaker2 = 913 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skafmm2"
     prerequisites: [KubernetesKafka]
   }];
   KubernetesKarapace = 914 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skrpc"
     prerequisites: [KubernetesKafka]
   }];
   KubernetesKafkaUi = 915 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skafui"
   }];
   KubernetesOpenSearchOperator = 916 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sosop"
   }];
   KubernetesOpenSearch = 917 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sos"
     prerequisites: [KubernetesOpenSearchOperator]
   }];
   KubernetesAltinityOperator = 918 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8saltop"
   }];
   KubernetesClickHouse = 919 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sclkhs"
     prerequisites: [KubernetesAltinityOperator]
   }];
   KubernetesSolrOperator = 920 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sslrop"
   }];
   KubernetesSolr = 921 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssolr"
     prerequisites: [KubernetesSolrOperator]
   }];
   KubernetesNeo4j = 922 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sneo"
   }];
   KubernetesSeaweedFs = 923 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sswfs"
   }];
   KubernetesQdrant = 924 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sqdrt"
   }];
   // The RabbitMQ Cluster Operator's release manifest ships admission
@@ -3258,13 +3264,13 @@ enum CloudResourceKind {
   // cert-manager must be running before the operator installs.
   KubernetesRabbitMqOperator = 925 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8srmqop"
     prerequisites: [KubernetesCertManager]
   }];
   KubernetesRabbitMq = 926 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8srmq"
     prerequisites: [KubernetesRabbitMqOperator]
   }];
@@ -3275,18 +3281,18 @@ enum CloudResourceKind {
   // database reachable before the server components start.
   KubernetesAirflow = 930 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8saflw"
     prerequisites: [KubernetesPostgres]
   }];
   KubernetesSparkOperator = 931 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssprkop"
   }];
   KubernetesKubeRayOperator = 932 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8skrayop"
   }];
   // KubernetesKubeRayOperator is a prerequisite because this kind declares
@@ -3294,7 +3300,7 @@ enum CloudResourceKind {
   // only the operator reconciles into head and worker pods.
   KubernetesRayCluster = 933 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sraycl"
     prerequisites: [KubernetesKubeRayOperator]
   }];
@@ -3305,7 +3311,7 @@ enum CloudResourceKind {
   // pinned chart, and the webhooks are fail-closed.
   KubernetesFlinkOperator = 934 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sflnkop"
     prerequisites: [KubernetesCertManager]
   }];
@@ -3314,7 +3320,7 @@ enum CloudResourceKind {
   // admit and only the operator reconciles into a running Flink cluster.
   KubernetesFlinkDeployment = 935 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sflnkd"
     prerequisites: [KubernetesFlinkOperator]
   }];
@@ -3324,7 +3330,7 @@ enum CloudResourceKind {
   // database's credential Secret before it can start.
   KubernetesJupyterHub = 936 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sjhub"
     prerequisites: [KubernetesPostgres]
   }];
@@ -3336,7 +3342,7 @@ enum CloudResourceKind {
   // credential Secret.
   KubernetesMlflow = 937 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8smlflw"
     prerequisites: [
       KubernetesPostgres,
@@ -3350,7 +3356,7 @@ enum CloudResourceKind {
   // environment.
   KubernetesTrino = 938 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8strino"
     prerequisites: [KubernetesPostgres]
   }];
@@ -3362,7 +3368,7 @@ enum CloudResourceKind {
   // Secret.
   KubernetesSuperset = 939 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8ssprst"
     prerequisites: [
       KubernetesPostgres,
@@ -3372,17 +3378,17 @@ enum CloudResourceKind {
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sargo"
   }];
   KubernetesArgoWorkflows = 951 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sargowf"
   }];
   KubernetesTektonOperator = 952 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stktnop"
   }];
   // KubernetesTektonOperator is a prerequisite because this kind declares
@@ -3390,13 +3396,13 @@ enum CloudResourceKind {
   // and only the operator reconciles into running components.
   KubernetesTekton = 953 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stktn"
     prerequisites: [KubernetesTektonOperator]
   }];
   KubernetesGhaRunnerScaleSetController = 954 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgharsc"
   }];
   // KubernetesGhaRunnerScaleSetController is a prerequisite because this
@@ -3405,18 +3411,18 @@ enum CloudResourceKind {
   // listener and runner pods.
   KubernetesGhaRunnerScaleSet = 955 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sgharss"
     prerequisites: [KubernetesGhaRunnerScaleSetController]
   }];
   KubernetesHarbor = 956 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8shrbr"
   }];
   KubernetesJenkins = 957 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sjkn"
   }];
   // 970–989: Kubernetes app platforms
@@ -3425,349 +3431,349 @@ enum CloudResourceKind {
   // visibility stores with a CloudNativePG cluster.
   KubernetesTemporal = 970 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8stprl"
     prerequisites: [KubernetesPostgres]
   }];
   KubernetesNats = 971 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8snats"
   }];
   KubernetesLocust = 972 [(kind_meta) = {
     provider: kubernetes
-    version: v1
+    version: "v1"
     id_prefix: "k8sloc"
   }];
 
   // 1200–1499: DigitalOcean resources
   DigitalOceanAppPlatformService = 1200 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "doapp"
   }];
   DigitalOceanBucket = 1201 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dobkt"
   }];
   DigitalOceanContainerRegistry = 1202 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "docr"
   }];
   DigitalOceanDatabaseCluster = 1203 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dodb"
   }];
   DigitalOceanDnsZone = 1204 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dodns"
     container_kind: true
   }];
   DigitalOceanDroplet = 1205 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dodrop"
   }];
   DigitalOceanFirewall = 1206 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dofw"
   }];
   DigitalOceanFunction = 1207 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dofn"
   }];
   DigitalOceanKubernetesCluster = 1208 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dokc"
     container_kind: true
   }];
   DigitalOceanKubernetesNodePool = 1209 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "doknp"
   }];
   DigitalOceanLoadBalancer = 1210 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dolb"
   }];
   DigitalOceanVolume = 1211 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dovol"
   }];
   DigitalOceanVpc = 1212 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dovpc"
     container_kind: true
   }];
   DigitalOceanCertificate = 1213 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "docert"
   }];
   DigitalOceanDnsRecord = 1214 [(kind_meta) = {
     provider: digital_ocean
-    version: v1
+    version: "v1"
     id_prefix: "dodnsrec"
   }];
 
   // 1500–1799: Civo resources
   CivoBucket = 1500 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cibkt"
   }];
   CivoCertificate = 1501 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cicert"
   }];
   CivoComputeInstance = 1502 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "ciinst"
   }];
   CivoDatabase = 1503 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cidb"
   }];
   CivoDnsZone = 1504 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cidns"
     container_kind: true
   }];
   CivoFirewall = 1505 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cifw"
   }];
   CivoIpAddress = 1506 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "ciip"
   }];
   CivoKubernetesCluster = 1507 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cikc"
     container_kind: true
   }];
   CivoKubernetesNodePool = 1508 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "ciknp"
   }];
   CivoVolume = 1509 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "civol"
   }];
   CivoVpc = 1510 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "civpc"
     container_kind: true
   }];
   CivoDnsRecord = 1511 [(kind_meta) = {
     provider: civo
-    version: v1
+    version: "v1"
     id_prefix: "cirec"
   }];
 
   // 1800–2099: Cloudflare resources
   CloudflareDnsZone = 1800 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfdns"
     container_kind: true
   }];
   CloudflareKvNamespace = 1801 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfkvn"
   }];
   CloudflareR2Bucket = 1802 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfr2b"
   }];
   CloudflareWorker = 1803 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfwrk"
   }];
   CloudflareLoadBalancer = 1804 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cflb"
   }];
   CloudflareD1Database = 1805 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfd1db"
   }];
   CloudflareZeroTrustAccessApplication = 1806 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfzta"
   }];
   CloudflareDnsRecord = 1807 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfrec"
   }];
   CloudflareRuleset = 1808 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfrs"
   }];
   CloudflareWorkersKvPair = 1809 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfkvp"
   }];
   CloudflareHyperdriveConfig = 1810 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfhyp"
   }];
   CloudflareLoadBalancerPool = 1811 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cflbp"
   }];
   CloudflareLoadBalancerMonitor = 1812 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cflbm"
   }];
   CloudflareZeroTrustAccessPolicy = 1813 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfztp"
   }];
   CloudflareZeroTrustAccessGroup = 1814 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfztg"
   }];
   CloudflareQueue = 1815 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfq"
   }];
   CloudflarePagesProject = 1816 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfpg"
   }];
   CloudflareZeroTrustTunnel = 1817 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfztun"
   }];
   CloudflareZeroTrustTunnelVirtualNetwork = 1818 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfztvn"
     container_kind: true
   }];
   CloudflareZeroTrustTunnelRoute = 1819 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfztrt"
   }];
   CloudflareList = 1820 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cflist"
   }];
   CloudflareListItem = 1821 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfli"
   }];
   CloudflareTurnstileWidget = 1822 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfturn"
   }];
   CloudflareEmailRoutingZone = 1823 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cferz"
   }];
   CloudflareEmailRoutingRule = 1824 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cferr"
   }];
   CloudflareEmailRoutingAddress = 1825 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfera"
   }];
   CloudflareOriginCaCertificate = 1826 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfoca"
   }];
   CloudflareCertificatePack = 1827 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfcertp"
   }];
   CloudflareCustomHostname = 1828 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfchost"
   }];
   CloudflareCustomHostnameFallbackOrigin = 1829 [(kind_meta) = {
     provider: cloudflare
-    version: v1
+    version: "v1"
     id_prefix: "cfchfo"
   }];
 
   // 2100–2299: Auth0 resources
   Auth0Connection = 2100 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0conn"
   }];
   Auth0Client = 2101 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0cli"
   }];
   Auth0EventStream = 2102 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0es"
   }];
   Auth0ResourceServer = 2103 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0rs"
   }];
   Auth0Action = 2104 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0act"
   }];
   Auth0Role = 2105 [(kind_meta) = {
     provider: auth0
-    version: v1
+    version: "v1"
     id_prefix: "a0role"
   }];
 
@@ -3776,149 +3782,149 @@ enum CloudResourceKind {
   // Pulumi modules for OpenFGA resources are pass-through placeholders.
   OpenFgaStore = 2300 [(kind_meta) = {
     provider: openfga
-    version: v1
+    version: "v1"
     id_prefix: "fgastore"
     container_kind: true
   }];
   OpenFgaAuthorizationModel = 2301 [(kind_meta) = {
     provider: openfga
-    version: v1
+    version: "v1"
     id_prefix: "fgamodel"
   }];
   OpenFgaRelationshipTuple = 2302 [(kind_meta) = {
     provider: openfga
-    version: v1
+    version: "v1"
     id_prefix: "fgatuple"
   }];
 
   // 2500–2799: OpenStack resources
   OpenStackKeypair = 2500 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oskp"
   }];
   OpenStackNetwork = 2501 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osnet"
     container_kind: true
   }];
   OpenStackSubnet = 2502 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "ossub"
     container_kind: true
   }];
   OpenStackRouter = 2503 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osrtr"
   }];
   OpenStackRouterInterface = 2504 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osri"
   }];
   OpenStackSecurityGroup = 2505 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "ossg"
   }];
   OpenStackFloatingIp = 2506 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osfip"
   }];
   OpenStackNetworkPort = 2507 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osnp"
   }];
   OpenStackSecurityGroupRule = 2525 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "ossgr"
   }];
   OpenStackFloatingIpAssociate = 2526 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osfipa"
   }];
   OpenStackInstance = 2508 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osinst"
   }];
   OpenStackServerGroup = 2509 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "ossgrp"
   }];
   OpenStackVolume = 2510 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osvol"
   }];
   OpenStackVolumeAttach = 2511 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osva"
   }];
   OpenStackProject = 2512 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osprj"
     container_kind: true
   }];
   OpenStackApplicationCredential = 2513 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osac"
   }];
   OpenStackImage = 2514 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osimg"
   }];
   OpenStackRoleAssignment = 2515 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osra"
   }];
   OpenStackLoadBalancer = 2516 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oslb"
   }];
   OpenStackLoadBalancerListener = 2517 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oslbl"
   }];
   OpenStackLoadBalancerPool = 2518 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oslbp"
   }];
   OpenStackLoadBalancerMember = 2519 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oslbm"
   }];
   OpenStackLoadBalancerMonitor = 2520 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "oslbmon"
   }];
   OpenStackDnsZone = 2521 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osdz"
     container_kind: true
   }];
   OpenStackDnsRecord = 2522 [(kind_meta) = {
     provider: openstack
-    version: v1
+    version: "v1"
     id_prefix: "osdr"
   }];
   // 2523, 2524: free primary slots (OpenStack Magnum kinds removed 2026-03); a
@@ -3930,29 +3936,29 @@ enum CloudResourceKind {
 
   ScalewayVpc = 2800 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwvpc"
     container_kind: true
   }];
   ScalewayPrivateNetwork = 2801 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwpn"
     container_kind: true
   }];
   ScalewayPublicGateway = 2802 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwpgw"
   }];
   ScalewayLoadBalancer = 2803 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwlb"
   }];
   ScalewayInstanceSecurityGroup = 2804 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwsg"
   }];
 
@@ -3960,7 +3966,7 @@ enum CloudResourceKind {
 
   ScalewayInstance = 2810 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwinst"
   }];
 
@@ -3968,13 +3974,13 @@ enum CloudResourceKind {
 
   ScalewayKapsuleCluster = 2820 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwk8s"
     container_kind: true
   }];
   ScalewayKapsulePool = 2821 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwknp"
   }];
 
@@ -3982,17 +3988,17 @@ enum CloudResourceKind {
 
   ScalewayRdbInstance = 2830 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwrdb"
   }];
   ScalewayRedisCluster = 2831 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwred"
   }];
   ScalewayMongodbInstance = 2832 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwmdb"
   }];
 
@@ -4000,12 +4006,12 @@ enum CloudResourceKind {
 
   ScalewayObjectBucket = 2840 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwbkt"
   }];
   ScalewayBlockVolume = 2841 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwblk"
   }];
 
@@ -4013,7 +4019,7 @@ enum CloudResourceKind {
 
   ScalewayContainerRegistry = 2850 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwcr"
   }];
 
@@ -4021,13 +4027,13 @@ enum CloudResourceKind {
 
   ScalewayDnsZone = 2860 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwdns"
     container_kind: true
   }];
   ScalewayDnsRecord = 2861 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwrec"
   }];
 
@@ -4035,12 +4041,12 @@ enum CloudResourceKind {
 
   ScalewayServerlessFunction = 2870 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwfn"
   }];
   ScalewayServerlessContainer = 2871 [(kind_meta) = {
     provider: scaleway
-    version: v1
+    version: "v1"
     id_prefix: "scwscn"
   }];
 
@@ -4050,7 +4056,7 @@ enum CloudResourceKind {
 
   AliCloudLogProject = 3000 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "aclog"
   }];
 
@@ -4058,13 +4064,13 @@ enum CloudResourceKind {
 
   AliCloudRamRole = 3010 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acramr"
   }];
 
   AliCloudRamPolicy = 3011 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acramp"
   }];
 
@@ -4072,51 +4078,51 @@ enum CloudResourceKind {
 
   AliCloudVpc = 3020 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acvpc"
     container_kind: true
   }];
 
   AliCloudVswitch = 3021 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acvsw"
     container_kind: true
   }];
 
   AliCloudSecurityGroup = 3022 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acsg"
   }];
 
   AliCloudEipAddress = 3023 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "aceip"
   }];
 
   AliCloudNatGateway = 3024 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acnat"
   }];
 
   AliCloudApplicationLoadBalancer = 3025 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acalb"
   }];
 
   AliCloudNetworkLoadBalancer = 3026 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acnlb"
   }];
 
   AliCloudVpnGateway = 3027 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acvpn"
   }];
 
@@ -4124,20 +4130,20 @@ enum CloudResourceKind {
 
   AliCloudDnsZone = 3040 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acdz"
     container_kind: true
   }];
 
   AliCloudDnsRecord = 3041 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acdr"
   }];
 
   AliCloudPrivateDnsZone = 3042 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acdpz"
     container_kind: true
   }];
@@ -4146,13 +4152,13 @@ enum CloudResourceKind {
 
   AliCloudStorageBucket = 3050 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acbkt"
   }];
 
   AliCloudNasFileSystem = 3051 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acnas"
   }];
 
@@ -4160,7 +4166,7 @@ enum CloudResourceKind {
 
   AliCloudKmsKey = 3060 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "ackms"
   }];
 
@@ -4168,25 +4174,25 @@ enum CloudResourceKind {
 
   AliCloudRdsInstance = 3070 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acrds"
   }];
 
   AliCloudPolardbCluster = 3071 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acpdb"
   }];
 
   AliCloudRedisInstance = 3072 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acred"
   }];
 
   AliCloudMongodbInstance = 3073 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acmdb"
   }];
 
@@ -4194,7 +4200,7 @@ enum CloudResourceKind {
 
   AliCloudEcsInstance = 3080 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acecs"
   }];
 
@@ -4202,20 +4208,20 @@ enum CloudResourceKind {
 
   AliCloudContainerRegistry = 3090 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "accr"
   }];
 
   AliCloudKubernetesCluster = 3091 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acack"
     container_kind: true
   }];
 
   AliCloudKubernetesNodePool = 3092 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acknp"
   }];
 
@@ -4223,7 +4229,7 @@ enum CloudResourceKind {
 
   AliCloudCdnDomain = 3100 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "accdn"
   }];
 
@@ -4231,13 +4237,13 @@ enum CloudResourceKind {
 
   AliCloudFunction = 3110 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acfc"
   }];
 
   AliCloudSaeApplication = 3111 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acsae"
   }];
 
@@ -4245,7 +4251,7 @@ enum CloudResourceKind {
 
   AliCloudRocketmqInstance = 3120 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "acrmq"
   }];
 
@@ -4253,7 +4259,7 @@ enum CloudResourceKind {
 
   AliCloudCenInstance = 3130 [(kind_meta) = {
     provider: alicloud
-    version: v1
+    version: "v1"
     id_prefix: "accen"
   }];
 
@@ -4263,21 +4269,21 @@ enum CloudResourceKind {
 
   OciVcn = 3300 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocivcn"
     container_kind: true
   }];
 
   OciSubnet = 3301 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocisub"
     container_kind: true
   }];
 
   OciSecurityGroup = 3302 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocisg"
   }];
 
@@ -4285,18 +4291,18 @@ enum CloudResourceKind {
 
   OciCompartment = 3303 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocicmp"
     container_kind: true
   }];
   OciIdentityPolicy = 3304 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ociply"
   }];
   OciDynamicGroup = 3305 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidg"
   }];
 
@@ -4304,7 +4310,7 @@ enum CloudResourceKind {
 
   OciComputeInstance = 3310 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocivm"
   }];
 
@@ -4312,20 +4318,20 @@ enum CloudResourceKind {
 
   OciContainerEngineCluster = 3311 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocioke"
     container_kind: true
   }];
 
   OciContainerEngineNodePool = 3312 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocienp"
   }];
 
   OciContainerInstance = 3313 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocici"
   }];
 
@@ -4333,25 +4339,25 @@ enum CloudResourceKind {
 
   OciApplicationLoadBalancer = 3320 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocialb"
   }];
 
   OciNetworkLoadBalancer = 3321 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocinlb"
   }];
 
   OciDynamicRoutingGateway = 3322 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidrg"
   }];
 
   OciPublicIp = 3323 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocipip"
   }];
 
@@ -4359,37 +4365,37 @@ enum CloudResourceKind {
 
   OciAutonomousDatabase = 3330 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ociadb"
   }];
 
   OciDbSystem = 3331 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidb"
   }];
 
   OciMysqlDbSystem = 3332 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocimysql"
   }];
 
   OciPostgresqlDbSystem = 3333 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocipg"
   }];
 
   OciRedisCluster = 3334 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocired"
   }];
 
   OciNosqlTable = 3335 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocinosql"
   }];
 
@@ -4397,19 +4403,19 @@ enum CloudResourceKind {
 
   OciObjectStorageBucket = 3340 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ociobkt"
   }];
 
   OciFileSystem = 3341 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocifs"
   }];
 
   OciBlockVolume = 3342 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocibvol"
   }];
 
@@ -4417,26 +4423,26 @@ enum CloudResourceKind {
 
   OciKmsVault = 3350 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocivlt"
     container_kind: true
   }];
 
   OciKmsKey = 3351 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocikey"
   }];
 
   OciVaultSecret = 3352 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocisec"
   }];
 
   OciBastion = 3353 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocibst"
   }];
 
@@ -4444,13 +4450,13 @@ enum CloudResourceKind {
 
   OciFunctionsApplication = 3360 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocifnapp"
   }];
 
   OciApiGateway = 3361 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ociagw"
   }];
 
@@ -4458,13 +4464,13 @@ enum CloudResourceKind {
 
   OciStreamPool = 3370 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocistr"
   }];
 
   OciQueue = 3371 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocique"
   }];
 
@@ -4472,13 +4478,13 @@ enum CloudResourceKind {
 
   OciAlarm = 3380 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocialm"
   }];
 
   OciLogGroup = 3381 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocilog"
   }];
 
@@ -4486,14 +4492,14 @@ enum CloudResourceKind {
 
   OciDnsZone = 3390 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidns"
     container_kind: true
   }];
 
   OciDnsRecord = 3391 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidnsr"
   }];
 
@@ -4501,13 +4507,13 @@ enum CloudResourceKind {
 
   OciNetworkFirewall = 3395 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocifw"
   }];
 
   OciDevopsProject = 3396 [(kind_meta) = {
     provider: oci
-    version: v1
+    version: "v1"
     id_prefix: "ocidev"
   }];
 
@@ -4519,19 +4525,19 @@ enum CloudResourceKind {
 
   HetznerCloudSshKey = 3500 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcssh"
   }];
 
   HetznerCloudPlacementGroup = 3501 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcpg"
   }];
 
   HetznerCloudFirewall = 3502 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcfw"
   }];
 
@@ -4539,20 +4545,20 @@ enum CloudResourceKind {
 
   HetznerCloudNetwork = 3510 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcnet"
     container_kind: true
   }];
 
   HetznerCloudPrimaryIp = 3511 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcpip"
   }];
 
   HetznerCloudFloatingIp = 3512 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcfip"
   }];
 
@@ -4560,19 +4566,19 @@ enum CloudResourceKind {
 
   HetznerCloudServer = 3520 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcsrv"
   }];
 
   HetznerCloudVolume = 3521 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcvol"
   }];
 
   HetznerCloudSnapshot = 3522 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcsnp"
   }];
 
@@ -4580,13 +4586,13 @@ enum CloudResourceKind {
 
   HetznerCloudCertificate = 3530 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hccrt"
   }];
 
   HetznerCloudLoadBalancer = 3531 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hclb"
   }];
 
@@ -4594,7 +4600,7 @@ enum CloudResourceKind {
 
   HetznerCloudDnsZone = 3540 [(kind_meta) = {
     provider: hetzner_cloud
-    version: v1
+    version: "v1"
     id_prefix: "hcdns"
     container_kind: true
   }];

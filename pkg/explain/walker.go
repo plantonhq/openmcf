@@ -1,6 +1,8 @@
 package explain
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -26,9 +28,10 @@ func (e *Engine) walkFields(md protoreflect.MessageDescriptor, visited map[proto
 
 func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protoreflect.FullName]bool) Field {
 	f := Field{
-		Name:     fd.JSONName(),
-		Doc:      e.doc(fd.FullName()),
-		Optional: fd.HasOptionalKeyword(),
+		Name:      fd.JSONName(),
+		ProtoName: string(fd.Name()),
+		Doc:       e.doc(fd.FullName()),
+		Optional:  fd.HasOptionalKeyword(),
 	}
 	for _, interpret := range e.Interpreters {
 		interpret(fd, &f)
@@ -176,6 +179,15 @@ func applyValidateRules(fd protoreflect.FieldDescriptor, f *Field) {
 	structural := proto.Clone(rules).(*validatepb.FieldRules)
 	structural.Cel = nil
 	if body, err := protojson.Marshal(structural); err == nil && string(body) != "{}" {
+		// protojson deliberately randomizes its whitespace, re-seeded from a
+		// hash of each compiled binary, so its raw output is only stable
+		// within one build. Reports are committed to disk and byte-compared
+		// by freshness gates, so the dump must be compacted here at the
+		// source -- never rely on protojson output being byte-stable.
+		var compacted bytes.Buffer
+		if err := json.Compact(&compacted, body); err == nil {
+			body = compacted.Bytes()
+		}
 		f.Constraints = append(f.Constraints, string(body))
 	}
 }

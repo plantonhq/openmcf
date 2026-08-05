@@ -1,0 +1,219 @@
+# AwsEventBridgeBus
+
+> Generated from the protobuf schema by `make generate-reference` -- do not
+> edit by hand. To change a fact on this page, change the proto field comment
+> or validation rule it is derived from, then regenerate.
+
+**apiVersion**: `aws.planton.dev/v1`
+
+AwsEventBridgeBusSpec defines the desired configuration for an AWS EventBridge
+custom event bus.
+
+EventBridge is a serverless event bus that connects applications using events.
+Every AWS account includes a "default" event bus that receives events from AWS
+services automatically. This component creates **custom** event buses for
+application-defined events and partner integrations.
+
+Custom buses isolate event traffic from the default bus, enabling fine-grained
+access control, dedicated encryption, and independent dead-letter queue routing.
+EventBridge rules (a separate resource) attach to a bus and route matching
+events to targets such as Lambda, SQS, SNS, and Step Functions.
+
+Notes:
+- The bus name is derived from `metadata.name`. You cannot create a bus named
+  "default" (it already exists in every account).
+- For partner event buses, set `event_source_name` to the partner source name.
+  The bus name (`metadata.name`) must match the event source name.
+- Credentials, region, and deployment workflow live outside this spec in stack
+  inputs.
+
+## Example
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsEventBridgeBus
+metadata:
+  name: test-bus
+  org: test-org
+  env: dev
+  id: test-bus-dev
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: test-org
+    pulumi.planton.dev/project: test-project
+    pulumi.planton.dev/stack.name: dev.AwsEventBridgeBus.test-bus
+spec:
+  region: us-east-1
+  description: Test event bus for local development
+```
+
+## Spec Fields
+
+| Path | Type | Required | Default | References |
+|---|---|---|---|---|
+| `spec.region` | `string` | yes |  |  |
+| `spec.description` | `string` |  |  |  |
+| `spec.kmsKeyIdentifier` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.eventSourceName` | `string` |  |  |  |
+| `spec.deadLetterConfig` | `AwsEventBridgeBusDeadLetterConfig` |  |  |  |
+| `spec.deadLetterConfig.arn` | `string \| valueFrom` | yes |  | AwsSqsQueue (`status.outputs.queue_arn`) |
+| `spec.logConfig` | `AwsEventBridgeBusLogConfig` |  |  |  |
+| `spec.logConfig.level` | `string` | yes |  |  |
+| `spec.logConfig.includeDetail` | `string` |  |  |  |
+| `spec.resourcePolicy` | `object` |  |  |  |
+
+## Field Details
+
+### spec.region
+
+`string` · required
+
+The AWS region where the resource will be created.
+Example: "us-west-2", "eu-west-1"
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.description
+
+`string`
+
+Human-readable description of the event bus.
+Maximum length is 512 characters.
+
+- rule: {"string":{"maxLen":"512"}}
+
+### spec.kmsKeyIdentifier
+
+`string | valueFrom`
+
+KMS key identifier for encrypting events on this bus. Accepts a KMS key
+ARN, key ID, key alias, or key alias ARN. When omitted, events are
+encrypted with an AWS-owned key at no additional cost.
+
+Accepts a direct value or a reference to an AwsKmsKey resource.
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.eventSourceName
+
+`string`
+
+Partner event source name. Set this only when creating a bus for a SaaS
+partner integration (e.g., Datadog, Zendesk, PagerDuty).
+
+The value must match the pattern: aws.partner/{partner}/{...} and the bus
+name (`metadata.name`) must match this value exactly.
+
+This field is immutable — changing it forces bus replacement.
+
+### spec.deadLetterConfig
+
+`AwsEventBridgeBusDeadLetterConfig`
+
+Dead letter queue configuration for the event bus. When set, events that
+fail delivery to any rule target on this bus are routed to the specified
+SQS queue for investigation and reprocessing.
+
+This is the bus-level DLQ — it catches events that cannot be delivered
+to ANY target on any rule attached to this bus. Individual rules can also
+have their own DLQ configuration (configured on AwsEventBridgeRule).
+
+### spec.deadLetterConfig.arn
+
+`string | valueFrom` · required
+
+ARN of the SQS queue to use as the dead letter queue. The queue must
+exist in the same AWS account and region as the event bus.
+
+Accepts a direct ARN or a reference to an AwsSqsQueue resource.
+
+- references: AwsSqsQueue (`status.outputs.queue_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSqsQueue, name: <that resource's name>, fieldPath: status.outputs.queue_arn}} -- a bare string does not parse
+
+### spec.logConfig
+
+`AwsEventBridgeBusLogConfig`
+
+Logging configuration for the event bus. When set, EventBridge writes
+event delivery logs to CloudWatch Logs. Useful for debugging event
+routing, monitoring delivery failures, and auditing event traffic.
+
+- rule: level must be one of: OFF, ERROR, INFO, TRACE
+- rule: include_detail must be one of: NONE, FULL
+
+### spec.logConfig.level
+
+`string` · required
+
+Logging level. Controls which events are logged.
+
+Valid values:
+- "OFF"   — no logging
+- "ERROR" — log only delivery failures
+- "INFO"  — log delivery successes and failures
+- "TRACE" — log all events including matched/unmatched (most verbose)
+
+When the log_config block is provided, this field is required.
+
+- rule: {"required":true}
+
+### spec.logConfig.includeDetail
+
+`string`
+
+Whether to include the full event detail in log entries.
+
+Valid values:
+- "NONE" — exclude event detail from logs (smaller log volume)
+- "FULL" — include complete event detail in each log entry
+
+Default behavior when omitted: "NONE".
+
+### spec.resourcePolicy
+
+`object`
+
+Resource-based policy for the event bus. Controls which AWS principals
+(accounts, organizations, or roles) may put events onto this bus —
+the mechanism behind cross-account event ingestion. Expressed as a
+standard IAM policy document structure; one policy per bus (statements
+express per-account/per-org grants). When unset, only the owning
+account can put events.
+
+## Validation Rules
+
+- `event_source_name_pattern`: event_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)
+
+## Outputs
+
+Reference an output from another manifest as `valueFrom: {kind: AwsEventBridgeBus, name: <resource-name>, fieldPath: status.outputs.<output>}`.
+
+| Output | Type | Description |
+|---|---|---|
+| `status.outputs.bus_name` | `string` | The name of the event bus. This is the primary identifier used in EventBridge API calls and in rule configurations that target this bus. |
+| `status.outputs.bus_arn` | `string` | The Amazon Resource Name (ARN) of the event bus. Used for IAM policies, cross-account event delivery, and as a reference in other resources. |
+
+## References
+
+Fields that can point at another resource's outputs:
+
+| Field | Kind | Output |
+|---|---|---|
+| `spec.kmsKeyIdentifier` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.deadLetterConfig.arn` | AwsSqsQueue | `status.outputs.queue_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEventBridgeRule | `spec.eventBusName` | `status.outputs.bus_name` |
+| AwsSesConfigurationSet | `spec.eventDestinations[].eventBus` | `status.outputs.bus_arn` |
+
+## See Also
+
+- [Overview](./README.md)
+- [Design notes](./docs/README.md)

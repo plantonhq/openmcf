@@ -57,6 +57,10 @@ protos:
 buf-lint:
 	$(MAKE) -C apis buf-lint
 
+.PHONY: buf-breaking
+buf-breaking:
+	$(MAKE) -C apis buf-breaking
+
 .PHONY: bazel-mod-tidy
 bazel-mod-tidy:
 	${BAZEL} mod tidy
@@ -111,6 +115,17 @@ generate-proto-docs:
 		--out pkg/protodocs/index.json.gz \
 		--include dev/planton
 	rm -f build/proto-docs-image.binpb
+
+# Regenerates the committed catalog reference: per-kind reference.md files
+# (co-located with each kind's protos) plus the catalog-level indexes,
+# foreign-key graph, and commons page, all from the compiled-in descriptors
+# via the explain engine. Always whole-catalog: cross-kind sections depend
+# on every other kind's schema, so there is deliberately no way to scope a
+# run. Deterministic: unchanged schemas regenerate byte-identical files
+# (enforced by the drift test in pkg/explain/refgen).
+.PHONY: generate-reference
+generate-reference:
+	go run ./pkg/explain/refgen
 
 .PHONY: build-go
 build-go: fmt deps vet

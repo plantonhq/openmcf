@@ -76,6 +76,28 @@ The system monitors specific paths to determine which components need releases:
 
 A single commit can trigger multiple releases if it touches multiple components.
 
+## Mass-change guard
+
+A push that touches many modules at once (a sweeping refactor, a lint fix
+across all components) is a signal that a proper full release is coming.
+Auto-tagging every affected module would flood Actions with redundant
+per-module releases, so `auto-tag.yaml` skips module tags when the number of
+unique changed components reaches a threshold:
+
+- **Threshold:** `MODULE_AUTO_TAG_THRESHOLD` in the `env` block at the top of
+  [`auto-tag.yaml`](../auto-tag.yaml) (default: `5`). Tune it there.
+- **Counting:** unique `provider/component` pairs. A component changed in both
+  its `iac/pulumi` and `iac/tf` directories counts once; `_test` providers are
+  excluded.
+- **Scope:** only Pulumi and Terraform module tags are skipped. CLI and
+  Website tags are unaffected.
+- **Bypass:** the guard applies only to push events. Manual dispatch with
+  `force_pulumi_all` / `force_terraform_all` always tags, regardless of count.
+
+When the guard trips, the run's step summary explains what was skipped and
+why. To release the modules anyway, cut a proper release or force module tags
+via manual dispatch.
+
 ## Sequence numbers
 
 Multiple releases on the same day increment a sequence number:

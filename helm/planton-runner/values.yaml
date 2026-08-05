@@ -50,6 +50,39 @@ temporal:
   # -- Maximum concurrent Temporal activities.
   maxConcurrency: 10
 
+# Build capability -- this runner executes build pipelines on its own cluster:
+# it creates Tekton PipelineRuns, streams task pod logs to the control plane,
+# receives Tekton CloudEvents on its webhook, and serves readiness probes.
+# Requires Tekton Pipelines installed on the cluster and executionMode
+# temporal or dual (the build worker is a Temporal worker).
+build:
+  # -- Enable the pipeline-build worker and the Tekton CloudEvents webhook.
+  # Rendered explicitly either way so the deployment states its contract:
+  # a runner without builds must not run a webhook that nothing should call.
+  enabled: false
+
+  # -- Namespace where build PipelineRuns land when a build connection leaves
+  # placement empty, and the namespace the log streamer watches. Empty uses
+  # the runner's own namespace. Exactly ONE build-capable runner may watch a
+  # Tekton namespace (the log streamer is a singleton per namespace).
+  tektonNamespace: ""
+
+  # -- Port the Tekton CloudEvents webhook listens on inside the container.
+  webhookPort: 8086
+
+  rbac:
+    # -- Create the Role/RoleBinding the build capability needs in the build
+    # namespace (create PipelineRuns and supporting resources, reconcile by
+    # list, label-scoped cleanup, follow task pod logs), plus the read grant
+    # on Tekton's config-defaults ConfigMap that makes the events-sink
+    # readiness check conclusive.
+    create: true
+
+  tekton:
+    # -- Namespace of the Tekton Pipelines installation (where its cluster-wide
+    # config-defaults ConfigMap lives). Tekton's installer pins this name.
+    installNamespace: "tekton-pipelines"
+
 resources:
   requests:
     cpu: 100m

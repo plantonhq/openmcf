@@ -119,19 +119,29 @@ func run() error {
 		}
 
 		lowerKind := lowerNoSep(kindName) // awsalb
-		importAlias := lowerKind + "v1"   // awsalbv1
+
+		// The version segment of a kind's package path follows its declared
+		// version in the registry — never a literal. A kind without a valid
+		// version fails generation loudly instead of mapping to a package
+		// that does not exist.
+		versionDir, err := crkreflect.KindVersion(cloudResourceKind)
+		if err != nil {
+			return errors.Wrapf(err, "cannot derive the package path for %s", kindName)
+		}
+
+		importAlias := lowerKind + versionDir // awsalbv1
 
 		// all providers use flat structure
 		importPath := fmt.Sprintf(
-			"github.com/plantonhq/planton/apis/dev/planton/provider/%s/%s/v1",
-			provSlug, lowerKind)
+			"github.com/plantonhq/planton/apis/dev/planton/provider/%s/%s/%s",
+			provSlug, lowerKind, versionDir)
 
 		// Skip kinds whose API packages have not been implemented yet.
 		// The package directory is created when proto files are added and
 		// buf generate produces the corresponding .pb.go files. Until then,
 		// including the import would break both Gazelle resolution and Go
 		// compilation.
-		pkgDir := filepath.Join("apis", "dev", "planton", "provider", provSlug, lowerKind, "v1")
+		pkgDir := filepath.Join("apis", "dev", "planton", "provider", provSlug, lowerKind, versionDir)
 		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
 			fmt.Fprintf(os.Stderr, "skipping %s: package dir %s not found\n", kindName, pkgDir)
 			continue

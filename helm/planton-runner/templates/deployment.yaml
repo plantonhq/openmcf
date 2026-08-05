@@ -1,3 +1,4 @@
+{{- include "planton-runner.validateBuild" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,10 @@ metadata:
   labels:
     {{- include "planton-runner.labels" . | nindent 4 }}
 spec:
-  # The runner maintains a stateful tunnel connection -- always exactly 1 replica.
+  # Always exactly 1 replica: the runner maintains a stateful tunnel
+  # connection, and when builds are enabled the build log streamer is a
+  # singleton per watched Tekton namespace -- a second replica would ship
+  # duplicate log entries.
   replicas: 1
   strategy:
     type: RollingUpdate
@@ -57,6 +61,25 @@ spec:
             - name: TEMPORAL_MAX_CONCURRENCY
               value: {{ .Values.temporal.maxConcurrency | quote }}
             {{- end }}
+            # Build capability: rendered explicitly BOTH ways so the deployment
+            # states its contract. The two flags flip together -- a build
+            # cluster needs the Tekton CloudEvents webhook, and a runner
+            # without builds must not run a webhook nothing should call.
+            - name: BUILD_WORKER_ENABLED
+              value: {{ .Values.build.enabled | quote }}
+            - name: WEBHOOK_ENABLED
+              value: {{ .Values.build.enabled | quote }}
+            {{- if .Values.build.enabled }}
+            - name: WEBHOOK_PORT
+              value: {{ .Values.build.webhookPort | quote }}
+            {{- if .Values.build.tektonNamespace }}
+            # Build placement: PipelineRuns whose build connection names no
+            # namespace land here, and the log streamer watches exactly this
+            # namespace. Empty falls back to the runner's own namespace.
+            - name: TEKTON_NAMESPACE
+              value: {{ .Values.build.tektonNamespace | quote }}
+            {{- end }}
+            {{- end }}
           ports:
             - name: grpc
               containerPort: {{ .Values.runner.port }}
@@ -67,6 +90,11 @@ spec:
             - name: admin
               containerPort: 8094
               protocol: TCP
+            {{- if .Values.build.enabled }}
+            - name: webhook
+              containerPort: {{ .Values.build.webhookPort }}
+              protocol: TCP
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz

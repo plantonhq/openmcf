@@ -1,0 +1,74 @@
+# =============================================================================
+# Definitions Release (Reusable Workflow)
+# =============================================================================
+# Packages the skill and agent definition trees (skills/, agents/) into a
+# definitions release and uploads it to Cloudflare R2 (downloads.planton.dev):
+# one deterministic zip per skill, each agent's instructions file, and a
+# definitions-manifest.json carrying the release version, per-artifact
+# SHA-256 checksums, and the compatibility floor from skills/compat.yaml.
+#
+# Consumers resolve the manifest at a pinned tag and verify every artifact's
+# checksum before installing -- which is why the manifest publishes checksums
+# explicitly rather than relying on transport integrity alone.
+#
+# Artifacts created (per skill/agent present in the tree):
+#   definitions-manifest.json
+#   skill-<slug>.zip
+#   agent-<slug>-instructions.md
+#
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/definitions/{file}
+# Public URL:  https://downloads.planton.dev/releases/{tag}/definitions/{file}
+#
+# Called by: .github/workflows/release.yaml (after CLI release creates the release)
+# =============================================================================
+
+name: release.definitions
+
+on:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_R2_ACCESS_KEY_ID:
+        required: true
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY:
+        required: true
+      CLOUDFLARE_R2_ENDPOINT:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  R2_BUCKET: downloads-dot-planton-dot-dev-bucket
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Package definitions release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          go run ./pkg/skills/defspack -version "$TAG" -out build/definitions
+
+      - name: Upload definitions to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "Uploading definitions release to R2 (releases/${TAG}/definitions/)..."
+          for file in build/definitions/*; do
+            name="$(basename "$file")"
+            R2_KEY="releases/${TAG}/definitions/${name}"
+            aws s3 cp "$file" "s3://${R2_BUCKET}/${R2_KEY}" \
+              --endpoint-url "${AWS_ENDPOINT_URL}"
+            echo "  uploaded: https://downloads.planton.dev/${R2_KEY}"
+          done

@@ -101,3 +101,11 @@ build-optional-linter-plugin:
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
 	buf lint
+
+.PHONY: buf-breaking
+# Compares the module's protos against the main branch. The rule set lives in
+# buf.yaml (breaking:). While every kind sits in the pre-launch alpha posture
+# this check is advisory — CI surfaces findings as warnings; it becomes
+# channel-aware blocking once versions declare beta/stable channels.
+buf-breaking:
+	buf breaking --against '../.git#branch=main,subdir=apis'

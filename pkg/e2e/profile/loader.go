@@ -27,8 +27,12 @@ func LoadProviderProfile(repoRoot, provider string) (*providerv1.ProviderE2EProf
 
 // LoadComponentProfile reads and parses a component's E2E profile from disk.
 func LoadComponentProfile(repoRoot, provider, component string) (*componentv1.ComponentE2EProfile, error) {
+	path, err := ComponentProfilePath(repoRoot, provider, component)
+	if err != nil {
+		return nil, err
+	}
 	p := &componentv1.ComponentE2EProfile{}
-	if err := loadYAMLProto(ComponentProfilePath(repoRoot, provider, component), p); err != nil {
+	if err := loadYAMLProto(path, p); err != nil {
 		return nil, errors.Wrapf(err, "loading component E2E profile for %s/%s", provider, component)
 	}
 	return p, nil

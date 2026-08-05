@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/gitrepo"
@@ -109,15 +110,22 @@ func GetModuleDir(targetManifestPath string, cmd *cobra.Command, prov shared.Iac
 	return moduleDir, nil
 }
 
-// buildExpectedModulePath constructs the expected module path for error messages
+// buildExpectedModulePath constructs the expected module path for error
+// messages, resolving the provider and version segments from the kind
+// registry — the same derivation the real resolvers use, so the hint can
+// never name a path the resolvers would not have tried.
 func buildExpectedModulePath(repoPath, kindName, provName string) string {
-	// Get provider from kind name (e.g., KubernetesNats -> kubernetes)
+	kind := crkreflect.KindFromString(kindName)
+
+	// Error path: an unresolvable kind falls back to plausible segments purely
+	// to render the hint; the real resolution has already failed with the cause.
 	provider := strings.ToLower(kindName)
-	for _, p := range []string{"kubernetes", "aws", "gcp", "azure", "civo", "digitalocean", "cloudflare"} {
-		if strings.HasPrefix(strings.ToLower(kindName), p) {
-			provider = p
-			break
-		}
+	if p := crkreflect.GetProvider(kind); p != cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified {
+		provider = strings.ReplaceAll(p.String(), "_", "")
+	}
+	versionDir, err := crkreflect.KindVersion(kind)
+	if err != nil {
+		versionDir = "v1"
 	}
 
 	subdir := "pulumi"
@@ -126,7 +134,7 @@ func buildExpectedModulePath(repoPath, kindName, provName string) string {
 	}
 
 	return filepath.Join(repoPath, "apis/dev/planton/provider", provider,
-		strings.ToLower(kindName), "v1/iac", subdir)
+		strings.ToLower(kindName), versionDir, "iac", subdir)
 }
 
 // Error provides structured error information for better UX

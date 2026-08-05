@@ -120,6 +120,10 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 - Missing IaC modules (Pulumi or Terraform)
 - Missing documentation (research, user-facing, examples)
 - Missing supporting files (manifests, overviews)
+- Missing `GUIDE.md` (authored wisdom seeded per forge flow rule 023, following
+  `_rules/docs/write-planton-component-guide.mdc`) -- followed by
+  `make generate-reference` so the reference page's guide link and the catalog
+  indexes stay fresh (the reference freshness gate fails otherwise)
 
 **Validation (Execute in Sequence):**
 - After proto file creation/changes: Run `make protos` to regenerate Go stubs

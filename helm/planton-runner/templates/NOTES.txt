@@ -1,0 +1,35 @@
+The Planton runner is installed as {{ include "planton-runner.fullname" . }}
+in namespace {{ .Release.Namespace }}.
+
+Check that it is up and connected:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "planton-runner.fullname" . }}
+
+{{- if .Values.build.enabled }}
+
+Build capability is ENABLED. Two steps remain to make this cluster a build
+cluster:
+
+1. Point Tekton's CloudEvents sink at this runner's webhook, so live build
+   status flows without waiting on the reconciliation safety net. In the
+   {{ .Values.build.tekton.installNamespace }}/config-defaults ConfigMap set
+   (the /service-hub/tekton/cloud-event path is required -- the webhook
+   serves only that route, and a bare Service root 404s every event):
+
+     default-cloud-events-sink: http://{{ include "planton-runner.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/service-hub/tekton/cloud-event
+
+2. Register this cluster as a build connection (console: Connections -> Build,
+   or `planton apply` a TektonConnection naming this runner), then verify it --
+   the readiness check probes this exact cluster placement, from this runner,
+   over the same queue real builds ride.
+
+Builds land in namespace {{ include "planton-runner.buildNamespace" . }}.
+{{- else }}
+
+Build capability is DISABLED (build.enabled=false). This runner serves
+infrastructure operations only. To also run build pipelines on this cluster,
+install Tekton Pipelines, then upgrade with:
+
+  --set build.enabled=true --set runner.executionMode=dual
+{{- end }}

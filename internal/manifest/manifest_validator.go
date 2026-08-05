@@ -1,10 +1,10 @@
 package manifest
 
 import (
-	"buf.build/go/protovalidate"
 	"fmt"
 	"strings"
 
+	"buf.build/go/protovalidate"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -23,31 +23,76 @@ func Validate(manifestPath string) error {
 	return ValidateLoaded(manifest)
 }
 
-// ValidateLoaded runs protovalidate over an already-loaded manifest's spec. Callers that
-// load manifests from memory (rendered infra-chart templates) use this directly; Validate
-// wraps it for the file-path flow.
+// ValidateLoaded runs protovalidate over the complete manifest message: the
+// envelope (apiVersion and kind constants, metadata presence) and every rule
+// inside spec. The envelope constants are part of each kind's schema — a
+// manifest that declares the wrong apiVersion for its kind is invalid input,
+// not decoration — so they are enforced here, on every path that validates a
+// manifest. Callers that load manifests from memory use this directly;
+// Validate wraps it for the file-path flow.
 func ValidateLoaded(manifest proto.Message) error {
-	spec, err := ExtractSpec(manifest)
-	if err != nil {
-		return errors.Wrap(err, "failed to extract spec from manifest")
-	}
-
 	v, err := protovalidate.New(
 		protovalidate.WithDisableLazy(),
-		protovalidate.WithMessages(spec),
+		protovalidate.WithMessages(manifest),
 	)
 	if err != nil {
-		fmt.Println("failed to initialize validator:", err)
+		return errors.Wrap(err, "failed to initialize manifest validator")
 	}
 
-	validationErr := v.Validate(spec)
-	if validationErr != nil {
-		return formatValidationError(validationErr)
+	validationErr := v.Validate(manifest)
+	if validationErr == nil {
+		return nil
 	}
-	return nil
+	return formatValidationError(describeViolations(manifest, validationErr))
 }
 
-func formatValidationError(err error) error {
+// describeViolations turns a protovalidate error into user-facing lines.
+// Envelope violations (apiVersion, kind) are rephrased into plain language
+// naming the provided value, the kind, and the exact fix — the raw rule text
+// ("value must equal ...") does not tell the user which line of their manifest
+// to change. All other violations keep protovalidate's field-path attribution.
+func describeViolations(manifest proto.Message, err error) string {
+	var valErr *protovalidate.ValidationError
+	if !errors.As(err, &valErr) {
+		msg := strings.TrimPrefix(err.Error(), "validation error:")
+		return strings.TrimSpace(msg)
+	}
+
+	kindName := string(manifest.ProtoReflect().Descriptor().Name())
+	var lines []string
+	for _, violation := range valErr.Violations {
+		path := protovalidate.FieldPathString(violation.Proto.GetField())
+		switch path {
+		case "api_version":
+			expected := envelopeConst(manifest, "api_version")
+			got := envelopeValue(manifest, "api_version")
+			if got == "" {
+				lines = append(lines, fmt.Sprintf(
+					"manifest is missing apiVersion: kind %s requires 'apiVersion: %s'",
+					kindName, expected))
+			} else {
+				lines = append(lines, fmt.Sprintf(
+					"apiVersion '%s' does not match kind %s: this kind requires 'apiVersion: %s'",
+					got, kindName, expected))
+			}
+		case "kind":
+			expected := envelopeConst(manifest, "kind")
+			got := envelopeValue(manifest, "kind")
+			if got == "" {
+				lines = append(lines, fmt.Sprintf(
+					"manifest is missing kind: write 'kind: %s'", expected))
+			} else {
+				lines = append(lines, fmt.Sprintf(
+					"kind '%s' is not the canonical name: write 'kind: %s'", got, expected))
+			}
+		default:
+			lines = append(lines, fmt.Sprintf("%s: %s", path, violation.Proto.GetMessage()))
+		}
+	}
+	return strings.Join(lines, "\n   ")
+}
+
+func formatValidationError(violationText string) error {
 	// Create colored output functions
 	red := color.New(color.FgRed, color.Bold).SprintFunc()
 	yellow := color.New(color.FgYellow, color.Bold).SprintFunc()
@@ -63,13 +108,7 @@ func formatValidationError(err error) error {
 	msg.WriteString(red("╚═══════════════════════════════════════════════════════════════════════════════╝") + "\n\n")
 
 	msg.WriteString(yellow("⚠️  Validation Errors:\n\n"))
-
-	// Display the actual validation errors (strip "validation error:" prefix if present)
-	errMsg := err.Error()
-	errMsg = strings.TrimPrefix(errMsg, "validation error:")
-	errMsg = strings.TrimPrefix(errMsg, "validation error:\n")
-	errMsg = strings.TrimSpace(errMsg)
-	msg.WriteString(cyan("   "+errMsg) + "\n\n")
+	msg.WriteString(cyan("   "+violationText) + "\n\n")
 
 	// Generic guidance
 	msg.WriteString(bold("💡 Next Steps:\n\n"))

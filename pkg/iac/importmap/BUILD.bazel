@@ -15,6 +15,7 @@ go_library(
     deps = [
         "//apis/dev/planton/iac/componentimportmap/v1:componentimportmap",
         "//apis/dev/planton/iac/providerimportcatalog/v1:providerimportcatalog",
+        "//pkg/crkreflect",
         "//pkg/protobufyaml",
         "@com_github_pkg_errors//:errors",
         "@org_golang_google_protobuf//proto",
@@ -26,6 +27,7 @@ go_test(
     name = "importmap_test",
     srcs = [
         "conformance_test.go",
+        "paths_test.go",
         "resolve_test.go",
     ],
     embed = [":importmap"],

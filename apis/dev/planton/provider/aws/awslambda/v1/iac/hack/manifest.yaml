@@ -4,27 +4,17 @@ metadata:
   name: awslambda-demo
 spec:
   region: us-west-2
-  function_name: awslambda-demo
   description: Example Lambda function
-  role_arn:
+  roleArn:
     value: arn:aws:iam::123456789012:role/lambda-basic-exec
-  code_source_type: CODE_SOURCE_TYPE_S3
-  runtime: nodejs18.x
-  handler: index.handler
   s3:
-    bucket: my-bucket
+    bucket:
+      value: my-bucket
     key: lambda/hello.zip
-  memory_mb: 128
-  timeout_seconds: 10
-  reserved_concurrency: -1
+  runtime: nodejs22.x
+  handler: index.handler
+  architecture: x86_64
+  memorySizeMb: 128
+  timeoutSeconds: 10
   environment:
     EXAMPLE: "true"
-  architecture: X86_64
-  # layer_arns:
-  #   - arn:aws:lambda:us-east-1:123456789012:layer:example:1
-  # subnets:
-  #   - value: subnet-abc123
-  # security_groups:
-  #   - value: sg-abc123
-  # kms_key_arn:
-  #   value: arn:aws:kms:us-east-1:123456789012:key/abc123

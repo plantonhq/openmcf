@@ -3,6 +3,7 @@ kind: OpenStackRoleAssignment
 metadata:
   name: test-role-assignment
 spec:
-  role_id: "test-role-uuid"
-  project_id: "test-project-uuid"
-  user_id: "test-user-uuid"
+  roleId: "test-role-uuid"
+  projectId:
+    value: test-project-uuid
+  userId: "test-user-uuid"

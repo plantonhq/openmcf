@@ -5,7 +5,6 @@ package e2e
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -996,14 +995,9 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		}
 	}
 
-	var moduleDir string
-	switch engine {
-	case "pulumi":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "kubernetes", component, "v1", "iac", "pulumi")
-	case "terraform":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "kubernetes", component, "v1", "iac", "tf")
-	default:
-		t.Fatalf("unsupported engine: %s", engine)
+	moduleDir, err := discovery.ModuleDir(repoRoot, "kubernetes", component, engine)
+	if err != nil {
+		t.Fatalf("failed to locate %s %s module: %v", component, engine, err)
 	}
 
 	if !fileExists(moduleDir) {
@@ -1016,7 +1010,7 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	}
 
 	if len(scenarios) == 0 {
-		t.Skipf("no test scenarios found for %s in %s/v1/e2e/", component, component)
+		t.Skipf("no test scenarios found for %s under its e2e/scenarios directory", component)
 	}
 
 	t.Logf("Discovered %d scenarios for %s [%s]", len(scenarios), component, engine)

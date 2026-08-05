@@ -130,6 +130,15 @@ func TestImportMapConformance(t *testing.T) {
 					t.Errorf("metadata.name is %q, want %q", m.GetMetadata().GetName(), component)
 				}
 
+				versionDir, err := crkreflect.ComponentVersionDir(component)
+				if err != nil {
+					t.Fatalf("component version dir: %v", err)
+				}
+				mapRelPath, err := ComponentImportMapPath("", provider, component)
+				if err != nil {
+					t.Fatalf("component import map path: %v", err)
+				}
+
 				declaredValues := map[string]*componentv1.ImportValue{}
 				for _, v := range m.GetSpec().GetValues() {
 					if v.GetName() == "" {
@@ -145,7 +154,7 @@ func TestImportMapConformance(t *testing.T) {
 				}
 
 				// Every module-declared resource type must be importable.
-				moduleTypes, moduleNames := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, "v1/iac/tf"))
+				moduleTypes, moduleNames := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, versionDir, "iac/tf"))
 				if len(moduleTypes) == 0 {
 					t.Fatal("module declares no resources -- wrong path?")
 				}
@@ -200,7 +209,7 @@ func TestImportMapConformance(t *testing.T) {
 							t.Errorf("placeholder {%s} (id_format of %s) not declared in the component map -- "+
 								"add a value entry for it to %s (prefer a derivable source; where_to_find is mandatory when nothing derives)",
 								placeholder, resourceType,
-								ComponentImportMapPath("", provider, component))
+								mapRelPath)
 						}
 					}
 				}

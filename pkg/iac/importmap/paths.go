@@ -3,6 +3,9 @@ package importmap
 import (
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
 const (
@@ -11,11 +14,6 @@ const (
 	// ProviderCatalogRelPath is the provider import catalog's path relative to
 	// the provider directory (e.g. aws/aa_import/catalog.yaml).
 	ProviderCatalogRelPath = "aa_import/catalog.yaml"
-
-	// ComponentImportMapRelPath is the component import map's path relative to
-	// the component directory (e.g. awss3bucket/v1/iac/import-map.yaml). It
-	// sits next to the module it maps.
-	ComponentImportMapRelPath = "v1/iac/import-map.yaml"
 )
 
 // ProviderCatalogPath returns the absolute path to a provider's import catalog.
@@ -23,9 +21,17 @@ func ProviderCatalogPath(repoRoot, provider string) string {
 	return filepath.Join(repoRoot, providerBase, provider, ProviderCatalogRelPath)
 }
 
-// ComponentImportMapPath returns the absolute path to a component's import map.
-func ComponentImportMapPath(repoRoot, provider, component string) string {
-	return filepath.Join(repoRoot, providerBase, provider, component, ComponentImportMapRelPath)
+// ComponentImportMapPath returns the absolute path to a component's import
+// map (e.g. awss3bucket/v1/iac/import-map.yaml — it sits next to the module
+// it maps). The version segment follows the kind's declared version in the
+// registry, so an unregistered component name fails here rather than
+// composing a path that does not exist.
+func ComponentImportMapPath(repoRoot, provider, component string) (string, error) {
+	versionDir, err := crkreflect.ComponentVersionDir(component)
+	if err != nil {
+		return "", errors.Wrapf(err, "cannot locate the import map for %s/%s", provider, component)
+	}
+	return filepath.Join(repoRoot, providerBase, provider, component, versionDir, "iac", "import-map.yaml"), nil
 }
 
 // SplitAttributePath splits a declared attribute sub-path (a provider

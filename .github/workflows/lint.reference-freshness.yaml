@@ -1,0 +1,65 @@
+# =============================================================================
+# Catalog Reference Freshness Guard
+# =============================================================================
+# Fails the PR when the committed catalog docs artifacts are out of sync with
+# the schemas that generate them:
+#
+#   - The per-kind reference.md pages, provider/root reference-index.md files,
+#     reference-graph.yaml, and reference-commons.md must be byte-identical to
+#     a fresh whole-catalog generation, with no orphans in either direction,
+#     and every embedded example manifest must protovalidate. To fix: run
+#     `make generate-reference` and commit the result. A failing example
+#     manifest is a real catalog bug -- fix the manifest, never suppress it.
+#   - The embedded proto-docs index (the comment source those pages render
+#     from) must cover every compiled-in proto. To fix: run
+#     `make generate-proto-docs` and commit the result.
+#
+# The trigger paths are deliberately broad (apis, all Go packages, module
+# files): the generated output is a function of the schemas AND the full
+# import graph of the generator, including dependency versions -- a narrower,
+# hand-enumerated path list would silently rot as imports evolve. See
+# pkg/explain/refgen and pkg/protodocs.
+# =============================================================================
+
+name: lint.reference-freshness
+
+on:
+  pull_request:
+    paths:
+      - 'apis/**'
+      - 'pkg/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/lint.reference-freshness.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apis/**'
+      - 'pkg/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/lint.reference-freshness.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  reference-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Catalog reference freshness
+        run: go test ./pkg/explain/...
+
+      - name: Proto-docs index freshness
+        run: go test ./pkg/protodocs/

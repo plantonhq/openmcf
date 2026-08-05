@@ -1017,14 +1017,9 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		}
 	}
 
-	var moduleDir string
-	switch engine {
-	case "pulumi":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "aws", component, "v1", "iac", "pulumi")
-	case "terraform":
-		moduleDir = filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "aws", component, "v1", "iac", "tf")
-	default:
-		t.Fatalf("unsupported engine: %s", engine)
+	moduleDir, err := discovery.ModuleDir(repoRoot, "aws", component, engine)
+	if err != nil {
+		t.Fatalf("failed to locate %s %s module: %v", component, engine, err)
 	}
 
 	if !fileExists(moduleDir) {

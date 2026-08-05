@@ -3,9 +3,8 @@ kind: OpenStackLoadBalancerMember
 metadata:
   name: test-member
 spec:
-  pool_id:
+  poolId:
     value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
   address: "10.0.0.10"
-  protocol_port: 8080
+  protocolPort: 8080
   weight: 1
-  description: "Test member for local development"
