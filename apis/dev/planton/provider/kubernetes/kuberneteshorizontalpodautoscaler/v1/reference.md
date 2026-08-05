@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesHorizontalPodAutoscalerSpec** scales a workload's replica count
 automatically between a floor and a ceiling, driven by observed metrics —
 the full autoscaling/v2 surface: resource utilization (CPU/memory),

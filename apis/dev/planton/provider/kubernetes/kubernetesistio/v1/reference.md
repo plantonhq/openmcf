@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesIstioSpec** installs the Istio service-mesh CONTROL PLANE from the
 official Helm charts (`base` + `istiod`, plus `cni` + `ztunnel` in ambient mode,
 all from https://istio-release.storage.googleapis.com/charts). istiod is the

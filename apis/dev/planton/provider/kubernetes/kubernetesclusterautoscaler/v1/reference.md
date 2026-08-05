@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesClusterAutoscalerSpec** installs the Kubernetes Cluster
 Autoscaler from the official Helm chart (`cluster-autoscaler` at
 https://kubernetes.github.io/autoscaler). The autoscaler grows and

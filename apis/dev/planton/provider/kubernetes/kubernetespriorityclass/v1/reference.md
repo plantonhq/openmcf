@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesPriorityClassSpec** defines one rung of the cluster's workload
 importance ladder. Pods reference the class by name (the shared workload
 pod spec's `priority_class_name`); the scheduler places higher-priority

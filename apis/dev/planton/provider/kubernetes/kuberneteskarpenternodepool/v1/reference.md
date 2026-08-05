@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 KubernetesKarpenterNodePoolSpec declares a Karpenter NodePool — the fleet
 shape Karpenter provisions machines from. A NodePool answers "what nodes
 may exist": the instance-type/zone/capacity-type constraints

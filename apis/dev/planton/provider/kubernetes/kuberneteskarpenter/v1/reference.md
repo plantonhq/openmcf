@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKarpenterSpec** installs the Karpenter node-provisioning
 controller from the official OCI-served Helm charts
 (`oci://public.ecr.aws/karpenter/karpenter`, with the CRDs from the

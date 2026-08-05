@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKedaSpec** installs KEDA — Kubernetes Event-Driven Autoscaling
 — from the official Helm chart (`keda` at
 https://kedacore.github.io/charts). KEDA scales workloads on REAL-WORLD
