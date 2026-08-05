@@ -6,6 +6,6 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [ConfluentKafka](confluentkafka/v1/reference.md) | confluent-kafka spec | yes |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [ConfluentKafka](confluentkafka/v1/reference.md) | confluent-kafka spec | yes |  |

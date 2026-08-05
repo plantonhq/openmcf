@@ -1,0 +1,65 @@
+---
+description: Action rule to audit an existing architecture pattern for groundedness, schema freshness, frontmatter completeness, and adherence to the pattern standard.
+globs: []
+alwaysApply: false
+---
+
+# Rule: Audit Architecture Pattern
+
+**Purpose**: Guide an AI agent through auditing a file in the catalog's patterns library (`apis/dev/planton/provider/patterns/`). Verifies the composition wisdom is grounded, current against every composed kind's schema, and structurally sound.
+
+**Trigger**: User references this rule or asks to audit/verify/review an architecture pattern.
+
+**Output**: An audit report listing issues found, organized by severity (Critical, Warning, Style), with specific fixes for each issue.
+
+---
+
+## Audit Procedure
+
+### Step 1: Read Source Files
+
+1. The pattern itself.
+2. For EVERY kind declared in the frontmatter: its `spec.proto`, `reference.md`, and (where behavior is claimed) its IaC module code. A pattern is only as current as its most-drifted kind.
+
+### Step 2: Structural Checks (Critical)
+
+- Frontmatter present with a `kinds:` block list; every declared kind resolves in the registry; every kind whose manifest appears in the pattern is declared (and no passing mentions are).
+- `go test ./pkg/explain/refgen/` passes (kind resolution, embedded manifest validation, link resolution are CI-enforced -- a red gate is finding #1).
+- The pattern carries the standard sections: problem, composition, choices and consequences, when not to use.
+
+### Step 3: Groundedness Checks (Critical)
+
+- The stated failure mode is real: the schemas/module code of the composed kinds actually produce it. A pattern teaching a failure that cannot happen -- or missing one that always happens -- is a Critical finding.
+- Complete manifests validate against current schemas; `valueFrom` wiring uses `kind` / `name` / `fieldPath` exactly; field spellings match the reference pages (camelCase spec YAML, snake_case fieldPath).
+- Schema freshness: no removed/renamed fields, kinds, or enum values anywhere in the prose or manifests.
+
+### Step 4: Judgment Quality (Warning)
+
+- "Choices and consequences" states the diagram consequence of each structural choice (visible node vs invisible flag; what stays customizable).
+- The judgment is decidable: a reader can choose between the shapes from what is written, without external knowledge.
+- "When not to use this" is honest and non-empty -- a pattern with no boundary is advertising, not wisdom.
+- Content a well-trained model could write without repo access (generic cloud essay content) is flagged for deletion.
+
+### Step 5: Style Checks (Style)
+
+- Marketing language banned; facts restated from reference pages flagged (link instead); slug and title name the composition plainly.
+
+---
+
+## Report Format
+
+```
+# Pattern Audit: {slug}
+
+## Critical
+- [file:line] {issue} -> {specific fix}
+
+## Warning
+- ...
+
+## Style
+- ...
+
+## Verdict
+{pass | fixes required}, {one-line rationale}
+```

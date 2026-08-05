@@ -165,6 +165,27 @@ func TestReferenceEdges(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownGuideLine(t *testing.T) {
+	// The `**Guide**:` prefix is stable grammar like the headings: agents
+	// grep it to discover which kinds carry authored wisdom, and the target
+	// is always the sibling file named exactly GUIDE.md (never renamed
+	// between source and artifact).
+	text := renderKindMarkdown(t, "kubernetes-namespace", MarkdownOptions{HasGuide: true})
+	if !strings.Contains(text, "**Guide**: [GUIDE.md](GUIDE.md)") {
+		t.Errorf("guide head line missing when HasGuide is set:\n%s", text)
+	}
+	// The line belongs to the page head: it must appear before the first H2.
+	if idx := strings.Index(text, "**Guide**:"); idx > strings.Index(text, "\n## ") {
+		t.Errorf("guide line must render in the page head, before the first section")
+	}
+
+	// Without a guide the line must not render -- a link to a missing file
+	// would teach every reader a falsehood.
+	if strings.Contains(renderKindMarkdown(t, "kubernetes-namespace", MarkdownOptions{}), "**Guide**:") {
+		t.Error("guide line must not render without a guide")
+	}
+}
+
 func TestRenderMarkdownEnumsFullyExpanded(t *testing.T) {
 	text := renderKindMarkdown(t, "kubernetes-namespace", MarkdownOptions{})
 	if !strings.Contains(text, "Allowed values (use exactly as shown):") {

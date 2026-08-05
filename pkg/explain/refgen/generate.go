@@ -59,6 +59,10 @@ type kindEntry struct {
 	provider string
 	report   *explain.Report
 	example  string
+	// hasGuide records whether an authored GUIDE.md sits beside the kind's
+	// protos -- surfaced on the page head and in the indexes, so guide
+	// coverage is a one-glance answer.
+	hasGuide bool
 }
 
 // graphEdge is one foreign-key edge for the catalog graph: from's field can
@@ -109,6 +113,7 @@ func Generate(repoRoot string) (*Summary, error) {
 
 		entry := kindEntry{name: name, protoDir: protoDir, provider: provider, report: report}
 		kindDir := filepath.Join(repoRoot, "apis", protoDir)
+		entry.hasGuide = hasGuide(kindDir)
 		switch example, err := loadValidatedExample(res, kindDir); {
 		case err != nil:
 			summary.InvalidManifests = append(summary.InvalidManifests, InvalidManifest{Kind: name, Err: err})
@@ -147,11 +152,12 @@ func Generate(repoRoot string) (*Summary, error) {
 			ExampleYAML:  entry.example,
 			ReferencedBy: inbound[entry.name],
 			SeeAlso:      seeAlso(kindDir),
+			HasGuide:     entry.hasGuide,
 		}
 		summary.Files[filepath.Join("apis", entry.protoDir, "reference.md")] = explain.RenderMarkdown(entry.report, opts)
 	}
 	renderProviderIndexes(summary, entries)
-	renderRootIndex(summary, entries)
+	renderRootIndex(summary, entries, repoRoot)
 	renderGraph(summary, edges)
 	summary.Files[catalogPath("reference-commons.md")] = commonsContent
 
@@ -185,30 +191,43 @@ func renderProviderIndexes(summary *Summary, entries []kindEntry) {
 		fmt.Fprintf(&b, "# %s Components -- Reference Index\n\n", provider)
 		generatedBanner(&b, "Kind facts come from the protobuf schemas.")
 		fmt.Fprintf(&b, "%d kinds. Shared manifest grammar and the search grammar of every page:\n[reference-commons.md](../reference-commons.md). Cross-kind wiring:\n[reference-graph.yaml](../reference-graph.yaml).\n\n", len(kinds))
-		b.WriteString("| Kind | Purpose | Example |\n")
-		b.WriteString("|---|---|---|\n")
+		// The Example and Guide columns double as coverage x-rays: a blank
+		// Example is a kind missing its hack manifest, a blank Guide is a
+		// kind nobody has written wisdom for yet.
+		b.WriteString("| Kind | Purpose | Example | Guide |\n")
+		b.WriteString("|---|---|---|---|\n")
 		for _, entry := range kinds {
 			relPage := strings.TrimPrefix(entry.protoDir, providerPathPrefix+provider+"/") + "/reference.md"
 			example := ""
 			if entry.example != "" {
 				example = "yes"
 			}
-			fmt.Fprintf(&b, "| [%s](%s) | %s | %s |\n",
-				entry.name, relPage, indexCell(firstSentence(entry.report.Doc)), example)
+			guide := ""
+			if entry.hasGuide {
+				guide = "yes"
+			}
+			fmt.Fprintf(&b, "| [%s](%s) | %s | %s | %s |\n",
+				entry.name, relPage, indexCell(firstSentence(entry.report.Doc)), example, guide)
 		}
 		summary.Files[filepath.Join("apis", providerPathPrefix, provider, "reference-index.md")] = b.String()
 	}
 }
 
 // renderRootIndex emits the catalog's front door: where everything lives and
-// how to read it.
-func renderRootIndex(summary *Summary, entries []kindEntry) {
+// how to read it. It probes the repo for the authored catalog-level wisdom
+// (the catalog GUIDE.md and the patterns library) with the same
+// exists-or-no-mention idiom the kind pages use for their guides.
+func renderRootIndex(summary *Summary, entries []kindEntry, repoRoot string) {
 	providers := map[string]int{}
 	withExample := map[string]int{}
+	withGuide := map[string]int{}
 	for _, entry := range entries {
 		providers[entry.provider]++
 		if entry.example != "" {
 			withExample[entry.provider]++
+		}
+		if entry.hasGuide {
+			withGuide[entry.provider]++
 		}
 	}
 	names := make([]string, 0, len(providers))
@@ -221,14 +240,21 @@ func renderRootIndex(summary *Summary, entries []kindEntry) {
 	b.WriteString("# Cloud Component Catalog -- Reference Index\n\n")
 	generatedBanner(&b, "Kind facts come from the protobuf schemas.")
 	fmt.Fprintf(&b, "%d kinds across %d providers. Every kind has a `reference.md` co-located\nwith its protos: the complete spec field reference, validation rules,\noutputs, cross-kind references (both directions), and a validated example.\n\nStart with:\n\n", len(entries), len(names))
+	catalogRoot := filepath.Join(repoRoot, "apis", providerPathPrefix)
+	if _, err := os.Stat(filepath.Join(catalogRoot, "GUIDE.md")); err == nil {
+		b.WriteString("- [GUIDE.md](GUIDE.md) -- how to use this catalog: finding compatible\n  alternatives when the asked-for software has no kind of its own, and the\n  conventions that span providers.\n")
+	}
 	b.WriteString("- [reference-commons.md](reference-commons.md) -- the manifest grammar shared\n  by every kind (envelope, metadata, value/valueFrom, fieldPath spelling)\n  and the search grammar for reading these pages.\n")
 	b.WriteString("- [reference-graph.yaml](reference-graph.yaml) -- every foreign-key edge in\n  the catalog, for wiring resources and planning architectures.\n")
+	if _, err := os.Stat(filepath.Join(catalogRoot, "patterns", "README.md")); err == nil {
+		b.WriteString("- [patterns/](patterns/) -- authored architecture patterns: named\n  compositions of multiple kinds with validated wiring, and the trade-offs\n  behind them.\n")
+	}
 	b.WriteString("- The per-provider indexes below, which link every kind's page.\n\n")
-	b.WriteString("| Provider | Kinds | With Example |\n")
-	b.WriteString("|---|---|---|\n")
+	b.WriteString("| Provider | Kinds | With Example | With Guide |\n")
+	b.WriteString("|---|---|---|---|\n")
 	for _, provider := range names {
-		fmt.Fprintf(&b, "| [%s](%s/reference-index.md) | %d | %d |\n",
-			provider, provider, providers[provider], withExample[provider])
+		fmt.Fprintf(&b, "| [%s](%s/reference-index.md) | %d | %d | %d |\n",
+			provider, provider, providers[provider], withExample[provider], withGuide[provider])
 	}
 	summary.Files[catalogPath("reference-index.md")] = b.String()
 }
@@ -289,6 +315,15 @@ func loadValidatedExample(res explain.Resource, kindDir string) (string, error) 
 		return "", errors.Wrapf(err, "validate %s", path)
 	}
 	return string(raw), nil
+}
+
+// hasGuide reports whether an authored GUIDE.md sits beside the kind's
+// protos. Guide presence flows into the page head and the indexes; the
+// freshness gate makes adding or removing a guide without regenerating a
+// visible failure instead of silent staleness.
+func hasGuide(kindDir string) bool {
+	_, err := os.Stat(filepath.Join(kindDir, "GUIDE.md"))
+	return err == nil
 }
 
 // seeAlso links the page to the kind's hand-written prose when it exists.

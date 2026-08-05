@@ -6,6 +6,6 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [AtlasMongodb](atlasmongodb/v1/reference.md) | atlas-mongodb spec | yes |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [AtlasMongodb](atlasmongodb/v1/reference.md) | atlas-mongodb spec | yes |  |

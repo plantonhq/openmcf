@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesNamespaceSpec** defines the configuration for creating and managing a Kubernetes namespace.
 This spec implements a "Namespace-as-a-Service" pattern, abstracting the complexity of namespace
 configuration, resource quotas, network policies, and access control into a batteries-included,

@@ -6,8 +6,8 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [OpenFgaAuthorizationModel](openfgaauthorizationmodel/v1/reference.md) | OpenFgaAuthorizationModelSpec defines the configuration for an OpenFGA Authorization Model. | yes |
-| [OpenFgaRelationshipTuple](openfgarelationshiptuple/v1/reference.md) | OpenFgaRelationshipTupleSpec defines the configuration for an OpenFGA Relationship Tuple. | yes |
-| [OpenFgaStore](openfgastore/v1/reference.md) | OpenFgaStoreSpec defines the configuration for an OpenFGA Store. | yes |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [OpenFgaAuthorizationModel](openfgaauthorizationmodel/v1/reference.md) | OpenFgaAuthorizationModelSpec defines the configuration for an OpenFGA Authorization Model. | yes |  |
+| [OpenFgaRelationshipTuple](openfgarelationshiptuple/v1/reference.md) | OpenFgaRelationshipTupleSpec defines the configuration for an OpenFGA Relationship Tuple. | yes |  |
+| [OpenFgaStore](openfgastore/v1/reference.md) | OpenFgaStoreSpec defines the configuration for an OpenFGA Store. | yes |  |

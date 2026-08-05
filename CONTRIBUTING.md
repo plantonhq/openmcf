@@ -84,6 +84,25 @@ features, or improve documentation, your efforts are appreciated and will help m
 - **Issue Reporting**: If you encounter a bug or have a feature request, please open an issue before working on it to
   discuss the best approach.
 
+## Contributing Catalog Knowledge
+
+The cloud-component catalog carries two layers of knowledge, and your contribution
+lands in a different place depending on which kind it is. Route it right and every
+surface (reference pages, CLI, indexes, the packaged skill) improves at once:
+
+| You want to fix or add | Where it goes | Why |
+|---|---|---|
+| A wrong or missing **fact** (a field's meaning, a default, an alias like "Redis-compatible", a validation) | The proto comment or validation rule in the kind's `spec.proto` / `stack_outputs.proto`, then run `make generate-reference` | The `reference.md` pages are generated -- never edit them by hand; fixing the source regenerates every surface |
+| **Judgment about one component** (operational gotchas, when to choose it, what it pairs with) | `GUIDE.md` beside that kind's `reference.md` (create it if absent, then run `make generate-reference` so the page links it) | Authoring standard: `_rules/docs/write-planton-component-guide.mdc` |
+| **How components compose** (multi-kind wiring, trade-offs, failure modes) | A pattern in `apis/dev/planton/provider/patterns/` | Authoring standard: `_rules/docs/write-planton-architecture-pattern.mdc` |
+| **Catalog-wide wisdom** (finding alternatives, cross-provider conventions) | `apis/dev/planton/provider/GUIDE.md` | The catalog's own guide |
+
+The file you edit is exactly the file agents and users read -- in the repository,
+the release archive, and the packaged skill alike; nothing is renamed on the way.
+CI keeps authored knowledge honest: embedded complete manifests must validate
+against their schemas, declared kind names must resolve, and links must not break
+(`go test ./pkg/explain/refgen/` runs the same checks locally).
+
 ## Licensing
 
 This project is licensed under [Apache-2.0](LICENSE), and contributions are accepted

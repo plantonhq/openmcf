@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesClusterIssuerSpec** creates one cert-manager ClusterIssuer — a
 cluster-scoped certificate authority front-end that Certificate resources in
 ANY namespace can request signed certificates from. The ClusterIssuer is

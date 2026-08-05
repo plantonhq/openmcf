@@ -110,11 +110,40 @@ rg -l "Allowed values" <provider dir>     # every kind with enum fields
 rg "to: \"AwsVpc\"" reference-graph.yaml  # every field that can point at a kind
 ```
 
+## The two layers: generated facts, authored wisdom
+
+Everything above describes the GENERATED layer: schema-derived facts that
+regenerate on every schema change and are never hand-edited (a wrong or thin
+fact is fixed in the proto comment or validation rule it came from). Beside
+it lives the AUTHORED layer -- judgment written by people and agents, openly
+contributable through pull requests:
+
+- **`GUIDE.md` beside a kind's `reference.md`** -- operational judgment for
+  that kind: platform conventions the outside world does not know, when to
+  choose it over its neighbors, what its choices look like on the
+  architecture diagram, what it pairs well with. A kind's reference page
+  links its guide in the head (`rg -l "^\*\*Guide\*\*:"` finds every kind
+  that has one; the index tables carry a Guide column).
+- **`GUIDE.md` beside the root index** -- wisdom about using the catalog as
+  a whole, including how to find a compatible alternative when the software
+  you were asked for has no kind of its own.
+- **`patterns/` beside the root index** -- named architecture patterns:
+  compositions of multiple kinds with validated manifests and the
+  trade-offs behind them.
+
+Authored files may age gracefully, but they can never be silently
+schema-wrong: catalog checks validate every complete manifest they embed and
+every kind name they declare.
+
 ## Files in this pack
 
 - `reference.md`, co-located with each kind's protos -- the complete
   per-kind reference.
+- `GUIDE.md`, co-located with a kind's `reference.md` where wisdom has been
+  written -- authored judgment (see the two layers above).
 - `reference-index.md` per provider directory, and a root index beside this
   page -- kind tables with purpose one-liners and page links.
 - `reference-graph.yaml` beside this page -- every foreign-key edge in the
   catalog.
+- `GUIDE.md` and `patterns/` beside the root index -- catalog-level authored
+  wisdom.

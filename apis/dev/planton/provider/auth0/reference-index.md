@@ -6,11 +6,11 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [Auth0Action](auth0action/v1/reference.md) | Auth0ActionSpec defines the configuration for an Auth0 Action. | yes |
-| [Auth0Client](auth0client/v1/reference.md) | Auth0ClientSpec defines the configuration for an Auth0 Application (Client). | yes |
-| [Auth0Connection](auth0connection/v1/reference.md) | Auth0ConnectionSpec defines the configuration for an Auth0 Connection. | yes |
-| [Auth0EventStream](auth0eventstream/v1/reference.md) | Auth0EventStreamSpec defines the configuration for an Auth0 Event Stream. | yes |
-| [Auth0ResourceServer](auth0resourceserver/v1/reference.md) | Auth0ResourceServerSpec defines the configuration for an Auth0 Resource Server (API). | yes |
-| [Auth0Role](auth0role/v1/reference.md) | Auth0RoleSpec defines the configuration for an Auth0 Role. | yes |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [Auth0Action](auth0action/v1/reference.md) | Auth0ActionSpec defines the configuration for an Auth0 Action. | yes |  |
+| [Auth0Client](auth0client/v1/reference.md) | Auth0ClientSpec defines the configuration for an Auth0 Application (Client). | yes |  |
+| [Auth0Connection](auth0connection/v1/reference.md) | Auth0ConnectionSpec defines the configuration for an Auth0 Connection. | yes |  |
+| [Auth0EventStream](auth0eventstream/v1/reference.md) | Auth0EventStreamSpec defines the configuration for an Auth0 Event Stream. | yes |  |
+| [Auth0ResourceServer](auth0resourceserver/v1/reference.md) | Auth0ResourceServerSpec defines the configuration for an Auth0 Resource Server (API). | yes |  |
+| [Auth0Role](auth0role/v1/reference.md) | Auth0RoleSpec defines the configuration for an Auth0 Role. | yes |  |

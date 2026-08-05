@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesPostgresSpec** declares a production-grade PostgreSQL cluster
 reconciled by CloudNativePG (KubernetesCloudNativePgOperator must be on
 the cluster). The spec renders a `postgresql.cnpg.io/v1` Cluster custom

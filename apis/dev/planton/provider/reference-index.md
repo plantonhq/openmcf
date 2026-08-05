@@ -8,29 +8,35 @@ outputs, cross-kind references (both directions), and a validated example.
 
 Start with:
 
+- [GUIDE.md](GUIDE.md) -- how to use this catalog: finding compatible
+  alternatives when the asked-for software has no kind of its own, and the
+  conventions that span providers.
 - [reference-commons.md](reference-commons.md) -- the manifest grammar shared
   by every kind (envelope, metadata, value/valueFrom, fieldPath spelling)
   and the search grammar for reading these pages.
 - [reference-graph.yaml](reference-graph.yaml) -- every foreign-key edge in
   the catalog, for wiring resources and planning architectures.
+- [patterns/](patterns/) -- authored architecture patterns: named
+  compositions of multiple kinds with validated wiring, and the trade-offs
+  behind them.
 - The per-provider indexes below, which link every kind's page.
 
-| Provider | Kinds | With Example |
-|---|---|---|
-| [alicloud](alicloud/reference-index.md) | 30 | 30 |
-| [atlas](atlas/reference-index.md) | 1 | 1 |
-| [auth0](auth0/reference-index.md) | 6 | 6 |
-| [aws](aws/reference-index.md) | 112 | 112 |
-| [azure](azure/reference-index.md) | 109 | 109 |
-| [civo](civo/reference-index.md) | 12 | 1 |
-| [cloudflare](cloudflare/reference-index.md) | 30 | 26 |
-| [confluent](confluent/reference-index.md) | 1 | 1 |
-| [digitalocean](digitalocean/reference-index.md) | 15 | 1 |
-| [gcp](gcp/reference-index.md) | 79 | 79 |
-| [hetznercloud](hetznercloud/reference-index.md) | 12 | 12 |
-| [kubernetes](kubernetes/reference-index.md) | 120 | 119 |
-| [oci](oci/reference-index.md) | 37 | 7 |
-| [openfga](openfga/reference-index.md) | 3 | 3 |
-| [openstack](openstack/reference-index.md) | 25 | 25 |
-| [scaleway](scaleway/reference-index.md) | 18 | 0 |
-| [snowflake](snowflake/reference-index.md) | 1 | 1 |
+| Provider | Kinds | With Example | With Guide |
+|---|---|---|---|
+| [alicloud](alicloud/reference-index.md) | 30 | 30 | 0 |
+| [atlas](atlas/reference-index.md) | 1 | 1 | 0 |
+| [auth0](auth0/reference-index.md) | 6 | 6 | 0 |
+| [aws](aws/reference-index.md) | 112 | 112 | 0 |
+| [azure](azure/reference-index.md) | 109 | 109 | 0 |
+| [civo](civo/reference-index.md) | 12 | 1 | 0 |
+| [cloudflare](cloudflare/reference-index.md) | 30 | 26 | 0 |
+| [confluent](confluent/reference-index.md) | 1 | 1 | 0 |
+| [digitalocean](digitalocean/reference-index.md) | 15 | 1 | 0 |
+| [gcp](gcp/reference-index.md) | 79 | 79 | 0 |
+| [hetznercloud](hetznercloud/reference-index.md) | 12 | 12 | 0 |
+| [kubernetes](kubernetes/reference-index.md) | 120 | 119 | 3 |
+| [oci](oci/reference-index.md) | 37 | 7 | 0 |
+| [openfga](openfga/reference-index.md) | 3 | 3 | 0 |
+| [openstack](openstack/reference-index.md) | 25 | 25 | 0 |
+| [scaleway](scaleway/reference-index.md) | 18 | 0 | 0 |
+| [snowflake](snowflake/reference-index.md) | 1 | 1 | 0 |

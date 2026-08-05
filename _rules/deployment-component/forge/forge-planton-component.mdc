@@ -199,7 +199,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 ## Execution Sequence
 
-The following 20 rules execute in order. Each rule is atomic and can be run individually if needed.
+The following 21 rules execute in order. Each rule is atomic and can be run individually if needed.
 
 ### Phase 1: Proto API Definitions (Rules 001-006)
 
@@ -385,6 +385,15 @@ header and treat its recipe as offline-validated only.
     same pass. Skipping this leaves the built catalog silently lagging the source --
     the site build does NOT pick up `catalog-page.md` files on its own.
 
+### Phase 9: Guide + Reference Regeneration (Rule 023)
+
+21. **023-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer beside
+    `reference.md`) from what this forging session learned -- internal conventions,
+    judgment calls, diagram impact -- following `_rules/docs/write-planton-component-guide.mdc`.
+    Then run `make generate-reference`: the new kind's reference page, its guide head
+    link, and the catalog indexes all materialize in one pass, and the reference
+    freshness gate fails any new kind whose pages were not regenerated.
+
 ## Error Handling
 
 - Each rule retries up to 3 times on fixable errors
@@ -396,11 +405,11 @@ header and treat its recipe as offline-validated only.
 
 The orchestrator provides progress updates:
 ```
-[1/20] ✅ Generated spec.proto
-[2/20] ✅ Added validations
-[3/20] ✅ Generated tests
+[1/21] ✅ Generated spec.proto
+[2/21] ✅ Added validations
+[3/21] ✅ Generated tests
 ...
-[20/20] ✅ All tests passed
+[21/21] ✅ Guide seeded and reference regenerated
 
 🎉 Component creation complete!
 Run @audit-planton-component to verify 100% ideal state compliance.

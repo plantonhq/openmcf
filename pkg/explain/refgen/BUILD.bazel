@@ -24,6 +24,9 @@ go_binary(
 
 go_test(
     name = "refgen_test",
-    srcs = ["drift_test.go"],
+    srcs = [
+        "drift_test.go",
+        "wisdom_test.go",
+    ],
     embed = [":refgen_lib"],
 )

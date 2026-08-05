@@ -6,6 +6,6 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [SnowflakeDatabase](snowflakedatabase/v1/reference.md) | snowflake-database spec | yes |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [SnowflakeDatabase](snowflakedatabase/v1/reference.md) | snowflake-database spec | yes |  |

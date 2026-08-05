@@ -6,20 +6,20 @@
 [reference-commons.md](../reference-commons.md). Cross-kind wiring:
 [reference-graph.yaml](../reference-graph.yaml).
 
-| Kind | Purpose | Example |
-|---|---|---|
-| [DigitalOceanAppPlatformService](digitaloceanappplatformservice/v1/reference.md) | DigitalOceanAppPlatformServiceSpec defines the specification required to deploy a containerized service or application on DigitalOcean App Platform. |  |
-| [DigitalOceanBucket](digitaloceanbucket/v1/reference.md) | DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket. |  |
-| [DigitalOceanCertificate](digitaloceancertificate/v1/reference.md) | DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean. |  |
-| [DigitalOceanContainerRegistry](digitaloceancontainerregistry/v1/reference.md) | **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean Container Registry (DOCR). |  |
-| [DigitalOceanDatabaseCluster](digitaloceandatabasecluster/v1/reference.md) | DigitalOceanDatabaseClusterSpec defines the essential configuration for creating a managed database cluster on DigitalOcean. |  |
-| [DigitalOceanDnsRecord](digitaloceandnsrecord/v1/reference.md) | DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain). | yes |
-| [DigitalOceanDnsZone](digitaloceandnszone/v1/reference.md) | DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean. |  |
-| [DigitalOceanDroplet](digitaloceandroplet/v1/reference.md) | DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM). |  |
-| [DigitalOceanFirewall](digitaloceanfirewall/v1/reference.md) | DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall. |  |
-| [DigitalOceanFunction](digitaloceanfunction/v1/reference.md) | DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean. |  |
-| [DigitalOceanKubernetesCluster](digitaloceankubernetescluster/v1/reference.md) | DigitalOceanKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on DigitalOcean. |  |
-| [DigitalOceanKubernetesNodePool](digitaloceankubernetesnodepool/v1/reference.md) | DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS). |  |
-| [DigitalOceanLoadBalancer](digitaloceanloadbalancer/v1/reference.md) | DigitalOceanLoadBalancerSpec defines the specification for creating a DigitalOcean Load Balancer. |  |
-| [DigitalOceanVolume](digitaloceanvolume/v1/reference.md) | DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block storage volume. |  |
-| [DigitalOceanVpc](digitaloceanvpc/v1/reference.md) | DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual Private Cloud (VPC). |  |
+| Kind | Purpose | Example | Guide |
+|---|---|---|---|
+| [DigitalOceanAppPlatformService](digitaloceanappplatformservice/v1/reference.md) | DigitalOceanAppPlatformServiceSpec defines the specification required to deploy a containerized service or application on DigitalOcean App Platform. |  |  |
+| [DigitalOceanBucket](digitaloceanbucket/v1/reference.md) | DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket. |  |  |
+| [DigitalOceanCertificate](digitaloceancertificate/v1/reference.md) | DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean. |  |  |
+| [DigitalOceanContainerRegistry](digitaloceancontainerregistry/v1/reference.md) | **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean Container Registry (DOCR). |  |  |
+| [DigitalOceanDatabaseCluster](digitaloceandatabasecluster/v1/reference.md) | DigitalOceanDatabaseClusterSpec defines the essential configuration for creating a managed database cluster on DigitalOcean. |  |  |
+| [DigitalOceanDnsRecord](digitaloceandnsrecord/v1/reference.md) | DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain). | yes |  |
+| [DigitalOceanDnsZone](digitaloceandnszone/v1/reference.md) | DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean. |  |  |
+| [DigitalOceanDroplet](digitaloceandroplet/v1/reference.md) | DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM). |  |  |
+| [DigitalOceanFirewall](digitaloceanfirewall/v1/reference.md) | DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall. |  |  |
+| [DigitalOceanFunction](digitaloceanfunction/v1/reference.md) | DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean. |  |  |
+| [DigitalOceanKubernetesCluster](digitaloceankubernetescluster/v1/reference.md) | DigitalOceanKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on DigitalOcean. |  |  |
+| [DigitalOceanKubernetesNodePool](digitaloceankubernetesnodepool/v1/reference.md) | DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS). |  |  |
+| [DigitalOceanLoadBalancer](digitaloceanloadbalancer/v1/reference.md) | DigitalOceanLoadBalancerSpec defines the specification for creating a DigitalOcean Load Balancer. |  |  |
+| [DigitalOceanVolume](digitaloceanvolume/v1/reference.md) | DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block storage volume. |  |  |
+| [DigitalOceanVpc](digitaloceanvpc/v1/reference.md) | DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual Private Cloud (VPC). |  |  |

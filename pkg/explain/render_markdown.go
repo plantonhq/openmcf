@@ -24,6 +24,10 @@ import (
 //	## Referenced By    -- inbound foreign keys (catalog-computed, via options)
 //	## See Also         -- links to hand-written essays (never duplicated here)
 //
+// The page head additionally carries a `**Guide**:` line linking the kind's
+// authored GUIDE.md when one exists beside the page -- a line, not a heading,
+// but its prefix is part of the same stable grammar.
+//
 // Path spelling is deliberately asymmetric: spec paths use protojson names
 // (the exact keys an author writes in manifest YAML), while output paths use
 // proto field names (snake_case) -- the canonical valueFrom fieldPath
@@ -42,6 +46,13 @@ func RenderMarkdown(report *Report, opts MarkdownOptions) string {
 	b.WriteString("> or validation rule it is derived from, then regenerate.\n\n")
 	if report.ApiVersion != "" {
 		fmt.Fprintf(&b, "**apiVersion**: `%s`\n\n", report.ApiVersion)
+	}
+	if opts.HasGuide {
+		// The link target is deliberately hardcoded: the guide is always the
+		// sibling file named GUIDE.md, in the repo, the zip, the skill, and
+		// the vendored copy alike -- the file a contributor edits is the file
+		// agents read, so the name never changes between source and artifact.
+		b.WriteString("**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.\n\n")
 	}
 	if report.Doc != "" {
 		b.WriteString(strings.TrimSpace(report.Doc))
@@ -122,6 +133,12 @@ type MarkdownOptions struct {
 	// SeeAlso links to the kind's hand-written essays. Reference pages link
 	// to prose, never duplicate it.
 	SeeAlso []MarkdownLink
+	// HasGuide adds the head link to the kind's authored GUIDE.md sibling.
+	// Set only when the file actually exists beside the rendered page: the
+	// line teaches readers a guide is one open away, and a link to a missing
+	// file would teach every reader a falsehood. The `**Guide**:` prefix is
+	// stable grammar (like the headings above) -- greppable across the pack.
+	HasGuide bool
 }
 
 // InboundRef is one inbound foreign-key edge: a field on another kind whose
