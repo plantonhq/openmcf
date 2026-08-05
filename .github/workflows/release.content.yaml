@@ -1,15 +1,18 @@
 # =============================================================================
 # Content Distribution Release (Reusable Workflow)
 # =============================================================================
-# Packages Planton content into four zips and uploads them to Cloudflare R2
+# Packages Planton content into five zips and uploads them to Cloudflare R2
 # (downloads.planton.dev). These zips decouple downstream consumers (e.g. the
 # Planton upgrade-planton script) from needing a local Planton checkout.
 #
 # Artifacts created:
-#   presets.zip       -- Preset YAML + MD, kind enum proto
-#   iac-source.zip    -- IaC module source (.go, .tf, .md, .yaml)
-#   catalog-pages.zip -- Per-component catalog-page.md
-#   proto-source.zip  -- Raw proto source (spec, api, stack_input, stack_outputs)
+#   presets.zip        -- Preset YAML + MD, kind enum proto
+#   iac-source.zip     -- IaC module source (.go, .tf, .md, .yaml)
+#   catalog-pages.zip  -- Per-component catalog-page.md
+#   proto-source.zip   -- Raw proto source (spec, api, stack_input, stack_outputs)
+#   reference-pack.zip -- Component reference pack (generated reference pages,
+#                         indexes, cross-reference graph, commons, GUIDE.md /
+#                         patterns wisdom layer)
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/content/{name}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/content/{name}.zip
@@ -55,7 +58,7 @@ jobs:
 
           echo ""
           echo "Uploading content zips to R2 (releases/${TAG}/content/)..."
-          for zip in presets.zip iac-source.zip catalog-pages.zip proto-source.zip; do
+          for zip in presets.zip iac-source.zip catalog-pages.zip proto-source.zip reference-pack.zip; do
             if [ -f "$zip" ]; then
               R2_KEY="releases/${TAG}/content/${zip}"
               aws s3 cp "$zip" "s3://${R2_BUCKET}/${R2_KEY}" \

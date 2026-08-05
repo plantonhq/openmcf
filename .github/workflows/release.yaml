@@ -4,8 +4,8 @@
 # Single entry point for all release workflows. Triggers on semantic version
 # tags (v*) and orchestrates the release of CLI, website, all Pulumi module
 # binaries, all Terraform module zips, content distribution zips
-# (presets, IaC source, catalog pages, proto source), and the InfraChart
-# catalog zip.
+# (presets, IaC source, catalog pages, proto source, the component reference
+# pack), and the InfraChart catalog zip.
 #
 # Architecture:
 #   1. CLI job runs first (GoReleaser creates the GitHub Release)
@@ -76,7 +76,8 @@ jobs:
       CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
 
   # ============================================================================
-  # Content Distribution - presets, IaC source, catalog pages, proto source
+  # Content Distribution - presets, IaC source, catalog pages, proto source,
+  # reference pack
   # ============================================================================
   content:
     needs: cli
