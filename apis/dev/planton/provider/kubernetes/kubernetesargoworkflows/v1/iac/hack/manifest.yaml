@@ -51,7 +51,8 @@ spec:
       value: workflows-db-rw.data.svc.cluster.local
     database: argo_archive
     credentialsSecret:
-      name: workflows-db-app
+      name:
+        value: workflows-db-app
       usernameKey: username
       passwordKey: password
     sslMode: require

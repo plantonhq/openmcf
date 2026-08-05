@@ -168,12 +168,16 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			"port":      port,
 			"database":  archive.GetDatabase(),
 			"tableName": vars.ArchiveTableName,
+			// The Secret name resolves a KubernetesPostgres application
+			// Secret by reference (or a literal); its username/password
+			// keys are the selector defaults, so that Secret composes
+			// untouched.
 			"userNameSecret": map[string]interface{}{
-				"name": archive.GetCredentialsSecret().GetName(),
+				"name": archive.GetCredentialsSecret().GetName().GetValue(),
 				"key":  usernameKey,
 			},
 			"passwordSecret": map[string]interface{}{
-				"name": archive.GetCredentialsSecret().GetName(),
+				"name": archive.GetCredentialsSecret().GetName().GetValue(),
 				"key":  passwordKey,
 			},
 		}

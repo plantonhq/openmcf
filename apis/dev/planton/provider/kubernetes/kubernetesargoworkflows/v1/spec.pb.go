@@ -1105,9 +1105,12 @@ func (x *KubernetesArgoWorkflowsArchive) GetSslMode() string {
 type KubernetesArgoWorkflowsArchiveCredentials struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Secret name. The Secret must live in the install namespace (the
-	// controller reads it there).
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Secret name. Accepts a literal name or a reference to a
+	// KubernetesPostgres resource (its operator-maintained application
+	// Secret — whose `username`/`password` keys are exactly the key-name
+	// defaults below, so it composes untouched). The Secret must live in
+	// the install namespace (the controller reads it there).
+	Name *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
 	// Key holding the username. Empty = "username".
 	UsernameKey *string `protobuf:"bytes,2,opt,name=username_key,json=usernameKey,proto3,oneof" json:"username_key,omitempty"`
@@ -1148,11 +1151,11 @@ func (*KubernetesArgoWorkflowsArchiveCredentials) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *KubernetesArgoWorkflowsArchiveCredentials) GetName() string {
+func (x *KubernetesArgoWorkflowsArchiveCredentials) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesArgoWorkflowsArchiveCredentials) GetUsernameKey() string {
@@ -1560,9 +1563,9 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\bdatabase\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12\x9c\x01\n" +
 	"\x12credentials_secret\x18\x05 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentialsB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\x12L\n" +
 	"\bssl_mode\x18\x06 \x01(\tB1\xbaH.r,R\x00R\adisableR\arequireR\tverify-caR\vverify-fullR\asslModeB\a\n" +
-	"\x05_port\"\x95\x02\n" +
-	")KubernetesArgoWorkflowsArchiveCredentials\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x124\n" +
+	"\x05_port\"\xf5\x02\n" +
+	")KubernetesArgoWorkflowsArchiveCredentials\x12z\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x124\n" +
 	"\fusername_key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\busernameH\x00R\vusernameKey\x88\x01\x01\x12t\n" +
 	"\fpassword_key\x18\x03 \x01(\tBL\x8a\xa6\x1d\bpassword\xaa\xa6\x1d<Name of a key within an existing Secret, not secret materialH\x01R\vpasswordKey\x88\x01\x01B\x0f\n" +
 	"\r_username_keyB\x0f\n" +
@@ -1659,13 +1662,14 @@ var file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_d
 	0,  // 17: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.engine:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngine
 	16, // 18: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	10, // 19: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchive.credentials_secret:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials
-	15, // 20: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
-	18, // 21: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	16, // 20: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentials.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 21: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.NodeSelectorEntry
+	18, // 22: dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto_init() }

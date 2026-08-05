@@ -517,10 +517,17 @@ enum KubernetesArgoWorkflowsArchiveEngine {
  */
 message KubernetesArgoWorkflowsArchiveCredentials {
   /**
-   * Secret name. The Secret must live in the install namespace (the
-   * controller reads it there).
+   * Secret name. Accepts a literal name or a reference to a
+   * KubernetesPostgres resource (its operator-maintained application
+   * Secret — whose `username`/`password` keys are exactly the key-name
+   * defaults below, so it composes untouched). The Secret must live in
+   * the install namespace (the controller reads it there).
    */
-  string name = 1 [(buf.validate.field).required = true];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
 
   /**
    * Key holding the username. Empty = "username".

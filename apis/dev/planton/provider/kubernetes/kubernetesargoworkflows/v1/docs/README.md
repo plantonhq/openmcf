@@ -23,8 +23,10 @@ reconciles only Workflows carrying its
 - **Durability by reference:** the artifact endpoint AND credentials
   Secret name FK-compose a `KubernetesSeaweedFs` (the credential
   key-name defaults match its generated `-s3-secret` admin pair, so
-  the Secret composes untouched); the archive host FK-composes a
-  `KubernetesPostgres`.
+  the Secret composes untouched); the archive host AND credentials
+  Secret name FK-compose a `KubernetesPostgres` the same way (the
+  operator-maintained application Secret's `username`/`password` keys
+  are the selector defaults).
 
 ## The runner-identity placement
 

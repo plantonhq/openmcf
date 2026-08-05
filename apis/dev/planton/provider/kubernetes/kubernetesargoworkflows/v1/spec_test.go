@@ -44,7 +44,7 @@ func testArchive() *KubernetesArgoWorkflowsArchive {
 		Host:     literal("workflows-db-rw.data.svc.cluster.local"),
 		Database: "argo_archive",
 		CredentialsSecret: &KubernetesArgoWorkflowsArchiveCredentials{
-			Name: "workflows-db-app",
+			Name: literal("workflows-db-app"),
 		},
 	}
 }
@@ -182,9 +182,10 @@ var _ = ginkgo.Describe("KubernetesArgoWorkflows Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("a postgres archive with a KubernetesPostgres host reference should be valid", func() {
+		ginkgo.It("a postgres archive with KubernetesPostgres host and credentials references should be valid", func() {
 			archive := testArchive()
 			archive.Host = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesPostgres, "workflows-db", "status.outputs.rw_service")
+			archive.CredentialsSecret.Name = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesPostgres, "workflows-db", "status.outputs.password_secret.name")
 			archive.SslMode = "require"
 			input.Spec.Archive = archive
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
@@ -325,6 +326,13 @@ var _ = ginkgo.Describe("KubernetesArgoWorkflows Validation Tests", func() {
 		ginkgo.It("an archive without credentials should fail", func() {
 			archive := testArchive()
 			archive.CredentialsSecret = nil
+			input.Spec.Archive = archive
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("archive credentials without a Secret name should fail", func() {
+			archive := testArchive()
+			archive.CredentialsSecret = &KubernetesArgoWorkflowsArchiveCredentials{}
 			input.Spec.Archive = archive
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})

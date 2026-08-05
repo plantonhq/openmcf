@@ -26,16 +26,19 @@ spec:
         secret_name:
           value: objects-s3-auth
   # History: completed workflows written to Postgres so the record
-  # outlives the CRs. The host composes from a KubernetesPostgres
-  # resource (its rw_service output via value_from); the credentials
-  # Secret is the one that database exports.
+  # outlives the CRs. The host AND the credentials Secret name compose
+  # from a KubernetesPostgres resource (its rw_service and
+  # password_secret.name outputs via value_from) — the Secret's
+  # username/password keys are the selector defaults, so the
+  # operator-maintained credential composes untouched.
   archive:
     engine: postgres
     host:
       value: pipelines-db-rw.data.svc.cluster.local
     database: argo_archive
     credentials_secret:
-      name: pipelines-db-app
+      name:
+        value: pipelines-db-app
   # With the archive keeping history, the cluster keeps only a working
   # set of CRs per outcome.
   retention_policy:
