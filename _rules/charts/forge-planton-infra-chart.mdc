@@ -159,7 +159,11 @@ spec:
 or `<cloud>/kubernetes/<chart-name>` — the web links always mirror the tree.)
 
 The description is catalog copy: concrete, outcome-first, no filler. Say what
-the deployed result IS, not what the chart "provides".
+the deployed result IS, not what the chart "provides". Write it as a folded
+block scalar (`description: >-`): catalog copy routinely carries colons, and
+an unquoted single-line scalar with `: ` inside fails the YAML parse — the
+validator reports it as a Chart.yaml parse failure, not a description
+problem.
 
 **Icon rules (mandatory).** Every chart carries the most appropriate icon for
 what it provisions, and the URL must be LIVE — the offline validator does not
@@ -417,6 +421,16 @@ the control plane's engine:
   so in each param's description ("entry N serves AZ N"), because nothing else
   enforces the pairing. Literal indexing (`values.availability_zones[0]`) also
   works for "the first one" placements.
+- **Whole-document loops separate documents with a guarded leading `---`**:
+  a template that renders one full document per list entry (a topic per
+  name, a user per identity) emits the separator only BETWEEN iterations —
+  `{% if loop.index0 > 0 %}---{% endif %}` at the top of the loop body. A
+  fixed `---` at the start of every iteration puts a document boundary
+  after the file's header comments (an empty first document), and a
+  trailing `---` on the last iteration leaves an empty document at EOF —
+  both parser-dependent shapes the guarded separator avoids. When the loop
+  is followed by more documents in the same file, the trailing-`---`-inside-
+  the-loop shape works too (the next document absorbs the boundary).
 - **Arithmetic and template-literal lists render fine**: a `number` param can
   feed a differently-scaled field via inline arithmetic
   (`{{ values.scan_limit_gib * 1073741824 }}` — let users think in the unit
