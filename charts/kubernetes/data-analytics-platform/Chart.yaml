@@ -1,0 +1,20 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Kubernetes Data Analytics Platform
+spec:
+  selector:
+    kind: platform
+  description: >-
+    The complete modern data stack on your own cluster in one deploy —
+    Airflow schedules it, Spark crunches it, Trino queries it, Superset
+    shows it. A CloudNativePG-managed PostgreSQL bootstrapped with every
+    database the stack needs, a SeaweedFS data lake with S3 buckets
+    declared, an authenticated Valkey cache, and every credential flowing
+    by reference through operator-maintained Secrets — no wiring left to
+    do, SQL on the first login.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/kubernetes/kubernetestrino/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/data-analytics-platform
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/data-analytics-platform/README.md

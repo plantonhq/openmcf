@@ -279,6 +279,17 @@ the README. Conventions:
   the offline validator) resolve the annotated path. Never override the
   annotated path with a different one — that is exactly the mismatch class the
   validator rejects.
+- **Secret KEY names are part of the composition contract — read the
+  producing kind's Secret key shape, never trust the consumer's key
+  default.** A consumer's `secret_key`-style field defaults to a generic
+  convention (usually `password`), but some producers key their credential
+  Secrets differently — ACL-user stores (Valkey-class auth Secrets) key
+  entries BY USERNAME, one key per user. The mismatch renders cleanly,
+  validates cleanly, deploys cleanly, and fails authentication at runtime —
+  no gate catches it. Verify the key against the producing kind's
+  stack-output comments (its `*_secret` handles state their key) and set
+  the consumer's key explicitly wherever the producer's shape differs from
+  the consumer's default.
 - **Set `kind:` explicitly when referencing anything other than the field's
   default kind** (or when the field carries no `default_kind` — deliberately
   polymorphic references resolve nothing by default; writing the explicit
