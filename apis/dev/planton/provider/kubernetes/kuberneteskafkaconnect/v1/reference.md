@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKafkaConnectSpec** declares a Kafka Connect cluster on
 the Strimzi `KafkaConnect` custom resource — the pluggable
 integration engine that streams data between Kafka and external

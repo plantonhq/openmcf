@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKarapaceSpec** declares a Karapace schema registry —
 the Apache-2.0, Confluent-API-compatible schema registry from
 Aiven. Producers and consumers register and fetch Avro, JSON

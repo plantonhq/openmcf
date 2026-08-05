@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKafkaMirrorMaker2Spec** declares a MirrorMaker 2
 replication engine on the Strimzi `KafkaMirrorMaker2` custom
 resource — continuous, offset-aware mirroring of topics and

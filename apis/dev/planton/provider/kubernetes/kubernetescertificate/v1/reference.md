@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesCertificateSpec** requests one signed X.509 certificate from a
 cert-manager issuer and keeps it renewed for as long as the resource
 exists. The signed certificate, its private key, and the CA chain land in

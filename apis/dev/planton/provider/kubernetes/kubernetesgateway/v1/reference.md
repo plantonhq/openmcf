@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 KubernetesGatewaySpec defines a Kubernetes Gateway API Gateway: a
 namespaced instance of traffic-handling infrastructure that binds a set of
 Listeners (logical endpoints with a port, protocol, and optional TLS) to
