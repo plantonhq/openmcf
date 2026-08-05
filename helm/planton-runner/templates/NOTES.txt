@@ -13,9 +13,11 @@ cluster:
 
 1. Point Tekton's CloudEvents sink at this runner's webhook, so live build
    status flows without waiting on the reconciliation safety net. In the
-   {{ .Values.build.tekton.installNamespace }}/config-defaults ConfigMap set:
+   {{ .Values.build.tekton.installNamespace }}/config-defaults ConfigMap set
+   (the /service-hub/tekton/cloud-event path is required -- the webhook
+   serves only that route, and a bare Service root 404s every event):
 
-     default-cloud-events-sink: http://{{ include "planton-runner.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/
+     default-cloud-events-sink: http://{{ include "planton-runner.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local/service-hub/tekton/cloud-event
 
 2. Register this cluster as a build connection (console: Connections -> Build,
    or `planton apply` a TektonConnection naming this runner), then verify it --

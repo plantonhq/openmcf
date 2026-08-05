@@ -134,11 +134,15 @@ Two steps complete the build-cluster setup after install:
    `tekton-pipelines/config-defaults` ConfigMap set:
 
    ```yaml
-   default-cloud-events-sink: http://<release-fullname>.<namespace>.svc.cluster.local/
+   default-cloud-events-sink: http://<release-fullname>.<namespace>.svc.cluster.local/service-hub/tekton/cloud-event
    ```
 
    (The chart's Service serves the webhook on port 80, so the URL needs no
-   explicit port. The exact URL is printed in the post-install notes.)
+   explicit port -- but the `/service-hub/tekton/cloud-event` path is
+   required: the webhook serves only that route, and a sink pointed at the
+   bare Service root gets a 404 on every event, silently degrading builds to
+   the reconciliation safety net. The exact URL is printed in the
+   post-install notes.)
 
 2. **Register the cluster as a build connection** (console: Connections →
    Build, or `planton apply` a `TektonConnection` naming this runner), then

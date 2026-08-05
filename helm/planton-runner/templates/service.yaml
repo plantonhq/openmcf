@@ -21,8 +21,10 @@ spec:
     {{- if .Values.build.enabled }}
     # Tekton posts pipeline CloudEvents here: point default-cloud-events-sink
     # in the tekton-pipelines/config-defaults ConfigMap at
-    # http://<this-service>.<namespace>.svc.cluster.local/ -- served on port 80
-    # so the sink URL needs no explicit port.
+    # http://<this-service>.<namespace>.svc.cluster.local/service-hub/tekton/cloud-event
+    # -- served on port 80 so the sink URL needs no explicit port, but the
+    # path is required (the webhook serves only that route; a bare root 404s
+    # every event and builds silently degrade to the reconcile safety net).
     - name: webhook
       port: 80
       targetPort: webhook
