@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesStrimziKafkaOperatorSpec** installs the Strimzi cluster
 operator — the CNCF project that runs Apache Kafka on Kubernetes —
 from the official `strimzi-kafka-operator` Helm chart

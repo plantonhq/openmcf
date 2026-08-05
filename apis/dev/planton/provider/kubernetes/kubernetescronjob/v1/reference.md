@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesCronJobSpec** runs work on a recurring schedule on a Kubernetes
 cluster as a batch/v1 CronJob: at each scheduled time the controller creates a
 Job from `job_template`, and that Job runs pods to completion. This is the kind

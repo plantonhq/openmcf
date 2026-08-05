@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesHelmReleaseSpec** installs an upstream Helm chart as a real
 Helm release — the catalog's sole intentional passthrough. Both engines
 perform an actual `helm install`: hooks run, the release secret is

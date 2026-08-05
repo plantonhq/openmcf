@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesCertManagerSpec** installs cert-manager — the cluster's
 certificate machinery — from the official Helm chart (`cert-manager` at
 https://charts.jetstack.io). cert-manager runs three components: the

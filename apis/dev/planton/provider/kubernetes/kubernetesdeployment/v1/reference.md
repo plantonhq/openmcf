@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesDeploymentSpec** deploys a long-running, stateless application on a
 Kubernetes cluster as an apps/v1 Deployment, fronted by a Kubernetes Service.
 This is the workhorse kind for microservices: replicas are interchangeable,

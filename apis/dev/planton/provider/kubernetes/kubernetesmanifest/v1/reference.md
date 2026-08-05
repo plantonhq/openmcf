@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesManifestSpec** deploys raw Kubernetes YAML — the catalog's
 bring-your-own-manifest escape hatch. Hand it any valid manifest (single or
 multi-document, core kinds or custom resources) and both engines apply it

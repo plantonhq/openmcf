@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesOpenSearchSpec** declares an OpenSearch cluster — the
 Apache-2.0 search and analytics engine (drop-in replacement for the
 Elasticsearch APIs at the 7.10 fork line, with its own 2.x/3.x

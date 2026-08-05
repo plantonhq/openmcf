@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKafkaSpec** declares an Apache Kafka cluster on the
 Strimzi `Kafka` + `KafkaNodePool` custom resources (KRaft mode —
 Kafka's built-in Raft metadata quorum; ZooKeeper does not exist in

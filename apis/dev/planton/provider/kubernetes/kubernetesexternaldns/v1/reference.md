@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesExternalDnsSpec** installs ExternalDNS — the controller that
 watches Kubernetes resources (Services, Ingresses, Gateway API routes, ...)
 and publishes matching DNS records into a DNS provider — from the official

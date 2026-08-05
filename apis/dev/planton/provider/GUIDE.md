@@ -40,6 +40,10 @@ component's own documentation:
 |---|---|---|
 | Redis | KubernetesValkey | Redis-compatible in-memory store; every Redis client library speaks to it natively (open-source successor) |
 | Elasticsearch | KubernetesOpensearch | Apache-2.0 fork; drop-in replacement for the Elasticsearch APIs at the 7.10 fork line — existing clients and integrations connect unchanged |
+| Kibana | KubernetesOpensearch | OpenSearch Dashboards — the Kibana-role console — is a section of the same spec (`dashboards`), not a separate component |
+| Vault | KubernetesOpenBao | Linux Foundation-governed secrets manager, MPL-2.0 fork of Vault; auto-unseal interoperates with the OpenBao/Vault transit engine family |
+| Confluent Schema Registry | KubernetesKarapace | Apache-2.0, Confluent-API-compatible schema registry — existing Confluent SR clients work unchanged |
+| MinIO / in-cluster S3 | KubernetesSeaweedFs | Not a MinIO fork — an S3-compatible object store whose S3 gateway is on by default; clients speaking the S3 API connect to it |
 
 Many well-known names need no substitution — Kafka, MongoDB, PostgreSQL,
 ClickHouse, RabbitMQ, and others have kinds of their own; the per-provider

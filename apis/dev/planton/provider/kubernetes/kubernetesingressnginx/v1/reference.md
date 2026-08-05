@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesIngressNginxSpec** installs the ingress-nginx controller — the
 cluster's HTTP(S) entry point — from the official Helm chart
 (`ingress-nginx` at https://kubernetes.github.io/ingress-nginx). The

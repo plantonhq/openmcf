@@ -29,4 +29,8 @@ go_test(
         "wisdom_test.go",
     ],
     embed = [":refgen_lib"],
+    deps = [
+        "//internal/manifest",
+        "//pkg/explain",
+    ],
 )

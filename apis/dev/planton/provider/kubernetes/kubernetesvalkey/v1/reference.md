@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesValkeySpec** deploys Valkey — the Linux Foundation's
 Redis-compatible in-memory data store (the open-source successor every
 Redis client library speaks natively) — from the OFFICIAL Valkey Helm

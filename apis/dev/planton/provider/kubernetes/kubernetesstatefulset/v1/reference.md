@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesStatefulSetSpec** deploys a stateful application on a Kubernetes
 cluster as an apps/v1 StatefulSet: every replica gets a stable name
 (<name>-0, <name>-1, ...), stable per-replica DNS through a headless Service the
