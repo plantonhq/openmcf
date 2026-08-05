@@ -61,7 +61,8 @@ spec:
     endpoint: https://ABC123DEF456.gr7.us-east-1.eks.amazonaws.com
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::123456789012:role/hack-karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::123456789012:role/hack-karpenter-controller
     interruptionQueue: hack-karpenter-interruptions
     isolatedVpc: true
     reservedEnis: 1
@@ -121,7 +122,7 @@ spec:
 | `spec.cluster.eksControlPlane` | `bool` |  |  |  |
 | `spec.cluster.caBundle` | `string` |  |  |  |
 | `spec.aws` | `KubernetesKarpenterAws` |  |  |  |
-| `spec.aws.irsaRoleArn` | `string` |  |  |  |
+| `spec.aws.irsaRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.aws.interruptionQueue` | `string` |  |  |  |
 | `spec.aws.isolatedVpc` | `bool` |  |  |  |
 | `spec.aws.reservedEnis` | `int32` |  | `0` |  |
@@ -304,7 +305,7 @@ IAM identity the controller runs as.
 
 ### spec.aws.irsaRoleArn
 
-`string`
+`string | valueFrom`
 
 IAM role ARN for IRSA: annotates Karpenter's service account so the
 controller calls EC2/EKS/SQS/Pricing without stored keys (the role's
@@ -313,7 +314,8 @@ trust policy must allow the cluster's OIDC provider and the
 — the association is configured on the AWS side and needs no
 annotation here.
 
-- rule: irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.aws.interruptionQueue
 
@@ -663,6 +665,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.namespace` | KubernetesNamespace | `spec.name` |
+| `spec.aws.irsaRoleArn` | AwsIamRole | `status.outputs.role_arn` |
 
 ## See Also
 

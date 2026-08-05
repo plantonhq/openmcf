@@ -61,7 +61,7 @@ spec:
 |---|---|---|---|---|
 | `spec.scope` | `string \| valueFrom` | yes |  | AzureResourceGroup (`status.outputs.resource_group_id`) |
 | `spec.roleDefinitionName` | `string` |  |  |  |
-| `spec.roleDefinitionId` | `string` |  |  |  |
+| `spec.roleDefinitionId` | `string \| valueFrom` |  |  | AzureRoleDefinition (`status.outputs.role_definition_id`) |
 | `spec.principalId` | `string \| valueFrom` | yes |  | AzureUserAssignedIdentity (`status.outputs.principal_id`) |
 | `spec.principalType` | `enum` |  |  |  |
 | `spec.description` | `string` |  |  |  |
@@ -122,7 +122,7 @@ Use role_definition_id instead when assigning a custom role.
 
 ### spec.roleDefinitionId
 
-`string`
+`string | valueFrom`
 
 The fully-scoped resource ID of the role definition to assign. This is the
 way to bind custom roles (whose IDs come from an AzureRoleDefinition or
@@ -131,6 +131,9 @@ already holds the ID. Format:
 "/subscriptions/{sub}/providers/Microsoft.Authorization/roleDefinitions/{guid}"
 (or "/providers/Microsoft.Authorization/roleDefinitions/{guid}" for
 tenant-level built-in definitions).
+
+- references: AzureRoleDefinition (`status.outputs.role_definition_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureRoleDefinition, name: <that resource's name>, fieldPath: status.outputs.role_definition_id}} -- a bare string does not parse
 
 ### spec.principalId
 
@@ -260,6 +263,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.scope` | AzureResourceGroup | `status.outputs.resource_group_id` |
+| `spec.roleDefinitionId` | AzureRoleDefinition | `status.outputs.role_definition_id` |
 | `spec.principalId` | AzureUserAssignedIdentity | `status.outputs.principal_id` |
 
 ## See Also

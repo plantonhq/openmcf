@@ -1803,6 +1803,7 @@ Fields on other kinds that can point at this resource:
 | KubernetesAirflow | `spec.logging.elasticsearch.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 | KubernetesAirflow | `spec.logging.opensearch.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 | KubernetesArgoWorkflows | `spec.archive.host` | `status.outputs.rw_service` |
+| KubernetesArgoWorkflows | `spec.archive.credentialsSecret.name` | `status.outputs.password_secret.name` |
 | KubernetesGrafana | `spec.database.host` | `status.outputs.kube_endpoint` |
 | KubernetesHarbor | `spec.database.external.host` | `status.outputs.rw_service` |
 | KubernetesHarbor | `spec.database.external.passwordSecretName` | `status.outputs.password_secret.name` |

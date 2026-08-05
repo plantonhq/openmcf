@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesMetricsServerSpec** installs metrics-server — the cluster's
 resource-metrics pipeline — from the official Helm chart (`metrics-server`
 at https://kubernetes-sigs.github.io/metrics-server/). It scrapes each

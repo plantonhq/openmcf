@@ -252,6 +252,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureMonitorActionGroup | `spec.armRoleReceivers[].roleId` | `status.outputs.role_definition_guid` |
+| AzureRoleAssignment | `spec.roleDefinitionId` | `status.outputs.role_definition_id` |
 
 ## See Also
 

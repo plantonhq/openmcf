@@ -511,6 +511,8 @@ Fields on other kinds that can point at this resource:
 | AzureVirtualMachine | `spec.secrets[].keyVaultId` | `status.outputs.key_vault_id` |
 | AzureVirtualMachineScaleSet | `spec.extensions[].protectedSettingsFromKeyVault.sourceVaultId` | `status.outputs.key_vault_id` |
 | AzureVirtualMachineScaleSet | `spec.secrets[].keyVaultId` | `status.outputs.key_vault_id` |
+| KubernetesClusterSecretStore | `spec.config.azureKeyVault.vaultUrl` | `status.outputs.vault_uri` |
+| KubernetesSecretStore | `spec.config.azureKeyVault.vaultUrl` | `status.outputs.vault_uri` |
 
 ## See Also
 

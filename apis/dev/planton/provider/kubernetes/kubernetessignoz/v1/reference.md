@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesSignozSpec** deploys SigNoz — the all-in-one open-source
 observability platform (traces, metrics and logs in ONE UI, stored in
 ClickHouse) — from the official `signoz` Helm chart

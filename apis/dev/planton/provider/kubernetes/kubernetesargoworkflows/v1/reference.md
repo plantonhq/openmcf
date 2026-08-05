@@ -96,14 +96,19 @@ spec:
       endpoint:
         value: objects-s3.storage.svc.cluster.local:8333
       insecure: true
-      credentialsSecretName: objects-s3-auth
+      credentialsSecret:
+        secretName:
+          value: objects-s3-auth
+        accessKeyIdKey: accesskey
+        secretAccessKeyKey: secretkey
   archive:
     engine: postgres
     host:
       value: workflows-db-rw.data.svc.cluster.local
     database: argo_archive
     credentialsSecret:
-      name: workflows-db-app
+      name:
+        value: workflows-db-app
       usernameKey: username
       passwordKey: password
     sslMode: require
@@ -180,7 +185,10 @@ spec:
 | `spec.artifactRepository.s3.region` | `string` |  |  |  |
 | `spec.artifactRepository.s3.insecure` | `bool` |  |  |  |
 | `spec.artifactRepository.s3.useAmbientCredentials` | `bool` |  |  |  |
-| `spec.artifactRepository.s3.credentialsSecretName` | `string` |  |  |  |
+| `spec.artifactRepository.s3.credentialsSecret` | `KubernetesArgoWorkflowsS3CredentialsSecret` |  |  |  |
+| `spec.artifactRepository.s3.credentialsSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesSeaweedFs (`status.outputs.s3_credentials_secret_name`) |
+| `spec.artifactRepository.s3.credentialsSecret.accessKeyIdKey` | `string` |  | `admin_access_key_id` |  |
+| `spec.artifactRepository.s3.credentialsSecret.secretAccessKeyKey` | `string` |  | `admin_secret_access_key` |  |
 | `spec.artifactRepository.gcs` | `KubernetesArgoWorkflowsArtifactGcs` |  |  |  |
 | `spec.artifactRepository.gcs.bucket` | `string` | yes |  |  |
 | `spec.artifactRepository.gcs.credentialsSecretName` | `string` |  |  |  |
@@ -194,7 +202,7 @@ spec:
 | `spec.archive.port` | `int32` |  |  |  |
 | `spec.archive.database` | `string` | yes |  |  |
 | `spec.archive.credentialsSecret` | `KubernetesArgoWorkflowsArchiveCredentials` | yes |  |  |
-| `spec.archive.credentialsSecret.name` | `string` | yes |  |  |
+| `spec.archive.credentialsSecret.name` | `string \| valueFrom` | yes |  | KubernetesPostgres (`status.outputs.password_secret.name`) |
 | `spec.archive.credentialsSecret.usernameKey` | `string` |  | `username` |  |
 | `spec.archive.credentialsSecret.passwordKey` | `string` |  | `password` |  |
 | `spec.archive.sslMode` | `string` |  |  |  |
@@ -476,7 +484,7 @@ Also archive each step's main-container logs into the repository
 An S3-compatible object store — AWS S3 or an in-cluster
 KubernetesSeaweedFs.
 
-- rule: declare exactly one credential path — credentials_secret_name for declared keys, or use_ambient_credentials for keyless pod identity
+- rule: declare exactly one credential path — credentials_secret for declared keys, or use_ambient_credentials for keyless pod identity
 
 ### spec.artifactRepository.s3.bucket
 
@@ -521,13 +529,29 @@ identity (IRSA / workload identity on the RUNNER service account)
 instead of declared keys. Mutually exclusive with
 `credentials_secret` (enforced below).
 
-### spec.artifactRepository.s3.credentialsSecretName
+### spec.artifactRepository.s3.credentialsSecret
 
-`string`
+`KubernetesArgoWorkflowsS3CredentialsSecret`
 
-Existing Secret holding the access keys — keys `accesskey` and
-`secretkey` (a KubernetesSeaweedFs credentials Secret already has
-this shape). Required unless `use_ambient_credentials`.
+### spec.artifactRepository.s3.credentialsSecret.secretName
+
+`string | valueFrom` · required
+
+- references: KubernetesSeaweedFs (`status.outputs.s3_credentials_secret_name`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesSeaweedFs, name: <that resource's name>, fieldPath: status.outputs.s3_credentials_secret_name}} -- a bare string does not parse
+
+### spec.artifactRepository.s3.credentialsSecret.accessKeyIdKey
+
+`string` · optional (explicit presence)
+
+- default: `admin_access_key_id`
+
+### spec.artifactRepository.s3.credentialsSecret.secretAccessKeyKey
+
+`string` · optional (explicit presence)
+
+- default: `admin_secret_access_key`
 
 ### spec.artifactRepository.gcs
 
@@ -645,12 +669,14 @@ Existing Secret holding the database credentials.
 
 ### spec.archive.credentialsSecret.name
 
-`string` · required
+`string | valueFrom` · required
 
 Secret name. The Secret must live in the install namespace (the
 controller reads it there).
 
+- references: KubernetesPostgres (`status.outputs.password_secret.name`)
 - rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesPostgres, name: <that resource's name>, fieldPath: status.outputs.password_secret.name}} -- a bare string does not parse
 
 ### spec.archive.credentialsSecret.usernameKey
 
@@ -894,7 +920,9 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.namespace` | KubernetesNamespace | `spec.name` |
 | `spec.artifactRepository.s3.endpoint` | KubernetesSeaweedFs | `status.outputs.s3_endpoint` |
+| `spec.artifactRepository.s3.credentialsSecret.secretName` | KubernetesSeaweedFs | `status.outputs.s3_credentials_secret_name` |
 | `spec.archive.host` | KubernetesPostgres | `status.outputs.rw_service` |
+| `spec.archive.credentialsSecret.name` | KubernetesPostgres | `status.outputs.password_secret.name` |
 
 ## See Also
 

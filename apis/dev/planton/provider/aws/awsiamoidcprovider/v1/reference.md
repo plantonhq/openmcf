@@ -129,6 +129,15 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.url` | AwsEksCluster | `status.outputs.oidc_issuer_url` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsIamRole | `spec.oidcTrust.providerArn` | `status.outputs.provider_arn` |
+| AwsIamRole | `spec.oidcTrust.providerUrl` | `status.outputs.provider_url` |
+
 ## See Also
 
 - [Overview](./README.md)

@@ -80,7 +80,13 @@ spec:
 | `spec.region` | `string` | yes |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.path` | `string` |  | `/` |  |
-| `spec.trustPolicy` | `object` | yes |  |  |
+| `spec.trustPolicy` | `object` |  |  |  |
+| `spec.oidcTrust` | `AwsIamRoleOidcTrust` |  |  |  |
+| `spec.oidcTrust.providerArn` | `string \| valueFrom` | yes |  | AwsIamOidcProvider (`status.outputs.provider_arn`) |
+| `spec.oidcTrust.providerUrl` | `string \| valueFrom` | yes |  | AwsIamOidcProvider (`status.outputs.provider_url`) |
+| `spec.oidcTrust.subjects` | `[]string` |  |  |  |
+| `spec.oidcTrust.wildcardSubjects` | `[]string` |  |  |  |
+| `spec.oidcTrust.audiences` | `[]string` |  |  |  |
 | `spec.managedPolicyArns` | `[]string \| valueFrom` |  |  | AwsIamPolicy (`status.outputs.policy_arn`) |
 | `spec.inlinePolicies` | `map<string, object>` |  |  |  |
 | `spec.maxSessionDuration` | `int32` |  | `3600` |  |
@@ -125,7 +131,7 @@ changing the path replaces the role.
 
 ### spec.trustPolicy
 
-`object` · required
+`object`
 
 The trust policy as free-form JSON: the statement of WHO may assume this
 role (service principals, AWS accounts, federated identities) and under
@@ -139,7 +145,45 @@ Example:
       Principal: { Service: lambda.amazonaws.com }
       Action: sts:AssumeRole
 
+### spec.oidcTrust
+
+`AwsIamRoleOidcTrust`
+
+- rule: at least one subject is required -- exact (subjects, e.g. 'system:serviceaccount:<namespace>:<serviceaccount>') or wildcard (wildcard_subjects)
+
+### spec.oidcTrust.providerArn
+
+`string | valueFrom` · required
+
+- references: AwsIamOidcProvider (`status.outputs.provider_arn`)
 - rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamOidcProvider, name: <that resource's name>, fieldPath: status.outputs.provider_arn}} -- a bare string does not parse
+
+### spec.oidcTrust.providerUrl
+
+`string | valueFrom` · required
+
+- references: AwsIamOidcProvider (`status.outputs.provider_url`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamOidcProvider, name: <that resource's name>, fieldPath: status.outputs.provider_url}} -- a bare string does not parse
+
+### spec.oidcTrust.subjects
+
+`[]string`
+
+- rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.oidcTrust.wildcardSubjects
+
+`[]string`
+
+- rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.oidcTrust.audiences
+
+`[]string`
+
+- rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.managedPolicyArns
 
@@ -226,6 +270,8 @@ Fields that can point at another resource's outputs:
 
 | Field | Kind | Output |
 |---|---|---|
+| `spec.oidcTrust.providerArn` | AwsIamOidcProvider | `status.outputs.provider_arn` |
+| `spec.oidcTrust.providerUrl` | AwsIamOidcProvider | `status.outputs.provider_url` |
 | `spec.managedPolicyArns` | AwsIamPolicy | `status.outputs.policy_arn` |
 | `spec.permissionsBoundary` | AwsIamPolicy | `status.outputs.policy_arn` |
 
@@ -339,9 +385,11 @@ Fields on other kinds that can point at this resource:
 | KubernetesExternalDns | `spec.awsRoute53.assumeRole` | `status.outputs.role_arn` |
 | KubernetesExternalDns | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
 | KubernetesExternalSecretsOperator | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
+| KubernetesKarpenter | `spec.aws.irsaRoleArn` | `status.outputs.role_arn` |
 | KubernetesPostgres | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
 | KubernetesSecretStore | `spec.config.aws.role` | `status.outputs.role_arn` |
 | KubernetesServiceAccount | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
+| KubernetesVelero | `spec.backupStorage.s3.irsaRoleArn` | `status.outputs.role_arn` |
 
 ## See Also
 

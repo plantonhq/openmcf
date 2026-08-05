@@ -203,6 +203,7 @@ Fields on other kinds that can point at this resource:
 | KubernetesExternalSecretsOperator | `spec.workloadIdentity.aks.clientId` | `status.outputs.client_id` |
 | KubernetesPostgres | `spec.workloadIdentity.aks.clientId` | `status.outputs.client_id` |
 | KubernetesServiceAccount | `spec.workloadIdentity.aks.clientId` | `status.outputs.client_id` |
+| KubernetesVelero | `spec.backupStorage.azureBlob.workloadIdentityClientId` | `status.outputs.client_id` |
 
 ## See Also
 

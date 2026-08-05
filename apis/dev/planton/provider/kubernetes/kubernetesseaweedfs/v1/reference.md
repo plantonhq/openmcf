@@ -918,6 +918,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | KubernetesArgoWorkflows | `spec.artifactRepository.s3.endpoint` | `status.outputs.s3_endpoint` |
+| KubernetesArgoWorkflows | `spec.artifactRepository.s3.credentialsSecret.secretName` | `status.outputs.s3_credentials_secret_name` |
 | KubernetesFlinkDeployment | `spec.state.s3.endpoint` | `status.outputs.s3_endpoint` |
 | KubernetesFlinkDeployment | `spec.state.s3.accessKeySecret.name` | `status.outputs.s3_credentials_secret_name` |
 | KubernetesFlinkDeployment | `spec.state.s3.secretKeySecret.name` | `status.outputs.s3_credentials_secret_name` |

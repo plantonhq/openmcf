@@ -77,7 +77,7 @@ spec:
 | `spec.config.gcpSecretManager.serviceAccountNamespace` | `string` |  |  |  |
 | `spec.config.gcpSecretManager.serviceAccountKeyJson` | `string` (sensitive) |  |  |  |
 | `spec.config.azureKeyVault` | `ExternalSecretsStoreAzure` |  |  |  |
-| `spec.config.azureKeyVault.vaultUrl` | `string` | yes |  |  |
+| `spec.config.azureKeyVault.vaultUrl` | `string \| valueFrom` | yes |  | AzureKeyVault (`status.outputs.vault_uri`) |
 | `spec.config.azureKeyVault.tenantId` | `string` |  |  |  |
 | `spec.config.azureKeyVault.authType` | `string` |  | `WorkloadIdentity` |  |
 | `spec.config.azureKeyVault.identityId` | `string` |  |  |  |
@@ -292,11 +292,13 @@ Azure Key Vault.
 
 ### spec.config.azureKeyVault.vaultUrl
 
-`string` · required
+`string | valueFrom` · required
 
 Key Vault URL, e.g. "https://my-vault.vault.azure.net".
 
-- rule: {"required":true,"string":{"uri":true}}
+- references: AzureKeyVault (`status.outputs.vault_uri`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureKeyVault, name: <that resource's name>, fieldPath: status.outputs.vault_uri}} -- a bare string does not parse
 
 ### spec.config.azureKeyVault.tenantId
 
@@ -633,6 +635,7 @@ Fields that can point at another resource's outputs:
 | `spec.config.aws.serviceAccountName` | KubernetesServiceAccount | `status.outputs.service_account_name` |
 | `spec.config.gcpSecretManager.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.config.gcpSecretManager.serviceAccountName` | KubernetesServiceAccount | `status.outputs.service_account_name` |
+| `spec.config.azureKeyVault.vaultUrl` | AzureKeyVault | `status.outputs.vault_uri` |
 | `spec.config.azureKeyVault.serviceAccountName` | KubernetesServiceAccount | `status.outputs.service_account_name` |
 | `spec.config.vault.kubernetes.serviceAccountName` | KubernetesServiceAccount | `status.outputs.service_account_name` |
 | `spec.config.kubernetes.serviceAccountName` | KubernetesServiceAccount | `status.outputs.service_account_name` |

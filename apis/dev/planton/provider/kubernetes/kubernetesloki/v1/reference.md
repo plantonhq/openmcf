@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesLokiSpec** deploys Grafana Loki — the log-aggregation
 system that indexes log LABELS (not content) and stores compressed log
 chunks in object storage — from the official `loki` Helm chart

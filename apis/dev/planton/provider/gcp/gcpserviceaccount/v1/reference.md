@@ -234,6 +234,7 @@ Fields on other kinds that can point at this resource:
 | KubernetesOpenBao | `spec.autoUnseal.gcpKms.workloadIdentityServiceAccount` | `status.outputs.email` |
 | KubernetesPostgres | `spec.workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |
 | KubernetesServiceAccount | `spec.workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |
+| KubernetesVelero | `spec.backupStorage.gcs.workloadIdentityServiceAccountEmail` | `status.outputs.email` |
 
 ## See Also
 

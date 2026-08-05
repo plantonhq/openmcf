@@ -146,21 +146,20 @@ spec:
 | `spec.backupStorage.s3.forcePathStyle` | `bool` |  |  |  |
 | `spec.backupStorage.s3.kmsKeyId` | `string` |  |  |  |
 | `spec.backupStorage.s3.caCert` | `string` |  |  |  |
-| `spec.backupStorage.s3.irsaRoleArn` | `string` |  |  |  |
+| `spec.backupStorage.s3.irsaRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.backupStorage.s3.accessKeys` | `KubernetesVeleroS3AccessKeys` |  |  |  |
 | `spec.backupStorage.s3.accessKeys.accessKeyId` | `string` | yes |  |  |
 | `spec.backupStorage.s3.accessKeys.secretAccessKey` | `string` (sensitive) | yes |  |  |
 | `spec.backupStorage.gcs` | `KubernetesVeleroGcsBackend` |  |  |  |
 | `spec.backupStorage.gcs.bucket` | `string` | yes |  |  |
-| `spec.backupStorage.gcs.workloadIdentityServiceAccountEmail` | `string` |  |  |  |
+| `spec.backupStorage.gcs.workloadIdentityServiceAccountEmail` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
 | `spec.backupStorage.gcs.serviceAccountKeyJson` | `string` (sensitive) |  |  |  |
 | `spec.backupStorage.azureBlob` | `KubernetesVeleroAzureBlobBackend` |  |  |  |
 | `spec.backupStorage.azureBlob.storageAccount` | `string` | yes |  |  |
 | `spec.backupStorage.azureBlob.container` | `string` | yes |  |  |
 | `spec.backupStorage.azureBlob.resourceGroup` | `string` | yes |  |  |
 | `spec.backupStorage.azureBlob.subscriptionId` | `string` | yes |  |  |
-| `spec.backupStorage.azureBlob.useWorkloadIdentity` | `bool` |  |  |  |
-| `spec.backupStorage.azureBlob.workloadIdentityClientId` | `string` |  |  |  |
+| `spec.backupStorage.azureBlob.workloadIdentityClientId` | `string \| valueFrom` |  |  | AzureUserAssignedIdentity (`status.outputs.client_id`) |
 | `spec.backupStorage.azureBlob.servicePrincipal` | `KubernetesVeleroAzureServicePrincipal` |  |  |  |
 | `spec.backupStorage.azureBlob.servicePrincipal.tenantId` | `string` | yes |  |  |
 | `spec.backupStorage.azureBlob.servicePrincipal.clientId` | `string` | yes |  |  |
@@ -367,13 +366,14 @@ endpoint's TLS certificate.
 
 ### spec.backupStorage.s3.irsaRoleArn
 
-`string`
+`string | valueFrom`
 
 IAM role ARN for IRSA: annotates Velero's service account so it
 reaches S3 without stored keys — the keyless posture on EKS.
 Mutually exclusive with access_keys.
 
-- rule: irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
 ### spec.backupStorage.s3.accessKeys
 
@@ -421,14 +421,15 @@ GCS bucket to store backups in.
 
 ### spec.backupStorage.gcs.workloadIdentityServiceAccountEmail
 
-`string`
+`string | valueFrom`
 
 GCP service-account email for Workload Identity: annotates Velero's
 Kubernetes service account (and is set on the storage location) so
 Velero reaches GCS without a stored key — the keyless posture on
 GKE. Mutually exclusive with service_account_key_json.
 
-- rule: workload_identity_service_account_email must be a GCP service-account email (…@…gserviceaccount.com)
+- references: GcpServiceAccount (`status.outputs.email`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
 
 ### spec.backupStorage.gcs.serviceAccountKeyJson
 
@@ -444,8 +445,7 @@ non-GKE clusters backing up to GCS.
 
 Azure Blob Storage.
 
-- rule: use_workload_identity and service_principal are alternative credential postures — set at most one
-- rule: use_workload_identity requires workload_identity_client_id — the federated credential is addressed by it
+- rule: workload_identity_client_id and service_principal are alternative credential postures — set at most one (neither = ambient node credentials)
 
 ### spec.backupStorage.azureBlob.storageAccount
 
@@ -479,20 +479,15 @@ Subscription the storage account lives in.
 
 - rule: {"required":true}
 
-### spec.backupStorage.azureBlob.useWorkloadIdentity
-
-`bool`
-
-Use Azure Workload Identity (federated Entra credentials on Velero's
-service account) — the keyless posture on AKS. Mutually exclusive
-with service_principal.
-
 ### spec.backupStorage.azureBlob.workloadIdentityClientId
 
-`string`
+`string | valueFrom`
 
 Entra application (client) ID for the workload-identity annotation.
 Required with use_workload_identity.
+
+- references: AzureUserAssignedIdentity (`status.outputs.client_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.client_id}} -- a bare string does not parse
 
 ### spec.backupStorage.azureBlob.servicePrincipal
 
@@ -1023,6 +1018,9 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.namespace` | KubernetesNamespace | `spec.name` |
+| `spec.backupStorage.s3.irsaRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.backupStorage.gcs.workloadIdentityServiceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
+| `spec.backupStorage.azureBlob.workloadIdentityClientId` | AzureUserAssignedIdentity | `status.outputs.client_id` |
 
 ## See Also
 
