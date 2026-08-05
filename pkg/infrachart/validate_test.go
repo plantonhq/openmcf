@@ -111,6 +111,44 @@ spec:
     value: literal
 `
 
+// A rendered document whose declared apiVersion conflicts with its kind must
+// fail the build — the deploy boundary rejects the same conflict, and build
+// and deploy must never disagree.
+func TestValidateRejectsWrongEnvelopeApiVersion(t *testing.T) {
+	dir := writeChart(t, map[string]string{
+		"a.yaml": `---
+apiVersion: _test.planton.dev/v99
+kind: TestCloudResourceGeneric
+metadata:
+  name: "{{ env }}-{{ values.base_name }}-a"
+spec:
+  requiredRef:
+    value: literal
+`,
+	})
+	report := mustValidate(t, dir, Options{})
+	requireError(t, report, "apiVersion '_test.planton.dev/v99' does not match kind TestCloudResourceGeneric")
+}
+
+// A rendered document may omit apiVersion entirely: the platform stamps the
+// authoritative value on write, so absence is not an authoring error.
+func TestValidateAllowsMissingEnvelopeApiVersion(t *testing.T) {
+	dir := writeChart(t, map[string]string{
+		"a.yaml": `---
+kind: TestCloudResourceGeneric
+metadata:
+  name: "{{ env }}-{{ values.base_name }}-a"
+spec:
+  requiredRef:
+    value: literal
+`,
+	})
+	report := mustValidate(t, dir, Options{})
+	if report.HasErrors() {
+		t.Fatalf("missing apiVersion must not be an error: %v", issueMessages(report, SeverityError))
+	}
+}
+
 func TestValidateHappyPathWithInChartReference(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"b.yaml": validNode,

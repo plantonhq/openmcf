@@ -243,6 +243,14 @@ func (r *VariantResult) validateDoc(file string, docYaml []byte) {
 		addIssue(SeverityError, "metadata.name is required (it is the resource's identity in the chart's dependency graph)")
 	}
 
+	// A rendered document may omit apiVersion/kind consts (the platform stamps
+	// the authoritative values on write), but a PRESENT value that conflicts
+	// with the document's kind is an authoring error — surfacing it here keeps
+	// chart validation in agreement with what the deploy boundary rejects.
+	for _, mismatch := range manifest.EnvelopeMismatches(msg) {
+		addIssue(SeverityError, "%s", mismatch)
+	}
+
 	spec, err := manifest.ExtractSpec(msg)
 	if err != nil {
 		addIssue(SeverityError, "manifest has no spec: %v", err)
