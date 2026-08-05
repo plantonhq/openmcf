@@ -41,8 +41,8 @@ the pack, which makes it the reliable root marker.
    Entries carry repo-relative paths, so after extracting into an empty
    directory the pack root is
    `<dir>/apis/dev/planton/provider/`.
-3. **A vendored copy** inside a product tree (several Planton products carry
-   the pack embedded). Search for the root marker:
+3. **A vendored copy**, when the tree you are working in embeds one. Do not
+   assume it exists -- probe for the root marker and use it only on a hit:
 
    ```
    rg --files -g 'reference-commons.md' <tree>
