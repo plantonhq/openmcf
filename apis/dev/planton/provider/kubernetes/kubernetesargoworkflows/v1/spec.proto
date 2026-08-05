@@ -342,17 +342,59 @@ message KubernetesArgoWorkflowsArtifactS3 {
   bool use_ambient_credentials = 5;
 
   /**
-   * Existing Secret holding the access keys — keys `accesskey` and
-   * `secretkey` (a KubernetesSeaweedFs credentials Secret already has
-   * this shape). Required unless `use_ambient_credentials`.
+   * The existing Secret holding the access keys. Defaults compose a
+   * KubernetesSeaweedFs resource's generated credentials Secret
+   * (`<name>-s3-secret`) as-is — its name by reference, its admin key
+   * pair through the key-name defaults below. Required unless
+   * `use_ambient_credentials`.
    */
-  string credentials_secret_name = 6;
+  KubernetesArgoWorkflowsS3CredentialsSecret credentials_secret = 6;
 
   option (buf.validate.message).cel = {
     id: "spec.artifact_repository.s3.credentials"
-    message: "declare exactly one credential path — credentials_secret_name for declared keys, or use_ambient_credentials for keyless pod identity"
-    expression: "this.use_ambient_credentials ? size(this.credentials_secret_name) == 0 : size(this.credentials_secret_name) > 0"
+    message: "declare exactly one credential path — credentials_secret for declared keys, or use_ambient_credentials for keyless pod identity"
+    expression: "this.use_ambient_credentials ? !has(this.credentials_secret) : has(this.credentials_secret)"
   };
+}
+
+/**
+ * A reference to an existing Secret carrying S3 access keys in two
+ * keys. Defaults compose a KubernetesSeaweedFs resource's generated
+ * `-s3-secret` (its admin credential pair). The controller resolves
+ * the keys at runtime through secret selectors — nothing
+ * credential-bearing ever renders into chart values.
+ */
+message KubernetesArgoWorkflowsS3CredentialsSecret {
+  /**
+   * Name of the Secret. Accepts a literal name or a reference to a
+   * KubernetesSeaweedFs resource (its S3 credentials Secret). The
+   * Secret must live in the install namespace (the controller reads
+   * it there).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_credentials_secret_name"
+  ];
+
+  /**
+   * Key NAME within the Secret (a reference, not secret material)
+   * holding the access key ID. Empty = "admin_access_key_id"
+   * (the KubernetesSeaweedFs convention — the generated `-s3-secret`
+   * composes with zero key configuration). For a Secret shaped to the
+   * argo-workflows chart's documented example (keys
+   * `accesskey`/`secretkey`), set both key names explicitly.
+   */
+  optional string access_key_id_key = 2 [(dev.planton.shared.options.default) = "admin_access_key_id"];
+
+  /**
+   * Key holding the secret access key. Empty =
+   * "admin_secret_access_key".
+   */
+  optional string secret_access_key_key = 3 [
+    (dev.planton.shared.options.default) = "admin_secret_access_key",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
 }
 
 /**

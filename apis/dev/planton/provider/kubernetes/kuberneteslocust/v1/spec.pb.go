@@ -650,9 +650,10 @@ type KubernetesLocustSecretEnv struct {
 	// Name of the Secret. Same-namespace constraint applies.
 	SecretName string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// *
-	// Keys to inject — each becomes an environment variable with the
-	// SAME name (name your Secret keys like environment variables,
-	// e.g. "API_TOKEN").
+	// Key NAMES within the Secret (references, not secret material) to
+	// inject — each becomes an environment variable with the SAME name
+	// (name your Secret keys like environment variables, e.g.
+	// "API_TOKEN").
 	Keys          []string `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1351,11 +1352,11 @@ const file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDes
 	"\x15locustfile_config_map\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13locustfileConfigMap\x12U\n" +
 	"\x0flocustfile_name\x18\x02 \x01(\tB'\xbaH\x19r\x172\x15^[A-Za-z0-9_.-]+\\.py$\x8a\xa6\x1d\amain.pyH\x00R\x0elocustfileName\x88\x01\x01\x12$\n" +
 	"\x0elib_config_map\x18\x03 \x01(\tR\flibConfigMapB\x12\n" +
-	"\x10_locustfile_name\"\xab\x01\n" +
+	"\x10_locustfile_name\"b\n" +
 	"\x19KubernetesLocustSecretEnv\x12'\n" +
 	"\vsecret_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"secretName\x12e\n" +
-	"\x04keys\x18\x02 \x03(\tBQ\xbaH\x05\x92\x01\x02\b\x01\xaa\xa6\x1dEKey NAMES within an existing Secret (references), not secret materialR\x04keys\"\xe3\x02\n" +
+	"secretName\x12\x1c\n" +
+	"\x04keys\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x04keys\"\xe3\x02\n" +
 	"\x16KubernetesLocustMaster\x12Q\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12V\n" +
 	"\tlog_level\x18\x02 \x01(\tB4\xbaH)r'R\x05DEBUGR\x04INFOR\aWARNINGR\x05ERRORR\bCRITICAL\x8a\xa6\x1d\x04INFOH\x00R\blogLevel\x88\x01\x01\x12\x1f\n" +

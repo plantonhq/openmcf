@@ -1221,7 +1221,8 @@ type KubernetesMlflowS3CredentialsSecret struct {
 	// applies.
 	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// *
-	// Key holding the access key ID. Empty = "admin_access_key_id"
+	// Key NAME within the Secret (a reference, not secret material)
+	// holding the access key ID. Empty = "admin_access_key_id"
 	// (the KubernetesSeaweedFs convention).
 	AccessKeyIdKey *string `protobuf:"bytes,2,opt,name=access_key_id_key,json=accessKeyIdKey,proto3,oneof" json:"access_key_id_key,omitempty"`
 	// *
@@ -1372,7 +1373,8 @@ type KubernetesMlflowAwsCredentialsSecret struct {
 	// Name of the Secret. Same-namespace constraint applies.
 	SecretName string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// *
-	// Key holding the access key ID. Empty = "access_key_id".
+	// Key NAME within the Secret (a reference, not secret material)
+	// holding the access key ID. Empty = "access_key_id".
 	AccessKeyIdKey *string `protobuf:"bytes,2,opt,name=access_key_id_key,json=accessKeyIdKey,proto3,oneof" json:"access_key_id_key,omitempty"`
 	// *
 	// Key holding the secret access key. Empty = "secret_access_key".
@@ -2202,11 +2204,11 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x1e\n" +
 	"\x06bucket\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix\x12\x8f\x01\n" +
-	"\x12credentials_secret\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowS3CredentialsSecretB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\"\x97\x04\n" +
+	"\x12credentials_secret\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowS3CredentialsSecretB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\"\xcd\x03\n" +
 	"#KubernetesMlflowS3CredentialsSecret\x12\x8d\x01\n" +
 	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
-	"secretName\x12\x90\x01\n" +
-	"\x11access_key_id_key\x18\x02 \x01(\tB`\x8a\xa6\x1d\x13admin_access_key_id\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x9c\x01\n" +
+	"secretName\x12G\n" +
+	"\x11access_key_id_key\x18\x02 \x01(\tB\x17\x8a\xa6\x1d\x13admin_access_key_idH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x9c\x01\n" +
 	"\x15secret_access_key_key\x18\x03 \x01(\tBd\x8a\xa6\x1d\x17admin_secret_access_key\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x12secretAccessKeyKey\x88\x01\x01B\x14\n" +
 	"\x12_access_key_id_keyB\x18\n" +
 	"\x16_secret_access_key_key\"\x83\x02\n" +
@@ -2214,11 +2216,11 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\x12\x1e\n" +
 	"\x06region\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\x88\x01\n" +
-	"\x12credentials_secret\x18\x04 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowAwsCredentialsSecretR\x11credentialsSecret\"\xa5\x03\n" +
+	"\x12credentials_secret\x18\x04 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowAwsCredentialsSecretR\x11credentialsSecret\"\xdb\x02\n" +
 	"$KubernetesMlflowAwsCredentialsSecret\x12'\n" +
 	"\vsecret_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"secretName\x12\x8a\x01\n" +
-	"\x11access_key_id_key\x18\x02 \x01(\tBZ\x8a\xa6\x1d\raccess_key_id\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x96\x01\n" +
+	"secretName\x12A\n" +
+	"\x11access_key_id_key\x18\x02 \x01(\tB\x11\x8a\xa6\x1d\raccess_key_idH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x96\x01\n" +
 	"\x15secret_access_key_key\x18\x03 \x01(\tB^\x8a\xa6\x1d\x11secret_access_key\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x12secretAccessKeyKey\x88\x01\x01B\x14\n" +
 	"\x12_access_key_id_keyB\x18\n" +
 	"\x16_secret_access_key_key\"\xe1\x01\n" +

@@ -21,11 +21,15 @@ var vars = struct {
 	// 63-20=43 characters truncate SILENTLY and break the naming contract
 	// the exported outputs are built on.
 	FullnameBudget int
-	// The chart's secret-selector key contracts for artifact-store
-	// credentials (its own documented shapes; a KubernetesSeaweedFs
-	// credentials Secret matches the s3 pair natively).
-	S3AccessKeyKey       string
-	S3SecretKeyKey       string
+	// Fallbacks for the s3 credentials Secret's key names when the spec
+	// leaves them unset — the KubernetesSeaweedFs generated `-s3-secret`
+	// convention (mirror of the proto field defaults), so that Secret
+	// composes with zero key configuration. The chart takes the key names
+	// verbatim through its accessKeySecret/secretKeySecret selectors.
+	S3AccessKeyIdKeyDefault     string
+	S3SecretAccessKeyKeyDefault string
+	// The chart's secret-selector key contracts for the gcs/azure
+	// artifact-store credentials (its own documented shapes).
 	GcsServiceAccountKey string
 	AzureAccountKeyKey   string
 	// The chart's archive credential-selector defaults (userNameSecret /
@@ -41,8 +45,8 @@ var vars = struct {
 	DefaultWorkflowServiceAccount: "argo-workflow",
 	ServerPort:                    2746,
 	FullnameBudget:                43,
-	S3AccessKeyKey:                "accesskey",
-	S3SecretKeyKey:                "secretkey",
+	S3AccessKeyIdKeyDefault:       "admin_access_key_id",
+	S3SecretAccessKeyKeyDefault:   "admin_secret_access_key",
 	GcsServiceAccountKey:          "serviceAccountKey",
 	AzureAccountKeyKey:            "account-access-key",
 	ArchiveUsernameKey:            "username",

@@ -20,10 +20,11 @@ reconciles only Workflows carrying its
 - **Out:** `server_service` / `server_kube_endpoint` for composed
   exposure, and `workflow_service_account` — the identity to annotate
   for IRSA/workload identity and to grant pipeline RBAC to.
-- **Durability by reference:** the artifact endpoint FK-composes a
-  `KubernetesSeaweedFs` (whose credentials Secret already carries the
-  `accesskey`/`secretkey` pair the chart's selectors expect); the
-  archive host FK-composes a `KubernetesPostgres`.
+- **Durability by reference:** the artifact endpoint AND credentials
+  Secret name FK-compose a `KubernetesSeaweedFs` (the credential
+  key-name defaults match its generated `-s3-secret` admin pair, so
+  the Secret composes untouched); the archive host FK-composes a
+  `KubernetesPostgres`.
 
 ## The runner-identity placement
 

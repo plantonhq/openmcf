@@ -16,8 +16,9 @@ func TestKubernetesArgoWorkflows(t *testing.T) {
 	ginkgo.RunSpecs(t, "KubernetesArgoWorkflows Suite")
 }
 
-func int32Ptr(i int32) *int32 { return &i }
-func boolPtr(b bool) *bool    { return &b }
+func int32Ptr(i int32) *int32    { return &i }
+func boolPtr(b bool) *bool       { return &b }
+func stringPtr(s string) *string { return &s }
 
 func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
@@ -102,22 +103,42 @@ var _ = ginkgo.Describe("KubernetesArgoWorkflows Validation Tests", func() {
 			input.Spec.ArtifactRepository = &KubernetesArgoWorkflowsArtifactRepository{
 				ArchiveLogs: true,
 				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
-					Bucket:                "workflow-artifacts",
-					Endpoint:              literal("objects-s3.storage.svc.cluster.local:8333"),
-					Insecure:              true,
-					CredentialsSecretName: "objects-s3-auth",
+					Bucket:   "workflow-artifacts",
+					Endpoint: literal("objects-s3.storage.svc.cluster.local:8333"),
+					Insecure: true,
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{
+						SecretName: literal("objects-s3-auth"),
+					},
 				}},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("an s3 endpoint referencing a KubernetesSeaweedFs should be valid", func() {
+		ginkgo.It("an s3 credentials Secret with explicit key names should be valid", func() {
 			input.Spec.ArtifactRepository = &KubernetesArgoWorkflowsArtifactRepository{
 				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
-					Bucket:                "workflow-artifacts",
-					Endpoint:              valueFrom(cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs, "objects", "status.outputs.s3_endpoint"),
-					Insecure:              true,
-					CredentialsSecretName: "objects-s3-auth",
+					Bucket:   "workflow-artifacts",
+					Endpoint: literal("objects-s3.storage.svc.cluster.local:8333"),
+					Insecure: true,
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{
+						SecretName:         literal("generic-s3-auth"),
+						AccessKeyIdKey:     stringPtr("accesskey"),
+						SecretAccessKeyKey: stringPtr("secretkey"),
+					},
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("an s3 endpoint and credentials Secret referencing a KubernetesSeaweedFs should be valid", func() {
+			input.Spec.ArtifactRepository = &KubernetesArgoWorkflowsArtifactRepository{
+				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
+					Bucket:   "workflow-artifacts",
+					Endpoint: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs, "objects", "status.outputs.s3_endpoint"),
+					Insecure: true,
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{
+						SecretName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs, "objects", "status.outputs.s3_credentials_secret_name"),
+					},
 				}},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
@@ -243,7 +264,19 @@ var _ = ginkgo.Describe("KubernetesArgoWorkflows Validation Tests", func() {
 		ginkgo.It("an s3 repository without a bucket should fail", func() {
 			input.Spec.ArtifactRepository = &KubernetesArgoWorkflowsArtifactRepository{
 				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
-					CredentialsSecretName: "objects-s3-auth",
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{
+						SecretName: literal("objects-s3-auth"),
+					},
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("an s3 credentials Secret without a name should fail", func() {
+			input.Spec.ArtifactRepository = &KubernetesArgoWorkflowsArtifactRepository{
+				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
+					Bucket:            "workflow-artifacts",
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{},
 				}},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
@@ -265,7 +298,9 @@ var _ = ginkgo.Describe("KubernetesArgoWorkflows Validation Tests", func() {
 				Backend: &KubernetesArgoWorkflowsArtifactRepository_S3{S3: &KubernetesArgoWorkflowsArtifactS3{
 					Bucket:                "workflow-artifacts",
 					UseAmbientCredentials: true,
-					CredentialsSecretName: "objects-s3-auth",
+					CredentialsSecret: &KubernetesArgoWorkflowsS3CredentialsSecret{
+						SecretName: literal("objects-s3-auth"),
+					},
 				}},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
