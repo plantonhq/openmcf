@@ -1,0 +1,21 @@
+apiVersion: infra-hub.planton.ai/v1
+kind: InfraChart
+metadata:
+  name: Kubernetes Identity and Access Platform
+spec:
+  selector:
+    kind: platform
+  description: >-
+    The self-hosted security triad in one deploy — Keycloak for identity
+    (OIDC single sign-on), OpenFGA for fine-grained authorization, and
+    OpenBao for secrets — over one CloudNativePG-managed PostgreSQL
+    bootstrapped with both databases under one least-privilege owner
+    role. Every database credential flows by reference through the
+    operator-maintained Secret, the authorization API ships with its
+    keys enabled on day one, and nothing is exposed until you compose
+    exposure in front of it.
+  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/kubernetes/kuberneteskeycloak/v1/logo.svg
+  isReady: true
+  webLinks:
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/identity-and-access-platform
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/identity-and-access-platform/README.md
