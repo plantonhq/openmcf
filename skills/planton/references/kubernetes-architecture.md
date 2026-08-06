@@ -76,12 +76,16 @@ on, what hostname it should answer on. The infrastructure exists in service
 of it; a composition that never asked what the user is deploying has failed
 regardless of how clean the charts are.
 
-**Sequencing (the studio composes one chart folder at a time):** propose both
-charts up front, compose and finish the shared-infrastructure chart first,
-then have the user open or create the second chart's folder and continue
-there. The grounding duty (`discovery.md`) means the second session
-discovers the deployed cluster automatically — never try to cram both charts
-into one folder because one folder happens to be open.
+**Sequencing:** propose both charts up front, then compose and finish the
+shared-infrastructure chart before the environment chart — producers before
+consumers, each chart driven green before the next begins. In your
+workspace, each chart is its own top-level subfolder (the identity check in
+the skill), so both live side by side in one conversation; when the folder
+you were given IS a single chart, finish it and have the user open or
+create the second chart's folder — the grounding duty (`discovery.md`)
+means the next conversation discovers the deployed cluster automatically.
+Either way, one folder holds one chart: never mix two charts' files into
+one chart folder.
 
 ## Cost shape on the cluster
 

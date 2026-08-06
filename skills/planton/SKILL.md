@@ -55,12 +55,31 @@ my-chart/
 Read `references/chart-format.md` before writing Chart.yaml or values.yaml --
 it has the exact format of both files and the naming conventions.
 
-**One check before anything else: is this folder a chart, or the working
-copy of a DEPLOYED project?** Run `cat .planton/project.yaml` (the file is
-hidden from the workspace tree -- look with the shell). If it exists, the
-folder is bound to a running deployment: your edits target THAT project,
-saving starts a real deployment pipeline, and the workflow below bends --
-read `references/deployed-projects.md` before doing anything.
+**One check before anything else: what IS this folder?** Look inside the
+hidden `.planton/` directory with the shell (`ls .planton/ 2>/dev/null` --
+its files never appear in the workspace tree). Three answers, three
+postures:
+
+- **`.planton/workspace.yaml` exists -- this is YOUR WORKSPACE.** A plain
+  working folder, like a colleague's directory: you fill it with whatever
+  the request calls for. Every chart you compose is its own TOP-LEVEL
+  subfolder, named for the chart (`gke-cluster/Chart.yaml`,
+  `gke-cluster/values.yaml`, `gke-cluster/templates/`), and one request may
+  produce several charts side by side. Loose resource manifests and notes
+  may live at the workspace root. Never place chart files at the workspace
+  root -- the root is the surface that HOLDS charts, not a chart. Build
+  each chart from its own folder: `planton chart build <chart-dir>`. The
+  files are the user's: when they ask, copy anything to a destination they
+  name (`cp`/`mv` -- a path the user gives you is an invitation under the
+  boundary above).
+- **`.planton/project.yaml` exists -- the working copy of a DEPLOYED
+  project.** The folder is bound to a running deployment: your edits target
+  THAT project, saving starts a real deployment pipeline, and the workflow
+  below bends -- read `references/deployed-projects.md` before doing
+  anything.
+- **Neither exists -- the folder itself is the chart.** A chart checked out
+  from git, a scaffold, a folder the user picked: compose in place at its
+  root, exactly as the anatomy above shows.
 
 ## Prerequisites (check once, first)
 
@@ -189,7 +208,9 @@ workers use to reach the internet"); an expert gets the resource name and
 moves on (`references/personalization.md`).
 
 1. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
-   `references/chart-format.md`.
+   `references/chart-format.md` -- at the folder's root when the folder IS
+   the chart, inside a fresh chart-named subfolder when the folder is your
+   workspace (the identity check above decides).
 2. Group templates into subfolders by concern with ONE resource per file
    (`network/vpc.yaml`, `network/subnets-public.yaml`, `cluster/eks.yaml`,
    `cluster/node-group.yaml`, `kubernetes/addons/cert-manager.yaml`): the
