@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "catalogbundle",
+    srcs = [
+        "builder.go",
+        "bundle.go",
+        "conformance.go",
+        "loader.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/catalogbundle",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/crkreflect",
+        "@io_k8s_sigs_yaml//:yaml",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protodesc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/descriptorpb",
+    ],
+)
+
+go_test(
+    name = "catalogbundle_test",
+    srcs = ["bundle_test.go"],
+    embed = [":catalogbundle"],
+    deps = [
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protodesc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/descriptorpb",
+    ],
+)

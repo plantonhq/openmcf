@@ -6,13 +6,18 @@
 # Planton upgrade-planton script) from needing a local Planton checkout.
 #
 # Artifacts created:
-#   presets.zip        -- Preset YAML + MD, kind enum proto
-#   iac-source.zip     -- IaC module source (.go, .tf, .md, .yaml)
-#   catalog-pages.zip  -- Per-component catalog-page.md
-#   proto-source.zip   -- Raw proto source (spec, api, stack_input, stack_outputs)
-#   reference-pack.zip -- Component reference pack (generated reference pages,
-#                         indexes, cross-reference graph, commons, GUIDE.md /
-#                         patterns wisdom layer)
+#   presets.zip         -- Preset YAML + MD, kind enum proto
+#   iac-source.zip      -- IaC module source (.go, .tf, .md, .yaml)
+#   catalog-pages.zip   -- Per-component catalog-page.md
+#   proto-source.zip    -- Raw proto source (spec, api, stack_input, stack_outputs)
+#   reference-pack.zip  -- Component reference pack (generated reference pages,
+#                          indexes, cross-reference graph, commons, GUIDE.md /
+#                          patterns wisdom layer)
+#   catalog-bundle.zip  -- The catalog as DATA: buf-built descriptor set
+#                          (schemas + validation rules + kind registry),
+#                          conversion specs, presets, checksummed manifest.
+#                          Verified against the compiled registry BEFORE
+#                          upload; a non-conformant bundle fails the release.
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/content/{name}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/content/{name}.zip
@@ -46,6 +51,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Build and verify the catalog bundle
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          make build-catalog-bundle tag="$TAG"
+          make verify-catalog-bundle
+          cp build/catalog-bundle.zip .
+
       - name: Package and upload content zips
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -58,7 +81,7 @@ jobs:
 
           echo ""
           echo "Uploading content zips to R2 (releases/${TAG}/content/)..."
-          for zip in presets.zip iac-source.zip catalog-pages.zip proto-source.zip reference-pack.zip; do
+          for zip in presets.zip iac-source.zip catalog-pages.zip proto-source.zip reference-pack.zip catalog-bundle.zip; do
             if [ -f "$zip" ]; then
               R2_KEY="releases/${TAG}/content/${zip}"
               aws s3 cp "$zip" "s3://${R2_BUCKET}/${R2_KEY}" \

@@ -102,6 +102,26 @@ bazel-test:
 generate-conversion-registry:
 	go run -tags codegen ./pkg/conversion/codegen
 
+# Builds the catalog bundle -- the catalog as DATA (schemas + validation
+# rules + kind registry in one buf-built descriptor set, plus conversion
+# specs and presets), checksummed and self-describing. See
+# pkg/catalogbundle/bundle.go for the format contract.
+.PHONY: build-catalog-bundle
+build-catalog-bundle:
+	mkdir -p build
+	cd apis && buf build -o ../build/catalog-descriptors.binpb
+	go run ./pkg/catalogbundle/cli build \
+		--descriptors build/catalog-descriptors.binpb \
+		--provider-base apis/dev/planton/provider \
+		--out build/catalog-bundle.zip $(if $(tag),--tag $(tag))
+
+# Verifies the built bundle: checksum self-verification plus the registry
+# conformance gate (the bundle must serve EXACTLY what the compiled-in
+# registry serves, for every kind). A bundle that fails must never ship.
+.PHONY: verify-catalog-bundle
+verify-catalog-bundle:
+	go run ./pkg/catalogbundle/cli verify --bundle build/catalog-bundle.zip
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go
