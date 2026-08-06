@@ -149,11 +149,23 @@ Example:
 
 `AwsIamRoleOidcTrust`
 
+Typed federated trust against an IAM OIDC provider: the IaC modules
+compose the sts:AssumeRoleWithWebIdentity trust document from the
+provider's outputs and the subject/audience conditions declared here.
+The form that makes keyless workload identity composable -- provider,
+role, and consumer can deploy in one run with the trust wired by
+reference.
+
 - rule: at least one subject is required -- exact (subjects, e.g. 'system:serviceaccount:<namespace>:<serviceaccount>') or wildcard (wildcard_subjects)
 
 ### spec.oidcTrust.providerArn
 
 `string | valueFrom` · required
+
+The IAM OIDC provider this role trusts -- the `Federated` principal of
+the composed trust policy. Reference an AwsIamOidcProvider's
+provider_arn output or pass a literal provider ARN
+(arn:aws:iam::<account>:oidc-provider/<issuer-host-and-path>).
 
 - references: AwsIamOidcProvider (`status.outputs.provider_arn`)
 - rule: {"required":true}
@@ -163,6 +175,12 @@ Example:
 
 `string | valueFrom` · required
 
+The provider's issuer URL with the scheme stripped (e.g.
+"oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED") -- the prefix of the
+`sub`/`aud` condition keys in the composed document. Reference the SAME
+AwsIamOidcProvider's provider_url output as provider_arn so the pair can
+never drift apart.
+
 - references: AwsIamOidcProvider (`status.outputs.provider_url`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamOidcProvider, name: <that resource's name>, fieldPath: status.outputs.provider_url}} -- a bare string does not parse
@@ -171,17 +189,31 @@ Example:
 
 `[]string`
 
+Exact-match `sub` claim values this role accepts (StringEquals). For EKS
+IRSA the subject is "system:serviceaccount:<namespace>:<serviceaccount>".
+At least one subject -- exact or wildcard -- is required.
+
 - rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.oidcTrust.wildcardSubjects
 
 `[]string`
 
+Wildcard `sub` claim patterns this role accepts (StringLike; `*` and `?`
+wildcards) -- the CI-federation shape, e.g. "repo:my-org/my-repo:*" for
+GitHub Actions. Rendered as its own statement so exact and wildcard
+subjects are ORed, never ANDed (see the message comment).
+
 - rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.oidcTrust.audiences
 
 `[]string`
+
+`aud` claim values this role accepts (StringEquals on the audience
+condition key). Empty defaults to ["sts.amazonaws.com"] -- the audience
+EKS IRSA and GitHub Actions both present. Set explicitly only for
+providers registered with a different client id.
 
 - rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 

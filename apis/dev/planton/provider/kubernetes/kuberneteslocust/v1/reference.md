@@ -390,9 +390,10 @@ Name of the Secret. Same-namespace constraint applies.
 
 `[]string` · required
 
-Keys to inject — each becomes an environment variable with the
-SAME name (name your Secret keys like environment variables,
-e.g. "API_TOKEN").
+Key NAMES within the Secret (references, not secret material) to
+inject — each becomes an environment variable with the SAME name
+(name your Secret keys like environment variables, e.g.
+"API_TOKEN").
 
 - rule: {"repeated":{"minItems":"1"}}
 

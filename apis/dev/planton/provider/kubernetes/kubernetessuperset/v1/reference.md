@@ -282,7 +282,13 @@ Container image. Empty = the official image the chart pins
 (`apachesuperset.docker.scarf.sh/apache/superset` — the ASF's
 scarf.sh download gateway in front of the official image;
 override the repository for air-gapped mirrors or a custom
-image carrying extra database drivers).
+image). KNOW THIS (verified live and in the image's own build
+file): the published image is the driver-less "lean" build stage
+— even the PostgreSQL metadata-database driver rides only the
+dev/ci variants. The module's default bootstrap script installs
+the exact psycopg2 pin at container start; for production
+(air-gap, no pip-at-boot), bake a custom image with the drivers
+and set bootstrap_script to a no-op.
 
 ### spec.image.repository
 
@@ -476,7 +482,12 @@ resource's password Secret. Same-namespace constraint applies.
 
 `string` · optional (explicit presence)
 
-Key inside the Secret holding the password. Empty = "password".
+Key inside the Secret holding the password. For a KubernetesValkey
+auth Secret this is the ACL username ("default" unless you declared
+users) — that Secret keys entries BY USERNAME, one key per user.
+Empty = "password" (the generic existing-Secret convention; wrong
+for Valkey auth Secrets, where an unset key deploys cleanly and
+then fails authentication at runtime).
 
 - default: `password`
 
@@ -935,12 +946,21 @@ Key inside the Secret.
 `string`
 
 Bootstrap script run at every container start (before the
-server). The chart's mechanism for `pip install`-ing extra
-database drivers (e.g. `trino`, `elasticsearch-dbapi`) — the
-official image ships ONLY the PostgreSQL driver family. KNOW
-THIS: pip at container start needs internet from the pod and
+server). The chart's mechanism for `pip install`-ing database
+drivers — the official image is the driver-less "lean" build
+stage that ships NO metadata-database driver at all (verified
+live: the server exits at boot with "No module named 'psycopg2'"
+without one). Empty = the module's own default, which installs
+the exact psycopg2 pin the app's [postgres] extra declares.
+Declaring a script REPLACES that default — include a psycopg2
+install (or bake it into a custom image) or the pods crash-loop.
+KNOW THIS (verified live): installs must target the app's venv —
+the image's plain `pip` is the SYSTEM interpreter's and its
+installs stay invisible to the app; use `uv pip install
+--python /app/.venv/bin/python <driver>` (uv is the image's own
+tool). pip at container start needs internet from the pod and
 re-runs on every restart — for production, bake a custom image
-instead. Empty = the chart's no-op default.
+instead and set this to a no-op.
 
 ### spec.service
 

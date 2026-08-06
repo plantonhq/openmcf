@@ -24,10 +24,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesJenkinsSpec** defines the configuration for deploying Jenkins on a Kubernetes cluster.
-// This message specifies the parameters needed to create and manage a Jenkins deployment within a Kubernetes environment.
-// It includes container specifications, Helm chart customization options, and ingress settings to control resource allocation
-// and external access.
+// **KubernetesJenkinsSpec** deploys Jenkins — the extendable CI/CD
+// automation server — from the official jenkinsci Helm chart
+// (https://github.com/jenkinsci/helm-charts). The module generates a
+// random admin password into a per-deploy Kubernetes Secret (never
+// authored in the manifest) and exports the admin username plus the
+// Secret name/key as outputs, so consumers reference credentials instead
+// of pasting them. The spec covers container resource sizing, a
+// `helm_values` escape hatch for chart options beyond the typed surface,
+// and an ingress toggle with the external hostname.
 type KubernetesJenkinsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Kubernetes Namespace

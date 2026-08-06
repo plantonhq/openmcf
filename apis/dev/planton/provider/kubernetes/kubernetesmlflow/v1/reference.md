@@ -636,7 +636,8 @@ applies.
 
 `string` · optional (explicit presence)
 
-Key holding the access key ID. Empty = "admin_access_key_id"
+Key NAME within the Secret (a reference, not secret material)
+holding the access key ID. Empty = "admin_access_key_id"
 (the KubernetesSeaweedFs convention).
 
 - default: `admin_access_key_id`
@@ -700,7 +701,8 @@ Name of the Secret. Same-namespace constraint applies.
 
 `string` · optional (explicit presence)
 
-Key holding the access key ID. Empty = "access_key_id".
+Key NAME within the Secret (a reference, not secret material)
+holding the access key ID. Empty = "access_key_id".
 
 - default: `access_key_id`
 

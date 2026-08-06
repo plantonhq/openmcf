@@ -533,9 +533,20 @@ instead of declared keys. Mutually exclusive with
 
 `KubernetesArgoWorkflowsS3CredentialsSecret`
 
+The existing Secret holding the access keys. Defaults compose a
+KubernetesSeaweedFs resource's generated credentials Secret
+(`<name>-s3-secret`) as-is — its name by reference, its admin key
+pair through the key-name defaults below. Required unless
+`use_ambient_credentials`.
+
 ### spec.artifactRepository.s3.credentialsSecret.secretName
 
 `string | valueFrom` · required
+
+Name of the Secret. Accepts a literal name or a reference to a
+KubernetesSeaweedFs resource (its S3 credentials Secret). The
+Secret must live in the install namespace (the controller reads
+it there).
 
 - references: KubernetesSeaweedFs (`status.outputs.s3_credentials_secret_name`)
 - rule: {"required":true}
@@ -545,11 +556,21 @@ instead of declared keys. Mutually exclusive with
 
 `string` · optional (explicit presence)
 
+Key NAME within the Secret (a reference, not secret material)
+holding the access key ID. Empty = "admin_access_key_id"
+(the KubernetesSeaweedFs convention — the generated `-s3-secret`
+composes with zero key configuration). For a Secret shaped to the
+argo-workflows chart's documented example (keys
+`accesskey`/`secretkey`), set both key names explicitly.
+
 - default: `admin_access_key_id`
 
 ### spec.artifactRepository.s3.credentialsSecret.secretAccessKeyKey
 
 `string` · optional (explicit presence)
+
+Key holding the secret access key. Empty =
+"admin_secret_access_key".
 
 - default: `admin_secret_access_key`
 
@@ -671,8 +692,11 @@ Existing Secret holding the database credentials.
 
 `string | valueFrom` · required
 
-Secret name. The Secret must live in the install namespace (the
-controller reads it there).
+Secret name. Accepts a literal name or a reference to a
+KubernetesPostgres resource (its operator-maintained application
+Secret — whose `username`/`password` keys are exactly the key-name
+defaults below, so it composes untouched). The Secret must live in
+the install namespace (the controller reads it there).
 
 - references: KubernetesPostgres (`status.outputs.password_secret.name`)
 - rule: {"required":true}

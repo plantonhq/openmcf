@@ -6,10 +6,47 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
-**KubernetesJenkinsSpec** defines the configuration for deploying Jenkins on a Kubernetes cluster.
-This message specifies the parameters needed to create and manage a Jenkins deployment within a Kubernetes environment.
-It includes container specifications, Helm chart customization options, and ingress settings to control resource allocation
-and external access.
+**KubernetesJenkinsSpec** deploys Jenkins — the extendable CI/CD
+automation server — from the official jenkinsci Helm chart
+(https://github.com/jenkinsci/helm-charts). The module generates a
+random admin password into a per-deploy Kubernetes Secret (never
+authored in the manifest) and exports the admin username plus the
+Secret name/key as outputs, so consumers reference credentials instead
+of pasting them. The spec covers container resource sizing, a
+`helm_values` escape hatch for chart options beyond the typed surface,
+and an ingress toggle with the external hostname.
+
+## Example
+
+```yaml
+# Full-surface offline-proof manifest: exercises the namespace reference
+# with namespace creation, explicit container resource sizing, the
+# helm_values escape hatch, and ingress with an external hostname — the
+# spec's whole typed surface. The admin password is module-generated into
+# a Secret and never appears here. Placeholder values; never applied to a
+# real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJenkins
+metadata:
+  name: hack-jenkins
+spec:
+  namespace:
+    value: hack-jenkins
+  createNamespace: true
+  containerResources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  helmValues:
+    controller.componentName: jenkins-controller
+    persistence.size: 10Gi
+  ingress:
+    enabled: true
+    hostname: jenkins.example.com
+```
 
 ## Spec Fields
 

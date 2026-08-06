@@ -29,7 +29,9 @@ const (
 // **KubernetesTrinoSpec** deploys Trino — the distributed SQL query
 // engine that lets you query data where it lives (data lakes, object
 // stores, relational databases) and JOIN across sources in one query
-// (https://trino.io).
+// (https://trino.io). Trino is the renamed community successor of
+// PrestoSQL (the Presto fork by Presto's creators): PrestoSQL/Presto
+// clients, drivers, and connector vocabulary carry over.
 //
 // WHAT GETS INSTALLED: the official trino Helm chart (trinodb org)
 // renders a coordinator Deployment (the brain: parses, plans and

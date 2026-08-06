@@ -312,8 +312,11 @@ IAM identity the controller runs as.
 IAM role ARN for IRSA: annotates Karpenter's service account so the
 controller calls EC2/EKS/SQS/Pricing without stored keys (the role's
 trust policy must allow the cluster's OIDC provider and the
-"karpenter" service account). Leave empty when using EKS Pod Identity
-— the association is configured on the AWS side and needs no
+"karpenter" service account). Reference an AwsIamRole's role_arn output
+-- the reference is also the deploy-ordering edge, so the role exists
+before the controller starts -- or pass a literal ARN
+(arn:aws:iam::<account>:role/<name>). Leave unset when using EKS Pod
+Identity — the association is configured on the AWS side and needs no
 annotation here.
 
 - references: AwsIamRole (`status.outputs.role_arn`)

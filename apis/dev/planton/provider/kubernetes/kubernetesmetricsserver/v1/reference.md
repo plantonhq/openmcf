@@ -20,9 +20,10 @@ never scale.
 ONE INSTALLATION PER CLUSTER: metrics-server registers the cluster-wide
 `v1beta1.metrics.k8s.io` APIService, a singleton — a second installation
 would fight over it. The Helm release name is therefore fixed to
-"metrics-server". Managed clouds differ: GKE ships metrics-server
-built-in (do not install this component there); EKS, AKS (resource
-metrics), kind, k3s and most self-managed clusters need it.
+"metrics-server". Managed clouds differ: GKE and AKS ship metrics-server
+built-in as a managed component (do not install this component there —
+AKS runs it in kube-system on every cluster); EKS, kind, k3s and most
+self-managed clusters need it.
 
 The typed fields below cover the chart's meaningful configuration surface;
 `helm_values` remains as the escape hatch for chart values beyond them

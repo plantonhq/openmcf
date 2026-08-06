@@ -1,0 +1,27 @@
+# Full-surface offline-proof manifest: exercises the namespace reference
+# with namespace creation, explicit container resource sizing, the
+# helm_values escape hatch, and ingress with an external hostname — the
+# spec's whole typed surface. The admin password is module-generated into
+# a Secret and never appears here. Placeholder values; never applied to a
+# real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJenkins
+metadata:
+  name: hack-jenkins
+spec:
+  namespace:
+    value: hack-jenkins
+  createNamespace: true
+  containerResources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  helmValues:
+    controller.componentName: jenkins-controller
+    persistence.size: 10Gi
+  ingress:
+    enabled: true
+    hostname: jenkins.example.com

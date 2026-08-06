@@ -125,9 +125,12 @@ Use role_definition_id instead when assigning a custom role.
 `string | valueFrom`
 
 The fully-scoped resource ID of the role definition to assign. This is the
-way to bind custom roles (whose IDs come from an AzureRoleDefinition or
-an existing definition), and also works for built-ins when the caller
-already holds the ID. Format:
+way to bind custom roles -- reference an AzureRoleDefinition's
+role_definition_id output (in a composed environment the reference is
+also the deploy-ordering edge, so the custom role exists before the
+grant that binds it), or pass a literal ID for an existing definition;
+it also works for built-ins when the caller already holds the ID.
+Format:
 "/subscriptions/{sub}/providers/Microsoft.Authorization/roleDefinitions/{guid}"
 (or "/providers/Microsoft.Authorization/roleDefinitions/{guid}" for
 tenant-level built-in definitions).

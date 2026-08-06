@@ -881,6 +881,36 @@ for this kind:
 
 ---
 
+### 12. Reference Freshness & Guide Wisdom (Critical GATE)
+
+**Freshness verdict: FRESH ✅ / ❌**
+
+Ran `go test ./pkg/explain/refgen/` (the same regenerate-and-diff check the
+`lint.reference-freshness` CI gate runs). The kind's committed `reference.md`
+must be byte-identical to a fresh generation — a stale page means a schema or
+manifest change landed without `make generate-reference`.
+
+**Guide verdict: <GUIDE PRESENT — audited ✅/❌ | NO GUIDE (allowed)>**
+
+When a `GUIDE.md` sits beside the kind's protos, audit it against
+`_rules/docs/audit-planton-component-guide.mdc` (groundedness, five-laws
+compliance, schema freshness, wiring — including the `**Guide**:` head line
+on the kind's `reference.md`, which is generated from the guide's presence).
+A missing guide is not a finding by itself: guides exist where judgment
+earns a place, and the conscious no-guide state is legitimate.
+
+❌ **Findings:**
+
+- **Stale reference.md** — run `make generate-reference` and commit the
+  result alongside the change that staled it.
+- **Guide findings** — report per the guide audit rule's severity classes
+  (Critical / Warning / Style).
+
+**Effect on score:** <none | a stale reference or Critical guide finding is
+listed under Critical Gaps>
+
+---
+
 ## Prioritized Recommendations
 
 ### High Priority (Do First)

@@ -372,7 +372,10 @@ endpoint's TLS certificate.
 
 IAM role ARN for IRSA: annotates Velero's service account so it
 reaches S3 without stored keys — the keyless posture on EKS.
-Mutually exclusive with access_keys.
+Reference an AwsIamRole's role_arn output -- the reference is also the
+deploy-ordering edge, so the role exists before Velero starts -- or
+pass a literal ARN (arn:aws:iam::<account>:role/<name>). Mutually
+exclusive with access_keys.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -428,7 +431,11 @@ GCS bucket to store backups in.
 GCP service-account email for Workload Identity: annotates Velero's
 Kubernetes service account (and is set on the storage location) so
 Velero reaches GCS without a stored key — the keyless posture on
-GKE. Mutually exclusive with service_account_key_json.
+GKE. Reference a GcpServiceAccount's email output -- the reference is
+also the deploy-ordering edge, so the identity (and the grants riding
+it) exists before Velero starts -- or pass a literal email
+(<id>@<project>.iam.gserviceaccount.com). Mutually exclusive with
+service_account_key_json.
 
 - references: GcpServiceAccount (`status.outputs.email`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
@@ -485,8 +492,15 @@ Subscription the storage account lives in.
 
 `string | valueFrom`
 
-Entra application (client) ID for the workload-identity annotation.
-Required with use_workload_identity.
+Entra client ID for Azure AD Workload Identity: annotates Velero's
+Kubernetes service account (azure.workload.identity/client-id) and
+labels its pods (azure.workload.identity/use) so the AKS webhook
+injects a federated token — the keyless posture on AKS. Reference an
+AzureUserAssignedIdentity's client_id output -- the reference is also
+the deploy-ordering edge, so the identity (and the federated
+credential and grants riding it) exists before Velero starts -- or
+pass a literal client ID (GUID). Setting it selects the
+workload-identity posture; mutually exclusive with service_principal.
 
 - references: AzureUserAssignedIdentity (`status.outputs.client_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.client_id}} -- a bare string does not parse

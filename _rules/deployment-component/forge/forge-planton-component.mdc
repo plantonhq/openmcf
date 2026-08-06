@@ -387,7 +387,7 @@ header and treat its recipe as offline-validated only.
 
 ### Phase 9: Guide + Reference Regeneration (Rule 023)
 
-21. **023-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer beside
+20. **023-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer beside
     `reference.md`) from what this forging session learned -- internal conventions,
     judgment calls, diagram impact -- following `_rules/docs/write-planton-component-guide.mdc`.
     Then run `make generate-reference`: the new kind's reference page, its guide head

@@ -44,6 +44,7 @@ component's own documentation:
 | Vault | KubernetesOpenBao | Linux Foundation-governed secrets manager, MPL-2.0 fork of Vault; auto-unseal interoperates with the OpenBao/Vault transit engine family |
 | Confluent Schema Registry | KubernetesKarapace | Apache-2.0, Confluent-API-compatible schema registry — existing Confluent SR clients work unchanged |
 | MinIO / in-cluster S3 | KubernetesSeaweedFs | Not a MinIO fork — an S3-compatible object store whose S3 gateway is on by default; clients speaking the S3 API connect to it |
+| PrestoSQL / Presto | KubernetesTrino | Trino is the renamed community successor of PrestoSQL (the Presto fork by Presto's creators); PrestoSQL/Presto clients, drivers, and connector vocabulary carry over |
 
 Many well-known names need no substitution — Kafka, MongoDB, PostgreSQL,
 ClickHouse, RabbitMQ, and others have kinds of their own; the per-provider

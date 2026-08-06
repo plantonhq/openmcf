@@ -114,7 +114,7 @@ Forge will interview you to gather:
 
 ## The 20-Rule Workflow
 
-Forge orchestrates 20 rules in 8 phases. (Rules `011-pulumi-e2e` and
+Forge orchestrates 20 rules in 9 phases. (Rules `011-pulumi-e2e` and
 `014-terraform-e2e` were removed; e2e is handled separately via component e2e
 profiles, not the forge pipeline.)
 
@@ -152,6 +152,9 @@ profiles, not the forge pipeline.)
 ### Phase 8: Final Validation
 18. `018-build-validation` - Compile all Go code
 19. `019-test-validation` - Run all tests
+
+### Phase 9: Guide + Reference Regeneration
+20. `023-guide` - Seed the component's `GUIDE.md` (authored wisdom beside `reference.md`), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
 
 ## Progress Tracking
 

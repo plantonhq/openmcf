@@ -294,7 +294,13 @@ Azure Key Vault.
 
 `string | valueFrom` · required
 
-Key Vault URL, e.g. "https://my-vault.vault.azure.net".
+Key Vault data-plane URL, e.g. "https://my-vault.vault.azure.net".
+Reference an AzureKeyVault's vault_uri output -- in a composed
+environment the reference is also the deploy-ordering edge, so the
+vault exists before the store starts validating against it -- or pass
+the literal URL of an existing vault. The store READS from the vault
+(access, not containment), which is why the reference does not nest
+the store inside it.
 
 - references: AzureKeyVault (`status.outputs.vault_uri`)
 - rule: {"required":true}
