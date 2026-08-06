@@ -1,0 +1,45 @@
+---
+description: Action rule to run the catalog-research eval — a controlled comparison measuring how efficiently and correctly agents answer catalog questions from the reference pack versus the planton explain CLI. Run at format changes; results append to the ledger.
+globs: []
+alwaysApply: false
+---
+
+# Rule: Evaluate Catalog Research
+
+**Purpose**: Measure — never assert — the quality of the catalog's research surfaces. The same benchmark questions are answered by fresh-context agents under two toolset restrictions (CLI-only vs reference-pack-only), grading correctness and counting the operations each side needs. The numbers decide format questions; taste does not get a vote that data can veto.
+
+**Trigger**: Any change to the reference page format (the markdown renderer in `pkg/explain`, the generator's catalog artifacts, or the documented search grammar); or a user asks to run/rerun the catalog-research eval.
+
+**Output**: A dated run appended to `pkg/explain/refgen/eval_results.md` with per-question grades and operation counts for both arms, plus a summary table.
+
+---
+
+## The instrument
+
+- **Question bank**: `pkg/explain/refgen/eval_questions.yaml` — benchmark questions with recorded ground truth. Every recorded answer is re-verified against the committed catalog by `eval_test.go` on every test run, so the bank is always current when you start. Never run the eval against a bank whose freshness test is red.
+- **Results ledger**: `pkg/explain/refgen/eval_results.md` — append-only, newest run first, past runs never edited.
+
+## The two arms
+
+| Arm | Allowed tools | Forbidden |
+|---|---|---|
+| **CLI** | `planton explain` invocations only (`--list`, kind pages, dotted field drill-down, `-o json`) | Reading any catalog file; web search |
+| **Pack** | Reading/searching files under the reference pack only (reference pages, indexes, graph, commons, guides, patterns), following the multi-cloud-catalog skill's workflow | `planton explain`; web search |
+
+## Runner requirements
+
+1. **Fresh context is non-negotiable.** Each question is answered by an agent context that has not authored, audited, or recently read the answer material. Spawn one fresh subagent per question per arm; never answer from the orchestrating context.
+2. **The prompt carries exactly**: the question, the arm's toolset restriction, the instruction to log every command/file operation used, and the instruction to answer or explicitly give up. No hints toward the answer or its location.
+3. **Give-up cap**: 15 operations. An agent that cannot answer within the cap records did-not-finish with the operations spent.
+4. **Enforcement honesty**: runners share the workspace, so arm restrictions are prompt-enforced. Audit each report's operation log; discard and rerun any run that crossed its arm's boundary.
+5. Run the pack arm against a quiet tree — not while a catalog regeneration is mid-flight.
+
+## Counting and grading
+
+- **Operations**: every tool invocation counts one — each CLI call, each file read, each search. Re-reads count again.
+- **Grades**: `correct` (matches the recorded ground truth in substance), `partial` (right direction, missing a load-bearing element), `wrong` (contradicts ground truth), `dnf` (gave up or hit the cap).
+- The orchestrator grades against the bank's recorded answers, never against its own recollection.
+
+## Recording
+
+Append to the ledger, newest first: run date, catalog state (commit hash), per-question table (id, class, per-arm grade + ops), and a summary (correct counts, total ops, median ops per question, wall-clock note). Findings that suggest format changes are recorded as findings; format changes themselves follow their own review and re-measurement — never fold them into the eval run.

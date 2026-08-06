@@ -26,11 +26,13 @@ go_test(
     name = "refgen_test",
     srcs = [
         "drift_test.go",
+        "eval_test.go",
         "wisdom_test.go",
     ],
     embed = [":refgen_lib"],
     deps = [
         "//internal/manifest",
         "//pkg/explain",
+        "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )

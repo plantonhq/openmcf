@@ -9,6 +9,11 @@ import (
 // RenderMarkdown doc comment). Tests pin both membership and order: agents
 // grep these headings across every generated file, so a rename or reorder is
 // a breaking change to every consumer at once.
+//
+// Format changes are measured, never asserted: any change to the rendered
+// page format must be followed by a run of the catalog-research eval
+// (_rules/docs/evaluate-planton-catalog-research.mdc) with the numbers
+// recorded in its ledger.
 var markdownHeadingVocabulary = []string{
 	"## Example",
 	"## Spec Fields",

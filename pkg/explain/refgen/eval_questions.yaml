@@ -1,0 +1,269 @@
+# Catalog-research eval question bank.
+#
+# These questions measure how well an agent can research the component
+# catalog. Each entry records the question, the class of research it
+# probes, the ground-truth answer, and machine-checkable `checks` that pin
+# the answer to the generated reference pack. `eval_test.go` verifies every
+# check on every run of this package's tests, so a schema change that
+# invalidates a recorded answer fails CI with the stale question named --
+# the bank can never quietly rot.
+#
+# The eval protocol (how to run the comparison, count operations, grade
+# answers, and record results) lives in
+# _rules/docs/evaluate-planton-catalog-research.mdc. Results append to
+# eval_results.md beside this file.
+#
+# Authoring rules for checks:
+#   - Cite KIND NAMES, never file paths. The test resolves a kind to its
+#     directory through the kind registry (exactly as the generator does),
+#     so version-segment renames in the apis tree never touch this file.
+#   - `kind` + `file`: a file sitting beside the kind's protos
+#     (reference.md or GUIDE.md).
+#   - `provider`: that provider's reference-index.md.
+#   - `catalog`: a catalog-level file relative to the provider root
+#     (reference-graph.yaml, reference-commons.md, GUIDE.md, patterns/*).
+#   - Patterns are RE2 regexes matched against the whole file.
+#   - Pin checks to durable facts (spec fields, enums, outputs, graph
+#     edges, grammar, judgment statements) -- never to counts or coverage
+#     columns, which legitimately move as the catalog grows.
+
+questions:
+  - id: q01
+    class: kind-discovery
+    question: >
+      A user wants managed PostgreSQL on Azure. Which catalog component
+      provides it?
+    answer: >
+      AzurePostgresqlFlexibleServer -- Azure Database for PostgreSQL
+      Flexible Server (managed PostgreSQL with per-server sizing,
+      zone-redundant HA, Entra auth).
+    checks:
+      - provider: azure
+        pattern: 'AzurePostgresqlFlexibleServer'
+      - kind: AzurePostgresqlFlexibleServer
+        file: reference.md
+        pattern: 'PostgreSQL Flexible Server'
+
+  - id: q02
+    class: kind-discovery
+    question: >
+      A user asks for Memcached on AWS. Is there a first-class catalog
+      component, or does this need a substitute?
+    answer: >
+      First-class: AwsMemcachedElasticache (ElastiCache cluster running
+      the Memcached engine). No substitution needed.
+    checks:
+      - provider: aws
+        pattern: 'AwsMemcachedElasticache'
+      - kind: AwsMemcachedElasticache
+        file: reference.md
+        pattern: '(?i)memcached engine'
+
+  - id: q03
+    class: required-fields
+    question: >
+      Which top-level spec fields are required on GcpGkeCluster, and which
+      other components can the reference-typed ones read?
+    answer: >
+      spec.location (string), spec.network (references GcpVpcNetwork's
+      status.outputs.network_self_link), and spec.subnetwork (references
+      GcpSubnetwork's status.outputs.subnetwork_self_link).
+    checks:
+      - kind: GcpGkeCluster
+        file: reference.md
+        pattern: '\| `spec\.location` \| `string` \| yes \|'
+      - kind: GcpGkeCluster
+        file: reference.md
+        pattern: 'GcpVpcNetwork \(`status\.outputs\.network_self_link`\)'
+      - kind: GcpGkeCluster
+        file: reference.md
+        pattern: 'GcpSubnetwork \(`status\.outputs\.subnetwork_self_link`\)'
+
+  - id: q04
+    class: enum-values
+    question: >
+      What are the allowed values of spec.capacityType on AwsEksNodeGroup,
+      and which is the default?
+    answer: >
+      on_demand (default), spot, and capacity_block.
+    checks:
+      - kind: AwsEksNodeGroup
+        file: reference.md
+        pattern: '`on_demand` -- Standard On-Demand instances \(default\)'
+      - kind: AwsEksNodeGroup
+        file: reference.md
+        pattern: '`spot` -- Spot instances'
+      - kind: AwsEksNodeGroup
+        file: reference.md
+        pattern: '`capacity_block` -- Pre-purchased EC2 Capacity Blocks'
+
+  - id: q05
+    class: outputs
+    question: >
+      What is the canonical fieldPath for the EKS cluster's certificate
+      authority output, spelled exactly as a valueFrom reference expects?
+    answer: >
+      status.outputs.cluster_ca_certificate on AwsEksCluster (output
+      fieldPaths are canonically snake_case).
+    checks:
+      - kind: AwsEksCluster
+        file: reference.md
+        pattern: '`status\.outputs\.cluster_ca_certificate`'
+
+  - id: q06
+    class: fk-forward
+    question: >
+      How does an AwsEcsService attach to its cluster -- which spec field
+      references which kind, reading which output?
+    answer: >
+      spec.clusterArn references AwsEcsCluster, reading
+      status.outputs.cluster_arn.
+    checks:
+      - kind: AwsEcsService
+        file: reference.md
+        pattern: '\| `spec\.clusterArn` \| AwsEcsCluster \| `status\.outputs\.cluster_arn` \|'
+
+  - id: q07
+    class: reverse-references
+    question: >
+      What can point at a GcpDnsZone -- which other components' fields can
+      consume its outputs, and what do they read?
+    answer: >
+      GcpDnsRecord.spec.managedZone reads status.outputs.zone_name, and
+      KubernetesExternalDns.spec.googleCloudDns.zoneIdFilters reads
+      status.outputs.zone_id. (The Referenced By section on the kind's
+      reference page is the only surface that answers this in one read;
+      no single CLI invocation lists inbound references.)
+    checks:
+      - kind: GcpDnsZone
+        file: reference.md
+        pattern: '\| KubernetesExternalDns \| `spec\.googleCloudDns\.zoneIdFilters` \| `status\.outputs\.zone_id` \|'
+      - kind: GcpDnsZone
+        file: reference.md
+        pattern: '\| GcpDnsRecord \| `spec\.managedZone` \| `status\.outputs\.zone_name` \|'
+
+  - id: q08
+    class: graph
+    question: >
+      Across the whole catalog, which component fields can consume an
+      AwsVpc's outputs?
+    answer: >
+      Eleven inbound edges in the foreign-key graph, including
+      AwsClientVpn.spec.vpcId, AwsCodeBuildProject.spec.vpcConfig.vpcId,
+      AwsInternetGateway.spec.vpcId, and AwsEgressOnlyInternetGateway
+      .spec.vpcId -- all reading status.outputs.vpc_id.
+    checks:
+      - catalog: reference-graph.yaml
+        pattern: 'from: "AwsInternetGateway"\n    field: "spec\.vpcId"\n    to: "AwsVpc"'
+      - catalog: reference-graph.yaml
+        pattern: 'from: "AwsClientVpn"\n    field: "spec\.vpcId"\n    to: "AwsVpc"'
+
+  - id: q09
+    class: alias-substitution
+    question: >
+      A user asks for Redis on Kubernetes. What should an agent propose,
+      and how should it explain the choice?
+    answer: >
+      Propose KubernetesValkey and say the substitution out loud: Valkey
+      is the Redis-compatible open-source successor; every Redis client
+      library works with it unchanged. (The catalog-root GUIDE's
+      alternatives map carries the row; the kind's own guide carries the
+      "Substitutes for: Redis" line.)
+    checks:
+      - catalog: GUIDE.md
+        pattern: '\| Redis \| KubernetesValkey \|'
+      - kind: KubernetesValkey
+        file: GUIDE.md
+        pattern: 'Substitutes for: Redis'
+
+  - id: q10
+    class: wisdom
+    question: >
+      A Deployment's autoscaler must scale to zero when its queue is
+      empty. Why is a plain HorizontalPodAutoscaler the wrong tool, and
+      what should be used instead?
+    answer: >
+      Plain HPA cannot scale to zero; KubernetesKeda provides the
+      event-driven lane with scale-to-zero -- the one thing plain HPA
+      can't do.
+    checks:
+      - kind: KubernetesKeda
+        file: GUIDE.md
+        pattern: 'scale-to-zero'
+
+  - id: q11
+    class: wisdom
+    question: >
+      Three services will share one namespace. Which component should
+      create the namespace, and why not set createNamespace on each
+      service?
+    answer: >
+      A dedicated KubernetesNamespace component owns it. With
+      createNamespace on multiple co-tenants, the first deploy claims the
+      namespace in its IaC state and teardown/ownership breaks for the
+      rest -- the namespace-ownership pattern carries the judgment.
+    checks:
+      - catalog: patterns/namespace-ownership.md
+        pattern: 'createNamespace'
+      - catalog: patterns/namespace-ownership.md
+        pattern: '(?i)who owns the namespace'
+
+  - id: q12
+    class: wisdom
+    question: >
+      When a component requires an operator to be installed, does the
+      architecture diagram show an edge between them?
+    answer: >
+      No. The operator is a registry prerequisite enforced by metadata;
+      the dependency draws NO edge on the diagram -- the
+      operator-prerequisite pattern states this and the three watch
+      postures.
+    checks:
+      - catalog: patterns/operator-prerequisite.md
+        pattern: 'draws NO edge on the architecture diagram'
+
+  - id: q13
+    class: grammar
+    question: >
+      In a valueFrom reference, which spelling do output fieldPaths use --
+      camelCase or snake_case -- and how does that differ from spec paths
+      in manifests?
+    answer: >
+      fieldPath strings are snake_case (status.outputs.vpc_id); camelCase
+      is accepted and rewritten to snake_case by the platform. Spec paths
+      in manifest YAML stay camelCase -- the commons page states the
+      asymmetry.
+    checks:
+      - catalog: reference-commons.md
+        pattern: '\*\*fieldPath strings are snake_case\*\*'
+      - catalog: reference-commons.md
+        pattern: 'asymmetry'
+
+  - id: q14
+    class: cross-provider
+    question: >
+      Does DigitalOcean have a managed database component in the catalog,
+      and what is it called?
+    answer: >
+      Yes: DigitalOceanDatabaseCluster (managed database cluster on
+      DigitalOcean).
+    checks:
+      - provider: digitalocean
+        pattern: 'DigitalOceanDatabaseCluster'
+
+  - id: q15
+    class: wisdom
+    question: >
+      A Gateway listener terminates TLS. Where does its certificate Secret
+      come from, and which component issues it?
+    answer: >
+      TLS listeners consume certificate Secrets that KubernetesCertificate
+      (issued through cert-manager) writes -- the Gateway guide's chain
+      names it and links the Certificate guide.
+    checks:
+      - kind: KubernetesGateway
+        file: GUIDE.md
+        pattern: 'TLS listeners consume certificate Secrets'
+      - kind: KubernetesCertificate
+        file: GUIDE.md
+        pattern: '(?i)certificate'
