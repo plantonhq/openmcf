@@ -1,0 +1,126 @@
+# =============================================================================
+# Catalog Reference Auto-Heal
+# =============================================================================
+# Keeps the committed catalog docs artifacts byte-fresh on main.
+#
+# The generated catalog reference (per-kind reference.md pages, provider/root
+# indexes, reference-graph.yaml, reference-commons.md) and the proto-docs
+# index are pure, deterministic functions of the committed schemas and the
+# generators' import graph. Freshness enforcement is split across two lanes,
+# each with exactly one owner:
+#
+#   - Pull requests: lint.reference-freshness runs the gate as a REQUIRED
+#     status check -- a stale PR cannot merge.
+#   - Direct pushes to main: THIS workflow. It runs the same gate; when the
+#     gate detects drift it regenerates the artifacts, re-proves the gate
+#     against the regenerated tree, and pushes the result back as a bot
+#     commit. Because regeneration is deterministic, the heal is mechanically
+#     safe -- it can only ever restore the tree to the state the gate demands.
+#
+# Healing is refused when regeneration itself fails (a missing or invalid
+# example manifest, a generator error): that is a REAL catalog bug, and this
+# run stays red so it is fixed at the source, never papered over.
+#
+# Loop safety: pushes made with the workflow token do not trigger workflow
+# runs, and the gate is re-proven green before anything is pushed. The
+# concurrency group serializes heals per ref.
+#
+# The push is made to the ref the run executed on (never a hardcoded branch),
+# so a workflow_dispatch run against any branch exercises the full
+# detect -> regenerate -> re-prove -> push path end to end.
+#
+# The trigger paths mirror the gate's rationale: generated output is a
+# function of the schemas AND the full import graph of the generators,
+# including dependency versions. See pkg/explain/refgen and pkg/protodocs.
+# =============================================================================
+
+name: auto-heal.reference-freshness
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apis/**'
+      - 'pkg/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/auto-heal.reference-freshness.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-heal-reference-freshness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      # generate-proto-docs builds a descriptor image with `buf build`; the
+      # module's single BSR dependency is commit-pinned in apis/buf.lock.
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Run the freshness gate
+        id: gate
+        continue-on-error: true
+        run: |
+          go test ./pkg/explain/...
+          go test ./pkg/protodocs/
+
+      # Regeneration order matters: the reference pages render proto comments
+      # from the proto-docs index, so the index is rebuilt first.
+      - name: Regenerate catalog artifacts
+        if: steps.gate.outcome == 'failure'
+        run: |
+          make generate-proto-docs
+          make generate-reference
+
+      - name: Re-prove the gate on the regenerated tree
+        if: steps.gate.outcome == 'failure'
+        run: |
+          go test ./pkg/explain/...
+          go test ./pkg/protodocs/
+
+      - name: Push the heal
+        if: steps.gate.outcome == 'failure'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Gate failed but regeneration changed nothing -- not a drift failure." >&2
+            exit 1
+          fi
+          git commit \
+            -m "docs(catalog): auto-heal reference freshness" \
+            -m "Regenerated catalog artifacts that had drifted from the schemas on this branch. Generated output is deterministic; this commit restores the exact state the freshness gate demands."
+          # The remote may have moved between checkout and push (concurrent
+          # sessions push directly); retry once on top of the moved tip.
+          git push origin "HEAD:${{ github.ref_name }}" || {
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          }
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.gate.outcome }}" = "success" ]; then
+            echo "## Reference freshness: clean" >> "$GITHUB_STEP_SUMMARY"
+            echo "The committed catalog artifacts match a fresh generation. Nothing to heal." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Reference freshness: drift detected and healed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Stale catalog artifacts were regenerated, re-proven against the gate, and pushed back to \`${{ github.ref_name }}\`." >> "$GITHUB_STEP_SUMMARY"
+          fi

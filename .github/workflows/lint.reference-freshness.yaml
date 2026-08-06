@@ -1,5 +1,5 @@
 # =============================================================================
-# Catalog Reference Freshness Guard
+# Catalog Reference Freshness Guard (pull-request lane)
 # =============================================================================
 # Fails the PR when the committed catalog docs artifacts are out of sync with
 # the schemas that generate them:
@@ -14,34 +14,26 @@
 #     from) must cover every compiled-in proto. To fix: run
 #     `make generate-proto-docs` and commit the result.
 #
-# The trigger paths are deliberately broad (apis, all Go packages, module
-# files): the generated output is a function of the schemas AND the full
-# import graph of the generator, including dependency versions -- a narrower,
-# hand-enumerated path list would silently rot as imports evolve. See
-# pkg/explain/refgen and pkg/protodocs.
+# Freshness enforcement is split across two lanes, each with exactly one
+# owner. This workflow owns pull requests: the `reference-freshness` job is a
+# REQUIRED status check on the default branch, so a stale PR cannot merge.
+# Direct pushes to the default branch are owned by
+# auto-heal.reference-freshness, which runs the same gate and heals drift by
+# regenerating and pushing the result back.
+#
+# This workflow deliberately has NO path filter, for two reasons that
+# reinforce each other: a required status check must report on every PR (a
+# filtered-out required check leaves the PR unmergeable forever), and the
+# generated output is a function of the schemas AND the full import graph of
+# the generators, including dependency versions -- a hand-enumerated path
+# list would silently rot as imports evolve. See pkg/explain/refgen and
+# pkg/protodocs.
 # =============================================================================
 
 name: lint.reference-freshness
 
 on:
-  pull_request:
-    paths:
-      - 'apis/**'
-      - 'pkg/**'
-      - 'internal/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/lint.reference-freshness.yaml'
-  push:
-    branches:
-      - main
-    paths:
-      - 'apis/**'
-      - 'pkg/**'
-      - 'internal/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/lint.reference-freshness.yaml'
+  pull_request: {}
 
 permissions:
   contents: read
