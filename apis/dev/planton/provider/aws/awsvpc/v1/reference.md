@@ -2,7 +2,6 @@
 
 > Generated from the protobuf schema by `make generate-reference` -- do not
 > edit by hand. To change a fact on this page, change the proto field comment
-> or validation rule it is derived from, then regenerate.
 
 **apiVersion**: `aws.planton.dev/v1`
 
