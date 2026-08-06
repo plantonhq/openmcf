@@ -1,0 +1,470 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesgatekeeper.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesGatekeeperSpec** installs OPA Gatekeeper — the Open
+ * Policy Agent's Kubernetes admission controller — from the official
+ * `gatekeeper` chart
+ * (https://open-policy-agent.github.io/gatekeeper/charts, chart
+ * version = app version).
+ *
+ * Gatekeeper enforces policies written as ConstraintTemplates (Rego
+ * or Kubernetes CEL) instantiated by Constraint resources. This
+ * component installs the ENGINE: the webhook controller manager, the
+ * audit controller, and the constraint-framework CRDs.
+ * ConstraintTemplates and Constraints are declared separately — apply
+ * them with KubernetesManifest resources or GitOps once the engine is
+ * running.
+ *
+ * WEBHOOK LIFECYCLE: unlike engines that register webhooks at
+ * runtime, the chart OWNS the ValidatingWebhookConfiguration and
+ * MutatingWebhookConfiguration as release objects — uninstall removes
+ * them with everything else. The policy webhook defaults to
+ * failurePolicy=Ignore (fail-open: an engine outage never blocks
+ * admission), but the namespace-label check webhook — the one that
+ * guards Gatekeeper's own exemption label — defaults to
+ * failurePolicy=Fail.
+ *
+ * CRD LIFECYCLE: the engine CRDs (constrainttemplates, configs,
+ * expansiontemplates, mutators, ...) ship in the chart's `crds/`
+ * directory — Helm installs them but NEVER upgrades or deletes them
+ * (kept on uninstall, no release ownership). The chart compensates
+ * for upgrades with its own pre-install/pre-upgrade CRD Job. CRDs
+ * that Gatekeeper creates at runtime from your ConstraintTemplates
+ * (one per template, in constraints.gatekeeper.sh) also survive
+ * uninstall until deleted with their templates.
+ *
+ * ONE GATEKEEPER PER CLUSTER: webhook configurations and the engine
+ * CRDs are cluster-global. The conventional namespace is
+ * `gatekeeper-system`.
+ */
+message KubernetesGatekeeperSpec {
+  /**
+   * Namespace to install into (conventionally "gatekeeper-system").
+   * Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource. The chart's post-install hook
+   * labels this namespace with `admission.gatekeeper.sh/ignore` so
+   * the engine never polices itself.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "3.23.0" — chart and app
+   * versions move in lockstep). Versions must exist in the SERVED
+   * index at https://open-policy-agent.github.io/gatekeeper/charts.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "3.23.0"];
+
+  /**
+   * Number of webhook controller-manager replicas. Empty = 3 (the
+   * chart default — the webhook sits on the cluster's write path and
+   * ships HA by default). The audit controller is always a single
+   * replica.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * The validating admission webhook — Gatekeeper's enforcement
+   * path. Omit for the chart defaults.
+   */
+  KubernetesGatekeeperValidatingWebhook validating_webhook = 5;
+
+  /**
+   * The mutating admission webhook — applies Assign /
+   * AssignMetadata / ModifySet mutators. Omit for the chart defaults
+   * (installed, fail-open).
+   */
+  KubernetesGatekeeperMutatingWebhook mutating_webhook = 6;
+
+  /**
+   * The audit controller — periodically re-evaluates EXISTING
+   * cluster resources against constraints and records violations in
+   * each constraint's status. Omit for the chart defaults (60s
+   * interval, 20 violations reported per constraint).
+   */
+  KubernetesGatekeeperAudit audit = 7;
+
+  /**
+   * Namespaces Gatekeeper exempts from admission enforcement
+   * ENTIRELY (in addition to its own namespace). Exemption still
+   * requires the namespace to carry the
+   * `admission.gatekeeper.sh/ignore` label — these values authorize
+   * which namespaces MAY carry it.
+   */
+  repeated string exempt_namespaces = 8 [(buf.validate.field).repeated.items.string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"];
+
+  /**
+   * Namespace PREFIXES authorized for exemption (e.g. "kube-" to
+   * allow every kube-* namespace to opt out with the ignore label).
+   */
+  repeated string exempt_namespace_prefixes = 9;
+
+  /**
+   * Policy-engine capabilities. Omit for the chart defaults.
+   */
+  KubernetesGatekeeperEngine engine = 10;
+
+  /**
+   * CPU and memory for the webhook controller-manager containers.
+   * Empty = the chart defaults (512Mi memory limit, 100m CPU
+   * request).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 11;
+
+  /**
+   * Scheduling for the controller-manager pods (node selector +
+   * tolerations; affinity and spread ride `helm_values`). Empty =
+   * the chart defaults (linux node selector, anti-affinity across
+   * hosts, system-cluster-critical priority).
+   */
+  KubernetesGatekeeperScheduling scheduling = 12;
+
+  /**
+   * Webhook server TLS. Omit for the DEFAULT: Gatekeeper's embedded
+   * cert-controller generates and ROTATES the CA and serving
+   * certificate in the `gatekeeper-webhook-server-cert` Secret —
+   * zero prerequisites. Declare this block to inject certificates
+   * from an external issuer (cert-manager) instead.
+   */
+  KubernetesGatekeeperExternalCert external_cert = 13;
+
+  /**
+   * Lifecycle hook jobs. Omit for the chart defaults (namespace
+   * labeling ON, webhook probe ON, CRD upgrade ON, webhook-config
+   * pre-delete cleanup OFF — the chart-owned webhook configurations
+   * already delete with the release).
+   */
+  KubernetesGatekeeperHooks hooks = 14;
+
+  /**
+   * Override the Gatekeeper image (air-gap / private-mirror path).
+   * Empty = openpolicyagent/gatekeeper at the chart's release tag.
+   * The chart also runs hook containers from
+   * openpolicyagent/gatekeeper-crds and curlimages/curl — mirror
+   * those too for air-gapped installs (set via `helm_values`).
+   */
+  dev.planton.provider.kubernetes.ContainerImage image = 15;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f`
+   * semantics, identical on both engines). For the chart surface
+   * beyond the typed fields (PDB, network policy, PSS label sets,
+   * violation export, per-hook images, ...) — never the substitute
+   * for them. Do not put secrets here.
+   */
+  string helm_values = 16;
+}
+
+/**
+ * Pod scheduling constraints.
+ */
+message KubernetesGatekeeperScheduling {
+  /**
+   * Node selector for the controller-manager and audit pods.
+   * Empty = the chart default (kubernetes.io/os: linux).
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the controller-manager and audit pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/**
+ * The validating admission webhook.
+ */
+message KubernetesGatekeeperValidatingWebhook {
+  /**
+   * Install the validating webhook. Empty = true (the chart
+   * default). Disabling leaves audit-only operation — violations are
+   * RECORDED but never blocked.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Failure policy when the webhook itself is unreachable. Empty =
+   * "Ignore" (the chart default — fail-OPEN: an engine outage never
+   * blocks cluster admission). "Fail" closes the gap attackers could
+   * time, at the price that a Gatekeeper outage blocks every matched
+   * admission cluster-wide — run 3 replicas and understand the
+   * blast radius before choosing it.
+   */
+  optional string failure_policy = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Ignore",
+      "Fail"
+    ]
+  }];
+
+  /**
+   * Webhook timeout in seconds. Empty = 3 (the chart default). The
+   * API server caps admission webhooks at 30s; long timeouts with
+   * failure_policy=Fail amplify outage impact.
+   */
+  optional int32 timeout_seconds = 3 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 30
+  ];
+
+  /**
+   * Also evaluate DELETE operations. Empty = false (the chart
+   * default). NOTE (chart-truth): the webhook rules this expands are
+   * shared — enabling it widens what reaches the engine.
+   */
+  bool enable_delete_operations = 4;
+
+  /**
+   * Failure policy of the namespace-label CHECK webhook — the one
+   * that guards who may apply Gatekeeper's own exemption label.
+   * Empty = "Fail" (the chart default — fail-CLOSED so the exemption
+   * label cannot be smuggled on during an outage; scoped to the
+   * label operation only, so the blast radius is namespace edits).
+   */
+  optional string check_ignore_failure_policy = 5 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Ignore",
+      "Fail"
+    ]
+  }];
+}
+
+/**
+ * The mutating admission webhook.
+ */
+message KubernetesGatekeeperMutatingWebhook {
+  /**
+   * Install the mutating webhook. Empty = true (the chart default).
+   * Disable when no mutators are used — one less webhook on the
+   * write path.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Failure policy when the webhook is unreachable. Empty = "Ignore"
+   * (the chart default — fail-open).
+   */
+  optional string failure_policy = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Ignore",
+      "Fail"
+    ]
+  }];
+
+  /**
+   * Webhook timeout in seconds. Empty = 1 (the chart default).
+   */
+  optional int32 timeout_seconds = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 30
+  ];
+
+  /**
+   * Annotate mutated objects with what mutated them
+   * (`gatekeeper.sh/mutation-id` + `gatekeeper.sh/mutations`). Empty
+   * = false (the chart default). Invaluable for debugging mutation
+   * pipelines; costs write amplification.
+   */
+  bool mutation_annotations = 4;
+}
+
+/**
+ * The audit controller.
+ */
+message KubernetesGatekeeperAudit {
+  /**
+   * Audit interval in seconds. Empty = 60 (the chart default). 0
+   * runs audit exactly once at startup.
+   */
+  optional int32 interval_seconds = 1 [
+    (dev.planton.shared.options.default) = "60",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  /**
+   * Maximum violations RECORDED per constraint status. Empty = 20
+   * (the chart default). Raising it grows constraint objects in
+   * etcd — prefer an export pipeline for full violation inventories.
+   */
+  optional int32 constraint_violations_limit = 2 [
+    (dev.planton.shared.options.default) = "20",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Audit from the OPA cache instead of listing the API server
+   * (requires syncing the audited kinds via a Config resource).
+   * Empty = false (the chart default — audit lists directly).
+   */
+  bool from_cache = 3;
+
+  /**
+   * Only audit kinds actually matched by some constraint (cuts API
+   * load dramatically on large clusters). Empty = false (the chart
+   * default — audits ALL kinds).
+   */
+  bool match_kind_only = 4;
+
+  /**
+   * List/scan chunk size. Empty = 500 (the chart default). 0
+   * disables chunking.
+   */
+  optional int32 chunk_size = 5 [
+    (dev.planton.shared.options.default) = "500",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  /**
+   * CPU and memory for the audit container. Empty = the chart
+   * defaults (512Mi memory limit, 100m CPU request).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 6;
+}
+
+/**
+ * Policy-engine capabilities.
+ */
+message KubernetesGatekeeperEngine {
+  /**
+   * External data providers — constraints may call out to registered
+   * providers (image signature services, CMDB lookups) during
+   * evaluation. Empty = true (the chart default).
+   */
+  optional bool enable_external_data = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Kubernetes-native CEL validation in ConstraintTemplates
+   * (K8sNativeValidation alongside Rego). Empty = true (the chart
+   * default).
+   */
+  optional bool enable_k8s_native_validation = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Expand workload generators (Deployments, CronJobs, ...) into the
+   * Pods they would create and evaluate constraints against those
+   * BEFORE the generator is admitted (ExpansionTemplate resources).
+   * Empty = true (the chart default).
+   */
+  optional bool enable_generator_resource_expansion = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Rego builtins DISABLED in ConstraintTemplates. Empty = the chart
+   * default ["{http.send}"] (Rego must not make arbitrary network
+   * calls from the admission path — use external data providers
+   * instead). Declaring the field REPLACES the default; include
+   * "{http.send}" unless you accept that risk.
+   */
+  repeated string disabled_builtins = 4;
+
+  /**
+   * Log every admission DENY decision to the controller log (an
+   * audit trail of what enforcement actually blocked). Empty = false
+   * (the chart default).
+   */
+  bool log_denies = 5;
+
+  /**
+   * Log level. Empty = "INFO" (the chart default).
+   */
+  optional string log_level = 6 [(buf.validate.field).string = {
+    in: [
+      "",
+      "DEBUG",
+      "INFO",
+      "WARNING",
+      "ERROR"
+    ]
+  }];
+}
+
+/**
+ * External webhook-server certificate (the cert-manager arm). When
+ * declared, the chart's embedded cert rotation is DISABLED and the
+ * webhook serves the certificate from the referenced Secret.
+ */
+message KubernetesGatekeeperExternalCert {
+  /**
+   * Name of the TLS Secret (in the install namespace) carrying the
+   * webhook serving certificate — typically materialized by a
+   * cert-manager Certificate whose secretName matches. The Secret
+   * must exist BEFORE the install; the CA it chains to is what the
+   * webhook configurations advertise.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.secret_name"
+  ];
+}
+
+/**
+ * Chart lifecycle hook jobs.
+ */
+message KubernetesGatekeeperHooks {
+  /**
+   * Post-install job that labels the install namespace with the
+   * Gatekeeper exemption + Pod Security Standards labels. Empty =
+   * true (the chart default). LEAVE IT ON unless the namespace is
+   * label-managed externally — without the ignore label Gatekeeper
+   * polices its own pods and can deadlock itself. When the module
+   * creates the namespace (create_namespace), it also DECLARES the
+   * exemption label on the namespace object itself so day-2 applies
+   * never strip what the hook stamped.
+   */
+  optional bool label_namespace = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Post-install probe job (curl) that waits until the webhook
+   * endpoint actually serves before the release reports installed.
+   * Empty = true (the chart default).
+   */
+  optional bool probe_webhook = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Pre-install/pre-upgrade job that applies the engine CRDs at the
+   * chart's version (Helm never upgrades `crds/`-directory CRDs on
+   * its own — this hook is the chart's own answer; disabling it
+   * leaves CRDs frozen at first-install schema). Empty = true (the
+   * chart default).
+   */
+  optional bool upgrade_crds = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Pre-delete job that explicitly deletes the webhook
+   * configurations before the release objects go. Empty = false (the
+   * chart default — the chart-owned webhook configurations already
+   * delete with the release; enable for URL-mode webhooks or
+   * belt-and-suspenders teardown ordering). The modules render the
+   * hook's service-account name alongside the toggle — the chart's
+   * own RBAC binding for this job requires it (enabling the raw chart
+   * value alone fails at uninstall).
+   */
+  bool delete_webhook_configurations_on_uninstall = 4;
+}

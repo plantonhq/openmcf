@@ -201,7 +201,7 @@ Phase 8: Final Validation
 
 🎉 Component creation complete!
 
-📍 Location: apis/dev/planton/provider/atlas/mongodbatlas/v1/
+📍 Location: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
 📊 Expected Audit Score: 95-100%
 
 Next steps:

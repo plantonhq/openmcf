@@ -1,0 +1,101 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesArgocd
+metadata:
+  name: test-argocd
+spec:
+  namespace:
+    value: gitops
+  createNamespace: true
+  chartVersion: 10.2.1
+  adminEnabled: true
+  domain: argocd.example.com
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  server:
+    insecure: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+  repoServer:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  applicationSet:
+    replicas: 2
+  notifications:
+    enabled: true
+  dex:
+    enabled: true
+  commitServer:
+    enabled: true
+  redis:
+    ha:
+      replicas: 3
+  sso:
+    oidc:
+      name: Okta
+      issuer: https://example.okta.com
+      clientId: argocd
+      clientSecretSecret:
+        name: argocd-oidc
+        key: clientSecret
+    dexConfig: |
+      connectors:
+        - type: github
+          id: github
+          name: GitHub
+          config:
+            clientID: abc123
+            clientSecret: $argocd-github-sso:clientSecret
+            orgs:
+              - name: example-org
+  rbac:
+    policyDefault: role:readonly
+    policyCsv: |
+      g, example-org:platform, role:admin
+    scopes: "[groups]"
+  execEnabled: true
+  reconciliationTimeout: 180s
+  repositories:
+    - name: platform
+      url: https://github.com/example-org/platform
+    - name: charts
+      url: https://charts.example.com
+      type: helm
+  crds:
+    install: true
+    keep: true
+  serviceMonitorsEnabled: true
+  image:
+    repository: my.registry.com/argoproj/argocd
+    tag: v3.4.5
+    pullSecretName: mirror-pull
+  scheduling:
+    nodeSelector:
+      role: platform
+    tolerations:
+      - key: platform
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    priorityClassName: platform-critical
+  helmValues: |
+    notifications:
+      argocdUrl: https://argocd.example.com

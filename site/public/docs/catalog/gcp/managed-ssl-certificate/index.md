@@ -23,7 +23,7 @@ A single global Google-managed SSL certificate covering the domains you specify.
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpManagedSslCertificate
 metadata:
   name: app-cert

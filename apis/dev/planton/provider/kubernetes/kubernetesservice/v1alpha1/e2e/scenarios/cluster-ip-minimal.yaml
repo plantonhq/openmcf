@@ -1,0 +1,14 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-clusterip
+spec:
+  namespace:
+    value: default
+  name: e2e-svc-clusterip
+  selector:
+    app: test-app
+  ports:
+    - name: http
+      port: 80
+      target_port: "8080"

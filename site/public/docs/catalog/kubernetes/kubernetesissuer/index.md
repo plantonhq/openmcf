@@ -22,7 +22,7 @@ Creates one cert-manager Issuer — a NAMESPACE-scoped certificate signing autho
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIssuer
 metadata:
   name: team-a-selfsigned

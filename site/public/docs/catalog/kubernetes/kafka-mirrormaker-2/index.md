@@ -45,7 +45,7 @@ running the mirror connectors against the target cluster.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaMirrorMaker2
 metadata:
   name: dev-mirror

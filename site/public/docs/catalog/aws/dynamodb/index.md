@@ -36,7 +36,7 @@ All resources are tagged with Planton metadata (organization, environment, resou
 Create a file `dynamodb.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: my-table
@@ -128,7 +128,7 @@ This creates an on-demand DynamoDB table with a single string partition key.
 ### On-Demand Table with Composite Key and Spend Ceiling
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: orders-table
@@ -153,7 +153,7 @@ spec:
 ### Production Table with Customer-Managed Encryption and Insights
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: audit-log
@@ -205,7 +205,7 @@ spec:
 Two STRONG replicas give synchronous multi-region writes; swap one replica for `globalTableWitness` for the cheaper witness topology:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: payments-ledger
@@ -230,7 +230,7 @@ spec:
 ### Change-Data Fan-Out to Kinesis
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: events-table
@@ -254,7 +254,7 @@ spec:
 ### Seed a Table from S3
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: catalog-table

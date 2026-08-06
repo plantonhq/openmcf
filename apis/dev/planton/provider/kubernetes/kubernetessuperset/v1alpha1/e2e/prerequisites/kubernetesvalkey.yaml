@@ -1,0 +1,32 @@
+# Consumer-scoped Valkey fixture for the KubernetesSuperset lanes —
+# the composed cache/broker the full-surface scenario wires against:
+# - JOINS the fixture-owned namespace (the PostgreSQL fixture deploys
+#   first with create_namespace and owns e2e-superset; the cache
+#   password secretKeyRef cannot cross namespaces).
+# - AUTHED by design for this lane: the declared `default` user makes
+#   the store require AUTH, which exercises Superset's REDIS_PASSWORD
+#   environment reference AND the module's env-reading results-backend
+#   config override — the authed-cache path is the one worth proving.
+#   The password is fixture-grade test material (e2e-only).
+# - Pure-cache posture: small memory ceiling, snapshots off — Celery
+#   queues and query caches are disposable state.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesValkey
+metadata:
+  name: e2e-sprst-vk
+spec:
+  namespace:
+    value: e2e-superset
+  config:
+    max_memory: 256mb
+    snapshots_disabled: true
+  auth:
+    users:
+      - name: default
+        password: e2e-superset-cache-pw-7f2k
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 320Mi

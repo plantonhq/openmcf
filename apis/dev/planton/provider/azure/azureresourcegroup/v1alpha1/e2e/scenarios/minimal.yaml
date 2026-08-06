@@ -1,0 +1,27 @@
+# Minimal AzureResourceGroup scenario -- the Azure harness walking skeleton.
+# A resource group is the Layer-0 container every other Azure kind references, so
+# it is the natural first end-to-end proof: deploy -> CheckExistence verify ->
+# destroy -> verify-gone, on both engines against the test subscription.
+#
+# spec.name is the actual Azure resource-group name and must be unique within the
+# subscription; a fixed name is safe for this sequential smoke (pulumi then
+# terraform, each a full deploy+destroy). The module derives Azure tags from
+# metadata.org/env (organization=planton-oss, environment=e2e), which -- together
+# with the e2e name prefix -- identify any orphan for the CI janitor.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureResourceGroup
+metadata:
+  name: planton-oss-e2e-azureresourcegroup-smoke
+  id: planton-oss-e2e-azureresourcegroup-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureresourcegroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-azureresourcegroup-smoke
+  region: eastus

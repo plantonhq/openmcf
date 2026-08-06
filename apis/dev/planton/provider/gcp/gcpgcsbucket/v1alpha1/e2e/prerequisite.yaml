@@ -1,0 +1,25 @@
+# GcpGcsBucket install profile used when the bucket is an E2E PREREQUISITE
+# for another component (e.g. a backend bucket's origin). The bucket name
+# carries ${E2E_RUN_ID}: GCS bucket names are globally unique across ALL of
+# GCP — not project-scoped — so a fixed name could collide with any tenant's
+# bucket anywhere. metadata.name stays fixed (prerequisite FK resolution is
+# kind-keyed). project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGcsBucket
+metadata:
+  name: planton-oss-e2e-gcsb-prereq
+  id: planton-oss-e2e-gcsb-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgcsbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-oss-e2e-prereq-${E2E_RUN_ID}
+  location: US
+  uniformBucketLevelAccessEnabled: true

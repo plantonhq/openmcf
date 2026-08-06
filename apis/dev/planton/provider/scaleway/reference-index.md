@@ -8,21 +8,21 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [ScalewayBlockVolume](scalewayblockvolume/v1/reference.md) | ScalewayBlockVolumeSpec defines the specification for a Scaleway Block Storage volume. |  |  |
-| [ScalewayContainerRegistry](scalewaycontainerregistry/v1/reference.md) | ScalewayContainerRegistrySpec defines the specification for a Scaleway Container Registry namespace. |  |  |
-| [ScalewayDnsRecord](scalewaydnsrecord/v1/reference.md) | ScalewayDnsRecordSpec defines the specification for a standalone Scaleway DNS record. |  |  |
-| [ScalewayDnsZone](scalewaydnszone/v1/reference.md) | ScalewayDnsZoneSpec defines the specification for a Scaleway DNS zone with optional inline DNS records. |  |  |
-| [ScalewayInstance](scalewayinstance/v1/reference.md) | ScalewayInstanceSpec defines the specification for a Scaleway compute instance. |  |  |
-| [ScalewayInstanceSecurityGroup](scalewayinstancesecuritygroup/v1/reference.md) | ScalewayInstanceSecurityGroupSpec defines the specification for a Scaleway Instance Security Group -- a stateful (by default) firewall that controls inbound and outbound traffic to Scaleway Instances. |  |  |
-| [ScalewayKapsuleCluster](scalewaykapsulecluster/v1/reference.md) | ScalewayKapsuleClusterSpec defines the specification for a Scaleway Kapsule managed Kubernetes cluster. |  |  |
-| [ScalewayKapsulePool](scalewaykapsulepool/v1/reference.md) | ScalewayKapsulePoolSpec defines the specification for an additional node pool in an existing Scaleway Kapsule Kubernetes cluster. |  |  |
-| [ScalewayLoadBalancer](scalewayloadbalancer/v1/reference.md) | ScalewayLoadBalancerSpec defines the specification for a Scaleway Load Balancer. |  |  |
-| [ScalewayMongodbInstance](scalewaymongodbinstance/v1/reference.md) | ScalewayMongodbInstanceSpec defines the specification for a Scaleway Managed MongoDB instance. |  |  |
-| [ScalewayObjectBucket](scalewayobjectbucket/v1/reference.md) | ScalewayObjectBucketSpec defines the specification for a Scaleway Object Storage bucket. |  |  |
-| [ScalewayPrivateNetwork](scalewayprivatenetwork/v1/reference.md) | ScalewayPrivateNetworkSpec defines the specification for a Scaleway Private Network. |  |  |
-| [ScalewayPublicGateway](scalewaypublicgateway/v1/reference.md) | ScalewayPublicGatewaySpec defines the specification for a Scaleway Public Gateway. |  |  |
-| [ScalewayRdbInstance](scalewayrdbinstance/v1/reference.md) | ScalewayRdbInstanceSpec defines the specification for a Scaleway Managed Database (RDB) instance. |  |  |
-| [ScalewayRedisCluster](scalewayrediscluster/v1/reference.md) | ScalewayRedisClusterSpec defines the specification for a Scaleway Managed Redis cluster. |  |  |
-| [ScalewayServerlessContainer](scalewayserverlesscontainer/v1/reference.md) | ScalewayServerlessContainerSpec defines the specification for a Scaleway serverless container deployment. |  |  |
-| [ScalewayServerlessFunction](scalewayserverlessfunction/v1/reference.md) | ScalewayServerlessFunctionSpec defines the specification for a Scaleway serverless function. |  |  |
-| [ScalewayVpc](scalewayvpc/v1/reference.md) | ScalewayVpcSpec defines the specification for a Scaleway Virtual Private Cloud (VPC). |  |  |
+| [ScalewayBlockVolume](scalewayblockvolume/v1alpha1/reference.md) | ScalewayBlockVolumeSpec defines the specification for a Scaleway Block Storage volume. |  |  |
+| [ScalewayContainerRegistry](scalewaycontainerregistry/v1alpha1/reference.md) | ScalewayContainerRegistrySpec defines the specification for a Scaleway Container Registry namespace. |  |  |
+| [ScalewayDnsRecord](scalewaydnsrecord/v1alpha1/reference.md) | ScalewayDnsRecordSpec defines the specification for a standalone Scaleway DNS record. |  |  |
+| [ScalewayDnsZone](scalewaydnszone/v1alpha1/reference.md) | ScalewayDnsZoneSpec defines the specification for a Scaleway DNS zone with optional inline DNS records. |  |  |
+| [ScalewayInstance](scalewayinstance/v1alpha1/reference.md) | ScalewayInstanceSpec defines the specification for a Scaleway compute instance. |  |  |
+| [ScalewayInstanceSecurityGroup](scalewayinstancesecuritygroup/v1alpha1/reference.md) | ScalewayInstanceSecurityGroupSpec defines the specification for a Scaleway Instance Security Group -- a stateful (by default) firewall that controls inbound and outbound traffic to Scaleway Instances. |  |  |
+| [ScalewayKapsuleCluster](scalewaykapsulecluster/v1alpha1/reference.md) | ScalewayKapsuleClusterSpec defines the specification for a Scaleway Kapsule managed Kubernetes cluster. |  |  |
+| [ScalewayKapsulePool](scalewaykapsulepool/v1alpha1/reference.md) | ScalewayKapsulePoolSpec defines the specification for an additional node pool in an existing Scaleway Kapsule Kubernetes cluster. |  |  |
+| [ScalewayLoadBalancer](scalewayloadbalancer/v1alpha1/reference.md) | ScalewayLoadBalancerSpec defines the specification for a Scaleway Load Balancer. |  |  |
+| [ScalewayMongodbInstance](scalewaymongodbinstance/v1alpha1/reference.md) | ScalewayMongodbInstanceSpec defines the specification for a Scaleway Managed MongoDB instance. |  |  |
+| [ScalewayObjectBucket](scalewayobjectbucket/v1alpha1/reference.md) | ScalewayObjectBucketSpec defines the specification for a Scaleway Object Storage bucket. |  |  |
+| [ScalewayPrivateNetwork](scalewayprivatenetwork/v1alpha1/reference.md) | ScalewayPrivateNetworkSpec defines the specification for a Scaleway Private Network. |  |  |
+| [ScalewayPublicGateway](scalewaypublicgateway/v1alpha1/reference.md) | ScalewayPublicGatewaySpec defines the specification for a Scaleway Public Gateway. |  |  |
+| [ScalewayRdbInstance](scalewayrdbinstance/v1alpha1/reference.md) | ScalewayRdbInstanceSpec defines the specification for a Scaleway Managed Database (RDB) instance. |  |  |
+| [ScalewayRedisCluster](scalewayrediscluster/v1alpha1/reference.md) | ScalewayRedisClusterSpec defines the specification for a Scaleway Managed Redis cluster. |  |  |
+| [ScalewayServerlessContainer](scalewayserverlesscontainer/v1alpha1/reference.md) | ScalewayServerlessContainerSpec defines the specification for a Scaleway serverless container deployment. |  |  |
+| [ScalewayServerlessFunction](scalewayserverlessfunction/v1alpha1/reference.md) | ScalewayServerlessFunctionSpec defines the specification for a Scaleway serverless function. |  |  |
+| [ScalewayVpc](scalewayvpc/v1alpha1/reference.md) | ScalewayVpcSpec defines the specification for a Scaleway Virtual Private Cloud (VPC). |  |  |

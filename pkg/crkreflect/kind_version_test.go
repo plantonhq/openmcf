@@ -43,8 +43,8 @@ func TestKindVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AwsVpc: %v", err)
 	}
-	if version != "v1" {
-		t.Errorf("AwsVpc: expected version v1, got %q", version)
+	if version != "v1alpha1" {
+		t.Errorf("AwsVpc: expected version v1alpha1, got %q", version)
 	}
 }
 
@@ -56,8 +56,8 @@ func TestComponentVersionDir(t *testing.T) {
 			t.Errorf("%q: %v", name, err)
 			continue
 		}
-		if version != "v1" {
-			t.Errorf("%q: expected version dir v1, got %q", name, version)
+		if version != "v1alpha1" {
+			t.Errorf("%q: expected version dir v1alpha1, got %q", name, version)
 		}
 	}
 

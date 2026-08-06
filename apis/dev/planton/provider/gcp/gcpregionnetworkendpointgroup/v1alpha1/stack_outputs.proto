@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpregionnetworkendpointgroup.v1alpha1;
+
+// Outputs produced after provisioning a GCP regional network endpoint group.
+message GcpRegionNetworkEndpointGroupStackOutputs {
+  // Self-link URI of the network endpoint group. This is the value a backend
+  // service references in backends[].group — the composition handle that puts
+  // this NEG behind a load balancer.
+  // Format: https://www.googleapis.com/compute/v1/projects/{project}/regions/{region}/networkEndpointGroups/{name}
+  string self_link = 1;
+
+  // Name of the network endpoint group as it exists in GCP.
+  string network_endpoint_group_name = 2;
+
+  // The endpoint type of the NEG (SERVERLESS, PRIVATE_SERVICE_CONNECT,
+  // INTERNET_IP_PORT, INTERNET_FQDN_PORT, or GCE_VM_IP_PORTMAP), echoed for
+  // tooling that resolves the serving chain.
+  string network_endpoint_type = 3;
+
+  // Region the network endpoint group lives in.
+  string region = 4;
+}

@@ -58,7 +58,7 @@ func ClipboardInvalidYAML(content []byte, parseErr error) {
 	// Show expected format
 	fmt.Println(infoTitle.Render("Expected format:"))
 	fmt.Println()
-	fmt.Printf("    %s\n", Cmd("apiVersion: kubernetes.planton.dev/v1"))
+	fmt.Printf("    %s\n", Cmd("apiVersion: kubernetes.planton.dev/v1alpha1"))
 	fmt.Printf("    %s\n", Cmd("kind: KubernetesPostgres"))
 	fmt.Printf("    %s\n", Cmd("metadata:"))
 	fmt.Printf("    %s\n", Cmd("  name: my-postgres"))
@@ -128,7 +128,7 @@ func ClipboardNotStackInput(content []byte) {
 	fmt.Println(infoTitle.Render("Expected stack input format:"))
 	fmt.Println()
 	fmt.Printf("    %s\n", Cmd("target:"))
-	fmt.Printf("    %s\n", Cmd("  apiVersion: kubernetes.planton.dev/v1"))
+	fmt.Printf("    %s\n", Cmd("  apiVersion: kubernetes.planton.dev/v1alpha1"))
 	fmt.Printf("    %s\n", Cmd("  kind: KubernetesPostgres"))
 	fmt.Printf("    %s\n", Cmd("  metadata:"))
 	fmt.Printf("    %s\n", Cmd("    name: my-postgres"))

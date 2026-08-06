@@ -151,7 +151,7 @@ Pulumi stores state either in Pulumi Cloud (default) or locally. The stack name 
 ### Stack Name Label
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -272,7 +272,7 @@ We recommend using provisioner-specific labels with `backend.key` for clarity.
 Store state in an S3 bucket with optional DynamoDB locking.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: production-vpc
@@ -319,7 +319,7 @@ When an S3-compatible backend is detected, Planton automatically adds:
 #### Cloudflare R2 Example
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: production-vpc
@@ -374,7 +374,7 @@ metadata:
 Store state in a GCS bucket.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GkeCluster
 metadata:
   name: staging-cluster
@@ -404,7 +404,7 @@ spec:
 Store state in Azure Blob Storage.
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: production-aks
@@ -435,7 +435,7 @@ spec:
 Store state on the local filesystem. **Not recommended for production or team use.**
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: test-service
@@ -468,7 +468,7 @@ spec:
 ### Example 1: AWS Infrastructure with S3 Backend
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: app-database
@@ -498,7 +498,7 @@ planton apply -f database.yaml
 ### Example 2: GCP Infrastructure with GCS Backend (OpenTofu)
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRun
 metadata:
   name: api-service
@@ -526,7 +526,7 @@ planton apply -f api-service.yaml
 
 **Base manifest** (`base/database.yaml`):
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: app-database
@@ -564,7 +564,7 @@ planton apply --kustomize-dir . --overlay prod
 ### Example 4: Pulumi with Stack Name
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: analytics-db

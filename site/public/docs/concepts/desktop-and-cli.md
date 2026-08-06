@@ -39,7 +39,7 @@ Keep the two straight: `apply -f` is always one manifest; `chart install` is alw
 
 ## Manifests are KRM
 
-Every manifest uses the Kubernetes Resource Model — `apiVersion`, `kind`, `metadata`, `spec` — extended from Kubernetes to every cloud (for example `aws.planton.dev/v1`). If you can read a Kubernetes manifest, you can read a Planton manifest.
+Every manifest uses the Kubernetes Resource Model — `apiVersion`, `kind`, `metadata`, `spec` — extended from Kubernetes to every cloud (for example `aws.planton.dev/v1alpha1`). If you can read a Kubernetes manifest, you can read a Planton manifest.
 
 ## Preview, then live progress
 

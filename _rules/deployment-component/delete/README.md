@@ -170,7 +170,7 @@ Component Info:
   Provider: atlas
   Enum Value: 51
   ID Prefix: mdbatl
-  Path: apis/dev/planton/provider/atlas/mongodbatlas/v1/
+  Path: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
 
 Would Delete:
   📁 Component folder
@@ -268,12 +268,12 @@ Delete automatically searches for references:
 
 **Go Code:**
 ```go
-import "dev/planton/provider/atlas/mongodbatlas/v1"  // ⚠️ Reference found
+import "dev/planton/provider/atlas/mongodbatlas/v1alpha1"  // ⚠️ Reference found
 ```
 
 **Proto Files:**
 ```protobuf
-import "dev/planton/provider/atlas/mongodbatlas/v1/api.proto";  // ⚠️ Reference found
+import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto";  // ⚠️ Reference found
 ```
 
 **Documentation:**
@@ -292,8 +292,8 @@ kind: MongodbAtlas  // ⚠️ Reference found
 ⚠️  Warning: MongodbAtlas is referenced in 3 files
 
 Critical References (will break build):
-  1. apis/dev/planton/provider/atlas/backup/v1/spec.proto:15
-     import "dev/planton/provider/atlas/mongodbatlas/v1/api.proto";
+  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto:15
+     import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto";
      → Must remove or update import
      
   2. docs/examples/database-comparison.md:45
@@ -359,7 +359,7 @@ After successful deletion:
 
 What Was Deleted:
   ✅ Component folder
-     Path: apis/dev/planton/provider/atlas/mongodbatlas/v1/
+     Path: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
      Files: 23 deleted
      Size: 450 KB freed
      
@@ -505,7 +505,7 @@ Did you mean one of these?
 ```
 ❌ Error: Permission denied
 
-Cannot delete: apis/dev/planton/provider/atlas/mongodbatlas/v1/
+Cannot delete: apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
 Reason: Directory not writable
 
 Fix:

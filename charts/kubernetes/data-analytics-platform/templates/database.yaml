@@ -17,7 +17,7 @@
 # leave two of them without a maintained Secret to reference. Ownership of
 # all three databases gives each consumer's migration jobs full DDL rights
 # with NO create-database grant — the least-privilege shape.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-analytics-db"

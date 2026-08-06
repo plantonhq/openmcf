@@ -1,0 +1,44 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbSqlContainer
+metadata:
+  name: test-cosmos-sql-container
+spec:
+  sqlDatabaseId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/planton-hack-cosmos/sqlDatabases/app-data
+  containerName: orders
+  # Exercises the hierarchical (MultiHash) partition-key seam, which
+  # requires version 2 -- the spec enforces the pairing.
+  partitionKeyPaths:
+    - /tenantId
+    - /orderId
+  partitionKeyKind: MULTI_HASH
+  partitionKeyVersion: 2
+  # Exercises the fixed-throughput seam (mutually exclusive with
+  # autoscale -- the spec rejects both together).
+  throughput: 400
+  # TTL on with per-document expiry only.
+  defaultTtl: -1
+  # Exercises the unique-key block rendering.
+  uniqueKeys:
+    - paths:
+        - /orderNumber
+  # Exercises every indexing-policy seam: mode, include-all with an
+  # excluded payload subtree, a composite index, and a spatial index.
+  indexingPolicy:
+    indexingMode: CONSISTENT
+    includedPaths:
+      - path: /*
+    excludedPaths:
+      - path: /payload/*
+    compositeIndexes:
+      - entries:
+          - path: /tenantId
+            order: ASCENDING
+          - path: /createdAt
+            order: DESCENDING
+    spatialIndexes:
+      - path: /location/*
+  # Exercises the conflict-resolution enum mapping.
+  conflictResolutionPolicy:
+    mode: LAST_WRITER_WINS
+    conflictResolutionPath: /_ts

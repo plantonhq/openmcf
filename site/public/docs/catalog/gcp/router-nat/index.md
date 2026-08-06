@@ -33,7 +33,7 @@ Static NAT IPs are referenced [GcpAddress](/docs/catalog/gcp/regional-address) r
 Create a file `router-nat.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: my-nat
@@ -97,7 +97,7 @@ This creates a Cloud Router and NAT gateway covering all subnetworks in `us-cent
 The recommended default — outbound internet access for every subnetwork in the region with GCP managing the IP pool:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: uscentral1-nat
@@ -120,7 +120,7 @@ spec:
 Manual allocation referencing GcpAddress reservations — the egress IPs are stable and third parties can allowlist them:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: prod-nat
@@ -153,7 +153,7 @@ spec:
 NAT only the GKE pod range of one subnetwork — the node range stays off the internet:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: gke-egress-nat
@@ -187,7 +187,7 @@ spec:
 Give traffic to a partner's endpoints a dedicated, separately allowlistable source IP while everything else uses the shared pool:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: partner-nat

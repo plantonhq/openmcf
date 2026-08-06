@@ -33,7 +33,7 @@ When you deploy a KubernetesCronJob resource, Planton provisions:
 Create a file `cronjob.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCronJob
 metadata:
   name: nightly-cleanup
@@ -112,7 +112,7 @@ Everything a standalone KubernetesJob expresses, minus `suspend` (which lives at
 Every 15 minutes; a stale overrunning sync is cancelled in favor of the fresh one:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCronJob
 metadata:
   name: index-sync
@@ -142,7 +142,7 @@ spec:
 Each monthly run fans out six numbered partitions, three at a time:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCronJob
 metadata:
   name: monthly-report

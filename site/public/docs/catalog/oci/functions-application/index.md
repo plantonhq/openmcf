@@ -29,7 +29,7 @@ When you deploy an OciFunctionsApplication resource, Planton provisions:
 Create a file `functions-app.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFunctionsApplication
 metadata:
   name: my-app
@@ -101,7 +101,7 @@ This creates a Functions application with GENERIC_X86 architecture in the specif
 An application with default x86 architecture in a single subnet:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFunctionsApplication
 metadata:
   name: my-app
@@ -122,7 +122,7 @@ spec:
 An application running on Ampere A1 processors with shared environment variables and NSG binding:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFunctionsApplication
 metadata:
   name: arm-app
@@ -158,7 +158,7 @@ spec:
 An application with image signature verification — only images signed by the specified KMS key can be deployed:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFunctionsApplication
 metadata:
   name: secure-app
@@ -187,7 +187,7 @@ spec:
 An application with multi-architecture support, syslog forwarding, and APM distributed tracing:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFunctionsApplication
 metadata:
   name: traced-app

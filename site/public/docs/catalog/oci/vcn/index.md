@@ -30,7 +30,7 @@ When you deploy an OciVcn resource, Planton provisions:
 Create a file `vcn.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciVcn
 metadata:
   name: my-vcn
@@ -81,7 +81,7 @@ This creates a VCN with a single 10.0.0.0/16 CIDR block and no gateways. The VCN
 A VCN with a single CIDR block and no gateways — suitable for development or isolated workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciVcn
 metadata:
   name: dev-vcn
@@ -102,7 +102,7 @@ spec:
 A VCN for workloads that need both public-facing and private subnets. The Internet Gateway serves public subnets; the NAT Gateway gives private subnets outbound internet access:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciVcn
 metadata:
   name: web-vcn
@@ -127,7 +127,7 @@ spec:
 All gateways enabled, IPv6 for dual-stack workloads, multiple CIDRs for address segmentation, and DNS resolution for hostname-based communication:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciVcn
 metadata:
   name: prod-vcn
@@ -157,7 +157,7 @@ spec:
 Reference an Planton-managed compartment instead of hardcoding the OCID:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciVcn
 metadata:
   name: ref-vcn

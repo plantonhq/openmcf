@@ -43,7 +43,7 @@ Both engines (Terraform/OpenTofu and Pulumi) implement the same contract with id
 Create a file `bucket.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: my-bucket
@@ -154,7 +154,7 @@ This creates a fully private bucket in `us-east-1`: all four public-access guard
 ### Private Versioned Bucket with KMS and Version Pruning
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: app-data
@@ -184,7 +184,7 @@ spec:
 ### Log Bucket with Tiering and Expiration
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: app-logs
@@ -210,7 +210,7 @@ spec:
 ### Cross-Region Replication with RTC
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: dr-source
@@ -239,7 +239,7 @@ spec:
 ### Event Notifications into EventBridge
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: media-uploads

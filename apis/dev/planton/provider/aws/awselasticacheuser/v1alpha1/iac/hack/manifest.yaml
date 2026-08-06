@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsElasticacheUser
+metadata:
+  name: awselasticacheuser-demo
+spec:
+  region: us-west-2
+  engine: redis
+  userName: orders-service
+  accessString: "on ~orders:* +@read +@write"
+  authenticationMode:
+    type: password
+    passwords:
+      - PlantonHackDemoPwd01!

@@ -32,7 +32,7 @@ When you deploy an AwsCodeBuildProject resource, Planton provisions:
 Create a file `codebuild.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: my-build
@@ -151,7 +151,7 @@ This creates a CodeBuild project that pulls from a GitHub repository, runs build
 A standard CI project triggered by pushes and pull requests on the main branch:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: app-ci
@@ -188,7 +188,7 @@ spec:
 A privileged build project for Docker image builds with local layer caching:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: docker-builder
@@ -238,7 +238,7 @@ spec:
 A build project designed as a stage in AWS CodePipeline with Secrets Manager variables:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: pipeline-build
@@ -275,7 +275,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: connected-build

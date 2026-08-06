@@ -1,0 +1,42 @@
+# Minimal postgres instance scenario: the classic single-node RDS shape on
+# the cheapest real footprint (db.t4g.micro, 20 GiB gp3, single-AZ).
+# Exercises the AWS-managed master password (no secret in the manifest or
+# state) and encrypted storage. engine_version is deliberately unpinned so
+# the scenario rides the engine's current AWS default and never goes stale.
+# The subnet pair prerequisite satisfies the two-AZ DB subnet group
+# requirement; no security groups are given, so AWS attaches the VPC's
+# default group. skipFinalSnapshot keeps the destroy phase unconditional.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsInstance
+metadata:
+  name: planton-oss-e2e-rdsins-min
+  id: planton-oss-e2e-rdsins-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrdsinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engine: postgres
+  instanceClass: db.t4g.micro
+  allocatedStorageGb: 20
+  storageType: gp3
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  username: e2eadmin
+  manageMasterUserPassword: true
+  storageEncrypted: true
+  skipFinalSnapshot: true

@@ -31,7 +31,7 @@ When you deploy an AwsFsxOntapVolume resource, Planton provisions:
 Create a file `ontap-volume.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: my-data-volume
@@ -133,7 +133,7 @@ Each retention duration has `type` (`SECONDS`/`MINUTES`/`HOURS`/`DAYS`/`MONTHS`/
 A production volume with AUTO tiering that moves cold data to cheaper capacity pool storage after 31 days:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: prod-nfs-data
@@ -161,7 +161,7 @@ spec:
 Immutable storage for SEC 17a-4 compliance with 5-year default retention and 1-day autocommit:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: sec-compliance
@@ -201,7 +201,7 @@ spec:
 A distributed volume across 2 aggregates for data lake workloads requiring parallel I/O:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: datalake-flexgroup
@@ -232,7 +232,7 @@ spec:
 A volume referencing its parent SVM via `valueFrom` for infra chart dependency wiring:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: referenced-volume
@@ -270,8 +270,8 @@ spec:
 
 ## Related Components
 
-- [AwsFsxOntapStorageVirtualMachine](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1) — Parent SVM providing protocol endpoints and namespace
-- [AwsFsxOntapFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1) — Grandparent file system providing physical infrastructure
-- [AwsFsxLustreFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1) — Alternative: HPC-optimized file system with S3 integration
-- [AwsFsxOpenzfsFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1) — Alternative: General-purpose NFS with OpenZFS snapshots
-- [AwsElasticFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awselasticfilesystem/v1) — Alternative: Serverless NFS with automatic scaling
+- [AwsFsxOntapStorageVirtualMachine](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapstoragevirtualmachine/v1alpha1) — Parent SVM providing protocol endpoints and namespace
+- [AwsFsxOntapFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxontapfilesystem/v1alpha1) — Grandparent file system providing physical infrastructure
+- [AwsFsxLustreFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxlustrefilesystem/v1alpha1) — Alternative: HPC-optimized file system with S3 integration
+- [AwsFsxOpenzfsFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1alpha1) — Alternative: General-purpose NFS with OpenZFS snapshots
+- [AwsElasticFileSystem](https://github.com/plantonhq/planton/tree/main/apis/dev/planton/provider/aws/awselasticfilesystem/v1alpha1) — Alternative: Serverless NFS with automatic scaling

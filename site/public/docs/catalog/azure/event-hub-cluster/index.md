@@ -26,7 +26,7 @@ When you deploy an AzureEventHubCluster resource, Planton provisions:
 Create a file `cluster.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubCluster
 metadata:
   name: streaming-cluster

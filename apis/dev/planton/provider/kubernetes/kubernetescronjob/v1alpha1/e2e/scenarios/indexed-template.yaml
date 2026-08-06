@@ -1,0 +1,33 @@
+# Exercises Indexed batch controls inside the job_template: each scheduled
+# run fans out two numbered pods that echo their index and exit.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCronJob
+metadata:
+  name: e2e-cronjob-indexed
+spec:
+  namespace:
+    value: e2e-cronjob-indexed-ns
+  create_namespace: true
+  schedule: "*/1 * * * *"
+  job_template:
+    container:
+      app:
+        image:
+          repo: busybox
+          tag: "1.36"
+        command:
+          - /bin/sh
+          - -c
+          - echo "index $JOB_COMPLETION_INDEX"
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+    completion_mode: Indexed
+    completions: 2
+    parallelism: 2
+    restart_policy: Never
+    backoff_limit: 1

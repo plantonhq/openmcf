@@ -27,7 +27,7 @@ When you deploy an AwsKmsKey resource, Planton provisions:
 Create a file `kms-key.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: my-key
@@ -76,7 +76,7 @@ All other fields are optional.
 ### Symmetric Key with Rotation
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: app-encryption
@@ -92,7 +92,7 @@ spec:
 ### RSA Signing Key
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: jwt-signing
@@ -109,7 +109,7 @@ spec:
 ### Custom Key Policy
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: cross-account

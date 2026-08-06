@@ -34,7 +34,7 @@ by port/protocol and take no rules.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListenerRule
 metadata:
   name: api-route
@@ -102,7 +102,7 @@ planton apply -f rule.yaml
 ### OIDC gate on the admin path
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListenerRule
 metadata:
   name: admin-auth
@@ -140,7 +140,7 @@ spec:
 ### Path stripping with a URL rewrite
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListenerRule
 metadata:
   name: svc-mount
@@ -175,7 +175,7 @@ spec:
 ### Maintenance mode for one host
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListenerRule
 metadata:
   name: maintenance

@@ -25,7 +25,7 @@ Provisions a Hetzner Cloud block storage volume with an optional server attachme
 Create a file `volume.yaml`:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudVolume
 metadata:
   name: my-volume
@@ -72,7 +72,7 @@ This creates a 10 GB raw (unformatted) volume in Falkenstein, unattached to any 
 A formatted volume created without a server attachment. Useful for pre-provisioning storage that will be attached to a server later.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudVolume
 metadata:
   name: app-data
@@ -94,7 +94,7 @@ spec:
 A volume attached to a server with automount enabled. The `serverId` uses a `valueFrom` reference to a `HetznerCloudServer` component, ensuring the server is created before the volume attachment.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudVolume
 metadata:
   name: db-data
@@ -122,7 +122,7 @@ spec:
 A large XFS volume for high-throughput workloads with delete protection enabled. XFS is suited for large sequential writes — log aggregation, media storage, and backup repositories.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudVolume
 metadata:
   name: media-storage

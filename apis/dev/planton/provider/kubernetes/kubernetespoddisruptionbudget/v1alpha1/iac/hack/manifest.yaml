@@ -1,0 +1,25 @@
+# Full-surface test manifest for the offline plan proofs. Exercises the
+# selector (labels + expressions) and a percentage bound.
+# (unhealthy_pod_eviction_policy: always_allow is exercised by the
+# Pulumi-only negative proof — the terraform module rejects it with a
+# precondition by design.)
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPodDisruptionBudget
+metadata:
+  name: test-pdb
+spec:
+  namespace:
+    value: default
+  name: test-pdb
+  labels:
+    team: platform-engineering
+  selector:
+    match_labels:
+      app: test-app
+    match_expressions:
+      - key: tier
+        operator: In
+        values:
+          - web
+          - api
+  max_unavailable: 25%

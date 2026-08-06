@@ -1,0 +1,16 @@
+# THE persistence proof: upsert vectors, DELETE the pod, run the
+# similarity search once the pod returns and assert the nearest neighbour
+# — vectors surviving pod loss through the PVC. Authenticated (the proof
+# carries the generated key across the restart).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesQdrant
+metadata:
+  name: e2e-qdrant-pers
+spec:
+  namespace:
+    value: e2e-qdrant-pers
+  create_namespace: true
+  storage:
+    size: 2Gi
+  api_key:
+    generate: true

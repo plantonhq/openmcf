@@ -1,0 +1,192 @@
+# Local development / offline-proof manifest exercising the full spec surface,
+# including arms the live E2E scenarios exclude — the offline tofu plan and
+# pulumi preview proofs run against this file.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDeployment
+metadata:
+  name: hack-deployment
+  id: hack-deployment-id
+  org: hack-org
+  env: hack-env
+spec:
+  namespace:
+    value: hack-deployment-ns
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: nginx
+        tag: "1.27-alpine"
+      image_pull_policy: IfNotPresent
+      working_dir: /usr/share/nginx/html
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+      ports:
+        - name: http
+          container_port: 80
+          network_protocol: TCP
+          app_protocol: http
+          service_port: 80
+      env:
+        variables:
+          - name: LOG_LEVEL
+            value: info
+          - name: POD_NAME
+            field_ref:
+              field_path: metadata.name
+          - name: CPU_LIMIT
+            resource_field_ref:
+              resource: limits.cpu
+        secrets:
+          - name: API_TOKEN
+            value: hack-token
+        env_from:
+          - config_map_ref:
+              name: hack-env-config
+              optional: true
+      liveness_probe:
+        http_get:
+          path: /
+          port_number: 80
+        initial_delay_seconds: 5
+        period_seconds: 10
+      readiness_probe:
+        tcp_socket:
+          port_number: 80
+        period_seconds: 5
+      startup_probe:
+        http_get:
+          path: /
+          port_number: 80
+        failure_threshold: 30
+        period_seconds: 2
+      volume_mounts:
+        - name: scratch
+          mount_path: /scratch
+          empty_dir:
+            medium: Memory
+            size_limit: 32Mi
+        - name: host-logs
+          mount_path: /host-logs
+          read_only: true
+          host_path:
+            path: /var/log
+            type: Directory
+      lifecycle:
+        post_start:
+          exec:
+            command: ["/bin/sh", "-c", "true"]
+        pre_stop:
+          exec:
+            command: ["/bin/sleep", "5"]
+      security_context:
+        run_as_non_root: true
+        read_only_root_filesystem: false
+        allow_privilege_escalation: false
+        capabilities:
+          drop: ["ALL"]
+          add: ["NET_BIND_SERVICE"]
+        seccomp_profile:
+          type: RuntimeDefault
+    sidecars:
+      - name: log-shipper
+        image:
+          repo: busybox
+          tag: "1.36"
+        command: ["/bin/sh", "-c", "sleep infinity"]
+        resources:
+          requests:
+            cpu: "5m"
+            memory: "16Mi"
+          limits:
+            cpu: "50m"
+            memory: "32Mi"
+        volume_mounts:
+          - name: scratch
+            mount_path: /scratch
+  pod:
+    service_account:
+      value: hack-service-account
+    automount_service_account_token: false
+    image_pull_secrets:
+      - value: hack-registry-secret
+    init_containers:
+      - name: init-schema
+        image:
+          repo: busybox
+          tag: "1.36"
+        command: ["/bin/sh", "-c", "echo init done"]
+    labels:
+      team: hack
+    annotations:
+      example.org/owner: hack
+    scheduling:
+      node_selector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: hack
+          effect: NoSchedule
+      node_affinity:
+        preferred:
+          - weight: 50
+            term:
+              match_expressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values: ["arm64", "amd64"]
+      pod_anti_affinity:
+        preferred:
+          - weight: 100
+            term:
+              match_labels:
+                app: hack-deployment
+              topology_key: kubernetes.io/hostname
+      topology_spread_constraints:
+        - max_skew: 1
+          topology_key: topology.kubernetes.io/zone
+          when_unsatisfiable: ScheduleAnyway
+    security_context:
+      run_as_user: 101
+      run_as_group: 101
+      run_as_non_root: true
+      fs_group: 101
+      fs_group_change_policy: OnRootMismatch
+      sysctls:
+        - name: net.core.somaxconn
+          value: "1024"
+    termination_grace_period_seconds: 60
+    dns_policy: ClusterFirst
+    dns_config:
+      options:
+        - name: ndots
+          value: "2"
+    host_aliases:
+      - ip: 203.0.113.10
+        hostnames: ["legacy.internal.example"]
+    priority_class_name: ""
+    runtime_class_name: ""
+  availability:
+    replicas: 2
+    horizontal_pod_autoscaling:
+      enabled: true
+      max_replicas: 5
+      target_cpu_utilization_percent: 60
+      target_memory_utilization: 256Mi
+    strategy:
+      type: RollingUpdate
+      max_unavailable: "0"
+      max_surge: "1"
+    pod_disruption_budget:
+      enabled: true
+      min_available: "1"
+    min_ready_seconds: 5
+    revision_history_limit: 5
+    progress_deadline_seconds: 600

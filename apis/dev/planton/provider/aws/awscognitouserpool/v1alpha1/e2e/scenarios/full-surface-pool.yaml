@@ -1,0 +1,68 @@
+# Full-surface pool: the email-username identity model with a hardened
+# password policy (history requires the ESSENTIALS tier -- the AWS default,
+# pinned explicitly), optional TOTP MFA, passwordless email OTP as an allowed
+# first factor, admin-invite and verification message templates (proving the
+# {####}/{username} placeholder CELs against the live API), a custom
+# attribute (the append-only schema path), device remembering, and a
+# Cognito-hosted prefix domain on the classic hosted UI. Everything here is
+# dependency-free by design: no SES identity (COGNITO_DEFAULT email), no SNS
+# role (no SMS features), no PLUS-tier threat protection.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCognitoUserPool
+metadata:
+  name: planton-oss-e2e-awscog
+  id: planton-oss-e2e-awscog
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscognitouserpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  usernameAttributes:
+    - email
+  userPoolTier: ESSENTIALS
+  passwordPolicy:
+    minimumLength: 12
+    requireLowercase: true
+    requireUppercase: true
+    requireNumbers: true
+    requireSymbols: true
+    passwordHistorySize: 3
+    temporaryPasswordValidityDays: 3
+  allowedFirstAuthFactors:
+    - PASSWORD
+    - EMAIL_OTP
+  mfaConfiguration: OPTIONAL
+  softwareTokenMfaEnabled: true
+  autoVerifiedAttributes:
+    - email
+  attributesRequireVerificationBeforeUpdate:
+    - email
+  accountRecoveryMechanisms:
+    - name: verified_email
+      priority: 1
+  verificationMessageTemplate:
+    defaultEmailOption: CONFIRM_WITH_CODE
+    emailSubject: "Your verification code"
+    emailMessage: "Your Planton E2E verification code is {####}."
+  inviteMessageTemplate:
+    emailSubject: "Your temporary password"
+    emailMessage: "Hello {username}, your temporary password is {####}."
+    smsMessage: "Hello {username}, your temporary password is {####}."
+  deviceConfiguration:
+    challengeRequiredOnNewDevice: true
+    deviceOnlyRememberedOnUserPrompt: true
+  customAttributes:
+    - name: tenant_id
+      attributeDataType: String
+      mutable: true
+      stringMinLength: "1"
+      stringMaxLength: "64"
+  domain:
+    domain: planton-oss-e2e-pool
+    managedLoginVersion: 1

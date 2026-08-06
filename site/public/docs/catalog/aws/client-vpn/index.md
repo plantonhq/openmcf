@@ -42,7 +42,7 @@ When you deploy an AwsClientVpn resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsClientVpn
 metadata:
   name: corp-access
@@ -147,7 +147,7 @@ spec:
 ## Full-Tunnel Example
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsClientVpn
 metadata:
   name: secure-egress

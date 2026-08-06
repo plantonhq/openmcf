@@ -1,0 +1,32 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesBackendTlsPolicy
+metadata:
+  name: test-backend-tls-policy
+spec:
+  namespace:
+    value: test-namespace
+  targetRefs:
+    - group: ""
+      kind: Service
+      name:
+        value: test-backend-service
+      sectionName: https
+    - group: ""
+      kind: Service
+      name:
+        value: test-backend-service
+      sectionName: grpc
+  validation:
+    caCertificateRefs:
+      - group: ""
+        kind: ConfigMap
+        name:
+          value: test-ca-bundle
+    hostname: test-backend-service.test-namespace.svc.cluster.local
+    subjectAltNames:
+      - type: Hostname
+        hostname: test-backend-service.test-namespace.svc.cluster.local
+      - type: URI
+        uri: spiffe://cluster.example.com/ns/test-namespace/sa/test-backend-sa
+  options:
+    gateway.example.com/min-tls-version: TLSv1_3

@@ -3,7 +3,7 @@
 # for every application that outgrows role checks. Stateless servers over
 # the shared PostgreSQL; schema migrations run as an init container in
 # every pod, so the deploy carries no hook Jobs.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenFga
 metadata:
   name: "{{ values.env }}-openfga"

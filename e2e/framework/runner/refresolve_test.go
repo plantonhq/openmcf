@@ -5,17 +5,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	awsiamrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1"
-	awsnlbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1"
-	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
-	gcpbackendservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1"
-	gcptargethttpsproxyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1"
-	gcpurlmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1"
+	awsiamrolev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1alpha1"
+	awsnlbv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1alpha1"
+	awssubnetv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1alpha1"
+	gcpbackendservicev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpbackendservice/v1alpha1"
+	gcptargethttpsproxyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcptargethttpsproxy/v1alpha1"
+	gcpurlmapv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpurlmap/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/internal/manifest"
 )
 
-const subnetManifestWithRef = `apiVersion: aws.planton.dev/v1
+const subnetManifestWithRef = `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: ref-subnet
@@ -65,7 +65,7 @@ func TestResolveManifestRefs_ResolvesVpcIdFromPrerequisite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	subnet, ok := obj.(*awssubnetv1.AwsSubnet)
+	subnet, ok := obj.(*awssubnetv1alpha1.AwsSubnet)
 	if !ok {
 		t.Fatalf("resolved manifest is not an AwsSubnet: %T", obj)
 	}
@@ -120,7 +120,7 @@ func TestResolveManifestRefs_SoleInstanceResolvesDespiteNameMismatch(t *testing.
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	subnet := obj.(*awssubnetv1.AwsSubnet)
+	subnet := obj.(*awssubnetv1alpha1.AwsSubnet)
 	if got := subnet.GetSpec().GetVpcId().GetValue(); got != "vpc-sole456" {
 		t.Errorf("vpc_id value = %q, want the sole instance's %q", got, "vpc-sole456")
 	}
@@ -129,7 +129,7 @@ func TestResolveManifestRefs_SoleInstanceResolvesDespiteNameMismatch(t *testing.
 // Multi-instance selection: with two prerequisites of the same kind deployed,
 // each reference resolves against the instance its name addresses -- the
 // mechanism that lets a load balancer reference two different-AZ subnets.
-const nlbManifestWithTwoSubnetRefs = `apiVersion: aws.planton.dev/v1
+const nlbManifestWithTwoSubnetRefs = `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: ref-nlb
@@ -167,7 +167,7 @@ func TestResolveManifestRefs_MultiInstanceResolvesByName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	nlb, ok := obj.(*awsnlbv1.AwsNlb)
+	nlb, ok := obj.(*awsnlbv1alpha1.AwsNlb)
 	if !ok {
 		t.Fatalf("resolved manifest is not an AwsNlb: %T", obj)
 	}
@@ -202,7 +202,7 @@ func TestResolveManifestRefs_AmbiguousNameErrors(t *testing.T) {
 	}
 }
 
-const roleManifestWithRepeatedRefs = `apiVersion: aws.planton.dev/v1
+const roleManifestWithRepeatedRefs = `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: ref-role
@@ -246,7 +246,7 @@ func TestResolveManifestRefs_ResolvesRepeatedRefsFromPrerequisite(t *testing.T) 
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	role, ok := obj.(*awsiamrolev1.AwsIamRole)
+	role, ok := obj.(*awsiamrolev1alpha1.AwsIamRole)
 	if !ok {
 		t.Fatalf("resolved manifest is not an AwsIamRole: %T", obj)
 	}
@@ -307,7 +307,7 @@ func TestResolveManifestRefs_MissingOutputErrors(t *testing.T) {
 	}
 }
 
-const backendServiceNegManifest = `apiVersion: gcp.planton.dev/v1
+const backendServiceNegManifest = `apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBackendService
 metadata:
   name: neg-backend
@@ -324,7 +324,7 @@ spec:
       maxRate: 100
 `
 
-const urlMapExplicitKindManifest = `apiVersion: gcp.planton.dev/v1
+const urlMapExplicitKindManifest = `apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpUrlMap
 metadata:
   name: my-url-map
@@ -356,7 +356,7 @@ func TestResolveManifestRefs_ResolvesNestedBackendGroupByExplicitKind(t *testing
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	bs, ok := obj.(*gcpbackendservicev1.GcpBackendService)
+	bs, ok := obj.(*gcpbackendservicev1alpha1.GcpBackendService)
 	if !ok {
 		t.Fatalf("resolved manifest is not a GcpBackendService: %T", obj)
 	}
@@ -370,7 +370,7 @@ func TestResolveManifestRefs_ResolvesNestedBackendGroupByExplicitKind(t *testing
 	}
 }
 
-const httpsProxyRepeatedRefManifest = `apiVersion: gcp.planton.dev/v1
+const httpsProxyRepeatedRefManifest = `apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpTargetHttpsProxy
 metadata:
   name: my-https-proxy
@@ -415,7 +415,7 @@ func TestResolveManifestRefs_ResolvesRepeatedRefElements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	proxy, ok := obj.(*gcptargethttpsproxyv1.GcpTargetHttpsProxy)
+	proxy, ok := obj.(*gcptargethttpsproxyv1alpha1.GcpTargetHttpsProxy)
 	if !ok {
 		t.Fatalf("resolved manifest is not a GcpTargetHttpsProxy: %T", obj)
 	}
@@ -455,7 +455,7 @@ func TestResolveManifestRefs_ResolvesExplicitValueFromKindWithoutDefaultKind(t *
 	if err != nil {
 		t.Fatalf("failed to load resolved manifest: %v", err)
 	}
-	um, ok := obj.(*gcpurlmapv1.GcpUrlMap)
+	um, ok := obj.(*gcpurlmapv1alpha1.GcpUrlMap)
 	if !ok {
 		t.Fatalf("resolved manifest is not a GcpUrlMap: %T", obj)
 	}

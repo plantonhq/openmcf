@@ -1,0 +1,108 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHttpRoute
+metadata:
+  name: test-route
+spec:
+  namespace:
+    value: test-namespace
+  parentRefs:
+    - name:
+        value: test-gateway
+      sectionName: https
+      port: 443
+  hostnames:
+    - app.example.com
+  rules:
+    - name: primary
+      matches:
+        - path:
+            type: PathPrefix
+            value: /api
+          headers:
+            - type: Exact
+              name: x-tenant
+              value: acme
+          queryParams:
+            - type: Exact
+              name: version
+              value: v2
+          method: GET
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: x-forwarded-tier
+                value: production
+            add:
+              - name: x-trace
+                value: enabled
+            remove:
+              - x-legacy
+        - type: RequestMirror
+          requestMirror:
+            backendRef:
+              name:
+                value: audit-svc
+              port: 8080
+            percent: 25
+        - type: CORS
+          cors:
+            allowOrigins:
+              - https://console.example.com
+            allowCredentials: true
+            allowMethods:
+              - GET
+              - POST
+            allowHeaders:
+              - authorization
+            exposeHeaders:
+              - x-request-id
+            maxAge: 600
+      backendRefs:
+        - name:
+            value: web
+          port: 80
+          weight: 90
+        - name:
+            value: web-canary
+          port: 80
+          weight: 10
+          filters:
+            - type: ResponseHeaderModifier
+              responseHeaderModifier:
+                add:
+                  - name: x-canary
+                    value: "true"
+      timeouts:
+        request: 30s
+        backendRequest: 10s
+    - name: redirect-old-host
+      matches:
+        - path:
+            type: PathPrefix
+            value: /old
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: app.example.com
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /new
+            statusCode: 308
+    - name: rewrite
+      matches:
+        - path:
+            type: PathPrefix
+            value: /legacy
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            hostname: internal.example.com
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /v2
+      backendRefs:
+        - name:
+            value: legacy-adapter
+          port: 8080

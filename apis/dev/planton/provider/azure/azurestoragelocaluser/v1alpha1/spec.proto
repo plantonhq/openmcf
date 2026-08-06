@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragelocaluser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureStorageLocalUserSpec** defines the configuration for creating a
+// local user on an Azure Storage Account: the credential identity the
+// account's SFTP endpoint authenticates. Local users are how partners,
+// legacy pipelines, and managed file transfer tools that only speak SFTP
+// reach blob storage -- each user carries its own SSH credentials, a home
+// directory, and per-container permission scopes, so one account serves
+// many isolated exchange partners.
+//
+// Local users are many-per-account with independent lifecycles (partners
+// onboard and offboard without touching the account), which is why they
+// are a first-class kind rather than a list folded into the account's
+// spec. The parent is fixed at creation: a user cannot move between
+// accounts.
+//
+// **SFTP prerequisites live on the ACCOUNT**: sftp_enabled (with its
+// is_hns_enabled requirement) turns the endpoint on, and
+// local_user_enabled (Azure's default: true) permits users to exist.
+// Azure accepts a local user on an account without SFTP -- it just can't
+// connect -- so wire both account switches when the user is meant to log
+// in. Clients connect as {account-name}.{user-name} (the sftp_username
+// output) on port 22.
+message AzureStorageLocalUserSpec {
+  // The storage account the user lives on, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output so the account and
+  // its users compose in one manifest set. The account needs
+  // sftp_enabled: true (which requires is_hns_enabled) for the user to
+  // actually connect. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The user's name: 3-64 lowercase letters and digits only (no hyphens
+  // or underscores). Unique within the account; the SFTP login is
+  // {account-name}.{user-name}. Changing the name replaces the user --
+  // and regenerates its credentials.
+  string user_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_local_user_name_format"
+      message: "user_name must be 3-64 lowercase letters and digits only (no hyphens or underscores)"
+      expression: "this.matches('^[a-z0-9]{3,64}$')"
+    }
+  ];
+
+  // Whether the user authenticates with SSH PUBLIC KEYS. Enable this
+  // and list the keys in ssh_authorized_keys -- key auth is the posture
+  // to prefer (no shared secret to distribute or rotate out-of-band).
+  // At least one of ssh_key_enabled / ssh_password_enabled must be on.
+  bool ssh_key_enabled = 3;
+
+  // Whether the user authenticates with an AZURE-GENERATED password.
+  // Azure mints the password at creation and returns it exactly once --
+  // it lands in the password stack output; there is no way to choose or
+  // retrieve it later (flipping this off and on regenerates it). At
+  // least one of ssh_key_enabled / ssh_password_enabled must be on.
+  bool ssh_password_enabled = 4;
+
+  // The SSH public keys the user may authenticate with -- required when
+  // (and only when) ssh_key_enabled is on. Standard OpenSSH public-key
+  // format (the .pub file content, e.g. "ssh-ed25519 AAAA... label").
+  repeated AzureStorageLocalUserSshAuthorizedKey ssh_authorized_keys = 5;
+
+  // The directory an SFTP session lands in after login, as a path INSIDE
+  // the account's blob namespace -- "{container}" or
+  // "{container}/{path}" (no leading slash). Unset lands the session at
+  // the account root, where the user sees every container its
+  // permission scopes allow.
+  string home_directory = 6;
+
+  // What the user may do, per container or file share. Each scope
+  // grants a set of operations on ONE named resource -- the isolation
+  // boundary that lets one account serve many partners (each user
+  // scoped to its own container). A user with no scopes can log in but
+  // touch nothing.
+  repeated AzureStorageLocalUserPermissionScope permission_scopes = 7;
+
+  option (buf.validate.message).cel = {
+    id: "storage_local_user_auth_method_required"
+    message: "enable at least one authentication method: ssh_key_enabled and/or ssh_password_enabled"
+    expression: "this.ssh_key_enabled || this.ssh_password_enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "storage_local_user_keys_pair_with_key_auth"
+    message: "ssh_authorized_keys must be set when ssh_key_enabled is on, and left empty when it is off"
+    expression: "this.ssh_key_enabled ? this.ssh_authorized_keys.size() > 0 : this.ssh_authorized_keys.size() == 0"
+  };
+}
+
+// One SSH public key the user may authenticate with.
+message AzureStorageLocalUserSshAuthorizedKey {
+  // The SSH PUBLIC key in OpenSSH format -- the .pub file content
+  // ("ssh-ed25519 AAAA..." or "ssh-rsa AAAA..."), never the private
+  // key. The private half stays with the partner; Azure only ever sees
+  // this public half.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_local_user_ssh_key_format"
+      message: "key must be an OpenSSH public key, e.g. \"ssh-ed25519 AAAA... label\" or \"ssh-rsa AAAA...\""
+      expression: "this.matches('^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521) [A-Za-z0-9+/=]+( .*)?$')"
+    }
+  ];
+
+  // A label for the key -- whose laptop, which pipeline -- so rotations
+  // remove the right one.
+  string description = 2;
+}
+
+// A grant of operations on one container or file share.
+message AzureStorageLocalUserPermissionScope {
+  // Which storage service the resource belongs to: BLOB for containers
+  // (the SFTP case) or FILE for file shares.
+  AzureStorageLocalUserPermissionService service = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The container (service: BLOB) or file share (service: FILE) this
+  // scope grants access to, by name. References an
+  // AzureStorageContainer's container_name output by default; for a
+  // file share, point valueFrom at an AzureStorageShare's share_name
+  // output instead. The resource must live on the SAME account as the
+  // user.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageContainer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_name"
+  ];
+
+  // Whether the user may READ objects in the resource.
+  bool read = 3;
+
+  // Whether the user may WRITE (upload/overwrite) objects.
+  bool write = 4;
+
+  // Whether the user may DELETE objects.
+  bool delete = 5;
+
+  // Whether the user may LIST the resource's contents.
+  bool list = 6;
+
+  // Whether the user may CREATE new objects and directories.
+  bool create = 7;
+}
+
+// The storage service a permission scope's resource belongs to.
+enum AzureStorageLocalUserPermissionService {
+  // Not specified -- invalid; name the service the resource lives in.
+  azure_storage_local_user_permission_service_unspecified = 0;
+
+  // A blob container -- what the SFTP endpoint serves.
+  BLOB = 1;
+
+  // An Azure Files share.
+  FILE = 2;
+}

@@ -26,7 +26,7 @@ When you deploy an AzureMssqlFailoverGroup resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlFailoverGroup
 metadata:
   name: prod-sql-fog

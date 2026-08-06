@@ -28,7 +28,7 @@ When you deploy a GcpAddress resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAddress
 metadata:
   name: nat-external-ip
@@ -66,7 +66,7 @@ This reserves a public IPv4 address in `us-central1` for Cloud NAT or a regional
 ### External Static IP for Cloud NAT
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAddress
 metadata:
   name: nat-ip
@@ -81,7 +81,7 @@ spec:
 ### Internal GCE Endpoint in a Subnetwork
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAddress
 metadata:
   name: vm-internal-ip
@@ -102,7 +102,7 @@ spec:
 ### Internal Shared Load Balancer VIP
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAddress
 metadata:
   name: ilb-vip

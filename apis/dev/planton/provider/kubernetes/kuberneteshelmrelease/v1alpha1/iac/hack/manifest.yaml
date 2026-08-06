@@ -1,0 +1,37 @@
+# Full-surface test manifest for the offline plan proofs. Exercises the
+# chart identity, all three values layers, release-name override, and the
+# lifecycle knobs both engines express (take_ownership stays out: the pulumi
+# module rejects it loudly at the pinned SDK, and this manifest feeds BOTH
+# engines' offline proofs).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: test-helm-release
+spec:
+  namespace:
+    value: test-helm-release-ns
+  create_namespace: true
+  repo: https://stefanprodan.github.io/podinfo
+  chart: podinfo
+  version: 6.9.2
+  release_name: podinfo-proof
+  values_yaml: |
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+  set:
+    replicaCount: "1"
+    ui.color: "#34577c"
+  set_string:
+    image.tag: "6.9.2"
+  set_sensitive:
+    secret.apiKey: proof-api-key
+  atomic: true
+  cleanup_on_fail: true
+  wait_for_jobs: true
+  timeout_seconds: 600
+  skip_crds: false
+  max_history: 5
+  description: offline plan proof

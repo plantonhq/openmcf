@@ -4,7 +4,7 @@
 # gateway arm is on) and publishes matching records. Together with the
 # issuers, this closes the "deploy a service, get a name and a certificate"
 # loop with zero manual DNS work.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: "{{ values.env }}-gke-external-dns"
@@ -20,7 +20,7 @@ spec:
     # which records it actually touches.
     - roles/dns.admin
 ---
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: "{{ values.env }}-gke-external-dns-wi"
@@ -36,7 +36,7 @@ spec:
   ksaNamespace: external-dns
   ksaName: "{{ values.env }}-external-dns"
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalDns
 metadata:
   name: "{{ values.env }}-external-dns"

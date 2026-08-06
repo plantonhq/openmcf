@@ -1,0 +1,35 @@
+# Job queue mapped onto the registry-prerequisite Fargate compute
+# environment, with stuck-job protection exercising the time-limit-action
+# surface. Deletion proves the disable-then-delete drain both engines rely
+# on the provider for.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBatchJobQueue
+metadata:
+  name: planton-oss-e2e-awsbatjq
+  id: planton-oss-e2e-awsbatjq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbatchjobqueue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  priority: 10
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: planton-oss-e2e-awsbat-prereq
+          fieldPath: status.outputs.compute_environment_arn
+  jobStateTimeLimitActions:
+    - action: CANCEL
+      maxTimeSeconds: 3600
+      # The reason is a matcher against AWS's own stuck-job causes, not a
+      # free-text message -- anything else fails CreateJobQueue.
+      reason: MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT
+      state: RUNNABLE

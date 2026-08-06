@@ -1,0 +1,26 @@
+# Dedicated AzureServiceBusNamespace for the topic scenario only.
+# Namespace names are globally unique in Azure with a post-delete name
+# hold, so each scenario that creates and destroys its own parent
+# namespace carries a distinct name -- reusing a name across sequential
+# subtests hits the hold and the recreate hangs.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusNamespace
+metadata:
+  name: planton-oss-e2e-sbtopic-fixture-namespace
+  id: planton-oss-e2e-sbtopic-fixture-namespace
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebusnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  namespaceName: pltn-oss-e2e-sbtop-fx
+  sku: STANDARD

@@ -29,7 +29,7 @@ When you deploy a GcpFirewallRule resource, Planton provisions:
 Create a file `firewall.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirewallRule
 metadata:
   name: allow-web
@@ -100,7 +100,7 @@ This creates an INGRESS firewall rule that allows HTTP and HTTPS traffic from an
 ### Basic INGRESS ALLOW for Web Traffic
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirewallRule
 metadata:
   name: allow-web
@@ -131,7 +131,7 @@ spec:
 ### INGRESS ALLOW for SSH via IAP
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirewallRule
 metadata:
   name: allow-iap-ssh
@@ -160,7 +160,7 @@ spec:
 ### EGRESS DENY All (Restrictive Baseline)
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirewallRule
 metadata:
   name: deny-all-egress

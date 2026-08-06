@@ -1,0 +1,15 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesConfigMap
+metadata:
+  name: e2e-cfg-labeled
+spec:
+  name: e2e-cfg-labeled
+  namespace:
+    value: default
+  labels:
+    team: platform
+    tier: config
+  annotations:
+    description: "E2E labeled ConfigMap"
+  data:
+    feature.flags: "beta-ui,fast-path"

@@ -26,7 +26,7 @@ When you deploy an AzureEventHubSchemaGroup resource, Planton provisions:
 Create a file `schema-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubSchemaGroup
 metadata:
   name: telemetry-schemas

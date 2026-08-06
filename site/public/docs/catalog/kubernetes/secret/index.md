@@ -29,7 +29,7 @@ When you deploy a KubernetesSecret resource, Planton provisions:
 Create a file `secret.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: my-secret
@@ -88,7 +88,7 @@ This creates an Opaque Kubernetes Secret named `my-secret` in the `default` name
 A simple key-value secret for storing application credentials:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: app-credentials
@@ -111,7 +111,7 @@ spec:
 A TLS secret for use with Ingress controllers or services that terminate TLS:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: api-tls
@@ -140,7 +140,7 @@ spec:
 A Docker registry pull secret for authenticating with a private container registry, with custom labels and annotations:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: ghcr-pull-secret
@@ -172,7 +172,7 @@ The module constructs the `.dockerconfigjson` JSON automatically from the struct
 A basic authentication secret for services that require username/password credentials:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: monitoring-auth
@@ -194,7 +194,7 @@ spec:
 An SSH authentication secret for Git operations or SSH-based access:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: deploy-key

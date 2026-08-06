@@ -1,0 +1,18 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertManagerDnsAuthorization
+metadata:
+  name: planton-oss-e2e-cmda-cert-prereq
+  id: planton-oss-e2e-cmda-cert-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertmanagerdnsauthorization
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  authorizationName: planton-oss-e2e-cmda-cert-${E2E_RUN_ID}
+  domain: e2e-${E2E_RUN_ID}.example.com
+  description: DNS authorization prerequisite for cert E2E chain

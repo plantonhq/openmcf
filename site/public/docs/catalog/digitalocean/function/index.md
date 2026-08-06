@@ -31,7 +31,7 @@ When you deploy a DigitalOceanFunction resource, Planton provisions:
 Create a file `do-function.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
   name: my-function
@@ -92,7 +92,7 @@ This creates a Node.js 20 function deployed via App Platform in the NYC3 region,
 A function that connects to a database using secret credentials and runs with increased memory:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
   name: api-handler
@@ -125,7 +125,7 @@ spec:
 A Python function that runs on a cron schedule to perform periodic maintenance, with no HTTP endpoint:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
   name: nightly-cleanup
@@ -157,7 +157,7 @@ spec:
 A Go function that processes incoming webhooks with maximum memory allocation:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
   name: webhook-processor

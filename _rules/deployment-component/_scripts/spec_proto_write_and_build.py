@@ -53,7 +53,7 @@ def build_spec_proto_path(repo_root: str, provider: str, kind_folder: str) -> Tu
         "provider",
         provider,
         kind_folder,
-        "v1",
+        "v1alpha1",
         "spec.proto",
     )
     absolute_path = os.path.join(repo_root, relative_path)

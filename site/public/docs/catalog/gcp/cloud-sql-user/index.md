@@ -25,7 +25,7 @@ When you deploy a GcpCloudSqlUser resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlUser
 metadata:
   name: orders-app-user
@@ -60,7 +60,7 @@ planton apply -f user.yaml
 ### Passwordless IAM Service Account User
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlUser
 metadata:
   name: ci-runner-user

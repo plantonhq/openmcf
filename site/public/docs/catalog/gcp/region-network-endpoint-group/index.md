@@ -23,7 +23,7 @@ A single regional NEG whose target is decided by `networkEndpointType`: `SERVERL
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRegionNetworkEndpointGroup
 metadata:
   name: web-neg

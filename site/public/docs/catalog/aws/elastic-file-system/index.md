@@ -32,7 +32,7 @@ When you deploy an AwsElasticFileSystem resource, Planton provisions:
 Create a file `efs.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: my-efs
@@ -103,7 +103,7 @@ This creates an unencrypted, bursting-throughput EFS file system with mount targ
 Production-ready file system with encryption and mount targets across two Availability Zones:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: prod-efs
@@ -129,7 +129,7 @@ spec:
 Cost-optimized single-AZ file system with automatic tiering to Infrequent Access and Archive storage:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: dev-efs
@@ -157,7 +157,7 @@ spec:
 File system replicated to another region; the replica stays read-only and in sync automatically:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: dr-efs
@@ -187,7 +187,7 @@ spec:
 Reference Planton-managed VPC subnets, security groups, and KMS keys instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: ref-efs

@@ -29,7 +29,7 @@ When you deploy a GcpGlobalAddress resource, Planton provisions:
 Create a file `global-address.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalAddress
 metadata:
   name: prod-lb-ip
@@ -80,7 +80,7 @@ This reserves a public IPv4 address that you can reference in global forwarding 
 The simplest use case — reserve a public IPv4 address:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalAddress
 metadata:
   name: web-lb-ip
@@ -101,7 +101,7 @@ spec:
 Reserve a `/20` private CIDR block for Cloud SQL, Redis, AlloyDB, and Filestore private networking:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalAddress
 metadata:
   name: managed-services-range
@@ -127,7 +127,7 @@ spec:
 Reserve an internal IP for private connectivity to Google APIs or third-party services:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalAddress
 metadata:
   name: psc-google-apis
@@ -152,7 +152,7 @@ spec:
 Reference a project ID from a GcpProject resource instead of hardcoding:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalAddress
 metadata:
   name: lb-ip-with-ref

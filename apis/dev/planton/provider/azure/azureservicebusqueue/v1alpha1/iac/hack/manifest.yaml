@@ -1,0 +1,24 @@
+# Offline-plan manifest: a fully-dialed queue exercising the size
+# ladder, duplicate detection with its window, sessions, dead-letter
+# routing, the gate-state enum mapping, and forwarding.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusQueue
+metadata:
+  name: test-sb-queue
+spec:
+  namespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-servicebus-ns
+  queueName: orders/priority
+  maxSizeInMegabytes: 5120
+  requiresDuplicateDetection: true
+  duplicateDetectionHistoryTimeWindow: PT30S
+  defaultMessageTtl: P14D
+  lockDuration: PT2M
+  maxDeliveryCount: 5
+  deadLetteringOnMessageExpiration: true
+  requiresSession: true
+  autoDeleteOnIdle: PT10M
+  batchedOperationsEnabled: true
+  forwardDeadLetteredMessagesTo:
+    value: poison-sink
+  status: SEND_DISABLED

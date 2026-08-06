@@ -29,7 +29,7 @@ The group is passive. Consumption is declared from the rule's side: `AzureFirewa
 Create a file `ip-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureIpGroup
 metadata:
   name: branch-offices
@@ -81,7 +81,7 @@ Curate the addresses once; reference them from every rule that means
 "the branches":
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureIpGroup
 metadata:
   name: branch-offices

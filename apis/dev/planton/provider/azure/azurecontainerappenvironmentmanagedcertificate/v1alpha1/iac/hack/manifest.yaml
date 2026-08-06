@@ -1,0 +1,14 @@
+# CNAME validation exercises the domain_control_validation enum
+# translation (unspecified would silently deploy HTTP on both engines).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerAppEnvironmentManagedCertificate
+metadata:
+  name: test-managed-certificate
+spec:
+  certificate_name: app-example-com
+  container_app_environment_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.App/managedEnvironments/test-env
+  subject_name: app.example.com
+  domain_control_validation: CNAME
+  tags:
+    team: platform

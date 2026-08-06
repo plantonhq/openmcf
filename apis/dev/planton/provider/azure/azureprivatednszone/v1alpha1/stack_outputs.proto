@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureprivatednszone.v1alpha1;
+
+// **AzurePrivateDnsZoneStackOutputs** captures the outputs of provisioning
+// an Azure Private DNS zone.
+//
+// The primary output is `zone_id`, the join key for everything that
+// attaches to or registers in the zone:
+// - AzurePrivateDnsZoneVirtualNetworkLink (makes the zone resolvable from a
+//   virtual network)
+// - AzurePrivateEndpoint (private_dns_zone_id for DNS zone group registration)
+// - AzurePostgresqlFlexibleServer / AzureMysqlFlexibleServer
+//   (private_dns_zone_id for VNet-integrated deployment)
+message AzurePrivateDnsZoneStackOutputs {
+  // The Azure Resource Manager ID of the private DNS zone.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateDnsZones/{name}
+  // This is the primary output referenced by downstream resources via StringValueOrRef.
+  string zone_id = 1;
+
+  // The name of the private DNS zone (e.g., "privatelink.postgres.database.azure.com").
+  // Echoed from the spec for convenience -- useful in IaC modules that need
+  // the zone name for creating DNS records.
+  string zone_name = 2;
+
+  // The resource group the zone lives in. Echoed for downstream tooling
+  // that addresses records or links by zone name + resource group rather
+  // than parsing the ARM ID.
+  string resource_group_name = 3;
+}

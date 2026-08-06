@@ -1,0 +1,32 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpTargetHttpsProxy
+metadata:
+  name: my-sample-https-proxy
+spec:
+  # GCP project that owns the proxy.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  proxyName: web-https-frontend
+
+  description: Port-443 frontend terminating TLS for www.example.com
+
+  # The URL map the proxy routes through (reference a GcpUrlMap or provide a
+  # self-link).
+  urlMap:
+    value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/urlMaps/web-routing
+
+  # Exactly one certificate mechanism. Here: classic compute SSL
+  # certificates (reference GcpManagedSslCertificate resources or provide
+  # self-links).
+  sslCertificates:
+    - value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/sslCertificates/web-cert
+
+  # Enforce modern TLS instead of GCP's permissive default policy.
+  sslPolicy:
+    value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/sslPolicies/modern-tls
+
+  # QUIC (HTTP/3) negotiation: NONE lets Google decide.
+  quicOverride: NONE

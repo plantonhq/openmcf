@@ -26,7 +26,7 @@ When you deploy an AzureFrontDoorOriginGroup resource, Planton provisions:
 Create a file `origin-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorOriginGroup
 metadata:
   name: api-backends

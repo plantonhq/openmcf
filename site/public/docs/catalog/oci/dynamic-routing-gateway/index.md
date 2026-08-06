@@ -33,7 +33,7 @@ When you deploy an OciDynamicRoutingGateway resource, Planton provisions:
 Create a file `drg.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicRoutingGateway
 metadata:
   name: my-drg
@@ -142,7 +142,7 @@ This creates a DRG with a single VCN attachment. The DRG uses its default route 
 Two VCNs attached to a DRG for local peering within the same region. Traffic between VCNs routes through the DRG using the default route tables:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicRoutingGateway
 metadata:
   name: peering-drg
@@ -172,7 +172,7 @@ spec:
 A hub VCN routing traffic between spoke VCNs through the DRG. Custom route tables and an import distribution control which routes are visible to each spoke:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicRoutingGateway
 metadata:
   name: hub-drg
@@ -233,7 +233,7 @@ spec:
 A DRG connecting a VCN to an on-premises network via IPSec VPN. A static route in a custom route table directs on-premises traffic (10.100.0.0/16) to the IPSec tunnel attachment, with ECMP enabled across multiple tunnels:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicRoutingGateway
 metadata:
   name: transit-drg

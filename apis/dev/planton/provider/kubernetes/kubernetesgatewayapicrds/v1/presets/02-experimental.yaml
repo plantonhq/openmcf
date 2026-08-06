@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesGatewayApiCrds
-metadata:
-  name: my-gateway-api-crds
-spec:
-  version: v1.6.1  # default from spec
-  installChannel:
-    channel: experimental

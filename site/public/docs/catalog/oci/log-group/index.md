@@ -28,7 +28,7 @@ When you deploy an OciLogGroup resource, Planton provisions:
 Create a file `log-group.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciLogGroup
 metadata:
   name: my-logs
@@ -95,7 +95,7 @@ This creates a log group with one custom log that accepts entries via the Loggin
 A log group with a single custom log for application-level log ingestion:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciLogGroup
 metadata:
   name: app-logs
@@ -118,7 +118,7 @@ spec:
 A log group collecting VCN flow logs from a subnet:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciLogGroup
 metadata:
   name: network-logs
@@ -153,7 +153,7 @@ spec:
 A log group with both Object Storage write logs and a custom application log:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciLogGroup
 metadata:
   name: platform-logs
@@ -192,7 +192,7 @@ spec:
 A log group collecting access logs from an API Gateway deployment:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciLogGroup
 metadata:
   name: api-logs

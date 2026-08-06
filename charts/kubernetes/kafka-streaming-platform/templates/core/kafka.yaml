@@ -12,7 +12,7 @@
 # Secrets. External exposure is deliberately absent: add a loadbalancer or
 # nodeport listener on the deployed resource when clients outside the
 # cluster need in (see the README's day-2 notes).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafka
 metadata:
   name: "{{ values.env }}-kafka"

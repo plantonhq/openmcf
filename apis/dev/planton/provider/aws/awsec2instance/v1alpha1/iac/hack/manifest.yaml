@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEc2Instance
+metadata:
+  name: ec2-demo
+spec:
+  region: us-west-2
+  ami: ami-0123456789abcdef0 # replace with a current AMI in your region
+  instanceType: t4g.nano
+  subnetId:
+    value: subnet-aaa111 # replace with your subnet id
+  securityGroupIds:
+    - value: sg-000111222 # replace with your security group id
+  instanceProfile:
+    value: ec2-demo-profile # replace with your instance profile NAME (SSM access posture)
+  metadataOptions:
+    httpTokens: required # enforce IMDSv2 -- the recommended hardening
+    httpPutResponseHopLimit: 2
+  rootBlockDevice:
+    volumeSizeGb: 30
+    volumeType: gp3
+    encrypted: true
+  userData: |
+    #!/bin/bash
+    echo "hello from ${HOSTNAME}" > /etc/motd

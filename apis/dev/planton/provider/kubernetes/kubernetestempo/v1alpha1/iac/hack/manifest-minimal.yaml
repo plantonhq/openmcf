@@ -1,0 +1,12 @@
+# Minimal offline-proof manifest: the component's defaults — a single
+# monolithic replica on the default persistent volume with OTLP receivers.
+# Proves the minimal render path (the shape most likely to expose a
+# nil-deref on an absent optional block). Placeholder values; never applied.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTempo
+metadata:
+  name: tempo-hack-min
+spec:
+  namespace:
+    value: tempo-hack-min
+  createNamespace: true

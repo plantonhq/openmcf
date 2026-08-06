@@ -32,7 +32,7 @@ When you deploy an AwsFsxOpenzfsFileSystem resource, Planton provisions:
 Create a file `openzfs.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: my-openzfs
@@ -106,7 +106,7 @@ This creates a SINGLE_AZ_2 OpenZFS file system with 256 GiB SSD storage, 160 MB/
 A SINGLE_AZ_2 file system with ZSTD compression, NFS exports open to the VPC, encryption, and daily backups:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: app-storage
@@ -144,7 +144,7 @@ spec:
 A MULTI_AZ_1 deployment with provisioned IOPS, user quotas, and two subnets across availability zones:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: ha-nfs
@@ -198,7 +198,7 @@ spec:
 Reference subnets, security groups, and KMS key from other Planton-managed resources:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: ref-nfs

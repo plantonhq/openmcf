@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteslocust.v1alpha1;
+
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+
+/**
+ * **KubernetesLocustStackOutputs** — the composition handles a
+ * deployed Locust exports. Operators open the web UI through the
+ * master endpoint (or the port-forward command); external workers
+ * and automation dial the master bind endpoint; the web-UI
+ * credential is exported as a Secret handle.
+ */
+message KubernetesLocustStackOutputs {
+  // Namespace Locust runs in.
+  string namespace = 1;
+
+  // Name of the master Service (`<name>` at default naming) — the
+  // handle exposure kinds route to. Serves the web UI (8089) and
+  // the worker-connect ports (5557/5558).
+  string master_service = 2;
+
+  // In-cluster web endpoint,
+  // `http://<master_service>.<namespace>.svc.cluster.local:8089` —
+  // the web UI and REST API (with login on, pair it with the
+  // credential below).
+  string web_endpoint = 3;
+
+  // In-cluster worker-connect endpoint,
+  // `<master_service>.<namespace>.svc.cluster.local:5557` — where
+  // additional workers (e.g. from other namespaces) register with
+  // the master.
+  string master_bind_endpoint = 4;
+
+  // The web-UI login username (`web_ui_auth.username`, default
+  // "locust"). Empty when the login is disabled or the run is
+  // headless.
+  string web_ui_username = 5;
+
+  // The web-UI credential: the Secret and key holding the login
+  // password (module-generated `<name>-auth`, key `password`).
+  // Empty when the login is disabled or the run is headless.
+  dev.planton.provider.kubernetes.KubernetesSecretKey web_ui_password_secret = 6;
+
+  // Port-forward command for reaching the web UI from a
+  // workstation when no exposure is composed.
+  string port_forward_command = 7;
+}

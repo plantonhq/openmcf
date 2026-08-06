@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: test-subnet
+spec:
+  virtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet
+  name: test-subnet
+  addressPrefixes:
+    - "10.0.1.0/24"
+  serviceEndpoints:
+    - Microsoft.Storage
+  routeTableId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/routeTables/test-rt
+  networkSecurityGroupId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/networkSecurityGroups/test-nsg

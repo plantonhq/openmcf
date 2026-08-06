@@ -36,7 +36,7 @@ When you deploy an AzureManagedRedis resource, Planton provisions:
 Create a file `cache.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedis
 metadata:
   name: app-cache

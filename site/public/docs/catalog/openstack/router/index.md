@@ -27,7 +27,7 @@ When you deploy an OpenStackRouter resource, Planton provisions:
 Create a file `router.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouter
 metadata:
   name: my-router
@@ -80,7 +80,7 @@ All spec fields are optional. The router name is derived from `metadata.name`.
 A router without an external gateway, providing routing between tenant subnets only:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouter
 metadata:
   name: internal-router
@@ -101,7 +101,7 @@ spec:
 A router connected to an external network for internet access, referencing the network by UUID:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouter
 metadata:
   name: gateway-router
@@ -125,7 +125,7 @@ spec:
 A distributed router that references an OpenStackNetwork resource for its external gateway using `valueFrom`, with a specific external IP allocation:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouter
 metadata:
   name: prod-router

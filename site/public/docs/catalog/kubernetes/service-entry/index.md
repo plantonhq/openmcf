@@ -27,7 +27,7 @@ to it, apply traffic policy and telemetry against it, and verify its TLS identit
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceEntry
 metadata:
   name: external-payments-api

@@ -9,7 +9,7 @@
 # namespace and the shared Gateway itself. The load balancer behind it is a
 # Google-managed Application Load Balancer, provisioned when the Gateway
 # reconciles.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-gateway-namespace"
@@ -24,7 +24,7 @@ spec:
 ---
 # The shared platform Gateway — the single entry point application
 # HTTPRoutes attach to from any namespace.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGateway
 metadata:
   name: "{{ values.env }}-gateway"

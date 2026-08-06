@@ -1,0 +1,306 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesresourcequota.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesResourceQuotaSpec** governs resource consumption in one
+ * namespace: aggregate caps on what the namespace may use in total (the
+ * ResourceQuota), and per-object defaults and bounds applied to individual
+ * pods, containers, and claims (an optional companion LimitRange). They are
+ * two Kubernetes objects but one governance story — "how much may this
+ * namespace consume, and what does a workload get when it doesn't say?" —
+ * which is why this kind manages both.
+ *
+ * The two arms interact: once a quota caps `requests.cpu` or `limits.memory`,
+ * the API REJECTS pods that omit those requests/limits — so a compute quota
+ * without `limit_defaults` (or defaults set elsewhere) breaks naive pod
+ * creation in the namespace. Setting both together is the safe pattern.
+ *
+ * For simple T-shirt-size governance on namespaces Planton creates, prefer
+ * KubernetesNamespace's resource profiles (they manage a quota and limit
+ * range internally). This kind is the full-fidelity instrument: scope-filtered
+ * quotas, object-count caps, ratio bounds, and governance for namespaces
+ * Planton does not own.
+ *
+ * The spec covers the complete core/v1 ResourceQuotaSpec and LimitRangeSpec
+ * surfaces.
+ */
+message KubernetesResourceQuotaSpec {
+  /**
+   * The namespace to govern. Accepts a literal namespace name or a reference
+   * to a KubernetesNamespace resource. When omitted, governs the cluster's
+   * `default` namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the ResourceQuota object (its `metadata.name` in the
+   * cluster). The companion LimitRange, when `limit_defaults` is set, shares
+   * this name. Must be a valid DNS subdomain: lowercase alphanumeric
+   * characters, hyphens, and dots, at most 253 characters.
+   */
+  string name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the created objects.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations to apply to the created objects.
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * The aggregate caps: total consumption the namespace may not exceed, as
+   * resource name → quantity. The vocabulary is upstream's:
+   * - Compute: "requests.cpu", "requests.memory", "limits.cpu",
+   *   "limits.memory" (also plain "cpu"/"memory", aliases for requests).
+   * - Storage: "requests.storage" (total claimed),
+   *   "persistentvolumeclaims" (count), and per-class variants
+   *   ("<class>.storageclass.storage.k8s.io/requests.storage").
+   * - Object counts: "pods", "services", "services.loadbalancers",
+   *   "services.nodeports", "secrets", "configmaps", "resourcequotas", and
+   *   the generic "count/<resource>.<group>" form for any countable object.
+   * CAUTION: capping requests/limits makes the API reject pods that omit
+   * them — pair with `limit_defaults` so unspecified workloads inherit sane
+   * values instead of being rejected.
+   */
+  map<string, string> hard = 5 [
+    (buf.validate.field).map.min_pairs = 1,
+    (buf.validate.field).map.values.string.min_len = 1
+  ];
+
+  /**
+   * **KubernetesResourceQuotaScope** filters which objects a quota tracks.
+   */
+  enum KubernetesResourceQuotaScope {
+    // Unspecified.
+    kubernetes_resource_quota_scope_unspecified = 0;
+
+    // Pods with an active deadline (spec.activeDeadlineSeconds set) — i.e.
+    // bounded-duration pods.
+    terminating = 1;
+
+    // Pods WITHOUT an active deadline — long-running workloads.
+    not_terminating = 2;
+
+    // Pods with BestEffort quality of service (no requests or limits at
+    // all). A best_effort-scoped quota can only meter pod counts — "pods"
+    // or generic "count/..." object-count entries; the API rejects standard
+    // compute resources under this scope (BestEffort pods have nothing to
+    // meter).
+    best_effort = 3;
+
+    // Pods with Burstable or Guaranteed QoS (i.e. anything but BestEffort).
+    not_best_effort = 4;
+
+    // Pods that name ANY priority class. To match specific classes, use
+    // scope_selector with the priority_class scope and In/NotIn values.
+    priority_class = 5;
+
+    // Pods using cross-namespace pod (anti)affinity terms.
+    cross_namespace_pod_affinity = 6;
+
+    // PersistentVolumeClaims that name any volume attributes class.
+    volume_attributes_class = 7;
+  }
+
+  /**
+   * Coarse filters on which objects this quota tracks — a pod/claim must
+   * match ALL listed scopes to be counted. When empty, the quota tracks
+   * everything its `hard` entries name. Scoped quotas restrict which
+   * resources they may cap (a best_effort quota may cap only "pods";
+   * pod-behavior scopes cap only pod resources) — the API enforces this.
+   */
+  repeated KubernetesResourceQuotaScope scopes = 6 [(buf.validate.field).repeated.items.enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * Fine-grained scope filters, for scopes that carry values — most usefully
+   * priority_class with In/NotIn (e.g. "quota only pods of priority class
+   * critical"). ANDs with `scopes`.
+   */
+  repeated KubernetesResourceQuotaScopeSelectorRequirement scope_selector = 7;
+
+  /**
+   * Per-object defaults and bounds, managed as a companion LimitRange object
+   * (named after this resource, in the same namespace). This is what makes a
+   * compute quota livable: workloads that omit requests/limits inherit the
+   * defaults instead of being rejected by the quota. Omit entirely to manage
+   * only the quota.
+   */
+  repeated KubernetesResourceQuotaLimitDefaults limit_defaults = 8;
+
+  // Mirror the API's conflicting-scope-pair rejections.
+  option (buf.validate.message).cel = {
+    id: "scopes.conflicting_best_effort"
+    message: "best_effort and not_best_effort are conflicting scopes — a quota cannot require both"
+    expression: "!(this.scopes.exists(s, s == 3) && this.scopes.exists(s, s == 4))"
+  };
+  option (buf.validate.message).cel = {
+    id: "scopes.conflicting_terminating"
+    message: "terminating and not_terminating are conflicting scopes — a quota cannot require both"
+    expression: "!(this.scopes.exists(s, s == 1) && this.scopes.exists(s, s == 2))"
+  };
+
+  // A best_effort-scoped quota can only meter pod counts — the API rejects
+  // STANDARD resource names other than "pods" under this scope (compute
+  // resources cannot exist on BestEffort pods), while generic "count/..."
+  // object-count entries bypass the scope-compatibility check at admission.
+  option (buf.validate.message).cel = {
+    id: "scopes.best_effort_resources"
+    message: "a best_effort-scoped quota can only meter pod counts (\"pods\" or \"count/...\" entries) — BestEffort pods have no requests or limits to meter"
+    expression: "!this.scopes.exists(s, s == 3) || this.hard.all(k, k == 'pods' || k.startsWith('count/'))"
+  };
+}
+
+/**
+ * **KubernetesResourceQuotaScopeSelectorRequirement** is one fine-grained
+ * scope filter.
+ */
+message KubernetesResourceQuotaScopeSelectorRequirement {
+  /**
+   * The scope the filter applies to. Only priority_class and
+   * volume_attributes_class support In/NotIn with values; the pod-behavior
+   * scopes (terminating, best_effort, ...) accept only Exists.
+   */
+  KubernetesResourceQuotaSpec.KubernetesResourceQuotaScope scope_name = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * The relationship between the scope and the values: "In", "NotIn",
+   * "Exists", or "DoesNotExist".
+   */
+  string operator = 2 [(buf.validate.field).string = {
+    in: [
+      "In",
+      "NotIn",
+      "Exists",
+      "DoesNotExist"
+    ]
+  }];
+
+  /**
+   * The values compared against the scope (e.g. priority class names).
+   * Required (non-empty) for In/NotIn; must be empty for Exists/DoesNotExist.
+   */
+  repeated string values = 3;
+
+  // Enforce the values-vs-operator contract the API applies at admission.
+  option (buf.validate.message).cel = {
+    id: "operator_values_contract"
+    message: "values must be non-empty for In/NotIn and empty for Exists/DoesNotExist"
+    expression: "((this.operator == 'In' || this.operator == 'NotIn') && this.values.size() > 0) || ((this.operator == 'Exists' || this.operator == 'DoesNotExist') && this.values.size() == 0)"
+  };
+
+  // The pod-behavior scopes carry no values — the API accepts only Exists.
+  option (buf.validate.message).cel = {
+    id: "scope.operator_exists_required"
+    message: "the terminating, not_terminating, best_effort, not_best_effort, and cross_namespace_pod_affinity scopes accept only the Exists operator — only priority_class and volume_attributes_class support In/NotIn"
+    expression: "!(this.scope_name in [1, 2, 3, 4, 6]) || this.operator == 'Exists'"
+  };
+}
+
+/**
+ * **KubernetesResourceQuotaLimitDefaults** is one LimitRange item: defaults
+ * and bounds for one object type (container, pod, or claim). All quantity
+ * maps use resource name → quantity (e.g. {"cpu": "100m", "memory": "128Mi"};
+ * claims use {"storage": "1Gi"}).
+ */
+message KubernetesResourceQuotaLimitDefaults {
+  /**
+   * **KubernetesResourceQuotaLimitType** is the object type a limit item
+   * governs.
+   */
+  enum KubernetesResourceQuotaLimitType {
+    // Unspecified.
+    kubernetes_resource_quota_limit_type_unspecified = 0;
+
+    // Per-container defaults and bounds — the type that carries
+    // default_request/default_limit (containers are where requests/limits
+    // actually live).
+    container = 1;
+
+    // Per-pod bounds across all its containers summed. Pods cannot carry
+    // defaults — only min/max/ratio.
+    pod = 2;
+
+    // Per-PersistentVolumeClaim storage bounds (min/max "storage").
+    persistent_volume_claim = 3;
+  }
+
+  /**
+   * The object type this item governs.
+   */
+  KubernetesResourceQuotaLimitType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  /**
+   * Maximum any single object of this type may claim, per resource
+   * (e.g. {"cpu": "2", "memory": "4Gi"}).
+   */
+  map<string, string> max = 2 [(buf.validate.field).map.values.string.min_len = 1];
+
+  /**
+   * Minimum any single object of this type must claim, per resource.
+   */
+  map<string, string> min = 3 [(buf.validate.field).map.values.string.min_len = 1];
+
+  /**
+   * LIMIT applied to containers that omit their own, per resource. Container
+   * type only. When only default_limit is set, the request defaults to the
+   * same value (Kubernetes copies it), producing Guaranteed-QoS containers.
+   */
+  map<string, string> default_limit = 4 [(buf.validate.field).map.values.string.min_len = 1];
+
+  /**
+   * REQUEST applied to containers that omit their own, per resource.
+   * Container type only. This is the field that keeps a requests-capping
+   * quota from rejecting naive pods.
+   */
+  map<string, string> default_request = 5 [(buf.validate.field).map.values.string.min_len = 1];
+
+  /**
+   * Maximum limit-to-request ratio per resource (e.g. {"cpu": "4"} allows at
+   * most 4x burst). Both request and limit must then be set and non-zero on
+   * the object.
+   */
+  map<string, string> max_limit_request_ratio = 6 [(buf.validate.field).map.values.string.min_len = 1];
+
+  // Defaults only exist where requests/limits live: on containers. The API
+  // rejects Pod/PVC items carrying defaults.
+  option (buf.validate.message).cel = {
+    id: "defaults.container_only"
+    message: "default_limit and default_request apply only to the container type — pod and persistent_volume_claim items may set only min, max, and max_limit_request_ratio"
+    expression: "this.type == 1 || (this.default_limit.size() == 0 && this.default_request.size() == 0)"
+  };
+
+  // An item that constrains nothing is a mistake.
+  option (buf.validate.message).cel = {
+    id: "item.not_empty"
+    message: "a limit_defaults item must set at least one of max, min, default_limit, default_request, or max_limit_request_ratio"
+    expression: "this.max.size() > 0 || this.min.size() > 0 || this.default_limit.size() > 0 || this.default_request.size() > 0 || this.max_limit_request_ratio.size() > 0"
+  };
+}

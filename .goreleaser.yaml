@@ -182,7 +182,7 @@ release:
 
     ```hcl
     module "awsecsservice" {
-      source = "git::https://github.com/plantonhq/planton.git//apis/dev/planton/provider/aws/awsecsservice/v1/iac/tf?ref={{ .Tag }}"
+      source = "git::https://github.com/plantonhq/planton.git//apis/dev/planton/provider/aws/awsecsservice/v1alpha1/iac/tf?ref={{ .Tag }}"
     }
     ```
 

@@ -1,0 +1,11 @@
+# The default posture: sidecar data plane, chart-managed istiod autoscaling.
+# The verifier asserts istiod Available + the Istio CRDs Established — the
+# preconditions every mesh-config apply and every injection depends on.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIstio
+metadata:
+  name: e2e-istio
+spec:
+  namespace:
+    value: istio-system
+  create_namespace: true

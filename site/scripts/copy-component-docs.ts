@@ -337,11 +337,47 @@ function resolveTitle(content: string, component: string, provider: string): str
 }
 
 /**
- * Scan a component's v1/presets/ directory for preset YAML/MD pairs.
+ * Resolve a component's api-version directory (e.g. "v1alpha1").
+ * Version directories follow the maturity grammar v<N>[alpha<N>|beta<N>];
+ * a component serves exactly one version today, so more than one match is
+ * an error (multi-version rendering needs a deliberate design, not a pick).
+ * Returns null when the directory has no version dir (not a component).
+ */
+const VERSION_DIR_RE = /^v\d+((alpha|beta)\d+)?$/;
+
+function resolveVersionDir(componentPath: string): string | null {
+  if (!fs.existsSync(componentPath)) {
+    return null;
+  }
+  const versionDirs = fs
+    .readdirSync(componentPath)
+    .filter(
+      (name) =>
+        VERSION_DIR_RE.test(name) &&
+        fs.statSync(path.join(componentPath, name)).isDirectory(),
+    );
+  if (versionDirs.length === 0) {
+    return null;
+  }
+  if (versionDirs.length > 1) {
+    throw new Error(
+      `${componentPath} has multiple api-version directories (${versionDirs.join(', ')}); ` +
+        'the catalog site renders one served version per component — decide which before publishing.',
+    );
+  }
+  return versionDirs[0];
+}
+
+/**
+ * Scan a component's <version>/presets/ directory for preset YAML/MD pairs.
  * Returns an array of PresetFile objects sorted by rank.
  */
 function scanPresets(componentPath: string): PresetFile[] {
-  const presetsDir = path.join(componentPath, 'v1', 'presets');
+  const versionDir = resolveVersionDir(componentPath);
+  if (!versionDir) {
+    return [];
+  }
+  const presetsDir = path.join(componentPath, versionDir, 'presets');
   if (!fs.existsSync(presetsDir)) {
     return [];
   }
@@ -473,8 +509,9 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
     }
 
     // Prefer catalog-page.md (hand-written), fall back to docs/README.md (legacy)
-    const catalogPath = path.join(componentPath, 'v1', 'catalog-page.md');
-    const legacyPath = path.join(componentPath, 'v1', 'docs', 'README.md');
+    const versionDir = resolveVersionDir(componentPath) ?? 'v1alpha1';
+    const catalogPath = path.join(componentPath, versionDir, 'catalog-page.md');
+    const legacyPath = path.join(componentPath, versionDir, 'docs', 'README.md');
     const docPath = fs.existsSync(catalogPath) ? catalogPath : legacyPath;
 
     if (fs.existsSync(docPath)) {
@@ -504,8 +541,9 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
           continue;
         }
 
-        const subCatalogPath = path.join(subComponentPath, 'v1', 'catalog-page.md');
-        const subLegacyPath = path.join(subComponentPath, 'v1', 'docs', 'README.md');
+        const subVersionDir = resolveVersionDir(subComponentPath) ?? 'v1alpha1';
+        const subCatalogPath = path.join(subComponentPath, subVersionDir, 'catalog-page.md');
+        const subLegacyPath = path.join(subComponentPath, subVersionDir, 'docs', 'README.md');
         const subDocPath = fs.existsSync(subCatalogPath) ? subCatalogPath : subLegacyPath;
 
         if (fs.existsSync(subDocPath)) {

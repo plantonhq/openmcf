@@ -27,7 +27,7 @@ When you deploy an OciPublicIp resource, Planton provisions:
 Create a file `public-ip.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPublicIp
 metadata:
   name: my-public-ip
@@ -74,7 +74,7 @@ This creates a reserved public IP that is unassigned. The allocated IP address a
 A reserved public IP with no private IP assignment — suitable for pre-allocating a stable address for DNS records or firewall allowlists:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPublicIp
 metadata:
   name: reserved-ip
@@ -94,7 +94,7 @@ spec:
 A reserved public IP assigned to an existing private IP, giving a compute instance a stable internet-facing address that survives instance termination:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPublicIp
 metadata:
   name: web-server-ip
@@ -117,7 +117,7 @@ spec:
 A reserved public IP drawn from a BYOIP pool, for organizations that own their own IP address ranges:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPublicIp
 metadata:
   name: byoip-address
@@ -142,7 +142,7 @@ spec:
 Reference an Planton-managed compartment instead of hardcoding the OCID:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPublicIp
 metadata:
   name: ref-ip

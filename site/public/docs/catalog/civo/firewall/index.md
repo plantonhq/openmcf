@@ -28,7 +28,7 @@ When you deploy a CivoFirewall resource, Planton provisions:
 Create a file `civo-firewall.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoFirewall
 metadata:
   name: my-firewall
@@ -102,7 +102,7 @@ This creates a firewall on the specified network that allows inbound HTTPS traff
 A basic firewall that permits SSH and HTTPS inbound traffic:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoFirewall
 metadata:
   name: web-ssh-firewall
@@ -135,7 +135,7 @@ spec:
 A firewall that restricts both inbound and outbound traffic, auto-applied to instances tagged `backend`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoFirewall
 metadata:
   name: backend-firewall
@@ -177,7 +177,7 @@ spec:
 Reference an Planton-managed CivoVpc resource instead of hardcoding the network ID:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoFirewall
 metadata:
   name: ref-firewall

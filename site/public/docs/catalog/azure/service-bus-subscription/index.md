@@ -27,7 +27,7 @@ When you deploy an AzureServiceBusSubscription resource, Planton provisions:
 Create a file `subscription.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusSubscription
 metadata:
   name: billing-consumer

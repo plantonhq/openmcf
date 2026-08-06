@@ -1,0 +1,31 @@
+# The wire-level authentication proof. The behavioral verifier (switched
+# on by this scenario's name) reads the operator-generated SCRAM
+# credential from the user's Secret, builds a SASL_PLAINTEXT client
+# config, produces run-unique markers to the topic the FIRST topic ACL
+# allows (All covers the auto-create), and consumes them back under the
+# group the FIRST group ACL allows — authentication AND ACL authorization
+# exercised on the wire, as a real client would.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaUser
+metadata:
+  name: e2e-user-auth
+spec:
+  namespace:
+    value: e2e-kafauth-fix
+  kafka_cluster:
+    valueFrom:
+      name: e2e-kafauth-fix
+  authentication:
+    type: scram-sha-512
+  authorization:
+    acls:
+      - resource:
+          type: topic
+          name: e2e-auth-topic
+        operations:
+          - All
+      - resource:
+          type: group
+          name: e2e-auth-group
+        operations:
+          - Read

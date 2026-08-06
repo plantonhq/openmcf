@@ -1,0 +1,26 @@
+# Install fixture consumed by composed scenarios that declare
+# AwsMemorydbUser through the e2e-prerequisites annotation (the ACL's
+# membership lane). Password-authenticated with a least-privilege access
+# string; the password is throwaway test material that secures nothing.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsMemorydbUser
+metadata:
+  name: planton-oss-e2e-awsmdbuser-prereq
+  id: planton-oss-e2e-awsmdbuser-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmemorydbuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  accessString: on ~e2e:* +@read +@write
+  authenticationMode:
+    type: password
+    passwords:
+      - planton-e2e-throwaway-pass-1

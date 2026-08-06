@@ -27,7 +27,7 @@ When you deploy an OciDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: app-a-record
@@ -85,7 +85,7 @@ This creates an A record for `app.example.com` pointing to `192.0.2.1` with a 5-
 An A record pointing a subdomain to a single IP address:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: app-a-record
@@ -109,7 +109,7 @@ spec:
 Round-robin A records using `valueFrom` to reference an OciDnsZone:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: web-a-records
@@ -140,7 +140,7 @@ spec:
 Mail exchange records with priority values embedded in rdata:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: mail-mx-records
@@ -166,7 +166,7 @@ spec:
 A CNAME alias pointing a subdomain to another hostname:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: api-cname
@@ -190,7 +190,7 @@ spec:
 A TXT record for email sender policy:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsRecord
 metadata:
   name: spf-txt

@@ -1,0 +1,21 @@
+# PreferDualStack: the portable dual-stack opt-in — two families on
+# dual-stack clusters, gracefully single-family on single-stack clusters
+# (like the default kind cluster), plus app_protocol and
+# publish_not_ready_addresses coverage.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-dual-stack
+spec:
+  namespace:
+    value: default
+  name: e2e-svc-dual-stack
+  ip_family_policy: prefer_dual_stack
+  publish_not_ready_addresses: true
+  selector:
+    app: peer-db
+  ports:
+    - name: peers
+      port: 7000
+      target_port: "7000"
+      app_protocol: tcp

@@ -1,0 +1,21 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPubSubSchema
+metadata:
+  name: test-pubsub-schema
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  schemaName: test-order-events
+  # AVRO is the best default: human-readable, self-describing, and the
+  # format Pub/Sub's BigQuery and Cloud Storage integrations understand.
+  type: AVRO
+  definition: |
+    {
+      "type": "record",
+      "name": "OrderEvent",
+      "fields": [
+        {"name": "order_id", "type": "string"},
+        {"name": "amount_cents", "type": "long"},
+        {"name": "currency", "type": "string"}
+      ]
+    }

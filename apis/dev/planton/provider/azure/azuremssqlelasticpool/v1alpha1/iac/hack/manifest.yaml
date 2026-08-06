@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlElasticPool
+metadata:
+  name: test-mssql-pool
+spec:
+  serverId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Sql/servers/test-mssql-server
+  region: eastus
+  poolName: tenant-pool
+  # A vCore sku exercises the derived tier + family (GeneralPurpose /
+  # Gen5) and the license enum mapping.
+  skuName: GP_Gen5
+  capacity: 4
+  perDatabaseSettings:
+    minCapacity: 0.25
+    maxCapacity: 2
+  maxSizeGb: 100
+  zoneRedundant: false
+  licenseType: LICENSE_INCLUDED
+  maintenanceConfigurationName: SQL_Default
+  tags:
+    team: data

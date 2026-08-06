@@ -1,0 +1,35 @@
+# GcpComputeInstance scenario: the minimal VM — e2-micro on the chained
+# VPC → subnetwork prerequisites with an ephemeral external IP (the
+# access_config arm proven live). Instance names are project-scoped with
+# no reservation window, so the name stays fixed.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeInstance
+metadata:
+  name: planton-oss-e2e-gcpvm-minimal
+  id: planton-oss-e2e-gcpvm-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputeinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone: us-central1-a
+  machineType: e2-micro
+  bootDisk:
+    image: debian-cloud/debian-12
+    sizeGb: 10
+    type: pd-balanced
+  networkInterfaces:
+    - subnetwork:
+        valueFrom:
+          kind: GcpSubnetwork
+          name: planton-oss-e2e-gcpsnw-vm-prereq
+          fieldPath: status.outputs.subnetwork_self_link
+      accessConfigs:
+        - networkTier: PREMIUM
+  labels:
+    e2e-suite: gcp

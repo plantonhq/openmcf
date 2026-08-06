@@ -29,7 +29,7 @@ When you deploy an AzureStorageAccount resource, Planton provisions:
 Create a file `storage.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageAccount
 metadata:
   name: app-storage

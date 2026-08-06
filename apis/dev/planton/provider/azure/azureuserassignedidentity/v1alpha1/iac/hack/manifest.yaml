@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureUserAssignedIdentity
+metadata:
+  name: test-identity
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-managed-identity
+  tags:
+    cost-center: platform
+    owner: identity-team

@@ -27,7 +27,7 @@ When you deploy a DigitalOceanFirewall resource, Planton provisions:
 Create a file `firewall.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
   name: my-firewall
@@ -119,7 +119,7 @@ Each entry in `outboundRules` accepts the following fields:
 A firewall for a web server that accepts HTTP and HTTPS from any address and allows all outbound traffic:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
   name: web-server-fw
@@ -167,7 +167,7 @@ Separate firewalls for a web tier and a database tier. The web tier accepts HTTP
 **Web tier firewall:**
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
   name: app-web-fw
@@ -213,7 +213,7 @@ spec:
 **Database tier firewall:**
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
   name: app-db-fw
@@ -252,7 +252,7 @@ spec:
 A firewall that combines CIDR-based, tag-based, and Kubernetes cluster-based source rules, applied to specific Droplets by ID:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
   name: mixed-sources-fw

@@ -30,7 +30,7 @@ When you deploy a CloudflareDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
   name: my-zone
@@ -72,7 +72,7 @@ This creates a full (Cloudflare-hosted) DNS zone for `example.com`. Update your 
 ### Zone with Common DNS Records
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
   name: app-zone
@@ -100,7 +100,7 @@ spec:
 ### Zone with DNS Settings and DNSSEC
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
   name: secure-zone

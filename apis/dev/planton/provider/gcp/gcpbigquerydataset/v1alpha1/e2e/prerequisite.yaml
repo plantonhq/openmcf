@@ -1,0 +1,19 @@
+# GcpBigQueryDataset install profile for consumers (the GcpBigQueryTable
+# chain). metadata.name stays fixed for FK resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigQueryDataset
+metadata:
+  name: planton-oss-e2e-gcpbqds-prereq
+  id: planton-oss-e2e-gcpbqds-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigquerydataset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  datasetId: e2e_bqds_prereq
+  location: US

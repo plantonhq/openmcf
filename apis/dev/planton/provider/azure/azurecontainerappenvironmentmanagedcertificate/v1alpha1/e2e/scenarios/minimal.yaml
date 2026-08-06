@@ -1,0 +1,32 @@
+# Minimal AzureContainerAppEnvironmentManagedCertificate scenario: an
+# Azure-issued certificate for a domain, CNAME-validated, on the fixture
+# environment (registry prerequisite).
+#
+# READY-TO-RUN, NOT RUNNABLE AS-IS: Azure blocks issuance until it
+# validates domain ownership against PUBLIC DNS, and the test tenant
+# owns no registrar-delegated domain (see this component's E2E profile).
+# To run: replace subject_name with a hostname under a real domain
+# delegated to Azure DNS, publish the asuid.{subject_name} TXT record
+# (the app's custom_domain_verification_id output) and the CNAME to the
+# app's ingress FQDN, then run the lane unchanged.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerAppEnvironmentManagedCertificate
+metadata:
+  name: planton-oss-e2e-azurecamgcert-smoke
+  id: planton-oss-e2e-azurecamgcert-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerappenvironmentmanagedcertificate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  certificateName: app-e2e-managed-cert
+  containerAppEnvironmentId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cae
+  subjectName: app.e2e.planton.test
+  domainControlValidation: CNAME

@@ -405,7 +405,7 @@ params:
 
 ```yaml
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: "{{ values.env }}-vpc"
@@ -415,7 +415,7 @@ spec:
   enableDnsSupport: true
   enableDnsHostnames: true
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsInternetGateway
 metadata:
   name: "{{ values.env }}-igw"
@@ -427,7 +427,7 @@ spec:
       name: "{{ values.env }}-vpc"
       fieldPath: status.outputs.vpc_id
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: "{{ values.env }}-public-1"

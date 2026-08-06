@@ -1,0 +1,21 @@
+# One host, one prefix path, literal backend name. The Kubernetes API accepts
+# an Ingress whose backend Service does not exist (routing simply 503s until
+# it does) — object shape is the contract on the controller-less kind lane.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIngress
+metadata:
+  name: e2e-ing-single
+spec:
+  namespace:
+    value: default
+  name: e2e-ing-single
+  ingress_class_name: nginx
+  rules:
+    - host: app.e2e.example.com
+      paths:
+        - path: /
+          path_type: prefix
+          backend:
+            service_name:
+              value: app-svc
+            port_number: 80

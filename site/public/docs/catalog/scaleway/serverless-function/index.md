@@ -29,7 +29,7 @@ When you deploy a ScalewayServerlessFunction resource, Planton provisions:
 Create a file `serverless-function.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessFunction
 metadata:
   name: my-function
@@ -93,7 +93,7 @@ This creates a public Python 3.12 serverless function in the `fr-par` region wit
 A minimal public HTTP function suitable for webhooks, API endpoints, or development:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessFunction
 metadata:
   name: webhook-handler
@@ -122,7 +122,7 @@ spec:
 A production function with token-based authentication, encrypted secrets, HTTPS enforcement, and Private Network connectivity to reach backend databases:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessFunction
 metadata:
   name: order-processor
@@ -164,7 +164,7 @@ spec:
 A Go function deployed via zip archive with multiple cron triggers for recurring background tasks:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessFunction
 metadata:
   name: nightly-jobs

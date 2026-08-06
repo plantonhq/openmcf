@@ -30,7 +30,7 @@ When you deploy an AliCloudPolardbCluster resource, Planton provisions:
 Create a file `polardb-cluster.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudPolardbCluster
 metadata:
   name: my-polardb

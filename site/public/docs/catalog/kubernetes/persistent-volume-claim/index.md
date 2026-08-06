@@ -31,7 +31,7 @@ When you deploy a KubernetesPersistentVolumeClaim resource, Planton provisions:
 Create a file `pvc.yaml` — the simplest useful claim, using the cluster's default StorageClass:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPersistentVolumeClaim
 metadata:
   name: app-data
@@ -86,7 +86,7 @@ A workload mounts the claim by referencing `app-data` in its volume mounts. If t
 The production shape — the claim names its class instead of inheriting the cluster default:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPersistentVolumeClaim
 metadata:
   name: postgres-data
@@ -111,7 +111,7 @@ spec:
 ReadWriteMany needs a shared-filesystem driver (EFS, Filestore, Azure Files) — block-storage classes will never provision it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPersistentVolumeClaim
 metadata:
   name: shared-assets
@@ -136,7 +136,7 @@ spec:
 Dynamic provisioning disabled; the claim binds only to a matching pre-provisioned PersistentVolume, narrowed by a selector:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPersistentVolumeClaim
 metadata:
   name: archive-data
@@ -163,7 +163,7 @@ spec:
 The new volume starts as a copy of `postgres-data`. Data sources deploy via the Pulumi engine only:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPersistentVolumeClaim
 metadata:
   name: postgres-data-copy

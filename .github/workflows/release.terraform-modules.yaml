@@ -14,7 +14,7 @@
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}.zip
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1/iac/tf
+# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1alpha1/iac/tf
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -122,7 +122,7 @@ jobs:
             COMPLETED=$((COMPLETED + 1))
             REMAINING=$((TOTAL - COMPLETED))
             
-            TF_PATH="${PROVIDER_PATH}/${component}/v1/iac/tf"
+            TF_PATH="${PROVIDER_PATH}/${component}/v1alpha1/iac/tf"
             ARTIFACT_NAME="${component}.zip"
             R2_KEY="releases/${TAG}/modules/terraform/${ARTIFACT_NAME}"
             

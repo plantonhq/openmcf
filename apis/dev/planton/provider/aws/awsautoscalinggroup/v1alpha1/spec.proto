@@ -1,0 +1,1252 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsautoscalinggroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsAutoScalingGroupSpec defines an EC2 Auto Scaling group: the fleet
+// manager that keeps a set of instances launched from a launch template at
+// the desired size, replaces unhealthy members, spreads capacity across
+// subnets, and scales in response to policies and schedules.
+//
+// The group is deliberately a pure ORCHESTRATOR: what to launch lives in
+// the referenced AwsLaunchTemplate (AMI, instance type, storage, IAM
+// identity, metadata posture), and where traffic comes from lives in the
+// referenced AwsLbTargetGroup nodes. This group decides how many, where,
+// and when -- capacity bounds, subnet spread, purchase-option mix, health
+// model, scaling behavior, and instance lifecycle.
+//
+// Scaling policies, scheduled actions, lifecycle hooks, and notifications
+// are AWS sub-resources of exactly one group, are referenced by nothing
+// else, and have no meaning in isolation -- so they are folded into this
+// spec rather than modeled as standalone kinds. Both IaC modules manage
+// each entry as its own provider resource, so adding or removing one is an
+// in-place update, never a group replacement.
+//
+// The group name comes from metadata.name (AWS limit: 255 characters).
+// The name is create-only in AWS; everything else updates in place.
+message AwsAutoScalingGroupSpec {
+  // The AWS region the group is created in. Must match the region of the
+  // subnets, launch template, and any target groups it references.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The subnets capacity is placed in (AWS calls this the VPC zone
+  // identifier). Spread across at least two availability zones for real
+  // fault tolerance -- the group automatically rebalances instances across
+  // the zones these subnets cover. Reference AwsSubnet subnet_id outputs
+  // or pass literal subnet IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The launch template every instance launches from. Exactly one of
+  // launch_template or mixed_instances_policy must be set -- use this one
+  // for a single-type, single-purchase-option fleet.
+  AwsAutoScalingGroupLaunchTemplateRef launch_template = 3;
+
+  // Blend instance types and purchase options in one group: a base of
+  // On-Demand capacity plus a Spot overflow, drawn from several instance
+  // types (or attribute-based requirements) for pool diversity. Exactly
+  // one of launch_template or mixed_instances_policy must be set.
+  AwsAutoScalingGroupMixedInstancesPolicy mixed_instances_policy = 4;
+
+  // The floor the group never shrinks below. 0 is valid -- a group that
+  // scales to zero when idle.
+  int32 min_size = 5 [(buf.validate.field).int32.gte = 0];
+
+  // The ceiling the group never grows above. Scaling policies and
+  // instance refresh honor it strictly (unless a policy explicitly allows
+  // a predictive-scaling buffer).
+  int32 max_size = 6 [(buf.validate.field).int32.gte = 0];
+
+  // The capacity the group actively maintains. Leave 0 to start at
+  // min_size and let scaling policies take over -- the declarative-fleet
+  // default, since a literal desired count here fights the autoscaler on
+  // every apply.
+  int32 desired_capacity = 7 [(buf.validate.field).int32.gte = 0];
+
+  // What min/max/desired count: "units" (instances, the default), "vcpu",
+  // or "memory-mib". The vCPU/memory units only make sense with
+  // attribute-based instance requirements, where instance sizes vary.
+  string desired_capacity_type = 8;
+
+  // Proactively replace Spot instances that AWS signals as
+  // at-elevated-risk of interruption, before the two-minute notice.
+  // Recommended for every Spot-bearing group.
+  bool capacity_rebalance = 9;
+
+  // Seconds between scaling activities initiated by simple scaling
+  // policies. 0 keeps the AWS default (300). Step and target-tracking
+  // policies ignore this and use instance warmup instead.
+  int32 default_cooldown_seconds = 10;
+
+  // Seconds a newly launched instance is expected to take before its
+  // metrics are representative. Used by target tracking, instance
+  // refresh, and rebalancing as the default warmup. Setting it (even to
+  // 0) noticeably improves scaling accuracy for fast-booting services.
+  int32 default_instance_warmup_seconds = 11;
+
+  // How instance health is judged:
+  // - "EC2" (AWS default): instance status checks only.
+  // - "ELB": additionally trust the load balancer's target health checks
+  //   -- an instance failing its target group health check is replaced.
+  //   The right choice whenever target_groups is set; without it a
+  //   wedged-but-running process is never replaced.
+  string health_check_type = 12;
+
+  // Seconds after launch before health checks can mark an instance
+  // unhealthy -- boot-and-warm time. 0 keeps the provider default (300).
+  // Ignored until the instance reaches the InService state.
+  int32 health_check_grace_period_seconds = 13;
+
+  // Target groups whose traffic this group serves. Instances are
+  // registered on launch and deregistered (drained) on termination.
+  // Reference AwsLbTargetGroup target_group_arn outputs or pass literal
+  // ARNs. Pair with health_check_type = "ELB".
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef target_groups = 14 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLbTargetGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.target_group_arn"
+  ];
+
+  // Which instances are terminated first on scale-in, evaluated in order:
+  // "Default", "OldestInstance", "NewestInstance",
+  // "OldestLaunchTemplate", "OldestLaunchConfiguration",
+  // "ClosestToNextInstanceHour", "AllocationStrategy", or the ARN of a
+  // custom termination Lambda. "OldestLaunchTemplate" pairs naturally
+  // with template-version rollouts; "AllocationStrategy" keeps a mixed
+  // fleet on its preferred pools.
+  repeated string termination_policies = 15;
+
+  // Maximum seconds any instance lives before being replaced, 86400 (1
+  // day) to 31536000 (1 year); 0 disables. Continuous fleet hygiene:
+  // guarantees patched AMIs and clean processes without a manual rotate.
+  int32 max_instance_lifetime_seconds = 16;
+
+  // Protect instances from scale-in by default (scaling policies cannot
+  // pick them; explicit terminations still work). For fleets whose
+  // members hold long-lived work -- pair with lifecycle hooks for
+  // graceful drain.
+  bool protect_from_scale_in = 17;
+
+  // The placement group launched instances join (cluster/spread/
+  // partition). A literal name -- placement groups have no Planton kind
+  // yet.
+  string placement_group = 18;
+
+  // The service-linked IAM role the Auto Scaling service itself assumes.
+  // A literal ARN: service-linked roles are created and owned by AWS
+  // (not user IAM roles), and the account default
+  // AWSServiceRoleForAutoScaling is used when unset -- which is almost
+  // always right. Set only for a custom-suffix role (e.g. per-team KMS
+  // grants).
+  string service_linked_role_arn = 19;
+
+  // CloudWatch group-level metrics to enable (e.g. "GroupMinSize",
+  // "GroupMaxSize", "GroupDesiredCapacity", "GroupInServiceInstances",
+  // "GroupPendingInstances", "GroupTerminatingInstances",
+  // "GroupTotalInstances", and the warm-pool variants). Free of charge --
+  // enabling them is almost always worth it for fleet observability.
+  repeated string enabled_metrics = 20;
+
+  // Auto Scaling processes to suspend, for maintenance windows or
+  // incident response: "Launch", "Terminate", "AddToLoadBalancer",
+  // "AlarmNotification", "AZRebalance", "HealthCheck", "InstanceRefresh",
+  // "ReplaceUnhealthy", "ScheduledActions". Suspending "Launch" and
+  // "Terminate" freezes the fleet entirely.
+  repeated string suspended_processes = 21;
+
+  // Rolling replacement of instances when the launch template (or other
+  // watched attributes) changes -- the mechanism that turns a template
+  // update into a zero-downtime fleet rollout.
+  AwsAutoScalingGroupInstanceRefresh instance_refresh = 22;
+
+  // A pool of pre-initialized (stopped, running, or hibernated)
+  // instances that dramatically cuts scale-out latency for slow-booting
+  // workloads.
+  AwsAutoScalingGroupWarmPool warm_pool = 23;
+
+  // Group-wide health bounds for REPLACEMENT operations (instance
+  // refresh, health replacement): the percentage of capacity that must
+  // stay in service and the surge allowed above desired.
+  AwsAutoScalingGroupInstanceMaintenancePolicy instance_maintenance_policy = 24;
+
+  // How capacity distributes across availability zones:
+  // "balanced-best-effort" (AWS default -- launch in another zone when
+  // one is impaired) or "balanced-only" (strict balance; launches wait
+  // for the impaired zone).
+  string capacity_distribution_strategy = 25;
+
+  // Delete the group without waiting for instances to terminate
+  // gracefully. Reach for it only when tearing down a wedged group --
+  // instances are orphaned mid-flight.
+  bool force_delete = 26;
+
+  // How long the IaC engine waits for the group to reach its capacity on
+  // create/update, as a duration string (e.g. "10m"). "0" skips the wait
+  // entirely. Unset keeps the provider default (10m). An
+  // engine-behavior knob (both engines honor it identically), not an AWS
+  // API field.
+  string wait_for_capacity_timeout = 27;
+
+  // Scaling policies attached to the group. Target tracking is the right
+  // default for most services; step/simple react to specific CloudWatch
+  // alarms; predictive scaling pre-provisions for forecast load.
+  repeated AwsAutoScalingGroupScalingPolicy scaling_policies = 28;
+
+  // Time-based capacity changes (cron or one-shot): business-hours
+  // scale-up, overnight scale-down, batch-window pre-provisioning.
+  repeated AwsAutoScalingGroupScheduledAction scheduled_actions = 29;
+
+  // Pause points in the instance lifecycle: run custom logic (warm a
+  // cache, drain work, pull logs) while an instance waits in a
+  // launching or terminating state.
+  repeated AwsAutoScalingGroupLifecycleHook lifecycle_hooks = 30;
+
+  // SNS notifications for fleet lifecycle events -- the simplest way to
+  // observe launches, terminations, and their failures.
+  AwsAutoScalingGroupNotifications notifications = 31;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "launch_template_xor_mixed_instances"
+    message: "exactly one of launch_template or mixed_instances_policy must be set"
+    expression: "has(this.launch_template) != has(this.mixed_instances_policy)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_size_gte_min_size"
+    message: "max_size must be greater than or equal to min_size"
+    expression: "this.max_size >= this.min_size"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "desired_within_bounds"
+    message: "desired_capacity must be between min_size and max_size when set"
+    expression: "this.desired_capacity == 0 || (this.desired_capacity >= this.min_size && this.desired_capacity <= this.max_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "desired_capacity_type_valid"
+    message: "desired_capacity_type must be 'units', 'vcpu', or 'memory-mib' when set"
+    expression: "this.desired_capacity_type == '' || this.desired_capacity_type in ['units', 'vcpu', 'memory-mib']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "health_check_type_valid"
+    message: "health_check_type must be 'EC2' or 'ELB' when set"
+    expression: "this.health_check_type == '' || this.health_check_type in ['EC2', 'ELB']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_instance_lifetime_range"
+    message: "max_instance_lifetime_seconds must be 0 (disabled) or between 86400 (1 day) and 31536000 (1 year)"
+    expression: "this.max_instance_lifetime_seconds == 0 || (this.max_instance_lifetime_seconds >= 86400 && this.max_instance_lifetime_seconds <= 31536000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "capacity_distribution_strategy_valid"
+    message: "capacity_distribution_strategy must be 'balanced-only' or 'balanced-best-effort' when set"
+    expression: "this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "suspended_processes_valid"
+    message: "each suspended process must be one of: Launch, Terminate, AddToLoadBalancer, AlarmNotification, AZRebalance, HealthCheck, InstanceRefresh, ReplaceUnhealthy, ScheduledActions"
+    expression: "this.suspended_processes.all(p, p in ['Launch', 'Terminate', 'AddToLoadBalancer', 'AlarmNotification', 'AZRebalance', 'HealthCheck', 'InstanceRefresh', 'ReplaceUnhealthy', 'ScheduledActions'])"
+  };
+}
+
+// AwsAutoScalingGroupLaunchTemplateRef points at the launch template (and
+// version) instances launch from.
+message AwsAutoScalingGroupLaunchTemplateRef {
+  // The launch template. Reference an AwsLaunchTemplate's
+  // launch_template_id output or pass a literal template ID ("lt-...").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef launch_template_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLaunchTemplate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.launch_template_id"
+  ];
+
+  // Which template version to launch: "$Default" (follow the template's
+  // default version -- the AWS default and the setup that lets a template
+  // update roll the fleet), "$Latest" (always the newest version, even
+  // one not yet promoted), or a numeric version for a hard pin.
+  string version = 2;
+}
+
+// AwsAutoScalingGroupMixedInstancesPolicy blends instance types and
+// purchase options in one group. The classic cost architecture: a small
+// On-Demand base for guaranteed capacity, a Spot majority above it, drawn
+// from several instance pools so no single pool interruption hurts.
+message AwsAutoScalingGroupMixedInstancesPolicy {
+  // The base launch template the overrides specialize. Required.
+  AwsAutoScalingGroupLaunchTemplateRef launch_template = 1 [(buf.validate.field).required = true];
+
+  // Instance-type overrides. Each entry widens the pool set: an explicit
+  // type, a different template, a capacity weight, or attribute-based
+  // requirements. With no overrides the group uses only the base
+  // template's type.
+  repeated AwsAutoScalingGroupMixedInstancesOverride overrides = 2;
+
+  // How capacity splits between On-Demand and Spot, and how each side
+  // picks pools.
+  AwsAutoScalingGroupInstancesDistribution instances_distribution = 3;
+}
+
+// AwsAutoScalingGroupMixedInstancesOverride adds one instance pool (or
+// pool set) to a mixed-instances group.
+message AwsAutoScalingGroupMixedInstancesOverride {
+  // An explicit instance type for this override (e.g. "m5.large").
+  // Mutually exclusive with instance_requirements.
+  string instance_type = 1;
+
+  // How many capacity units an instance of this type fulfills, 1-999.
+  // Weights let heterogeneous sizes count fairly: an m5.2xlarge at
+  // weight 4 next to an m5.large at weight 1 keeps "desired = 8"
+  // meaningful. 0 leaves the weight unset (every instance counts as 1).
+  int32 weighted_capacity = 2;
+
+  // Launch this override from a different template (e.g. an arm64-AMI
+  // template for Graviton types next to the x86 base).
+  AwsAutoScalingGroupLaunchTemplateRef launch_template = 3;
+
+  // Attribute-based selection for this override -- one entry that
+  // resolves to many pools. Mutually exclusive with instance_type.
+  AwsAutoScalingGroupInstanceRequirements instance_requirements = 4;
+
+  option (buf.validate.message).cel = {
+    id: "override_type_xor_requirements"
+    message: "instance_type and instance_requirements are mutually exclusive on one override"
+    expression: "this.instance_type == '' || !has(this.instance_requirements)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "weighted_capacity_range"
+    message: "weighted_capacity must be between 1 and 999 when set"
+    expression: "this.weighted_capacity == 0 || (this.weighted_capacity >= 1 && this.weighted_capacity <= 999)"
+  };
+}
+
+// AwsAutoScalingGroupInstancesDistribution splits capacity between
+// On-Demand and Spot and picks the allocation strategy for each side.
+message AwsAutoScalingGroupInstancesDistribution {
+  // How On-Demand capacity picks pools: "lowest-price" or "prioritized"
+  // (the override list order is a preference ranking). AWS default:
+  // "lowest-price".
+  string on_demand_allocation_strategy = 1;
+
+  // Instances of guaranteed On-Demand capacity before the percentage
+  // split applies -- the "always-on core" of the fleet.
+  int32 on_demand_base_capacity = 2;
+
+  // Percentage of capacity ABOVE the base that is On-Demand, 0-100.
+  // AWS default: 100 (all On-Demand). Explicit 0 means all-Spot above
+  // the base -- the aggressive cost posture -- which is why this field
+  // is optional: 0 must be distinguishable from unset.
+  optional int32 on_demand_percentage_above_base_capacity = 3;
+
+  // How Spot capacity picks pools: "price-capacity-optimized" (the AWS
+  // recommendation -- weighs price AND interruption risk),
+  // "capacity-optimized", "capacity-optimized-prioritized",
+  // "lowest-price" (cheapest but interruption-prone), or "diversified".
+  string spot_allocation_strategy = 4;
+
+  // Number of Spot pools to spread across. Only valid with the
+  // "lowest-price" strategy. AWS default: 2.
+  int32 spot_instance_pools = 5;
+
+  // Maximum Spot price per instance-hour, as a decimal string. AWS
+  // default (unset): the On-Demand price -- the AWS recommendation.
+  string spot_max_price = 6;
+
+  option (buf.validate.message).cel = {
+    id: "on_demand_allocation_strategy_valid"
+    message: "on_demand_allocation_strategy must be 'lowest-price' or 'prioritized' when set"
+    expression: "this.on_demand_allocation_strategy == '' || this.on_demand_allocation_strategy in ['lowest-price', 'prioritized']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spot_allocation_strategy_valid"
+    message: "spot_allocation_strategy must be one of: lowest-price, diversified, capacity-optimized, capacity-optimized-prioritized, price-capacity-optimized"
+    expression: "this.spot_allocation_strategy == '' || this.spot_allocation_strategy in ['lowest-price', 'diversified', 'capacity-optimized', 'capacity-optimized-prioritized', 'price-capacity-optimized']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "on_demand_percentage_range"
+    message: "on_demand_percentage_above_base_capacity must be between 0 and 100"
+    expression: "!has(this.on_demand_percentage_above_base_capacity) || (this.on_demand_percentage_above_base_capacity >= 0 && this.on_demand_percentage_above_base_capacity <= 100)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spot_pools_only_for_lowest_price"
+    message: "spot_instance_pools only applies when spot_allocation_strategy is 'lowest-price'"
+    expression: "this.spot_instance_pools == 0 || this.spot_allocation_strategy == 'lowest-price'"
+  };
+}
+
+// AwsAutoScalingGroupInstanceRequirements describes compute by attributes
+// for a mixed-instances override, so AWS resolves the matching instance
+// types at launch. memory_mib and vcpu_count are required; every other
+// field narrows the candidate set.
+message AwsAutoScalingGroupInstanceRequirements {
+  // Required. Memory per instance, in MiB. min is required; leave max
+  // unset (0) for no upper bound.
+  AwsAutoScalingGroupIntRange memory_mib = 1 [(buf.validate.field).required = true];
+
+  // Required. vCPUs per instance. min is required; leave max unset (0)
+  // for no upper bound.
+  AwsAutoScalingGroupIntRange vcpu_count = 2 [(buf.validate.field).required = true];
+
+  // Allow-list of instance types or families, with wildcards
+  // ("m5.large", "m5.*", "c*"). At most 400 entries. Mutually exclusive
+  // with excluded_instance_types.
+  repeated string allowed_instance_types = 3 [(buf.validate.field).repeated.max_items = 400];
+
+  // Deny-list of instance types or families, with wildcards. At most
+  // 400 entries. Mutually exclusive with allowed_instance_types.
+  repeated string excluded_instance_types = 4 [(buf.validate.field).repeated.max_items = 400];
+
+  // Instance generations to include: "current" and/or "previous".
+  repeated string instance_generations = 5;
+
+  // CPU manufacturers to include: "intel", "amd",
+  // "amazon-web-services" (Graviton), "apple".
+  repeated string cpu_manufacturers = 6;
+
+  // Bare-metal eligibility: "included", "excluded" (AWS default), or
+  // "required".
+  string bare_metal = 7;
+
+  // Burstable (T-family) eligibility: "included", "excluded" (AWS
+  // default), or "required".
+  string burstable_performance = 8;
+
+  // Only instance types that support hibernation.
+  bool require_hibernate_support = 9;
+
+  // Spot price protection: exclude types whose Spot price exceeds the
+  // identified lowest-priced type's Spot price by more than this
+  // percentage. Mutually exclusive with
+  // max_spot_price_as_percentage_of_optimal_on_demand_price.
+  int32 spot_max_price_percentage_over_lowest_price = 10;
+
+  // Spot price protection anchored to On-Demand: exclude types whose
+  // Spot price exceeds this percentage of the optimal type's On-Demand
+  // price. Mutually exclusive with
+  // spot_max_price_percentage_over_lowest_price.
+  int32 max_spot_price_as_percentage_of_optimal_on_demand_price = 11;
+
+  // On-Demand price protection: exclude types whose On-Demand price
+  // exceeds the identified lowest-priced type's by more than this
+  // percentage. AWS default: 20.
+  int32 on_demand_max_price_percentage_over_lowest_price = 12;
+
+  // Instance-store (local disk) eligibility: "included" (AWS default),
+  // "excluded", or "required".
+  string local_storage = 13;
+
+  // Local storage technologies when instance-store is in play: "hdd"
+  // and/or "ssd".
+  repeated string local_storage_types = 14;
+
+  // Total local (instance-store) storage, in GB.
+  AwsAutoScalingGroupDoubleRange total_local_storage_gb = 15;
+
+  // Memory-to-vCPU ratio, in GiB per vCPU.
+  AwsAutoScalingGroupDoubleRange memory_gib_per_vcpu = 16;
+
+  // Number of network interfaces the type must support.
+  AwsAutoScalingGroupIntRange network_interface_count = 17;
+
+  // Network bandwidth, in Gbps.
+  AwsAutoScalingGroupDoubleRange network_bandwidth_gbps = 18;
+
+  // Baseline (non-burst) EBS bandwidth, in Mbps.
+  AwsAutoScalingGroupIntRange baseline_ebs_bandwidth_mbps = 19;
+
+  // Number of accelerators (GPUs, FPGAs, inference chips).
+  AwsAutoScalingGroupIntRange accelerator_count = 20;
+
+  // Accelerator manufacturers: "nvidia", "amd", "amazon-web-services",
+  // "xilinx", "habana".
+  repeated string accelerator_manufacturers = 21;
+
+  // Specific accelerator models (e.g. "a100", "v100", "t4",
+  // "inferentia").
+  repeated string accelerator_names = 22;
+
+  // Accelerator categories: "gpu", "fpga", "inference".
+  repeated string accelerator_types = 23;
+
+  // Total accelerator memory, in MiB.
+  AwsAutoScalingGroupIntRange accelerator_total_memory_mib = 24;
+
+  option (buf.validate.message).cel = {
+    id: "allowed_xor_excluded_types"
+    message: "allowed_instance_types and excluded_instance_types are mutually exclusive"
+    expression: "size(this.allowed_instance_types) == 0 || size(this.excluded_instance_types) == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spot_price_protection_exclusive"
+    message: "spot_max_price_percentage_over_lowest_price and max_spot_price_as_percentage_of_optimal_on_demand_price are mutually exclusive"
+    expression: "this.spot_max_price_percentage_over_lowest_price == 0 || this.max_spot_price_as_percentage_of_optimal_on_demand_price == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "bare_metal_valid"
+    message: "bare_metal must be 'included', 'excluded', or 'required' when set"
+    expression: "this.bare_metal == '' || this.bare_metal in ['included', 'excluded', 'required']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "burstable_performance_valid"
+    message: "burstable_performance must be 'included', 'excluded', or 'required' when set"
+    expression: "this.burstable_performance == '' || this.burstable_performance in ['included', 'excluded', 'required']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "local_storage_valid"
+    message: "local_storage must be 'included', 'excluded', or 'required' when set"
+    expression: "this.local_storage == '' || this.local_storage in ['included', 'excluded', 'required']"
+  };
+}
+
+// AwsAutoScalingGroupIntRange is an integer min/max pair for
+// attribute-based requirements. 0 means "unset" -- these ranges never
+// legitimately start at zero, so 0 doubles as "no bound".
+message AwsAutoScalingGroupIntRange {
+  // Lower bound, inclusive.
+  int32 min = 1;
+  // Upper bound, inclusive. 0 means no upper bound.
+  int32 max = 2;
+
+  option (buf.validate.message).cel = {
+    id: "int_range_ordered"
+    message: "max must be greater than or equal to min when both are set"
+    expression: "this.min == 0 || this.max == 0 || this.max >= this.min"
+  };
+}
+
+// AwsAutoScalingGroupDoubleRange is a fractional min/max pair for
+// attribute-based requirements. 0 means "unset".
+message AwsAutoScalingGroupDoubleRange {
+  // Lower bound, inclusive.
+  double min = 1;
+  // Upper bound, inclusive. 0 means no upper bound.
+  double max = 2;
+
+  option (buf.validate.message).cel = {
+    id: "double_range_ordered"
+    message: "max must be greater than or equal to min when both are set"
+    expression: "this.min == 0.0 || this.max == 0.0 || this.max >= this.min"
+  };
+}
+
+// AwsAutoScalingGroupInstanceRefresh rolls the fleet onto new
+// configuration: when the launch template (or another watched attribute)
+// changes, instances are replaced in waves while the health bounds hold.
+message AwsAutoScalingGroupInstanceRefresh {
+  // The refresh strategy. "Rolling" is the only strategy AWS currently
+  // supports. Required.
+  string strategy = 1 [(buf.validate.field).required = true];
+
+  // Additional attribute changes that trigger a refresh beyond the
+  // launch template (e.g. "tag"). Leave empty for template-only
+  // triggers.
+  repeated string triggers = 2;
+
+  // Fine-grained rollout behavior. Unset keeps AWS defaults (90% min
+  // healthy, no surge, no rollback).
+  AwsAutoScalingGroupInstanceRefreshPreferences preferences = 3;
+
+  option (buf.validate.message).cel = {
+    id: "strategy_valid"
+    message: "strategy must be 'Rolling'"
+    expression: "this.strategy == 'Rolling'"
+  };
+}
+
+// AwsAutoScalingGroupInstanceRefreshPreferences tunes how aggressively an
+// instance refresh replaces capacity and when it rolls back.
+message AwsAutoScalingGroupInstanceRefreshPreferences {
+  // Percentage of desired capacity that must stay InService during the
+  // refresh, 0-100. AWS default: 90. Lower = faster, riskier waves --
+  // explicit 0 replaces the whole fleet at once, which is why this field
+  // is optional: 0 must be distinguishable from unset.
+  optional int32 min_healthy_percentage = 1;
+
+  // Upper bound on capacity during the refresh as a percentage of
+  // desired, 100-200. Values above 100 let the refresh SURGE (launch
+  // before terminate) -- with 110/100 min/max the fleet never dips below
+  // full strength. 0 keeps the AWS default (100, no surge).
+  int32 max_healthy_percentage = 2;
+
+  // Seconds a fresh instance warms before counting toward min-healthy.
+  // 0 keeps the group's default_instance_warmup (or health check grace
+  // period).
+  int32 instance_warmup_seconds = 3;
+
+  // Percentage milestones (ascending, each 1-100) where the refresh
+  // pauses for checkpoint_delay_seconds -- a staged canary rollout:
+  // [10, 50, 100] proves 10% before committing half the fleet.
+  repeated int32 checkpoint_percentages = 4;
+
+  // Seconds to wait at each checkpoint before the next wave. AWS
+  // default: 3600 (1 hour).
+  int32 checkpoint_delay_seconds = 5;
+
+  // Roll the fleet back to its previous configuration if the refresh
+  // fails (or a watch alarm fires). The safety net that makes
+  // template-driven rollouts trustworthy.
+  bool auto_rollback = 6;
+
+  // CloudWatch alarms watched during the refresh: any alarm firing
+  // fails the refresh (and rolls back when auto_rollback is set).
+  // Reference AwsCloudwatchAlarm alarm_name outputs or pass literal
+  // alarm names.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef alarms = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchAlarm,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.alarm_name"
+  ];
+
+  // What happens to instances protected from scale-in: "Ignore" (AWS
+  // default -- leave them on the old config), "Refresh" (replace them
+  // too), or "Wait" (block until protection is removed).
+  string scale_in_protected_instances = 8;
+
+  // What happens to Standby instances: "Ignore" (AWS default),
+  // "Terminate", or "Wait".
+  string standby_instances = 9;
+
+  // Skip instances that already match the target configuration instead
+  // of replacing everything -- resumes interrupted rollouts cheaply.
+  bool skip_matching = 10;
+
+  option (buf.validate.message).cel = {
+    id: "min_healthy_percentage_range"
+    message: "min_healthy_percentage must be between 0 and 100"
+    expression: "!has(this.min_healthy_percentage) || (this.min_healthy_percentage >= 0 && this.min_healthy_percentage <= 100)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_healthy_percentage_range"
+    message: "max_healthy_percentage must be between 100 and 200 when set"
+    expression: "this.max_healthy_percentage == 0 || (this.max_healthy_percentage >= 100 && this.max_healthy_percentage <= 200)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "checkpoint_percentages_valid"
+    message: "each checkpoint percentage must be between 1 and 100"
+    expression: "this.checkpoint_percentages.all(p, p >= 1 && p <= 100)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "scale_in_protected_valid"
+    message: "scale_in_protected_instances must be 'Refresh', 'Ignore', or 'Wait' when set"
+    expression: "this.scale_in_protected_instances == '' || this.scale_in_protected_instances in ['Refresh', 'Ignore', 'Wait']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "standby_instances_valid"
+    message: "standby_instances must be 'Terminate', 'Ignore', or 'Wait' when set"
+    expression: "this.standby_instances == '' || this.standby_instances in ['Terminate', 'Ignore', 'Wait']"
+  };
+}
+
+// AwsAutoScalingGroupWarmPool keeps pre-initialized instances ready so
+// scale-out serves traffic in seconds instead of minutes. Worth its cost
+// exactly when boot time (AMI + user-data + app start) dominates
+// scale-out latency.
+message AwsAutoScalingGroupWarmPool {
+  // The state pooled instances wait in: "Stopped" (AWS default --
+  // near-zero compute cost, seconds to start), "Running" (instant but
+  // full price), or "Hibernated" (RAM restored from disk -- fast JVM/
+  // cache warmup without running cost).
+  string pool_state = 1;
+
+  // Minimum number of instances always kept in the pool.
+  int32 min_size = 2;
+
+  // Ceiling on pool size. Unset keeps the AWS default: the gap between
+  // the group's max_size and desired capacity. Explicit 0 is
+  // meaningful (no prepared capacity beyond min_size), which is why
+  // this field is optional.
+  optional int32 max_group_prepared_capacity = 3;
+
+  // Return scaled-in instances to the pool instead of terminating them
+  // -- reuse the warm boot instead of paying for it again.
+  bool reuse_on_scale_in = 4;
+
+  option (buf.validate.message).cel = {
+    id: "pool_state_valid"
+    message: "pool_state must be 'Stopped', 'Running', or 'Hibernated' when set"
+    expression: "this.pool_state == '' || this.pool_state in ['Stopped', 'Running', 'Hibernated']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_prepared_gte_neg_one"
+    message: "max_group_prepared_capacity must be 0 or greater"
+    expression: "!has(this.max_group_prepared_capacity) || this.max_group_prepared_capacity >= 0"
+  };
+}
+
+// AwsAutoScalingGroupInstanceMaintenancePolicy bounds ALL replacement
+// operations (health replacement, instance refresh defaults): how far
+// capacity may dip and how far it may surge.
+message AwsAutoScalingGroupInstanceMaintenancePolicy {
+  // Percentage of desired capacity that must stay InService during
+  // replacements, 0-100.
+  int32 min_healthy_percentage = 1 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 100
+  ];
+
+  // Upper bound on capacity during replacements as a percentage of
+  // desired, 100-200. Set min 100 / max 110 for launch-before-terminate
+  // on every replacement.
+  int32 max_healthy_percentage = 2 [
+    (buf.validate.field).int32.gte = 100,
+    (buf.validate.field).int32.lte = 200
+  ];
+}
+
+// AwsAutoScalingGroupScalingPolicy attaches one scaling behavior to the
+// group. policy_type decides which configuration block applies -- exactly
+// one must be set, matching the type.
+message AwsAutoScalingGroupScalingPolicy {
+  // Policy name, unique within the group. Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The policy engine. Required.
+  // - "TargetTrackingScaling": hold a metric at a target value -- the
+  //   right default for services (CPU at 60%, requests-per-target).
+  // - "StepScaling": react to a CloudWatch alarm with stepped
+  //   adjustments.
+  // - "SimpleScaling": the legacy single-step react-and-cooldown model.
+  // - "PredictiveScaling": forecast load and pre-provision capacity
+  //   (daily/weekly patterns).
+  string policy_type = 2 [(buf.validate.field).required = true];
+
+  // Seconds a new instance warms before its metrics count. 0 keeps the
+  // group default. Target tracking and step scaling only.
+  int32 estimated_instance_warmup_seconds = 3;
+
+  // Configuration for "TargetTrackingScaling".
+  AwsAutoScalingGroupTargetTrackingConfig target_tracking = 4;
+
+  // Configuration for "StepScaling".
+  AwsAutoScalingGroupStepScalingConfig step_scaling = 5;
+
+  // Configuration for "SimpleScaling".
+  AwsAutoScalingGroupSimpleScalingConfig simple_scaling = 6;
+
+  // Configuration for "PredictiveScaling".
+  AwsAutoScalingGroupPredictiveScalingConfig predictive_scaling = 7;
+
+  // ---------------------------------------------------------------------------
+  // Scaling policy CEL validations (discriminated union on policy_type)
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "policy_type_valid"
+    message: "policy_type must be 'TargetTrackingScaling', 'StepScaling', 'SimpleScaling', or 'PredictiveScaling'"
+    expression: "this.policy_type in ['TargetTrackingScaling', 'StepScaling', 'SimpleScaling', 'PredictiveScaling']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "target_tracking_matches_type"
+    message: "target_tracking must be set exactly when policy_type is 'TargetTrackingScaling'"
+    expression: "has(this.target_tracking) == (this.policy_type == 'TargetTrackingScaling')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "step_scaling_matches_type"
+    message: "step_scaling must be set exactly when policy_type is 'StepScaling'"
+    expression: "has(this.step_scaling) == (this.policy_type == 'StepScaling')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "simple_scaling_matches_type"
+    message: "simple_scaling must be set exactly when policy_type is 'SimpleScaling'"
+    expression: "has(this.simple_scaling) == (this.policy_type == 'SimpleScaling')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "predictive_scaling_matches_type"
+    message: "predictive_scaling must be set exactly when policy_type is 'PredictiveScaling'"
+    expression: "has(this.predictive_scaling) == (this.policy_type == 'PredictiveScaling')"
+  };
+}
+
+// AwsAutoScalingGroupTargetTrackingConfig holds a metric at a target value
+// -- the thermostat model. AWS creates and manages the underlying
+// CloudWatch alarms.
+message AwsAutoScalingGroupTargetTrackingConfig {
+  // The value to hold the metric at (e.g. 60.0 for 60% CPU). Required.
+  double target_value = 1 [(buf.validate.field).required = true];
+
+  // Track a predefined group metric: "ASGAverageCPUUtilization",
+  // "ASGAverageNetworkIn", "ASGAverageNetworkOut", or
+  // "ALBRequestCountPerTarget". Mutually exclusive with
+  // customized_metric.
+  string predefined_metric_type = 2;
+
+  // Identifies the ALB target group when predefined_metric_type is
+  // "ALBRequestCountPerTarget", in the form
+  // "app/<lb-name>/<lb-id>/targetgroup/<tg-name>/<tg-id>" (the load
+  // balancer's arn_suffix + "/" + the target group's arn_suffix).
+  string resource_label = 3;
+
+  // Track a custom CloudWatch metric instead of a predefined one.
+  // Mutually exclusive with predefined_metric_type.
+  AwsAutoScalingGroupCustomizedMetric customized_metric = 4;
+
+  // Never scale IN from this policy -- it only adds capacity. For
+  // pairing a conservative scale-out tracker with a separate, slower
+  // scale-in mechanism.
+  bool disable_scale_in = 5;
+
+  option (buf.validate.message).cel = {
+    id: "predefined_metric_valid"
+    message: "predefined_metric_type must be one of: ASGAverageCPUUtilization, ASGAverageNetworkIn, ASGAverageNetworkOut, ALBRequestCountPerTarget"
+    expression: "this.predefined_metric_type == '' || this.predefined_metric_type in ['ASGAverageCPUUtilization', 'ASGAverageNetworkIn', 'ASGAverageNetworkOut', 'ALBRequestCountPerTarget']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "predefined_xor_customized"
+    message: "exactly one of predefined_metric_type or customized_metric must be set"
+    expression: "(this.predefined_metric_type != '') != has(this.customized_metric)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "resource_label_only_for_alb_metric"
+    message: "resource_label only applies when predefined_metric_type is 'ALBRequestCountPerTarget'"
+    expression: "this.resource_label == '' || this.predefined_metric_type == 'ALBRequestCountPerTarget'"
+  };
+}
+
+// AwsAutoScalingGroupCustomizedMetric tracks a custom CloudWatch metric:
+// either one metric (name + namespace + statistic) or a metric-math
+// expression over several.
+message AwsAutoScalingGroupCustomizedMetric {
+  // The metric name (single-metric form). Mutually exclusive with
+  // metrics.
+  string metric_name = 1;
+
+  // The metric namespace (e.g. "MyApp/Queue").
+  string namespace = 2;
+
+  // The statistic: "Average", "Minimum", "Maximum", "SampleCount", or
+  // "Sum".
+  string statistic = 3;
+
+  // The metric unit (e.g. "Percent", "Count").
+  string unit = 4;
+
+  // Dimensions identifying the metric stream.
+  repeated AwsAutoScalingGroupMetricDimension dimensions = 5;
+
+  // Metric granularity in seconds: 10, 30, or 60. High-resolution
+  // metrics (10/30) let target tracking react in seconds.
+  int32 period_seconds = 6;
+
+  // Metric-math form: a set of query expressions combined into the
+  // tracked value (e.g. backlog-per-instance = queue depth / instance
+  // count). Mutually exclusive with the single-metric fields.
+  repeated AwsAutoScalingGroupMetricDataQuery metrics = 7;
+
+  option (buf.validate.message).cel = {
+    id: "single_metric_xor_math"
+    message: "use either the single-metric fields (metric_name/namespace/statistic) or metrics, not both"
+    expression: "size(this.metrics) == 0 || (this.metric_name == '' && this.namespace == '' && this.statistic == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "statistic_valid"
+    message: "statistic must be one of: Average, Minimum, Maximum, SampleCount, Sum"
+    expression: "this.statistic == '' || this.statistic in ['Average', 'Minimum', 'Maximum', 'SampleCount', 'Sum']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "period_valid"
+    message: "period_seconds must be 10, 30, or 60 when set"
+    expression: "this.period_seconds == 0 || this.period_seconds in [10, 30, 60]"
+  };
+}
+
+// AwsAutoScalingGroupMetricDimension is one name/value dimension of a
+// CloudWatch metric.
+message AwsAutoScalingGroupMetricDimension {
+  // Dimension name (e.g. "QueueName"). Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Dimension value (e.g. "orders"). Required.
+  string value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsAutoScalingGroupMetricDataQuery is one entry of a metric-math
+// expression set: either a raw metric (metric_stat) or an expression over
+// other entries' ids.
+message AwsAutoScalingGroupMetricDataQuery {
+  // Short identifier, unique within the query set, referenced by
+  // expressions (e.g. "m1", "e1"). Required.
+  string id = 1 [(buf.validate.field).required = true];
+
+  // A metric-math expression over other query ids (e.g. "m1 / m2").
+  // Mutually exclusive with metric_stat.
+  string expression = 2;
+
+  // A raw metric to fetch. Mutually exclusive with expression.
+  AwsAutoScalingGroupMetricStat metric_stat = 3;
+
+  // Human-readable label for the query.
+  string label = 4;
+
+  // Whether this entry is the value target tracking consumes. Exactly
+  // one entry in the set should return data (AWS default: true --
+  // explicitly set false on intermediate entries).
+  optional bool return_data = 5;
+
+  option (buf.validate.message).cel = {
+    id: "expression_xor_metric_stat"
+    message: "exactly one of expression or metric_stat must be set"
+    expression: "(this.expression != '') != has(this.metric_stat)"
+  };
+}
+
+// AwsAutoScalingGroupMetricStat fetches one raw metric for a metric-math
+// query.
+message AwsAutoScalingGroupMetricStat {
+  // The metric name. Required.
+  string metric_name = 1 [(buf.validate.field).required = true];
+
+  // The metric namespace. Required.
+  string namespace = 2 [(buf.validate.field).required = true];
+
+  // The statistic to fetch (e.g. "Average", "Sum"). Required.
+  string stat = 3 [(buf.validate.field).required = true];
+
+  // The metric unit.
+  string unit = 4;
+
+  // Dimensions identifying the metric stream.
+  repeated AwsAutoScalingGroupMetricDimension dimensions = 5;
+
+  // Granularity in seconds: 10, 30, or 60.
+  int32 period_seconds = 6;
+
+  option (buf.validate.message).cel = {
+    id: "period_valid"
+    message: "period_seconds must be 10, 30, or 60 when set"
+    expression: "this.period_seconds == 0 || this.period_seconds in [10, 30, 60]"
+  };
+}
+
+// AwsAutoScalingGroupStepScalingConfig reacts to a CloudWatch alarm with
+// stepped adjustments sized by how far the metric breached. The alarm
+// itself is a separate AwsCloudwatchAlarm whose alarm action targets this
+// policy's ARN.
+message AwsAutoScalingGroupStepScalingConfig {
+  // How the adjustment numbers are interpreted: "ChangeInCapacity" (add/
+  // remove N instances), "ExactCapacity" (set capacity to N), or
+  // "PercentChangeInCapacity" (grow/shrink by N%). Required.
+  string adjustment_type = 1 [(buf.validate.field).required = true];
+
+  // How the metric is aggregated across the breach evaluation:
+  // "Average" (AWS default), "Minimum", or "Maximum".
+  string metric_aggregation_type = 2;
+
+  // With "PercentChangeInCapacity", the minimum number of instances any
+  // single step changes -- keeps percentage scaling meaningful on small
+  // fleets.
+  int32 min_adjustment_magnitude = 3;
+
+  // The steps, keyed by breach distance. At least one. Bounds are
+  // decimal strings relative to the alarm threshold; an empty bound is
+  // open-ended (negative infinity for the first lower bound, positive
+  // infinity for the last upper bound).
+  repeated AwsAutoScalingGroupStepAdjustment step_adjustments = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  option (buf.validate.message).cel = {
+    id: "adjustment_type_valid"
+    message: "adjustment_type must be 'ChangeInCapacity', 'ExactCapacity', or 'PercentChangeInCapacity'"
+    expression: "this.adjustment_type in ['ChangeInCapacity', 'ExactCapacity', 'PercentChangeInCapacity']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "aggregation_type_valid"
+    message: "metric_aggregation_type must be 'Minimum', 'Maximum', or 'Average' when set"
+    expression: "this.metric_aggregation_type == '' || this.metric_aggregation_type in ['Minimum', 'Maximum', 'Average']"
+  };
+
+  // 0 only means something under ExactCapacity ("set capacity to 0"); as
+  // a delta it is a no-op step that AWS accepts and never acts on.
+  option (buf.validate.message).cel = {
+    id: "step_adjustments_nonzero_for_deltas"
+    message: "a step's scaling_adjustment of 0 is only meaningful with adjustment_type 'ExactCapacity'"
+    expression: "this.adjustment_type == 'ExactCapacity' || this.step_adjustments.all(s, s.scaling_adjustment != 0)"
+  };
+}
+
+// AwsAutoScalingGroupStepAdjustment is one step of a step-scaling policy.
+message AwsAutoScalingGroupStepAdjustment {
+  // The capacity change this step applies (interpreted per the policy's
+  // adjustment_type; negative shrinks; 0 is only meaningful with
+  // "ExactCapacity").
+  int32 scaling_adjustment = 1;
+
+  // Lower bound of the breach range this step covers, relative to the
+  // alarm threshold, as a decimal string (e.g. "0", "10.5"). Empty =
+  // negative infinity.
+  string metric_interval_lower_bound = 2;
+
+  // Upper bound of the breach range, relative to the alarm threshold,
+  // as a decimal string. Empty = positive infinity.
+  string metric_interval_upper_bound = 3;
+}
+
+// AwsAutoScalingGroupSimpleScalingConfig is the legacy react-and-cooldown
+// model: one adjustment per alarm breach, then wait out the cooldown.
+// Prefer step or target-tracking policies for new designs.
+message AwsAutoScalingGroupSimpleScalingConfig {
+  // How scaling_adjustment is interpreted: "ChangeInCapacity",
+  // "ExactCapacity", or "PercentChangeInCapacity". Required.
+  string adjustment_type = 1 [(buf.validate.field).required = true];
+
+  // The capacity change per breach (negative shrinks; 0 is only
+  // meaningful with "ExactCapacity" -- scale to zero).
+  int32 scaling_adjustment = 2;
+
+  // Seconds after a scaling activity before this policy may fire again.
+  // 0 keeps the group's default_cooldown.
+  int32 cooldown_seconds = 3;
+
+  // With "PercentChangeInCapacity", the minimum number of instances any
+  // adjustment changes.
+  int32 min_adjustment_magnitude = 4;
+
+  option (buf.validate.message).cel = {
+    id: "adjustment_type_valid"
+    message: "adjustment_type must be 'ChangeInCapacity', 'ExactCapacity', or 'PercentChangeInCapacity'"
+    expression: "this.adjustment_type in ['ChangeInCapacity', 'ExactCapacity', 'PercentChangeInCapacity']"
+  };
+
+  // 0 only means something under ExactCapacity ("set capacity to 0");
+  // as a delta it is a no-op the policy would silently never act on.
+  option (buf.validate.message).cel = {
+    id: "adjustment_nonzero_for_deltas"
+    message: "scaling_adjustment of 0 is only meaningful with adjustment_type 'ExactCapacity'"
+    expression: "this.adjustment_type == 'ExactCapacity' || this.scaling_adjustment != 0"
+  };
+}
+
+// AwsAutoScalingGroupPredictiveScalingConfig forecasts load from history
+// (daily/weekly patterns) and pre-provisions capacity ahead of it.
+// Custom metric-data-query specifications are deliberately not modeled --
+// the predefined metric pairs cover the real predictive use cases; ask
+// for the customized form if a workload genuinely needs it.
+message AwsAutoScalingGroupPredictiveScalingConfig {
+  // The value to hold the scaling metric at (e.g. 60.0 for 60% CPU).
+  // Required.
+  double target_value = 1 [(buf.validate.field).required = true];
+
+  // The load/scaling metric pair to forecast: "ASGCPUUtilization",
+  // "ASGNetworkIn", "ASGNetworkOut", or "ALBRequestCount". Required.
+  string predefined_metric_pair_type = 2 [(buf.validate.field).required = true];
+
+  // Identifies the ALB target group when the metric pair is
+  // "ALBRequestCount" (load balancer arn_suffix + "/" + target group
+  // arn_suffix).
+  string resource_label = 3;
+
+  // "ForecastOnly" (AWS default -- observe the forecast before trusting
+  // it) or "ForecastAndScale" (act on it).
+  string mode = 4;
+
+  // Seconds ahead of the forecasted need that instances launch --
+  // boot-and-warm lead time.
+  int32 scheduling_buffer_time_seconds = 5;
+
+  // What happens when the forecast exceeds max_size:
+  // "HonorMaxCapacity" (AWS default) or "IncreaseMaxCapacity" (grow
+  // max_size by max_capacity_buffer percent).
+  string max_capacity_breach_behavior = 6;
+
+  // Percentage buffer above forecasted capacity when
+  // max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
+  int32 max_capacity_buffer = 7;
+
+  option (buf.validate.message).cel = {
+    id: "metric_pair_valid"
+    message: "predefined_metric_pair_type must be one of: ASGCPUUtilization, ASGNetworkIn, ASGNetworkOut, ALBRequestCount"
+    expression: "this.predefined_metric_pair_type in ['ASGCPUUtilization', 'ASGNetworkIn', 'ASGNetworkOut', 'ALBRequestCount']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mode_valid"
+    message: "mode must be 'ForecastOnly' or 'ForecastAndScale' when set"
+    expression: "this.mode == '' || this.mode in ['ForecastOnly', 'ForecastAndScale']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "breach_behavior_valid"
+    message: "max_capacity_breach_behavior must be 'HonorMaxCapacity' or 'IncreaseMaxCapacity' when set"
+    expression: "this.max_capacity_breach_behavior == '' || this.max_capacity_breach_behavior in ['HonorMaxCapacity', 'IncreaseMaxCapacity']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "buffer_only_for_increase"
+    message: "max_capacity_buffer only applies when max_capacity_breach_behavior is 'IncreaseMaxCapacity'"
+    expression: "this.max_capacity_buffer == 0 || this.max_capacity_breach_behavior == 'IncreaseMaxCapacity'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "buffer_range"
+    message: "max_capacity_buffer must be between 0 and 100"
+    expression: "this.max_capacity_buffer >= 0 && this.max_capacity_buffer <= 100"
+  };
+}
+
+// AwsAutoScalingGroupScheduledAction changes capacity on a schedule --
+// recurring (cron) or one-shot (start_time only).
+message AwsAutoScalingGroupScheduledAction {
+  // Action name, unique within the group. Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Cron expression in UTC (or time_zone), e.g. "0 8 * * MON-FRI" for
+  // business-hours scale-up. Leave empty for a one-shot action at
+  // start_time.
+  string recurrence = 2;
+
+  // IANA time zone for the recurrence (e.g. "America/New_York"). Unset
+  // = UTC.
+  string time_zone = 3;
+
+  // First (or only) trigger time, RFC3339 UTC (e.g.
+  // "2026-08-01T08:00:00Z").
+  string start_time = 4;
+
+  // Last trigger time for a recurring action, RFC3339 UTC.
+  string end_time = 5;
+
+  // New min_size when the action fires. Absent = leave unchanged
+  // (which is why these are optional: 0 is a meaningful new value).
+  optional int32 min_size = 6;
+
+  // New max_size when the action fires. Absent = leave unchanged.
+  optional int32 max_size = 7;
+
+  // New desired capacity when the action fires. Absent = leave
+  // unchanged.
+  optional int32 desired_capacity = 8;
+
+  option (buf.validate.message).cel = {
+    id: "at_least_one_capacity_change"
+    message: "a scheduled action must set at least one of min_size, max_size, or desired_capacity"
+    expression: "has(this.min_size) || has(this.max_size) || has(this.desired_capacity)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "recurrence_or_start_time"
+    message: "a scheduled action needs a recurrence (recurring) or a start_time (one-shot)"
+    expression: "this.recurrence != '' || this.start_time != ''"
+  };
+}
+
+// AwsAutoScalingGroupLifecycleHook pauses instances at a lifecycle
+// transition so custom logic can run -- warm a cache before traffic,
+// drain work and ship logs before termination.
+message AwsAutoScalingGroupLifecycleHook {
+  // Hook name, unique within the group. Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The transition the hook pauses:
+  // "autoscaling:EC2_INSTANCE_LAUNCHING" or
+  // "autoscaling:EC2_INSTANCE_TERMINATING". Required.
+  string lifecycle_transition = 2 [(buf.validate.field).required = true];
+
+  // What happens when the heartbeat times out without a completion
+  // signal: "ABANDON" (AWS default for launch hooks -- roll the
+  // instance back) or "CONTINUE" (proceed anyway).
+  string default_result = 3;
+
+  // Seconds the instance waits in the transition state before
+  // default_result applies, 30-7200. AWS default: 3600.
+  int32 heartbeat_timeout_seconds = 4;
+
+  // Where the pause notification is delivered: an SNS topic or SQS
+  // queue ARN. Reference an AwsSnsTopic's topic_arn output or pass a
+  // literal ARN. Unset relies on EventBridge rules watching lifecycle
+  // events (the modern pattern).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef notification_target_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // The IAM role Auto Scaling assumes to publish to the notification
+  // target. Required by AWS when notification_target_arn is set.
+  // Reference an AwsIamRole's role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Free-form JSON delivered with every notification -- routing context
+  // for the consumer.
+  string notification_metadata = 7;
+
+  option (buf.validate.message).cel = {
+    id: "lifecycle_transition_valid"
+    message: "lifecycle_transition must be 'autoscaling:EC2_INSTANCE_LAUNCHING' or 'autoscaling:EC2_INSTANCE_TERMINATING'"
+    expression: "this.lifecycle_transition in ['autoscaling:EC2_INSTANCE_LAUNCHING', 'autoscaling:EC2_INSTANCE_TERMINATING']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "default_result_valid"
+    message: "default_result must be 'ABANDON' or 'CONTINUE' when set"
+    expression: "this.default_result == '' || this.default_result in ['ABANDON', 'CONTINUE']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "heartbeat_timeout_range"
+    message: "heartbeat_timeout_seconds must be between 30 and 7200 when set"
+    expression: "this.heartbeat_timeout_seconds == 0 || (this.heartbeat_timeout_seconds >= 30 && this.heartbeat_timeout_seconds <= 7200)"
+  };
+}
+
+// AwsAutoScalingGroupNotifications wires fleet lifecycle events to an SNS
+// topic.
+message AwsAutoScalingGroupNotifications {
+  // The SNS topic events are published to. Reference an AwsSnsTopic's
+  // topic_arn output or pass a literal ARN. Required.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef topic = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // The event types to publish. At least one of:
+  // "autoscaling:EC2_INSTANCE_LAUNCH",
+  // "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+  // "autoscaling:EC2_INSTANCE_TERMINATE",
+  // "autoscaling:EC2_INSTANCE_TERMINATE_ERROR".
+  repeated string event_types = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "event_types_valid"
+    message: "each event type must be one of: autoscaling:EC2_INSTANCE_LAUNCH, autoscaling:EC2_INSTANCE_LAUNCH_ERROR, autoscaling:EC2_INSTANCE_TERMINATE, autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+    expression: "this.event_types.all(t, t in ['autoscaling:EC2_INSTANCE_LAUNCH', 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR', 'autoscaling:EC2_INSTANCE_TERMINATE', 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'])"
+  };
+}

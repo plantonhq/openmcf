@@ -29,7 +29,7 @@ Downstream association is deliberately not part of this resource: `AzurePublicIp
 Create a file `public-ip-prefix.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIpPrefix
 metadata:
   name: prod-egress-prefix
@@ -87,7 +87,7 @@ After deployment, read `status.outputs.ip_prefix` for the CIDR to give partners 
 A zone-redundant /28 (16 addresses, ~1M SNAT ports) for production outbound:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIpPrefix
 metadata:
   name: nat-snat-prefix
@@ -112,7 +112,7 @@ spec:
 Reference it from a NAT gateway:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: prod-nat
@@ -132,7 +132,7 @@ spec:
 A smaller /30 (4 addresses) when partners need a tight, cheap allowlist surface:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIpPrefix
 metadata:
   name: partner-allowlist
@@ -161,7 +161,7 @@ Share `status.outputs.ip_prefix` with the partner once deployed.
 Reserve the range first, then draw individual addresses from it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: lb-frontend-from-prefix

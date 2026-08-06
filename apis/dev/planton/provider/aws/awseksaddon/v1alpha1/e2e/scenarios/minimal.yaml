@@ -1,0 +1,31 @@
+# Minimal AwsEksAddon scenario: kube-proxy on the EKS control-plane
+# prerequisite. kube-proxy is a DaemonSet, so the add-on reaches ACTIVE
+# on a zero-node cluster (coredns would sit DEGRADED with no nodes to
+# schedule its replicas). The prerequisite cluster bootstraps
+# self-managed addons (the AWS default), so OVERWRITE adopts the
+# bootstrap copy instead of failing with ConfigurationConflict -- the
+# exact migration path the flag exists for. Full metadata is supplied
+# for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEksAddon
+metadata:
+  name: planton-oss-e2e-eksaddon-smoke
+  id: planton-oss-e2e-eksaddon-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseksaddon
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: planton-oss-e2e-eks-cluster-prereq
+      fieldPath: status.outputs.name
+  addonName: kube-proxy
+  resolveConflictsOnCreate: OVERWRITE

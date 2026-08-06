@@ -1,0 +1,11 @@
+# Consumer-scoped operator fixture for the KubernetesOpenSearch lanes:
+# the chart-default cluster-wide watch, so clusters reconcile wherever
+# the lane puts them.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-fix
+spec:
+  namespace:
+    value: opensearch-operator-system
+  create_namespace: true

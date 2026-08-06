@@ -29,7 +29,7 @@ When you deploy an OciContainerEngineCluster resource, Planton provisions:
 Create a file `cluster.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineCluster
 metadata:
   name: my-cluster
@@ -150,7 +150,7 @@ Two configuration modes are supported: **inline** (set individual fields) and **
 A basic OKE cluster with only the required fields — the simplest path to a running Kubernetes control plane:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineCluster
 metadata:
   name: dev-cluster
@@ -172,7 +172,7 @@ spec:
 An enhanced cluster with VCN-native pod networking, a private API endpoint protected by NSGs, dedicated service load balancer subnets, and custom pod/service CIDRs. All infrastructure references use `valueFrom` for declarative composition:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineCluster
 metadata:
   name: prod-cluster
@@ -231,7 +231,7 @@ spec:
 An enhanced cluster integrated with an external OIDC identity provider for `kubectl` and API access. Inline OIDC fields configure the issuer, client, and claim mappings directly:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineCluster
 metadata:
   name: sso-cluster
@@ -276,7 +276,7 @@ spec:
 A cluster with KMS-encrypted Kubernetes secrets and container image signature verification — all images deployed to the cluster must be signed with an approved KMS key:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineCluster
 metadata:
   name: secure-cluster

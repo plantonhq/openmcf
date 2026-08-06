@@ -1,0 +1,27 @@
+# AwsMemorydbAcl membership scenario: the ACL references a deployed
+# AwsMemorydbUser's exported user name -- the FK seam clusters grant and
+# revoke access through. The user is optional composition (an empty ACL is
+# valid), so it arrives via the e2e-prerequisites annotation rather than a
+# registry edge. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsMemorydbAcl
+metadata:
+  name: planton-oss-e2e-awsmdbacl-member
+  id: planton-oss-e2e-awsmdbacl-member
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmemorydbacl
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsMemorydbUser"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  userNames:
+    - valueFrom:
+        kind: AwsMemorydbUser
+        name: planton-oss-e2e-awsmdbuser-prereq
+        fieldPath: status.outputs.user_name

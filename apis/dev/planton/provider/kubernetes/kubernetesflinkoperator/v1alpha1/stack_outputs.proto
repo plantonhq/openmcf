@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesflinkoperator.v1alpha1;
+
+//flink-operator-kubernetes stack outputs
+message KubernetesFlinkOperatorStackOutputs {
+  //namespace the operator runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it.
+  string release_name = 2;
+
+  //service account name Flink job pods run as — FlinkDeployment
+  //declarations reference it.
+  string job_service_account = 3;
+
+  //namespaces the operator watches for Flink CRs. Empty means
+  //cluster-wide — FlinkDeployments reconcile anywhere.
+  repeated string watched_namespaces = 4;
+
+  //name of the operator's webhook Service (chart-fixed
+  //`flink-operator-webhook-service`) — empty when the webhook is
+  //disabled.
+  string webhook_service = 5;
+}

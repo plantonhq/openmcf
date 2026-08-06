@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRoleDefinition
+metadata:
+  name: test-role-definition
+  org: test-org
+  env: dev
+spec:
+  name: test-org-vm-operator
+  scope:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000
+  description: Operate existing VMs (start/stop/restart) without create or delete rights
+  permissions:
+    - actions:
+        - Microsoft.Compute/virtualMachines/read
+        - Microsoft.Compute/virtualMachines/start/action
+        - Microsoft.Compute/virtualMachines/restart/action
+        - Microsoft.Compute/virtualMachines/deallocate/action
+  assignableScopes:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000

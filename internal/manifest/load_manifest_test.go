@@ -9,7 +9,7 @@ import (
 // the manifest does not fit its schema, the error itself -- not just a styled
 // display path -- names the real YAML line, the field path, and the fix.
 func TestLoadManifestBytesDiagnosesFailures(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: probe
@@ -45,7 +45,7 @@ spec:
 // failures inside legal structure belong to protojson; the error text must
 // remain the parser's, never a guess.
 func TestLoadManifestBytesKeepsParserErrorWhenUndiagnosed(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe
@@ -70,7 +70,7 @@ spec:
 }
 
 func TestLoadManifestBytesValid(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe

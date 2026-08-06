@@ -1,0 +1,18 @@
+# IRSA ServiceAccount fixture for the aws-sm-irsa scenario: the identity
+# the store's keyless auth references. Its namespace comes from the sibling
+# fixture-eso-namespace.yaml, which the SCENARIO lists before this file
+# (manifest-path fixtures deploy in listed order; a path entry's own file
+# annotations are not prerequisite edges). The batch bootstrap's IRSA trust
+# policy binds to e2e-eso/e2e-eso-irsa — rename them together.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesServiceAccount
+metadata:
+  name: e2e-eso-irsa
+spec:
+  name: e2e-eso-irsa
+  namespace:
+    value: e2e-eso
+  workload_identity:
+    eks:
+      role_arn:
+        value: ${E2E_ENV:PLANTON_E2E_ESO_IRSA_ROLE_ARN}

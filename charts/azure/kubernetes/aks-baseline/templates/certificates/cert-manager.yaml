@@ -12,7 +12,7 @@
 # issuer — and (3) the azure.workload.identity annotations/labels on the
 # controller's pods (the component's workloadIdentity block below). No
 # secret is created, exported, or stored anywhere.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: "{{ values.env }}-aks-cert-manager"
@@ -28,7 +28,7 @@ spec:
 # the identity above. The issuer arrives BY REFERENCE from the cluster's
 # outputs (it embeds a server-generated URL no render-time value can
 # carry), which also orders cluster-before-credential structurally.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: "{{ values.env }}-aks-cert-manager-fic"
@@ -56,7 +56,7 @@ spec:
 # these zones and nothing else. The zones live outside this chart (they
 # usually predate the cluster); the offline validator reports the
 # references as unresolved by design.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: "{{ values.env }}-aks-cert-manager-dns-{{ zone }}"
@@ -76,7 +76,7 @@ spec:
   description: cert-manager writes DNS-01 challenge records in {{ zone }} ({{ values.env }}-aks)
 ---
 {% endfor %}
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: "{{ values.env }}-cert-manager"

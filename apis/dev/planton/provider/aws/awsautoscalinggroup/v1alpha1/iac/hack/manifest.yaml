@@ -1,0 +1,43 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAutoScalingGroup
+metadata:
+  name: web-demo
+spec:
+  region: us-west-2
+  subnets:
+    - value: subnet-0123456789abcdef0
+    - value: subnet-0123456789abcdef1
+  launchTemplate:
+    launchTemplateId:
+      value: lt-0123456789abcdef0
+  minSize: 1
+  maxSize: 4
+  desiredCapacity: 2
+  # The web-service shape: ELB health checks against a target group,
+  # rolling instance refresh with surge, and a CPU target-tracking policy.
+  # Exercises the nested launch-template, refresh, and policy objects so
+  # the fixture proves the full variable contract, not just the scalars.
+  healthCheckType: ELB
+  healthCheckGracePeriodSeconds: 120
+  targetGroups:
+    - value: arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/50dc6c495c0c9188
+  terminationPolicies:
+    - OldestLaunchTemplate
+    - Default
+  instanceRefresh:
+    strategy: Rolling
+    preferences:
+      minHealthyPercentage: 90
+      maxHealthyPercentage: 110
+      autoRollback: true
+  scalingPolicies:
+    - name: cpu-target
+      policyType: TargetTrackingScaling
+      targetTracking:
+        targetValue: 60
+        predefinedMetricType: ASGAverageCPUUtilization
+  enabledMetrics:
+    - GroupMinSize
+    - GroupMaxSize
+    - GroupDesiredCapacity
+    - GroupInServiceInstances

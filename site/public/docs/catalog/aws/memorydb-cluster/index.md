@@ -30,7 +30,7 @@ When you deploy an AwsMemorydbCluster resource, Planton provisions:
 Create a file `memorydb.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbCluster
 metadata:
   name: my-memorydb
@@ -110,7 +110,7 @@ This creates a single-shard, single-node MemoryDB cluster with Redis 7.1, TLS en
 A minimal single-node cluster for local development:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbCluster
 metadata:
   name: dev-memorydb
@@ -135,7 +135,7 @@ spec:
 Multi-shard cluster with replicas, custom ACL, VPC placement, and daily snapshots:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbCluster
 metadata:
   name: session-store
@@ -176,7 +176,7 @@ spec:
 Production cluster using cross-resource references for VPC, security group, KMS, and SNS:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbCluster
 metadata:
   name: analytics-store

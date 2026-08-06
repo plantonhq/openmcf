@@ -1,0 +1,89 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbAccount
+metadata:
+  name: test-cosmos-account
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  accountName: planton-hack-cosmos
+  # Exercises the kind enum mapping (GLOBAL_DOCUMENT_DB is also the
+  # default; stated to prove the seam renders).
+  kind: GLOBAL_DOCUMENT_DB
+  # Exercises the BoundedStaleness dials (single-region, so the
+  # multi-region floors do not apply).
+  consistencyPolicy:
+    consistencyLevel: BOUNDED_STALENESS
+    maxIntervalInSeconds: 600
+    maxStalenessPrefix: 200000
+  geoLocations:
+    - location: eastus
+      failoverPriority: 0
+      zoneRedundant: false
+  # Exercises the capability enum mapping, including a wire value that
+  # breaks the EnableX convention (DeleteAllItemsByPartitionKey).
+  capabilities:
+    - ENABLE_NO_SQL_VECTOR_SEARCH
+    - DELETE_ALL_ITEMS_BY_PARTITION_KEY
+  automaticFailoverEnabled: true
+  # Exercises the network posture: VNet filter + subnet rule + IP filter
+  # + bypass ids.
+  publicNetworkAccessEnabled: true
+  isVirtualNetworkFilterEnabled: true
+  virtualNetworkRules:
+    - subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/data
+      ignoreMissingVnetServiceEndpoint: true
+  ipRangeFilter:
+    - 104.42.195.92
+    - 10.0.0.0/16
+  networkAclBypassForAzureServices: true
+  networkAclBypassIds:
+    - /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Synapse/workspaces/test-syn
+  # Exercises the periodic-backup enum seams (interval/retention/ZONE
+  # redundancy).
+  backup:
+    type: PERIODIC
+    intervalInMinutes: 240
+    retentionInHours: 24
+    storageRedundancy: ZONE
+  # Exercises the identity + composed default-identity seam and the CMK
+  # key reference.
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cosmos-cmk
+  defaultIdentity:
+    type: USER_ASSIGNED_DEFAULT
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cosmos-cmk
+  keyVaultKeyId:
+    value: https://planton-hack-vault.vault.azure.net/keys/cosmos-cmk
+  # Exercises the analytical-store pairing and the capacity guardrail.
+  analyticalStorageEnabled: true
+  analyticalStorage:
+    schemaType: WELL_DEFINED
+  capacity:
+    totalThroughputLimit: 20000
+  # Exercises the key-posture inversions (local_authentication_disabled
+  # on the wire).
+  accessKeyMetadataWritesEnabled: false
+  localAuthenticationEnabled: true
+  # Exercises the TLS-floor enum seam (a non-default legacy value).
+  minimalTlsVersion: TLS_1_1
+  burstCapacityEnabled: true
+  partitionMergeEnabled: true
+  # Exercises the CORS block rendering.
+  corsRule:
+    allowedOrigins:
+      - https://app.example.com
+    allowedMethods:
+      - GET
+      - POST
+    allowedHeaders:
+      - "*"
+    exposedHeaders:
+      - "*"
+    maxAgeInSeconds: 3600
+  tags:
+    cost-center: data-platform

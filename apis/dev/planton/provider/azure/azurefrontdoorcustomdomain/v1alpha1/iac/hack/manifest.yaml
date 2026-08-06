@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorCustomDomain
+metadata:
+  name: test-front-door-custom-domain
+spec:
+  profileId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor
+  domainName: www-example-com
+  hostName: www.example.com
+  # Exercises the Azure DNS zone seam (Azure watches the zone for the
+  # validation TXT record).
+  dnsZoneId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/dnsZones/example.com
+  # Exercises the customer-certificate pairing and the CUSTOMIZED cipher
+  # policy with both TLS 1.3 suites pinned.
+  tls:
+    certificateType: CUSTOMER_CERTIFICATE
+    secretId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/secrets/wildcard-example-com
+    cipherSuite:
+      type: CUSTOMIZED
+      customCiphers:
+        tls12: [ECDHE_RSA_AES128_GCM_SHA256, ECDHE_RSA_AES256_GCM_SHA384]
+        tls13: [TLS_AES_128_GCM_SHA256, TLS_AES_256_GCM_SHA384]

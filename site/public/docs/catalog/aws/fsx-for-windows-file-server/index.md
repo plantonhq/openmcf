@@ -34,7 +34,7 @@ When you deploy an AwsFsxWindowsFileSystem resource, Planton provisions:
 Create a file `windows-fs.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: my-windows-fs
@@ -117,7 +117,7 @@ When using `selfManagedActiveDirectory` instead of `activeDirectoryId`:
 Minimal configuration using an existing AWS Directory Service managed AD:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: dev-windows-fs
@@ -144,7 +144,7 @@ spec:
 Production file system joined to an on-premises AD with compliance audit logging:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: prod-windows-fs
@@ -185,7 +185,7 @@ spec:
 Mission-critical deployment with automatic failover, DNS aliases, and provisioned IOPS:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: ha-windows-fs
@@ -230,7 +230,7 @@ spec:
 Wire the file system to other Planton-managed resources using `valueFrom`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: wired-windows-fs

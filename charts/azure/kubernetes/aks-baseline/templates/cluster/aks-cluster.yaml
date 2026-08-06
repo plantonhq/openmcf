@@ -6,7 +6,7 @@
 # that same name via planton.dev/connection (one values param drives both
 # sides, so they can never drift) and carries a runs_on relationship edge
 # back to this resource so ordering is structural.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   # The AKS CONTROL PLANE runs as this identity (managing the node resource
@@ -27,7 +27,7 @@ spec:
 # without Network Contributor on the node subnet, cluster creation fails
 # joining nodes to it. Subnet-scoped — the narrowest scope that satisfies
 # the contract (never the whole resource group).
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: "{{ values.env }}-aks-subnet-grant"
@@ -53,7 +53,7 @@ spec:
   skipServicePrincipalAadCheck: true
   description: AKS control plane joins nodes to the platform subnet ({{ values.env }}-aks)
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   # This name is load-bearing beyond the cluster itself: node pools attach

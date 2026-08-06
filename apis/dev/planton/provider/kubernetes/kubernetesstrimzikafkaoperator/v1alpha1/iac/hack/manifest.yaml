@@ -1,0 +1,51 @@
+# Full-surface development manifest: exercises every typed field so the
+# offline plan proofs cover arms the live lanes exclude. Values are
+# deliberately non-default where a default exists, so rendered-values
+# inspection shows every mapping.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStrimziKafkaOperator
+metadata:
+  name: strimzi-operator-hack
+spec:
+  namespace:
+    value: strimzi-hack
+  createNamespace: true
+  chartVersion: 1.1.0
+  replicas: 2
+  watch:
+    namespaces:
+      - kafka-team-a
+      - kafka-team-b
+  fullReconciliationIntervalMs: 180000
+  operationTimeoutMs: 420000
+  logLevel: DEBUG
+  # featureGates deliberately empty: an unknown gate name fails operator
+  # startup, and the pinned release needs no gate flips.
+  kubernetesServiceDnsDomain: cluster.local
+  leaderElectionEnabled: true
+  generateNetworkPolicy: false
+  generatePodDisruptionBudget: false
+  createGlobalResources: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: kafka
+      effect: NoSchedule
+  imagePullSecrets:
+    - mirror-pull-secret
+  image:
+    registry: mirror.example.com
+    repository: strimzi
+    tag: 1.1.0
+  helmValues: |
+    dashboards:
+      enabled: false

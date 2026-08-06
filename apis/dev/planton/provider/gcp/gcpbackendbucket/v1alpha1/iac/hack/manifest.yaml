@@ -1,0 +1,40 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBackendBucket
+metadata:
+  name: my-sample-backend-bucket
+spec:
+  # GCP project that owns the backend bucket.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  backendBucketName: static-assets
+
+  # The GCS bucket whose objects are served (or reference a GcpGcsBucket).
+  bucketName:
+    value: my-static-assets-bucket
+
+  description: Serves the app's fingerprinted static assets through Cloud CDN
+
+  # Cache at Google's edge.
+  enableCdn: true
+  cdnPolicy:
+    # Cache static content types; honor origin headers for the rest.
+    cacheMode: CACHE_ALL_STATIC
+    defaultTtl: 3600
+    clientTtl: 1800
+    # Cache 404s briefly so missing-asset storms don't hammer the origin.
+    negativeCaching: true
+    negativeCachingPolicy:
+      - code: 404
+        ttl: 60
+    # Collapse concurrent cache-miss fetches of the same object.
+    requestCoalescing: true
+
+  # Compress compressible content types for clients that ask.
+  compressionMode: AUTOMATIC
+
+  # Surface the CDN verdict for debugging.
+  customResponseHeaders:
+    - "X-Cache-Status: {cdn_cache_status}"

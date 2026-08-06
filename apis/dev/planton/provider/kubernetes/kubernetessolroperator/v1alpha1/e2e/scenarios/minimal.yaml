@@ -1,0 +1,12 @@
+# The smallest declarable operator install: chart defaults — the bundled
+# zookeeper-operator installs alongside (its default). The verifier
+# asserts both operators Available and every module-owned CRD
+# Established.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-min
+spec:
+  namespace:
+    value: e2e-slrop-min
+  create_namespace: true

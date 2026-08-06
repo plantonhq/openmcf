@@ -14,7 +14,7 @@ TOOLS
 - Proto Readers: reuse readers for `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto`.
 - Variables Generator: `_rules/deployment-component/_scripts/terraform_module_write.py` (run with `--make-local --generate-variables`)
 - Module Writer: `_rules/deployment-component/_scripts/terraform_module_write.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/tf/`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/tf/`
   and `aws/awsalb/v1/iac/tf/` -- canonical `variables.tf`/`provider.tf`/`locals.tf`/`main.tf`/`outputs.tf` layout.
 
 PARITY WITH PULUMI (MANDATORY -- read before writing any HCL)

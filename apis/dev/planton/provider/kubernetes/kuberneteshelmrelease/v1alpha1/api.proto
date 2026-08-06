@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteshelmrelease.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kuberneteshelmrelease/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kuberneteshelmrelease/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesHelmRelease** installs an upstream Helm chart as a real Helm
+ * release, following the Kubernetes Resource Model (KRM). This is the
+ * catalog's sole intentional passthrough: the chart's own values surface is
+ * the configuration contract, expressed through Helm's values-file plus
+ * `--set`-style override model. Both engines produce the same release —
+ * hooks run, history is recorded, `helm list` sees it.
+ */
+message KubernetesHelmRelease {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1alpha1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesHelmRelease".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesHelmRelease"];
+
+  // Metadata for the Helm release resource. The resource name doubles as
+  // the Helm release name unless spec.release_name overrides it.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the chart to install: identity (repo/chart/version),
+  // values layers, repository auth, and release lifecycle behavior.
+  KubernetesHelmReleaseSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the Helm release resource.
+  // Contains outputs populated after deployment.
+  KubernetesHelmReleaseStatus status = 5;
+}
+
+/**
+ * **KubernetesHelmReleaseStatus** captures the runtime status of an installed
+ * Helm release, including the outputs generated after installation.
+ */
+message KubernetesHelmReleaseStatus {
+  // Outputs from the Helm release installation.
+  // Contains the release identity and Helm-recorded state.
+  KubernetesHelmReleaseStackOutputs outputs = 1;
+}

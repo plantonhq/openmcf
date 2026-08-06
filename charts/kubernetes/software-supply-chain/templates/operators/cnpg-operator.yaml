@@ -13,7 +13,7 @@
 # database, watches the whole cluster by default, and its CRDs carry
 # `helm.sh/resource-policy: keep` so an uninstall never cascade-deletes
 # the databases it manages.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCloudNativePgOperator
 metadata:
   name: "{{ values.env }}-cnpg-operator"

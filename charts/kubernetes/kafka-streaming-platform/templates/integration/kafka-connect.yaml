@@ -2,7 +2,7 @@
 # Connect's own identity on the cluster — the integration engine reads and
 # writes application topics plus its three internal state topics, so it
 # gets a dedicated, revocable principal like every other client component.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   name: "{{ values.env }}-kafka-connect-user"
@@ -33,7 +33,7 @@ spec:
 # through it. The group identity and internal topics default from this
 # resource's name, which keeps them unique beside the MirrorMaker 2
 # instance sharing the cluster.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaConnect
 metadata:
   name: "{{ values.env }}-kafka-connect"

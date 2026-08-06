@@ -30,7 +30,7 @@ filters; and split traffic across weighted backends.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHttpRoute
 metadata:
   name: web-route

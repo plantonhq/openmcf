@@ -1,0 +1,24 @@
+# GcpManagedSslCertificate install profile used when the certificate is an
+# E2E PREREQUISITE for another component (e.g. a target HTTPS proxy's
+# ssl_certificates). The domain carries ${E2E_RUN_ID} so every engine run gets
+# a unique hostname; a PROVISIONING certificate attaches to a proxy fine — no
+# DNS is required. project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpManagedSslCertificate
+metadata:
+  name: planton-oss-e2e-gcpmssl-prereq
+  id: planton-oss-e2e-gcpmssl-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmanagedsslcertificate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral managed SSL certificate created by the Planton E2E harness as a prerequisite; safe to delete
+  domains:
+    - e2e-prereq-${E2E_RUN_ID}.example.com

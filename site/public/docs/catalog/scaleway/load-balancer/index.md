@@ -33,7 +33,7 @@ When you deploy a ScalewayLoadBalancer resource, Planton provisions:
 Create a file `load-balancer.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayLoadBalancer
 metadata:
   name: my-lb
@@ -121,7 +121,7 @@ This creates a small Load Balancer in `fr-par-1` with a single HTTP backend and 
 A single-backend, single-frontend Load Balancer for development or internal services:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayLoadBalancer
 metadata:
   name: dev-lb
@@ -154,7 +154,7 @@ spec:
 A production-grade Load Balancer with automatic TLS, HTTP-to-HTTPS frontend pairing, a Private Network attachment, and HTTP health checks:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayLoadBalancer
 metadata:
   name: prod-lb
@@ -217,7 +217,7 @@ spec:
 A Load Balancer routing traffic to separate backend pools (API and gRPC), using TCP forwarding and PROXY protocol to preserve client IPs:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayLoadBalancer
 metadata:
   name: gateway-lb

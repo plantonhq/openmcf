@@ -4,7 +4,7 @@
 # autoscaler never depends on capacity it manages itself (the bootstrap
 # problem: Karpenter cannot provision the node it needs to run on).
 # Application capacity is Karpenter's job (autoscaling/), not this group's.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   # ONE node role serves both the system group and the Karpenter fleet: same
@@ -32,7 +32,7 @@ spec:
     - value: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
     - value: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:
   name: "{{ values.env }}-eks-system"

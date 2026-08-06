@@ -1,0 +1,47 @@
+# Composed AzureServiceBusSubscription scenario: both filter-rule
+# families live (a SQL rule with an action + correlation matchers,
+# additive alongside the service-created $Default catch-all), and
+# dead-letter forwarding into a fixture work queue through the
+# queue-name output.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusSubscription
+metadata:
+  name: planton-oss-e2e-azureservicebussubscription-smoke
+  id: planton-oss-e2e-azureservicebussubscription-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureservicebussubscription
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local namespace + topic + work queue, in deploy order.
+    # Path-form fixtures live outside e2e/scenarios/, which the
+    # discoverer treats as test cases.
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureservicebussubscription/v1alpha1/e2e/fixture-namespace.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1alpha1/e2e/fixture-topic.yaml, apis/dev/planton/provider/azure/azureservicebussubscription/v1alpha1/e2e/fixture-queue.yaml"
+  tags:
+    - planton-e2e
+spec:
+  topicId:
+    valueFrom:
+      name: planton-oss-e2e-sbsub-fixture-topic
+  subscriptionName: e2e-consumer
+  maxDeliveryCount: 5
+  lockDuration: PT1M
+  deadLetteringOnMessageExpiration: true
+  forwardDeadLetteredMessagesTo:
+    valueFrom:
+      kind: AzureServiceBusQueue
+      name: planton-oss-e2e-sbsub-fixture-queue
+      fieldPath: status.outputs.queue_name
+  rules:
+    - ruleName: emea-priority
+      filterType: SQL_FILTER
+      sqlFilter: "region = 'emea' AND priority > 3"
+      action: "SET sys.Label = 'routed'"
+    - ruleName: order-created
+      filterType: CORRELATION_FILTER
+      correlationFilter:
+        label: order-created
+        properties:
+          tenant: e2e

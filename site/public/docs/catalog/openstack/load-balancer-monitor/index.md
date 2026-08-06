@@ -26,7 +26,7 @@ When you deploy an OpenStackLoadBalancerMonitor resource, Planton provisions:
 Create a file `monitor.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: http-health
@@ -83,7 +83,7 @@ This creates an HTTP health monitor that checks `/healthz` on each pool member e
 An HTTP monitor that checks a health endpoint on each pool member, suitable for web application pools:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: web-http-health
@@ -108,7 +108,7 @@ spec:
 A TCP monitor for non-HTTP services. The monitor attempts a TCP connection to each member and marks it healthy if the connection succeeds:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: db-tcp-check
@@ -130,7 +130,7 @@ spec:
 An HTTP monitor with different thresholds for failure detection and recovery. Members are removed after 2 consecutive failures (fast detection) but require 5 consecutive successes to return to rotation (cautious recovery):
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: api-health
@@ -156,7 +156,7 @@ spec:
 Reference an Planton-managed pool instead of hardcoding UUIDs:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: ref-monitor

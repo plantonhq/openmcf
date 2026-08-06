@@ -42,7 +42,7 @@ will use it. Every other AWS service assumes the role directly.
 Create a file `iam-role.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: my-ecs-task-role
@@ -94,7 +94,7 @@ policies attached.
 The role EC2 instances receive through an `AwsIamInstanceProfile`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: ec2-instance-role
@@ -111,7 +111,7 @@ spec:
   managedPolicyArns:
     - value: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamInstanceProfile
 metadata:
   name: ec2-instance-profile
@@ -127,7 +127,7 @@ spec:
 ### Lambda execution role attaching a Planton-defined policy
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: lambda-exec-role
@@ -153,7 +153,7 @@ spec:
 ### Cross-account role with a boundary and a longer session
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: cross-account-reader
@@ -183,7 +183,7 @@ spec:
 ### Worker role mixing shared and role-specific permissions
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: ecs-worker-role

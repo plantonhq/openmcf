@@ -31,7 +31,7 @@ When you deploy a KubernetesNetworkPolicy resource, Planton provisions:
 Create a file `network-policy.yaml` — this is the namespace-wide default-deny baseline:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNetworkPolicy
 metadata:
   name: default-deny-all
@@ -103,7 +103,7 @@ Each entry in `from`/`to` is one of three forms:
 Only the `frontend` workload's pods may reach `backend-api` pods, and only on port 8080. All other inbound traffic to `backend-api` is denied:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNetworkPolicy
 metadata:
   name: backend-api-ingress
@@ -136,7 +136,7 @@ spec:
 Prometheus pods in the `monitoring` namespace — and only those — may scrape the metrics port. Note the single AND'd peer:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNetworkPolicy
 metadata:
   name: allow-prometheus-scrape
@@ -172,7 +172,7 @@ spec:
 Deny all egress from `worker` pods except DNS and one external service range. `policy_types: [egress]` is explicit — an egress-only policy must say so, or inference adds ingress:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNetworkPolicy
 metadata:
   name: worker-egress

@@ -29,7 +29,7 @@ The namespace ID is exported as a stack output so that other components (such as
 Create a file `kv-namespace.yaml`:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareKvNamespace
 metadata:
   name: my-kv
@@ -71,7 +71,7 @@ TTL or description settings (TTL is set per write). Seed entries with
 A minimal KV namespace suitable for development or testing:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareKvNamespace
 metadata:
   name: dev-cache
@@ -90,7 +90,7 @@ spec:
 A KV namespace intended for session data (TTL is applied per write by the Worker):
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareKvNamespace
 metadata:
   name: session-store
@@ -110,7 +110,7 @@ A KV namespace dedicated to feature flag storage, referenced by multiple Workers
 Seed individual flags with `CloudflareWorkersKvPair`:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareKvNamespace
 metadata:
   name: feature-flags

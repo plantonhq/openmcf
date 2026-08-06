@@ -1,0 +1,23 @@
+# The cloud pod-identity proof on the aws-eks profile: KEDA with the IRSA
+# arm annotating keda-operator, driving a REAL SQS-backed scale. The
+# behavioral verifier (switched on by this scenario's name) owns the whole
+# driver chain — a scale-target Deployment, a TriggerAuthentication using
+# the aws pod-identity provider, and an aws-sqs-queue ScaledObject against
+# the batch queue (all served by CRDs this component installs) — then
+# enqueues messages via the AWS CLI, asserts a real 0→N scale-up (the
+# operator read queue depth out of SQS with the assumed role, keyless), and
+# purges the queue so scale-down completes before destroy.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKeda
+metadata:
+  name: e2e-keda-aws-sqs
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+spec:
+  namespace:
+    value: keda
+  create_namespace: true
+  pod_identity:
+    aws_irsa:
+      enabled: true
+      role_arn: ${E2E_ENV:PLANTON_E2E_KEDA_IRSA_ROLE_ARN}

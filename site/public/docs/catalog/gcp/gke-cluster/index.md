@@ -32,7 +32,7 @@ When you deploy a GcpGkeCluster resource, Planton provisions:
 Create a file `cluster.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: dev-cluster
@@ -198,7 +198,7 @@ This creates a zonal cluster with GKE-managed pod/service ranges, Workload Ident
 ### Private Production Cluster (Standard)
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: prod-primary
@@ -246,7 +246,7 @@ spec:
 ### Autopilot Cluster
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: autopilot-primary
@@ -278,7 +278,7 @@ spec:
 ### CMEK + Hardened Control Plane
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: secure-cluster

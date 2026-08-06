@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpCloudComposerUserWorkloadsConfigMapSpec defines a Kubernetes
+// ConfigMap delivered into a Cloud Composer environment's workloads
+// namespace.
+//
+// User workloads ConfigMaps carry non-secret configuration for Airflow
+// DAGs and KubernetesPodOperator tasks — feature flags, endpoints,
+// tuning parameters — without baking values into DAG code. Composer
+// manages the underlying Kubernetes ConfigMap in the environment's GKE
+// cluster; workloads consume it by name. For credentials and other
+// secret material use GcpCloudComposerUserWorkloadsSecret instead.
+//
+// The ConfigMap's data updates in place; the name, environment, region,
+// and project are immutable after creation. Deleting this resource
+// deletes the Kubernetes ConfigMap from the environment.
+message GcpCloudComposerUserWorkloadsConfigMapSpec {
+  // GCP project of the Composer environment.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region of the Composer environment (e.g., "us-central1").
+  // Immutable after creation.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]+-[a-z]+[0-9]+$"
+  ];
+
+  // The Composer environment the ConfigMap is delivered into. Resolves
+  // to the environment's name. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef environment = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudComposerEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.environment_name"
+  ];
+
+  // Name of the Kubernetes ConfigMap. Must be lowercase letters,
+  // numbers, and hyphens; start with a letter; end with a letter or
+  // number. Immutable after creation.
+  string config_map_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+  ];
+
+  // The ConfigMap's key-value entries (plain configuration data).
+  map<string, string> data = 5 [(buf.validate.field).map.min_pairs = 1];
+}

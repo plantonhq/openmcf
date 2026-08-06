@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppRunnerService
+metadata:
+  name: apprunner-demo
+  org: test-org
+  env: dev
+  id: apprunner-demo-dev
+spec:
+  region: us-west-2
+  imageSource:
+    imageIdentifier: "public.ecr.aws/aws-containers/hello-app-runner:latest"
+    imageRepositoryType: "ECR_PUBLIC"
+  port: "8000"
+  cpu: "1024"
+  memory: "2048"
+  environmentVariables:
+    EXAMPLE: "true"
+  healthCheck:
+    protocol: "HTTP"
+    path: "/"
+    interval: 10
+    timeout: 5
+  customDomains:
+    - domainName: "app.example.com"
+      enableWwwSubdomain: false

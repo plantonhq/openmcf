@@ -1,9 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPriorityClass
-metadata:
-  name: preemptable-batch
-spec:
-  name: preemptable-batch
-  value: -100
-  description: Batch workloads; always preemptable, never preempts.
-  preemption_policy: never

@@ -31,7 +31,7 @@ Rules and inspection live on the `AzureFirewallPolicy`; the firewall is the enfo
 Create a file `firewall.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewall
 metadata:
   name: hub-egress-fw
@@ -102,7 +102,7 @@ After deployment, read `status.outputs.private_ip_address` — the address spoke
 The firewall in the hub, spokes default-routing through it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: spoke-routes

@@ -15,7 +15,7 @@
 # superuser, right after initdb) creates `openfga` under the same owner —
 # ownership gives both servers' schema migrations everything they need
 # with NO create-database grant.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-identity-db"

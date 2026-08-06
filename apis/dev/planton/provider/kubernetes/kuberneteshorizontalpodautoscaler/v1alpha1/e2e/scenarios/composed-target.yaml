@@ -1,0 +1,29 @@
+# The composition proof: a real KubernetesDeployment fixture deploys first
+# (the e2e-prerequisites annotation; the fixture is the Deployment kind's
+# minimal scenario, which creates its own namespace) and the scale target
+# resolves through a foreign-key reference to its exported deployment_name
+# output — the same wiring an infra chart uses to attach an autoscaler to a
+# workload. The autoscaler must live in the target's own namespace.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: e2e-hpa-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesDeployment"
+spec:
+  namespace:
+    value: e2e-dep-minimal-ns
+  name: e2e-hpa-composed
+  scale_target:
+    name:
+      valueFrom:
+        name: e2e-dep-minimal
+  min_replicas: 1
+  max_replicas: 4
+  metrics:
+    - type: resource
+      resource:
+        name: cpu
+        target:
+          type: utilization
+          average_utilization: 60

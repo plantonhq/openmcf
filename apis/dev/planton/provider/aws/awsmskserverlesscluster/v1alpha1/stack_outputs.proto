@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsmskserverlesscluster.v1alpha1;
+
+// AwsMskServerlessClusterStackOutputs captures observable identifiers and the
+// connection endpoint from a deployed MSK Serverless cluster. These outputs
+// enable downstream resources (Lambda event source mappings, ECS/EKS consumer
+// services) to connect to the cluster and integrate with IAM policies.
+message AwsMskServerlessClusterStackOutputs {
+  // cluster_arn is the Amazon Resource Name of the MSK Serverless cluster --
+  // also the resource identifier AWS uses for it. Referenced in IAM policies
+  // (kafka-cluster:* actions) and Lambda event source mappings.
+  string cluster_arn = 1;
+
+  // cluster_name is the human-readable name of the cluster.
+  string cluster_name = 2;
+
+  // cluster_uuid is the unique identifier extracted from the cluster ARN.
+  string cluster_uuid = 3;
+
+  // bootstrap_brokers_sasl_iam is the comma-separated SASL/IAM broker endpoint
+  // list (port 9098) -- the only connection string serverless MSK exposes.
+  string bootstrap_brokers_sasl_iam = 4;
+}

@@ -23,7 +23,7 @@ One table plus one GC-policy object per column family that declares one. Data (r
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableTable
 metadata:
   name: sensor-readings

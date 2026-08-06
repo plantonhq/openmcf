@@ -1,0 +1,11 @@
+# The baseline install: the operator alone, chart defaults, cluster-wide
+# watch — the shape most clusters run. No Barman Cloud plugin (backups are
+# opt-in), so the lane needs no cert-manager and proves the leanest path.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCloudNativePgOperator
+metadata:
+  name: e2e-cnpg-minimal
+spec:
+  namespace:
+    value: cnpg-system
+  create_namespace: true

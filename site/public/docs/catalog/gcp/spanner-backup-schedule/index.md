@@ -30,7 +30,7 @@ When you deploy a GcpSpannerBackupSchedule resource, Planton provisions:
 Create a file `backup-schedule.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerBackupSchedule
 metadata:
   name: orders-daily-backups
@@ -84,7 +84,7 @@ This backs the database up daily at 02:00 UTC, keeping each full backup for 31 d
 ### Incremental Backups on an Enterprise Instance
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerBackupSchedule
 metadata:
   name: orders-incremental-backups
@@ -107,7 +107,7 @@ spec:
 ### CMEK-Encrypted Weekly Archive
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerBackupSchedule
 metadata:
   name: orders-weekly-archive

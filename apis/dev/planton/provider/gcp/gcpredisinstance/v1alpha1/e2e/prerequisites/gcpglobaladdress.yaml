@@ -1,0 +1,30 @@
+# Consumer-scoped GcpGlobalAddress install profile for the Redis chain. The
+# address kind's published prerequisite reserves an EXTERNAL VIP; the service
+# networking connection the PSA scenario rides on needs an INTERNAL
+# VPC_PEERING range instead. The PSA scenario's reservedIpRange names this
+# range via the same ${E2E_RUN_ID} token.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGlobalAddress
+metadata:
+  name: planton-oss-e2e-gcpgip-psa-prereq
+  id: planton-oss-e2e-gcpgip-psa-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpredisinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral VPC_PEERING range for the Redis E2E chain; safe to delete
+  addressName: planton-oss-e2e-redis-gcpgip-${E2E_RUN_ID}
+  addressType: INTERNAL
+  purpose: VPC_PEERING
+  prefixLength: 16
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpc-prereq
+      fieldPath: status.outputs.network_self_link

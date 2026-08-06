@@ -27,7 +27,7 @@ When you deploy an AzureCosmosdbAccount resource, Planton provisions:
 Create a file `cosmos-account.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbAccount
 metadata:
   name: app-cosmos

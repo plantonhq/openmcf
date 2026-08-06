@@ -29,7 +29,7 @@ When you deploy an Auth0Client resource, Planton provisions:
 Create a file `auth0-client.yaml`:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
   name: my-app
@@ -166,7 +166,7 @@ This creates a Single Page Application in Auth0 with default OAuth settings and 
 A Single Page Application with development and production callback URLs:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
   name: my-spa
@@ -199,7 +199,7 @@ spec:
 A backend service client authorized to call a custom API and the Auth0 Management API:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
   name: backend-service
@@ -229,7 +229,7 @@ spec:
 A server-side web application with JWT configuration, rotating refresh tokens, and organization support:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
   name: web-portal
@@ -267,7 +267,7 @@ spec:
 Reference other Planton-managed Auth0 resources instead of hardcoding identifiers:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
   name: ref-client

@@ -32,7 +32,7 @@ When you deploy an AwsStepFunction resource, Planton provisions:
 Create a file `step-function.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: my-step-function
@@ -91,7 +91,7 @@ This creates a STANDARD state machine with a single Pass state that returns a st
 A workflow that invokes a Lambda function and handles success or failure:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: order-processor
@@ -128,7 +128,7 @@ spec:
 A high-throughput EXPRESS state machine for processing events with logging enabled:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: event-ingest
@@ -171,7 +171,7 @@ spec:
 Production configuration with customer-managed KMS encryption, X-Ray tracing, and verbose logging:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: payment-workflow
@@ -213,7 +213,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding ARNs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: ref-step-function

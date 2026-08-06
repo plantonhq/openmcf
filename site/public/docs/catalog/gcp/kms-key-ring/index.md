@@ -28,7 +28,7 @@ The key ring API has no labels surface, so no attribution labels are stamped —
 Create a file `key-ring.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-encryption

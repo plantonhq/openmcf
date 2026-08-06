@@ -1,0 +1,33 @@
+# The AND'd peer form: pods matching the expression IN namespaces matching
+# the selector (one peer = one AND), plus named- and numeric-port allows —
+# the "let Prometheus scrape my app" pattern.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: e2e-np-monitoring
+spec:
+  namespace:
+    value: default
+  name: e2e-np-monitoring
+  pod_selector:
+    match_labels:
+      app: test-app
+  policy_types:
+    - ingress
+  ingress_rules:
+    - from:
+        - namespace_selector:
+            match_labels:
+              kubernetes.io/metadata.name: monitoring
+          pod_selector:
+            match_expressions:
+              - key: app
+                operator: In
+                values:
+                  - prometheus
+                  - grafana
+      ports:
+        - protocol: TCP
+          port: "8080"
+        - protocol: TCP
+          port: metrics

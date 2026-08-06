@@ -16,23 +16,23 @@ func writeManifest(t *testing.T, repoRoot, relPath string) string {
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatalf("mkdir for %s: %v", relPath, err)
 	}
-	if err := os.WriteFile(full, []byte("apiVersion: kubernetes.planton.dev/v1\nkind: Placeholder\n"), 0o600); err != nil {
+	if err := os.WriteFile(full, []byte("apiVersion: kubernetes.planton.dev/v1alpha1\nkind: Placeholder\n"), 0o600); err != nil {
 		t.Fatalf("write %s: %v", relPath, err)
 	}
 	return full
 }
 
 const (
-	gwCrdsPrereqRel  = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/e2e/prerequisite.yaml"
-	gwCrdsMinimalRel = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/e2e/scenarios/minimal.yaml"
+	gwCrdsPrereqRel  = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1alpha1/e2e/prerequisite.yaml"
+	gwCrdsMinimalRel = "apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1alpha1/e2e/scenarios/minimal.yaml"
 )
 
 func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
 	repoRoot := t.TempDir()
 	consumerPrereq := writeManifest(t, repoRoot,
-		"apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1/e2e/prerequisites/gcpglobaladdress.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpglobaladdress/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpcnetwork/v1/e2e/prerequisite.yaml")
+		"apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1alpha1/e2e/prerequisites/gcpglobaladdress.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpglobaladdress/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/gcp/gcpvpcnetwork/v1alpha1/e2e/prerequisite.yaml")
 
 	deps, err := ResolveDependencies(repoRoot, "gcp", "gcpservicenetworkingconnection", "")
 	if err != nil {
@@ -147,9 +147,9 @@ func TestSplitManifestDocuments_MultiDocumentSplits(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "prerequisite.yaml")
 	content := "---\n" + // leading separator produces an empty doc that must be skipped
-		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-a\n" +
+		"apiVersion: aws.planton.dev/v1alpha1\nkind: AwsSubnet\nmetadata:\n  name: subnet-a\n" +
 		"---\n" +
-		"apiVersion: aws.planton.dev/v1\nkind: AwsSubnet\nmetadata:\n  name: subnet-b\n"
+		"apiVersion: aws.planton.dev/v1alpha1\nkind: AwsSubnet\nmetadata:\n  name: subnet-b\n"
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("write profile: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestTeardownDependencies_AllCleanReturnsNil(t *testing.T) {
 // manifest carrying the given annotations block (pass "" for none).
 func writeScenarioManifest(t *testing.T, dir, annotationsYaml string) string {
 	t.Helper()
-	content := "apiVersion: aws.planton.dev/v1\n" +
+	content := "apiVersion: aws.planton.dev/v1alpha1\n" +
 		"kind: AwsEcsCluster\n" +
 		"metadata:\n" +
 		"  name: scenario-under-test\n" +
@@ -280,10 +280,10 @@ func writeScenarioManifest(t *testing.T, dir, annotationsYaml string) string {
 // the component kind carrying a false registry prerequisite.
 func TestResolveDependencies_ScenarioDeclaredPrerequisites(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awslaunchtemplate/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsautoscalinggroup/v1/e2e/scenarios/minimal.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awslaunchtemplate/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsautoscalinggroup/v1alpha1/e2e/scenarios/minimal.yaml")
 
 	scenario := writeScenarioManifest(t, t.TempDir(),
 		"  annotations:\n"+
@@ -357,10 +357,10 @@ func TestResolveDependencies_SelfAnnotationErrors(t *testing.T) {
 // deploy once -- the closure dedupes across the two sources.
 func TestResolveDependencies_AnnotationMergesWithRegistry(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1alpha1/e2e/prerequisite.yaml")
 
 	// NAT gateway's registry graph already includes AwsSubnet; the annotation
 	// naming it again must not produce a duplicate deployment.
@@ -392,15 +392,15 @@ func TestResolveDependencies_AnnotationMergesWithRegistry(t *testing.T) {
 // ahead of the function, with the scenario-declared SQS queue after.
 func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsiamrole/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3bucket/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3objectset/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssqsqueue/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsiamrole/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3bucket/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awss3objectset/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssqsqueue/v1alpha1/e2e/prerequisite.yaml")
 
 	// The Lambda install manifest is a REAL loadable manifest carrying the
 	// annotation -- placeholder manifests are unparseable and contribute no
 	// edges by design.
-	lambdaManifest := "apiVersion: aws.planton.dev/v1\n" +
+	lambdaManifest := "apiVersion: aws.planton.dev/v1alpha1\n" +
 		"kind: AwsLambda\n" +
 		"metadata:\n" +
 		"  name: lambda-fixture\n" +
@@ -408,7 +408,7 @@ func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
 		"    planton.dev/e2e-prerequisites: \"AwsS3ObjectSet\"\n" +
 		"spec:\n" +
 		"  region: us-west-2\n"
-	lambdaPath := filepath.Join(repoRoot, "apis/dev/planton/provider/aws/awslambda/v1/e2e/scenarios/minimal.yaml")
+	lambdaPath := filepath.Join(repoRoot, "apis/dev/planton/provider/aws/awslambda/v1alpha1/e2e/scenarios/minimal.yaml")
 	if err := os.MkdirAll(filepath.Dir(lambdaPath), 0o755); err != nil {
 		t.Fatalf("mkdir lambda scenario dir: %v", err)
 	}
@@ -416,7 +416,7 @@ func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
 		t.Fatalf("write lambda install manifest: %v", err)
 	}
 
-	scenario := "apiVersion: aws.planton.dev/v1\n" +
+	scenario := "apiVersion: aws.planton.dev/v1alpha1\n" +
 		"kind: AwsLambdaEventSourceMapping\n" +
 		"metadata:\n" +
 		"  name: esm-under-test\n" +
@@ -458,10 +458,10 @@ func TestResolveDependencies_InstallManifestPrerequisites(t *testing.T) {
 // attached before the public NAT that requires it).
 func TestResolveDependencies_TransitiveDeployOrder(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1/e2e/scenarios/minimal.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/scenarios/minimal.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awselasticip/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/aws/awsinternetgateway/v1alpha1/e2e/prerequisite.yaml")
 
 	deps, err := ResolveDependencies(repoRoot, "aws", "awsnatgateway", "")
 	if err != nil {
@@ -488,7 +488,7 @@ func TestResolveDependencies_TransitiveDeployOrder(t *testing.T) {
 // under a fake repo root and returns its absolute path.
 func writeAzureScenario(t *testing.T, repoRoot, relPath, kind, prereqs string) string {
 	t.Helper()
-	content := "apiVersion: azure.planton.dev/v1\nkind: " + kind + "\nmetadata:\n  name: scenario-under-test\n"
+	content := "apiVersion: azure.planton.dev/v1alpha1\nkind: " + kind + "\nmetadata:\n  name: scenario-under-test\n"
 	if prereqs != "" {
 		content += "  annotations:\n    planton.dev/e2e-prerequisites: \"" + prereqs + "\"\n"
 	}
@@ -509,10 +509,10 @@ func writeAzureScenario(t *testing.T, repoRoot, relPath, kind, prereqs string) s
 // network) without polluting any kind's install profile.
 func TestResolveDependencies_PathEntryExtraInstance(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azurevirtualnetwork/v1/e2e/prerequisite.yaml")
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureprivatednszone/v1/e2e/prerequisite.yaml")
-	remoteRel := "apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1/e2e/fixtures/remote-network.yaml"
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azurevirtualnetwork/v1alpha1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureprivatednszone/v1alpha1/e2e/prerequisite.yaml")
+	remoteRel := "apis/dev/planton/provider/azure/azurevirtualnetworkpeering/v1alpha1/e2e/fixtures/remote-network.yaml"
 	remoteAbs := writeAzureScenario(t, repoRoot, remoteRel, "AzureVirtualNetwork", "")
 	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzurePrivateDnsZoneVirtualNetworkLink", remoteRel)
 
@@ -537,7 +537,7 @@ func TestResolveDependencies_PathEntryExtraInstance(t *testing.T) {
 // instead of deploying a partial fixture chain.
 func TestResolveDependencies_PathEntryMissingFileErrors(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1alpha1/e2e/prerequisite.yaml")
 	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzureRouteTable", "apis/does/not/exist.yaml")
 
 	if _, err := ResolveDependencies(repoRoot, "azure", "azureroutetable", scenario); err == nil {
@@ -549,10 +549,10 @@ func TestResolveDependencies_PathEntryMissingFileErrors(t *testing.T) {
 // install-manifest edges must be kind names so the graph can dedup them.
 func TestResolveDependencies_InstallManifestPathEntryErrors(t *testing.T) {
 	repoRoot := t.TempDir()
-	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "apis/dev/planton/provider/azure/azureresourcegroup/v1alpha1/e2e/prerequisite.yaml")
 	// The virtual network's install profile illegally declares a path entry.
 	writeAzureScenario(t, repoRoot,
-		"apis/dev/planton/provider/azure/azurevirtualnetwork/v1/e2e/prerequisite.yaml",
+		"apis/dev/planton/provider/azure/azurevirtualnetwork/v1alpha1/e2e/prerequisite.yaml",
 		"AzureVirtualNetwork", "apis/some/fixture.yaml")
 	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "AzureSubnet", "")
 

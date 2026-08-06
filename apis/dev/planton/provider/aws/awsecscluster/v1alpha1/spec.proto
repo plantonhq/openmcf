@@ -1,0 +1,367 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsecscluster.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEcsClusterSpec defines an ECS cluster: the logical boundary that
+// groups services and tasks, decides where their containers run (Fargate,
+// EC2 capacity providers, or a blend), and carries cluster-wide posture --
+// Container Insights observability, ECS Exec auditing, Fargate storage
+// encryption, and the Service Connect default namespace.
+//
+// Capacity is a spectrum. A serverless cluster associates the AWS-managed
+// FARGATE / FARGATE_SPOT providers and never thinks about instances. An
+// EC2-backed cluster defines ec2_capacity_providers -- each wrapping a
+// referenced AwsAutoScalingGroup whose fleet ECS scales up and down through
+// managed scaling -- and services blend across all of it by provider name
+// in their capacity_provider_strategy. The cluster itself is free; only
+// the tasks and instances it schedules cost money.
+message AwsEcsClusterSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // --- Observability ---
+
+  // CloudWatch Container Insights for the cluster:
+  // "enabled" -- metrics and logs at the cluster/service/task level.
+  // "enhanced" -- adds container-level observability with automatic
+  //   dashboards (recommended for production; higher CloudWatch cost).
+  // "disabled" -- no Insights telemetry.
+  // Unset keeps the account's default setting. Updatable in place.
+  string container_insights = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "enabled",
+        "enhanced",
+        "disabled"
+      ]
+    }
+  ];
+
+  // --- Capacity ---
+
+  // The AWS-managed serverless capacity providers to associate:
+  // "FARGATE" and/or "FARGATE_SPOT". These are built into every account
+  // -- associating them here is what lets services in this cluster name
+  // them in a capacity_provider_strategy. EC2 capacity is defined
+  // separately in ec2_capacity_providers; both sets associate onto the
+  // cluster together.
+  repeated string capacity_providers = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "FARGATE",
+          "FARGATE_SPOT"
+        ]
+      }
+    }
+  }];
+
+  // EC2 capacity providers, each wrapping a referenced auto-scaling
+  // group. ECS's managed scaling drives the group's desired count from
+  // task demand -- you size the ASG's bounds, ECS turns instances on and
+  // off. Each entry materializes as its own capacity provider resource
+  // (keyed by name, so adding or removing one never disturbs the others)
+  // and is automatically associated with the cluster alongside the
+  // Fargate built-ins. Services reference entries by name in their
+  // capacity_provider_strategy.
+  repeated AwsEcsClusterEc2CapacityProvider ec2_capacity_providers = 4;
+
+  // The cluster's default capacity provider strategy -- what ECS uses
+  // when a service or run-task does not declare its own strategy. Name
+  // any associated provider: the Fargate built-ins or an
+  // ec2_capacity_providers entry. Example: FARGATE base 1 / weight 1 +
+  // FARGATE_SPOT weight 4 keeps one guaranteed On-Demand task and runs
+  // ~80% of scaled capacity on Spot.
+  repeated AwsEcsClusterCapacityProviderStrategy default_capacity_provider_strategy = 5;
+
+  // --- Cluster-wide posture ---
+
+  // ECS Exec auditing for the cluster: where interactive exec sessions
+  // (`aws ecs execute-command`) are logged and how session traffic is
+  // encrypted. Without this block, exec sessions still work when a
+  // service enables them -- they are simply not centrally audited.
+  AwsEcsClusterExecuteCommandConfiguration execute_command_configuration = 6;
+
+  // Customer-managed KMS encryption for Fargate ephemeral task storage
+  // and managed storage -- the compliance posture for regulated
+  // workloads. Unset uses AWS-owned keys (data is still encrypted).
+  AwsEcsClusterManagedStorageConfiguration managed_storage_configuration = 7;
+
+  // The AWS Cloud Map namespace (by ARN) that Service Connect uses by
+  // default for services in this cluster. Services can override it;
+  // setting it here is what lets a whole environment share one service
+  // mesh namespace without per-service wiring.
+  string service_connect_namespace_arn = 8;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // Strategy entries must name providers this cluster actually
+  // associates -- AWS rejects unknown names at PutClusterCapacityProviders
+  // with an opaque error; failing at validate names the entry instead.
+  option (buf.validate.message).cel = {
+    id: "default_strategy_names_associated_providers"
+    message: "every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry"
+    expression: "this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider))"
+  };
+
+  // AWS allows at most one strategy entry to carry a non-zero base.
+  option (buf.validate.message).cel = {
+    id: "default_strategy_single_base"
+    message: "only one default_capacity_provider_strategy entry may set a non-zero base"
+    expression: "this.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1"
+  };
+
+  // Capacity provider names must be unique across the folded entries.
+  option (buf.validate.message).cel = {
+    id: "ec2_capacity_provider_names_unique"
+    message: "ec2_capacity_providers entries must have unique names"
+    expression: "this.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)"
+  };
+}
+
+// AwsEcsClusterEc2CapacityProvider wraps one auto-scaling group as ECS
+// capacity. The provider itself is create-time bound to its group
+// (changing auto_scaling_group_arn or name replaces the provider); the
+// managed scaling and draining knobs update in place.
+message AwsEcsClusterEc2CapacityProvider {
+  // The capacity provider name -- what services put in their
+  // capacity_provider_strategy. 1-255 characters: letters, digits,
+  // hyphens, underscores; must not start with "aws", "ecs", or "fargate"
+  // (AWS reserves those prefixes).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9_-]{1,255}$"
+  ];
+
+  // The auto-scaling group that provides the instances. Reference an
+  // AwsAutoScalingGroup's autoscaling_group_arn output or pass a literal
+  // ARN. The group's launch template decides the instance shape (use an
+  // ECS-optimized AMI whose agent joins this cluster via user data);
+  // ECS's managed scaling then drives the group's desired capacity
+  // between the group's own min/max bounds. ForceNew: changing the group
+  // replaces the provider.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef auto_scaling_group_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsAutoScalingGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.autoscaling_group_arn"
+  ];
+
+  // ECS-managed scaling of the auto-scaling group. Leave unset to keep
+  // AWS's defaults (managed scaling enabled, target capacity 100); set
+  // it to tune headroom and scaling step bounds.
+  AwsEcsClusterManagedScaling managed_scaling = 3;
+
+  // Protect instances running non-daemon tasks from scale-in
+  // termination: "ENABLED" or "DISABLED". Enabling it requires the
+  // auto-scaling group itself to enable new-instance scale-in protection
+  // (protect_from_scale_in on the group) -- AWS rejects the provider
+  // otherwise. The safe default for task-dense clusters.
+  string managed_termination_protection = 4;
+
+  // Gracefully drain tasks off instances the group is terminating:
+  // "ENABLED" (AWS default) or "DISABLED". Draining is what makes
+  // scale-in and instance refresh invisible to services.
+  string managed_draining = 5;
+
+  option (buf.validate.message).cel = {
+    id: "name_not_reserved"
+    message: "capacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)"
+    expression: "!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "managed_termination_protection_valid"
+    message: "managed_termination_protection must be 'ENABLED' or 'DISABLED' when set"
+    expression: "this.managed_termination_protection == '' || this.managed_termination_protection in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "managed_draining_valid"
+    message: "managed_draining must be 'ENABLED' or 'DISABLED' when set"
+    expression: "this.managed_draining == '' || this.managed_draining in ['ENABLED', 'DISABLED']"
+  };
+}
+
+// AwsEcsClusterManagedScaling tunes how ECS drives the auto-scaling
+// group's desired capacity from task demand. Unset fields keep AWS's
+// computed defaults.
+message AwsEcsClusterManagedScaling {
+  // Managed scaling on or off: "ENABLED" (AWS default -- ECS sizes the
+  // group) or "DISABLED" (you size the group yourself; ECS only places
+  // tasks on what exists).
+  string status = 1;
+
+  // Utilization target for the group, 1-100 percent. 100 (AWS default)
+  // runs instances fully packed; a lower value (e.g. 80) keeps headroom
+  // so new tasks place without waiting for an instance launch.
+  int32 target_capacity = 2;
+
+  // Smallest scale-out step, 1-10000 instances. AWS default: 1.
+  int32 minimum_scaling_step_size = 3;
+
+  // Largest scale-out step, 1-10000 instances. AWS default: 10000.
+  int32 maximum_scaling_step_size = 4;
+
+  // Seconds a newly launched instance warms up before counting toward
+  // capacity metrics, 0-10000. AWS default: 300.
+  int32 instance_warmup_period_seconds = 5;
+
+  option (buf.validate.message).cel = {
+    id: "status_valid"
+    message: "status must be 'ENABLED' or 'DISABLED' when set"
+    expression: "this.status == '' || this.status in ['ENABLED', 'DISABLED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "target_capacity_range"
+    message: "target_capacity must be between 1 and 100 when set"
+    expression: "this.target_capacity == 0 || (this.target_capacity >= 1 && this.target_capacity <= 100)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "min_step_range"
+    message: "minimum_scaling_step_size must be between 1 and 10000 when set"
+    expression: "this.minimum_scaling_step_size == 0 || (this.minimum_scaling_step_size >= 1 && this.minimum_scaling_step_size <= 10000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_step_range"
+    message: "maximum_scaling_step_size must be between 1 and 10000 when set"
+    expression: "this.maximum_scaling_step_size == 0 || (this.maximum_scaling_step_size >= 1 && this.maximum_scaling_step_size <= 10000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "warmup_range"
+    message: "instance_warmup_period_seconds must be between 0 and 10000"
+    expression: "this.instance_warmup_period_seconds >= 0 && this.instance_warmup_period_seconds <= 10000"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "step_sizes_ordered"
+    message: "maximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set"
+    expression: "this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size"
+  };
+}
+
+// AwsEcsClusterCapacityProviderStrategy is one entry of the cluster's
+// default strategy: a provider name with the base/weight distribution ECS
+// applies to tasks that do not choose their own strategy.
+message AwsEcsClusterCapacityProviderStrategy {
+  // The capacity provider: "FARGATE", "FARGATE_SPOT", or the name of an
+  // ec2_capacity_providers entry.
+  string capacity_provider = 1 [(buf.validate.field).required = true];
+
+  // Minimum number of tasks guaranteed on this provider before weights
+  // apply. Only one entry of the strategy may set a non-zero base.
+  int32 base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100000
+  }];
+
+  // Relative share of tasks beyond the bases. Example: FARGATE weight 1 +
+  // FARGATE_SPOT weight 4 runs ~80% of scaled tasks on Spot.
+  int32 weight = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// AwsEcsClusterExecuteCommandConfiguration audits ECS Exec sessions
+// cluster-wide: where session logs go and how session traffic is
+// encrypted.
+message AwsEcsClusterExecuteCommandConfiguration {
+  // Log destination behavior for exec sessions:
+  // "DEFAULT" (AWS default) -- sessions log to the task's own awslogs
+  //   configuration.
+  // "OVERRIDE" -- sessions log to the destinations in log_configuration.
+  // "NONE" -- exec works but sessions are not logged (avoid outside
+  //   sandboxes; unaudited interactive access defeats compliance).
+  string logging = 1;
+
+  // Custom destinations for exec session logs. Only used (and required)
+  // when logging is "OVERRIDE".
+  AwsEcsClusterExecuteCommandLogConfiguration log_configuration = 2;
+
+  // A KMS key to encrypt the exec session traffic between client and
+  // container. Reference an AwsKmsKey's key_arn output or pass a literal
+  // key ARN/ID. Unset uses TLS without customer-managed encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "logging_valid"
+    message: "logging must be 'DEFAULT', 'OVERRIDE', or 'NONE' when set"
+    expression: "this.logging == '' || this.logging in ['DEFAULT', 'OVERRIDE', 'NONE']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "override_requires_log_configuration"
+    message: "logging 'OVERRIDE' requires log_configuration with at least one destination"
+    expression: "this.logging != 'OVERRIDE' || has(this.log_configuration)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "log_configuration_requires_override"
+    message: "log_configuration only applies when logging is 'OVERRIDE'"
+    expression: "!has(this.log_configuration) || this.logging == 'OVERRIDE'"
+  };
+}
+
+// AwsEcsClusterExecuteCommandLogConfiguration names the destinations for
+// exec session audit logs -- a CloudWatch log group, an S3 bucket, or
+// both.
+message AwsEcsClusterExecuteCommandLogConfiguration {
+  // The CloudWatch log group session logs are sent to. The group must
+  // already exist -- ECS does not create it.
+  string cloud_watch_log_group_name = 1;
+
+  // Require the CloudWatch log group to be KMS-encrypted; the send fails
+  // if it is not. Pair with an encrypted log group for compliance
+  // postures.
+  bool cloud_watch_encryption_enabled = 2;
+
+  // The S3 bucket session logs are written to.
+  string s3_bucket_name = 3;
+
+  // Key prefix for session log objects within the bucket.
+  string s3_key_prefix = 4;
+
+  // Require the S3 bucket to be encrypted; the write fails if it is not.
+  bool s3_bucket_encryption_enabled = 5;
+
+  option (buf.validate.message).cel = {
+    id: "at_least_one_destination"
+    message: "provide cloud_watch_log_group_name and/or s3_bucket_name"
+    expression: "this.cloud_watch_log_group_name != '' || this.s3_bucket_name != ''"
+  };
+}
+
+// AwsEcsClusterManagedStorageConfiguration applies customer-managed KMS
+// keys to the storage ECS manages for tasks in this cluster.
+message AwsEcsClusterManagedStorageConfiguration {
+  // The KMS key encrypting Fargate ephemeral task storage. Reference an
+  // AwsKmsKey's key_arn output or pass a literal key ARN. The key policy
+  // must grant the Fargate service principal decrypt/generate rights --
+  // AWS rejects the cluster configuration otherwise.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef fargate_ephemeral_storage_kms_key_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The KMS key for other ECS-managed storage. Reference an AwsKmsKey's
+  // key_arn output or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}

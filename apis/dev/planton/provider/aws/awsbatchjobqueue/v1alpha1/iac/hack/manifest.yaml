@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBatchJobQueue
+metadata:
+  name: test-batch-queue
+  id: test-batch-queue
+  org: test-org
+  env: dev
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: test
+    pulumi.planton.dev/project: test
+    pulumi.planton.dev/stack.name: dev.AwsBatchJobQueue.test-batch-queue
+spec:
+  region: us-west-2
+  priority: 10
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment:
+        value: arn:aws:batch:us-west-2:123456789012:compute-environment/test-batch
+  jobStateTimeLimitActions:
+    - action: CANCEL
+      maxTimeSeconds: 3600
+      reason: MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT
+      state: RUNNABLE

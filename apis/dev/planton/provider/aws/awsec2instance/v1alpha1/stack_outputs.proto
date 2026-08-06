@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsec2instance.v1alpha1;
+
+// AwsEc2InstanceStackOutputs captures the observable outputs of a
+// provisioned EC2 instance -- the identifiers and addresses downstream
+// resources and operators reference.
+message AwsEc2InstanceStackOutputs {
+  // The instance ID (e.g. "i-0123456789abcdef0"). The primary handle:
+  // what load-balancer target groups register (an AwsLbTargetGroup
+  // instance target references this output), what the CLI and APIs
+  // address.
+  string instance_id = 1;
+
+  // The ARN of the instance, for IAM policies and EventBridge rules
+  // scoped to this instance.
+  string arn = 2;
+
+  // The instance lifecycle state as of the last deploy ("running",
+  // "stopped", ...).
+  string instance_state = 3;
+
+  // The availability zone the instance runs in (e.g. "us-west-2a").
+  string availability_zone = 4;
+
+  // The primary private IPv4 address.
+  string private_ip = 5;
+
+  // The private DNS hostname within the VPC (e.g.
+  // "ip-10-0-1-5.us-west-2.compute.internal").
+  string private_dns = 6;
+
+  // The public IPv4 address, when one is associated. Empty for
+  // private-only instances. Note this address changes across
+  // stop/start cycles -- compose an AwsElasticIp for a stable public
+  // address.
+  string public_ip = 7;
+
+  // The public DNS hostname, when a public address is associated. Empty
+  // for private-only instances.
+  string public_dns = 8;
+
+  // The ID of the primary network interface (eth0) -- the attachment
+  // point for Elastic IP associations and flow-log scoping.
+  string primary_network_interface_id = 9;
+}

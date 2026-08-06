@@ -8,7 +8,7 @@
 # credentials from the operator-maintained `<name>-app` Secret — both
 # flow into the Argo Workflows resource BY REFERENCE, so the wiring can
 # never drift.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-gitops-db"

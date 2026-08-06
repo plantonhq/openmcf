@@ -1,0 +1,68 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGkeCluster
+metadata:
+  name: test-gke-cluster
+spec:
+  projectId:
+    value: test-project-123
+  location: us-central1
+  description: hack manifest exercising the broad cluster surface offline
+  network:
+    value: projects/test-project-123/global/networks/test-vpc
+  subnetwork:
+    value: projects/test-project-123/regions/us-central1/subnetworks/test-subnet
+  nodeLocations:
+    - us-central1-a
+    - us-central1-b
+  deletionProtection: false
+  ipAllocation:
+    clusterSecondaryRangeName:
+      value: pods-range
+    servicesSecondaryRangeName:
+      value: services-range
+  datapathProvider: ADVANCED_DATAPATH
+  privateCluster:
+    enablePrivateNodes: true
+    masterIpv4CidrBlock: "172.16.0.16/28"
+    enableMasterGlobalAccess: true
+  masterAuthorizedNetworks:
+    cidrBlocks:
+      - cidrBlock: 203.0.113.0/24
+        displayName: office
+  releaseChannel: REGULAR
+  maintenancePolicy:
+    dailyWindow:
+      startTime: "03:00"
+  clusterAutoscaling:
+    enabled: true
+    resourceLimits:
+      - resourceType: cpu
+        minimum: 4
+        maximum: 64
+      - resourceType: memory
+        minimum: 16
+        maximum: 256
+    autoProvisioningDefaults:
+      diskType: pd-balanced
+  enableVerticalPodAutoscaling: true
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName:
+      value: projects/test-project-123/locations/us-central1/keyRings/test-ring/cryptoKeys/etcd-key
+  securityPosture:
+    mode: BASIC
+    vulnerabilityMode: VULNERABILITY_BASIC
+  logging:
+    components:
+      - SYSTEM_COMPONENTS
+      - WORKLOADS
+  monitoring:
+    components:
+      - SYSTEM_COMPONENTS
+    managedPrometheusEnabled: true
+  enableCostManagement: true
+  addons:
+    gcsFuseCsiDriverEnabled: true
+    gkeBackupAgentEnabled: true
+  resourceLabels:
+    team: platform

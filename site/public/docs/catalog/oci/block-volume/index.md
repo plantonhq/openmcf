@@ -30,7 +30,7 @@ When you deploy an OciBlockVolume resource, Planton provisions:
 Create a file `block-volume.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBlockVolume
 metadata:
   name: my-volume
@@ -99,7 +99,7 @@ This creates a 50 GB block volume with Balanced performance (10 VPUs/GB) and Ora
 A 50 GB volume with default Balanced performance — suitable for development or low-IOPS workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBlockVolume
 metadata:
   name: dev-data
@@ -120,7 +120,7 @@ spec:
 A 500 GB volume with Higher Performance tier and KMS encryption for a database workload:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBlockVolume
 metadata:
   name: db-data
@@ -145,7 +145,7 @@ spec:
 A volume with detached-volume autotune (reduces cost when not attached) and a Gold backup policy for daily backups with cross-region copy:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBlockVolume
 metadata:
   name: app-storage
@@ -173,7 +173,7 @@ spec:
 A production volume with performance-based autotune and a cross-region replica for disaster recovery:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBlockVolume
 metadata:
   name: critical-data

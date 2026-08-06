@@ -1,0 +1,27 @@
+# GcpDnsRecord scenario: static A record in a chained public zone.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDnsRecord
+metadata:
+  name: planton-oss-e2e-drec-a
+  id: planton-oss-e2e-drec-a
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpdnsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  managedZone:
+    valueFrom:
+      kind: GcpDnsZone
+      name: planton-oss-e2e-zone-drec-prereq
+      fieldPath: status.outputs.zone_name
+  type: A
+  name:
+    value: app.e2e-${E2E_RUN_ID}.example.com.
+  values:
+    - value: "203.0.113.10"
+  ttlSeconds: 300

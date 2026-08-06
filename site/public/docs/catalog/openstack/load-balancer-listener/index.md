@@ -27,21 +27,21 @@ When you deploy an OpenStackLoadBalancerListener resource, Planton provisions:
 Create a file `listener.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: http-listener
   annotations:
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.app-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.admin-api-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.https-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
@@ -87,7 +87,7 @@ This creates an Octavia listener on the specified load balancer, accepting HTTP 
 A minimal listener accepting HTTP traffic on port 80:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: http-listener
@@ -110,7 +110,7 @@ spec:
 A listener that terminates TLS at the load balancer using a Barbican certificate. Backends receive decrypted HTTP traffic with forwarded headers indicating the original protocol:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: https-listener
@@ -136,7 +136,7 @@ spec:
 A listener limited to specific CIDR ranges and a maximum number of concurrent connections, suitable for internal admin panels or APIs that should not be publicly accessible:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: admin-api-listener
@@ -161,7 +161,7 @@ spec:
 Reference an Planton-managed load balancer instead of hardcoding the UUID:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerListener
 metadata:
   name: app-listener

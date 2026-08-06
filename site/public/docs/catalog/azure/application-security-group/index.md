@@ -29,7 +29,7 @@ The group holds no members. Membership is declared from the member side: `AzureN
 Create a file `application-security-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: web-tier
@@ -76,7 +76,7 @@ After deployment, read `status.outputs.application_security_group_id` for the AR
 Group workloads by role so security rules express intent, not addresses:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: app-tier
@@ -96,7 +96,7 @@ spec:
 Join a network interface to the group:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: app-vm-nic

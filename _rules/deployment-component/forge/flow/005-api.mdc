@@ -19,7 +19,7 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/api_reader.py`
 - Writer+Build: `_rules/deployment-component/_scripts/api_write_and_build.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/api.proto`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/api.proto`
   and `aws/awsalb/v1/api.proto` -- canonical metadata/spec/status envelope wiring.
 
 SEQUENTIAL STEPS

@@ -26,7 +26,7 @@ When you deploy an AzureFrontDoorFirewallPolicy resource, Planton provisions:
 Create a file `waf-policy.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorFirewallPolicy
 metadata:
   name: edge-waf

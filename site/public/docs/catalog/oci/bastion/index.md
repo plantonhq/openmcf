@@ -27,7 +27,7 @@ When you deploy an OciBastion resource, Planton provisions:
 Create a file `bastion.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBastion
 metadata:
   name: my-bastion
@@ -76,7 +76,7 @@ This creates a bastion with a private endpoint in the target subnet, no CIDR res
 A bastion with default settings — no CIDR restrictions, 3-hour maximum session TTL:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBastion
 metadata:
   name: dev-bastion
@@ -97,7 +97,7 @@ spec:
 A bastion that only allows connections from a corporate network, with an 8-hour maximum session TTL:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBastion
 metadata:
   name: corp-bastion
@@ -129,7 +129,7 @@ spec:
 A bastion with DNS proxy support for FQDN-based target resolution and SOCKS5 dynamic port forwarding:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciBastion
 metadata:
   name: dns-bastion

@@ -29,7 +29,7 @@ What lives inside the vault is deliberately composed, never bundled: encryption 
 Create a file `key-vault.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVault
 metadata:
   name: platform-vault
@@ -84,7 +84,7 @@ After deployment, read `status.outputs.key_vault_id` for downstream wiring and `
 ### Production Vault with Purge Protection and Network Rules
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVault
 metadata:
   name: prod-vault
@@ -116,7 +116,7 @@ spec:
 For orgs that have not yet moved to RBAC:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVault
 metadata:
   name: legacy-vault
@@ -144,7 +144,7 @@ spec:
 Grants are ordinary role assignments scoped at the vault:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: app-reads-secrets

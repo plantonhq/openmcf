@@ -1,0 +1,37 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLaunchTemplate
+metadata:
+  name: web-demo
+spec:
+  region: us-west-2
+  description: hardened web fleet blueprint
+  imageId: ami-0123456789abcdef0
+  instanceType: t3.small
+  instanceProfile:
+    value: arn:aws:iam::123456789012:instance-profile/web
+  securityGroupIds:
+    - value: sg-0123456789abcdef0
+  # The hardened-fleet shape: IMDSv2 enforced, encrypted gp3 root volume,
+  # detailed monitoring, and a user-data bootstrap. Exercises the nested
+  # metadata-options and block-device objects so the fixture proves the full
+  # variable contract, not just the scalars.
+  detailedMonitoring: true
+  ebsOptimized: true
+  userData: |
+    #!/bin/bash
+    echo "bootstrapping" > /var/log/bootstrap.log
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+    instanceMetadataTags: enabled
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSizeGb: 50
+        volumeType: gp3
+        iops: 4000
+        throughputMibps: 250
+        encrypted: true
+        deleteOnTermination: true
+  instanceInitiatedShutdownBehavior: terminate

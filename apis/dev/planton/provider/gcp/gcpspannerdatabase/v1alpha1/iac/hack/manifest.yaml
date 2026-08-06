@@ -1,0 +1,13 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSpannerDatabase
+metadata:
+  name: orders-db
+spec:
+  # project_id omitted: falls back to the provider's default project.
+  instance:
+    value: orders-spanner
+  databaseName: orders
+  ddl:
+    - CREATE TABLE orders (order_id STRING(36) NOT NULL, created_at TIMESTAMP NOT NULL) PRIMARY KEY (order_id)
+  # Allow hack-loop teardown; production manifests keep the default (true).
+  deletionProtection: false

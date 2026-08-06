@@ -26,7 +26,7 @@ When you deploy an AzureFrontDoorEndpoint resource, Planton provisions:
 Create a file `endpoint.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorEndpoint
 metadata:
   name: web-endpoint

@@ -28,7 +28,7 @@ When you deploy an AzureResourceGroup resource, Planton provisions:
 Create a file `resourcegroup.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: my-rg
@@ -70,7 +70,7 @@ This component has no optional fields. Resource groups are intentionally minimal
 A resource group for a development environment in the US East region:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: dev-rg
@@ -89,7 +89,7 @@ spec:
 A resource group for production workloads with metadata indicating the production environment:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: prod-eu-rg
@@ -112,7 +112,7 @@ Multiple resource groups across regions, forming the basis of a disaster recover
 Primary region:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: app-primary-rg
@@ -131,7 +131,7 @@ spec:
 Secondary region:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: app-secondary-rg

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcptargethttpproxy.v1alpha1;
+
+// Outputs produced after provisioning a GCP target HTTP proxy.
+message GcpTargetHttpProxyStackOutputs {
+  // Self-link URI of the target HTTP proxy. This is the value a global
+  // forwarding rule references as its target — the composition handle that
+  // puts a VIP in front of this proxy.
+  // Format: https://www.googleapis.com/compute/v1/projects/{project}/global/targetHttpProxies/{name}
+  string self_link = 1;
+
+  // Name of the proxy as it exists in GCP.
+  string proxy_name = 2;
+
+  // Server-assigned numeric ID of the proxy.
+  string proxy_id = 3;
+
+  // Server-computed fingerprint for optimistic concurrency control.
+  string fingerprint = 4;
+}

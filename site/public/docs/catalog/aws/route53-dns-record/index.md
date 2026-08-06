@@ -34,7 +34,7 @@ Depending on configuration, the record may be:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: www-example
@@ -110,7 +110,7 @@ At least one of `values` or `aliasTarget` must be specified. They are mutually e
 A basic A record pointing a subdomain to an IP address:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-example
@@ -135,7 +135,7 @@ spec:
 An alias record at the zone apex pointing to an Application Load Balancer. Alias records at the apex are not possible with CNAME, and alias queries to AWS resources are free:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: apex-example
@@ -162,7 +162,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs. The `zoneId` defaults to kind `AwsRoute53Zone` and the alias target fields default to kind `AwsAlb`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-alias
@@ -194,7 +194,7 @@ Split traffic between two endpoints. Create two AwsRoute53DnsRecord resources wi
 **Primary (90% traffic):**
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-stable
@@ -220,7 +220,7 @@ spec:
 **Canary (10% traffic):**
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: api-canary
@@ -251,7 +251,7 @@ Active-passive failover between a primary and secondary endpoint. The primary re
 **Primary:**
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-primary
@@ -283,7 +283,7 @@ spec:
 **Secondary:**
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: app-secondary

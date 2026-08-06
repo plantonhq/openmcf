@@ -26,7 +26,7 @@ When you deploy an AzureStorageShare resource, Planton provisions:
 Create a file `share.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageShare
 metadata:
   name: team-files

@@ -30,7 +30,7 @@ When you deploy a ScalewayObjectBucket resource, Planton provisions:
 Create a file `object-bucket.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayObjectBucket
 metadata:
   name: my-app-assets
@@ -90,7 +90,7 @@ This creates a single Object Storage bucket in Paris with no versioning, no life
 A simple bucket in Paris with force-destroy enabled for clean teardown:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayObjectBucket
 metadata:
   name: dev-scratch-bucket
@@ -109,7 +109,7 @@ spec:
 A media storage bucket with versioning enabled and lifecycle rules that transition old objects to cold storage and expire them after one year:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayObjectBucket
 metadata:
   name: media-archive
@@ -143,7 +143,7 @@ spec:
 A production bucket hosting user-uploaded content for a web application, with CORS rules for browser uploads, versioning, Object Lock for compliance, and lifecycle cleanup:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayObjectBucket
 metadata:
   name: prod-user-content

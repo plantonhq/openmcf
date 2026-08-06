@@ -965,9 +965,9 @@ planton
 ```go
 // Internal registry
 var moduleRegistry = map[string]string{
-  "PostgresKubernetes": "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/postgreskubernetes/v1/iac",
-  "MongodbAtlas": "github.com/plantonhq/planton/apis/dev/planton/provider/atlas/mongodbatlas/v1/iac",
-  "AwsRdsInstance": "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1/iac",
+  "PostgresKubernetes": "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/postgreskubernetes/v1alpha1/iac",
+  "MongodbAtlas": "github.com/plantonhq/planton/apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac",
+  "AwsRdsInstance": "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/iac",
   // ... 100+ components
 }
 ```
@@ -1069,7 +1069,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 5. **Local Testing**
    ```bash
-   cd apis/dev/planton/provider/atlas/mongodbatlas/v1/iac/pulumi
+   cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
    export PLANTON_MANIFEST="$(cat ../hack/manifest.yaml)"
    pulumi up
    ```
@@ -1096,7 +1096,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 ```bash
 # 1. Edit spec.proto
-vim apis/dev/planton/provider/atlas/mongodbatlas/v1/spec.proto
+vim apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/spec.proto
 
 # 2. Add field with validation
 # message Spec {
@@ -1210,7 +1210,7 @@ git push origin main
 ```bash
 # Fork
 git clone https://github.com/plantonhq/planton
-cd planton/apis/dev/planton/provider/aws/awsrdsinstance/v1/iac/pulumi
+cd planton/apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/iac/pulumi
 # Edit main.go to add organizational defaults
 
 # Push to your private repo
@@ -1243,7 +1243,7 @@ import subprocess
 def create_database_from_ui(user_input):
     # Create strongly-typed config
     config = api_pb2.PostgresKubernetes()
-    config.api_version = "kubernetes.planton.dev/v1"
+    config.api_version = "kubernetes.planton.dev/v1alpha1"
     config.kind = "PostgresKubernetes"
     config.metadata.name = user_input["name"]
     config.metadata.org = user_input["org"]
@@ -1500,7 +1500,7 @@ planton version
 
 Test validation rules:
 ```bash
-cd apis/dev/planton/provider/atlas/mongodbatlas/v1
+cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1
 go test -v
 ```
 
@@ -1508,7 +1508,7 @@ go test -v
 
 Test IaC modules locally:
 ```bash
-cd apis/dev/planton/provider/atlas/mongodbatlas/v1/iac/pulumi
+cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
 export PLANTON_MANIFEST="$(cat ../hack/manifest.yaml)"
 pulumi preview
 ```

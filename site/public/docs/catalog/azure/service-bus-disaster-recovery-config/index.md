@@ -26,7 +26,7 @@ When you deploy an AzureServiceBusDisasterRecoveryConfig resource, Planton provi
 Create a file `geo-dr.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusDisasterRecoveryConfig
 metadata:
   name: orders-bus-dr

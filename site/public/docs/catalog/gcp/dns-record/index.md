@@ -29,7 +29,7 @@ When you deploy a GcpDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: app-a-record
@@ -98,7 +98,7 @@ Exactly one of `values` or `routingPolicy` must be set:
 An A record pointing a subdomain to a single IP address:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: web-a-record
@@ -122,7 +122,7 @@ spec:
 A CNAME record that references Planton-managed GcpProject and GcpDnsZone resources instead of hardcoding identifiers:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: docs-cname
@@ -154,7 +154,7 @@ spec:
 An A record with multiple values for basic load distribution across servers:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: api-round-robin
@@ -180,7 +180,7 @@ spec:
 An MX record configuring mail delivery with primary and backup mail servers:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: mail-mx
@@ -205,7 +205,7 @@ spec:
 A TXT record used for email sender policy and domain ownership verification:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: spf-txt
@@ -229,7 +229,7 @@ spec:
 A weighted round-robin policy sending 5% of traffic to a new backend:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: api-canary
@@ -257,7 +257,7 @@ spec:
 Answers each query from the location nearest the caller:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: app-geo

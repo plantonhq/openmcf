@@ -25,7 +25,7 @@ When you deploy an AwsCognitoResourceServer resource, Planton provisions:
 Create a file `resource-server.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoResourceServer
 metadata:
   name: orders-api

@@ -1,6 +1,0 @@
-apiVersion: openstack.planton.dev/v1
-kind: OpenStackServerGroup
-metadata:
-  name: my-affinity-group
-spec:
-  policy: affinity

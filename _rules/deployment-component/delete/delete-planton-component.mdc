@@ -132,8 +132,8 @@ are defects.
 ⚠️  Warning: MongodbAtlas is referenced in other files
 
 Found 3 references:
-  1. apis/dev/planton/provider/atlas/backup/v1/spec.proto
-     Line 15: import "dev/planton/provider/atlas/mongodbatlas/v1/api.proto"
+  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto
+     Line 15: import "dev/planton/provider/atlas/mongodbatlas/v1alpha1/api.proto"
      
   2. docs/deployment-landscape.md
      Line 234: See MongodbAtlas for SaaS database example
@@ -189,7 +189,7 @@ Enum Entry:
   }]
 
 Component Path:
-  apis/dev/planton/provider/atlas/mongodbatlas/v1/
+  apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
 
 Files to Delete (23 files):
   📄 api.proto
@@ -247,7 +247,7 @@ Show what was deleted:
 
 Removed:
   ✅ Component folder (23 files deleted)
-     apis/dev/planton/provider/atlas/mongodbatlas/v1/
+     apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
      
   ✅ Enum entry removed
      cloud_resource_kind.proto: MongodbAtlas = 51
@@ -287,7 +287,7 @@ Preview deletion without making changes:
 🔍 Dry-Run: MongodbAtlas Deletion
 
 Would Delete:
-  📁 apis/dev/planton/provider/atlas/mongodbatlas/v1/
+  📁 apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
      (23 files, 450 KB)
      
   📝 Enum entry: MongodbAtlas = 51
@@ -465,7 +465,7 @@ Available components:
 ❌ Cannot delete: MongodbAtlas is referenced in 3 files
 
 Critical References:
-  1. apis/dev/planton/provider/atlas/backup/v1/spec.proto
+  1. apis/dev/planton/provider/atlas/backup/v1alpha1/spec.proto
      - Uses MongodbAtlas as field type
      - Must update before deletion
      

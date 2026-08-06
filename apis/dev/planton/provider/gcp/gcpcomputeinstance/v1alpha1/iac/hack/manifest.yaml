@@ -1,0 +1,30 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeInstance
+metadata:
+  name: test-vm
+spec:
+  projectId:
+    value: planton-testing
+  zone: us-central1-a
+  machineType: e2-micro
+  bootDisk:
+    image: debian-cloud/debian-12
+    sizeGb: 10
+    type: pd-balanced
+  networkInterfaces:
+    - network:
+        value: default
+      accessConfigs:
+        - networkTier: PREMIUM
+  scheduling:
+    provisioningModel: SPOT
+    onHostMaintenance: TERMINATE
+    instanceTerminationAction: DELETE
+  shieldedInstanceConfig:
+    enableSecureBoot: true
+  labels:
+    env: testing
+  tags:
+    - http-server
+  metadata:
+    enable-oslogin: "TRUE"

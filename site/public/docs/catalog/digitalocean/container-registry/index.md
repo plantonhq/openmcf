@@ -29,7 +29,7 @@ DigitalOcean restricts each account to a single container registry. Deploying a 
 Create a file `registry.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: my-registry
@@ -75,7 +75,7 @@ This creates a container registry named `my-registry` on the free starter tier i
 A free-tier registry for personal or development use:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: dev-registry
@@ -95,7 +95,7 @@ spec:
 A paid-tier registry in Frankfurt for teams that need more storage than the starter tier provides:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: team-registry
@@ -115,7 +115,7 @@ spec:
 A production-grade registry with the highest storage allocation and garbage collection enabled:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: prod-registry

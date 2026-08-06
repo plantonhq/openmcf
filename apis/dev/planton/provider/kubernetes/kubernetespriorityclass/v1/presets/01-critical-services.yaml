@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPriorityClass
-metadata:
-  name: critical-services
-spec:
-  name: critical-services
-  value: 1000000
-  description: Revenue-path services; preempts lower tiers under capacity pressure.

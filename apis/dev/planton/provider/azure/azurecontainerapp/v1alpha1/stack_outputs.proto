@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecontainerapp.v1alpha1;
+
+// **AzureContainerAppStackOutputs** captures the outputs of provisioning
+// an Azure Container App.
+//
+// The primary user-facing outputs are `ingress_fqdn` (the app's endpoint)
+// and `container_app_id` (the ARM resource ID for programmatic access).
+//
+// `latest_revision_name` and `latest_revision_fqdn` are useful for CD
+// pipelines and debugging revision deployments.
+//
+// `outbound_ip_addresses` is useful for firewall allowlists when the
+// Container App connects to external services that require IP whitelisting.
+//
+// `identity_principal_id` is the RBAC grant target for the app's
+// system-assigned identity; `custom_domain_verification_id` is the TXT
+// record value that proves domain ownership when binding a custom domain
+// to the app.
+message AzureContainerAppStackOutputs {
+  // The Azure Resource Manager ID of the Container App.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.App/containerApps/{name}
+  string container_app_id = 1;
+
+  // The name of the Container App.
+  string container_app_name = 2;
+
+  // The name of the latest revision.
+  // Format: {app-name}--{suffix}
+  //
+  // Useful for CD pipelines to verify which revision is active after deployment.
+  string latest_revision_name = 3;
+
+  // The FQDN of the latest revision.
+  // This FQDN points directly to the latest revision, bypassing traffic splitting.
+  string latest_revision_fqdn = 4;
+
+  // Outbound IP addresses used by the Container App for egress traffic.
+  // Use these to configure firewall allowlists on external services
+  // (databases, APIs, etc.) that the app connects to.
+  repeated string outbound_ip_addresses = 5;
+
+  // The ingress FQDN of the Container App.
+  // This is the primary user-facing endpoint. Only populated when ingress
+  // is configured.
+  //
+  // In SINGLE revision mode, this is the same as latest_revision_fqdn.
+  // In MULTIPLE revision mode, this is the app's main FQDN that distributes
+  // traffic according to the configured traffic weights.
+  string ingress_fqdn = 6;
+
+  // The value Azure expects in the asuid.{domain} TXT record when binding
+  // a custom domain to this app -- publish it before creating the binding.
+  string custom_domain_verification_id = 7;
+
+  // The principal (object) ID of the app's system-assigned managed
+  // identity. Empty unless the identity block enables SYSTEM_ASSIGNED.
+  // Grant this principal roles (AcrPull, Key Vault Secrets User, etc.) to
+  // let the app authenticate keylessly.
+  string identity_principal_id = 8;
+}

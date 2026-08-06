@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubconsumergroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureEventHubConsumerGroupSpec** defines the configuration for creating
+// a consumer group on an event hub: one independent read cursor over the
+// hub's partitions.
+//
+// A consumer group is a named view of the entire event stream. Each group
+// tracks its own offsets, so multiple applications -- a real-time
+// processor, a batch loader, an anomaly detector -- consume the same
+// events independently at their own pace. Consumer groups are
+// many-per-hub with independent lifecycles (each consuming team owns its
+// own group), which is why they are a first-class kind referencing the
+// hub rather than a list folded into the hub's spec.
+//
+// **Tier limits enforced by Azure at apply time**: BASIC hubs allow no
+// additional consumer groups (only the service-created $Default);
+// STANDARD allows 20 per hub; PREMIUM/dedicated allow more.
+//
+// **The $Default group**: Azure creates a consumer group named "$Default"
+// on every hub automatically. It cannot be declared here -- Azure's
+// providers refuse to adopt service-created resources -- and SDK
+// quick-starts use it implicitly. Give every real consumer application
+// its OWN group; sharing $Default across applications makes their
+// offsets collide.
+//
+// **ForceNew fields**: `event_hub_id`, `consumer_group_name` (the group
+// is its name; renaming replaces it and resets stored offsets).
+message AzureEventHubConsumerGroupSpec {
+  // The event hub the group reads, by ARM ID. References an
+  // AzureEventHub's event_hub_id output so the hub and its consumer
+  // groups compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef event_hub_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_id"
+  ];
+
+  // The group's name -- unique within the hub, 1-50 characters. Starts
+  // and ends with a letter or number; letters, numbers, periods, hyphens,
+  // and underscores in between.
+  //
+  // "$Default" is reserved: Azure creates that group on every hub, and
+  // an existing service-created group cannot be adopted declaratively.
+  //
+  // **ForceNew**: renaming replaces the group and resets its consumers'
+  // stored offsets.
+  string consumer_group_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "event_hub_consumer_group_name_format"
+      message: "consumer_group_name must start and end with a letter or number and may contain letters, numbers, periods, hyphens, and underscores (max 50 characters)"
+      expression: "this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[a-zA-Z0-9]$')"
+    },
+    (buf.validate.field).cel = {
+      id: "event_hub_consumer_group_name_not_default"
+      message: "\"$Default\" is the service-created catch-all group Azure adds to every hub -- it cannot be declared or adopted; SDKs use it implicitly, and every real application should get its own group"
+      expression: "this != '$Default'"
+    }
+  ];
+
+  // Free-form metadata stored on the group (max 1024 characters) --
+  // record the owning application, team, or purpose so operators can
+  // tell whose cursor this is.
+  optional string user_metadata = 3 [(buf.validate.field).string.max_len = 1024];
+}

@@ -1,0 +1,12 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeDisk
+metadata:
+  name: test-disk
+spec:
+  projectId:
+    value: planton-testing
+  zone: us-central1-a
+  type: pd-balanced
+  sizeGb: 50
+  labels:
+    env: testing

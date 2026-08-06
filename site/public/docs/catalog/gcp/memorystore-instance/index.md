@@ -32,7 +32,7 @@ When you deploy a GcpMemorystoreInstance resource, Planton provisions:
 Create a file `memorystore-instance.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpMemorystoreInstance
 metadata:
   name: my-cache
@@ -113,7 +113,7 @@ This creates a single-shard Memorystore instance in `us-central1` with a PSC end
 A single-shard standalone instance with periodic RDB snapshots and deletion protection:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpMemorystoreInstance
 metadata:
   name: session-cache
@@ -148,7 +148,7 @@ spec:
 A multi-shard cluster with AOF persistence, automated daily backups, and a maintenance window:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpMemorystoreInstance
 metadata:
   name: realtime-store
@@ -193,7 +193,7 @@ spec:
 A production instance using CMEK encryption, IAM authentication, TLS, and foreign key references to other Planton-managed resources:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpMemorystoreInstance
 metadata:
   name: secure-cache

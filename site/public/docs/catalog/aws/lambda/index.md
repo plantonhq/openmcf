@@ -31,7 +31,7 @@ Planton never creates an execution IAM role or invoke permissions unless you dec
 Create a file `lambda.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
   name: my-function
@@ -100,7 +100,7 @@ Event sources (SQS, Kinesis, DynamoDB Streams, MSK, self-managed Kafka) are **no
 ### Container Image
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
   name: image-function
@@ -117,7 +117,7 @@ spec:
 ### VPC-Connected with Managed Log Group
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
   name: vpc-function
@@ -160,7 +160,7 @@ spec:
 ### Aliases and Function URL
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
   name: api-function

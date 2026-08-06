@@ -1,0 +1,14 @@
+# Install manifest used when OTHER components declare
+# KubernetesPersistentVolumeClaim as an E2E prerequisite (e.g. the
+# KubernetesDeployment with-pvc-mount scenario, whose rollout completing is
+# the live proof that a claim binds through the real provisioner). Uses the
+# cluster's default StorageClass.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPersistentVolumeClaim
+metadata:
+  name: e2e-pvc-fixture
+spec:
+  namespace:
+    value: default
+  name: e2e-pvc-fixture
+  storage_request: 1Gi

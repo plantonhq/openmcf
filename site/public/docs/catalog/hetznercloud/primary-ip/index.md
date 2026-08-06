@@ -24,7 +24,7 @@ Allocates a persistent public IP address (IPv4 or IPv6 /64) in Hetzner Cloud tha
 Create a file `primary-ip.yaml`:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: my-ip
@@ -69,7 +69,7 @@ This allocates a single IPv4 address in Falkenstein. The address is assigned by 
 A single IPv4 address in Falkenstein — the simplest working configuration.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: dev-ip
@@ -88,7 +88,7 @@ spec:
 An IPv4 address with a reverse DNS pointer for email deliverability. The `dnsPtr` hostname must have a matching forward DNS A record.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: mail-ip
@@ -111,7 +111,7 @@ spec:
 An IPv6 /64 block in Helsinki with delete protection enabled.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: web-ipv6
@@ -133,7 +133,7 @@ spec:
 A Primary IP referenced by a HetznerCloudServer using `valueFrom`. The server receives the IP's numeric ID from the Primary IP's stack outputs, establishing a dependency edge in the deployment DAG.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudPrimaryIp
 metadata:
   name: app-ip
@@ -154,7 +154,7 @@ spec:
 The server references this IP:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudServer
 metadata:
   name: app-01

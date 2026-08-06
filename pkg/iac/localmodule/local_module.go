@@ -125,7 +125,7 @@ func buildExpectedModulePath(repoPath, kindName, provName string) string {
 	}
 	versionDir, err := crkreflect.KindVersion(kind)
 	if err != nil {
-		versionDir = "v1"
+		versionDir = "v1alpha1"
 	}
 
 	subdir := "pulumi"

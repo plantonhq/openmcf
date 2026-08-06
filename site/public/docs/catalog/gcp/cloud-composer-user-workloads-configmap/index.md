@@ -23,7 +23,7 @@ A Kubernetes ConfigMap that Composer manages in the environment's GKE cluster. D
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudComposerUserWorkloadsConfigMap
 metadata:
   name: orders-dag-config

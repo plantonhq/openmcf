@@ -137,7 +137,7 @@ Tests failed: 2/17
 Failed tests:
 
 1. TestOpenStackNetworkSpec/should_return_a_validation_error_when_dns_domain_does_not_end_with_a_dot
-   File: apis/dev/planton/provider/openstack/openstacknetwork/v1/spec_test.go:88
+   File: apis/dev/planton/provider/openstack/openstacknetwork/v1alpha1/spec_test.go:88
    
    Error:
    Expected error to not be nil

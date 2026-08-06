@@ -4,7 +4,7 @@
 # egress model, private-node posture, and address plan reviewable
 # infrastructure instead of AKS-managed defaults scattered across a hidden
 # managed VNet.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   # Azure's grain: every resource lives in exactly one resource group, and
@@ -17,7 +17,7 @@ spec:
   name: "{{ values.env }}-aks-rg"
   region: "{{ values.region }}"
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: "{{ values.env }}-aks-vnet"
@@ -40,7 +40,7 @@ spec:
 # single subnet serves the three-zone pools without per-zone slicing. The
 # NAT gateway attachment below is load-bearing: it is what the cluster's
 # USER_ASSIGNED_NAT_GATEWAY egress model discovers at deploy time.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: "{{ values.env }}-aks-nodes-subnet"

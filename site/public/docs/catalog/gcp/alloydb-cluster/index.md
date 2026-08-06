@@ -33,7 +33,7 @@ When you deploy a GcpAlloydbCluster resource, Planton provisions:
 Create a file `alloydb.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbCluster
 metadata:
   name: my-alloydb
@@ -123,7 +123,7 @@ This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, 
 A production-ready cluster with REGIONAL availability and an initial user:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbCluster
 metadata:
   name: prod-alloydb
@@ -155,7 +155,7 @@ spec:
 Full CMEK coverage with separate keys for data, backups, and PITR:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbCluster
 metadata:
   name: enterprise-alloydb
@@ -210,7 +210,7 @@ spec:
 Quantity-based retention with a weekly schedule:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbCluster
 metadata:
   name: backup-alloydb

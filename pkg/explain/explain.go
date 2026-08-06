@@ -36,7 +36,7 @@ type DocLookup func(protoreflect.FullName) string
 type Resource struct {
 	// Name is the canonical kind name rendered in reports (e.g. AwsVpc).
 	Name string
-	// ApiVersion is the KRM group/version (e.g. aws.planton.dev/v1).
+	// ApiVersion is the KRM group/version (e.g. aws.planton.dev/v1alpha1).
 	ApiVersion string
 	// Message is the resource's envelope descriptor
 	// (apiVersion/kind/metadata/spec/status).

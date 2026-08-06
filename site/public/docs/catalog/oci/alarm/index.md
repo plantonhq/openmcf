@@ -28,7 +28,7 @@ When you deploy an OciAlarm resource, Planton provisions:
 Create a file `alarm.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAlarm
 metadata:
   name: high-cpu
@@ -107,7 +107,7 @@ This creates an alarm that fires when average CPU utilization exceeds 80% over a
 A basic alarm monitoring compute instance CPU utilization:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAlarm
 metadata:
   name: high-cpu
@@ -136,7 +136,7 @@ spec:
 An alarm with warning at 70% and critical at 90%, using overrides for tiered alerting:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAlarm
 metadata:
   name: tiered-cpu
@@ -177,7 +177,7 @@ spec:
 An alarm monitoring Autonomous Database storage utilization:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAlarm
 metadata:
   name: adb-storage
@@ -207,7 +207,7 @@ spec:
 An alarm that sends separate notifications per VCN resource when traffic spikes:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAlarm
 metadata:
   name: vcn-traffic-spike

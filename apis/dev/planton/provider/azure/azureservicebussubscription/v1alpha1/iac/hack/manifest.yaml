@@ -1,0 +1,31 @@
+# Offline-plan manifest: a subscription exercising BOTH filter-rule
+# families (SQL with an action, correlation with property matchers),
+# dead-letter routing, and the client-scoped block.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusSubscription
+metadata:
+  name: test-sb-subscription
+spec:
+  topicId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-servicebus-ns/topics/billing-invoices
+  subscriptionName: audit-consumer
+  maxDeliveryCount: 5
+  lockDuration: PT2M
+  defaultMessageTtl: P7D
+  deadLetteringOnMessageExpiration: true
+  deadLetteringOnFilterEvaluationError: false
+  forwardDeadLetteredMessagesTo:
+    value: poison-sink
+  status: ACTIVE
+  rules:
+    - ruleName: emea-orders
+      filterType: SQL_FILTER
+      sqlFilter: "region = 'emea' AND quantity > 10"
+      action: "SET sys.Label = 'routed'"
+    - ruleName: order-created
+      filterType: CORRELATION_FILTER
+      correlationFilter:
+        label: order-created
+        contentType: application/json
+        properties:
+          tenant: contoso

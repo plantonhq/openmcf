@@ -1,0 +1,8 @@
+# Namespace fixture for the aws-sm-irsa chain: the IRSA ServiceAccount
+# fixture and the sync proof's materialized Secret both live here.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNamespace
+metadata:
+  name: e2e-eso
+spec:
+  name: e2e-eso

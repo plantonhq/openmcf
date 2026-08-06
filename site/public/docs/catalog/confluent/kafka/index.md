@@ -29,7 +29,7 @@ When you deploy a ConfluentKafka resource, Planton provisions:
 Create a file `confluent-kafka.yaml`:
 
 ```yaml
-apiVersion: confluent.planton.dev/v1
+apiVersion: confluent.planton.dev/v1alpha1
 kind: ConfluentKafka
 metadata:
   name: my-kafka
@@ -80,7 +80,7 @@ This creates a Standard Kafka cluster in a single availability zone on AWS `us-e
 A low-cost single-zone cluster for development and testing:
 
 ```yaml
-apiVersion: confluent.planton.dev/v1
+apiVersion: confluent.planton.dev/v1alpha1
 kind: ConfluentKafka
 metadata:
   name: dev-kafka
@@ -103,7 +103,7 @@ spec:
 A production-grade cluster with multi-zone availability for high availability:
 
 ```yaml
-apiVersion: confluent.planton.dev/v1
+apiVersion: confluent.planton.dev/v1alpha1
 kind: ConfluentKafka
 metadata:
   name: prod-kafka
@@ -126,7 +126,7 @@ spec:
 A single-tenant Dedicated cluster with provisioned capacity and private network connectivity, suitable for regulated workloads requiring network isolation:
 
 ```yaml
-apiVersion: confluent.planton.dev/v1
+apiVersion: confluent.planton.dev/v1alpha1
 kind: ConfluentKafka
 metadata:
   name: secure-kafka

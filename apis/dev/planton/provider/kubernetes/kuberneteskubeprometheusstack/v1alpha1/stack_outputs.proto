@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1alpha1;
+
+//kube-prometheus-stack-kubernetes stack outputs
+message KubernetesKubePrometheusStackStackOutputs {
+  //namespace the stack runs in.
+  string namespace = 1;
+
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it, so every child name below derives from it.
+  string release_name = 2;
+
+  //name of the Prometheus Service (`<name>-prometheus`, port 9090).
+  string prometheus_service = 3;
+
+  //in-cluster Prometheus endpoint — the URL Grafana datasources, remote
+  //readers and API clients use,
+  //e.g. http://monitoring-prometheus.observability.svc.cluster.local:9090
+  string prometheus_endpoint = 4;
+
+  //name of the Alertmanager Service (`<name>-alertmanager`, port 9093).
+  //Empty when alertmanager is disabled.
+  string alertmanager_service = 5;
+
+  //in-cluster Alertmanager endpoint,
+  //e.g. http://monitoring-alertmanager.observability.svc.cluster.local:9093.
+  //Empty when alertmanager is disabled.
+  string alertmanager_endpoint = 6;
+
+  //name of the bundled Grafana Service (`<name>-grafana`, port 80).
+  //Empty when the bundled grafana is disabled.
+  string grafana_service = 7;
+
+  //in-cluster Grafana endpoint,
+  //e.g. http://monitoring-grafana.observability.svc.cluster.local.
+  //Empty when the bundled grafana is disabled.
+  string grafana_endpoint = 8;
+
+  //name of the Secret holding the bundled Grafana's admin credentials —
+  //`<name>-grafana`, keys `admin-user` / `admin-password` (the chart
+  //generates it once and keeps it stable across upgrades; when
+  //spec.grafana.admin_secret points at an existing Secret, that name is
+  //echoed here instead). Empty when the bundled grafana is disabled.
+  string grafana_admin_secret_name = 9;
+
+  //command to port-forward the Prometheus UI to a developer laptop,
+  //e.g. kubectl port-forward svc/monitoring-prometheus -n observability 9090:9090
+  string prometheus_port_forward_command = 10;
+
+  //command to port-forward the bundled Grafana to a developer laptop,
+  //e.g. kubectl port-forward svc/monitoring-grafana -n observability 3000:80.
+  //Empty when the bundled grafana is disabled.
+  string grafana_port_forward_command = 11;
+}

@@ -1,0 +1,43 @@
+# THE REGISTRATION PROOF — needs a real GitHub credential, provided
+# through the harness's fenced environment tokens (never committed):
+#   PLANTON_E2E_GITHUB_REPO_PATH — the github.com path of a sandbox
+#                                  repository or organization (e.g.
+#                                  "my-org/e2e-sandbox"; the scheme+host
+#                                  stay in the manifest so its URL
+#                                  validation holds pre-expansion)
+#   PLANTON_E2E_GITHUB_TOKEN     — a PAT with Self-hosted runners
+#                                  read/write on that target
+# The verifier proves the PRODUCT: the listener pod reaches Running
+# (it long-polls GitHub — impossible without a valid registration), the
+# AutoscalingRunnerSet reports its listener, and with minRunners: 1 one
+# idle runner pod comes up and registers. GitHub-side residue is
+# self-cleaning: the scale set unregisters on destroy (the chart's
+# cleanup finalizers), which the destroy phase exercises.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGhaRunnerScaleSet
+metadata:
+  name: e2e-gharss-live
+  # Lanes SKIP this scenario (honest deferral, never a false failure)
+  # unless the owner-arranged GitHub sandbox credentials are exported —
+  # the ${E2E_ENV:...} tokens below fail expansion loudly when unset.
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_GITHUB_REPO_PATH,PLANTON_E2E_GITHUB_TOKEN
+spec:
+  namespace:
+    value: e2e-gharss-live
+  createNamespace: true
+  githubConfigUrl: https://github.com/${E2E_ENV:PLANTON_E2E_GITHUB_REPO_PATH}
+  auth:
+    pat:
+      token: ${E2E_ENV:PLANTON_E2E_GITHUB_TOKEN}
+  runnerScaleSetName: e2e-gharss-live
+  minRunners: 1
+  maxRunners: 3
+  runner:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi

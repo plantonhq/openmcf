@@ -27,7 +27,7 @@ Creates a Google Compute Engine virtual machine — the general-purpose compute 
 Create a file `vm.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeInstance
 metadata:
   name: dev-vm

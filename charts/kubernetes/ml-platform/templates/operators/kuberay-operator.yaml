@@ -12,7 +12,7 @@
 # dependency. Its three ray.io CRDs install once and are KEPT on
 # uninstall (the crds/ directory posture) — a chart upgrade never touches
 # them.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKubeRayOperator
 metadata:
   name: "{{ values.env }}-kuberay-operator"

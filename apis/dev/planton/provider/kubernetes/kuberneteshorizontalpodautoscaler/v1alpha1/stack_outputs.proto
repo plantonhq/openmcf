@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteshorizontalpodautoscaler.v1alpha1;
+
+/**
+ * **KubernetesHorizontalPodAutoscalerStackOutputs** captures the observable
+ * handles of a deployed HorizontalPodAutoscaler.
+ */
+message KubernetesHorizontalPodAutoscalerStackOutputs {
+  // The name of the HorizontalPodAutoscaler object as created in the cluster.
+  string horizontal_pod_autoscaler_name = 1;
+
+  // The namespace the autoscaler was created in.
+  string namespace = 2;
+
+  // The scale target as "Kind/name" (e.g. "Deployment/checkout") — the
+  // workload whose replica count this autoscaler owns.
+  string scale_target = 3;
+
+  // The configured replica floor.
+  int32 min_replicas = 4;
+
+  // The configured replica ceiling.
+  int32 max_replicas = 5;
+}

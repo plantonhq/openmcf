@@ -1,0 +1,32 @@
+# Minimal AzureMonitorDiagnosticSetting scenario: the fixture workspace's
+# own audit logs routed back into itself (self-referential target and
+# destination -- a legal, common pattern for workspace auditing). One
+# fixture proves the polymorphic target reference (explicit valueFrom
+# kind + fieldPath, since the target carries no default kind), the
+# category-group selection, and the workspace destination FK.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDiagnosticSetting
+metadata:
+  name: planton-oss-e2e-azmondiag-smoke
+  id: planton-oss-e2e-azmondiag-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitordiagnosticsetting
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  settingName: planton-oss-e2e-diag-smoke
+  targetResourceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: planton-oss-e2e-azure-fixture-law
+      fieldPath: status.outputs.workspace_id
+  enabledLogs:
+    - categoryGroup: audit
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-law

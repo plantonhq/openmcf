@@ -1,0 +1,24 @@
+# The composition proof: a real KubernetesService fixture deploys first (the
+# e2e-prerequisites annotation) and the backend resolves through a foreign-key
+# reference to its exported service_name output — the same wiring an infra
+# chart uses to route an Ingress at a workload's exported service.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIngress
+metadata:
+  name: e2e-ing-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesService"
+spec:
+  namespace:
+    value: default
+  name: e2e-ing-composed
+  rules:
+    - host: composed.e2e.example.com
+      paths:
+        - path: /
+          path_type: prefix
+          backend:
+            service_name:
+              valueFrom:
+                name: e2e-svc-fixture
+            port_number: 80

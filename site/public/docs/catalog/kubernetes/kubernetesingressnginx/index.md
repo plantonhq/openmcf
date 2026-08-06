@@ -55,7 +55,7 @@ and everything from release naming to leader election derives from
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngressNginx
 metadata:
   name: ingress-nginx

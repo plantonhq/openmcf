@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestorageobjectreplication.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureStorageObjectReplicationSpec** defines the configuration for an
+// object replication policy between TWO Azure Storage Accounts:
+// asynchronous, rule-driven copying of block blobs from containers on a
+// source account to containers on a destination account. This is the
+// storage-level answer to cross-region DR (replicate to an account in a
+// paired region), data distribution (fan out to a read-local copy), and
+// tenant offboarding/archival -- without any application-side copy jobs.
+//
+// One policy spans exactly one account pair; Azure materializes it on
+// BOTH accounts (the destination holds the authoritative copy that
+// assigns rule IDs, the source holds the mirror), which the modules
+// handle as one unit -- this kind IS the pair. Both accounts, and both
+// sides of every rule, are fixed at creation.
+//
+// **Both accounts must be prepared for replication**: blob versioning
+// AND change feed enabled (the account spec's blob_properties) on the
+// source, and blob versioning on the destination -- Azure rejects the
+// policy at apply time otherwise. Versioning rules out
+// hierarchical-namespace accounts (ADLS Gen2 does not support it).
+// Replication is asynchronous with no RPO guarantee unless the account
+// opts into metrics and monitors them.
+message AzureStorageObjectReplicationSpec {
+  // The account blobs are copied FROM, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output. Needs blob
+  // versioning AND change feed enabled (blob_properties on the account
+  // spec). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The account blobs are copied TO, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output. Needs blob
+  // versioning enabled. May live in any region -- a paired-region
+  // destination is the DR pattern; same-region is the
+  // distribution/archival pattern. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_storage_account_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // What gets replicated: each rule maps ONE source container to ONE
+  // destination container, with optional filters. A policy carries up
+  // to 1000 rules; a container pair appears in at most one rule.
+  repeated AzureStorageObjectReplicationRule rules = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 1000
+  ];
+}
+
+// One container-to-container replication mapping.
+message AzureStorageObjectReplicationRule {
+  // The container on the SOURCE account blobs are copied from, by name.
+  // References an AzureStorageContainer's container_name output -- the
+  // container must live on the policy's source account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_container_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageContainer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_name"
+  ];
+
+  // The container on the DESTINATION account blobs are copied to, by
+  // name. References an AzureStorageContainer's container_name output --
+  // the container must live on the policy's destination account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_container_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageContainer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_name"
+  ];
+
+  // Which existing blobs join the copy, beyond everything created after
+  // the rule: OnlyNewObjects (the default -- no backfill), Everything
+  // (backfill the whole container), or an RFC 3339 UTC instant
+  // (backfill blobs created after that moment, e.g.
+  // 2026-01-01T00:00:00Z). Backfilling a large container takes time
+  // proportional to its size.
+  optional string copy_blobs_created_after = 3 [
+    (dev.planton.shared.options.default) = "OnlyNewObjects",
+    (buf.validate.field).cel = {
+      id: "storage_object_replication_copy_after_format"
+      message: "copy_blobs_created_after must be OnlyNewObjects, Everything, or an RFC 3339 UTC instant like 2026-01-01T00:00:00Z"
+      expression: "this == 'OnlyNewObjects' || this == 'Everything' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+    }
+  ];
+
+  // Replicate ONLY blobs whose names start with one of these prefixes
+  // (e.g. invoices/2026) -- an INCLUDE filter, matching ARM's own
+  // prefixMatch semantics. Empty means every blob in the container.
+  repeated string prefix_match = 4 [(buf.validate.field).repeated.items = {
+    string: {min_len: 1}
+  }];
+}

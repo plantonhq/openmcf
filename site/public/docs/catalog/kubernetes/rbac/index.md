@@ -37,7 +37,7 @@ Grant shapes: `createRole` + subjects creates role and binding; `createRole` wit
 Create a file `rbac.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRbac
 metadata:
   name: app-reader
@@ -114,7 +114,7 @@ Schema-enforced constraints: aggregation and `nonResourceUrls` require `clusterS
 ### Grant Built-in `view` to a Group
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRbac
 metadata:
   name: team-view
@@ -139,7 +139,7 @@ Creates only a RoleBinding: the built-in `view` ClusterRole, confined to the `pr
 ### Cluster-Scoped Operator Permissions
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRbac
 metadata:
   name: node-monitor
@@ -170,7 +170,7 @@ Note the ServiceAccount subject sets `namespace` explicitly — required in clus
 ### Aggregated ClusterRole (no binding)
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRbac
 metadata:
   name: monitoring-aggregate

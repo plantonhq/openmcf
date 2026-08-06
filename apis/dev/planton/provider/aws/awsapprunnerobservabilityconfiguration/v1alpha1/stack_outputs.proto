@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsapprunnerobservabilityconfiguration.v1alpha1;
+
+// AwsAppRunnerObservabilityConfigurationStackOutputs captures observable
+// identifiers from a provisioned App Runner observability configuration.
+// Services reference the configuration by its revision-carrying ARN.
+message AwsAppRunnerObservabilityConfigurationStackOutputs {
+  // The ARN of this configuration revision (e.g. "arn:aws:apprunner:
+  // us-west-2:123456789012:observabilityconfiguration/my-oc/2/abc123").
+  // The ARN carries the revision number, so registering a new revision
+  // changes this output and rolls referencing services on their next
+  // deployment.
+  string configuration_arn = 1;
+
+  // The revision this deployment registered (e.g. 2). Revisions are
+  // immutable; every trace-setting change registers the next number under
+  // the same configuration name.
+  int64 configuration_revision = 2;
+
+  // Whether this revision is the latest one registered under the
+  // configuration name.
+  bool latest = 3;
+}

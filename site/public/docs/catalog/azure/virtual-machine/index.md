@@ -32,7 +32,7 @@ Everything else is referenced, never created here. The VM's network presence is 
 Create a file `vm.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: app-vm
@@ -174,7 +174,7 @@ Secret-by-default: `customData`, both `adminPassword` fields, and unattend conte
 ### Windows Server with Trusted Launch and Hybrid Benefit
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: win-vm
@@ -220,7 +220,7 @@ spec:
 ### Spot Worker with a Persistent Data Disk
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: batch-worker
@@ -270,7 +270,7 @@ spec:
 ### Booting from an Existing OS Disk (Golden-Disk Recovery)
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: recovered-vm

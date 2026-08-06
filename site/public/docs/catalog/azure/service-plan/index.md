@@ -28,7 +28,7 @@ When you deploy an AzureServicePlan resource, Planton provisions:
 Create a file `serviceplan.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: my-plan
@@ -96,7 +96,7 @@ This creates a Linux Basic B1 App Service Plan with a single worker instance in 
 A Consumption plan for pay-per-execution Azure Functions in development:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: dev-functions
@@ -118,7 +118,7 @@ spec:
 A Premium v3 plan with zone balancing and multiple workers for production web applications:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: prod-web
@@ -142,7 +142,7 @@ spec:
 A Premium v3 plan that scales itself on HTTP load, capped at 10 instances:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: autoscale-web
@@ -166,7 +166,7 @@ spec:
 An Elastic Premium plan for serverless Function Apps with a capped elastic worker count to control scaling costs:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: events-plan
@@ -189,7 +189,7 @@ spec:
 Reference a Planton-managed resource group instead of hardcoding the name:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: ref-plan

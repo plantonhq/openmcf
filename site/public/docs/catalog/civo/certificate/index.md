@@ -30,7 +30,7 @@ When you deploy a CivoCertificate resource, Planton processes the manifest and (
 Create a file `civo-certificate.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoCertificate
 metadata:
   name: my-cert
@@ -95,7 +95,7 @@ This requests a Let's Encrypt certificate covering `example.com` and `www.exampl
 A minimal Let's Encrypt certificate for a single domain:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoCertificate
 metadata:
   name: api-cert
@@ -121,7 +121,7 @@ spec:
 A wildcard certificate covering all subdomains, with automatic renewal turned off for manual control:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoCertificate
 metadata:
   name: wildcard-cert
@@ -146,7 +146,7 @@ spec:
 Upload an existing certificate and private key, including the intermediate chain:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoCertificate
 metadata:
   name: custom-cert

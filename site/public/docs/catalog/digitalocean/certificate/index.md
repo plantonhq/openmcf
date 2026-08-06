@@ -29,7 +29,7 @@ When you deploy a DigitalOceanCertificate resource, Planton provisions:
 Create a file `cert.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: my-cert
@@ -93,7 +93,7 @@ This requests a free, auto-renewing Let's Encrypt certificate for `example.com`.
 The minimal Let's Encrypt configuration for a single domain:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: app-cert
@@ -117,7 +117,7 @@ spec:
 A certificate covering the apex domain, a `www` subdomain, and a wildcard for all subdomains under `staging`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: multi-domain-cert
@@ -147,7 +147,7 @@ All listed domains must have their DNS managed by DigitalOcean. Wildcard entries
 Uploading a commercially-issued certificate (e.g., an EV certificate from DigiCert) for a domain whose DNS is hosted externally:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: ev-cert

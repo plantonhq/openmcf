@@ -28,23 +28,23 @@ When you deploy an OpenStackLoadBalancerMember resource, Planton provisions:
 Create a file `member.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: web-backend-1
   annotations:
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.ref-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.maintenance-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-secondary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-primary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -89,7 +89,7 @@ This registers a backend server at `10.0.0.10:8080` in the specified Octavia poo
 A minimal member that registers a single backend server in an Octavia pool:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: web-backend-1
@@ -108,7 +108,7 @@ spec:
 Two members with different weights on a backend subnet separate from the VIP subnet. The higher-weighted member receives proportionally more traffic:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: app-backend-primary
@@ -126,7 +126,7 @@ spec:
     - production
     - primary
 ---
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: app-backend-secondary
@@ -152,7 +152,7 @@ With these weights, `app-backend-primary` receives approximately twice the traff
 Set `weight` to 0 to stop sending new traffic to a member while allowing existing connections to complete. Set `adminStateUp` to `false` to fully remove the member from rotation:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: maintenance-backend
@@ -175,7 +175,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding UUIDs:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerMember
 metadata:
   name: ref-backend

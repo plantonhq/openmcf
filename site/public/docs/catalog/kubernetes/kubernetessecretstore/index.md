@@ -23,7 +23,7 @@ Creates one External Secrets Operator SecretStore — a namespaced backend conne
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecretStore
 metadata:
   name: team-gcp-secrets

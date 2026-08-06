@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestorageencryptionscope.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureStorageEncryptionScopeSpec** defines the configuration for
+// creating an encryption scope inside an Azure Storage Account: a named
+// encryption boundary that lets different data in ONE account encrypt
+// under DIFFERENT keys. The account's own encryption settings cover
+// everything by default; a scope overrides that for the blobs and
+// containers that opt into it -- the multi-tenant pattern (one account,
+// per-tenant keys) and the mixed-sensitivity pattern (platform-managed
+// keys for ordinary data, a customer-managed key for the regulated
+// subset) without splitting into per-tenant accounts.
+//
+// Scopes are many-per-account with independent lifecycles and are
+// referenced by name from containers (default_encryption_scope) and
+// ADLS filesystems, which is why they are a first-class kind rather
+// than a list folded into the account's spec. The parent is fixed at
+// creation: a scope cannot move between accounts.
+message AzureStorageEncryptionScopeSpec {
+  // The storage account the scope lives in, by ARM ID. References an
+  // AzureStorageAccount's storage_account_id output so the account and
+  // its scopes compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The scope's name: 4-63 letters and digits (hyphens are NOT allowed
+  // -- stricter than most storage names). Unique within the account;
+  // containers and blobs reference the scope by this name. Changing the
+  // name replaces the scope.
+  string scope_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "storage_encryption_scope_name_format"
+      message: "scope_name must be 4-63 letters and digits (no hyphens)"
+      expression: "this.matches('^[0-9a-zA-Z]{4,63}$')"
+    }
+  ];
+
+  // Who owns the scope's encryption key. MICROSOFT_STORAGE uses a
+  // platform-managed key Azure creates and rotates; MICROSOFT_KEY_VAULT
+  // encrypts under YOUR Key Vault key (customer-managed) -- which then
+  // requires key_vault_key_id, and the account must carry an identity
+  // with wrap/unwrap access on the key's vault (the same plumbing as
+  // the account-level customer_managed_key).
+  AzureStorageEncryptionScopeSource source = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The Key Vault key the scope encrypts under -- required when (and
+  // only meaningful when) source is MICROSOFT_KEY_VAULT. References an
+  // AzureKeyVaultKey's VERSIONLESS ID so key rotation propagates to the
+  // scope with zero intervention; pin a versioned key URI only when a
+  // compliance regime demands a frozen version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // Whether data under this scope is DOUBLE-encrypted: a second,
+  // independent layer with platform-managed keys underneath the scope's
+  // key -- for regimes that require defense against a single-algorithm
+  // or single-key compromise. Independent of the ACCOUNT's
+  // infrastructure-encryption switch, so a scope can add the second
+  // layer for just the regulated subset. Fixed at creation.
+  bool infrastructure_encryption_required = 5;
+
+  option (buf.validate.message).cel = {
+    id: "storage_encryption_scope_key_vault_key_required"
+    message: "key_vault_key_id is required when source is MICROSOFT_KEY_VAULT"
+    expression: "this.source != 2 || has(this.key_vault_key_id)"
+  };
+}
+
+// Who owns and manages the scope's encryption key.
+enum AzureStorageEncryptionScopeSource {
+  // Not specified -- invalid; choose an explicit key ownership model.
+  azure_storage_encryption_scope_source_unspecified = 0;
+
+  // A platform-managed key Azure creates and rotates -- zero key
+  // management, no Key Vault involved.
+  MICROSOFT_STORAGE = 1;
+
+  // A customer-managed key in YOUR Key Vault -- you control rotation,
+  // revocation, and access; requires key_vault_key_id and an account
+  // identity with wrap/unwrap access on the vault.
+  MICROSOFT_KEY_VAULT = 2;
+}

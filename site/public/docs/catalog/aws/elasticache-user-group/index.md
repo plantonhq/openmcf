@@ -33,7 +33,7 @@ replace the group's user id list in place.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUserGroup
 metadata:
   name: orders-rbac
@@ -78,7 +78,7 @@ planton apply -f user-group.yaml
 ### Valkey user group
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUserGroup
 metadata:
   name: platform-valkey-rbac

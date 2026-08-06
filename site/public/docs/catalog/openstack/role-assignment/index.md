@@ -31,7 +31,7 @@ All fields are ForceNew — changing any field causes the assignment to be destr
 Create a file `role-assignment.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRoleAssignment
 metadata:
   name: my-role-assignment
@@ -99,7 +99,7 @@ This resource enforces two mutual exclusion constraints validated at submission 
 Assigns the "member" role to a user on a specific project using literal UUIDs:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRoleAssignment
 metadata:
   name: alice-member-on-webteam
@@ -120,7 +120,7 @@ spec:
 Assigns a role to a user on a project managed by an OpenStackProject resource, using `valueFrom` to reference the project ID output:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRoleAssignment
 metadata:
   name: bob-admin-on-dataplatform
@@ -144,7 +144,7 @@ spec:
 Assigns the "reader" role to a group on a domain, granting read access across the entire domain:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRoleAssignment
 metadata:
   name: auditors-reader-on-corp
@@ -164,7 +164,7 @@ spec:
 Assigns a role to a group on a project in a specific region:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRoleAssignment
 metadata:
   name: devs-member-on-staging

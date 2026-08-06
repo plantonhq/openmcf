@@ -27,7 +27,7 @@ When you deploy a CivoVpc resource, Planton provisions:
 Create a file `civo-vpc.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVpc
 metadata:
   name: my-network
@@ -75,7 +75,7 @@ This creates a private network named `my-network` in the London region with an a
 A minimal private network with Civo handling address allocation:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVpc
 metadata:
   name: dev-network
@@ -95,7 +95,7 @@ spec:
 A network with an explicit address range for predictable IP planning:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVpc
 metadata:
   name: staging-network
@@ -117,7 +117,7 @@ spec:
 A fully specified network intended for production workloads:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVpc
 metadata:
   name: prod-network

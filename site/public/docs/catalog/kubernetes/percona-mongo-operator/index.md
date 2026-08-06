@@ -59,7 +59,7 @@ databases' namespace, or widen the watch.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: psmdb-operator

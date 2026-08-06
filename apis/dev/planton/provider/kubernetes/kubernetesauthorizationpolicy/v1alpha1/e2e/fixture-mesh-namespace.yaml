@@ -1,0 +1,12 @@
+# Extra-instance fixture for the behavioral-deny scenario: the namespace the
+# meshed workloads run in, labeled for sidecar injection BEFORE any pod
+# starts (injection is admission-time — labeling later would require a
+# restart).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNamespace
+metadata:
+  name: e2e-authz-mesh
+spec:
+  name: e2e-authz-mesh
+  labels:
+    istio-injection: enabled

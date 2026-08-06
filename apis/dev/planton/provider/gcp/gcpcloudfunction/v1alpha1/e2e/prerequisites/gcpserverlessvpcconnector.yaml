@@ -1,0 +1,30 @@
+# Consumer-scoped GcpServerlessVpcConnector for the vpc-connector-egress
+# scenario. Uses network+ipCidrRange on 10.8.2.0/28 (outside other E2E
+# ranges). metadata.name stays fixed for FK resolution from the function
+# scenario's valueFrom.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: planton-oss-e2e-gcpvpcconn-prereq
+  id: planton-oss-e2e-gcpvpcconn-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserverlessvpcconnector
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  connectorName: e2e-connp-${E2E_RUN_ID}
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_name
+  ipCidrRange: 10.8.2.0/28
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 3

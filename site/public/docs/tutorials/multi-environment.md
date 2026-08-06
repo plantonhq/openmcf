@@ -69,7 +69,7 @@ The base manifest defines the shared configuration that all environments inherit
 **`postgres-kustomize/base/postgres.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -133,7 +133,7 @@ patches:
 **`postgres-kustomize/overlays/dev/patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -163,7 +163,7 @@ patches:
 **`postgres-kustomize/overlays/staging/patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -204,7 +204,7 @@ patches:
 **`postgres-kustomize/overlays/prod/patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database

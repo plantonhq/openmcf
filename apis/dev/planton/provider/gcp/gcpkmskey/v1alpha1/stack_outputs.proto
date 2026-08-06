@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpkmskey.v1alpha1;
+
+// Outputs produced after provisioning a GCP KMS key.
+message GcpKmsKeyStackOutputs {
+  // Fully qualified crypto key resource path.
+  // Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{name}
+  // This is the primary CMEK reference used by BigQuery, Spanner, GKE, CloudSQL,
+  // and other downstream resources for customer-managed encryption.
+  string key_id = 1;
+
+  // The short name of the key (the last segment of key_id).
+  // Useful for display, logging, and consumers that take the bare key name
+  // alongside a separately supplied project and location.
+  string key_name = 2;
+
+  // Fully qualified resource name of the key's current primary
+  // CryptoKeyVersion — the version GCP uses to encrypt new data.
+  // Format: projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}/cryptoKeyVersions/{n}
+  // Populated by GCP only for ENCRYPT_DECRYPT keys; empty for asymmetric,
+  // raw, and MAC keys (which have no primary-version concept) and for keys
+  // created with skip_initial_version_creation.
+  string primary_version_name = 3;
+
+  // Lifecycle state of the primary CryptoKeyVersion (e.g. "ENABLED").
+  // Same population rules as primary_version_name — the quick health probe
+  // that a CMEK key is actually able to encrypt.
+  string primary_state = 4;
+}

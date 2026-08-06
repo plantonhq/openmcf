@@ -10,7 +10,7 @@
 # account the right to mint tokens as it, and (3) the iam.gke.io annotation
 # on that Kubernetes service account (the component's workloadIdentity block
 # below). No key is created, exported, or stored anywhere.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: "{{ values.env }}-gke-cert-manager"
@@ -34,7 +34,7 @@ spec:
 # so a typo'd principal string is impossible by construction, and NOTHING
 # here needs a cluster output: every GCP project carries its implicit
 # workload-identity pool (<project>.svc.id.goog) from the start.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: "{{ values.env }}-gke-cert-manager-wi"
@@ -51,7 +51,7 @@ spec:
   ksaNamespace: cert-manager
   ksaName: cert-manager
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: "{{ values.env }}-cert-manager"

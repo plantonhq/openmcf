@@ -1,0 +1,42 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	awscognitouserpoolv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpool/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Resources orchestrates creation of a Cognito User Pool with its folded
+// pool-scoped satellites (hosted-UI domain, log delivery), then exports
+// outputs for downstream references. App clients, identity providers, and
+// resource servers are separate kinds that compose onto the pool by
+// reference.
+func Resources(ctx *pulumi.Context, stackInput *awscognitouserpoolv1alpha1.AwsCognitoUserPoolStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	// Build the AWS provider from the stack input via the shared builder, which resolves
+	// the right credential mechanism (static keys, keyless web identity, or ambient chain).
+	provider, err := pulumiawsprovider.Get(ctx, stackInput.ProviderConfig, locals.Target.Spec.Region)
+	if err != nil {
+		return errors.Wrap(err, "failed to create AWS provider")
+	}
+
+	// User pool (always created)
+	createdPool, err := userPool(ctx, locals, provider)
+	if err != nil {
+		return errors.Wrap(err, "cognito user pool")
+	}
+
+	// Hosted-UI domain (optional; one per pool)
+	if err := domain(ctx, locals, createdPool, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool domain")
+	}
+
+	// Log delivery (optional; one pool-scoped configuration)
+	if err := logDelivery(ctx, locals, createdPool, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool log delivery")
+	}
+
+	return nil
+}

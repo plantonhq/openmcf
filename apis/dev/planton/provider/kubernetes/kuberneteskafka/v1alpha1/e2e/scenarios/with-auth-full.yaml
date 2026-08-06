@@ -1,0 +1,104 @@
+# The full-surface shape that honestly runs on the kind cluster:
+# separate controller and broker pools, three listener postures (plain,
+# SCRAM-authenticated, TLS with mutual-TLS auth), simple authorization,
+# the entity operators, Kafka Exporter, JMX metrics, CA policy and a
+# maintenance window.
+#
+# super_users carries User:ANONYMOUS deliberately: this object-grade lane
+# keeps the unauthenticated plain listener usable while proving the
+# authorization surface deploys — production presets NEVER do this (their
+# super users are real admin principals).
+#
+# Cruise Control and rack awareness ride the offline plan proofs instead:
+# Cruise Control's broker-capacity analysis is meaningless on a
+# single-node kind cluster, and rack awareness needs zone-labeled nodes.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafka
+metadata:
+  name: e2e-kaf-authfull
+spec:
+  namespace:
+    value: e2e-kaf-authfull
+  create_namespace: true
+  node_pools:
+    - name: controller
+      roles:
+        - controller
+      replicas: 1
+      storage:
+        size: 1Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 200m
+          memory: 768Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+    - name: broker
+      roles:
+        - broker
+      replicas: 1
+      storage:
+        size: 2Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 1536Mi
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+    - name: scram
+      port: 9094
+      tls: false
+      authentication:
+        type: scram-sha-512
+      configuration:
+        max_connections: 500
+    - name: mtls
+      port: 9093
+      tls: true
+      authentication:
+        type: tls
+  config:
+    default.replication.factor: "1"
+    min.insync.replicas: "1"
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+    auto.create.topics.enable: "true"
+  authorization:
+    type: simple
+    super_users:
+      - User:ANONYMOUS
+  entity_operator:
+    topic_operator_enabled: true
+    user_operator_enabled: true
+  kafka_exporter:
+    enabled: true
+    topic_regex: ".*"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  metrics:
+    enabled: true
+  cluster_ca:
+    validity_days: 730
+    renewal_days: 60
+  clients_ca:
+    validity_days: 365
+    renewal_days: 30
+  maintenance_time_windows:
+    - "* * 0-3 ? * SUN"
+  jvm:
+    xms: 512m
+    xmx: 512m

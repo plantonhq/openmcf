@@ -24,7 +24,7 @@ Creates a Google Cloud DNS managed zone (`google_dns_managed_zone`) — the zone
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsZone
 metadata:
   name: example.com

@@ -27,7 +27,7 @@ When you deploy an AzureStorageDataLakeGen2Filesystem resource, Planton provisio
 Create a file `filesystem.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageDataLakeGen2Filesystem
 metadata:
   name: raw-zone

@@ -34,7 +34,7 @@ When you deploy an AwsCodePipeline resource, Planton provisions:
 Create a file `pipeline.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: my-app-pipeline
@@ -233,7 +233,7 @@ This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stag
 A V2 pipeline that pulls source from GitHub via CodeStar Connection, builds with CodeBuild, and triggers automatically on pushes to `main`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: my-app-ci
@@ -295,7 +295,7 @@ spec:
 A pipeline triggered by new ECR image pushes that prepares a deployment bundle and deploys to ECS:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: my-service-deploy
@@ -359,7 +359,7 @@ spec:
 A pipeline that fetches a Lambda deployment package from S3 and invokes a deployer function:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: my-lambda-deploy
@@ -410,7 +410,7 @@ spec:
 A production pipeline with build, staging deploy, manual approval gate, and production deploy across regions:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: prod-release-pipeline
@@ -516,7 +516,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding ARNs and bucket names:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: ref-pipeline

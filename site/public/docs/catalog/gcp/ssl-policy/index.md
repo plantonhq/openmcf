@@ -23,7 +23,7 @@ A single SSL policy — global when `region` is empty, regional when set. Many p
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSslPolicy
 metadata:
   name: prod-tls-floor

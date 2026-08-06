@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpfirestoreindex.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpFirestoreIndexVectorConfig declares a vector index on a field —
+// the enabler for Firestore's nearest-neighbor (embedding similarity)
+// queries.
+message GcpFirestoreIndexVectorConfig {
+  // Dimension of the vectors indexed on this field (the embedding
+  // model's output size, e.g. 768).
+  int32 dimension = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// GcpFirestoreIndexField declares one field's role in a composite
+// index. Exactly one of order, array_config, or vector_config per
+// field. Vector-configured fields must come last in the index.
+message GcpFirestoreIndexField {
+  // Dot-separated field path in the document (e.g. "user.age").
+  string field_path = 1 [(buf.validate.field).required = true];
+
+  // Sort order for a scalar field: ASCENDING or DESCENDING.
+  string order = 2 [(buf.validate.field).cel = {
+    id: "order_valid_value"
+    expression: "this == '' || this in ['ASCENDING', 'DESCENDING']"
+    message: "order must be ASCENDING or DESCENDING"
+  }];
+
+  // CONTAINS declares an array-membership index on the field (enables
+  // array-contains queries).
+  string array_config = 3 [(buf.validate.field).cel = {
+    id: "array_config_valid_value"
+    expression: "this == '' || this == 'CONTAINS'"
+    message: "array_config must be CONTAINS"
+  }];
+
+  // Vector index configuration for nearest-neighbor queries.
+  GcpFirestoreIndexVectorConfig vector_config = 4;
+
+  // Every field plays exactly one role.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_field_role"
+    expression: "(this.order != '' ? 1 : 0) + (this.array_config != '' ? 1 : 0) + (has(this.vector_config) ? 1 : 0) == 1"
+    message: "each field declares exactly one of order, array_config, or vector_config"
+  };
+}
+
+// GcpFirestoreIndexSpec defines a composite index on a Firestore
+// database — the prerequisite for any query that filters or orders on
+// multiple fields (Firestore rejects such queries outright until a
+// matching composite index exists). Declaring indexes as infrastructure
+// makes a deployment's query capabilities reviewable and reproducible
+// instead of click-created from error-message links.
+//
+// Indexes are many-per-database with independent lifecycles, and every
+// property is immutable: changing anything replaces the index (Firestore
+// rebuilds it in the background; the old index serves queries until the
+// new one is ready when applied create-before-destroy).
+message GcpFirestoreIndexSpec {
+  // GCP project owning the database. Can be a literal project ID or a
+  // reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The Firestore database the index belongs to — the database name (a
+  // GcpFirestoreDatabase reference resolves to it). Empty falls back to
+  // the project's "(default)" database. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef database = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpFirestoreDatabase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.database_name"
+  ];
+
+  // The collection (group) ID the index applies to. Immutable after
+  // creation.
+  string collection = 3 [(buf.validate.field).required = true];
+
+  // Scope of the queries the index serves.
+  // COLLECTION: queries against a single collection at this path
+  //   (the default).
+  // COLLECTION_GROUP: queries against every collection with this ID
+  //   anywhere in the database.
+  // COLLECTION_RECURSIVE: queries against the collection and everything
+  //   beneath it (Datastore Mode only).
+  optional string query_scope = 4 [
+    (dev.planton.shared.options.default) = "COLLECTION",
+    (buf.validate.field).cel = {
+      id: "query_scope_valid_value"
+      expression: "this == '' || this in ['COLLECTION', 'COLLECTION_GROUP', 'COLLECTION_RECURSIVE']"
+      message: "query_scope must be COLLECTION, COLLECTION_GROUP, or COLLECTION_RECURSIVE"
+    }
+  ];
+
+  // Which API surface the index serves.
+  // ANY_API: Firestore Native queries (the default).
+  // DATASTORE_MODE_API: Datastore Mode queries.
+  optional string api_scope = 5 [
+    (dev.planton.shared.options.default) = "ANY_API",
+    (buf.validate.field).cel = {
+      id: "api_scope_valid_value"
+      expression: "this == '' || this in ['ANY_API', 'DATASTORE_MODE_API']"
+      message: "api_scope must be ANY_API or DATASTORE_MODE_API"
+    }
+  ];
+
+  // Index density. Leave empty for GCP's default (SPARSE_ALL).
+  // DENSE indexes also include documents missing the indexed fields —
+  // required for some Datastore Mode query shapes.
+  string density = 6 [(buf.validate.field).cel = {
+    id: "density_valid_value"
+    expression: "this == '' || this in ['SPARSE_ALL', 'SPARSE_ANY', 'DENSE']"
+    message: "density must be SPARSE_ALL, SPARSE_ANY, or DENSE"
+  }];
+
+  // The indexed fields, in query order (equality filters first, then
+  // inequality/sort fields; a vector field, if any, last). At least one
+  // field. Firestore appends __name__ automatically.
+  repeated GcpFirestoreIndexField fields = 7 [(buf.validate.field).repeated.min_items = 1];
+}

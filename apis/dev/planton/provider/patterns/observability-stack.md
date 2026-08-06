@@ -47,14 +47,14 @@ Every join in the assembled stack is a real reference the platform
 validates and draws — this composition is fully `valueFrom`-wired:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: observability
 spec:
   name: observability
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKubePrometheusStack
 metadata:
   name: monitoring
@@ -65,7 +65,7 @@ spec:
       name: observability
       fieldPath: spec.name
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesLoki
 metadata:
   name: logs
@@ -76,7 +76,7 @@ spec:
       name: observability
       fieldPath: spec.name
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTempo
 metadata:
   name: traces
@@ -87,7 +87,7 @@ spec:
       name: observability
       fieldPath: spec.name
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGrafana
 metadata:
   name: dashboards

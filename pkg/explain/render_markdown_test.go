@@ -37,14 +37,14 @@ func renderKindMarkdown(t *testing.T, kind string, opts MarkdownOptions) string 
 
 func TestRenderMarkdownRootView(t *testing.T) {
 	text := renderKindMarkdown(t, "AwsVpc", MarkdownOptions{
-		ExampleYAML: "apiVersion: aws.planton.dev/v1\nkind: AwsVpc\n",
+		ExampleYAML: "apiVersion: aws.planton.dev/v1alpha1\nkind: AwsVpc\n",
 		SeeAlso:     []MarkdownLink{{Title: "Overview", Path: "./README.md"}},
 	})
 
 	for _, want := range []string{
 		"# AwsVpc\n",
 		"do not\n> edit by hand", // the generated-file banner
-		"**apiVersion**: `aws.planton.dev/v1`",
+		"**apiVersion**: `aws.planton.dev/v1alpha1`",
 		"## Example", "```yaml", "kind: AwsVpc",
 		"## Spec Fields",
 		"| `spec.region` |", // table row, dotted path

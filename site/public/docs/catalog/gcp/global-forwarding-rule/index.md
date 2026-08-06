@@ -25,7 +25,7 @@ A single `google_compute_global_forwarding_rule` in the chosen GCP project.
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGlobalForwardingRule
 metadata:
   name: web-frontend-443

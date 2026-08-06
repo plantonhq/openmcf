@@ -1,0 +1,56 @@
+# Minimal AzureFrontDoorFirewallPolicy scenario: a STANDARD prevention
+# policy on the fixture resource group exercising the custom-rule
+# surface -- a per-client rate limit (window + threshold), a keyed
+# header condition with selector/negation/transforms, and block-response
+# customization. No profile fixture needed: the WAF policy is
+# resource-group-scoped, not a profile child.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorFirewallPolicy
+metadata:
+  name: planton-oss-e2e-azurefrontdoorfirewallpolicy-smoke
+  id: planton-oss-e2e-azurefrontdoorfirewallpolicy-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorfirewallpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  policyName: plantonosse2ewafsmoke
+  sku: STANDARD
+  mode: PREVENTION
+  requestBodyCheckEnabled: true
+  customBlockResponseStatusCode: 429
+  # base64 of "<h1>blocked</h1>"
+  customBlockResponseBody: PGgxPmJsb2NrZWQ8L2gxPg==
+  customRules:
+    - name: ratelimitapi
+      priority: 10
+      ruleType: RATE_LIMIT_RULE
+      rateLimitDurationInMinutes: 5
+      rateLimitThreshold: 300
+      action: BLOCK
+      matchConditions:
+        - matchVariable: REQUEST_URI
+          operator: BEGINS_WITH
+          matchValues: ["/api/"]
+    # URL_DECODE is deliberately in the transform list: its ARM wire
+    # value ("UrlDecode") has casing the SDK's Go identifier does not,
+    # so this scenario keeps the mapping row live-verified.
+    - name: agentblock
+      priority: 20
+      ruleType: MATCH_RULE
+      action: LOG
+      matchConditions:
+        - matchVariable: REQUEST_HEADER
+          selector: User-Agent
+          operator: CONTAINS
+          matchValues: [badbot]
+          negateCondition: false
+          transforms: [LOWERCASE, TRIM, URL_DECODE]

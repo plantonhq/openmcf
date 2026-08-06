@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetestekton.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetestekton/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetestekton/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// KubernetesTekton declares the cluster's Tekton installation — which
+// components run (Pipelines, Triggers, Dashboard, Chains), their feature
+// flags and the pruner policy — as the TektonConfig the Tekton Operator
+// (a KubernetesTektonOperator resource, the prerequisite) reconciles.
+// Exactly one per cluster.
+message KubernetesTekton {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesTekton'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesTektonSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesTektonStatus status = 5;
+}
+
+// KubernetesTektonStatus represents the deployment status of the Tekton components.
+message KubernetesTektonStatus {
+  // stack-outputs from the IaC deployment
+  KubernetesTektonStackOutputs outputs = 1;
+}

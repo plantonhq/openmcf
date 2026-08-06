@@ -1,0 +1,12 @@
+# Minimal operator install: chart defaults end to end — cluster-wide
+# watch, leader election on, metrics on. The verifier asserts the
+# rollout, the three ray.io CRDs established, and THE INVARIANT (no
+# RayCluster exists after installing the operator alone).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKubeRayOperator
+metadata:
+  name: e2e-krayop-min
+spec:
+  namespace:
+    value: e2e-krayop-min
+  createNamespace: true

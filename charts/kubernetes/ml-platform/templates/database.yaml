@@ -17,7 +17,7 @@
 # password from that one Secret by reference. Ownership of both databases
 # gives each consumer's schema migrations full DDL rights with NO
 # create-database grant — the least-privilege shape.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-ml-db"

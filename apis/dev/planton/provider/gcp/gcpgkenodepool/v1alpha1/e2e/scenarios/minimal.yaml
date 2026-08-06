@@ -1,0 +1,30 @@
+# Minimal GcpGkeNodePool scenario: a fixed-size single-node pool on the
+# prerequisite zonal cluster — the smallest pool GKE can attach, exercising
+# the fixed-count sizing arm and the cluster/location reference resolution.
+# project_id is deliberately omitted (ambient project).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGkeNodePool
+metadata:
+  name: planton-oss-e2e-gkenp-minimal
+  id: planton-oss-e2e-gkenp-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgkenodepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: planton-oss-e2e-gke-prereq
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: planton-oss-e2e-gke-prereq
+      fieldPath: status.outputs.location
+  nodeCount: 1

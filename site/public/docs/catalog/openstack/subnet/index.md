@@ -26,7 +26,7 @@ When you deploy an OpenStackSubnet resource, Planton provisions:
 Create a file `subnet.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSubnet
 metadata:
   name: my-subnet
@@ -86,7 +86,7 @@ This creates a Neutron subnet named `my-subnet` on the specified network with a 
 A subnet with default settings on an existing network, suitable for development environments:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSubnet
 metadata:
   name: dev-subnet
@@ -107,7 +107,7 @@ spec:
 A subnet referencing a managed OpenStackNetwork resource, with custom DNS servers and an explicit gateway:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSubnet
 metadata:
   name: app-subnet
@@ -135,7 +135,7 @@ spec:
 A production subnet with allocation pools to reserve IP ranges, DNS servers, tags, and a specific region:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSubnet
 metadata:
   name: prod-subnet

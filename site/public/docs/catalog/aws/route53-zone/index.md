@@ -30,7 +30,7 @@ When you deploy an AwsRoute53Zone resource, Planton provisions:
 Create a file `zone.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
@@ -75,7 +75,7 @@ The zone's **domain name** comes from `metadata.name` and is create-time immutab
 ### Public zone with safe teardown
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
@@ -88,7 +88,7 @@ spec:
 ### Private split-horizon zone
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: internal.example.com
@@ -106,7 +106,7 @@ spec:
 ### DNSSEC-signed public zone
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
@@ -123,7 +123,7 @@ spec:
 ### Query-logged public zone
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: example.com

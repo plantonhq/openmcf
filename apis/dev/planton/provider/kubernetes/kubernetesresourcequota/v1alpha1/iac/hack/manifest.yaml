@@ -1,0 +1,50 @@
+# Full-surface test manifest for the offline plan proofs. Exercises compute
+# and object-count caps, a scope, a priority-class scope selector, and all
+# three limit-defaults item types.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesResourceQuota
+metadata:
+  name: test-resource-quota
+spec:
+  namespace:
+    value: default
+  name: test-resource-quota
+  labels:
+    team: platform-engineering
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    pods: "50"
+    persistentvolumeclaims: "20"
+    requests.storage: 500Gi
+  scopes:
+    - not_terminating
+  scope_selector:
+    - scope_name: priority_class
+      operator: NotIn
+      values:
+        - system-critical
+  limit_defaults:
+    - type: container
+      default_request:
+        cpu: 100m
+        memory: 128Mi
+      default_limit:
+        cpu: 500m
+        memory: 512Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      max_limit_request_ratio:
+        cpu: "4"
+    - type: pod
+      max:
+        cpu: "4"
+        memory: 8Gi
+    - type: persistent_volume_claim
+      min:
+        storage: 1Gi
+      max:
+        storage: 100Gi

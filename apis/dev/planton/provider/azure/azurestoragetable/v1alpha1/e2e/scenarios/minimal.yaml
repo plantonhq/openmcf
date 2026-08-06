@@ -1,0 +1,38 @@
+# Minimal AzureStorageTable scenario: an entities table on the
+# scenario-local fixture account, carrying a stored access policy to
+# prove the ACL block (the kind's only nested surface) renders and
+# applies on both engines.
+#
+# The account reference resolves against the extra fixture's captured
+# outputs through the field's default kind (fixture RG -> scenario-local
+# account -> this table).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageTable
+metadata:
+  name: planton-oss-e2e-azurestoragetable-smoke
+  id: planton-oss-e2e-azurestoragetable-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragetable
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account (minimal-account.yaml) instead of a registry
+    # prerequisite: storage-account names are globally unique and
+    # sequential subtests that destroy and recreate the same name hang on
+    # recreate.
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurestoragetable/v1alpha1/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storagetable-fixture-account
+  tableName: smokeEntities
+  acls:
+    - id: smokereaders
+      accessPolicies:
+        - permissions: r
+          start: "2026-01-01T00:00:00Z"
+          expiry: "2030-01-01T00:00:00Z"

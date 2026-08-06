@@ -9,7 +9,7 @@
 # GCP's NAT is a managed, horizontally-scaled service — there is no
 # per-zone NAT appliance to duplicate (unlike cloud NAT gateways that
 # charge per instance).
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
   name: "{{ values.env }}-gke-nat"

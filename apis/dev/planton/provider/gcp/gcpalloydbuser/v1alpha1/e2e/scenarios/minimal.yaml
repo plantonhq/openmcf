@@ -1,0 +1,26 @@
+# GcpAlloydbUser scenario: a BUILT_IN application user on the prerequisite
+# cluster. Password is a throwaway E2E credential — never reuse outside tests.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpAlloydbUser
+metadata:
+  name: planton-oss-e2e-gcpadbusr-minimal
+  id: planton-oss-e2e-gcpadbusr-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpalloydbuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: GcpAlloydbCluster
+      name: planton-oss-e2e-gcpadb-prereq
+      fieldPath: status.outputs.cluster_id
+  userId: app-user
+  password: E2eTestPassword123!
+  databaseRoles:
+    - alloydbsuperuser

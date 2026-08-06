@@ -28,7 +28,7 @@ When you deploy a CloudflareD1Database resource, Planton provisions:
 Create a file `d1-database.yaml`:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareD1Database
 metadata:
   name: my-d1-db
@@ -73,7 +73,7 @@ This creates a D1 database named `my-app-db` with Cloudflare selecting the defau
 A D1 database where Cloudflare selects the optimal storage location:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareD1Database
 metadata:
   name: analytics-db
@@ -92,7 +92,7 @@ spec:
 A D1 database pinned to Western Europe, useful for GDPR compliance or when your Workers are deployed in that region:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareD1Database
 metadata:
   name: eu-users-db
@@ -112,7 +112,7 @@ spec:
 A production D1 database in Eastern North America with automatic read replication enabled for lower global read latency. Your application code must use the D1 Sessions API to maintain consistency:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareD1Database
 metadata:
   name: global-app-db

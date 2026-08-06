@@ -343,7 +343,7 @@ Show actual Jinja2 template patterns:
 ```yaml
 {% if values.postgresEnabled | bool %}
 ---
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: "{{ values.postgres_instance_name }}"

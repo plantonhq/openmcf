@@ -12,7 +12,7 @@
 # Secret beside the database), and the Keycloak operator's default
 # namespaced watch means the Keycloak declaration must live beside the
 # operator — one namespace satisfies all three constraints at once.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-identity-ns"

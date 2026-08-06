@@ -27,7 +27,7 @@ When you deploy an AzureFrontDoorOrigin resource, Planton provisions:
 Create a file `origin.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorOrigin
 metadata:
   name: primary-app

@@ -24,7 +24,7 @@ Deploy the hosting platform for Azure Container Apps: the secure boundary provid
 ## Quick Start
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironment
 metadata:
   name: my-env
@@ -71,7 +71,7 @@ spec:
 ### VNet-Injected Internal Environment with Dedicated Compute
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironment
 metadata:
   name: prod-env
@@ -104,7 +104,7 @@ spec:
 ### Serverless GPU Environment
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironment
 metadata:
   name: inference-env

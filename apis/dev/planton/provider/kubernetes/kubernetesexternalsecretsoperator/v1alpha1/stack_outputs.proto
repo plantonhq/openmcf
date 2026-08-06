@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesexternalsecretsoperator.v1alpha1;
+
+// KubernetesExternalSecretsOperatorStackOutputs captures observable outputs
+// after the operator installation completes.
+message KubernetesExternalSecretsOperatorStackOutputs {
+  // Namespace the operator is installed in. Store resources reference it as
+  // the home for credential Secrets that cluster-scoped stores read.
+  string namespace = 1;
+
+  // Helm release name (always "external-secrets" — one installation per
+  // cluster is an upstream architectural constraint).
+  string release_name = 2;
+
+  // Name of the controller ServiceAccount. The cloud-side half of a keyless
+  // ambient-identity binding (IAM role trust policy, Workload Identity
+  // binding, federated credential) references this name together with the
+  // namespace.
+  string controller_service_account = 3;
+}

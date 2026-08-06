@@ -24,7 +24,7 @@ A project-level `google_pubsub_schema` resource holding a typed message definiti
 Create a file `schema.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSchema
 metadata:
   name: order-events-schema

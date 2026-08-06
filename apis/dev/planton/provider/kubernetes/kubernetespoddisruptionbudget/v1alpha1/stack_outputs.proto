@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetespoddisruptionbudget.v1alpha1;
+
+/**
+ * **KubernetesPodDisruptionBudgetStackOutputs** captures the observable
+ * handles of a deployed PodDisruptionBudget. A budget has no runtime handles
+ * of its own beyond identity; the eviction API enforces it by selector.
+ */
+message KubernetesPodDisruptionBudgetStackOutputs {
+  // The name of the PodDisruptionBudget object as created in the cluster.
+  string pod_disruption_budget_name = 1;
+
+  // The namespace the budget was created in.
+  string namespace = 2;
+}

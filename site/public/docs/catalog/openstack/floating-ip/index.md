@@ -27,7 +27,7 @@ When you deploy an OpenStackFloatingIp resource, Planton provisions:
 Create a file `floating-ip.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackFloatingIp
 metadata:
   name: my-fip
@@ -76,7 +76,7 @@ This allocates a floating IP from the specified external network. The IP is not 
 A floating IP allocated from an external network with no port association. Suitable for reserving a public IP before the target port or instance exists:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackFloatingIp
 metadata:
   name: web-fip
@@ -96,7 +96,7 @@ spec:
 A floating IP allocated and immediately associated with a port, using `valueFrom` references to other Planton resources for both the external network and the target port:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackFloatingIp
 metadata:
   name: app-fip
@@ -127,7 +127,7 @@ spec:
 A floating IP with a specific address requested from the pool, useful for DNS pre-configuration or firewall whitelisting where the IP must be known before allocation:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackFloatingIp
 metadata:
   name: lb-fip

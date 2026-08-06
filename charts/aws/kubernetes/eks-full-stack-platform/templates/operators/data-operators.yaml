@@ -8,7 +8,7 @@
 # CloudNativePG is unconditional: Postgres is the standard. Everything else
 # is a toggle — install an operator when the first application needs its
 # engine, not before.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCloudNativePgOperator
 metadata:
   name: "{{ values.env }}-cnpg"
@@ -32,7 +32,7 @@ spec:
     clusterWide: true
 {% if values.mysql_operator_enabled | bool %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: "{{ values.env }}-percona-mysql"
@@ -53,7 +53,7 @@ spec:
 {% endif %}
 {% if values.mongodb_operator_enabled | bool %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: "{{ values.env }}-percona-mongo"
@@ -73,7 +73,7 @@ spec:
 {% endif %}
 {% if values.kafka_operator_enabled | bool %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: "{{ values.env }}-strimzi"
@@ -96,7 +96,7 @@ spec:
 {% endif %}
 {% if values.rabbitmq_operator_enabled | bool %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRabbitMqOperator
 metadata:
   name: "{{ values.env }}-rabbitmq-operator"
@@ -119,7 +119,7 @@ spec: {}
 # from zero — the layer beyond CPU-based HPA that metrics-server serves. A
 # cluster singleton: Kubernetes allows exactly one external-metrics
 # provider, and KEDA registers it.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKeda
 metadata:
   name: "{{ values.env }}-keda"

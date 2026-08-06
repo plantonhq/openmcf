@@ -32,7 +32,7 @@ When you deploy a KubernetesHorizontalPodAutoscaler resource, Planton provisions
 Create a file `hpa.yaml` — this holds a workload's average CPU at 60% of requests, between 2 and 10 replicas:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHorizontalPodAutoscaler
 metadata:
   name: checkout-hpa
@@ -121,7 +121,7 @@ Target types: `utilization` (percent of requests), `average_value` (quantity per
 Scale a worker fleet on external queue depth — roughly one pod per 30 ready messages. Requires an external-metrics adapter (e.g. KEDA or prometheus-adapter) serving the metric:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHorizontalPodAutoscaler
 metadata:
   name: worker-hpa
@@ -156,7 +156,7 @@ spec:
 Scale on the app container's CPU only (a hot proxy sidecar cannot mask an idle app), and bleed capacity down at most 10% per minute after a 10-minute stabilization window:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHorizontalPodAutoscaler
 metadata:
   name: api-hpa

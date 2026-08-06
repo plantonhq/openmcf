@@ -29,7 +29,7 @@ One resource is one direction. Traffic flows only after the reciprocal peering e
 Create a file `peering.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: hub-to-spoke1
@@ -88,7 +88,7 @@ Two resources -- one per direction:
 
 ```yaml
 # Written on the hub
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: hub-to-spoke1
@@ -109,7 +109,7 @@ spec:
   allowGatewayTransit: true
 ---
 # Written on the spoke
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: spoke1-to-hub
@@ -134,7 +134,7 @@ spec:
 Peer only named subnets instead of full address spaces:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: shared-to-app

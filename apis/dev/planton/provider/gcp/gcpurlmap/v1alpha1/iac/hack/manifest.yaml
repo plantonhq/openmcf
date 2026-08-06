@@ -1,0 +1,49 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpUrlMap
+metadata:
+  name: my-sample-url-map
+spec:
+  # GCP project that owns the URL map.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  urlMapName: web-routing
+
+  description: Routes www.example.com traffic to the web backend
+
+  # Exactly one top-level default target. Here: send unmatched traffic to
+  # the web backend service (reference a GcpBackendService or self-link).
+  defaultService:
+    value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/web-backend
+
+  # Host-based fan-out: map hosts to named path matchers.
+  hostRules:
+    - hosts:
+        - www.example.com
+        - example.com
+      pathMatcher: main
+      description: Primary site hosts
+
+  pathMatchers:
+    - name: main
+      defaultService:
+        value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/web-backend
+      pathRules:
+        - paths:
+            - /api/*
+          service:
+            value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/api-backend
+        - paths:
+            - /static/*
+          service:
+            value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendBuckets/static-assets
+
+  # Routing self-test: GCP evaluates these at create/update time.
+  tests:
+    - host: www.example.com
+      path: /api/health
+      service:
+        value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/api-backend
+      description: API prefix resolves to the API backend

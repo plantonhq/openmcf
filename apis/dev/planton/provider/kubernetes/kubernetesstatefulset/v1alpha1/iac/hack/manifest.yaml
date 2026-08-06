@@ -1,0 +1,207 @@
+# Local development / offline-proof manifest exercising the full spec surface,
+# including arms the live E2E scenarios exclude — the offline tofu plan and
+# pulumi preview proofs run against this file.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStatefulSet
+metadata:
+  name: hack-statefulset
+  id: hack-statefulset-id
+  org: hack-org
+  env: hack-env
+spec:
+  namespace:
+    value: hack-statefulset-ns
+  create_namespace: true
+  container:
+    app:
+      image:
+        repo: nginx
+        tag: "1.27-alpine"
+      image_pull_policy: IfNotPresent
+      working_dir: /usr/share/nginx/html
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+      ports:
+        - name: http
+          container_port: 80
+          network_protocol: TCP
+          app_protocol: http
+          service_port: 80
+        - name: metrics
+          container_port: 9113
+          network_protocol: TCP
+          service_port: 9113
+      env:
+        variables:
+          - name: LOG_LEVEL
+            value: info
+          - name: POD_NAME
+            field_ref:
+              field_path: metadata.name
+          - name: CPU_LIMIT
+            resource_field_ref:
+              resource: limits.cpu
+        secrets:
+          - name: DB_PASSWORD
+            value: hack-password
+        env_from:
+          - config_map_ref:
+              name: hack-env-config
+              optional: true
+      liveness_probe:
+        http_get:
+          path: /
+          port_number: 80
+        initial_delay_seconds: 5
+        period_seconds: 10
+      readiness_probe:
+        tcp_socket:
+          port_number: 80
+        period_seconds: 5
+      startup_probe:
+        http_get:
+          path: /
+          port_number: 80
+        failure_threshold: 30
+        period_seconds: 2
+      volume_mounts:
+        - name: data
+          mount_path: /var/lib/data
+          pvc:
+            claim_name: data
+        - name: wal
+          mount_path: /var/lib/wal
+          pvc:
+            claim_name: wal
+        - name: scratch
+          mount_path: /scratch
+          empty_dir:
+            medium: Memory
+            size_limit: 32Mi
+      lifecycle:
+        post_start:
+          exec:
+            command: ["/bin/sh", "-c", "true"]
+        pre_stop:
+          exec:
+            command: ["/bin/sleep", "5"]
+      security_context:
+        run_as_non_root: true
+        read_only_root_filesystem: false
+        allow_privilege_escalation: false
+        capabilities:
+          drop: ["ALL"]
+          add: ["NET_BIND_SERVICE"]
+        seccomp_profile:
+          type: RuntimeDefault
+    sidecars:
+      - name: metrics-exporter
+        image:
+          repo: busybox
+          tag: "1.36"
+        command: ["/bin/sh", "-c", "sleep infinity"]
+        resources:
+          requests:
+            cpu: "5m"
+            memory: "16Mi"
+          limits:
+            cpu: "50m"
+            memory: "32Mi"
+        volume_mounts:
+          - name: data
+            mount_path: /data
+            read_only: true
+  pod:
+    service_account:
+      value: hack-service-account
+    automount_service_account_token: false
+    image_pull_secrets:
+      - value: hack-registry-secret
+    init_containers:
+      - name: init-datadir
+        image:
+          repo: busybox
+          tag: "1.36"
+        command: ["/bin/sh", "-c", "echo init done"]
+    labels:
+      team: hack
+    annotations:
+      example.org/owner: hack
+    scheduling:
+      node_selector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: hack
+          effect: NoSchedule
+      node_affinity:
+        preferred:
+          - weight: 50
+            term:
+              match_expressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values: ["arm64", "amd64"]
+      pod_anti_affinity:
+        required:
+          - match_labels:
+              app: hack-statefulset
+            topology_key: kubernetes.io/hostname
+      topology_spread_constraints:
+        - max_skew: 1
+          topology_key: topology.kubernetes.io/zone
+          when_unsatisfiable: ScheduleAnyway
+    security_context:
+      run_as_user: 101
+      run_as_group: 101
+      run_as_non_root: true
+      fs_group: 101
+      fs_group_change_policy: OnRootMismatch
+      sysctls:
+        - name: net.core.somaxconn
+          value: "1024"
+    termination_grace_period_seconds: 120
+    dns_policy: ClusterFirst
+    dns_config:
+      options:
+        - name: ndots
+          value: "2"
+    host_aliases:
+      - ip: 203.0.113.10
+        hostnames: ["legacy.internal.example"]
+    priority_class_name: ""
+    runtime_class_name: ""
+  availability:
+    replicas: 3
+    pod_disruption_budget:
+      enabled: true
+      min_available: "2"
+    min_ready_seconds: 5
+    revision_history_limit: 5
+  volume_claim_templates:
+    - name: data
+      storage_class: standard
+      size: "1Gi"
+      access_modes:
+        - ReadWriteOnce
+      volume_mode: Filesystem
+    - name: wal
+      size: "500Mi"
+      access_modes:
+        - ReadWriteOnce
+  update_strategy:
+    type: RollingUpdate
+    partition: 1
+  pod_management_policy: Parallel
+  pvc_retention_policy:
+    when_deleted: Delete
+    when_scaled: Retain
+  # ordinals is deliberately absent here: the offline plan proof runs through
+  # BOTH engines from this one manifest, and the Terraform provider cannot
+  # express ordinals (see the PARITY-EXCEPTION in the modules).

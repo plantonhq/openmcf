@@ -1,0 +1,21 @@
+# Minimal BackendTLSPolicy: one Service target, a system-trust-store anchor
+# ("System" — no CA bundle object needed), and the mandatory SNI hostname.
+# Object-grade proof: the CR is validated by the API server's own CEL (the
+# CRDs fixture installs the standard channel) — no in-catalog Gateway
+# implementation programs this policy yet, so behavior rides the
+# real-cluster rows.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesBackendTlsPolicy
+metadata:
+  name: e2e-btls-minimal
+spec:
+  namespace:
+    value: default
+  target_refs:
+    - group: ""
+      kind: Service
+      name:
+        value: e2e-svc-fixture
+  validation:
+    well_known_ca_certificates: System
+    hostname: backend.internal.example.com

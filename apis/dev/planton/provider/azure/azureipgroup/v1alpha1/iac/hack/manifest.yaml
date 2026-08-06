@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureIpGroup
+metadata:
+  name: test-ip-group
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: branch-offices
+  cidrs:
+    - "203.0.113.7"
+    - "10.10.0.0/16"
+  tags:
+    purpose: hack-test

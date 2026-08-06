@@ -27,7 +27,7 @@ When you deploy an AzureStorageEncryptionScope resource, Planton provisions:
 Create a file `scope.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageEncryptionScope
 metadata:
   name: tenant42-scope

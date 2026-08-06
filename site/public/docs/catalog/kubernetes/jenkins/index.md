@@ -38,7 +38,7 @@ When you deploy a KubernetesJenkins resource, Planton provisions:
 Create a file `jenkins.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJenkins
 metadata:
   name: my-jenkins
@@ -89,7 +89,7 @@ This creates a Jenkins instance with default resources (1 CPU / 1Gi memory limit
 Increase CPU and memory allocations for a busier Jenkins instance:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJenkins
 metadata:
   name: ci-jenkins
@@ -116,7 +116,7 @@ spec:
 Use `helmValues` to configure plugins, JVM options, or any chart setting:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJenkins
 metadata:
   name: custom-jenkins
@@ -147,7 +147,7 @@ spec:
 External access over HTTPS with automatic TLS and HTTP redirect:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJenkins
 metadata:
   name: prod-jenkins

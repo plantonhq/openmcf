@@ -1,0 +1,21 @@
+# X-Ray tracing configuration -- the one real shape this resource has.
+# Named minimal.yaml so consumers composing this kind through the
+# e2e-prerequisites annotation resolve it as the install manifest.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppRunnerObservabilityConfiguration
+metadata:
+  name: planton-oss-e2e-awsaroc
+  id: planton-oss-e2e-awsaroc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsapprunnerobservabilityconfiguration
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  traceConfiguration:
+    vendor: AWSXRAY

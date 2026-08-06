@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesAltinityOperatorSpec** installs the Altinity ClickHouse
+ * operator — the Apache-2.0 operator for running ClickHouse (the
+ * columnar OLAP database) on Kubernetes — from the official
+ * `altinity-clickhouse-operator` Helm chart
+ * (https://docs.altinity.com/clickhouse-operator/). The operator
+ * reconciles `ClickHouseInstallation` (CHI) and
+ * `ClickHouseKeeperInstallation` (CHK) custom resources into running
+ * clusters with generated server configuration, rolling restarts and
+ * per-host StatefulSets.
+ *
+ * This component installs and configures the ENGINE. ClickHouse
+ * clusters themselves are declared with KubernetesClickHouse
+ * resources — one per cluster — which this operator reconciles.
+ *
+ * CHART/IMAGE PINNING: pick `chart_version` from the SERVED repository
+ * index (https://docs.altinity.com/clickhouse-operator/index.yaml).
+ * Chart versions track operator releases one-to-one (chart 0.27.2 =
+ * operator image 0.27.2); all default images at the pinned chart
+ * verified pullable on Docker Hub.
+ *
+ * CRD LIFECYCLE: the chart ships the four CRDs in its `crds/`
+ * directory — Helm installs them on first install and NEVER deletes
+ * them on uninstall (keep-on-uninstall is inherent; removing the
+ * operator never cascade-deletes ClickHouseInstallation resources or
+ * their data). CRD UPGRADES are handled by the chart's pre-upgrade
+ * hook job (`crd_hook`), which server-side-applies the CRDs on every
+ * install and upgrade — leave it enabled or chart upgrades silently
+ * run new operators against old schemas.
+ *
+ * NAMING: keep the resource name at 39 characters or fewer. The
+ * modules pin the chart fullname to the resource name, and the
+ * longest generated child name (`<fullname>-keeper-templatesd-files`)
+ * adds 24 characters to it against the Kubernetes 63-character cap.
+ *
+ * WATCH SCOPE: by default the operator watches ONLY its own
+ * namespace. Set `watch_namespaces` to widen the scope — every
+ * namespace that will hold KubernetesClickHouse resources must be
+ * covered, or use [".*"] to watch the whole cluster.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — a safety valve, never the primary interface.
+ */
+message KubernetesAltinityOperatorSpec {
+  /**
+   * Namespace to install the operator into. Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "0.27.2"). Versions must
+   * exist as SERVED charts in the repository index
+   * (https://docs.altinity.com/clickhouse-operator/index.yaml); the
+   * chart version and the operator image tag move in lockstep.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.27.2"];
+
+  /**
+   * Namespaces the operator watches for ClickHouseInstallation /
+   * ClickHouseKeeperInstallation resources. Entries are regular
+   * expressions (exact names work as-is). Empty (the chart default) =
+   * the operator watches ONLY its own namespace; [".*"] = watch all
+   * namespaces. Every namespace that will hold KubernetesClickHouse
+   * resources must be covered here.
+   */
+  repeated string watch_namespaces = 4;
+
+  /**
+   * Create namespace-scoped Roles/RoleBindings instead of cluster-wide
+   * RBAC (chart `rbac.namespaceScoped`). Chart default: false. Only
+   * sound when the operator watches its own namespace alone — a
+   * namespace-scoped operator cannot manage clusters it can watch but
+   * not touch.
+   */
+  bool namespace_scoped_rbac = 5;
+
+  /**
+   * Credentials the operator itself uses to connect to every managed
+   * ClickHouse instance (host management, schema propagation, metrics
+   * scraping). The chart provisions them as a Secret and injects the
+   * matching user into every managed cluster. UNSET IS UNSAFE FOR
+   * PRODUCTION: the chart's defaults are the publicly documented
+   * clickhouse_operator / clickhouse_operator_password — always set a
+   * real password outside of throwaway environments.
+   */
+  KubernetesAltinityOperatorCredentials operator_credentials = 6;
+
+  /**
+   * The metrics-exporter sidecar that serves Prometheus metrics for
+   * every managed cluster (port 8888). Enabled by default upstream.
+   */
+  KubernetesAltinityOperatorMetrics metrics = 7;
+
+  /**
+   * The pre-install/pre-upgrade hook job that server-side-applies the
+   * four CRDs (chart `crdHook`). Enabled by default upstream — leave
+   * it on so chart upgrades carry CRD schema changes. KNOW THIS: the
+   * hook's default image is bitnami/kubectl:latest — pullable today
+   * (verified live) but frozen since Bitnami's 2025 public-catalog
+   * retirement, so it will silently age; override `image` for
+   * air-gapped mirrors or a maintained kubectl build.
+   */
+  KubernetesAltinityOperatorCrdHook crd_hook = 8;
+
+  /**
+   * Operator container resources. Empty = the chart defaults (no
+   * requests/limits).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 9;
+
+  /**
+   * Create a ServiceMonitor for Prometheus Operator scraping (both the
+   * per-cluster metrics endpoint on 8888 and the operator's own on
+   * 9999). Chart default: false. Requires the Prometheus Operator CRDs
+   * on the cluster — enabling it without them fails the install.
+   */
+  bool service_monitor_enabled = 10;
+
+  /**
+   * Node selector for the operator pod.
+   */
+  map<string, string> node_selector = 11;
+
+  /**
+   * Tolerations for the operator pod.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 12;
+
+  /**
+   * Names of image-pull secrets (in the installation namespace) for
+   * pulling the operator images from a private mirror.
+   */
+  repeated string image_pull_secrets = 13 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  /**
+   * Override the operator image (air-gap / private-mirror path).
+   * Empty = the chart defaults (altinity/clickhouse-operator at the
+   * chart's version).
+   */
+  dev.planton.provider.kubernetes.ContainerImage image = 14;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (pod annotations/labels, security contexts, extra env,
+   * probe tuning, topology spread, the embedded operator config files,
+   * Grafana dashboard ConfigMaps, ...) — never the substitute for
+   * them. Do not put secrets here. One key is off limits:
+   * `fullnameOverride` is pinned by the modules to the resource name —
+   * overriding it breaks the naming budget and the exported outputs.
+   */
+  string helm_values = 15;
+}
+
+/**
+ * **KubernetesAltinityOperatorCredentials** is the ClickHouse user the
+ * operator authenticates with on every managed cluster.
+ */
+message KubernetesAltinityOperatorCredentials {
+  /**
+   * User name. Default "clickhouse_operator".
+   */
+  optional string username = 1 [(dev.planton.shared.options.default) = "clickhouse_operator"];
+
+  /**
+   * Password. Accepts a literal value or a reference to another
+   * resource's output. Stored in the chart-managed Secret; the
+   * operator injects the matching user into every managed cluster
+   * restricted to the operator pod's address.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef password = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * **KubernetesAltinityOperatorMetrics** configures the
+ * metrics-exporter sidecar.
+ */
+message KubernetesAltinityOperatorMetrics {
+  /**
+   * Run the metrics-exporter sidecar. Default true (the upstream
+   * default); disabling it removes Prometheus metrics for every
+   * managed cluster.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Sidecar container resources. Empty = the chart defaults (no
+   * requests/limits). The exporter's memory grows with the number and
+   * size of managed clusters.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+}
+
+/**
+ * **KubernetesAltinityOperatorCrdHook** configures the CRD
+ * install/upgrade hook job.
+ */
+message KubernetesAltinityOperatorCrdHook {
+  /**
+   * Run the hook. Default true (the upstream default). When disabled,
+   * Helm still installs the CRDs on FIRST install (native `crds/`
+   * handling) but upgrades stop carrying CRD schema changes — only
+   * disable if CRD lifecycle is managed elsewhere.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Override the hook's kubectl image. Empty = the chart default
+   * (bitnami/kubectl:latest — see the KNOW THIS note on `crd_hook`).
+   */
+  dev.planton.provider.kubernetes.ContainerImage image = 2;
+}

@@ -26,7 +26,7 @@ When you deploy a HetznerCloudSshKey resource, Planton provisions:
 Create a file `ssh-key.yaml`:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudSshKey
 metadata:
   name: deploy-key
@@ -66,7 +66,7 @@ This component has no optional spec fields. The SSH key name is derived from `me
 The simplest deployment: a single ED25519 key with no organizational context.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudSshKey
 metadata:
   name: my-key
@@ -84,7 +84,7 @@ spec:
 A key scoped to a specific organization and environment. The metadata drives label generation for resource tracking.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudSshKey
 metadata:
   name: prod-deploy-key
@@ -106,7 +106,7 @@ spec:
 An SSH key referenced by a HetznerCloudServer using `valueFrom`. The server receives the key's numeric ID from the SSH key's stack outputs, establishing a dependency edge in the deployment DAG.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudSshKey
 metadata:
   name: web-key
@@ -124,7 +124,7 @@ spec:
 The server references this key:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudServer
 metadata:
   name: web-01

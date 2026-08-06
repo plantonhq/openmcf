@@ -1,0 +1,23 @@
+package module
+
+import (
+	"github.com/pkg/errors"
+	gcpservicenetworkingconnectionv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/gcp/pulumigoogleprovider"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func Resources(ctx *pulumi.Context, stackInput *gcpservicenetworkingconnectionv1alpha1.GcpServiceNetworkingConnectionStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
+
+	gcpProvider, err := pulumigoogleprovider.Get(ctx, stackInput.ProviderConfig)
+	if err != nil {
+		return errors.Wrap(err, "failed to setup google provider")
+	}
+
+	if err := serviceNetworkingConnection(ctx, locals, gcpProvider); err != nil {
+		return errors.Wrap(err, "failed to create service networking connection")
+	}
+
+	return nil
+}

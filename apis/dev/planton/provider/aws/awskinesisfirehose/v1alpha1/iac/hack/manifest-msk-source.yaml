@@ -1,0 +1,46 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKinesisFirehose
+metadata:
+  name: test-firehose-msk
+  org: test-org
+  env: dev
+  id: test-firehose-msk-dev
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: test-org
+    pulumi.planton.dev/project: test-project
+    pulumi.planton.dev/stack.name: dev.AwsKinesisFirehose.test-firehose-msk
+spec:
+  region: us-west-2
+  # MSK source -> OpenSearch Serverless destination: proves the Kafka
+  # ingestion edge and the serverless collection arm together in the
+  # offline plan/preview gate (the MSK live lane needs a provisioned
+  # cluster, whose own live lane is deferred).
+  mskSource:
+    mskClusterArn:
+      value: arn:aws:kafka:us-west-2:123456789012:cluster/test-cluster/11111111-2222-3333-4444-555555555555-1
+    topicName: events
+    connectivity: PRIVATE
+    roleArn:
+      value: arn:aws:iam::123456789012:role/firehose-msk-role
+    readFromTimestamp: "2026-05-01T00:00:00Z"
+  opensearchServerless:
+    collectionEndpoint: https://abc123def456.us-west-2.aoss.amazonaws.com
+    indexName: kafka-events
+    roleArn:
+      value: arn:aws:iam::123456789012:role/firehose-aoss-role
+    retryDurationInSeconds: 300
+    s3BackupMode: AllDocuments
+    s3Config:
+      bucketArn:
+        value: arn:aws:s3:::my-firehose-backup-bucket
+      roleArn:
+        value: arn:aws:iam::123456789012:role/firehose-s3-backup-role
+      prefix: aoss-backup/
+    processing:
+      enabled: true
+      processors:
+        - decompression:
+            compressionFormat: GZIP
+        - cloudwatchLogProcessing:
+            dataMessageExtraction: true

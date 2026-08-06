@@ -14,7 +14,7 @@
 # normal one-operator-per-cluster posture. Its workload service account
 # ("spark", the operator chart's convention) lands in this namespace,
 # which is exactly where your SparkApplications reference it.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSparkOperator
 metadata:
   name: "{{ values.env }}-spark-operator"

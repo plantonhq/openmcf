@@ -1,0 +1,68 @@
+# Full-surface regional file system: encrypted (AWS-managed key), elastic
+# throughput, the complete lifecycle trio, daily backups, replication-overwrite
+# protection explicitly ENABLED, two distinct-AZ mount targets composed from
+# the shared subnet fixture, the shared security-group fixture attached, and a
+# resource policy whose condition value carries a literal `${...}` policy
+# variable -- proving live that the tfvars writer's template-introducer escape
+# and the Struct policy path both survive a real apply. One Zone, static-IP,
+# IPv6, and replication arms are recorded exclusions in profile.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsElasticFileSystem
+metadata:
+  name: planton-oss-e2e-awsefs
+  id: planton-oss-e2e-awsefs
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticfilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  encrypted: true
+  throughputMode: elastic
+  transitionToIa: AFTER_30_DAYS
+  transitionToArchive: AFTER_90_DAYS
+  transitionToPrimaryStorageClass: AFTER_1_ACCESS
+  backupEnabled: true
+  replicationOverwriteProtection: ENABLED
+  mountTargets:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
+          fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DenyUnencryptedTransport
+        Effect: Deny
+        Principal:
+          AWS: "*"
+        Action: "*"
+        Resource: "*"
+        Condition:
+          Bool:
+            aws:SecureTransport: "false"
+      - Sid: DenyCrossAccountAccess
+        Effect: Deny
+        Principal:
+          AWS: "*"
+        Action: "*"
+        Resource: "*"
+        Condition:
+          StringNotEquals:
+            aws:PrincipalAccount: "${aws:ResourceAccount}"

@@ -1,0 +1,47 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the operator expressed at once — the explicit
+# ClusterIssuer webhook arm, a fleet-wide default-collector-image mirror
+# (with tag, exercising the image split), the manager-image registry
+# mirror, replicas/resources/ServiceMonitor, pull secrets, full
+# scheduling, and an escape-hatch document (PDB) — while the module's two
+# re-pinned keys (crds.create=false, certManager.enabled=true) stay
+# assertable in the rendered plan.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelOperator
+metadata:
+  name: otel-operator-full
+spec:
+  namespace:
+    value: otel-operator-system
+  createNamespace: true
+  chartVersion: 0.120.0
+  webhook:
+    issuerRef:
+      kind: ClusterIssuer
+      name: internal-ca
+  defaultCollectorImage: mirror.example.com/otel/opentelemetry-collector-k8s:0.156.0
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  serviceMonitorEnabled: true
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      workload: system
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    pdb:
+      create: true
+      minAvailable: 1

@@ -1,0 +1,95 @@
+# Full-surface shape: the Celery executor with the bundled Redis broker,
+# PgBouncer pooling, git-sync DAG delivery, KEDA worker autoscaling, the
+# OpenSearch log read path, logs persistence, sizing, scheduling and an
+# escape-hatch entry — the offline plan/preview proof for the widest
+# typed rendering.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAirflow
+metadata:
+  name: airflow-full
+spec:
+  namespace:
+    value: airflow-full
+  createNamespace: true
+  executor: CeleryExecutor
+  database:
+    postgres:
+      host:
+        value: airflow-pg-rw
+      port: 5432
+      databaseName: airflow
+      username: airflow
+      passwordSecret:
+        secretName:
+          value: airflow-pg-app
+        secretKey: password
+      sslMode: disable
+  broker:
+    bundledRedis:
+      persistenceSize: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+  dags:
+    gitSync:
+      repo: https://github.com/example/pipelines.git
+      ref: main
+      subPath: dags
+      periodSeconds: 30
+      credentialsSecret: pipelines-git-token
+  components:
+    apiServer:
+      replicas: 2
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    scheduler:
+      replicas: 2
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    dagProcessor:
+      replicas: 1
+    triggerer:
+      persistenceSize: 2Gi
+    workers:
+      persistenceSize: 2Gi
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+      keda:
+        enabled: true
+        minReplicas: 0
+        maxReplicas: 5
+        pollingIntervalSeconds: 10
+  pgbouncer:
+    enabled: true
+    metadataPoolSize: 20
+    resultBackendPoolSize: 5
+    maxClientConnections: 150
+  logging:
+    persistence:
+      enabled: true
+      size: 5Gi
+    opensearch:
+      host:
+        value: logs-opensearch
+      port: 9200
+      username: airflow
+      passwordSecret:
+        secretName:
+          value: logs-opensearch-airflow-auth
+  adminUser:
+    username: platform-admin
+    email: platform@example.com
+  statsdEnabled: true
+  scheduling:
+    nodeSelector:
+      workload-tier: data
+  helmValues: |
+    workers:
+      terminationGracePeriodSeconds: 300

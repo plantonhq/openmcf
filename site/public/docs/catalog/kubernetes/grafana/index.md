@@ -61,7 +61,7 @@ composes from ingress and gateway kinds.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGrafana
 metadata:
   name: dashboards

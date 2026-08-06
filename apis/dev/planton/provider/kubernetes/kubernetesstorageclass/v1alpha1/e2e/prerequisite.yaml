@@ -1,0 +1,12 @@
+# Install manifest used when OTHER components declare KubernetesStorageClass
+# as an E2E prerequisite (e.g. a PersistentVolumeClaim scenario composing a
+# real class through the foreign key). Uses kind's local-path provisioner so
+# claims of this class actually provision on the test cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStorageClass
+metadata:
+  name: e2e-sc-fixture
+spec:
+  name: e2e-sc-fixture
+  provisioner: rancher.io/local-path
+  volume_binding_mode: wait_for_first_consumer

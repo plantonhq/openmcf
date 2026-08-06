@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpgkeworkloadidentitybinding.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpGkeWorkloadIdentityBindingSpec defines one ADDITIVE IAM grant on a
+// Google Service Account (GSA): it gives a Kubernetes ServiceAccount (KSA)
+// the roles/iam.workloadIdentityUser role on that GSA, which is exactly what
+// GKE Workload Identity needs for the KSA to mint tokens as the GSA — keyless
+// impersonation, no exported key material.
+//
+// The IAM member principal is constructed from its parts —
+//   serviceAccount:<pool-project>.svc.id.goog[<ksa-namespace>/<ksa-name>]
+// — so a typo'd principal string is impossible by construction. The pool
+// project is the project that hosts the GKE cluster (every project has one
+// implicit workload-identity pool named <project>.svc.id.goog).
+//
+// Completing the workload-identity handshake also requires the KSA to carry
+// the iam.gke.io/gcp-service-account=<gsa-email> annotation. That annotation
+// lives on the Kubernetes object and belongs to the workload's own
+// deployment (chart or manifest) — this component owns only the GCP side.
+//
+// Additive semantics: this grant merges into the GSA's IAM policy without
+// touching any other principal's bindings, and removal subtracts only this
+// exact grant. Every field is immutable, mirroring the underlying API: an
+// IAM grant has no update — any change replaces the grant atomically.
+message GcpGkeWorkloadIdentityBindingSpec {
+  // The GCP project that hosts the GKE cluster — and therefore the implicit
+  // workload-identity pool <project>.svc.id.goog the principal lives in.
+  // This may differ from the GSA's own project in cross-project setups; the
+  // GSA's project is derived from its email.
+  // If omitted, the provider's default project is used — the common case
+  // when the cluster lives in the credentials' project.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The email of the Google Service Account the KSA impersonates. The grant
+  // is attached to THIS service account's IAM policy.
+  // Example: "cert-manager@my-project.iam.gserviceaccount.com"
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // Kubernetes namespace of the ServiceAccount running in the cluster.
+  // Validated as an RFC 1123 label — a typo here would otherwise produce a
+  // syntactically valid but permanently broken principal.
+  string ksa_namespace = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  ];
+
+  // Name of the Kubernetes ServiceAccount. Validated as an RFC 1123 DNS
+  // subdomain (Kubernetes object-name rules).
+  string ksa_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+    }
+  ];
+
+  // Optional IAM Condition restricting when this grant applies. The
+  // condition is part of the grant's identity: the same grant with and
+  // without a condition are two independent grants that do not interfere.
+  GcpGkeWorkloadIdentityBindingCondition condition = 5;
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview for
+// the attribute reference and expression language.
+message GcpGkeWorkloadIdentityBindingCondition {
+  // Short human-readable title identifying the condition's intent,
+  // e.g. "expires-2026-12-31".
+  string title = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // The CEL condition expression, e.g.
+  // request.time < timestamp("2027-01-01T00:00:00Z").
+  string expression = 2 [(buf.validate.field).required = true];
+
+  // Optional longer explanation of what the condition does and why it exists.
+  string description = 3 [(buf.validate.field).string.max_len = 256];
+}

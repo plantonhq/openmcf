@@ -36,7 +36,7 @@ Not created by design: ServiceAccounts and RBAC (reference a `KubernetesServiceA
 Create a file `deployment.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-app
@@ -111,7 +111,7 @@ Each container (app, sidecar, init) additionally supports `command`/`args`, `wor
 CPU-based autoscaling between 2 and 10 replicas, zero-downtime rollouts, and a disruption budget:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api-server
@@ -169,7 +169,7 @@ spec:
 No ports, so no Service is created — the workload is unreachable by design and receives work over connections it initiates:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: queue-worker
@@ -202,7 +202,7 @@ spec:
 Passes the restricted Pod Security Standard and runs as a `KubernetesServiceAccount` referenced by output:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: payments

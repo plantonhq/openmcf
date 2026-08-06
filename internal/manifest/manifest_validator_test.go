@@ -33,7 +33,7 @@ func requireValidationError(t *testing.T, err error, wants ...string) {
 }
 
 func TestValidateLoadedValidManifest(t *testing.T) {
-	err := validateBytes(t, `apiVersion: aws.planton.dev/v1
+	err := validateBytes(t, `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe
@@ -57,7 +57,7 @@ spec:
 `)
 	requireValidationError(t, err,
 		"apiVersion 'aws.planton.dev/v99' does not match kind AwsVpc",
-		"'apiVersion: aws.planton.dev/v1'")
+		"'apiVersion: aws.planton.dev/v1alpha1'")
 }
 
 func TestValidateLoadedRejectsMissingApiVersion(t *testing.T) {
@@ -70,14 +70,14 @@ spec:
 `)
 	requireValidationError(t, err,
 		"manifest is missing apiVersion",
-		"'apiVersion: aws.planton.dev/v1'")
+		"'apiVersion: aws.planton.dev/v1alpha1'")
 }
 
 // The manifest loader resolves kind names tolerantly (case and separators),
 // but the document contract requires the canonical name — the same rule the
 // server and MCP surfaces enforce. The error names the exact spelling.
 func TestValidateLoadedRejectsNonCanonicalKind(t *testing.T) {
-	err := validateBytes(t, `apiVersion: aws.planton.dev/v1
+	err := validateBytes(t, `apiVersion: aws.planton.dev/v1alpha1
 kind: awsvpc
 metadata:
   name: probe
@@ -91,7 +91,7 @@ spec:
 }
 
 func TestValidateLoadedRejectsMissingMetadata(t *testing.T) {
-	err := validateBytes(t, `apiVersion: aws.planton.dev/v1
+	err := validateBytes(t, `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 spec:
   region: us-east-1
@@ -103,7 +103,7 @@ spec:
 // Spec-rule violations must keep flowing through the same report, attributed
 // with their full path from the document root.
 func TestValidateLoadedStillReportsSpecViolations(t *testing.T) {
-	err := validateBytes(t, `apiVersion: aws.planton.dev/v1
+	err := validateBytes(t, `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe

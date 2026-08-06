@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpservicenetworkingconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpServiceNetworkingConnectionSpec defines a private services access
+// connection — the VPC peering between one of your networks and a service
+// producer's network (for Google managed services, the
+// servicenetworking.googleapis.com producer). This peering is what lets
+// Cloud SQL, AlloyDB, Memorystore (PRIVATE_SERVICE_ACCESS mode), and
+// Filestore hand out private IPs from ranges you reserved inside your VPC.
+//
+// The connection composes two things that already exist as first-class
+// resources: the VPC network being peered, and one or more INTERNAL
+// VPC_PEERING address ranges (GcpGlobalAddress) reserved for the producer
+// to carve service subnets from. One connection per (network, service) pair
+// is the API's cardinality — GCP rejects a second connection for the same
+// pair, so widening capacity later means adding ranges to THIS resource,
+// not creating another connection.
+//
+// The connection has no name of its own in GCP: it is addressed by the
+// network + service pair, and the created peering appears on the VPC as
+// a peering named after the service (e.g. servicenetworking-googleapis-com).
+//
+// Teardown ordering matters: GCP refuses to delete the connection while any
+// service producer still holds subnets in the reserved ranges — destroy the
+// Cloud SQL / AlloyDB / Memorystore instances that use private IP BEFORE
+// destroying this connection.
+message GcpServiceNetworkingConnectionSpec {
+  // The GCP project used to enable the required APIs
+  // (servicenetworking.googleapis.com and compute.googleapis.com) before the
+  // connection is created. Can be a literal project ID or a reference to a
+  // GcpProject resource. If omitted, the provider's default project is used.
+  // The connection itself is addressed by the network (GCP derives the
+  // owning project from it) — set this only when the network's project
+  // differs from the provider's default project.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The VPC network to peer with the service producer. Accepts a network
+  // name or full self-link URL; a reference resolves to the GcpVpcNetwork's
+  // self-link. Immutable: changing it destroys and recreates the connection
+  // (and with it, every producer resource's private connectivity).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // The service producer to peer with (default
+  // servicenetworking.googleapis.com — the producer behind Cloud SQL,
+  // AlloyDB, Memorystore, and Filestore private IP). Third-party producers
+  // publish their own service names. Immutable: one connection exists per
+  // (network, service) pair.
+  string service = 3 [
+    (dev.planton.shared.options.default) = "servicenetworking.googleapis.com",
+    (buf.validate.field).cel = {
+      id: "valid_service"
+      message: "service must be a DNS-style service name such as servicenetworking.googleapis.com"
+      expression: "this == '' || this.matches('^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)+$')"
+    }
+  ];
+
+  // Named INTERNAL VPC_PEERING address ranges (GcpGlobalAddress resources,
+  // referenced by NAME — not self-link or CIDR) reserved for the producer to
+  // allocate service subnets from. At least one range is required. Mutable:
+  // append ranges here when the producer runs out of space — GCP keeps
+  // already-provisioned producer subnets even when the list changes, so
+  // growth is additive and safe. Size ranges generously up front (a /16 is
+  // the common default): producers cannot use ranges that are too fragmented.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef reserved_peering_ranges = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGlobalAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // Recovery lever for a known API wrinkle: when a connection for this
+  // (network, service) pair already exists outside of Planton's management
+  // (e.g. created by gcloud or a console flow), the create call fails with
+  // "Cannot modify allocated ranges". Setting this to true converts that
+  // failure into an in-place update of the existing connection's reserved
+  // ranges, adopting it instead of erroring. Leave false unless you are
+  // deliberately taking over a pre-existing connection.
+  bool update_on_creation_fail = 5;
+}

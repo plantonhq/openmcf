@@ -1,0 +1,23 @@
+# Minimal AzureCosmosdbMongoDatabase scenario: a database with 400 RU/s
+# shared throughput on a scenario-local Mongo API account.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbMongoDatabase
+metadata:
+  name: planton-oss-e2e-azurecosmosdbmongodatabase-smoke
+  id: planton-oss-e2e-azurecosmosdbmongodatabase-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbmongodatabase
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbmongodatabase/v1alpha1/e2e/mongo-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosmosmongo-fixture-account
+  databaseName: smoke
+  throughput: 400

@@ -25,7 +25,7 @@ Deliver messages from an SNS topic to an endpoint — SQS, Lambda, HTTP/S, email
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSnsSubscription
 metadata:
   name: fulfillment-events

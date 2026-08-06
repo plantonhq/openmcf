@@ -1,0 +1,56 @@
+# The kind-honest full surface against the composed database: the
+# postgres datastore FK-composing the CloudNativePG fixture, pre-shared
+# API keys (module-materialized into the `<name>-authn-keys` Secret —
+# the verifier asserts the unauthenticated 401 BEFORE running the
+# authenticated Zanzibar proof), tuned pools and query limits, JSON
+# logging, metrics on (no ServiceMonitor — the kind cluster runs no
+# Prometheus Operator CRDs) and two replicas sharing the datastore. The
+# OIDC authn, mysql and HPA arms are plan-proven offline (an issuer, a
+# MySQL and a metrics-server have no honest stand-ins here).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenFga
+metadata:
+  name: e2e-fga-full
+spec:
+  namespace:
+    value: e2e-openfga
+  replicas: 2
+  chartVersion: 0.3.10
+  datastore:
+    postgres:
+      host:
+        valueFrom:
+          name: e2e-fga-pg
+      database: openfga
+      username: openfga
+      passwordSecret:
+        secretName:
+          valueFrom:
+            name: e2e-fga-pg
+        secretKey: password
+    migrationTimeout: 5m
+    maxOpenConns: 20
+    maxIdleConns: 5
+  authn:
+    preshared:
+      keys:
+        - e2e-proof-key-0198
+  log:
+    level: info
+    format: json
+  tuning:
+    maxTuplesPerWrite: 50
+    listObjectsDeadline: 5s
+    checkQueryCache:
+      enabled: true
+      ttl: 10s
+  metrics:
+    enabled: true
+    enableRpcHistograms: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

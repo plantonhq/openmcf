@@ -30,7 +30,7 @@ When you deploy an OciObjectStorageBucket resource, Planton provisions:
 Create a file `bucket.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciObjectStorageBucket
 metadata:
   name: my-bucket
@@ -129,7 +129,7 @@ This creates a private bucket with Standard storage tier, no versioning, and Ora
 A bucket with default settings — suitable for development or application data:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciObjectStorageBucket
 metadata:
   name: dev-data
@@ -150,7 +150,7 @@ spec:
 A bucket with versioning enabled and a 90-day retention rule for compliance:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciObjectStorageBucket
 metadata:
   name: compliance-store
@@ -178,7 +178,7 @@ spec:
 A bucket with auto-tiering for cost optimization and lifecycle rules to archive old data and clean up incomplete multipart uploads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciObjectStorageBucket
 metadata:
   name: data-lake
@@ -219,7 +219,7 @@ spec:
 A production bucket with customer-managed encryption and cross-region disaster recovery:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciObjectStorageBucket
 metadata:
   name: prod-artifacts

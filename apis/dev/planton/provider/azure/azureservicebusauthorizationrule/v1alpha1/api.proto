@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureservicebusauthorizationrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azureservicebusauthorizationrule/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azureservicebusauthorizationrule/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureServiceBusAuthorizationRule is the top-level API resource for a
+// Service Bus SAS credential: listen/send/manage rights scoped to exactly
+// one of a namespace, queue, or topic. Its keys and connection strings
+// surface as sensitive outputs -- the least-privilege alternative to the
+// namespace's root key, and the credential seam Service Bus consumers
+// reference.
+message AzureServiceBusAuthorizationRule {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureServiceBusAuthorizationRule'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureServiceBusAuthorizationRuleSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureServiceBusAuthorizationRuleStatus status = 5;
+}
+
+// AzureServiceBusAuthorizationRuleStatus holds the deployment status and
+// outputs.
+message AzureServiceBusAuthorizationRuleStatus {
+  // stack-outputs
+  AzureServiceBusAuthorizationRuleStackOutputs outputs = 1;
+}

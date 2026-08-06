@@ -142,10 +142,10 @@ Show results clearly:
 ✅ Success: Exit code 0
 
 📁 Generated files:
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/api.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/spec.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/stack_input.pb.go
-   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/stack_outputs.pb.go
+   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/api.pb.go
+   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/spec.pb.go
+   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/stack_input.pb.go
+   - apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/stack_outputs.pb.go
 
 ✅ Proto stub generation complete
 ```

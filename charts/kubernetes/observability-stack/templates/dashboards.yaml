@@ -9,7 +9,7 @@
 # default in the component) loads any ConfigMap labeled grafana_dashboard: "1"
 # from anywhere in the cluster — teams ship dashboards next to their own
 # workloads without ever touching this resource.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGrafana
 metadata:
   name: "{{ values.env }}-grafana"

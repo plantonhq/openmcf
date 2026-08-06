@@ -27,7 +27,7 @@ When you deploy an AwsWafIpSet resource, Planton provisions:
 Create a file `ip-set.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafIpSet
 metadata:
   name: office-allowlist
@@ -76,7 +76,7 @@ planton apply -f ip-set.yaml
 ### Partner Integration Allow-List
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafIpSet
 metadata:
   name: partner-apis
@@ -93,7 +93,7 @@ spec:
 ### CloudFront Global Deny-List
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafIpSet
 metadata:
   name: blocked-clients

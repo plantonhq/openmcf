@@ -40,7 +40,7 @@ rules.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpcEndpoint
 metadata:
   name: platform-s3-gateway
@@ -97,7 +97,7 @@ planton apply -f endpoint.yaml
 ### Interface endpoint for ECR with private DNS
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpcEndpoint
 metadata:
   name: platform-ecr-dkr
@@ -118,7 +118,7 @@ spec:
 ### S3 gateway endpoint with a scoping policy
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpcEndpoint
 metadata:
   name: platform-s3-gateway
@@ -145,7 +145,7 @@ spec:
 ### Third-party PrivateLink service
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpcEndpoint
 metadata:
   name: vendor-privatelink

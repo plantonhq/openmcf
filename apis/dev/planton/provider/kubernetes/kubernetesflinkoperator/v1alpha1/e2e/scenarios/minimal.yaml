@@ -1,0 +1,14 @@
+# Minimal operator install: chart defaults end to end — webhook ON
+# (cert-manager rides the registry prerequisite), cluster-wide watch,
+# one replica, the module-generated keystore password Secret replacing
+# the chart's hardcoded default. The verifier proves THE ADMISSION GATE
+# (an invalid FlinkDeployment — JobManager standbys without HA —
+# REJECTED at admission by the fail-closed webhook) and THE INVARIANT.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesFlinkOperator
+metadata:
+  name: e2e-flnkop-min
+spec:
+  namespace:
+    value: e2e-flnkop-min
+  createNamespace: true

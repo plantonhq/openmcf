@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateEndpoint
+metadata:
+  name: pg-pe
+  org: test-org
+  env: test
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: pg-private-endpoint
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/pe-subnet
+  privateServiceConnection:
+    privateConnectionResourceId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/test-pg
+    subresourceNames:
+      - postgresqlServer
+  privateDnsZoneIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com
+  tags:
+    purpose: hack-test

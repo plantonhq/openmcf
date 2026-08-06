@@ -1,0 +1,28 @@
+# The tuned surface: namespace-fenced watch with namespace-scoped RBAC
+# (the shared-cluster posture), explicit sizing, debug logging, the
+# kube-rbac-proxy sidecar disabled, and an escape-hatch value — every
+# typed field class exercised live.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-full
+spec:
+  namespace:
+    value: e2e-osop-full
+  create_namespace: true
+  watch_namespace: e2e-osop-full
+  use_role_bindings: true
+  log_level: debug
+  dns_base: cluster.local
+  parallel_recovery_enabled: false
+  kube_rbac_proxy_enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  helm_values: |
+    podLabels:
+      e2e.planton.dev/lane: tuned-full

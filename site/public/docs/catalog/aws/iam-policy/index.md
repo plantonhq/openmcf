@@ -35,7 +35,7 @@ Role and user attachments are **not** created here — reference this policy's
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamPolicy
 metadata:
   name: s3-read-only
@@ -72,7 +72,7 @@ planton apply -f policy.yaml
 ### Permissions boundary for CI principals
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamPolicy
 metadata:
   name: ci-permissions-boundary
@@ -99,7 +99,7 @@ spec:
 ### Attaching to a role by reference
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: analytics-reader

@@ -1,0 +1,108 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises every typed block coherently: a provided
+# ZooKeeper ensemble with persistence and tuned resources, persistent node
+# storage, JVM/logging/GC tuning, node resources with scheduling
+# constraints, keystore TLS, basic-auth security, one S3 and one shared-
+# volume backup repository, the operator's Ingress exposure arm, managed
+# rolling updates with int-and-percentage budgets, and explicit scaling
+# flags. Both engines must render identical SolrCloud CRs from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolr
+metadata:
+  name: solr-hack
+spec:
+  namespace:
+    value: solr-hack-ns
+  createNamespace: true
+  replicas: 3
+  version: 9.10.0
+  zookeeper:
+    provided:
+      replicas: 3
+      chroot: /solr
+      persistence:
+        size: 5Gi
+        storageClass:
+          value: fast-ssd
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+  storage:
+    persistent:
+      size: 20Gi
+      storageClass:
+        value: fast-ssd
+      reclaimPolicy: Delete
+  javaMem: -Xms1g -Xmx1g
+  solrOpts: -Dsolr.autoSoftCommit.maxTime=10000
+  logLevel: WARN
+  gcTune: -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 3Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi
+  security:
+    authenticationType: basic
+    probesRequireAuth: true
+  tls:
+    pkcs12Secret:
+      name: solr-hack-keystore
+      key: keystore.p12
+    keystorePasswordSecret:
+      name: solr-hack-keystore-pass
+      key: password
+    clientAuth: Want
+    verifyClientHostname: true
+  backupRepositories:
+    - name: s3-backups
+      s3:
+        region: us-west-2
+        bucket: solr-hack-backups
+        baseLocation: /clusters/solr-hack
+        endpoint: http://minio.minio-system.svc:9000
+        credentials:
+          accessKeyIdSecret:
+            name: solr-hack-s3-creds
+            key: access-key-id
+          secretAccessKeySecret:
+            name: solr-hack-s3-creds
+            key: secret-access-key
+    - name: shared-volume
+      volume:
+        pvcClaimName: solr-hack-backup-pvc
+        directory: solr-hack
+  solrModules:
+    - analytics
+    - ltr
+  additionalLibs:
+    - /opt/solr/custom-libs
+  updateStrategy:
+    method: Managed
+    maxPodsUnavailable: "2"
+    maxShardReplicasUnavailable: 25%
+    restartSchedule: "@every 168h"
+  availability:
+    pdbEnabled: true
+  scaling:
+    vacatePodsOnScaleDown: true
+    populatePodsOnScaleUp: false
+  external:
+    method: Ingress
+    domainName: search.example.com
+    useExternalAddress: true
+    hideNodes: false
+  podPort: 8983
+  nodeSelector:
+    disktype: ssd
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: search
+      effect: NoSchedule

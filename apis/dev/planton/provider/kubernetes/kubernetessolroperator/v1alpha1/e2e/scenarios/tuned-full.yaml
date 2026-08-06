@@ -1,0 +1,29 @@
+# The tuned surface: namespace-fenced watch, explicit sizing, metrics
+# and leader election declared, an escape-hatch value — every typed
+# field class exercised live (the mTLS arm rides the offline plan
+# proofs; it needs certificate fixtures).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-full
+spec:
+  namespace:
+    value: e2e-slrop-full
+  create_namespace: true
+  replicas: 1
+  watch_namespaces:
+    - e2e-slrop-full
+  zookeeper_operator:
+    install: true
+  leader_election_enabled: true
+  metrics_enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  helm_values: |
+    labels:
+      e2e.planton.dev/lane: tuned-full

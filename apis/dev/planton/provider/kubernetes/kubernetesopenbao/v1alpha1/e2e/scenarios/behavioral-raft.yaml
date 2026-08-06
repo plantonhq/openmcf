@@ -1,0 +1,21 @@
+# THE DURABILITY PROOF on integrated Raft: initialize + unseal, write a
+# marker, DELETE pod 0, and prove the Shamir restart truth — the
+# replacement comes back SEALED, is re-unsealed with the run's key, and
+# the marker survives on the Raft PVC. A single-replica Raft cluster is
+# the honest shape for a one-node lab cluster: the chart ships a
+# REQUIRED pod anti-affinity, so multi-replica Raft needs as many nodes
+# as replicas (the multi-peer retry_join topology is plan-proven
+# offline).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenBao
+metadata:
+  name: e2e-bao-raft
+spec:
+  namespace:
+    value: e2e-bao-raft
+  createNamespace: true
+  server:
+    ha:
+      replicas: 1
+    dataStorage:
+      size: 1Gi

@@ -88,7 +88,7 @@ jobs:
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}" || true
           : > changed_modules.txt
           git diff --name-only "$base"...HEAD -- 'apis/**/iac/tf/**' \
-            | sed -nE 's#^(apis/.*/v1/iac/tf)/.*#\1#p' \
+            | sed -nE 's#^(apis/.*/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf)/.*#\1#p' \
             | sort -u >> changed_modules.txt || true
           echo "Changed iac/tf modules:"
           cat changed_modules.txt
@@ -142,7 +142,7 @@ jobs:
               rc=1
             fi
             echo "::endgroup::"
-          done < <(find apis -type d -path '*/v1/iac/tf' | sort)
+          done < <(find apis -type d -path '*/v*/iac/tf' | sort)
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::warning::${#failed[@]} module(s) failed validate:"
             printf '  - %s\n' "${failed[@]}"

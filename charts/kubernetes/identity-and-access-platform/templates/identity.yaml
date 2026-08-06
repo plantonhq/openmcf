@@ -4,7 +4,7 @@
 # `<name>-initial-admin` Secret (username "temp-admin") — a BOOTSTRAP
 # credential that seeds the first login and nothing after; durable admin
 # users are created inside Keycloak.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKeycloak
 metadata:
   name: "{{ values.env }}-keycloak"

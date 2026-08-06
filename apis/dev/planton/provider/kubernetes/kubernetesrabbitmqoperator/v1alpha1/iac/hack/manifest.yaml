@@ -1,0 +1,33 @@
+# Full-surface offline-proof manifest: exercises a fenced watch scope,
+# both fleet-wide default-image overrides, an operator image override with
+# a pull secret, a resources override, and node selector + tolerations —
+# so the offline tofu plan and pulumi preview proofs cover every patched
+# surface of the release manifest's operator Deployment. Placeholder
+# values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRabbitMqOperator
+metadata:
+  name: rabbitmq-operator-hack
+spec:
+  watchNamespaces:
+    - messaging
+    - team-a
+  defaultRabbitmqImage: mirror.internal/rabbitmq:4.2.6-management
+  defaultUserUpdaterImage: mirror.internal/default-user-credential-updater:1.0.14
+  operatorImage:
+    repo: mirror.internal/rabbitmq/cluster-operator
+    tag: 2.22.3
+    pullSecretName: mirror-pull
+  resources:
+    requests:
+      cpu: 200m
+      memory: 500Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  nodeSelector:
+    workload: system
+  tolerations:
+    - key: system
+      operator: Exists
+      effect: NoSchedule

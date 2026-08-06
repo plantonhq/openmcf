@@ -1,0 +1,15 @@
+# Component defaults end to end: the namespaced watch (the operator and
+# its future Keycloak declarations share this namespace — several teams
+# can run isolated stacks side by side), upstream's own image and
+# resources, the module-stamped namespace on every namespaced document
+# and every binding subject (fixing upstream's baked `keycloak` subject
+# in the ClusterRoleBinding). The verifier proves the rollout, the four
+# CRDs, and the no-server-deployed invariant.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKeycloakOperator
+metadata:
+  name: e2e-kcop-min
+spec:
+  namespace:
+    value: e2e-kcop-min
+  createNamespace: true

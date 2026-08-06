@@ -1,0 +1,28 @@
+# GcpArtifactRegistryRepo scenario: a remote pull-through cache of Docker
+# Hub — the REMOTE_REPOSITORY mode arm, live-viable because the anonymous
+# Docker Hub upstream needs no credentials. Upstream validation stays on
+# (the control plane can reach Docker Hub from the test project).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpArtifactRegistryRepo
+metadata:
+  name: planton-oss-e2e-gcpart-remote
+  id: planton-oss-e2e-gcpart-remote
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpartifactregistryrepo
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  repositoryId: e2e-ar-remote-${E2E_RUN_ID}
+  location: us-central1
+  format: DOCKER
+  mode: REMOTE_REPOSITORY
+  description: e2e docker hub pull-through cache
+  remoteRepositoryConfig:
+    dockerPublicRepository: DOCKER_HUB
+  labels:
+    e2e-suite: gcp

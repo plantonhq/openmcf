@@ -1,0 +1,11 @@
+# Minimal shape: every optional block omitted — a single JetStream-enabled
+# server (the kind's persistent default) with no auth. The offline proof
+# that absent optionals render correctly.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNats
+metadata:
+  name: nats-min
+spec:
+  namespace:
+    value: nats-min
+  createNamespace: true

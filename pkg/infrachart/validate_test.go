@@ -102,7 +102,7 @@ func requireError(t *testing.T, report *Report, substring string) {
 }
 
 const validNode = `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "{{ env }}-{{ values.base_name }}-b"
@@ -153,7 +153,7 @@ func TestValidateHappyPathWithInChartReference(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"b.yaml": validNode,
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "{{ env }}-{{ values.base_name }}-a"
@@ -187,7 +187,7 @@ func TestValidateFkOverrideIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"b.yaml": validNode,
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -211,7 +211,7 @@ spec:
 func TestValidateCrossChartReferenceIsAWarning(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -250,7 +250,7 @@ func TestValidateToggleRemovedTargetWarnsWithDiagnosis(t *testing.T) {
 ` + validNode + `{% endif %}
 `,
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -287,7 +287,7 @@ spec:
 func TestValidateDependencyCycleIsAnError(t *testing.T) {
 	node := func(name, refName string) string {
 		return `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "` + name + `"
@@ -310,7 +310,7 @@ spec:
 func TestValidateUnresolvableFieldPathIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -331,7 +331,7 @@ spec:
 func TestValidateReferenceWithoutKindIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -350,7 +350,7 @@ spec:
 func TestValidateSpecViolationIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -365,7 +365,7 @@ spec:
 func TestValidateMissingMetadataNameIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   id: not-a-name
@@ -381,7 +381,7 @@ spec:
 func TestValidateUnknownFieldIsAnError(t *testing.T) {
 	dir := writeChart(t, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "a"
@@ -409,7 +409,7 @@ func TestValidateAutoFlipsBoolToggles(t *testing.T) {
 		"a.yaml": validNode,
 		"extra.yaml": `{% if values.extraEnabled | bool %}
 ---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "extra"
@@ -472,7 +472,7 @@ func TestValidateValuelessParamWarnsWhenUsed(t *testing.T) {
 `
 	dir := writeChartWithValues(t, values, map[string]string{
 		"a.yaml": `---
-apiVersion: _test.planton.dev/v1
+apiVersion: _test.planton.dev/v1alpha1
 kind: TestCloudResourceGeneric
 metadata:
   name: "{{ values.base_name }}"

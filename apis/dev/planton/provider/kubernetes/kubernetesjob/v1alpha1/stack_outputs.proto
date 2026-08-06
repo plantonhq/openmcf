@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesjob.v1alpha1;
+
+/**
+ * **KubernetesJobStackOutputs** captures the observable handles of a deployed
+ * Job. Jobs front no Service, so the useful handles are the object's identity
+ * and the label selector for finding its pods.
+ */
+message KubernetesJobStackOutputs {
+  // The namespace the Job was created in.
+  string namespace = 1;
+
+  // The name of the Job object as created in the cluster.
+  string job_name = 2;
+
+  /**
+   * The controller-generated job-name label selector as a "k=v,k=v" string —
+   * ready for locating this Job's pods with `kubectl get pods -l` or `kubectl
+   * logs -l` for post-run inspection.
+   */
+  string selector_labels = 3;
+}

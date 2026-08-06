@@ -27,7 +27,7 @@ When you deploy an AwsCognitoIdentityProvider resource, Planton provisions:
 Create a file `google-idp.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
@@ -101,7 +101,7 @@ Then add `Google` to the User Pool Client's `supportedIdentityProviders` list.
 ### Google OAuth
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-idp
@@ -133,7 +133,7 @@ spec:
 ### Enterprise OIDC
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-oidc-idp
@@ -166,7 +166,7 @@ spec:
 ### SAML Federation
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: corp-saml-idp

@@ -1,0 +1,37 @@
+# Minimal AzureStorageShare scenario: an SMB share on the scenario-local
+# fixture account, carrying an explicit quota + Cool tier and metadata to
+# prove the tier enum mapping and key/value pass-through on both engines.
+#
+# The account reference resolves against the extra fixture's captured
+# outputs through the field's default kind (fixture RG -> scenario-local
+# account -> this share). NFS is deliberately not exercised live: it
+# requires a premium FileStorage account (a different fixture account
+# kind) for a protocol enum seam the offline plan already proves.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageShare
+metadata:
+  name: planton-oss-e2e-azurestorageshare-smoke
+  id: planton-oss-e2e-azurestorageshare-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageshare
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account (minimal-account.yaml) instead of a registry
+    # prerequisite: storage-account names are globally unique and
+    # sequential subtests that destroy and recreate the same name hang on
+    # recreate.
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurestorageshare/v1alpha1/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storageshare-fixture-account
+  shareName: smoke-team-files
+  quotaGb: 50
+  accessTier: COOL
+  metadata:
+    purpose: smoke

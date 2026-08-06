@@ -1,0 +1,52 @@
+# Minimal AwsEc2Instance scenario: one t3.micro in the private subnet
+# fixture with the egress-only instance security group attached, IMDSv2
+# required, and an encrypted gp3 root volume -- the hardened pet-instance
+# baseline. The user-data script carries a literal ${...} so the lane
+# proves the tfvars template-introducer escaping live on the Terraform
+# engine. The AMI is the same pinned Amazon Linux 2023 x86_64 image the
+# launch-template fixture uses (us-west-2); a deregistered AMI only ever
+# requires bumping the pin. Full metadata is supplied for tagging/orphan
+# cleanup.
+#
+# The e2e-prerequisites annotation composes the subnet and security-group
+# fixtures for this scenario without making them registry prerequisites --
+# the kind itself deploys with nothing (default-VPC fallback).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEc2Instance
+metadata:
+  name: planton-oss-e2e-ec2-smoke
+  id: planton-oss-e2e-ec2-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsec2instance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSubnet,AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  ami: ami-0b0b27dd5c039480f
+  instanceType: t3.micro
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: planton-oss-e2e-awssubnet-prereq-a
+      fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-instance-prereq
+        fieldPath: status.outputs.security_group_id
+  metadataOptions:
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  rootBlockDevice:
+    volumeSizeGb: 8
+    volumeType: gp3
+    encrypted: true
+  userData: |
+    #!/bin/bash
+    echo "booted as ${HOSTNAME} at $(date)" > /etc/motd

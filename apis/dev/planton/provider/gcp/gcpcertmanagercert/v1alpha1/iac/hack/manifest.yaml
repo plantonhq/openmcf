@@ -1,0 +1,12 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertManagerCert
+metadata:
+  name: test-certificate
+spec:
+  projectId:
+    value: test-gcp-project
+  managed:
+    domains:
+      - example.com
+    dnsAuthorizations:
+      - value: projects/test-gcp-project/locations/global/dnsAuthorizations/example-com-auth

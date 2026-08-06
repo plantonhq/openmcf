@@ -10,7 +10,7 @@
 # workload can only read Secrets in its own namespace: co-location is what
 # lets the app consume the operator-managed database credential and the
 # cache's auth Secret directly.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-{{ values.namespace }}-ns"

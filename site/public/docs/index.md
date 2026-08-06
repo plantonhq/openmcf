@@ -165,7 +165,7 @@ Browse deployment components by cloud provider in the [Catalog](/docs/catalog):
 ## Quick Example
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRedis
 metadata:
   name: my-redis

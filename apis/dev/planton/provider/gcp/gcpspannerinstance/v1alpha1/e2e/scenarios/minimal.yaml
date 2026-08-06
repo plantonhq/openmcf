@@ -1,0 +1,24 @@
+# Minimal GcpSpannerInstance scenario: the smallest billable footprint —
+# 100 processing units, regional config. project_id is deliberately omitted
+# (ambient project). Instance names release immediately on delete, so a
+# fixed name is safe across reruns.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSpannerInstance
+metadata:
+  name: planton-oss-e2e-gcpspn-minimal
+  id: planton-oss-e2e-gcpspn-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpspannerinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-spn-minimal
+  config: regional-us-central1
+  displayName: Planton E2E Minimal
+  processingUnits: 100
+  edition: STANDARD

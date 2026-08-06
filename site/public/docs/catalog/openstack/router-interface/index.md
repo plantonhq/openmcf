@@ -27,7 +27,7 @@ When you deploy an OpenStackRouterInterface resource, Planton provisions:
 Create a file `router-interface.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouterInterface
 metadata:
   name: my-router-interface
@@ -73,7 +73,7 @@ This attaches the specified router to the specified subnet, enabling L3 routing 
 Attach a pre-existing router to a pre-existing subnet using their UUIDs directly:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouterInterface
 metadata:
   name: web-subnet-attachment
@@ -94,7 +94,7 @@ spec:
 Wire the router interface to OpenStackRouter and OpenStackSubnet resources in the same deployment using `valueFrom`, so the IDs are resolved automatically:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouterInterface
 metadata:
   name: app-subnet-to-edge
@@ -121,7 +121,7 @@ spec:
 Attach a router to a subnet in a specific OpenStack region, overriding the provider default:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackRouterInterface
 metadata:
   name: region2-db-subnet

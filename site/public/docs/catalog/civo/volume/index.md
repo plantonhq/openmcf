@@ -26,7 +26,7 @@ When you deploy a CivoVolume resource, Planton provisions:
 Create a file `civo-volume.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVolume
 metadata:
   name: my-volume
@@ -74,7 +74,7 @@ This creates a 50 GiB unformatted block storage volume in the New York region.
 A minimal 10 GiB volume for development use:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVolume
 metadata:
   name: dev-data
@@ -94,7 +94,7 @@ spec:
 A larger volume in the London region with tags and a requested filesystem type:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVolume
 metadata:
   name: app-storage
@@ -118,7 +118,7 @@ spec:
 A high-capacity volume for production workloads:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVolume
 metadata:
   name: prod-db-vol

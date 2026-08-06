@@ -23,7 +23,7 @@ A Firestore composite index with the declared field roles (sort order, array-con
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreIndex
 metadata:
   name: orders-by-customer-date

@@ -1,0 +1,70 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualMachine
+metadata:
+  name: test-vm
+  labels:
+    environment: production
+    team: platform
+spec:
+  region: eastus
+
+  # The resource group the VM lives in (literal value here; a manifest
+  # can also reference an AzureResourceGroup's name output via valueFrom).
+  resourceGroup:
+    value: test-rg
+
+  name: app-vm
+  size: Standard_D2s_v3
+
+  # The VM's network presence: referenced first-class NICs (the first is
+  # primary).
+  networkInterfaceIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/networkInterfaces/app-nic
+
+  # Explicit OS choice: SSH-key-only Ubuntu with Azure Update Manager
+  # patch orchestration (exercises the per-OS patch-mode mapping).
+  osProfile:
+    linux:
+      adminUsername: azureuser
+      sshPublicKeys:
+        - publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKp1QgHKux0e/js6p7UBR4jYOtb5aeedkl+0cNr5RB6Q planton-oss-e2e
+      patchMode: LINUX_AUTOMATIC_BY_PLATFORM
+
+  osDisk:
+    caching: READ_WRITE
+    storageAccountType: PREMIUM_LRS
+
+  sourceImageReference:
+    publisher: Canonical
+    offer: ubuntu-24_04-lts
+    sku: server
+    version: latest
+
+  # A referenced first-class data disk mounted at LUN 0.
+  dataDiskAttachments:
+    - managedDiskId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/disks/orders-db-data
+      lun: 0
+      caching: READ_ONLY
+
+  # Platform-patching orchestration knobs (valid only with the OS
+  # profile's AUTOMATIC_BY_PLATFORM patch mode, set above).
+  patching:
+    assessmentMode: ASSESSMENT_AUTOMATIC_BY_PLATFORM
+    rebootSetting: IF_REQUIRED
+
+  identity:
+    type: SYSTEM_ASSIGNED
+
+  availability:
+    zone: "1"
+
+  security:
+    secureBootEnabled: true
+    vtpmEnabled: true
+
+  bootDiagnostics: {}
+
+  # User tags merged over the metadata-derived tags.
+  tags:
+    cost-center: platform

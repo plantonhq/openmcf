@@ -1,0 +1,28 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamCustomRole
+metadata:
+  name: my-sample-custom-role
+spec:
+  # Role identifier (3-64 chars; letters, digits, underscores, periods; NO hyphens).
+  # Forms the full role name: projects/<project>/roles/<role_id>
+  roleId: logBucketWriter
+
+  # GCP project that owns this custom role.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Title shown in the GCP console and IAM policy pickers
+  title: Log Bucket Writer
+
+  # What this role is for and who should hold it
+  description: Grants exactly the permissions needed to write objects into log buckets
+
+  # The permission bundle (at least one required).
+  # Discover valid values with: gcloud iam list-testable-permissions <resource>
+  permissions:
+    - storage.objects.create
+    - storage.objects.get
+
+  # Launch stage label (default GA)
+  stage: GA

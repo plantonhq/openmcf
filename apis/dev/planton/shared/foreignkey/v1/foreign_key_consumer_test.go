@@ -2,7 +2,7 @@
 //
 // WHY THIS IS A SEPARATE FILE (not in foreign_key_test.go):
 // Go's import cycle restriction prevents `package foreignkeyv1` from importing
-// testcloudresourcegenericv1, because that generated code already imports foreignkeyv1
+// testcloudresourcegenericv1alpha1, because that generated code already imports foreignkeyv1
 // (it uses StringValueOrRef). The standard Go solution is an external test package:
 // `package foreignkeyv1_test` is treated as a separate package by the Go toolchain,
 // breaking the cycle while still being in the same directory.
@@ -10,7 +10,7 @@
 // WHY THESE TESTS EXIST HERE (co-located with StringValueOrRef):
 // The comprehensive boundary tests live in testcloudresourcegeneric/v1/spec_test.go.
 // These tests serve a different purpose: they are a STRUCTURAL TRIPWIRE. By importing
-// testcloudresourcegenericv1 in the foreignkey package's test directory, we create a
+// testcloudresourcegenericv1alpha1 in the foreignkey package's test directory, we create a
 // compile-time dependency. If TestCloudResourceGeneric is ever removed or its package
 // path changes, this file fails to compile — immediately flagging the loss of
 // consumer-level StringValueOrRef validation coverage.
@@ -38,13 +38,13 @@ import (
 	// TestCloudResourceGeneric. If that package is ever removed, this file fails
 	// to compile — alerting maintainers that the cross-cutting consumer tests
 	// below (and the comprehensive boundary tests in spec_test.go) need a new home.
-	testresource "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1"
+	testresource "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
 )
 
 // validTestResource returns a valid TestCloudResourceGeneric envelope for mutation-based testing.
 func validTestResource() *testresource.TestCloudResourceGeneric {
 	return &testresource.TestCloudResourceGeneric{
-		ApiVersion: "_test.planton.dev/v1",
+		ApiVersion: "_test.planton.dev/v1alpha1",
 		Kind:       "TestCloudResourceGeneric",
 		Metadata: &shared.CloudResourceMetadata{
 			Name: "test-resource",

@@ -23,7 +23,7 @@ Creates one cert-manager ClusterIssuer — a cluster-wide certificate signing au
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterIssuer
 metadata:
   name: letsencrypt-production

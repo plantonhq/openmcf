@@ -27,7 +27,7 @@ When you deploy an AwsBatchJobDefinition resource, Planton provisions:
 Create a file `job-definition.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchJobDefinition
 metadata:
   name: nightly-etl

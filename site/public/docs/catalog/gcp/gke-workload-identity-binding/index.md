@@ -28,7 +28,7 @@ When you deploy a GcpGkeWorkloadIdentityBinding resource, Planton provisions:
 Create a file `workload-identity-binding.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
@@ -80,7 +80,7 @@ The Kubernetes half of the handshake — the `iam.gke.io/gcp-service-account: <g
 Allow the cert-manager controller to use a GSA for DNS-01 ACME challenges:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
@@ -101,7 +101,7 @@ spec:
 Grant a backend service running in the `payments` namespace access to a GSA with Cloud SQL and Pub/Sub permissions:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: payments-api-binding
@@ -122,7 +122,7 @@ spec:
 Reference Planton-managed resources instead of hardcoding the project ID and service account email:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: external-dns-binding

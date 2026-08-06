@@ -1,0 +1,11 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesConfigMap
+metadata:
+  name: e2e-cfg-minimal
+spec:
+  name: e2e-cfg-minimal
+  namespace:
+    value: default
+  data:
+    app.mode: production
+    log.level: info

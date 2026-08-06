@@ -28,7 +28,7 @@ When you deploy a CivoDnsZone resource, Planton provisions:
 Create a file `civo-dns-zone.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsZone
 metadata:
   name: my-dns-zone
@@ -92,7 +92,7 @@ Each entry in `values` is one of:
 A zone for `example.com` with A, CNAME, and MX records:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsZone
 metadata:
   name: example-zone
@@ -127,7 +127,7 @@ spec:
 A minimal zone that sets up SPF and a domain verification TXT record:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsZone
 metadata:
   name: verified-zone
@@ -156,7 +156,7 @@ spec:
 Point a CNAME record at the IP address output from an Planton-managed CivoComputeInstance instead of hardcoding it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsZone
 metadata:
   name: ref-zone

@@ -1,0 +1,46 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsClientVpn
+metadata:
+  name: corp-access
+  id: test-clientvpn
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Full-surface Client VPN hack manifest
+  authenticationOptions:
+    - type: certificate-authentication
+      rootCertificateChainArn:
+        value: arn:aws:acm:us-west-2:123456789012:certificate/client-ca
+  serverCertificateArn:
+    value: arn:aws:acm:us-west-2:123456789012:certificate/server-cert
+  clientCidrBlock: 10.100.0.0/22
+  splitTunnel: true
+  transportProtocol: udp
+  vpnPort: 443
+  vpcId:
+    value: vpc-0123456789abcdef0
+  securityGroupIds:
+    - value: sg-0a1b2c3d4e5f00001
+  subnetIds:
+    - value: subnet-aaa111
+    - value: subnet-bbb222
+  authorizationRules:
+    - targetNetworkCidr: 10.0.0.0/16
+      authorizeAllGroups: true
+      description: reach the whole VPC
+  routes:
+    - destinationCidrBlock: 192.168.0.0/16
+      targetSubnetId:
+        value: subnet-aaa111
+      description: on-prem network via VPN-attached subnet
+  sessionTimeoutHours: 12
+  disconnectOnSessionTimeout: true
+  clientRouteEnforcementEnabled: true
+  clientLoginBanner:
+    bannerText: Authorized use only.
+  connectionLog:
+    cloudwatchLogGroup:
+      value: /vpn/corp-access
+  dnsServers:
+    - 10.0.0.2

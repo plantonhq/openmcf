@@ -34,7 +34,7 @@ Nothing else is created: the subnet, security groups, IAM instance profile, laun
 Create a file `instance.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEc2Instance
 metadata:
   name: my-instance

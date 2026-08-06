@@ -1,0 +1,26 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigtableTable
+metadata:
+  name: events
+spec:
+  # GCP project owning the instance. Replace with your project ID.
+  projectId:
+    value: my-gcp-project-123
+
+  # The parent Bigtable instance's short name.
+  instance:
+    value: my-bigtable-instance
+
+  # Column families with retention. Without a GC policy every cell
+  # version accumulates forever.
+  columnFamilies:
+    - family: measurements
+      gcPolicy:
+        maxAge: 720h # 30 days
+    - family: metadata
+      gcPolicy:
+        maxVersions: 3
+
+  # Keep destroy possible for the hack manifest without a two-step
+  # unprotect.
+  deletionProtection: UNPROTECTED

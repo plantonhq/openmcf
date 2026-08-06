@@ -25,7 +25,7 @@ When you deploy an AliCloudEipAddress resource, Planton provisions:
 Create a file `eip.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudEipAddress
 metadata:
   name: my-eip
@@ -74,7 +74,7 @@ This allocates a 10 Mbps EIP using BGP multi-line and PayByTraffic metering.
 ### Minimal EIP
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudEipAddress
 metadata:
   name: my-eip
@@ -87,7 +87,7 @@ spec:
 A named EIP intended for association with a NAT gateway. Uses default 5 Mbps bandwidth and PayByTraffic metering:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudEipAddress
 metadata:
   name: nat-eip
@@ -108,7 +108,7 @@ spec:
 ### High-Bandwidth Production EIP
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudEipAddress
 metadata:
   name: prod-lb-eip

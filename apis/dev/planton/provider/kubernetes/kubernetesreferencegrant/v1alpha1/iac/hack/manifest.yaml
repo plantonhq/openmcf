@@ -1,0 +1,20 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesReferenceGrant
+metadata:
+  name: test-reference-grant
+spec:
+  namespace:
+    value: backend-namespace
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: frontend-namespace
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: gateway-namespace
+  to:
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: Secret
+      name: shared-tls-cert

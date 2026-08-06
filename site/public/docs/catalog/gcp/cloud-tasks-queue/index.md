@@ -33,7 +33,7 @@ When you deploy a GcpCloudTasksQueue resource, Planton provisions:
 Create a file `cloud-tasks-queue.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudTasksQueue
 metadata:
   name: my-queue
@@ -102,7 +102,7 @@ This creates a Cloud Tasks queue in `us-central1` with GCP-managed defaults for 
 Queue with explicit rate limits and retry configuration for production background processing:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudTasksQueue
 metadata:
   name: background-processor
@@ -133,7 +133,7 @@ spec:
 Queue configured to dispatch all tasks to a Cloud Run service with automatic OIDC token generation. This is the recommended pattern for serverless task processing:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudTasksQueue
 metadata:
   name: cloud-run-dispatcher
@@ -178,7 +178,7 @@ spec:
 Production queue referencing other Planton-managed resources via `valueFrom` for infra-chart composition:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudTasksQueue
 metadata:
   name: composed-queue

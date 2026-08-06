@@ -1,9 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesMetricsServer
-metadata:
-  name: metrics-server
-spec:
-  namespace:
-    value: metrics-server
-  createNamespace: true
-  kubeletInsecureTls: true

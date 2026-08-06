@@ -27,7 +27,7 @@ When you deploy an OciDynamicGroup resource, Planton provisions:
 Create a file `dynamic-group.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicGroup
 metadata:
   name: my-compute-workers
@@ -74,7 +74,7 @@ This creates a dynamic group named `my-compute-workers` in the tenancy. All comp
 A dynamic group matching all compute instances in a compartment — the most common pattern for enabling instance principal authentication:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicGroup
 metadata:
   name: compute-workers
@@ -95,7 +95,7 @@ spec:
 A dynamic group matching all OCI Functions in a compartment for serverless workload identity. Uses `All` to require both the resource type and compartment conditions:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicGroup
 metadata:
   name: serverless-functions
@@ -116,7 +116,7 @@ spec:
 A dynamic group matching resources by freeform tag rather than compartment. This pattern allows fine-grained grouping that spans compartments or selects a subset of resources within a compartment:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicGroup
 metadata:
   name: tagged-workers
@@ -137,7 +137,7 @@ spec:
 A dynamic group using `valueFrom` to reference the tenancy compartment, with a custom name and metadata labels for organizational tracking:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDynamicGroup
 metadata:
   name: oke-worker-nodes

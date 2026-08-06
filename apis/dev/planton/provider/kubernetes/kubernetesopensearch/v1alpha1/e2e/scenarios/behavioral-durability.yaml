@@ -1,0 +1,36 @@
+# THE durability proof: three data-carrying nodes, a replicated index,
+# a marker document — then the verifier DELETES a node pod and the
+# document must stay served during the outage and after recovery.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearch
+metadata:
+  name: e2e-os-dur
+spec:
+  namespace:
+    value: e2e-os-dur
+  create_namespace: true
+  version: 2.19.2
+  node_pools:
+    - name: nodes
+      replicas: 3
+      roles:
+        - cluster_manager
+        - data
+        - ingest
+      jvm: -Xmx512M -Xms512M
+      disk_size: 3Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 1536Mi
+      pdb:
+        enable: true
+        max_unavailable: "1"
+  security:
+    transport_tls:
+      generate: true
+    http_tls:
+      generate: true

@@ -4,7 +4,7 @@
 # GKE, a fresh EKS cluster cannot serve `kubectl top` until this installs.
 # Unconditional on this baseline: pod-level autoscaling without it is
 # guesswork, and Karpenter only solves the NODE half.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMetricsServer
 metadata:
   name: "{{ values.env }}-metrics-server"

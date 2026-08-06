@@ -1,0 +1,25 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServiceAccountIamMember
+metadata:
+  name: my-sample-sa-grant
+spec:
+  # The service account whose IAM policy receives this grant, as its
+  # fully-qualified resource name. Reference a GcpServiceAccount — its `name`
+  # output is exactly this value.
+  serviceAccountId:
+    value: projects/my-gcp-project-123/serviceAccounts/deployer@my-gcp-project-123.iam.gserviceaccount.com
+
+  # The role to grant ON the account: typically an impersonation/usage role.
+  role:
+    value: roles/iam.serviceAccountTokenCreator
+
+  # The identity receiving the grant, in GCP IAM member format.
+  # Reference a GcpServiceAccount — its `member` output is exactly this value.
+  member:
+    value: serviceAccount:caller@my-gcp-project-123.iam.gserviceaccount.com
+
+  # Optional IAM Condition restricting when the grant applies
+  # condition:
+  #   title: expires-2027
+  #   expression: request.time < timestamp("2027-01-01T00:00:00Z")
+  #   description: Temporary impersonation for the migration

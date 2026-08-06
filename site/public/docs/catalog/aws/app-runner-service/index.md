@@ -34,7 +34,7 @@ The service's shared companions are separate first-class resources referenced by
 Create a file `app-runner.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerService
 metadata:
   name: my-api

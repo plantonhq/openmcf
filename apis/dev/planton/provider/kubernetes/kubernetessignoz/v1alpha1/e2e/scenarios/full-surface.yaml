@@ -1,0 +1,44 @@
+# Kind-honest full surface: the composed connection plus every
+# fixture-free knob — explicit server sizing, cluster attribution, the
+# collector's NON-DEFAULT receiver posture (zipkin ON, jaeger OFF — the
+# port toggles and the pipeline lists derive from one spec field; the
+# verifier asserts the rendered Service has a zipkin port and no jaeger
+# ports), an advanced server env entry, and an escape-hatch entry. The
+# arms that need outside dependencies stay plan-proven with
+# deferred-ledger rows: SMTP (a Secret + mail-sink fixture), collector
+# autoscaling (metrics-server), and the TLS connection arm (a
+# certificate fixture on the composed ClickHouse).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSignoz
+metadata:
+  name: e2e-signoz-full
+spec:
+  namespace:
+    value: e2e-signoz
+  clickhouse:
+    host:
+      valueFrom:
+        name: e2e-signoz-ch
+    clusterName:
+      valueFrom:
+        name: e2e-signoz-ch
+    username: signoz
+    passwordSecret:
+      secretName:
+        valueFrom:
+          name: e2e-signoz-ch
+      secretKey: signoz
+  server:
+    disk_size: 1Gi
+    external_url: http://e2e-signoz-full.example.com
+    env:
+      signoz_prometheus_active__query__tracker_enabled: "false"
+  otel_collector:
+    replicas: 1
+    jaeger_receiver_enabled: false
+    zipkin_receiver_enabled: true
+  cluster_name: e2e-kind
+  helm_values: |
+    signoz:
+      podAnnotations:
+        e2e: full-surface

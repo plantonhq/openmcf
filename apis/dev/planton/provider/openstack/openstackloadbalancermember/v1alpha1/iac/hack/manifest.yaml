@@ -1,0 +1,10 @@
+apiVersion: openstack.planton.dev/v1alpha1
+kind: OpenStackLoadBalancerMember
+metadata:
+  name: test-member
+spec:
+  poolId:
+    value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  address: "10.0.0.10"
+  protocolPort: 8080
+  weight: 1

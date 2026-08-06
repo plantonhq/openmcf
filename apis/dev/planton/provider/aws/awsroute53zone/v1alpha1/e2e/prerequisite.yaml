@@ -1,0 +1,28 @@
+# AwsRoute53Zone install profile used as a prerequisite by composed
+# components (the DNS record's registry prerequisite). A public zone:
+# nothing must exist first, creation takes seconds, and no domain ownership
+# is required (delegation only matters at the registrar, which fixtures
+# never touch). The domain uses the RFC-reserved .test TLD — AWS rejects
+# CreateHostedZone for example.com subdomains ("reserved by AWS").
+# force_destroy guards teardown — if a dependent lane ever fails between
+# record deploy and record destroy, the zone can still delete itself by
+# purging leftover records. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53Zone
+metadata:
+  name: planton-oss-e2e-prereq.planton.test
+  id: planton-oss-e2e-awsroute53zone-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53zone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  comment: planton e2e prerequisite zone
+  forceDestroy: true

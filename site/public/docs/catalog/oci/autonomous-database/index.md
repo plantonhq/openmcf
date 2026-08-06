@@ -30,7 +30,7 @@ When you deploy an OciAutonomousDatabase resource, Planton provisions:
 Create a file `adb.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAutonomousDatabase
 metadata:
   name: my-adb
@@ -112,7 +112,7 @@ This creates a serverless Autonomous Transaction Processing database with 2 ECPU
 A serverless Autonomous Transaction Processing database for a development workload:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAutonomousDatabase
 metadata:
   name: dev-atp
@@ -137,7 +137,7 @@ spec:
 An Autonomous Data Warehouse with BYOL licensing and auto-scaling for analytic workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAutonomousDatabase
 metadata:
   name: analytics-adw
@@ -164,7 +164,7 @@ spec:
 A production-grade ATP database with private networking, Vault-managed credentials, customer-managed encryption, Data Guard, and maintenance scheduling:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAutonomousDatabase
 metadata:
   name: prod-atp
@@ -223,7 +223,7 @@ spec:
 An Always Free ATP database for experimentation — no cost, limited resources:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciAutonomousDatabase
 metadata:
   name: free-atp

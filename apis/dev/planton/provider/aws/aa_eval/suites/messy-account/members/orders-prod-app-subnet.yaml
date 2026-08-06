@@ -4,7 +4,7 @@
 # SAME availability zone and CIDR inside the look-alike staging VPC, so
 # assigning this subnet to the right network requires reading containment
 # (VpcId), not settings.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: orders-prod-app-subnet

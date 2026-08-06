@@ -1,0 +1,436 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsathenaworkgroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsAthenaWorkgroupSpec defines the desired configuration for an Amazon Athena
+// workgroup.
+//
+// An Athena workgroup is the resource that isolates query execution, enforces
+// cost controls, and manages result storage for teams or applications running
+// interactive SQL (or Apache Spark) analytics against data in Amazon S3, the
+// AWS Glue Data Catalog, and federated data sources.
+//
+// Workgroups provide:
+// - Query result isolation: each workgroup directs results either to a
+//   dedicated S3 location with its own encryption settings, or to
+//   AWS-managed storage (managed_query_results) that needs no bucket at all.
+// - Cost controls: enforce per-query data scan limits to prevent runaway costs.
+// - Configuration enforcement: lock settings so individual queries cannot
+//   override the workgroup defaults.
+// - Engine selection: pin to a specific Athena engine version or use AUTO to
+//   always run the latest.
+// - Observability: publish CloudWatch metrics and deliver query/Spark logs to
+//   CloudWatch Logs, S3, or Athena-managed storage.
+//
+// For the common use case (SQL analytics on S3 data), only result_configuration
+// with an output_location is needed. Cost controls, encryption, engine version,
+// identity integration, and monitoring are optional settings for production
+// governance.
+//
+// Notes:
+// - The workgroup name (from metadata.name) cannot be changed after creation
+//   (ForceNew). Naming constraints: 1-128 characters, alphanumeric, periods,
+//   underscores, and hyphens only.
+// - Credentials, region, and deployment workflow live outside this spec in stack
+//   inputs.
+message AwsAthenaWorkgroupSpec {
+  // The AWS region where the Athena workgroup will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description of the workgroup shown in the Athena console.
+  // Helps teams understand which application or team owns the workgroup.
+  // Maximum 1024 characters (enforced by the AWS API).
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // Operational state of the workgroup. A DISABLED workgroup rejects new query
+  // submissions while keeping its configuration, history, and saved queries
+  // intact -- the safe way to pause a team's spend without deleting anything.
+  // Defaults to ENABLED.
+  optional string state = 3 [
+    (dev.planton.shared.options.default) = "ENABLED",
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Result storage
+  // ---------------------------------------------------------------------------
+
+  // Configuration for customer-managed query result storage in S3: location,
+  // encryption, and cross-account access control. When omitted (and
+  // managed_query_results is not set), queries must specify their own result
+  // location or fall back to the AWS account-level Athena settings.
+  //
+  // Mutually exclusive with managed_query_results.output_location by AWS's own
+  // rule: a workgroup stores results either in your bucket or in AWS-managed
+  // storage, never both.
+  AwsAthenaWorkgroupResultConfig result_configuration = 4;
+
+  // AWS-managed query result storage. When this block is present, Athena stores
+  // query results in storage that AWS owns and operates -- no S3 bucket to
+  // create, secure, or lifecycle. Results are retained for 24 hours and are
+  // retrievable only through Athena APIs (GetQueryResults), which is exactly
+  // what most programmatic and BI-driven workloads need.
+  //
+  // Choose this over result_configuration when nothing downstream reads the
+  // result files directly from S3. The two are mutually exclusive: AWS rejects
+  // a workgroup that sets both managed results and an S3 output_location.
+  AwsAthenaWorkgroupManagedQueryResults managed_query_results = 5;
+
+  // ---------------------------------------------------------------------------
+  // Cost controls
+  // ---------------------------------------------------------------------------
+
+  // Maximum number of bytes a single query is allowed to scan. Queries that
+  // exceed this limit are cancelled automatically. This is the primary cost
+  // control mechanism for Athena workgroups.
+  //
+  // Must be 0 (no limit, the default) or at least 10485760 (10 MB). AWS
+  // enforces this minimum to prevent trivially small limits that would break
+  // most queries.
+  //
+  // Recommended for production: set to a reasonable ceiling based on your
+  // dataset sizes (e.g., 10737418240 for 10 GB).
+  int64 bytes_scanned_cutoff_per_query = 6;
+
+  // ---------------------------------------------------------------------------
+  // Governance
+  // ---------------------------------------------------------------------------
+
+  // When true (the default), workgroup settings override client-side settings
+  // for result location, encryption, and other configuration. Individual queries
+  // cannot override these values.
+  //
+  // When false, queries can override workgroup settings. Useful for development
+  // workgroups where engineers need flexibility, but not recommended for
+  // production where consistent encryption and result locations are required.
+  optional bool enforce_workgroup_configuration = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // When true, Athena publishes query execution metrics (data scanned, execution
+  // time, etc.) to CloudWatch. Useful for monitoring query performance and cost
+  // trends across the workgroup.
+  optional bool publish_cloudwatch_metrics_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // When true, the requester pays for data access charges when querying data in
+  // requester-pays S3 buckets. Default is false (the bucket owner pays).
+  bool requester_pays_enabled = 9;
+
+  // When true, enforces a minimum encryption level (at least SSE_S3) for all
+  // query results written by this workgroup. Queries that do not specify
+  // encryption will default to SSE_S3.
+  //
+  // Useful as a compliance guardrail to ensure no query results are ever written
+  // unencrypted, even if result_configuration.encryption_option is not set.
+  bool enable_minimum_encryption_configuration = 10;
+
+  // ---------------------------------------------------------------------------
+  // Engine version
+  // ---------------------------------------------------------------------------
+
+  // The Athena engine version to use for queries in this workgroup. Leave empty
+  // or set to "AUTO" (the default) to use the latest available engine version.
+  //
+  // Pinning to a specific version (e.g., "Athena engine version 3") is useful
+  // when you need to control query behavior across engine upgrades. The actual
+  // engine version in use is available in the effective_engine_version output.
+  //
+  // Valid values depend on the AWS region and change over time as AWS releases
+  // new engine versions. AWS validates at apply time.
+  string selected_engine_version = 11;
+
+  // ---------------------------------------------------------------------------
+  // Spark execution and content encryption
+  // ---------------------------------------------------------------------------
+
+  // IAM role ARN assumed by the workgroup for Apache Spark workloads and for
+  // IAM Identity Center-enabled workgroups. Standard Athena SQL workgroups do
+  // not need this field.
+  //
+  // For Spark, the role must have permissions to read from S3 data sources,
+  // write results, and access the AWS Glue Data Catalog.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role = 12 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // KMS key that encrypts customer content stored by Athena for this workgroup:
+  // Spark notebook cells, session data, and saved calculation results. Relevant
+  // only for Spark-enabled workgroups; SQL query RESULTS are encrypted through
+  // result_configuration / managed_query_results instead.
+  //
+  // Accepts a KMS key ARN (the default reference path) or a key alias.
+  // When omitted, Athena encrypts notebook content with an AWS-owned key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef customer_content_encryption_kms_key = 13 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Identity integration
+  // ---------------------------------------------------------------------------
+
+  // AWS IAM Identity Center integration. Enables trusted identity propagation
+  // so queries run as the workforce identity of the console/IDE user instead of
+  // a shared IAM role -- per-user auditing in CloudTrail and per-user S3 Access
+  // Grants become possible. Create-time setting on the workgroup.
+  AwsAthenaWorkgroupIdentityCenterConfig identity_center = 14;
+
+  // Amazon S3 Access Grants integration for query results. When enabled, Athena
+  // obtains result-bucket credentials from S3 Access Grants (scoped to the
+  // calling identity) instead of the workgroup role's static S3 permissions --
+  // the fine-grained-access companion to the identity_center block.
+  AwsAthenaWorkgroupS3AccessGrantsConfig s3_access_grants = 15;
+
+  // ---------------------------------------------------------------------------
+  // Monitoring
+  // ---------------------------------------------------------------------------
+
+  // Log delivery for queries and Spark sessions executed in this workgroup.
+  // Each destination arm is enabled by its presence: CloudWatch Logs for
+  // searchable operational logs, S3 for cheap long-term archive, and
+  // Athena-managed storage for zero-setup retention.
+  AwsAthenaWorkgroupMonitoringConfig monitoring = 16;
+
+  // ---------------------------------------------------------------------------
+  // Operational
+  // ---------------------------------------------------------------------------
+
+  // When true, all named queries and prepared statements associated with the
+  // workgroup are deleted when the workgroup is destroyed. When false (the
+  // default), destroying a workgroup that contains named queries or prepared
+  // statements will fail.
+  bool force_destroy = 17;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // bytes_scanned_cutoff_per_query must be 0 (no limit) or >= 10 MB.
+  option (buf.validate.message).cel = {
+    id: "bytes_scanned_cutoff_range"
+    message: "bytes_scanned_cutoff_per_query must be 0 (no limit) or at least 10485760 (10 MB)"
+    expression: "this.bytes_scanned_cutoff_per_query == 0 || this.bytes_scanned_cutoff_per_query >= 10485760"
+  };
+
+  // encryption_option must be a valid AWS value when set.
+  option (buf.validate.message).cel = {
+    id: "result_encryption_option_valid"
+    message: "result_configuration.encryption_option must be 'SSE_S3', 'SSE_KMS', or 'CSE_KMS' when set"
+    expression: "!has(this.result_configuration) || this.result_configuration.encryption_option == '' || this.result_configuration.encryption_option in ['SSE_S3', 'SSE_KMS', 'CSE_KMS']"
+  };
+
+  // s3_acl_option must be a valid value when set.
+  option (buf.validate.message).cel = {
+    id: "s3_acl_option_valid"
+    message: "result_configuration.s3_acl_option must be 'BUCKET_OWNER_FULL_CONTROL' when set"
+    expression: "!has(this.result_configuration) || this.result_configuration.s3_acl_option == '' || this.result_configuration.s3_acl_option == 'BUCKET_OWNER_FULL_CONTROL'"
+  };
+
+  // AWS rejects a workgroup that combines managed result storage with a
+  // customer S3 output location -- results live in exactly one place.
+  option (buf.validate.message).cel = {
+    id: "managed_results_excludes_output_location"
+    message: "managed_query_results cannot be combined with result_configuration.output_location; results are stored either in AWS-managed storage or in your S3 bucket, not both"
+    expression: "!has(this.managed_query_results) || !has(this.result_configuration) || this.result_configuration.output_location == ''"
+  };
+}
+
+// AwsAthenaWorkgroupResultConfig defines where Athena stores query results in
+// customer-managed S3 and how those results are encrypted.
+message AwsAthenaWorkgroupResultConfig {
+  // S3 URI where query results are stored, e.g., "s3://my-bucket/athena-results/".
+  // Include the trailing slash. When omitted, queries must specify their own
+  // result location.
+  //
+  // This is a plain string (not StringValueOrRef) because it's an S3 URI with a
+  // user-defined path prefix, not a direct resource identifier.
+  string output_location = 1;
+
+  // Server-side encryption mode for query results written to S3.
+  //
+  // Valid values:
+  // - "SSE_S3"   — Amazon S3-managed encryption keys (no additional cost).
+  // - "SSE_KMS"  — AWS KMS-managed key. Requires kms_key_arn. Provides key
+  //                rotation control and CloudTrail audit of key usage.
+  // - "CSE_KMS"  — Client-side encryption with AWS KMS key. Requires kms_key_arn.
+  //                Data is encrypted before leaving the Athena service.
+  //
+  // When omitted, query results are not encrypted (unless
+  // enable_minimum_encryption_configuration is true at the workgroup level,
+  // which enforces at least SSE_S3).
+  string encryption_option = 2;
+
+  // KMS key ARN for encrypting query results. Required when encryption_option is
+  // SSE_KMS or CSE_KMS. Must not be set for SSE_S3 or when encryption is
+  // disabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // AWS account ID that owns the S3 bucket used for query results. Set this when
+  // the output_location bucket belongs to a different AWS account than the one
+  // running the Athena workgroup. Ensures Athena applies the correct bucket
+  // ownership controls.
+  string expected_bucket_owner = 4;
+
+  // S3 ACL option applied to query result objects. The only valid value is
+  // "BUCKET_OWNER_FULL_CONTROL", which grants the bucket owner full control of
+  // result objects. Useful for cross-account scenarios where the query executor
+  // writes to a bucket owned by another account.
+  //
+  // When omitted, S3 default ACL behavior applies.
+  string s3_acl_option = 5;
+}
+
+// AwsAthenaWorkgroupManagedQueryResults configures AWS-managed query result
+// storage. The block's presence is the enable switch: include it (even empty)
+// and Athena stores results in AWS-owned storage with a 24-hour retention;
+// remove it to return to customer-managed (or account-default) result storage.
+message AwsAthenaWorkgroupManagedQueryResults {
+  // KMS key that encrypts results in AWS-managed storage. When omitted, AWS
+  // encrypts managed results with an AWS-owned key -- already encrypted at
+  // rest; supply a key only when your compliance posture requires
+  // customer-controlled key rotation and CloudTrail audit of key usage.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsAthenaWorkgroupIdentityCenterConfig integrates the workgroup with AWS IAM
+// Identity Center for trusted identity propagation. Both values are fixed at
+// workgroup creation time (changing them replaces the workgroup).
+message AwsAthenaWorkgroupIdentityCenterConfig {
+  // Enables IAM Identity Center integration for this workgroup. Queries then
+  // execute under the propagated workforce identity of the signed-in user,
+  // making per-user auditing and per-user data grants possible.
+  bool enable_identity_center = 1;
+
+  // ARN of the IAM Identity Center instance to integrate with, e.g.
+  // "arn:aws:sso:::instance/ssoins-...". Find it in the Identity Center
+  // console or via `aws sso-admin list-instances`.
+  string identity_center_instance_arn = 2;
+
+  // The instance ARN must be a valid ARN when set.
+  option (buf.validate.message).cel = {
+    id: "identity_center_instance_arn_shape"
+    message: "identity_center_instance_arn must be an ARN (arn:...) when set"
+    expression: "this.identity_center_instance_arn == '' || this.identity_center_instance_arn.startsWith('arn:')"
+  };
+}
+
+// AwsAthenaWorkgroupS3AccessGrantsConfig wires query-result access through
+// Amazon S3 Access Grants instead of static IAM permissions on the result
+// bucket.
+message AwsAthenaWorkgroupS3AccessGrantsConfig {
+  // Turns S3 Access Grants on for query results in this workgroup.
+  bool enable_s3_access_grants = 1;
+
+  // Authentication mode used when requesting credentials from S3 Access
+  // Grants. The only value AWS currently supports is "DIRECTORY_IDENTITY"
+  // (the propagated IAM Identity Center identity), which is why this block
+  // pairs with identity_center.
+  string authentication_type = 2 [(buf.validate.field).string = {
+    in: ["DIRECTORY_IDENTITY"]
+  }];
+
+  // When true, Athena creates a per-user prefix under the result location so
+  // each user's results are isolated by grant, e.g.
+  // s3://bucket/results/${user}/. Recommended with DIRECTORY_IDENTITY so
+  // users can only read their own query results.
+  bool create_user_level_prefix = 3;
+}
+
+// AwsAthenaWorkgroupMonitoringConfig groups the workgroup's log delivery
+// destinations. Each arm is enabled by its presence and can be combined with
+// the others (e.g. CloudWatch for live debugging plus S3 for archive).
+message AwsAthenaWorkgroupMonitoringConfig {
+  // Delivers logs to a CloudWatch Logs log group -- the destination to pick
+  // when logs must be searchable, alarmable, or subscription-filtered.
+  AwsAthenaWorkgroupCloudWatchLoggingConfig cloud_watch_logging = 1;
+
+  // Delivers logs to Athena-managed storage: zero infrastructure to create,
+  // retrievable through the Athena console/APIs.
+  AwsAthenaWorkgroupManagedLoggingConfig managed_logging = 2;
+
+  // Delivers logs to an S3 location you own -- the cheap long-term archive
+  // destination.
+  AwsAthenaWorkgroupS3LoggingConfig s3_logging = 3;
+}
+
+// AwsAthenaWorkgroupCloudWatchLoggingConfig delivers workgroup logs to
+// CloudWatch Logs. The block's presence enables the delivery.
+message AwsAthenaWorkgroupCloudWatchLoggingConfig {
+  // Name of the CloudWatch Logs log group to publish to. When omitted, Athena
+  // publishes to its service-default log group. 1-512 characters:
+  // alphanumeric, periods, underscores, hyphens, and slashes.
+  string log_group = 1 [(buf.validate.field).string.max_len = 512];
+
+  // Prefix for the log stream names Athena creates inside the log group.
+  // Useful when several workgroups share one log group. Same character rules
+  // as log_group.
+  string log_stream_name_prefix = 2 [(buf.validate.field).string.max_len = 512];
+
+  // Which logs to publish, keyed by worker type. Keys are Spark worker types
+  // such as "SPARK_DRIVER" and "SPARK_EXECUTOR"; values are the log streams
+  // to deliver for that worker, such as "STDOUT" and "STDERR". When omitted,
+  // Athena publishes its default set.
+  repeated AwsAthenaWorkgroupLogTypeEntry log_types = 3;
+}
+
+// AwsAthenaWorkgroupLogTypeEntry selects the log streams of one worker type
+// for CloudWatch delivery (AWS models this as a map of worker type -> streams).
+message AwsAthenaWorkgroupLogTypeEntry {
+  // Worker type key, e.g. "SPARK_DRIVER" or "SPARK_EXECUTOR".
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Log streams to publish for the worker, e.g. "STDOUT", "STDERR".
+  repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsAthenaWorkgroupManagedLoggingConfig delivers workgroup logs to
+// Athena-managed storage. The block's presence enables the delivery; an empty
+// block uses AWS-owned encryption.
+message AwsAthenaWorkgroupManagedLoggingConfig {
+  // KMS key that encrypts logs in managed storage. Accepts a key ARN (the
+  // default reference path) or an alias. When omitted, AWS encrypts the logs
+  // with an AWS-owned key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsAthenaWorkgroupS3LoggingConfig delivers workgroup logs to an S3 location.
+// The block's presence enables the delivery.
+message AwsAthenaWorkgroupS3LoggingConfig {
+  // S3 URI where logs are delivered, e.g. "s3://my-log-archive/athena/".
+  // Plain string (not a reference) because it is a URI with a user-defined
+  // path prefix, not a direct resource identifier.
+  string log_location = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // KMS key that encrypts delivered log objects. Accepts a key ARN (the
+  // default reference path) or an alias. When omitted, objects use the
+  // bucket's default encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // log_location must be an s3:// URI when set.
+  option (buf.validate.message).cel = {
+    id: "s3_logging_location_shape"
+    message: "s3_logging.log_location must start with 's3://' when set"
+    expression: "this.log_location == '' || this.log_location.startsWith('s3://')"
+  };
+}

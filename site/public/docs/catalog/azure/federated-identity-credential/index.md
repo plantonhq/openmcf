@@ -29,7 +29,7 @@ Federated credentials carry no Azure tags -- ARM models them as untagged child r
 Create a file `federated-credential.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: ci-deployer-trust
@@ -79,7 +79,7 @@ This lets the `main`-branch workflows of `my-org/platform` authenticate to Azure
 Trust only jobs running against the `production` environment (with its required reviewers), not every push to a branch:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: prod-deploy-trust
@@ -103,7 +103,7 @@ spec:
 Let pods running as the `payments-api` service account authenticate as a managed identity. The issuer references the cluster's OIDC issuer URL directly, so the trust always matches the cluster it is deployed beside -- no hand-copied URL:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: payments-workload-trust

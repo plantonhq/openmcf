@@ -1,0 +1,87 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureWebApplicationFirewallPolicy
+metadata:
+  name: test-waf
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  policyName: test-waf-policy
+  # Exercises both custom-rule types, the action/operator/variable/
+  # transform enum mappings, and the rate-limit trio.
+  customRules:
+    - name: allowOffice
+      priority: 5
+      ruleType: MATCH_RULE
+      action: ALLOW
+      matchConditions:
+        - matchVariables:
+            - variableName: REMOTE_ADDR
+          operator: IP_MATCH
+          matchValues:
+            - "203.0.113.0/24"
+    - name: throttleApi
+      priority: 20
+      ruleType: RATE_LIMIT_RULE
+      action: BLOCK
+      rateLimitDuration: ONE_MIN
+      rateLimitThreshold: 300
+      groupRateLimitBy: CLIENT_ADDR
+      matchConditions:
+        - matchVariables:
+            - variableName: REQUEST_URI
+          operator: BEGINS_WITH
+          matchValues:
+            - /api/
+    - name: blockBadAgents
+      priority: 30
+      ruleType: MATCH_RULE
+      action: JS_CHALLENGE
+      matchConditions:
+        - matchVariables:
+            - variableName: REQUEST_HEADERS
+              selector: User-Agent
+          operator: CONTAINS
+          matchValues:
+            - scanner
+          transforms:
+            - LOWERCASE
+            - TRIM
+  managedRules:
+    # Exercises the exclusion path with a narrowed rule set.
+    exclusions:
+      - matchVariable: REQUEST_COOKIE_NAMES
+        selectorMatchOperator: SELECTOR_EQUALS
+        selector: session-token
+        excludedRuleSet:
+          ruleGroups:
+            - ruleGroupName: REQUEST-942-APPLICATION-ATTACK-SQLI
+              excludedRules:
+                - "942440"
+    managedRuleSets:
+      - version: "3.2"
+        ruleGroupOverrides:
+          - ruleGroupName: REQUEST-920-PROTOCOL-ENFORCEMENT
+            rules:
+              - id: "920300"
+                enabled: false
+              - id: "920440"
+                enabled: true
+                action: OVERRIDE_LOG
+      - type: MICROSOFT_BOT_MANAGER_RULE_SET
+        version: "1.1"
+  # Exercises the mode enum, the body dials, and log scrubbing.
+  policySettings:
+    mode: PREVENTION
+    maxRequestBodySizeInKb: 256
+    fileUploadLimitInMb: 200
+    jsChallengeCookieExpirationInMinutes: 60
+    logScrubbing:
+      rules:
+        - matchVariable: SCRUB_REQUEST_HEADER_NAMES
+          selectorMatchOperator: SELECTOR_EQUALS
+          selector: Authorization
+        - matchVariable: SCRUB_REQUEST_IP_ADDRESS
+          selectorMatchOperator: SELECTOR_EQUALS
+  tags:
+    team: security

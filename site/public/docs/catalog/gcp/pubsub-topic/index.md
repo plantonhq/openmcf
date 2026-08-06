@@ -35,7 +35,7 @@ When you deploy a GcpPubSubTopic resource, Planton provisions:
 Create a file `pubsub-topic.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
   name: my-topic
@@ -95,7 +95,7 @@ All ingestion `gcpServiceAccount` fields are `StringValueOrRef` and can referenc
 Retain messages for 7 days so any subscription can seek back within the retention window:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
   name: orders-topic
@@ -120,7 +120,7 @@ spec:
 Encrypt messages with a customer-managed key and enforce JSON schema validation:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
   name: events-topic
@@ -149,7 +149,7 @@ spec:
 Ingest objects from a GCS bucket in text format:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
   name: logs-ingest-topic
@@ -178,7 +178,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubTopic
 metadata:
   name: ref-topic

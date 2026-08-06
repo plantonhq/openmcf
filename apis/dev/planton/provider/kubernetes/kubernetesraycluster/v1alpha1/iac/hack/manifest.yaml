@@ -1,0 +1,78 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the cluster expressed at once — a custom image,
+# a production head posture (tasks off the head, extra ray start
+# params), two worker groups (a CPU group with autoscaling bounds and a
+# GPU group with extended resource limits and accelerator scheduling),
+# the in-tree autoscaler, GCS fault tolerance against an external
+# Redis-protocol store with a password Secret, and explicit token auth.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRayCluster
+metadata:
+  name: ml-ray-full
+spec:
+  namespace:
+    value: ml-platform
+  createNamespace: true
+  rayVersion: 2.52.0
+  image: rayproject/ray:2.52.0
+  head:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 8Gi
+    scheduleTasksOnHead: false
+    rayStartParams:
+      object-store-memory: "1000000000"
+    scheduling:
+      nodeSelector:
+        workload: ray-head
+  workerGroups:
+    - name: cpu
+      replicas: 2
+      minReplicas: 0
+      maxReplicas: 10
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+    - name: gpu
+      replicas: 1
+      minReplicas: 0
+      maxReplicas: 4
+      resources:
+        requests:
+          cpu: "4"
+          memory: 16Gi
+        limits:
+          cpu: "8"
+          memory: 32Gi
+      extraResourceLimits:
+        nvidia.com/gpu: "1"
+      scheduling:
+        nodeSelector:
+          accelerator: nvidia
+        tolerations:
+          - key: nvidia.com/gpu
+            operator: Exists
+            effect: NoSchedule
+  autoscaling:
+    enabled: true
+    idleTimeoutSeconds: 120
+    upscalingMode: Aggressive
+  gcsFaultTolerance:
+    enabled: true
+    redisAddress:
+      value: state-valkey.ml-platform.svc.cluster.local:6379
+    redisPasswordSecret:
+      name:
+        value: state-valkey-auth
+      key: default
+    externalStorageNamespace: ml-ray
+  auth:
+    mode: token

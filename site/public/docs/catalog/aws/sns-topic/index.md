@@ -24,7 +24,7 @@ Deploys an AWS SNS topic — Standard or FIFO — with optional KMS encryption, 
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSnsTopic
 metadata:
   name: order-events
@@ -36,7 +36,7 @@ spec:
 Subscribe consumers with separate `AwsSnsSubscription` resources:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSnsSubscription
 metadata:
   name: fulfillment-events

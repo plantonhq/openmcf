@@ -31,7 +31,7 @@ When you deploy an AwsEventBridgeBus resource, Planton provisions:
 Create a file `bus.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeBus
 metadata:
   name: my-events
@@ -80,7 +80,7 @@ This creates a custom EventBridge bus with AWS-managed encryption and no dead le
 A bus with customer-managed KMS encryption, dead letter queue for undeliverable events, and error-level logging:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeBus
 metadata:
   name: payment-events
@@ -104,7 +104,7 @@ spec:
 Verbose logging with full event detail for debugging event routing during development:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeBus
 metadata:
   name: dev-events
@@ -126,7 +126,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding ARNs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeBus
 metadata:
   name: order-events

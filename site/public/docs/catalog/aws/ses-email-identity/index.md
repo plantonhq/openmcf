@@ -24,7 +24,7 @@ Verify a domain or email address for sending with Amazon SES. A domain identity 
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSesEmailIdentity
 metadata:
   name: prod-sender

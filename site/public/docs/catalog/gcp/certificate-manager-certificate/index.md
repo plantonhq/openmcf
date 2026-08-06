@@ -37,7 +37,7 @@ DNS authorizations are NOT created here — they are first-class
 Create a file `certificate.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCertManagerCert
 metadata:
   name: web-cert

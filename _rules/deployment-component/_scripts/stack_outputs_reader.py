@@ -41,7 +41,7 @@ def build_outputs_path(repo_root: str, provider: str, kind_folder: str) -> Tuple
         "provider",
         provider,
         kind_folder,
-        "v1",
+        "v1alpha1",
         "stack_outputs.proto",
     )
     absolute_path = os.path.join(repo_root, relative_path)

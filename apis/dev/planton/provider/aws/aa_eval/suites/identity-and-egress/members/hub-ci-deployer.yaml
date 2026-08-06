@@ -15,7 +15,7 @@
 # arn: an AwsIamPolicy member would carry zero scan-visible claims
 # (aws_iam_policy has no catalog entry), so a value_from edge here would
 # point at an unmatchable instance.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: hub-ci-deployer

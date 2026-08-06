@@ -31,7 +31,7 @@ Sub-objects wire to each other by name inside the spec. What other resources nee
 Create a file `gateway.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway
@@ -140,7 +140,7 @@ Exactly one of `capacity` (1-125; 1-2 on BASIC) and `autoscale` must be set, and
 ### WAF Gateway with Path-Based Routing
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationGateway
 metadata:
   name: waf-gateway
@@ -220,7 +220,7 @@ spec:
 ### Join a Pool from a Network Interface
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: app-nic

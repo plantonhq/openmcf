@@ -28,7 +28,7 @@ When you deploy an AzurePrivateEndpoint resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateEndpoint
 metadata:
   name: pg-private-endpoint
@@ -98,7 +98,7 @@ After deployment, read `status.outputs.private_ip_address` for the IP the servic
 ### Storage Account (Blob)
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateEndpoint
 metadata:
   name: blob-private-endpoint

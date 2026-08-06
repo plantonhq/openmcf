@@ -28,7 +28,7 @@ When you deploy an AwsRedshiftServerlessWorkgroup resource, Planton provisions:
 Create a file `redshift-serverless-workgroup.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftServerlessWorkgroup
 metadata:
   name: my-analytics-compute

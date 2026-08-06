@@ -1,0 +1,27 @@
+# Private Cloud DNS managed zone: visibility private, bound to the run-scoped
+# prerequisite VPC. project_id is deliberately omitted (ambient).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDnsZone
+metadata:
+  name: planton-oss-e2e-zone-private
+  id: planton-oss-e2e-zone-private
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpdnszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  visibility: private
+  dnsName: planton-oss-e2e-private-${E2E_RUN_ID}.internal.
+  description: Ephemeral private zone for the Planton OSS GCP E2E harness
+  privateVisibilityConfig:
+    networks:
+      - networkUrl:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: planton-oss-e2e-gcpvpc-prereq
+            fieldPath: status.outputs.network_self_link

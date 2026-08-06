@@ -1,0 +1,67 @@
+# The tuned surface on kind-cluster-honest sizing: a DEDICATED S3 gateway
+# Deployment, three typed buckets (TTL, versioning + anonymous read — the
+# verifier asserts the install hook created all of them), the
+# authenticated admin console with persistence, filer extra env +
+# volume-data encryption, a leveldb volume index, and explicit resources.
+# Replicas stay 1 per tier: the chart's default REQUIRED pod anti-affinity
+# makes multi-replica tiers unschedulable on small clusters — the HA shape
+# is plan-proven via the hack manifest.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSeaweedFs
+metadata:
+  name: e2e-swfs-full
+spec:
+  namespace:
+    value: e2e-swfs-full
+  create_namespace: true
+  master:
+    replicas: 1
+    data_volume:
+      size: 2Gi
+    volume_size_limit_mb: 500
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  volume:
+    replicas: 1
+    data_volume:
+      size: 5Gi
+    index_mode: leveldb
+    min_free_space_percent: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  filer:
+    replicas: 1
+    data_volume:
+      size: 2Gi
+    encrypt_volume_data: true
+    extra_environment_vars:
+      WEED_FILER_OPTIONS_RECURSIVE_DELETE: "true"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  s3:
+    enabled: true
+    enable_auth: true
+    buckets:
+      - name: e2e-artifacts
+        ttl: 7d
+        versioning: true
+      - name: e2e-public
+        anonymous_read: true
+      - name: e2e-plain
+    dedicated:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  admin:
+    enabled: true
+    data_volume:
+      size: 1Gi
+  service_monitor_enabled: false

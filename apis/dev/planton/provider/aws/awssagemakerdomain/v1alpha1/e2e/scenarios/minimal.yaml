@@ -1,0 +1,45 @@
+# Minimal AwsSagemakerDomain scenario: the required-only shape. IAM auth,
+# two-AZ subnets and the SageMaker execution role from the shared fixtures,
+# and homeEfsRetentionPolicy Delete so the domain's auto-created EFS home
+# file system is destroyed with it (AWS's default Retain would leave a
+# billing orphan behind every run). Defaults exercised by omission:
+# app_network_access_type, tag_propagation, studio_web_portal, and every
+# app-settings block. Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerDomain
+metadata:
+  name: planton-oss-e2e-sgmkd-minimal
+  id: planton-oss-e2e-sgmkd-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerdomain
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  authMode: IAM
+  homeEfsRetentionPolicy: Delete
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  defaultUserSettings:
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-sagemaker-execution-role
+        fieldPath: status.outputs.role_arn

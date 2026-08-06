@@ -1,0 +1,325 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesexternalsecretsoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_identity.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesExternalSecretsOperatorSpec** installs the External Secrets
+ * Operator (ESO) — the controller that syncs secrets FROM external stores
+ * (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault/OpenBao,
+ * ...) INTO Kubernetes Secrets — from the official Helm chart
+ * (`external-secrets` at https://charts.external-secrets.io).
+ *
+ * This component installs and configures the OPERATOR MACHINERY only. Which
+ * stores exist and which secrets sync are separate first-class resources:
+ * create KubernetesClusterSecretStore / KubernetesSecretStore for the
+ * backend connections and KubernetesExternalSecret for each secret to sync.
+ * One operator installation per cluster serves all of them (the release name
+ * is fixed to "external-secrets": the CRDs and webhook configuration are
+ * cluster-global, an upstream architectural constraint).
+ *
+ * The operator runs three components: the controller (reconciles stores and
+ * external secrets), the webhook (validates ESO resources at admission), and
+ * the cert-controller (bootstraps the webhook's serving certificate).
+ *
+ * The typed fields cover the chart's meaningful configuration surface;
+ * `helm_values` remains as the escape hatch for values beyond them (merged
+ * last, Helm `-f` semantics, identical on both engines) — a safety valve,
+ * never the primary interface.
+ */
+message KubernetesExternalSecretsOperatorSpec {
+  /**
+   * Namespace to install the operator into ("external-secrets" by
+   * convention). Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource.
+   *
+   * Treat the namespace as PERMANENT while CRDs are kept (the
+   * `crds.keep_on_uninstall` default): kept CRDs retain the Helm release's
+   * namespace in their ownership metadata, so re-installing into a
+   * DIFFERENT namespace fails with Helm's release-ownership error on the
+   * surviving CRDs. Moving an install requires first deleting the kept
+   * CRDs — which cascades to every ExternalSecret and SecretStore object
+   * cluster-wide.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (chart and operator versions are aligned
+   * upstream, e.g. "2.8.0" ships operator v2.8.0). Pin deliberately;
+   * upgrades re-run the release with the new chart. Pick versions from the
+   * chart repository's index (`helm search repo`): the served chart is the
+   * contract — the upstream source tree's Chart.yaml can claim a version at
+   * a tag that was never served.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "2.8.0"];
+
+  /**
+   * CRD lifecycle. ESO's CRDs (ExternalSecret, SecretStore,
+   * ClusterSecretStore, ...) are cluster-scoped and shared: installing them
+   * with the release is the standard single-installation path.
+   */
+  KubernetesExternalSecretsOperatorCrds crds = 4;
+
+  /**
+   * Controller replica count. One replica is standard; with more than one,
+   * enable leader_elect so exactly one reconciles.
+   */
+  optional int32 replicas = 5 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Leader election for the controller. Chart default: false (fine for one
+   * replica). Required for replicas > 1 — without it every replica
+   * reconciles and they race.
+   */
+  bool leader_elect = 6;
+
+  /**
+   * ExternalSecret resources reconciled concurrently. Chart default: 1.
+   * Raise for clusters with hundreds of ExternalSecrets where sync latency
+   * matters.
+   */
+  optional int32 concurrent = 7 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Only reconcile stores whose spec.controller matches this class — the
+   * sharding knob for running several isolated operator installations in one
+   * cluster. Empty = reconcile every store (the standard single-operator
+   * posture).
+   */
+  string controller_class = 8;
+
+  /**
+   * Restrict the operator to ONE namespace (it only watches and reconciles
+   * resources there). Pair with scoped_rbac for a Role instead of a
+   * ClusterRole. Empty = cluster-wide (the standard posture).
+   */
+  string scoped_namespace = 9;
+
+  /**
+   * With scoped_namespace: grant a namespace Role instead of a ClusterRole.
+   * The fully-scoped multi-tenant posture.
+   */
+  bool scoped_rbac = 10;
+
+  /**
+   * Log verbosity for all three components. Chart default: "info".
+   */
+  optional string log_level = 11 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).string = {
+      in: [
+        "debug",
+        "info",
+        "error"
+      ]
+    }
+  ];
+
+  /**
+   * Controller container CPU/memory requests and limits. Empty = chart
+   * defaults (no explicit resources).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 12;
+
+  /**
+   * Binds the CONTROLLER ServiceAccount to a cloud identity for keyless
+   * store access (AWS via EKS IRSA, GCP via GKE Workload Identity, Azure via
+   * AKS Workload Identity). Stores that leave their auth block empty
+   * authenticate through this ambient identity — the simplest posture when
+   * one cloud identity may read every synced secret. Per-store identities
+   * (finer-grained, recommended for multi-team clusters) instead reference
+   * dedicated ServiceAccounts in each store's auth block; those need nothing
+   * here.
+   */
+  dev.planton.provider.kubernetes.KubernetesWorkloadIdentity workload_identity = 13;
+
+  /**
+   * Node selector for all operator pods.
+   */
+  map<string, string> node_selector = 14;
+
+  /**
+   * Tolerations for the controller pods (webhook/cert-controller inherit
+   * their own chart defaults; set component-level tolerations via
+   * helm_values when they must differ).
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 15;
+
+  /**
+   * PriorityClass for the controller pod.
+   */
+  string priority_class_name = 16;
+
+  /**
+   * When true, a PodDisruptionBudget guards the controller (minAvailable 1)
+   * — meaningful only with replicas > 1.
+   */
+  bool pod_disruption_budget = 17;
+
+  /**
+   * Prometheus metrics exposure. The metrics port is always served; the
+   * ServiceMonitor is opt-in and requires the Prometheus operator CRDs on
+   * the cluster.
+   */
+  KubernetesExternalSecretsOperatorPrometheus prometheus = 18;
+
+  /**
+   * Webhook component tuning. The webhook must be reachable by the API
+   * server; it validates every ESO resource at admission.
+   */
+  KubernetesExternalSecretsOperatorWebhook webhook = 19;
+
+  /**
+   * cert-controller component tuning. It bootstraps and rotates the
+   * webhook's serving certificate — disable only when cert-manager (via
+   * helm_values webhook.certManager) or another mechanism owns webhook
+   * certificates.
+   */
+  KubernetesExternalSecretsOperatorCertController cert_controller = 20;
+
+  /**
+   * Full image repository override (registry + path) for the operator
+   * images — the air-gapped/mirror knob. Empty = the chart default
+   * (ghcr.io/external-secrets/external-secrets).
+   */
+  string image_repository = 21;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics, identical
+   * on both engines). For the chart surface beyond the typed fields — never
+   * the substitute for them. Do not put secrets here.
+   */
+  string helm_values = 22;
+
+  option (buf.validate.message).cel = {
+    id: "eso.replicas_require_leader_election"
+    message: "replicas > 1 requires leader_elect — without leader election every replica reconciles the same resources and they race"
+    expression: "!has(this.replicas) || this.replicas <= 1 || this.leader_elect"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "eso.scoped_rbac_requires_namespace"
+    message: "scoped_rbac narrows RBAC to scoped_namespace — set scoped_namespace when enabling it"
+    expression: "!this.scoped_rbac || this.scoped_namespace != ''"
+  };
+}
+
+/**
+ * CRD installation lifecycle.
+ */
+message KubernetesExternalSecretsOperatorCrds {
+  /**
+   * Install the ESO CRDs with the release. Default TRUE — one component
+   * managing both halves is strictly simpler. Disable only when another
+   * installation already owns the CRDs.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs (and therefore every ExternalSecret/SecretStore object in
+   * the cluster) when the release is uninstalled. Default TRUE (Planton
+   * opinion, rendered as the helm.sh/resource-policy=keep annotation on the
+   * CRDs — the chart itself has no keep knob and would DELETE them, which
+   * cascades to every ESO object cluster-wide, a destructive act that should
+   * require an explicit false).
+   */
+  optional bool keep_on_uninstall = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * Prometheus metrics configuration.
+ */
+message KubernetesExternalSecretsOperatorPrometheus {
+  /**
+   * Create ServiceMonitor resources for scrape discovery. Requires the
+   * Prometheus operator CRDs (e.g. kube-prometheus-stack) on the cluster —
+   * the release FAILS to install without them.
+   */
+  bool service_monitor = 1;
+
+  /**
+   * Scrape interval for the ServiceMonitor. Chart default: "30s".
+   */
+  optional string service_monitor_interval = 2 [(dev.planton.shared.options.default) = "30s"];
+
+  /**
+   * Extra labels on the ServiceMonitor — how a Prometheus instance's
+   * serviceMonitorSelector finds it (e.g. {"release": "kube-prometheus-stack"}).
+   */
+  map<string, string> service_monitor_labels = 3;
+}
+
+/**
+ * Webhook component tuning.
+ */
+message KubernetesExternalSecretsOperatorWebhook {
+  /**
+   * Run the webhook. Chart default: true. Disabling leaves ESO resources
+   * unvalidated at admission — misconfigured stores/secrets then fail at
+   * reconcile time instead of at apply time.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Webhook replica count. Chart default: 1.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Webhook container CPU/memory requests and limits.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}
+
+/**
+ * cert-controller component tuning.
+ */
+message KubernetesExternalSecretsOperatorCertController {
+  /**
+   * Run the cert-controller. Chart default: true; the webhook's serving
+   * certificate depends on it (unless cert-manager integration via
+   * helm_values takes over — the chart then skips this Deployment on its
+   * own).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * cert-controller replica count. Chart default: 1.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * cert-controller container CPU/memory requests and limits.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}

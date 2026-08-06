@@ -30,7 +30,7 @@ When you deploy a DigitalOceanLoadBalancer resource, Planton provisions:
 Create a file `lb.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: my-lb
@@ -110,7 +110,7 @@ When `healthCheck` is specified:
 A basic HTTP load balancer for development or testing, using tag-based backend targeting:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: dev-lb
@@ -137,7 +137,7 @@ spec:
 A production load balancer that terminates TLS at the load balancer and forwards HTTP to backend Droplets. The `certificateName` field references a TLS certificate already uploaded to DigitalOcean (use the certificate name, not its ID):
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: prod-web-lb
@@ -169,7 +169,7 @@ spec:
 Production configuration using a VPC foreign key reference, explicit health check tuning, sticky sessions, and multiple forwarding rules:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanLoadBalancer
 metadata:
   name: full-lb

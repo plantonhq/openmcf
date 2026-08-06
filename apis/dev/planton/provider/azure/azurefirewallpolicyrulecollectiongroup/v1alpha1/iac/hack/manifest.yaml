@@ -1,0 +1,72 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFirewallPolicyRuleCollectionGroup
+metadata:
+  name: test-rule-collection-group
+spec:
+  firewallPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/firewallPolicies/egress-baseline
+  name: platform-baseline
+  priority: 500
+  applicationRuleCollections:
+    - name: web-egress
+      priority: 300
+      action: ALLOW
+      rules:
+        - name: allow-github
+          description: package pulls from github
+          protocols:
+            - type: HTTPS
+              port: 443
+          sourceAddresses:
+            - "10.0.0.0/16"
+          destinationFqdns:
+            - "github.com"
+            - "*.githubusercontent.com"
+        - name: allow-ubuntu-updates
+          protocols:
+            - type: HTTP
+              port: 80
+            - type: HTTPS
+              port: 443
+          sourceAddresses:
+            - "10.0.0.0/16"
+          destinationFqdnTags:
+            - "AzureKubernetesService"
+  networkRuleCollections:
+    - name: core-egress
+      priority: 200
+      action: ALLOW
+      rules:
+        - name: allow-dns
+          protocols:
+            - UDP
+          sourceAddresses:
+            - "10.0.0.0/16"
+          destinationAddresses:
+            - "8.8.8.8"
+            - "8.8.4.4"
+          destinationPorts:
+            - "53"
+        - name: allow-ntp
+          protocols:
+            - UDP
+          sourceAddresses:
+            - "10.0.0.0/16"
+          destinationFqdns:
+            - "time.windows.com"
+          destinationPorts:
+            - "123"
+  natRuleCollections:
+    - name: inbound-dnat
+      priority: 100
+      rules:
+        - name: rdp-to-jumpbox
+          protocols:
+            - TCP
+          sourceAddresses:
+            - "*"
+          destinationAddress: "203.0.113.10"
+          destinationPorts:
+            - "3389"
+          translatedAddress: "10.0.1.4"
+          translatedPort: 3389

@@ -49,7 +49,7 @@ NLBs — routing is purely by port and protocol.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: edge-nlb
@@ -102,7 +102,7 @@ traffic.
 ### Internal NLB with a pinned private address
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: internal-tcp-nlb
@@ -123,7 +123,7 @@ Internet-facing NLB whose public IPs never change — the addresses partners
 allowlist:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: partner-ingress
@@ -156,7 +156,7 @@ spec:
 ### Hardened NLB with security groups and access logs
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: prod-nlb

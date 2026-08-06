@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubcluster.v1alpha1;
+
+// **AzureEventHubClusterStackOutputs** captures the outputs of
+// provisioning a dedicated Event Hubs cluster.
+message AzureEventHubClusterStackOutputs {
+  // The Azure Resource Manager ID of the cluster -- what an
+  // AzureEventHubNamespace's dedicated_cluster_id references to place
+  // the namespace on this cluster.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.EventHub/clusters/{name}
+  string cluster_id = 1;
+
+  // The cluster's name.
+  string cluster_name = 2;
+}

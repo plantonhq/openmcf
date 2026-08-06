@@ -1,0 +1,18 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEksFargateProfile
+metadata:
+  name: awseksfargateprofile-demo
+spec:
+  region: us-west-2
+  clusterName:
+    value: awsekscluster-demo
+  podExecutionRoleArn:
+    value: arn:aws:iam::123456789012:role/EksFargatePodExecutionRole
+  subnetIds:
+    - value: subnet-0123456789abcdef0
+    - value: subnet-0123456789abcdef1
+  selectors:
+    - namespace: serverless
+    - namespace: batch
+      labels:
+        compute: fargate

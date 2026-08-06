@@ -32,7 +32,7 @@ When you deploy a KubernetesNamespace resource, Planton provisions:
 Create a file `namespace.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: my-namespace
@@ -108,7 +108,7 @@ This creates a bare namespace named `my-namespace` with standard Planton managem
 A development namespace with the `small` resource profile to set guardrails on resource consumption:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: dev-team-alpha
@@ -131,7 +131,7 @@ spec:
 A staging namespace that locks down both ingress and egress, allows traffic from a shared `monitoring` namespace, permits outbound access to an internal subnet, and enforces the `baseline` Pod Security Standard:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: staging-backend
@@ -163,7 +163,7 @@ spec:
 A production namespace with Istio sidecar injection pinned to a specific revision, custom resource quotas and default container limits, full network isolation, and the `restricted` Pod Security Standard:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: prod-payments

@@ -16,7 +16,7 @@
 # (PVCs named claim-<username>) live in this namespace and are KEPT when
 # the platform is destroyed — deleting the NAMESPACE deletes them too.
 # User homes are data; back them up first.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-ml-ns"

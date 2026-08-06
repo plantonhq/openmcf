@@ -1,0 +1,53 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAksCluster
+metadata:
+  name: production-aks-cluster
+  labels:
+    environment: production
+    team: platform
+spec:
+  region: eastus
+  resourceGroup:
+    value: production-rg
+  name: production-aks-cluster
+
+  # Pin for production; unset lets AKS pick the latest recommended GA version.
+  kubernetesVersion: "1.35"
+
+  skuTier: STANDARD
+
+  networkProfile:
+    networkPlugin: AZURE_CNI
+    networkPluginMode: OVERLAY
+
+  apiServerAccessProfile:
+    authorizedIpRanges:
+      - "203.0.113.0/24"
+
+  oidcIssuerEnabled: true
+  workloadIdentityEnabled: true
+  azurePolicyEnabled: true
+
+  defaultNodePool:
+    name: system
+    vmSize: Standard_D4s_v5
+    autoScalingEnabled: true
+    minCount: 3
+    maxCount: 5
+    zones:
+      - "1"
+      - "2"
+      - "3"
+    onlyCriticalAddonsEnabled: true
+
+  omsAgent:
+    logAnalyticsWorkspaceId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-monitoring/providers/Microsoft.OperationalInsights/workspaces/aks-logs
+    msiAuthForMonitoringEnabled: true
+
+  keyVaultSecretsProvider:
+    secretRotationEnabled: true
+
+  tags:
+    cost-center: platform
+    owner: platform-team

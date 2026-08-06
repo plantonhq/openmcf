@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpserverlessvpcconnector.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpServerlessVpcConnectorSpec defines a Serverless VPC Access connector
+// (`google_vpc_access_connector`) — the managed bridge that lets serverless
+// workloads (Cloud Functions, Cloud Run, App Engine) send traffic into a VPC
+// network. The connector runs a small fleet of forwarding instances inside
+// the VPC; serverless egress configured to use it reaches private IPs
+// (Cloud SQL private IP, Memorystore, internal load balancers) as if the
+// workload lived in the network.
+//
+// A connector is regional and attaches to exactly ONE placement:
+//   - network + ip_cidr_range — the connector carves a dedicated /28 out of
+//     the network's address space (the range must not overlap any existing
+//     subnet or route), or
+//   - subnet — the connector occupies an EXISTING /28 subnetwork created
+//     for it (required for Shared VPC, where the range lives in the host
+//     project; also the only mode that supports choosing the subnet's
+//     project).
+// Exactly one of the two modes must be set.
+//
+// Consumers attach by full resource name (projects/*/locations/*/
+// connectors/*) — the `self_link` stack output. One connector serves many
+// functions/services in its region; it is shared infrastructure, not
+// per-workload.
+message GcpServerlessVpcConnectorSpec {
+  option (buf.validate.message).cel = {
+    id: "placement.network_xor_subnet"
+    message: "choose exactly one placement: network (with ipCidrRange) to carve a new /28, or subnet to use an existing /28 subnetwork"
+    expression: "(((has(this.network.value) && this.network.value != '') || has(this.network.value_from)) ? 1 : 0) + (has(this.subnet) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "placement.network_requires_cidr"
+    message: "network placement carves a dedicated range out of the VPC — set ipCidrRange to an unused /28 (e.g. 10.8.0.0/28)"
+    expression: "!((has(this.network.value) && this.network.value != '') || has(this.network.value_from)) || this.ip_cidr_range != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "placement.cidr_requires_network"
+    message: "ipCidrRange only applies to network placement — set network, or use subnet placement instead"
+    expression: "this.ip_cidr_range == '' || ((has(this.network.value) && this.network.value != '') || has(this.network.value_from))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "scaling.min_lt_max"
+    message: "minInstances must be strictly lower than maxInstances — the gap is the connector's room to scale"
+    expression: "!has(this.min_instances) || !has(this.max_instances) || this.min_instances < this.max_instances"
+  };
+
+  // The GCP project the connector is created in. Accepts a literal project
+  // ID or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region the connector lives in, e.g. "us-central1". Immutable. Serverless
+  // workloads can only use a connector in their own region.
+  string region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
+  ];
+
+  // Name of the connector in GCP. Immutable. If not specified, defaults to
+  // metadata.name. Maximum 25 characters (a GCP limit stricter than most
+  // resource names): lowercase letters, digits, and hyphens, starting with
+  // a letter and ending with a letter or digit.
+  string connector_name = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z]([a-z0-9-]{0,23}[a-z0-9])?$"
+      max_len: 25
+    }
+  ];
+
+  // VPC network to attach to, for network placement. Accepts a literal
+  // network name or a reference to a GcpVpcNetwork resource. Requires
+  // ip_cidr_range; mutually exclusive with subnet. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
+  ];
+
+  // Unused /28 range the connector's instances occupy, in CIDR notation
+  // (e.g. "10.8.0.0/28") — network placement only. GCP requires exactly a
+  // /28; the range must not overlap any existing subnet, peered range, or
+  // route in the network. Immutable.
+  string ip_cidr_range = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {pattern: "^([0-9]{1,3}\\.){3}[0-9]{1,3}/28$"}
+  ];
+
+  // Existing /28 subnetwork the connector occupies, for subnet placement.
+  // The required mode on Shared VPC (the subnet lives in the host project).
+  // Mutually exclusive with network/ip_cidr_range. Immutable.
+  GcpServerlessVpcConnectorSubnet subnet = 6;
+
+  // Machine type of the connector's forwarding instances. Larger types
+  // carry more throughput per instance (f1-micro ~100 Mbps, e2-micro
+  // ~200 Mbps, e2-standard-4 ~1 Gbps class). Mutable in place — a
+  // fleet-wide capacity lever that needs no replacement.
+  string machine_type = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "f1-micro",
+        "e2-micro",
+        "e2-standard-4"
+      ]
+    },
+    (dev.planton.shared.options.recommended_default) = "e2-micro"
+  ];
+
+  // Minimum instances kept running (2–9; GCP defaults to 2). Must be
+  // strictly lower than max_instances. The connector never scales below
+  // this floor — and note the fleet NEVER scales in on its own: after a
+  // burst it stays at the high-water mark until the instances are manually
+  // reduced. Decreasing this value forces the connector to be REPLACED
+  // (brief egress outage); increasing it applies in place.
+  optional int32 min_instances = 8 [(buf.validate.field).int32 = {
+    gte: 2
+    lte: 9
+  }];
+
+  // Maximum instances the connector scales to (3–10; GCP defaults to 10).
+  // Must be strictly higher than min_instances. Sizes the throughput
+  // ceiling: instances × per-instance throughput for the machine type.
+  // Decreasing this value forces the connector to be REPLACED (brief
+  // egress outage); increasing it applies in place.
+  optional int32 max_instances = 9 [(buf.validate.field).int32 = {
+    gte: 3
+    lte: 10
+  }];
+}
+
+// GcpServerlessVpcConnectorSubnet points the connector at an existing /28
+// subnetwork created exclusively for it. Required for Shared VPC (the
+// subnet lives in the host project); also useful when network admins want
+// the connector's range managed like any other subnet.
+message GcpServerlessVpcConnectorSubnet {
+  // Name of the /28 subnetwork the connector occupies (the short name, not
+  // a path — GCP resolves it in the connector's region). The subnetwork
+  // must be dedicated to this connector: exactly /28, no other workloads.
+  // Accepts a literal name or a reference to a GcpSubnetwork resource.
+  // Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
+  ];
+
+  // Project that owns the subnetwork. Only needed on Shared VPC, where the
+  // subnet lives in the host project; defaults to the connector's project.
+  string project_id = 2;
+}

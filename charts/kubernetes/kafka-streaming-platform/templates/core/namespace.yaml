@@ -12,7 +12,7 @@
 # placement contract), and the operator's default watch scope is exactly
 # its own namespace. Everything that must agree on a namespace therefore
 # derives it from this one resource.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-kafka-ns"

@@ -1,0 +1,17 @@
+# The ambient data plane: no sidecars — istiod plus the istio-cni node agent
+# and the ztunnel per-node proxy. The verifier additionally requires BOTH
+# DaemonSets fully ready: an ambient mesh whose node dataplane is not running
+# silently leaves every enrolled pod unmeshed.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIstio
+metadata:
+  name: e2e-istio-ambient
+spec:
+  namespace:
+    value: istio-system
+  create_namespace: true
+  dataplane_mode: ambient
+  ztunnel:
+    log_level: info
+  gateway_defaults:
+    service_type: ClusterIP

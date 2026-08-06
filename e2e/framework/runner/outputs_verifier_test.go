@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	auth0resourceserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1"
+	auth0resourceserverv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1alpha1"
 )
 
 func TestVerifyOutputTransformation_Auth0ResourceServer(t *testing.T) {
@@ -36,7 +36,7 @@ func TestVerifyOutputTransformation_Auth0ResourceServer(t *testing.T) {
 		t.Fatal("expected non-nil flat outputs")
 	}
 
-	typed, ok := msg.(*auth0resourceserverv1.Auth0ResourceServerStackOutputs)
+	typed, ok := msg.(*auth0resourceserverv1alpha1.Auth0ResourceServerStackOutputs)
 	if !ok {
 		t.Fatalf("expected *Auth0ResourceServerStackOutputs, got %T", msg)
 	}

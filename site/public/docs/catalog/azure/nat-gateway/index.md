@@ -32,7 +32,7 @@ Nothing else is created here. The gateway does not allocate its own IPs or prefi
 Create a file `natgateway.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: my-natgw
@@ -87,7 +87,7 @@ This creates a Standard SKU NAT Gateway that SNATs through the referenced public
 A zonal NAT Gateway with default settings, SNATing through one referenced public IP:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: basic-natgw
@@ -113,7 +113,7 @@ spec:
 A NAT Gateway with a longer idle timeout for workloads that hold long-lived outbound TCP connections:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: long-lived-natgw
@@ -141,7 +141,7 @@ spec:
 A NAT Gateway backed by a referenced /28 Public IP Prefix (16 addresses, over 1M SNAT ports) for high-throughput subnets that need multiple outbound IPs to avoid SNAT port exhaustion:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: scale-natgw
@@ -170,7 +170,7 @@ spec:
 A next-generation StandardV2 gateway — zone-redundant automatically, so `zones` stays empty. The referenced address must also be StandardV2:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: v2-natgw
@@ -195,7 +195,7 @@ spec:
 A NAT Gateway serving as the outbound egress for an AKS cluster node subnet, with a referenced prefix for SNAT scale and a 120-minute idle timeout for long-running batch jobs. The node subnet attaches itself by setting `natGatewayId`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: aks-egress-natgw
@@ -220,7 +220,7 @@ spec:
     purpose: aks-egress
     environment: production
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: aks-nodes

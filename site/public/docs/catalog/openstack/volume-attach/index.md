@@ -28,23 +28,23 @@ When you deploy an OpenStackVolumeAttach resource, Planton provisions:
 Create a file `volume-attach.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: my-attach
   annotations:
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-wal-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.app-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolumeAttach.data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolumeAttach.my-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolumeattach/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
@@ -84,7 +84,7 @@ All fields on this resource are ForceNew. Any change to the spec recreates the a
 Attach a volume to an instance using their UUIDs directly:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: data-attach
@@ -100,7 +100,7 @@ spec:
 Specify an exact device path for the volume instead of letting Nova auto-assign one. Useful when the application expects the disk at a known path:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-data-attach
@@ -117,7 +117,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding UUIDs. The FK resolver middleware resolves these references at deployment time:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: app-data-attach
@@ -142,7 +142,7 @@ spec:
 Attach several volumes to the same instance, each at a different device path. Deploy each attachment as a separate resource:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-data-disk
@@ -161,7 +161,7 @@ spec:
       field: status.outputs.volume_id
   device: /dev/vdb
 ---
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolumeAttach
 metadata:
   name: db-wal-disk

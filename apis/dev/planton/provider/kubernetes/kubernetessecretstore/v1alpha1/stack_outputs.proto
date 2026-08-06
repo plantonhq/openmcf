@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetessecretstore.v1alpha1;
+
+// KubernetesSecretStoreStackOutputs captures observable outputs after the
+// SecretStore is created.
+message KubernetesSecretStoreStackOutputs {
+  // Name of the created SecretStore (equals metadata.name). Use it in an
+  // ExternalSecret's secretStoreRef.name (kind SecretStore) in the same
+  // namespace.
+  string store_name = 1;
+
+  // Namespace the SecretStore (and its credential Secrets) live in.
+  string namespace = 2;
+}

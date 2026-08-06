@@ -1,0 +1,24 @@
+# The PARTNER namespace of the geo-DR pairing -- a DIFFERENT region than
+# the primary (Azure's pairing contract) and empty (no hubs) at pairing
+# time.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubNamespace
+metadata:
+  name: planton-oss-e2e-ehdr-fixture-partner
+  id: planton-oss-e2e-ehdr-fixture-partner
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus2
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  namespaceName: pltn-oss-e2e-ehdr-par
+  sku: STANDARD

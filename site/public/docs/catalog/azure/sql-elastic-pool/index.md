@@ -26,7 +26,7 @@ When you deploy an AzureMssqlElasticPool resource, Planton provisions:
 Create a file `pool.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlElasticPool
 metadata:
   name: tenant-pool
@@ -89,7 +89,7 @@ Databases join the pool by setting `skuName: ElasticPool` and referencing `statu
 ### vCore Pool with Hybrid Benefit
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlElasticPool
 metadata:
   name: gp-pool
@@ -111,7 +111,7 @@ spec:
 ### Joining a Database to the Pool
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlDatabase
 metadata:
   name: tenant-42

@@ -6,7 +6,7 @@
 # exists before the tracking server's first write. MLflow PROXIES all
 # artifact traffic, so notebooks and training jobs never touch these
 # credentials — they talk only to the tracking server.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSeaweedFs
 metadata:
   name: "{{ values.env }}-ml-artifacts"

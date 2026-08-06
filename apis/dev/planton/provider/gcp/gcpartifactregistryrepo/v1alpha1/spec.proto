@@ -1,0 +1,551 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpartifactregistryrepo.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpArtifactRegistryRepoSpec defines the configuration for a Google Cloud
+// Artifact Registry repository — the universal package store for container
+// images (Docker/OCI), language packages (Maven, npm, Python, Go), and OS
+// packages (Apt, Yum).
+//
+// A repository has one of three serving modes:
+//
+//   - STANDARD_REPOSITORY (default): a regular repository you push artifacts
+//     to. The workhorse for CI/CD pipelines publishing images and packages.
+//   - REMOTE_REPOSITORY: a pull-through cache of an upstream registry
+//     (Docker Hub, Maven Central, npmjs, PyPI, OS mirrors, or a custom
+//     registry). Artifacts are fetched and cached on first pull — insulating
+//     builds from upstream outages and rate limits.
+//   - VIRTUAL_REPOSITORY: a single aggregated endpoint that serves from
+//     multiple upstream Artifact Registry repositories by priority. Lets
+//     consumers use one URL while artifacts live in per-team standard repos
+//     and shared remote caches.
+//
+// Important behavioral notes:
+//
+//   - format, mode, location, project, and kms_key_name are all immutable
+//     after creation — changing any of them destroys and recreates the
+//     repository (and everything stored in it). Choose deliberately.
+//   - The entire remote_repository_config block is immutable EXCEPT the
+//     upstream credentials and disable_upstream_validation, which rotate
+//     in place.
+//   - Access control is additive IAM: each iam_members entry grants one
+//     role to one member on this repository and composes safely with grants
+//     made elsewhere. Authoritative bindings/policies (which clobber grants
+//     they don't list) are deliberately not modeled.
+message GcpArtifactRegistryRepoSpec {
+  // A repository serves remote-cache or virtual-aggregation traffic only in
+  // the matching mode; conversely those modes require their config block.
+  option (buf.validate.message).cel = {
+    id: "remote_config_requires_remote_mode"
+    expression: "!has(this.remote_repository_config) || this.mode == 'REMOTE_REPOSITORY'"
+    message: "remote_repository_config can only be set when mode is REMOTE_REPOSITORY"
+  };
+  option (buf.validate.message).cel = {
+    id: "remote_mode_requires_remote_config"
+    expression: "this.mode != 'REMOTE_REPOSITORY' || has(this.remote_repository_config)"
+    message: "mode REMOTE_REPOSITORY requires remote_repository_config to define the upstream source"
+  };
+  option (buf.validate.message).cel = {
+    id: "virtual_config_requires_virtual_mode"
+    expression: "!has(this.virtual_repository_config) || this.mode == 'VIRTUAL_REPOSITORY'"
+    message: "virtual_repository_config can only be set when mode is VIRTUAL_REPOSITORY"
+  };
+  option (buf.validate.message).cel = {
+    id: "virtual_mode_requires_virtual_config"
+    expression: "this.mode != 'VIRTUAL_REPOSITORY' || has(this.virtual_repository_config)"
+    message: "mode VIRTUAL_REPOSITORY requires virtual_repository_config to define the upstream policies"
+  };
+
+  // The GCP project where the repository is created.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The last segment of the repository's resource name — the ID that appears
+  // in registry URLs (e.g. "us-docker.pkg.dev/{project}/{repository_id}").
+  // Must start with a letter, contain only lowercase letters, numbers, and
+  // hyphens, and be at most 63 characters. If omitted, metadata.name is used.
+  // Immutable after creation.
+  string repository_id = 2 [(buf.validate.field).cel = {
+    id: "valid_repository_id"
+    expression: "this == '' || this.matches('^[a-z][a-z0-9-]{0,62}$')"
+    message: "repository_id must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 characters)"
+  }];
+
+  // The location for the repository: a region (e.g. "us-central1",
+  // "asia-south1") or a multi-region ("us", "europe", "asia"). Regional
+  // repositories co-located with your build/runtime infrastructure minimize
+  // pull latency and egress cost; multi-region maximizes availability for
+  // globally consumed artifacts. Immutable after creation.
+  string location = 3 [(buf.validate.field).required = true];
+
+  // The package format stored in this repository. Common values:
+  //   "DOCKER"  -- container images (Docker/OCI); the format behind
+  //                us-docker.pkg.dev URLs and GKE/Cloud Run image pulls
+  //   "MAVEN"   -- Java/JVM packages
+  //   "NPM"     -- Node.js packages
+  //   "PYTHON"  -- Python packages (pip/PyPI layout)
+  //   "GO"      -- Go module proxy (remote mode caches proxy.golang.org)
+  //   "APT"     -- Debian/Ubuntu OS packages
+  //   "YUM"     -- RHEL/CentOS/Rocky OS packages
+  //   "GENERIC" -- arbitrary versioned files
+  //   "KFP"     -- Kubeflow Pipelines templates
+  //
+  // Artifact Registry adds formats over time, so this field deliberately
+  // accepts any string (matched case-insensitively by GCP) and lets the API
+  // validate — see the repository format reference for the authoritative
+  // list: https://cloud.google.com/artifact-registry/docs/supported-formats
+  // Immutable after creation.
+  string format = 4 [(buf.validate.field).required = true];
+
+  // The serving mode of the repository. Defaults to STANDARD_REPOSITORY.
+  //
+  //   "STANDARD_REPOSITORY" -- artifacts are pushed directly to this repo
+  //   "REMOTE_REPOSITORY"   -- pull-through cache of one upstream source
+  //                            (requires remote_repository_config)
+  //   "VIRTUAL_REPOSITORY"  -- priority-ordered aggregation of other
+  //                            Artifact Registry repositories (requires
+  //                            virtual_repository_config)
+  //
+  // Immutable after creation.
+  string mode = 5 [(buf.validate.field).cel = {
+    id: "valid_mode"
+    expression: "this == '' || this in ['STANDARD_REPOSITORY', 'REMOTE_REPOSITORY', 'VIRTUAL_REPOSITORY']"
+    message: "mode must be one of: STANDARD_REPOSITORY, REMOTE_REPOSITORY, VIRTUAL_REPOSITORY"
+  }];
+
+  // Human-readable description of the repository's purpose, shown in the
+  // console and API listings. Mutable in place.
+  string description = 6;
+
+  // User-defined labels attached to the repository, for cost attribution
+  // and fleet queries. Merged with Planton's platform labels (which win on
+  // key conflicts). Mutable in place.
+  map<string, string> labels = 7;
+
+  // Customer-managed encryption key (CMEK) protecting artifacts in this
+  // repository. Accepts the fully qualified crypto key path
+  //   projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  // or a reference to a GcpKmsKey resource. The Artifact Registry service
+  // agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key.
+  // If omitted, artifacts are encrypted with Google-managed keys.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Docker-format-specific configuration. Only meaningful when format is
+  // DOCKER. Mutable in place.
+  GcpArtifactRegistryRepoDockerConfig docker_config = 9;
+
+  // Maven-format-specific configuration. Only meaningful when format is
+  // MAVEN. Effectively immutable: GCP rejects changing the version policy
+  // or snapshot-overwrite behavior on an existing repository.
+  GcpArtifactRegistryRepoMavenConfig maven_config = 10;
+
+  // Cleanup policies that automatically delete or protect artifact versions
+  // based on age, tag state, or name prefixes. Policies with action DELETE
+  // remove matching versions; policies with action KEEP protect matching
+  // versions from every DELETE policy (KEEP always wins on overlap). Without
+  // cleanup policies, CI-pushed repositories grow without bound — pair every
+  // busy standard repository with at least a delete-untagged policy.
+  // Mutable in place.
+  repeated GcpArtifactRegistryRepoCleanupPolicy cleanup_policies = 11;
+
+  // If true, cleanup policies run in dry-run mode: matches are logged
+  // (visible in Cloud Audit Logs) but nothing is deleted. Use this to
+  // validate new policies against real traffic before letting them delete.
+  // Mutable in place.
+  bool cleanup_policy_dry_run = 12;
+
+  // Upstream source configuration for REMOTE_REPOSITORY mode — which
+  // registry this repository caches. Required when (and only valid when)
+  // mode is REMOTE_REPOSITORY. The block is immutable after creation EXCEPT
+  // upstream_credentials and disable_upstream_validation, which update in
+  // place (credential rotation never recreates the cache).
+  GcpArtifactRegistryRepoRemoteConfig remote_repository_config = 13;
+
+  // Upstream aggregation configuration for VIRTUAL_REPOSITORY mode — which
+  // Artifact Registry repositories this endpoint serves from and in what
+  // priority order. Required when (and only valid when) mode is
+  // VIRTUAL_REPOSITORY. Mutable in place: upstreams can be added, removed,
+  // and re-prioritized without recreating the virtual endpoint.
+  GcpArtifactRegistryRepoVirtualConfig virtual_repository_config = 14;
+
+  // Whether Artifact Analysis automatically scans artifacts in this
+  // repository for vulnerabilities.
+  //
+  //   ""          -- inherit the project-level setting (default)
+  //   "INHERITED" -- same as empty: follow the project-level setting
+  //   "DISABLED"  -- never scan this repository, regardless of project config
+  //
+  // Scanning requires the Container Scanning API to be enabled on the
+  // project and incurs per-artifact scan charges. Mutable in place.
+  string vulnerability_scanning_enablement = 15 [(buf.validate.field).cel = {
+    id: "valid_vulnerability_scanning_enablement"
+    expression: "this == '' || this in ['INHERITED', 'DISABLED']"
+    message: "vulnerability_scanning_enablement must be one of: INHERITED, DISABLED"
+  }];
+
+  // Additive IAM grants on this repository. Each entry grants one role to
+  // one member and composes safely with grants made by other tools or
+  // charts — removal subtracts only that exact (role, member) pair.
+  //
+  // Common roles:
+  //   roles/artifactregistry.reader -- pull artifacts (grant to runtime SAs)
+  //   roles/artifactregistry.writer -- push and pull (grant to CI SAs)
+  //   roles/artifactregistry.repoAdmin -- manage artifacts and settings
+  //
+  // Public access: grant roles/artifactregistry.reader to the special
+  // member "allUsers" (requires the project to allow public access).
+  repeated GcpArtifactRegistryRepoIamMember iam_members = 16;
+}
+
+// Docker-format-specific repository configuration.
+message GcpArtifactRegistryRepoDockerConfig {
+  // If true, image tags cannot be modified, moved, or deleted once created
+  // — a pushed tag permanently identifies one digest. New tags can still be
+  // created. Immutable tags make deployments reproducible ("v1.2.3 today is
+  // v1.2.3 forever") at the cost of losing mutable convenience tags like
+  // "latest". Mutable in place.
+  bool immutable_tags = 1;
+}
+
+// Maven-format-specific repository configuration.
+message GcpArtifactRegistryRepoMavenConfig {
+  // The Maven version policy for this repository:
+  //   ""         -- accept both release and snapshot versions (default)
+  //   "RELEASE"  -- accept only release versions
+  //   "SNAPSHOT" -- accept only snapshot versions
+  // The conventional Maven setup is a RELEASE repository and a SNAPSHOT
+  // repository, with builds publishing to each as appropriate.
+  string version_policy = 1 [(buf.validate.field).cel = {
+    id: "valid_version_policy"
+    expression: "this == '' || this in ['RELEASE', 'SNAPSHOT']"
+    message: "version_policy must be one of: RELEASE, SNAPSHOT"
+  }];
+
+  // If true, re-publishing a non-snapshot artifact at an existing version
+  // overwrites it. Defaults to false — GCP rejects duplicate uploads,
+  // preserving release immutability (the safer posture for RELEASE repos).
+  bool allow_snapshot_overwrites = 2;
+}
+
+// One cleanup policy: a condition selecting artifact versions and the
+// action to apply to them.
+message GcpArtifactRegistryRepoCleanupPolicy {
+  // KEEP policies must say what to keep (a condition or a keep-count);
+  // most_recent_versions only makes sense on a KEEP policy.
+  option (buf.validate.message).cel = {
+    id: "keep_requires_criteria"
+    expression: "this.action != 'KEEP' || has(this.condition) || has(this.most_recent_versions)"
+    message: "a KEEP policy needs a condition or most_recent_versions to define what it protects"
+  };
+  option (buf.validate.message).cel = {
+    id: "most_recent_versions_only_for_keep"
+    expression: "!has(this.most_recent_versions) || this.action == 'KEEP'"
+    message: "most_recent_versions is only valid on a KEEP policy (it defines versions to protect, not delete)"
+  };
+
+  // Unique identifier for this policy within the repository.
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // What to do with versions matching this policy:
+  //   "DELETE" -- delete matching versions
+  //   "KEEP"   -- protect matching versions from all DELETE policies
+  // When a version matches both a DELETE and a KEEP policy, KEEP wins.
+  string action = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_action"
+      expression: "this in ['DELETE', 'KEEP']"
+      message: "action must be one of: DELETE, KEEP"
+    }
+  ];
+
+  // Selects versions by age, tag state, and name prefixes. All specified
+  // criteria must match (logical AND).
+  GcpArtifactRegistryRepoCleanupPolicyCondition condition = 3;
+
+  // Selects the N most recent versions (per package) to protect. Only valid
+  // with action KEEP — the standard "always keep the last 10 builds" guard
+  // paired with an age-based DELETE policy.
+  GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions most_recent_versions = 4;
+}
+
+// Version-selection criteria for a cleanup policy. Unset criteria are
+// ignored; all set criteria must match.
+message GcpArtifactRegistryRepoCleanupPolicyCondition {
+  // Match versions newer than this duration since upload, in seconds with
+  // an "s" suffix (e.g. "2592000s" for 30 days). Typically used on KEEP
+  // policies ("protect everything pushed in the last 30 days").
+  string newer_than = 1 [(buf.validate.field).cel = {
+    id: "valid_newer_than"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')"
+    message: "newer_than must be a duration in seconds (e.g., '2592000s' for 30 days)"
+  }];
+
+  // Match versions older than this duration since upload, in seconds with
+  // an "s" suffix (e.g. "7776000s" for 90 days). The workhorse of DELETE
+  // policies ("delete anything older than 90 days").
+  string older_than = 2 [(buf.validate.field).cel = {
+    id: "valid_older_than"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]{1,9})?s$')"
+    message: "older_than must be a duration in seconds (e.g., '7776000s' for 90 days)"
+  }];
+
+  // Match versions whose package name starts with any of these prefixes.
+  repeated string package_name_prefixes = 3;
+
+  // Match versions with a tag starting with any of these prefixes
+  // (e.g. "release-" to select release-tagged images).
+  repeated string tag_prefixes = 4;
+
+  // Match versions by tag status:
+  //   "ANY"      -- tagged or untagged (default)
+  //   "TAGGED"   -- only versions with at least one tag
+  //   "UNTAGGED" -- only versions with no tags (superseded digests in
+  //                 Docker repos — the classic cleanup target)
+  string tag_state = 5 [(buf.validate.field).cel = {
+    id: "valid_tag_state"
+    expression: "this == '' || this in ['ANY', 'TAGGED', 'UNTAGGED']"
+    message: "tag_state must be one of: ANY, TAGGED, UNTAGGED"
+  }];
+
+  // Match versions whose version name starts with any of these prefixes.
+  repeated string version_name_prefixes = 6;
+}
+
+// Keep-count criteria for a KEEP cleanup policy.
+message GcpArtifactRegistryRepoCleanupPolicyMostRecentVersions {
+  // Minimum number of the most recent versions to keep per package.
+  int32 keep_count = 1 [(buf.validate.field).int32.gt = 0];
+
+  // Restrict the keep-count protection to packages whose name starts with
+  // any of these prefixes. If empty, applies to all packages in the repo.
+  repeated string package_name_prefixes = 2;
+}
+
+// Upstream source for a REMOTE_REPOSITORY — a pull-through cache of exactly
+// one upstream registry. Set exactly one of the per-format public upstream
+// arms, or common_repository for a custom/cross-registry upstream.
+message GcpArtifactRegistryRepoRemoteConfig {
+  // The upstream is exactly one source. (The per-format arms name the
+  // well-known public registries; common_repository points at anything
+  // else — another AR repository or a custom registry URI.)
+  option (buf.validate.message).cel = {
+    id: "exactly_one_upstream"
+    expression: "[has(this.apt_repository), has(this.common_repository), this.docker_public_repository != '', this.maven_public_repository != '', this.npm_public_repository != '', this.python_public_repository != '', has(this.yum_repository)].filter(x, x).size() == 1"
+    message: "exactly one upstream source must be set: apt_repository, yum_repository, common_repository, or one of the docker/maven/npm/python public repository arms"
+  };
+
+  // Human-readable description of the upstream source. Immutable.
+  string description = 1;
+
+  // Well-known public Docker upstream. The only supported value is
+  // "DOCKER_HUB". For any other Docker registry (ghcr.io, quay.io, another
+  // AR repository), use common_repository instead. Immutable.
+  string docker_public_repository = 2 [(buf.validate.field).cel = {
+    id: "valid_docker_public_repository"
+    expression: "this == '' || this == 'DOCKER_HUB'"
+    message: "docker_public_repository only supports DOCKER_HUB — use common_repository for custom Docker registries"
+  }];
+
+  // Well-known public Maven upstream. The only supported value is
+  // "MAVEN_CENTRAL". For other Maven registries use common_repository.
+  // Immutable.
+  string maven_public_repository = 3 [(buf.validate.field).cel = {
+    id: "valid_maven_public_repository"
+    expression: "this == '' || this == 'MAVEN_CENTRAL'"
+    message: "maven_public_repository only supports MAVEN_CENTRAL — use common_repository for custom Maven registries"
+  }];
+
+  // Well-known public npm upstream. The only supported value is "NPMJS".
+  // For other npm registries use common_repository. Immutable.
+  string npm_public_repository = 4 [(buf.validate.field).cel = {
+    id: "valid_npm_public_repository"
+    expression: "this == '' || this == 'NPMJS'"
+    message: "npm_public_repository only supports NPMJS — use common_repository for custom npm registries"
+  }];
+
+  // Well-known public Python upstream. The only supported value is "PYPI".
+  // For other Python registries use common_repository. Immutable.
+  string python_public_repository = 5 [(buf.validate.field).cel = {
+    id: "valid_python_public_repository"
+    expression: "this == '' || this == 'PYPI'"
+    message: "python_public_repository only supports PYPI — use common_repository for custom Python registries"
+  }];
+
+  // Public Apt upstream (Debian/Ubuntu mirror trees). Immutable.
+  GcpArtifactRegistryRepoRemoteAptRepository apt_repository = 6;
+
+  // Public Yum upstream (RHEL-family mirror trees). Immutable.
+  GcpArtifactRegistryRepoRemoteYumRepository yum_repository = 7;
+
+  // Custom upstream: another Artifact Registry repository
+  // ("projects/{p}/locations/{l}/repositories/{r}") or a registry URI
+  // (e.g. "https://ghcr.io", "https://registry.company.com"). The upstream
+  // must serve the same format as this repository. Immutable.
+  GcpArtifactRegistryRepoRemoteCommonRepository common_repository = 8;
+
+  // Credentials for authenticating to the upstream (private registries, or
+  // Docker Hub authenticated pulls for higher rate limits). Mutable in
+  // place: rotating credentials never recreates the cache.
+  GcpArtifactRegistryRepoRemoteUpstreamCredentials upstream_credentials = 9;
+
+  // If true, skip validating the upstream URL and credentials at
+  // create/update time. Useful when the upstream is temporarily unreachable
+  // from the control plane but will be reachable at pull time. Mutable in
+  // place.
+  bool disable_upstream_validation = 10;
+}
+
+// A public Apt mirror upstream.
+message GcpArtifactRegistryRepoRemoteAptRepository {
+  // The mirror tree to cache from:
+  //   "DEBIAN" -- deb.debian.org
+  //   "UBUNTU" -- archive.ubuntu.com
+  string repository_base = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_apt_repository_base"
+      expression: "this in ['DEBIAN', 'UBUNTU']"
+      message: "repository_base must be one of: DEBIAN, UBUNTU"
+    }
+  ];
+
+  // The specific repository path within the base, e.g. "debian/dists/bookworm".
+  string repository_path = 2 [(buf.validate.field).required = true];
+}
+
+// A public Yum mirror upstream.
+message GcpArtifactRegistryRepoRemoteYumRepository {
+  // The mirror tree to cache from:
+  //   "CENTOS", "CENTOS_DEBUG", "CENTOS_VAULT", "CENTOS_STREAM",
+  //   "ROCKY", "EPEL"
+  string repository_base = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_yum_repository_base"
+      expression: "this in ['CENTOS', 'CENTOS_DEBUG', 'CENTOS_VAULT', 'CENTOS_STREAM', 'ROCKY', 'EPEL']"
+      message: "repository_base must be one of: CENTOS, CENTOS_DEBUG, CENTOS_VAULT, CENTOS_STREAM, ROCKY, EPEL"
+    }
+  ];
+
+  // The specific repository path within the base,
+  // e.g. "pub/rocky/9/BaseOS/x86_64/os".
+  string repository_path = 2 [(buf.validate.field).required = true];
+}
+
+// A custom upstream for a remote repository.
+message GcpArtifactRegistryRepoRemoteCommonRepository {
+  // Another Artifact Registry repository
+  // ("projects/{p}/locations/{l}/repositories/{r}") or a registry URI
+  // ("https://registry.company.com"). Accepts a literal or a reference to
+  // a GcpArtifactRegistryRepo resource (its repository_path output is
+  // exactly the AR form of this value).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef uri = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpArtifactRegistryRepo,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.repository_path"
+  ];
+}
+
+// Username/password credentials for an authenticated upstream. The password
+// itself never appears here — it lives in Secret Manager and is referenced
+// by secret version, so no secret material enters specs or state.
+message GcpArtifactRegistryRepoRemoteUpstreamCredentials {
+  // The username to authenticate with.
+  string username = 1 [(buf.validate.field).required = true];
+
+  // Secret Manager secret version holding the password, in the form
+  //   projects/{project}/secrets/{secret}/versions/{version}
+  // (use ".../versions/latest" to track rotation automatically). The
+  // Artifact Registry service agent needs
+  // roles/secretmanager.secretAccessor on the secret.
+  string password_secret_version = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^projects/[^/]+/secrets/[^/]+/versions/[^/]+$"
+  ];
+}
+
+// Upstream aggregation for a VIRTUAL_REPOSITORY.
+message GcpArtifactRegistryRepoVirtualConfig {
+  // The Artifact Registry repositories this virtual endpoint serves from.
+  // When the same package exists in multiple upstreams, the highest
+  // priority wins. All upstreams must serve this repository's format.
+  repeated GcpArtifactRegistryRepoVirtualUpstreamPolicy upstream_policies = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One upstream entry in a virtual repository's serving order.
+message GcpArtifactRegistryRepoVirtualUpstreamPolicy {
+  // User-chosen identifier for this policy entry, unique within the
+  // virtual repository.
+  string id = 1 [(buf.validate.field).required = true];
+
+  // The upstream Artifact Registry repository, as the full resource path
+  //   projects/{project}/locations/{location}/repositories/{repository}
+  // Accepts a literal or a reference to a GcpArtifactRegistryRepo resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef repository = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpArtifactRegistryRepo,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.repository_path"
+  ];
+
+  // Serving priority — entries with higher values are tried first.
+  int32 priority = 3;
+}
+
+// One additive IAM grant on the repository: one role to one member.
+message GcpArtifactRegistryRepoIamMember {
+  // The role to grant, e.g. "roles/artifactregistry.reader",
+  // "roles/artifactregistry.writer", "roles/artifactregistry.repoAdmin",
+  // or a custom role's fully-qualified name.
+  string role = 1 [(buf.validate.field).required = true];
+
+  // The identity receiving the grant, in GCP IAM member format:
+  //   serviceAccount:<email>  -- a service account (the most common in IaC;
+  //                              reference a GcpServiceAccount resource —
+  //                              its `member` output is exactly this value)
+  //   user:<email> / group:<email> / domain:<domain>
+  //   allUsers / allAuthenticatedUsers -- public access (grant with care)
+  dev.planton.shared.foreignkey.v1.StringValueOrRef member = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.member"
+  ];
+
+  // Optional IAM Condition restricting when this grant applies. The
+  // condition is part of the grant's identity: the same role with and
+  // without a condition are two independent grants.
+  GcpArtifactRegistryRepoIamCondition condition = 3;
+}
+
+// An IAM Condition — a CEL expression that must evaluate true for the grant
+// to apply. See https://cloud.google.com/iam/docs/conditions-overview.
+message GcpArtifactRegistryRepoIamCondition {
+  // Short human-readable title identifying the condition's intent,
+  // e.g. "expires-2026-12-31".
+  string title = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // The CEL condition expression, e.g.
+  // request.time < timestamp("2027-01-01T00:00:00Z").
+  string expression = 2 [(buf.validate.field).required = true];
+
+  // Optional longer explanation of what the condition does.
+  string description = 3 [(buf.validate.field).string.max_len = 256];
+}

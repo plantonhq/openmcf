@@ -1,7 +1,7 @@
 # Tempo — the trace store, single-binary on a persistent volume. Traces
 # arrive from the OTLP gateway (collection.yaml); Grafana queries them by
 # TraceQL over Tempo's HTTP endpoint.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTempo
 metadata:
   name: "{{ values.env }}-tempo"

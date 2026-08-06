@@ -30,7 +30,7 @@ Node pools are the unit of compute shape: general, memory-optimized, GPU, spot, 
 Create a file `pool.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: general-pool
@@ -119,7 +119,7 @@ Spot pools automatically carry the `kubernetes.azure.com/scalesetpriority=spot:N
 ### Spot Pool for Fault-Tolerant Workloads
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: spot-pool
@@ -144,7 +144,7 @@ spec:
 ### GPU Pool Reserved by Taint
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: gpu-pool

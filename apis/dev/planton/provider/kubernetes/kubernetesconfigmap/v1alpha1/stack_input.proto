@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesconfigmap.v1alpha1;
+
+import "dev/planton/provider/kubernetes/kubernetesconfigmap/v1alpha1/api.proto";
+import "dev/planton/provider/kubernetes/provider.proto";
+
+/**
+ * **KubernetesConfigMapStackInput** defines the input structure for deploying a Kubernetes
+ * ConfigMap. It carries the target ConfigMap specification and the Kubernetes cluster
+ * configuration the IaC modules (Pulumi and Terraform) need to reach the cluster.
+ */
+message KubernetesConfigMapStackInput {
+  /**
+   * The target ConfigMap resource to be created.
+   * Contains the complete specification including metadata, data entries, and immutability.
+   */
+  KubernetesConfigMap target = 1;
+
+  /**
+   * Kubernetes cluster configuration.
+   * Contains connection details and credentials for the target Kubernetes cluster
+   * where the ConfigMap will be created.
+   */
+  dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

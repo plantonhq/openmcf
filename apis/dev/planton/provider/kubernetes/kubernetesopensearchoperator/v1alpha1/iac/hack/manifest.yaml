@@ -1,0 +1,44 @@
+# Full-surface development manifest: exercises every typed field so the
+# offline plan proofs cover arms the live lanes exclude. Values are
+# deliberately non-default where a default exists, so rendered-values
+# inspection shows every mapping.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: os-op-hack
+spec:
+  namespace:
+    value: opensearch-op
+  createNamespace: true
+  chartVersion: 2.8.0
+  # watchNamespace + useRoleBindings together (spec CEL requires the
+  # pairing): the fully namespace-scoped posture.
+  watchNamespace: opensearch-op
+  useRoleBindings: true
+  logLevel: debug
+  dnsBase: cluster.local
+  parallelRecoveryEnabled: false
+  pprofEndpointsEnabled: true
+  kubeRbacProxyEnabled: false
+  resources:
+    requests:
+      cpu: 150m
+      memory: 384Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: search
+      effect: NoSchedule
+  imagePullSecrets:
+    - mirror-pull-secret
+  image:
+    repository: mirror.example.com/opensearchproject/opensearch-operator
+    tag: 2.8.0
+  helmValues: |
+    podLabels:
+      team: search-platform

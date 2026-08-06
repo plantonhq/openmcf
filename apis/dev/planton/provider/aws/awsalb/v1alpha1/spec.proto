@@ -1,0 +1,216 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsalb.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsAlbSpec defines an Application Load Balancer: the Layer-7 entry point
+// that terminates HTTP/HTTPS and hands requests to the routing graph.
+//
+// The load balancer itself carries no routing configuration -- that is
+// deliberate. Listeners (AwsLbListener) attach to it and own ports, TLS
+// material, and default actions; listener rules (AwsLbListenerRule) attach to
+// listeners and own per-service routing; target groups (AwsLbTargetGroup)
+// receive the traffic. This spec owns only what is truly load-balancer-wide:
+// placement (subnets, scheme), security groups, and the HTTP behavior knobs
+// AWS models as load balancer attributes.
+//
+// The ALB name comes from metadata.name. AWS limits the name to 32
+// characters; both IaC modules truncate longer names deterministically.
+// Name, scheme (internal), and subnets-vs-AZ coverage aside, most attributes
+// update in place; changing "internal" replaces the load balancer.
+message AwsAlbSpec {
+  // The AWS region where the ALB is created.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The subnets the ALB places its nodes in -- at least two, in different
+  // Availability Zones (an AWS requirement that also buys zonal redundancy).
+  // Public subnets for internet-facing ALBs, private for internal ones.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 2,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups controlling traffic to and from the ALB. When omitted,
+  // AWS attaches the VPC's default security group -- fine for a first boot,
+  // wrong for production; attach explicit groups that open exactly the
+  // listener ports.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // When true, the ALB is internal (reachable only inside the VPC); when
+  // false (default), it is internet-facing with public DNS. Immutable:
+  // changing the scheme replaces the load balancer.
+  bool internal = 4;
+
+  // The address family of the ALB's nodes. Valid values: "ipv4" (default),
+  // "dualstack" (IPv4 + IPv6), "dualstack-without-public-ipv4" (public IPv6
+  // with private IPv4 -- avoids public-IPv4 charges for IPv6-capable
+  // clients).
+  string ip_address_type = 5;
+
+  // Prevents deletion of the ALB while enabled. Recommended for production:
+  // deleting an ALB silently orphans every listener and rule attached to it.
+  bool delete_protection_enabled = 6;
+
+  // Seconds an idle connection stays open. Range 1-4000. AWS default: 60.
+  // Raise it above the application's slowest response time to avoid 504s on
+  // long-running requests; keep it above any upstream keep-alive interval.
+  int32 idle_timeout_seconds = 7 [(dev.planton.shared.options.recommended_default) = "60"];
+
+  // Seconds an HTTP client connection may stay alive across requests.
+  // Range 60-604800. AWS default: 3600.
+  int32 client_keep_alive_seconds = 8;
+
+  // Whether HTTP/2 is offered to clients. AWS default: true. Optional rather
+  // than plain bool so that false ("disable HTTP/2") is distinguishable from
+  // unset ("keep the AWS default").
+  optional bool http2_enabled = 9;
+
+  // What happens to requests when an attached WAF is unreachable: when true,
+  // requests pass through ("fail open"); when false (AWS default), they are
+  // rejected ("fail closed"). A deliberate availability-versus-security call.
+  // Only meaningful when web_acl_arn attaches a WAF to this ALB.
+  bool waf_fail_open_enabled = 10;
+
+  // The REGIONAL-scope WAFv2 web ACL protecting this ALB, by ARN — the
+  // modules create the web-ACL association alongside the load balancer.
+  // An ALB has at most one web ACL; leave unset for no WAF. The web ACL
+  // must live in the same region as the ALB. Can reference an
+  // AwsWafWebAcl resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef web_acl_arn = 22 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafWebAcl,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.web_acl_arn"
+  ];
+
+  // Allows Amazon Application Recovery Controller to shift this ALB's
+  // traffic away from an impaired Availability Zone.
+  bool zonal_shift_enabled = 11;
+
+  // Drop request headers with names that are not valid HTTP header fields
+  // instead of forwarding them. Hardens against header-smuggling tricks;
+  // AWS default: false.
+  bool drop_invalid_header_fields = 12;
+
+  // Forward the client's original Host header to the target unchanged
+  // instead of rewriting it to the target address. AWS default: false.
+  bool preserve_host_header = 13;
+
+  // Append the client's source port to the X-Forwarded-For header. AWS
+  // default: false.
+  bool xff_client_port_enabled = 14;
+
+  // How the ALB handles the X-Forwarded-For header. Valid values: "append"
+  // (AWS default -- add the client IP), "preserve" (pass it through
+  // untouched), "remove" (strip it). "preserve"/"remove" matter when the ALB
+  // sits behind another proxy layer whose XFF chain must win.
+  string xff_header_processing_mode = 15;
+
+  // Protection level against HTTP desync (request-smuggling) attacks.
+  // Valid values: "monitor" (classify only), "defensive" (AWS default --
+  // block ambiguous requests likely to poison caches), "strictest" (block
+  // everything not RFC 7230 compliant).
+  string desync_mitigation_mode = 16;
+
+  // Inject the negotiated TLS version and cipher suite as request headers
+  // (x-amzn-tls-version, x-amzn-tls-cipher-suite) toward targets, for
+  // applications that audit their clients' TLS posture. AWS default: false.
+  bool tls_version_and_cipher_suite_headers_enabled = 17;
+
+  // Access logs: one entry per request, delivered to S3. The bucket must
+  // carry the ELB log-delivery bucket policy. When omitted, access logging
+  // is off.
+  AwsAlbLogDelivery access_logs = 18;
+
+  // Connection logs: one entry per client connection (TLS handshake
+  // details, client address) -- the place TLS negotiation failures that
+  // never become requests show up. Delivered to S3; when omitted,
+  // connection logging is off.
+  AwsAlbLogDelivery connection_logs = 19;
+
+  // Health-check logs: one entry per health-check result, for debugging
+  // flapping targets without packet captures. Delivered to S3; when
+  // omitted, health-check logging is off.
+  AwsAlbLogDelivery health_check_logs = 20;
+
+  // Optional Route53 DNS: alias A records pointing the given hostnames at
+  // the ALB. Alias records are preferred over CNAMEs because they work at
+  // the zone apex, cost nothing per query, and inherit the ALB's health.
+  AwsAlbDns dns = 21;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "ip_address_type_valid"
+    message: "ip_address_type must be 'ipv4', 'dualstack', or 'dualstack-without-public-ipv4' when set"
+    expression: "this.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack', 'dualstack-without-public-ipv4']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "idle_timeout_range"
+    message: "idle_timeout_seconds must be between 1 and 4000 when set"
+    expression: "this.idle_timeout_seconds == 0 || (this.idle_timeout_seconds >= 1 && this.idle_timeout_seconds <= 4000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "client_keep_alive_range"
+    message: "client_keep_alive_seconds must be between 60 and 604800 when set"
+    expression: "this.client_keep_alive_seconds == 0 || (this.client_keep_alive_seconds >= 60 && this.client_keep_alive_seconds <= 604800)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "xff_header_processing_mode_valid"
+    message: "xff_header_processing_mode must be 'append', 'preserve', or 'remove' when set"
+    expression: "this.xff_header_processing_mode == '' || this.xff_header_processing_mode in ['append', 'preserve', 'remove']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "desync_mitigation_mode_valid"
+    message: "desync_mitigation_mode must be 'monitor', 'defensive', or 'strictest' when set"
+    expression: "this.desync_mitigation_mode == '' || this.desync_mitigation_mode in ['monitor', 'defensive', 'strictest']"
+  };
+}
+
+// AwsAlbLogDelivery points one of the ALB's log streams (access, connection,
+// or health-check logs) at an S3 bucket. The bucket must grant the regional
+// ELB log-delivery service write access via its bucket policy -- delivery
+// fails silently otherwise.
+message AwsAlbLogDelivery {
+  // The S3 bucket receiving the logs.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix inside the bucket (e.g. "alb/production"), for sharing one
+  // bucket across several load balancers or log types.
+  string prefix = 2;
+}
+
+// AwsAlbDns defines the Route53 DNS configuration for the ALB.
+message AwsAlbDns {
+  // When true, creates Route53 alias records for the ALB.
+  bool enabled = 1;
+
+  // Route53 hosted zone ID where alias records are created.
+  // Required when enabled is true.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef route53_zone_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Domain names that will point to the ALB via Route53 alias records.
+  // Each hostname gets its own A record aliased to the ALB's DNS name.
+  repeated string hostnames = 3 [(buf.validate.field).repeated = {unique: true}];
+}

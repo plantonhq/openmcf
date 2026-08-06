@@ -30,7 +30,7 @@ Note: the GCP API gives this resource class no labels and no project field (it l
 Create a file `deployed-index.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: products-v1
@@ -97,7 +97,7 @@ This deploys the index with automatic serving compute at GCP's default bounds. D
 ### Dedicated Compute with Explicit Bounds
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: prod-products
@@ -123,7 +123,7 @@ spec:
 ### Peered Endpoint with Reserved Ranges and JWT Auth
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiDeployedIndex
 metadata:
   name: private-products

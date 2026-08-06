@@ -34,7 +34,7 @@ When you deploy an AwsSagemakerDomain resource, Planton provisions:
 Create a file `sagemaker-domain.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: my-domain
@@ -122,7 +122,7 @@ This creates a SageMaker Domain with IAM authentication, public internet access 
 Cost-optimized domain with automatic shutdown of idle JupyterLab instances after 2 hours, and the EFS home file system deleted with the domain:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: ml-team
@@ -158,7 +158,7 @@ spec:
 Enterprise domain using IAM Identity Center, VPC-only access, per-user CloudTrail attribution, and trusted identity propagation into downstream analytics services:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: enterprise-ml
@@ -206,7 +206,7 @@ spec:
 Canvas no-code ML with direct endpoint deployment disabled (models go through the registry), forecasting enabled, and a pinned artifact workspace:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: canvas-analytics
@@ -243,7 +243,7 @@ spec:
 Reference Planton-managed VPC, subnets, IAM role, security groups, and KMS key instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: ref-domain

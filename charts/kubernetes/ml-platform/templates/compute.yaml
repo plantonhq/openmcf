@@ -13,7 +13,7 @@
 # durable-state extension (an external Redis-protocol store via the
 # component's GCS fault-tolerance arm) is a values change away — the
 # README's day-2 notes walk through it.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRayCluster
 metadata:
   name: "{{ values.env }}-ray"

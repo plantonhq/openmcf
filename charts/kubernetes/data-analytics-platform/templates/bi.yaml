@@ -9,7 +9,7 @@
 # After deployment, add Trino as a Superset database connection to chart
 # the warehouse — the README's after-deployment section carries the exact
 # connection string.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSuperset
 metadata:
   name: "{{ values.env }}-superset"

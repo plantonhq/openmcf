@@ -35,14 +35,14 @@ The `apiVersion` identifies which provider and API version this manifest targets
 
 | Provider | apiVersion |
 |----------|-----------|
-| AWS | `aws.planton.dev/v1` |
-| GCP | `gcp.planton.dev/v1` |
-| Azure | `azure.planton.dev/v1` |
-| Kubernetes | `kubernetes.planton.dev/v1` |
-| DigitalOcean | `digital-ocean.planton.dev/v1` |
-| Civo | `civo.planton.dev/v1` |
-| Cloudflare | `cloudflare.planton.dev/v1` |
-| OpenStack | `openstack.planton.dev/v1` |
+| AWS | `aws.planton.dev/v1alpha1` |
+| GCP | `gcp.planton.dev/v1alpha1` |
+| Azure | `azure.planton.dev/v1alpha1` |
+| Kubernetes | `kubernetes.planton.dev/v1alpha1` |
+| DigitalOcean | `digital-ocean.planton.dev/v1alpha1` |
+| Civo | `civo.planton.dev/v1alpha1` |
+| Cloudflare | `cloudflare.planton.dev/v1alpha1` |
+| OpenStack | `openstack.planton.dev/v1alpha1` |
 
 The `apiVersion` value is enforced as a constant in the component's Protocol Buffer definition. If you set the wrong `apiVersion`, validation fails immediately -- not after a network call to a cloud provider.
 
@@ -139,7 +139,7 @@ You do not set `status` in your manifest. It exists so that after deployment, th
 ### PostgreSQL on Kubernetes
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: kubernetes-postgres-example
@@ -168,7 +168,7 @@ spec:
 ### PostgreSQL on AWS RDS
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: aws-postgres-example
@@ -198,7 +198,7 @@ spec:
 ### PostgreSQL on GCP Cloud SQL
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: gcp-postgres-example

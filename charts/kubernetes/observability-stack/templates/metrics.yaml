@@ -13,7 +13,7 @@
 # NAMING: the resource name feeds every child object name and the modules
 # enforce a 26-character budget on it ("<env>-metrics" fits for any env up to
 # 18 characters — keep environment slugs short).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKubePrometheusStack
 metadata:
   name: "{{ values.env }}-metrics"

@@ -1,0 +1,53 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed block rendered at once (image override, all flags incl. the
+# structured rate limiter, metrics, scheduling, escape hatch).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGhaRunnerScaleSetController
+metadata:
+  name: arc-full
+spec:
+  namespace:
+    value: arc-system
+  createNamespace: true
+  chartVersion: 0.14.2
+  replicas: 2
+  image:
+    repo: mirror.example.com/gha-rs-controller
+    tag: 0.14.2
+    pullSecretName: mirror-pull
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  flags:
+    logLevel: info
+    logFormat: json
+    watchSingleNamespace: ci-runners
+    runnerMaxConcurrentReconciles: 4
+    updateStrategy: eventual
+    excludeLabelPropagationPrefixes:
+      - argocd.argoproj.io/instance
+    k8sClientRateLimiterQps: 30
+    k8sClientRateLimiterBurst: 60
+    rateLimiter: typed_rate_limiter
+    healthProbeBindAddress: ":8081"
+    priorityClassName: system-cluster-critical
+  metrics:
+    controllerManagerAddr: ":8080"
+    listenerAddr: ":8080"
+    listenerEndpoint: /metrics
+  imagePullSecrets:
+    - extra-pull
+  scheduling:
+    nodeSelector:
+      role: platform
+    tolerations:
+      - key: platform
+        operator: Exists
+        effect: NoSchedule
+  helmValues: |
+    podLabels:
+      team: platform

@@ -1,0 +1,17 @@
+# The smallest useful autoscaler: target + ceiling. With no metrics listed,
+# the API server applies its default (80% average CPU utilization). The
+# target's existence is not required at HPA creation — the controller
+# reports it unresolved until the workload appears, which is the correct
+# steady state for infra deployed ahead of the app.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: e2e-hpa-minimal
+spec:
+  namespace:
+    value: default
+  name: e2e-hpa-minimal
+  scale_target:
+    name:
+      value: e2e-fixture-app
+  max_replicas: 5

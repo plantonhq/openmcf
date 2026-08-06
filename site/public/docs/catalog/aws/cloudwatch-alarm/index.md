@@ -30,7 +30,7 @@ No additional sub-resources are created. The alarm is a standalone monitoring re
 Create a file `alarm.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: cpu-high
@@ -139,7 +139,7 @@ Each item in `metricQueries`:
 An EC2 CPU alarm that sends to an SNS topic when CPU exceeds 80%:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: ec2-cpu-alarm
@@ -171,7 +171,7 @@ spec:
 Computes ALB 5xx error rate as a percentage and alerts when it exceeds 5%:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: error-rate-alarm
@@ -218,7 +218,7 @@ spec:
 A production SQS depth alarm using `valueFrom` to reference an Planton-managed SNS topic, with actions on all three state transitions:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: sqs-depth-alarm
@@ -270,7 +270,7 @@ After deployment, the following outputs are available in `status.outputs`:
 Alarm on a PromQL query with Prometheus-style pending/recovery semantics:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: promql-cpu-saturation

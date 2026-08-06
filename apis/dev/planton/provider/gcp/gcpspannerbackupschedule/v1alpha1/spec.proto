@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpspannerbackupschedule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpSpannerBackupScheduleEncryptionConfig controls how the backups created
+// by this schedule are encrypted.
+//
+//   - USE_DATABASE_ENCRYPTION (the operational default): backups inherit
+//     the database's own posture — CMEK databases get CMEK backups.
+//   - GOOGLE_DEFAULT_ENCRYPTION: Google-managed keys regardless of the
+//     database's posture.
+//   - CUSTOMER_MANAGED_ENCRYPTION: explicit CMEK for the backups — set
+//     exactly one of kms_key_name (regional instance configurations) or
+//     kms_key_names (one key per region of a multi-region configuration).
+message GcpSpannerBackupScheduleEncryptionConfig {
+  // How backups are encrypted. Required when this message is present.
+  string encryption_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "encryption_type_valid_value"
+      expression: "this in ['USE_DATABASE_ENCRYPTION', 'GOOGLE_DEFAULT_ENCRYPTION', 'CUSTOMER_MANAGED_ENCRYPTION']"
+      message: "encryption_type must be USE_DATABASE_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION, or CUSTOMER_MANAGED_ENCRYPTION"
+    }
+  ];
+
+  // Fully qualified KMS key for single-region backup CMEK.
+  // Format: projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+  // Only valid with CUSTOMER_MANAGED_ENCRYPTION.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Fully qualified KMS keys for multi-region backup CMEK — one key per
+  // region of the instance's multi-region configuration.
+  // Only valid with CUSTOMER_MANAGED_ENCRYPTION.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_names = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // CMEK requires exactly one key shape; the other types must carry none.
+  option (buf.validate.message).cel = {
+    id: "cmek_requires_exactly_one_key_shape"
+    expression: "this.encryption_type != 'CUSTOMER_MANAGED_ENCRYPTION' || (has(this.kms_key_name) != (this.kms_key_names.size() > 0))"
+    message: "CUSTOMER_MANAGED_ENCRYPTION requires exactly one of kms_key_name or kms_key_names"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "non_cmek_must_not_set_keys"
+    expression: "this.encryption_type == 'CUSTOMER_MANAGED_ENCRYPTION' || (!has(this.kms_key_name) && this.kms_key_names.size() == 0)"
+    message: "kms_key_name/kms_key_names are only valid with CUSTOMER_MANAGED_ENCRYPTION"
+  };
+}
+
+// GcpSpannerBackupScheduleSpec defines a backup schedule
+// (`google_spanner_backup_schedule`) on a Cloud Spanner database.
+//
+// A backup schedule creates backups of one database on a cron cadence and
+// retains each backup for retention_duration. Schedules are first-class,
+// many-per-database resources: a database commonly carries a daily
+// incremental schedule AND a weekly full schedule side by side.
+//
+// Important behavioral notes:
+//
+//   - The schedule is OWNED BY the database: deleting the database deletes
+//     its schedules. The BACKUPS themselves survive — they live until
+//     their retention expires and are what makes destroying the instance
+//     fail unless GcpSpannerInstance.force_destroy is set.
+//
+//   - schedule_name, instance, database, and backup_type are immutable;
+//     cron, retention, and encryption update in place.
+//
+//   - INCREMENTAL schedules build chains where each backup stores only
+//     changes since the previous one (cheaper storage, same restore
+//     semantics) and require the instance to be ENTERPRISE or
+//     ENTERPRISE_PLUS edition.
+message GcpSpannerBackupScheduleSpec {
+  // The GCP project that owns the parent Spanner instance. Accepts a
+  // literal project ID or a reference to a GcpProject resource. If
+  // omitted, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The Spanner instance hosting the database. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef instance = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSpannerInstance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_name"
+  ];
+
+  // The database this schedule backs up. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef database = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSpannerDatabase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.database_name"
+  ];
+
+  // Unique name of the backup schedule within the database. Immutable.
+  // If not specified, defaults to metadata.name. Must start with a
+  // lowercase letter, contain lowercase letters, digits, and hyphens, and
+  // end with a letter or digit.
+  string schedule_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z][-a-z0-9]*[a-z0-9]$"
+      max_len: 63
+    }
+  ];
+
+  // Crontab expression for when backups are created, evaluated in UTC
+  // (maps to the provider's spec.cron_spec.text). Spanner accepts a
+  // bounded set of frequencies — every 12 hours, daily, weekly, or
+  // monthly. Examples:
+  //   "0 2/12 * * *" — every 12 hours at 02:00 and 14:00 UTC
+  //   "0 2 * * *"    — daily at 02:00 UTC
+  //   "0 2 * * 0"    — weekly on Sunday at 02:00 UTC
+  //   "0 2 8 * *"    — monthly on the 8th at 02:00 UTC
+  // Mutable — cadence changes apply in place.
+  string cron = 5 [(buf.validate.field).required = true];
+
+  // How long each backup is retained, as a seconds duration string ending
+  // in 's' (e.g. "86400s" = 1 day, "2678400s" = 31 days). Maximum 366 days
+  // ("31622400s"). Mutable — applies to backups created AFTER the change.
+  string retention_duration = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]{1,9})?s$"
+  ];
+
+  // The kind of backups the schedule creates. Immutable.
+  //
+  // FULL (default): every backup is a complete, self-contained copy.
+  //
+  // INCREMENTAL: backups form chains storing only changes since the
+  // previous backup — significantly cheaper storage at the same restore
+  // semantics. Requires the instance to be ENTERPRISE or ENTERPRISE_PLUS
+  // edition.
+  optional string backup_type = 7 [
+    (dev.planton.shared.options.default) = "FULL",
+    (buf.validate.field).cel = {
+      id: "backup_type_valid_value"
+      expression: "this in ['FULL', 'INCREMENTAL']"
+      message: "backup_type must be FULL or INCREMENTAL"
+    }
+  ];
+
+  // How the backups are encrypted. If omitted, backups use
+  // USE_DATABASE_ENCRYPTION (inherit the database's posture). Mutable.
+  GcpSpannerBackupScheduleEncryptionConfig encryption_config = 8;
+}

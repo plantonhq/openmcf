@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsmemorydbacl.v1alpha1;
+
+// AwsMemorydbAclStackOutputs captures observable identifiers from a
+// provisioned MemoryDB ACL. These outputs are used by downstream resources
+// to wire dependencies via StringValueOrRef — most importantly the cluster's
+// `acl_name` attachment.
+message AwsMemorydbAclStackOutputs {
+  // The ACL's AWS name. This is what clusters attach via their `acl_name`
+  // and what the AWS CLI/API address.
+  string acl_name = 1;
+
+  // The Amazon Resource Name of the ACL. Used in IAM policies and
+  // cross-service permissions.
+  string acl_arn = 2;
+
+  // The minimum engine version the ACL's combined user set requires. A
+  // cluster attaching this ACL must run at least this engine version.
+  string minimum_engine_version = 3;
+}

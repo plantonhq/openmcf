@@ -24,7 +24,7 @@ One policy per (network, service class, region) triple. When a producer instance
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceConnectionPolicy
 metadata:
   name: memorystore-valkey-policy

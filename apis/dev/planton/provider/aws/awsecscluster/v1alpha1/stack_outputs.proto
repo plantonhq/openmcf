@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsecscluster.v1alpha1;
+
+// AwsEcsClusterStackOutputs captures the observable outputs of a
+// provisioned ECS cluster -- the identifiers services and operators
+// reference.
+message AwsEcsClusterStackOutputs {
+  // The cluster name (mirrors metadata.name). What the AWS CLI and the
+  // ECS agent's ECS_CLUSTER setting address.
+  string cluster_name = 1;
+
+  // The ARN of the cluster. The join key: an AwsEcsService's cluster_arn
+  // references this output.
+  string cluster_arn = 2;
+
+  // Every capacity provider associated with the cluster -- the Fargate
+  // built-ins plus the names of the folded EC2 capacity providers. The
+  // vocabulary services can use in a capacity_provider_strategy.
+  repeated string capacity_provider_names = 3;
+
+  // The ARNs of the EC2 capacity providers this cluster defines (empty
+  // for Fargate-only clusters), in the order declared in the spec.
+  repeated string capacity_provider_arns = 4;
+}

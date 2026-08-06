@@ -32,7 +32,7 @@ When you deploy an AwsFsxOntapFileSystem resource, Planton provisions:
 Create a file `ontap.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: my-ontap
@@ -104,7 +104,7 @@ Backup-skip and tag-copy decisions are volume-scoped in ONTAP — configure them
 A SINGLE_AZ_2 file system with USER_PROVISIONED IOPS, security groups, and daily backups:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: app-storage
@@ -137,7 +137,7 @@ spec:
 A SINGLE_AZ_2 deployment with four HA pairs for higher aggregate throughput:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: throughput-tier
@@ -165,7 +165,7 @@ spec:
 A MULTI_AZ_2 deployment with automatic failover across two availability zones:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ha-ontap
@@ -199,7 +199,7 @@ spec:
 Reference subnets, security groups, and KMS key from other Planton-managed resources:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: ref-ontap

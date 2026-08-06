@@ -26,7 +26,7 @@ Deploys an AWS CloudWatch composite alarm — a boolean combination of other ala
 Create a file `composite.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
   name: shared-cause
@@ -75,7 +75,7 @@ This pages the critical channel once when BOTH constituent alarms are in ALARM.
 ### Maintenance-Suppressed Paging
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
   name: prod-api-paging

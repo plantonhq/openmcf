@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpalloydbuser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpAlloydbUserSpec defines a database user (`google_alloydb_user`) on an
+// AlloyDB cluster.
+//
+// Users are first-class nodes: one per application with its own credential
+// (ALLOYDB_BUILT_IN) or passwordless IAM authentication (ALLOYDB_IAM_USER).
+message GcpAlloydbUserSpec {
+  option (buf.validate.message).cel = {
+    id: "iam_user_must_not_set_password"
+    message: "ALLOYDB_IAM_USER must not set a password — authentication goes through IAM"
+    expression: "this.user_type != 'ALLOYDB_IAM_USER' || this.password == ''"
+  };
+
+  // The GCP project that owns the AlloyDB cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The AlloyDB cluster this user lives on. Accepts the full cluster resource
+  // path or a reference to a GcpAlloydbCluster resource. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAlloydbCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // The database role name of the user. Immutable.
+  string user_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // User authentication type. ALLOYDB_BUILT_IN (default) uses a password;
+  // ALLOYDB_IAM_USER authenticates through IAM without a stored password.
+  // Immutable.
+  optional string user_type = 4 [
+    (dev.planton.shared.options.default) = "ALLOYDB_BUILT_IN",
+    (buf.validate.field).cel = {
+      id: "user_type_valid"
+      message: "user_type must be ALLOYDB_BUILT_IN or ALLOYDB_IAM_USER"
+      expression: "this in ['ALLOYDB_BUILT_IN', 'ALLOYDB_IAM_USER']"
+    }
+  ];
+
+  // Password for ALLOYDB_BUILT_IN users. Mutable — updating rotates in place.
+  // Never set for ALLOYDB_IAM_USER.
+  string password = 5 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Database roles granted to this user (e.g. "alloydbiamuser", "alloydbsuperuser").
+  repeated string database_roles = 6;
+}

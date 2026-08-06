@@ -53,7 +53,7 @@ spec in RBAC mode.
 Grant an identity read access to secrets:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: app-reads-secrets

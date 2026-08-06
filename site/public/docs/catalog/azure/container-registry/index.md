@@ -32,7 +32,7 @@ Nothing else is created here. Image-pull and image-push permissions are composed
 Create a file `acr.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: my-registry
@@ -94,7 +94,7 @@ This creates a Standard-tier registry (the baseline applied when the SKU is unsp
 The single-region production baseline — Standard tier, admin account off, Entra-based authentication:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: prod-registry
@@ -116,7 +116,7 @@ spec:
 A Premium registry with a zone-redundant home replica, replicas in two more regions, and automatic purging of untagged manifests. Pushes propagate to all replicas automatically; each replica serves its region's pulls locally:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: global-registry
@@ -145,7 +145,7 @@ spec:
 A Premium registry that stays publicly addressable but denies every connection not on the CIDR allowlist, with dedicated data endpoints so egress firewalls can allowlist exact hostnames (surfaced in the `data_endpoint_host_names` output):
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: restricted-registry
@@ -173,7 +173,7 @@ spec:
 A locked-down registry: public access off (private endpoints only), export disabled as a data-exfiltration control, and data encrypted with a Key Vault key unwrapped by a referenced user-assigned identity. The identity must hold get/wrapKey/unwrapKey on the vault before the registry is created:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: locked-registry
@@ -208,7 +208,7 @@ spec:
 Image-pull and image-push permissions are never bundled into the registry — they are standalone `AzureRoleAssignment` resources scoped to the registry's ARM ID, so grants stay visible, auditable, and independently lifecycled:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: ci-acr-pull

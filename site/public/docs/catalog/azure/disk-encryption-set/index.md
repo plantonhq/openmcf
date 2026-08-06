@@ -27,7 +27,7 @@ Granting the set's identity crypto access on the key, and encrypting specific di
 ## Quick Start
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDiskEncryptionSet
 metadata:
   name: prod-des

@@ -1,0 +1,44 @@
+# Minimal AzureMonitorActionGroup scenario: a multi-receiver group in the
+# fixture resource group exercising three receiver families in one
+# deploy -- email, an HTTPS webhook with the common alert schema, and
+# ARM-role fan-out to the built-in Owner role (a well-known GUID; the
+# vendor-catalog look-up-never-infer rule). Nothing sends unless an
+# alert fires into the group, so the scenario is side-effect-free.
+# The webhook URI must be on a real, non-blocked domain: Azure validates
+# receiver URIs server-side and rejects placeholder domains like
+# example.com with WebhookServiceUriBlocked (verified live).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorActionGroup
+metadata:
+  name: planton-oss-e2e-azmonag-smoke
+  id: planton-oss-e2e-azmonag-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitoractiongroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  shortName: PltnE2E
+  enabled: true
+  emailReceivers:
+    - name: e2e-email
+      emailAddress: e2e-noreply@planton.dev
+      useCommonAlertSchema: true
+  webhookReceivers:
+    - name: e2e-webhook
+      serviceUri: https://planton.dev/e2e/azure-alert-webhook
+      useCommonAlertSchema: true
+  armRoleReceivers:
+    - name: e2e-owners
+      roleId:
+        value: 8e3af657-a8ff-443c-a75c-2fe8c4bcb635
+      useCommonAlertSchema: true
+  tags:
+    purpose: e2e-smoke

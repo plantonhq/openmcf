@@ -1,0 +1,52 @@
+# SINGLE_AZ_2 AwsFsxWindowsFileSystem scenario at the smallest shape
+# (32 GiB / 32 MB/s) exercising the self-managed AD Secrets Manager join
+# arm, audit logging, a DNS alias, and backups. The AD values are
+# STRUCTURAL PLACEHOLDERS: running this lane live requires a reachable
+# directory (see profile.yaml) — AWS rejects the join otherwise. The lane
+# is deferred; the offline plan/preview proof covers the full argument
+# wiring including the Secrets Manager arm both engines send.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsFsxWindowsFileSystem
+metadata:
+  name: planton-oss-e2e-awsfxw-smad
+  id: planton-oss-e2e-awsfxw-smad
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsfsxwindowsfilesystem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  deploymentType: SINGLE_AZ_2
+  storageCapacityGib: 32
+  throughputCapacity: 32
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-prereq
+        fieldPath: status.outputs.security_group_id
+  selfManagedActiveDirectory:
+    domainName: corp.example.com
+    dnsIps:
+      - 10.0.0.10
+      - 10.0.0.11
+    domainJoinServiceAccountSecretArn:
+      value: arn:aws:secretsmanager:us-west-2:123456789012:secret:planton-e2e-fsx-ad-join
+    organizationalUnitDistinguishedName: OU=FSx,DC=corp,DC=example,DC=com
+  aliases:
+    - files.corp.example.com
+  auditLogConfiguration:
+    fileAccessAuditLogLevel: SUCCESS_AND_FAILURE
+    fileShareAccessAuditLogLevel: FAILURE_ONLY
+  automaticBackupRetentionDays: 1
+  copyTagsToBackups: true
+  weeklyMaintenanceStartTime: "7:03:00"

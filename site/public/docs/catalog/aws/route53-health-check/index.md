@@ -27,7 +27,7 @@ When you deploy an AwsRoute53HealthCheck resource, Planton provisions:
 Create a file `health-check.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: app-https-check
@@ -85,7 +85,7 @@ planton apply -f health-check.yaml
 ### Failover pair's primary probe
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: primary-region-check
@@ -101,7 +101,7 @@ spec:
 ### String-match content check
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: status-content-check
@@ -116,7 +116,7 @@ spec:
 ### Private resource via CloudWatch alarm
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: internal-api-check
@@ -131,7 +131,7 @@ spec:
 ### Service-level calculated check
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: service-health

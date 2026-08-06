@@ -31,7 +31,7 @@ When you deploy an AwsRedisElasticache resource, Planton provisions:
 Create a file `redis.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedisElasticache
 metadata:
   name: my-redis
@@ -131,7 +131,7 @@ Exactly one of `numCacheClusters` or `numNodeGroups` must be provided to select 
 A 3-node Redis cluster (1 primary + 2 replicas) with encryption and automatic failover across multiple AZs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedisElasticache
 metadata:
   name: session-cache
@@ -168,7 +168,7 @@ spec:
 A sharded Redis cluster with 3 shards and 2 replicas per shard, custom parameter overrides, and slow-log delivery to CloudWatch:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedisElasticache
 metadata:
   name: analytics-cache
@@ -214,7 +214,7 @@ spec:
 A Valkey cluster using `r6gd` nodes for data tiering, referencing other Planton-managed resources:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedisElasticache
 metadata:
   name: tiered-cache

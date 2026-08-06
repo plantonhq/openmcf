@@ -3,7 +3,7 @@
 # first. The VPC is a thin construct by design — subnets and gateways are
 # separate first-class resources (next file) referencing it, which is what
 # lets the same building blocks compose other topologies.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: "{{ values.env }}-eks-vpc"
@@ -20,7 +20,7 @@ spec:
 ---
 # One internet gateway — the public subnets' default route target. Egress for
 # the PRIVATE subnets rides the NAT gateway (next file), never this directly.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsInternetGateway
 metadata:
   name: "{{ values.env }}-eks-igw"

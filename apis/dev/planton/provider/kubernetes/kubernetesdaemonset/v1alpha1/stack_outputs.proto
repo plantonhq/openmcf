@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesdaemonset.v1alpha1;
+
+/**
+ * **KubernetesDaemonSetStackOutputs** captures the observable handles of a deployed
+ * node agent. DaemonSets have no Service or ingress, so the composition surface is
+ * the object identity and its selector labels.
+ */
+message KubernetesDaemonSetStackOutputs {
+  // The namespace the workload was deployed into.
+  string namespace = 1;
+
+  // The name of the DaemonSet object as created in the cluster.
+  string daemon_set_name = 2;
+
+  /**
+   * The pod selector labels as a "k=v,k=v" string — the exact labels the DaemonSet
+   * selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+   * pod-affinity terms in sibling workloads.
+   */
+  string selector_labels = 3;
+}

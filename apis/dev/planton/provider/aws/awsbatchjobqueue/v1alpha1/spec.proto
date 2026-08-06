@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsbatchjobqueue.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsBatchJobQueueSpec defines an AWS Batch job queue: the place jobs are
+// submitted to, and the mapping that decides WHICH compute environment runs
+// them.
+//
+// A queue is the routing layer of the Batch graph. It maps onto up to three
+// compute environments in preference order, which is what makes the
+// canonical Batch cost pattern possible: try the Spot environment first and
+// overflow to On-Demand (or the reverse for latency-sensitive queues). It is
+// also how a compute environment is replaced with zero queue downtime --
+// associate the new environment, then drain and remove the old one.
+//
+// Jobs themselves are submitted against the queue at runtime (SubmitJob)
+// using an AwsBatchJobDefinition; the queue holds them until a mapped
+// compute environment has capacity.
+message AwsBatchJobQueueSpec {
+  // The AWS region where the job queue is created. Must match the region of
+  // the compute environments it maps onto.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Whether the queue accepts newly submitted jobs. When DISABLED, new
+  // submissions are rejected but jobs already in the queue finish normally
+  // -- the drain switch for maintenance or decommissioning.
+  optional string state = 2 [
+    (dev.planton.shared.options.default) = "ENABLED",
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // The queue's priority relative to OTHER queues that share a compute
+  // environment: when two queues compete for the same capacity, the one
+  // with the higher value is scheduled first. 0 (the default when omitted)
+  // is the lowest priority. Priority is between queues, not between jobs --
+  // ordering within one queue comes from submission order or the
+  // fair-share scheduling policy.
+  int32 priority = 3 [(buf.validate.field).int32.gte = 0];
+
+  // The compute environments this queue dispatches jobs to, in preference
+  // order (lowest `order` value is tried first). AWS allows at most three,
+  // all of one family: EC2-based (EC2/SPOT) or Fargate-based
+  // (FARGATE/FARGATE_SPOT), never mixed. Every referenced environment must
+  // be in the VALID state before it can be associated.
+  repeated AwsBatchJobQueueComputeEnvironmentOrder compute_environment_order = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 3
+    }
+  ];
+
+  // The fair-share scheduling policy that orders jobs WITHIN this queue by
+  // share identifier instead of first-in-first-out. Reference an
+  // AwsBatchSchedulingPolicy's scheduling_policy_arn output or pass a
+  // literal ARN. AWS QUIRK: once a queue has a scheduling policy it can be
+  // replaced with another, but never removed -- removing fair-share
+  // scheduling requires recreating the queue.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef scheduling_policy = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBatchSchedulingPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.scheduling_policy_arn"
+  ];
+
+  // Automatic actions for jobs stuck at the head of the queue in a given
+  // state past a time threshold -- the guard against a mis-sized job
+  // blocking the whole queue in RUNNABLE forever.
+  repeated AwsBatchJobStateTimeLimitAction job_state_time_limit_actions = 6;
+}
+
+// AwsBatchJobQueueComputeEnvironmentOrder maps the queue onto one compute
+// environment at a given preference position.
+message AwsBatchJobQueueComputeEnvironmentOrder {
+  // The preference position of this environment: the scheduler tries the
+  // LOWEST order first and moves to higher values when capacity runs out.
+  // Values must be unique within the queue.
+  int32 order = 1 [(buf.validate.field).int32.gte = 1];
+
+  // The compute environment. Reference an AwsBatchComputeEnvironment's
+  // compute_environment_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef compute_environment = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBatchComputeEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.compute_environment_arn"
+  ];
+}
+
+// AwsBatchJobStateTimeLimitAction acts on jobs that sit at the head of the
+// queue in a specific state longer than a threshold.
+message AwsBatchJobStateTimeLimitAction {
+  // The action to take. "CANCEL" is the only action AWS supports for
+  // queues mapped to compute environments (the TERMINATE action exists
+  // only for SageMaker Training service-environment queues -- a separate
+  // Batch surface this catalog does not model).
+  string action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.const = "CANCEL"
+  ];
+
+  // Seconds a job may remain in the monitored state before the action
+  // fires. Range: 600-86400 (10 minutes to 24 hours).
+  int32 max_time_seconds = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 600
+      lte: 86400
+    }
+  ];
+
+  // WHICH stuck jobs the action applies to -- despite the name, this is a
+  // MATCHER against AWS's own stuck-in-RUNNABLE causes, not a free-text log
+  // message (CreateJobQueue rejects anything else as "Invalid job reason"):
+  //   CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY        -- no capacity in any
+  //       mapped compute environment could place the job.
+  //   MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE -- the job asks for
+  //       more than the environment's max_vcpus can ever offer.
+  //   MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT      -- the job's resource
+  //       requirements cannot be satisfied by the mapped environments'
+  //       instance types.
+  // Add one entry per cause you want the fuse to cover.
+  string reason = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY",
+        "MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE",
+        "MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT"
+      ]
+    }
+  ];
+
+  // The job state to monitor. "RUNNABLE" is the only state AWS supports
+  // today -- it catches jobs the scheduler can never place (mis-sized
+  // resource requirements, exhausted capacity).
+  string state = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.const = "RUNNABLE"
+  ];
+}

@@ -29,7 +29,7 @@ That single resource is the trust anchor. Access itself is granted by a separate
 Create a file `oidc-provider.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamOidcProvider
 metadata:
   name: github-actions-oidc
@@ -77,7 +77,7 @@ This registers GitHub Actions as a trusted OIDC issuer. Next, create an `AwsIamR
 Wire the OIDC provider directly onto an EKS cluster so IRSA works without copying the issuer URL by hand:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamOidcProvider
 metadata:
   name: eks-irsa
@@ -102,7 +102,7 @@ spec:
 For an issuer whose root CA is not publicly trusted, pin the thumbprint:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamOidcProvider
 metadata:
   name: partner-oidc

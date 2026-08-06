@@ -33,7 +33,7 @@ When you deploy an AwsFsxOntapStorageVirtualMachine resource, Planton provisions
 Create a file `svm.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: my-svm
@@ -87,7 +87,7 @@ This creates an NFS/iSCSI-only SVM with UNIX security style (the default) on the
 The simplest configuration for Linux/NFS workloads:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: nfs-svm
@@ -108,7 +108,7 @@ spec:
 Windows-focused SVM with AD domain join for SMB file share access:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: smb-svm
@@ -139,7 +139,7 @@ spec:
 Dual-protocol SVM with MIXED security style for environments where both Linux and Windows clients access the same data:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: multi-svm
@@ -171,7 +171,7 @@ spec:
 Reference an Planton-managed FSx ONTAP file system instead of hardcoding the ID:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: linked-svm

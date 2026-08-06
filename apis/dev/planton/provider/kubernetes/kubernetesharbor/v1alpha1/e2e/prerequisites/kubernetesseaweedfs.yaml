@@ -1,0 +1,54 @@
+# Consumer-scoped SeaweedFS fixture for the KubernetesHarbor
+# composed-storage lane — the in-cluster S3 store the registry's object
+# storage arm composes against:
+# - JOINS the fixture-owned namespace (the CNPG fixture deploys first
+#   with create_namespace and owns e2e-harbor); declared through the
+#   e2e-prerequisites annotation below, the S3-identity Secret fixture
+#   deploys BEFORE this store (the gateway mounts it at install).
+# - `s3.existing_config_secret` hands identity ownership to the Secret
+#   fixture's KNOWN credentials, so the Harbor scenario declares the
+#   same admin key pair on its storage arm — with generated
+#   credentials the composing side could never know the keys
+#   declaratively.
+# - One install-hook bucket (harbor-artifacts): the registry driver
+#   requires the bucket to already exist.
+# - 1/1/1 tiers on small PVCs (kind-honest sizing; the chart's default
+#   REQUIRED pod anti-affinity makes multi-replica tiers unschedulable
+#   on a single node), embedded gateway on the filer — the `<name>-s3`
+#   Service serves either shape.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSeaweedFs
+metadata:
+  name: e2e-harbor-swfs
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesSecret"
+spec:
+  namespace:
+    value: e2e-harbor
+  master:
+    data_volume:
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  volume:
+    data_volume:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+  filer:
+    data_volume:
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+  s3:
+    enabled: true
+    enable_auth: true
+    existing_config_secret: e2e-harbor-s3cfg
+    buckets:
+      - name: harbor-artifacts

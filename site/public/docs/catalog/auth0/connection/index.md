@@ -30,7 +30,7 @@ When you deploy an Auth0Connection resource, Planton provisions:
 Create a file `auth0-connection.yaml`:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: user-db
@@ -165,7 +165,7 @@ Applicable when `strategy` is `waad`.
 A hosted database connection with password policy, brute-force protection, and MFA:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: app-users
@@ -196,7 +196,7 @@ spec:
 A Google OAuth 2.0 connection linked to an application managed by an Auth0Client resource:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: google-social
@@ -226,7 +226,7 @@ spec:
 A SAML connection for enterprise single sign-on with signed requests and attribute mappings:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: corporate-sso
@@ -265,7 +265,7 @@ spec:
 An Azure AD (Entra ID) connection restricted to a single tenant with group retrieval:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: azure-ad-sso

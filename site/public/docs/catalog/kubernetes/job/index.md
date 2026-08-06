@@ -33,7 +33,7 @@ When you deploy a KubernetesJob resource, Planton provisions:
 Create a file `job.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJob
 metadata:
   name: db-migration
@@ -108,7 +108,7 @@ This runs the migration once to success, retries at most twice, and cleans up th
 Ten numbered partitions, three at a time, with per-index retries:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJob
 metadata:
   name: shard-processor
@@ -140,7 +140,7 @@ spec:
 Fail fast on the application's "unrecoverable" exit code; never charge node disruption against the retry budget:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJob
 metadata:
   name: resilient-batch

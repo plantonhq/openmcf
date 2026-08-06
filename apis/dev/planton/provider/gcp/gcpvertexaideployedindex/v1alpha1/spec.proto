@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpvertexaideployedindex.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpVertexAiDeployedIndexAutomaticResources lets Vertex AI manage the
+// serving compute: machine types are chosen by GCP and replicas scale
+// between the bounds. The zero-configuration sizing arm.
+message GcpVertexAiDeployedIndexAutomaticResources {
+  // Minimum replicas always running. GCP's default is 2 (no SLA is
+  // provided at 1). Mutable in place — replica bounds are the only
+  // post-deploy tuning knobs.
+  optional int32 min_replica_count = 1 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Maximum replicas under load, up to 1000. Defaults to
+  // min_replica_count when unset. Mutable in place.
+  int32 max_replica_count = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// GcpVertexAiDeployedIndexDedicatedResources pins the serving compute to
+// an explicit machine type — predictable performance and cost at the
+// price of manual capacity planning. Which machine types are valid
+// depends on the index's shard size (e.g. SMALL shards allow
+// e2-standard-2 and everything MEDIUM/LARGE allows; LARGE shards need
+// e2-highmem-16 or n2d-standard-32).
+message GcpVertexAiDeployedIndexDedicatedResources {
+  // Machine type serving the index (e.g. "e2-standard-16"). Must be
+  // compatible with the index's shard_size. If omitted, the API applies
+  // its own default. Immutable.
+  string machine_type = 1;
+
+  // Minimum replicas always running, at least 1 (no SLA at 1). Required
+  // by the API for dedicated sizing. Mutable in place — replica bounds
+  // are the only post-deploy tuning knobs.
+  int32 min_replica_count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Maximum replicas under load, up to 1000. Defaults to
+  // min_replica_count when unset. Mutable in place.
+  int32 max_replica_count = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// GcpVertexAiDeployedIndexAuthConfig enables JWT authentication on the
+// deployed index's private query endpoint. Callers present a JWT signed
+// by one of the allowed issuers (Google service accounts) with one of
+// the allowed audiences. The whole block is immutable.
+message GcpVertexAiDeployedIndexAuthConfig {
+  // Service accounts whose signed JWTs are accepted, each in the form
+  // service-account-name@project-id.iam.gserviceaccount.com. Immutable.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef allowed_issuers = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // JWT audiences accepted on the query endpoint; a JWT carrying any of
+  // them is accepted. Immutable.
+  repeated string audiences = 2;
+}
+
+// GcpVertexAiDeployedIndexSpec places a GcpVertexAiIndex onto a
+// GcpVertexAiIndexEndpoint and gives the placement its serving compute —
+// the final resource of the vector-search trio, after which queries can
+// be served. Many deployed indexes can share one endpoint, and one index
+// can be deployed to many endpoints.
+//
+// Deploying takes tens of minutes (the provider allows up to 45); the
+// only fields that update in place afterwards are the replica bounds
+// inside the sizing arm. Everything else — the placement itself, the
+// auth config, networking pins, deployment group — replaces the
+// deployment (undeploy + redeploy).
+//
+// This resource class carries NO labels and NO project field in the
+// GCP API: platform label attribution is impossible here (the deployed
+// index inherits the endpoint's project and lives inside the endpoint
+// resource), so none is faked.
+message GcpVertexAiDeployedIndexSpec {
+  // The sizing arms are mutually exclusive; omitting both lets GCP
+  // deploy with automatic resources at its default bounds.
+  option (buf.validate.message).cel = {
+    id: "at_most_one_sizing_arm"
+    expression: "!(has(this.automatic_resources) && has(this.dedicated_resources))"
+    message: "automatic_resources and dedicated_resources are mutually exclusive; let Vertex AI manage the compute or pin a machine type, not both"
+  };
+
+  // Region of the index endpoint (e.g., "us-central1"). Must match the
+  // endpoint's own region — the Vertex AI API host is regional
+  // (https://{region}-aiplatform.googleapis.com) and a deployment
+  // cannot cross regions. Immutable after creation.
+  string location = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // User-chosen ID of this deployment, unique within the project: up to
+  // 128 characters, starting with a letter, containing only letters,
+  // numbers, and underscores. This is the handle queries and undeploy
+  // operations address the deployment by. Immutable after creation.
+  string deployed_index_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_deployed_index_id"
+      expression: "this.matches('^[a-zA-Z][a-zA-Z0-9_]{0,127}$')"
+      message: "deployed_index_id must start with a letter and contain only letters, numbers, and underscores (up to 128 characters)"
+    }
+  ];
+
+  // The index being deployed — the fully qualified index resource path
+  // (projects/{project}/locations/{location}/indexes/{indexId}); a
+  // GcpVertexAiIndex reference resolves to it. The index must live in
+  // the same region as the endpoint. Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef index = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVertexAiIndex,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.index_id"
+  ];
+
+  // The index endpoint being deployed onto — the fully qualified
+  // endpoint resource path
+  // (projects/{project}/locations/{location}/indexEndpoints/{id}); a
+  // GcpVertexAiIndexEndpoint reference resolves to it. Immutable after
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef index_endpoint = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVertexAiIndexEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.index_endpoint_id"
+  ];
+
+  // Display name of the deployment (up to 128 UTF-8 characters).
+  // Unusually for a display name, the API treats it as IMMUTABLE on a
+  // deployed index — changing it replaces the deployment.
+  string display_name = 5 [(buf.validate.field).string = {max_len: 128}];
+
+  // Vertex-managed serving compute (machine types chosen by GCP,
+  // replicas scale between bounds). Mutually exclusive with
+  // dedicated_resources; omitting both lets GCP deploy with automatic
+  // defaults.
+  GcpVertexAiDeployedIndexAutomaticResources automatic_resources = 6;
+
+  // Explicitly pinned serving compute (machine type + replica bounds).
+  // Mutually exclusive with automatic_resources.
+  GcpVertexAiDeployedIndexDedicatedResources dedicated_resources = 7;
+
+  // Deployment group for IP-space partitioning, up to 64 characters
+  // (e.g. "test", "prod"); GCP's default group is "default". Pairing
+  // groups with reserved_ip_ranges gives each group a predictable IP
+  // space when the peered network has multiple peering ranges — and the
+  // API HOLDS the pairing: a non-default group, once used with a set of
+  // reserved ranges, can only ever be used with exactly that set again.
+  // At most 5 groups besides "default". Immutable after creation.
+  optional string deployment_group = 8 [
+    (dev.planton.shared.options.default) = "default",
+    (buf.validate.field).string = {max_len: 64}
+  ];
+
+  // If true, private-endpoint access logs are sent to Cloud Logging.
+  // Immutable after creation.
+  bool enable_access_logging = 9;
+
+  // Names of reserved compute address ranges under the endpoint's
+  // peered VPC network to deploy into (e.g. ["vertex-ai-ip-range"]) —
+  // Vertex peering ranges are global INTERNAL VPC_PEERING addresses, so
+  // a GcpGlobalAddress reference resolves to its name. If omitted, the
+  // index may deploy to any range under the network. Only meaningful on
+  // a VPC-peered endpoint. Immutable after creation.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef reserved_ip_ranges = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGlobalAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // JWT authentication for the private query endpoint. If omitted, the
+  // endpoint relies on network reachability alone. Immutable after
+  // creation.
+  GcpVertexAiDeployedIndexAuthConfig auth_config = 11;
+}

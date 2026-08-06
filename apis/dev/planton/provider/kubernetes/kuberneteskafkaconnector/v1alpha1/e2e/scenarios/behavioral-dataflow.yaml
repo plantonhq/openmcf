@@ -1,0 +1,38 @@
+# The data-flow proof: a MirrorSourceConnector — one of the ONLY three
+# connector classes the stock Strimzi image carries (verified live
+# against the workers' own plugin listing) — mirrors the fixture
+# cluster's "e2e-pipe-in" topic back to the SAME cluster under the
+# aliased name "src.e2e-pipe-in" (running MirrorMaker's connectors
+# inside a plain Connect cluster is Kafka's own documented MM2
+# deployment shape). The verifier produces run-unique markers on the
+# source topic and consumes them from the mirrored topic — real records
+# crossing a real pipe, content-matched. Topic names, aliases and the
+# fixture bootstrap address are PAIRED with the verifier's constants —
+# change them together.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaConnector
+metadata:
+  name: e2e-connector-dataflow
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  connect_cluster:
+    valueFrom:
+      name: e2e-con-fix
+  connector_class: org.apache.kafka.connect.mirror.MirrorSourceConnector
+  tasks_max: 1
+  config:
+    source.cluster.alias: src
+    target.cluster.alias: fix
+    source.cluster.bootstrap.servers: e2e-kaf-fix-kafka-bootstrap.e2e-kaf-fix.svc.cluster.local:9092
+    target.cluster.bootstrap.servers: e2e-kaf-fix-kafka-bootstrap.e2e-kaf-fix.svc.cluster.local:9092
+    topics: e2e-pipe-in
+    replication.factor: "1"
+    offset-syncs.topic.replication.factor: "1"
+    refresh.topics.interval.seconds: "30"
+    key.converter: org.apache.kafka.connect.converters.ByteArrayConverter
+    value.converter: org.apache.kafka.connect.converters.ByteArrayConverter
+  auto_restart:
+    enabled: true
+    max_restarts: 5
+  state: running

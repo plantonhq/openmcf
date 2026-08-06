@@ -27,7 +27,7 @@ When you deploy an OpenStackLoadBalancerPool resource, Planton provisions:
 Create a file `pool.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: web-pool
@@ -79,7 +79,7 @@ This creates an Octavia pool using round-robin distribution for HTTP traffic, at
 A minimal pool distributing HTTP traffic evenly across members:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: web-pool
@@ -103,7 +103,7 @@ spec:
 A pool with `APP_COOKIE` session persistence, routing clients with the same `JSESSIONID` cookie to the same backend member. Useful for Java-based applications with server-side sessions:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: app-pool
@@ -129,7 +129,7 @@ spec:
 A TCP pool using `SOURCE_IP` load balancing to route all connections from a given client IP to the same backend. Suitable for non-HTTP protocols or stateful TCP services:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: tcp-pool
@@ -153,7 +153,7 @@ spec:
 Reference an Planton-managed listener instead of hardcoding the UUID:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancerPool
 metadata:
   name: ref-pool

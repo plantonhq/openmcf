@@ -42,7 +42,7 @@ const (
 //	spec:
 //	  resources:
 //	    - manifest:
-//	        apiVersion: aws.planton.dev/v1
+//	        apiVersion: aws.planton.dev/v1alpha1
 //	        kind: AwsVpc
 //	        metadata:
 //	          name: prod-network

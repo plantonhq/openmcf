@@ -1,0 +1,33 @@
+# The cloud-backend + CSI-snapshot proof on the aws-eks profile: real S3
+# via IRSA (keyless — no credential Secret anywhere) and CSI snapshots
+# through the EBS driver. The behavioral verifier (switched on by this
+# scenario's name) runs the DR loop with a VOLUME in the blast radius: a
+# subject namespace with a PVC-backed pod writes marker data to the volume,
+# a Backup with CSI snapshots completes into the real bucket, the namespace
+# is deleted, a Restore completes, and the marker is read back from the
+# RESTORED volume — proving object metadata AND volume data both survived.
+# The batch's e2e-gp3 StorageClass + VolumeSnapshotClass (labeled for
+# Velero discovery) are the storage scaffolding.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesVelero
+metadata:
+  name: e2e-velero-aws
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+spec:
+  namespace:
+    value: velero
+  create_namespace: true
+  backup_storage:
+    s3:
+      bucket: ${E2E_ENV:PLANTON_E2E_VELERO_BUCKET}
+      region: ${E2E_ENV:PLANTON_E2E_AWS_REGION}
+      irsa_role_arn:
+        value: ${E2E_ENV:PLANTON_E2E_VELERO_IRSA_ROLE_ARN}
+    prefix: e2e-aws-csi
+  volume_snapshots:
+    enabled: true
+    enable_csi: true
+  server:
+    default_backup_ttl: 24h
+    log_level: info

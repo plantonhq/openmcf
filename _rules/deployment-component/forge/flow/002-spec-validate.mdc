@@ -24,7 +24,7 @@ TOOLS
 - Validation standard: the "VALIDATION MESSAGE QUALITY" section in this rule (below) is the
   authoritative standard. This rule is the canonical home for the Validation Message Philosophy.
 - Reference components (live ground truth): study the validated `spec.proto` of
-  `apis/dev/planton/provider/aws/awsvpc/v1/spec.proto` and `aws/awsalb/v1/spec.proto` for
+  `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto` and `aws/awsalb/v1/spec.proto` for
   buf.validate field options, message-level CEL, and message wording.
 
 SEQUENTIAL STEPS

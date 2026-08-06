@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpserverlessvpcconnector.v1alpha1;
+
+// GcpServerlessVpcConnectorStackOutputs captures values returned after
+// provisioning.
+message GcpServerlessVpcConnectorStackOutputs {
+  // Short name of the connector as created in GCP.
+  string name = 1;
+
+  // Fully qualified resource name
+  // (projects/{project}/locations/{region}/connectors/{name}) — the handle
+  // serverless workloads (Cloud Functions, Cloud Run, App Engine) set as
+  // their VPC connector.
+  string self_link = 2;
+
+  // State of the connector (READY, CREATING, DELETING, ERROR, UPDATING).
+  string state = 3;
+
+  // Region the connector lives in (plain region name).
+  string region = 4;
+}

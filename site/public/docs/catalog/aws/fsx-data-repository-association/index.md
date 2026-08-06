@@ -18,7 +18,7 @@ Link a directory on an FSx for Lustre file system to an S3 bucket or prefix, wit
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxDataRepositoryAssociation
 metadata:
   name: training-data-link

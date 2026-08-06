@@ -60,7 +60,7 @@ ingress and gateway kinds.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSeaweedFs
 metadata:
   name: object-store

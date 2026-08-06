@@ -1,0 +1,269 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesdeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/workload_container.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesDeploymentSpec** deploys a long-running, stateless application on a
+ * Kubernetes cluster as an apps/v1 Deployment, fronted by a Kubernetes Service.
+ * This is the workhorse kind for microservices: replicas are interchangeable,
+ * updates roll out gradually, and scaling is horizontal. For workloads needing
+ * stable identity or per-replica storage use KubernetesStatefulSet; for
+ * run-to-completion work use KubernetesJob/KubernetesCronJob.
+ *
+ * External exposure is composed, never embedded: this kind exports its Service
+ * name and selector labels, and first-class exposure kinds (KubernetesIngress,
+ * KubernetesHttpRoute and the other Gateway API route kinds, with certificates)
+ * reference them — so every piece of exposure infrastructure is a visible node
+ * in the resource graph.
+ *
+ * DEPLOY-TARGET CONTRACT: this kind is a Service Hub deployment target. Deployment
+ * pipelines inject the freshly built artifact through exactly two stable paths —
+ * `spec.version` and `spec.container.app.image` (repo + tag). These paths are part of
+ * the kind's public contract and must survive any future spec evolution.
+ */
+message KubernetesDeploymentSpec {
+  /**
+   * The namespace to deploy into. Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource, so an infra chart creates the namespace and the
+   * workload in one run.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the module creates the namespace if it does not exist. Leave false when
+   * the namespace is owned by a KubernetesNamespace resource or pre-exists.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The deployment track of this workload — usually "main" for the primary line, or a
+   * flattened branch name like "review-42" for preview deployments. Stamped as a pod
+   * label so multiple tracks of one app coexist in a namespace with disjoint traffic.
+   * Deployment pipelines set this from the git branch (deploy-target contract).
+   */
+  optional string version = 3 [
+    (dev.planton.shared.options.default) = "main",
+    (buf.validate.field).string.max_len = 30,
+    (buf.validate.field).cel = {
+      id: "spec.version.format"
+      message: "Version must contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen (e.g. \"main\", \"review-42\")"
+      expression: "this == '' || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')"
+    }
+  ];
+
+  /**
+   * The containers of every replica: one main application container and any sidecars.
+   * All containers share the pod's network namespace and volumes.
+   */
+  KubernetesDeploymentContainer container = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Pod-level configuration shared by all replicas: identity (ServiceAccount
+   * reference), init containers, scheduling, security hardening, DNS, and termination
+   * behavior.
+   */
+  dev.planton.provider.kubernetes.WorkloadPod pod = 5;
+
+  /**
+   * Availability configuration: replica count, autoscaling, rollout strategy, and
+   * disruption budget. Omit for a single-replica deployment with Kubernetes-default
+   * rolling updates.
+   */
+  KubernetesDeploymentAvailability availability = 6;
+}
+
+/**
+ * **KubernetesDeploymentContainer** groups the main application container and its
+ * sidecars. The `app` path is load-bearing: deployment pipelines inject the built
+ * image at `spec.container.app.image` (deploy-target contract).
+ */
+message KubernetesDeploymentContainer {
+  /**
+   * The main application container. Its ports drive the workload's Service, and its
+   * image is the pipeline injection point.
+   */
+  dev.planton.provider.kubernetes.WorkloadContainer app = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Sidecar containers running alongside the app in every replica — log shippers,
+   * proxies, cache warmers. Sidecars are full containers: probes, mounts, security
+   * context, and lifecycle hooks all apply. Each sidecar must be named.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadContainer sidecars = 2 [(buf.validate.field).cel = {
+    id: "spec.container.sidecars.named"
+    message: "Every sidecar container must have a name"
+    expression: "this.all(c, c.name != '')"
+  }];
+}
+
+/**
+ * **KubernetesDeploymentAvailability** groups replica management: how many pods run,
+ * how they scale, how updates roll out, and how many must survive disruptions.
+ */
+message KubernetesDeploymentAvailability {
+  /**
+   * Desired replica count; the floor when autoscaling is enabled. Defaults to 1.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  /**
+   * Horizontal pod autoscaling on CPU and/or memory utilization. When enabled, the
+   * module manages an HPA with `replicas` as the floor and `max_replicas` as the
+   * ceiling.
+   */
+  KubernetesDeploymentHpa horizontal_pod_autoscaling = 2;
+
+  /**
+   * How updates replace pods. Omit for the Kubernetes default (RollingUpdate,
+   * 25% surge / 25% unavailable).
+   */
+  KubernetesDeploymentStrategy strategy = 3;
+
+  /**
+   * PodDisruptionBudget guarding availability during voluntary disruptions (node
+   * drains, cluster upgrades).
+   */
+  KubernetesDeploymentPodDisruptionBudget pod_disruption_budget = 4;
+
+  /**
+   * Seconds a new pod must stay ready (no container crashes) before it counts as
+   * available during rollouts. A cheap flap detector — 10–30s catches crash-on-first-
+   * request regressions before they replace the whole fleet.
+   */
+  optional int32 min_ready_seconds = 5 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * How many old ReplicaSets are retained for rollback. Kubernetes defaults to 10;
+   * 0 disables rollback entirely.
+   */
+  optional int32 revision_history_limit = 6 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Seconds a rollout may make no progress before it is marked failed (surfaced in
+   * the Deployment's conditions). Kubernetes defaults to 600.
+   */
+  optional int32 progress_deadline_seconds = 7 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Pauses rollouts: spec changes accumulate without creating new pods until
+   * unpaused. The lever for batching several changes into one rollout.
+   */
+  bool paused = 8;
+}
+
+/**
+ * **KubernetesDeploymentHpa** configures horizontal pod autoscaling. At least one
+ * target metric must be set when enabled.
+ */
+message KubernetesDeploymentHpa {
+  // Enables the autoscaler.
+  bool enabled = 1;
+
+  /**
+   * Maximum replicas the autoscaler may scale to. Required when enabled; must be at
+   * least the availability replica floor.
+   */
+  int32 max_replicas = 2;
+
+  /**
+   * Target average CPU utilization percentage across replicas (e.g. 60). Scale-out
+   * triggers above it, scale-in below.
+   */
+  optional int32 target_cpu_utilization_percent = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  /**
+   * Target average memory utilization as an absolute quantity per pod (e.g. "1Gi").
+   * Prefer CPU-based scaling for most services — memory rarely falls after scale-out,
+   * which makes it a poor scale-in signal.
+   */
+  string target_memory_utilization = 4 [(buf.validate.field).cel = {
+    id: "spec.hpa.target_memory_utilization"
+    message: "Target memory utilization must be a Kubernetes quantity (e.g. \"512Mi\", \"1Gi\")"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "spec.hpa.metric.required"
+    message: "When autoscaling is enabled, set max_replicas and at least one of target_cpu_utilization_percent or target_memory_utilization"
+    expression: "!this.enabled || (this.max_replicas > 0 && (has(this.target_cpu_utilization_percent) || this.target_memory_utilization != ''))"
+  };
+}
+
+/**
+ * **KubernetesDeploymentStrategy** controls how pods are replaced during updates.
+ */
+message KubernetesDeploymentStrategy {
+  /**
+   * "RollingUpdate" (default) replaces pods gradually per max_surge/max_unavailable;
+   * "Recreate" kills every old pod before starting new ones — required when two
+   * versions cannot coexist (exclusive volume locks, incompatible schemas), at the
+   * cost of downtime.
+   */
+  string type = 1 [(buf.validate.field).cel = {
+    id: "spec.strategy.type"
+    message: "Strategy type must be either \"RollingUpdate\" or \"Recreate\""
+    expression: "this == '' || this in ['RollingUpdate', 'Recreate']"
+  }];
+
+  /**
+   * Maximum pods below the desired count during a rolling update — absolute ("0") or
+   * percentage ("25%"). Zero-downtime rollouts set 0 with max_surge >= 1. Ignored for
+   * Recreate.
+   */
+  string max_unavailable = 2;
+
+  /**
+   * Maximum pods above the desired count during a rolling update — absolute ("1") or
+   * percentage ("25%"). Cannot be 0 when max_unavailable is 0. Ignored for Recreate.
+   */
+  string max_surge = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.strategy.not_both_zero"
+    message: "max_unavailable and max_surge cannot both be 0 — the rollout would be unable to make progress"
+    expression: "!(this.max_unavailable in ['0', '0%'] && this.max_surge in ['0', '0%'])"
+  };
+}
+
+/**
+ * **KubernetesDeploymentPodDisruptionBudget** bounds voluntary disruptions (drains,
+ * upgrades). Set exactly one of min_available or max_unavailable.
+ */
+message KubernetesDeploymentPodDisruptionBudget {
+  // Enables PDB creation.
+  bool enabled = 1;
+
+  /**
+   * Minimum pods that must stay available — absolute ("1") or percentage ("50%").
+   * For an N-replica service, "N-1 as a number" allows one disruption at a time.
+   */
+  string min_available = 2;
+
+  /**
+   * Maximum pods that may be down — absolute or percentage. Alternative to
+   * min_available; do not set both.
+   */
+  string max_unavailable = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.pdb.exactly_one_bound"
+    message: "Set exactly one of min_available or max_unavailable (defaults to min_available: \"1\" when both are empty)"
+    expression: "!this.enabled || !(this.min_available != '' && this.max_unavailable != '')"
+  };
+}

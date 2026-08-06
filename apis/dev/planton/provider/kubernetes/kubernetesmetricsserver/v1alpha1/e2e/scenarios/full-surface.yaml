@@ -1,0 +1,31 @@
+# Tuned install: HA replicas guarded by a PodDisruptionBudget, reordered
+# kubelet address types, slower scrape resolution, own-telemetry metrics
+# endpoint, and an escape-hatch value — the typed surface breadth-proof on
+# a live cluster. (ServiceMonitor stays off: the kind lane has no
+# Prometheus operator CRDs, and the release would fail to install — that
+# arm is proven offline by the hack manifest and plan proofs.)
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesMetricsServer
+metadata:
+  name: e2e-metsrv-full
+spec:
+  namespace:
+    value: metrics-server
+  createNamespace: true
+  chartVersion: "3.13.1"
+  replicas: 2
+  kubeletInsecureTls: true
+  kubeletPreferredAddressTypes:
+    - InternalIP
+    - Hostname
+  metricResolution: 30s
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+  podDisruptionBudget: true
+  prometheus:
+    enabled: true
+  helmValues: |
+    deploymentAnnotations:
+      e2e.planton.dev/scenario: full-surface

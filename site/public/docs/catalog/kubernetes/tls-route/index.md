@@ -32,7 +32,7 @@ TLSRoute is a standard-channel resource served as
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTlsRoute
 metadata:
   name: secure-route

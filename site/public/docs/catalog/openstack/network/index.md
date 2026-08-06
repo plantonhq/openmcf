@@ -27,7 +27,7 @@ When you deploy an OpenStackNetwork resource, Planton provisions:
 Create a file `network.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetwork
 metadata:
   name: my-network
@@ -74,7 +74,7 @@ All spec fields are optional. The network name is derived from `metadata.name`.
 A simple network with default settings, suitable for development environments:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetwork
 metadata:
   name: dev-network
@@ -92,7 +92,7 @@ spec:
 A network configured for VXLAN overlay with DNS integration for automatic port name resolution:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetwork
 metadata:
   name: overlay-network
@@ -115,7 +115,7 @@ spec:
 An admin-created external network for floating IP allocation and router gateways:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetwork
 metadata:
   name: external-net

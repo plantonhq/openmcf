@@ -1,0 +1,14 @@
+# Exercises a BUILT_IN application user offline, referencing its cluster by
+# literal resource path.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpAlloydbUser
+metadata:
+  name: hack-orders-app
+spec:
+  cluster:
+    value: projects/my-project/locations/us-central1/clusters/hack-orders
+  userId: orders-app
+  password: HackAppPassword123!  # replace before applying anywhere real
+  userType: ALLOYDB_BUILT_IN
+  databaseRoles:
+    - alloydbiamuser

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awshttpapivpclink.v1alpha1;
+
+// AwsHttpApiVpcLinkStackOutputs captures observable identifiers from a
+// provisioned API Gateway v2 VPC link. Private integrations on HTTP APIs
+// reference the link by its ID.
+message AwsHttpApiVpcLinkStackOutputs {
+  // The VPC link ID (e.g. "abc123"). This is the identifier private
+  // integrations set as their connection_id.
+  string vpc_link_id = 1;
+
+  // The ARN of the VPC link. Useful for IAM policies and tag-based
+  // governance.
+  string vpc_link_arn = 2;
+}

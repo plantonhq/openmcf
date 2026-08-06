@@ -1,0 +1,19 @@
+# The component defaults on their own — with kind-honest cache SIZING (the
+# disk_size class): the chart's default chunks cache allocates 8192MB and
+# requests memory at 1.2× (9830Mi — more than a small node's entire
+# allocatable), so an unsized manifest can never schedule it and the atomic
+# install rolls the whole release back (verified live). A single-replica
+# monolithic Loki on filesystem storage with the nginx gateway front door.
+# The verifier proves the full pipeline live — push a log line through the
+# gateway's OTLP/push route, then query it back through LogQL.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesLoki
+metadata:
+  name: e2e-loki-min
+spec:
+  namespace:
+    value: e2e-loki-min
+  create_namespace: true
+  caching:
+    chunks_cache_memory_mb: 128
+    results_cache_memory_mb: 128

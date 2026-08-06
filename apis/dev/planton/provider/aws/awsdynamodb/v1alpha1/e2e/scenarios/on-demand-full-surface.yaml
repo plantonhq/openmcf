@@ -1,0 +1,73 @@
+# DynamoDB on-demand full-surface scenario: the recommended
+# PAY_PER_REQUEST default exercising the composite-key schema, a global
+# secondary index, TTL, streams, point-in-time recovery, the AWS-managed
+# SSE key, a resource policy, and contributor insights on the table and
+# the GSI -- so both folded satellites (each its own provider resource)
+# are proven live. Zero items are written and nothing else must exist
+# first, so the lane runs in minutes at negligible cost. Full metadata
+# is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDynamodb
+metadata:
+  name: planton-oss-e2e-dyn-full
+  id: planton-oss-e2e-dyn-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsdynamodb
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: pk
+      type: S
+    - name: sk
+      type: S
+    - name: gsi1pk
+      type: S
+  keySchema:
+    - attributeName: pk
+      keyType: HASH
+    - attributeName: sk
+      keyType: RANGE
+  globalSecondaryIndexes:
+    - name: gsi1
+      keySchema:
+        - attributeName: gsi1pk
+          keyType: HASH
+      projection:
+        type: KEYS_ONLY
+  ttl:
+    enabled: true
+    attributeName: expiresAt
+  streamEnabled: true
+  streamViewType: NEW_AND_OLD_IMAGES
+  pointInTimeRecovery:
+    enabled: true
+    recoveryPeriodInDays: 7
+  serverSideEncryption:
+    enabled: true
+  contributorInsights:
+    enabled: true
+    mode: THROTTLED_KEYS
+    gsiIndexNames:
+      - gsi1
+  resourcePolicy: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "AllowOwnAccountDescribe",
+          "Effect": "Allow",
+          "Principal": {"AWS": "*"},
+          "Action": "dynamodb:DescribeTable",
+          "Resource": "*",
+          "Condition": {"StringEquals": {"aws:PrincipalAccount": "${aws:ResourceAccount}"}}
+        }
+      ]
+    }

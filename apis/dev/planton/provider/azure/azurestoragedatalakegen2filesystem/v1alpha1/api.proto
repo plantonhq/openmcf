@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureStorageDataLakeGen2Filesystem is the top-level API resource for a
+// Data Lake Storage Gen2 filesystem -- the namespace unit of an
+// analytics data lake inside an AzureStorageAccount (referenced via
+// storage_account_id, with hierarchical namespace enabled). Analytics
+// engines address data as abfss://{filesystem}@{account}, and the
+// filesystem is the grant boundary for data-plane RBAC and POSIX ACLs
+// -- the one-filesystem-per-zone (raw, curated, gold) pattern.
+message AzureStorageDataLakeGen2Filesystem {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureStorageDataLakeGen2Filesystem'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureStorageDataLakeGen2FilesystemSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureStorageDataLakeGen2FilesystemStatus status = 5;
+}
+
+// AzureStorageDataLakeGen2FilesystemStatus holds the deployment status and outputs.
+message AzureStorageDataLakeGen2FilesystemStatus {
+  // stack-outputs
+  AzureStorageDataLakeGen2FilesystemStackOutputs outputs = 1;
+}

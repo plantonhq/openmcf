@@ -1,8 +1,0 @@
-apiVersion: gcp.planton.dev/v1
-kind: GcpCertManagerDnsAuthorization
-metadata:
-  name: test-dns-authorization
-spec:
-  projectId:
-    value: test-gcp-project
-  domain: example.com

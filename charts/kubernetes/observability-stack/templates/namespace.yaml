@@ -8,7 +8,7 @@
 # "observability" is deliberately a fixed name, not a parameter: the
 # collectors compose Loki's and Tempo's in-cluster DNS endpoints from it at
 # render time, and one stack per cluster needs exactly one good answer.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-observability-ns"

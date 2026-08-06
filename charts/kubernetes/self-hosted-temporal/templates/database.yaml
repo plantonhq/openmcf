@@ -13,7 +13,7 @@
 # gives Temporal's schema Jobs everything they need with NO create-database
 # grant — the least-privilege shape (the Temporal resource keeps
 # createDatabases off accordingly).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-temporal-db"

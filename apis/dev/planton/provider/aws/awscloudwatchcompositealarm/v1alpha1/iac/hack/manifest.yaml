@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchCompositeAlarm
+metadata:
+  name: test-composite-alarm
+  org: test-org
+  env: dev
+  id: test-composite-alarm-dev
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: test-org
+    pulumi.planton.dev/project: test-project
+    pulumi.planton.dev/stack.name: dev.AwsCloudwatchCompositeAlarm.test-composite-alarm
+spec:
+  region: us-west-2
+  alarmRule: 'ALARM("test-cpu-alarm") AND ALARM("test-error-alarm")'
+  alarmDescription: "Test composite: both CPU and error alarms breaching"
+  alarmActions:
+    - value: arn:aws:sns:us-west-2:123456789012:ops-alerts
+  actionsSuppressor:
+    alarm:
+      value: test-maintenance-alarm
+    waitPeriod: 60
+    extensionPeriod: 120

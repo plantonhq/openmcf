@@ -1,0 +1,15 @@
+# Offline-plan manifest: a hub-scoped manage rule -- exercises the
+# event-hub dispatch path (parent names parsed from the hub's ARM id)
+# and the full rights trio. The namespace-scope path is exercised by the
+# E2E scenarios.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubAuthorizationRule
+metadata:
+  name: test-eh-auth-rule
+spec:
+  ruleName: hub-manage
+  eventHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/hack-eventhubs-ns/eventhubs/telemetry
+  listen: true
+  send: true
+  manage: true

@@ -29,21 +29,21 @@ When you deploy an OpenStackDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsZone
 metadata:
   name: my-zone
   annotations:
     planton.dev/stack.jobId: prod.OpenstackDnsZone.replica-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsZone.mail-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.app-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.example-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.my-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   domainName: example.com
@@ -96,7 +96,7 @@ Each entry in the `records` list defines a DNS record set within the zone:
 A minimal PRIMARY zone with an administrator email and a default TTL:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsZone
 metadata:
   name: example-zone
@@ -114,7 +114,7 @@ spec:
 A zone with inline records for a web application, including an A record for the apex domain and a CNAME for the `www` subdomain:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsZone
 metadata:
   name: app-zone
@@ -143,7 +143,7 @@ spec:
 A zone configured for email delivery with MX records pointing to mail servers and TXT records for SPF and DKIM verification:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsZone
 metadata:
   name: mail-zone
@@ -182,7 +182,7 @@ spec:
 A SECONDARY zone that replicates DNS data from upstream master nameservers via zone transfers (AXFR/IXFR):
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsZone
 metadata:
   name: replica-zone

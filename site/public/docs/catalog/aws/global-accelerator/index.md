@@ -30,7 +30,7 @@ When you deploy an AwsGlobalAccelerator resource, Planton provisions:
 Create a file `global-accelerator.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: my-ga
@@ -109,7 +109,7 @@ This creates a Global Accelerator with a TCP listener on port 443 and one endpoi
 Route HTTPS traffic to an ALB through the AWS global network:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: web-ga
@@ -142,7 +142,7 @@ spec:
 Route traffic across two regions with a 70/30 split for gradual regional migration:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: global-api
@@ -194,7 +194,7 @@ spec:
 UDP accelerator for a real-time multiplayer game with source IP stickiness:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: game-server
@@ -227,7 +227,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding ARNs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: ref-ga

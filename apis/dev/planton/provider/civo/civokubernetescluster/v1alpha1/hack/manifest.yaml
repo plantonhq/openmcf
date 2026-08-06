@@ -1,0 +1,5 @@
+apiVersion: civo.planton.dev/v1alpha1
+kind: CivoKubernetesCluster
+metadata:
+  name: first-certificate
+spec:

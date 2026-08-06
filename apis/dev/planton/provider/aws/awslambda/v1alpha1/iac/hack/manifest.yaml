@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLambda
+metadata:
+  name: awslambda-demo
+spec:
+  region: us-west-2
+  description: Example Lambda function
+  roleArn:
+    value: arn:aws:iam::123456789012:role/lambda-basic-exec
+  s3:
+    bucket:
+      value: my-bucket
+    key: lambda/hello.zip
+  runtime: nodejs22.x
+  handler: index.handler
+  architecture: x86_64
+  memorySizeMb: 128
+  timeoutSeconds: 10
+  environment:
+    EXAMPLE: "true"

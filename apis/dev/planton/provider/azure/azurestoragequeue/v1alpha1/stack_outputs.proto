@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragequeue.v1alpha1;
+
+// **AzureStorageQueueStackOutputs** captures the outputs of provisioning
+// a Storage queue.
+//
+// No URL output on purpose: the queue's data-plane URL is the ACCOUNT's
+// queue endpoint plus the queue name, and only the account knows its
+// real endpoint (partitioned-DNS accounts use a different hostname than
+// the classic shared DNS). Compose client URLs from
+// AzureStorageAccount's primary_queue_endpoint output + queue_name.
+message AzureStorageQueueStackOutputs {
+  // The Azure Resource Manager ID of the queue. Role assignments
+  // (Storage Queue Data Contributor/Message Processor/Message Sender)
+  // scope to it for queue-level data access.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/queueServices/default/queues/{name}
+  string queue_id = 1;
+
+  // The queue's name -- what SDK clients, Functions queue triggers, and
+  // app settings reference within the account.
+  string queue_name = 2;
+
+  // The name of the storage account the queue lives in, parsed from the
+  // resolved account ID -- saves consumers a second reference when they
+  // need the account/queue pair.
+  string storage_account_name = 3;
+}

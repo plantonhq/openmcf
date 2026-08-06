@@ -1,0 +1,68 @@
+# HTTP API composing the Lambda fixture chain (annotation-declared: the
+# Lambda minimal fixture pulls its execution role, code bucket, and object
+# set through its own registry graph) plus a dependency-free HTTP_PROXY
+# route -- both proxy backend shapes in one lane. The stage exercises the
+# throttling + detailed-metrics + per-route-override surface. Deliberately
+# not in this lane: authorizers (JWT needs a real OIDC issuer, REQUEST a
+# second Lambda), access logging (would pull the CloudWatch log-group
+# full-surface chain), VPC-link integrations (the AwsHttpApiVpcLink lane
+# covers link provisioning), and AWS service-integration subtypes (the
+# credentials-role wiring is spec-CEL-proven; a live subtype lane needs a
+# purpose-built apigateway.amazonaws.com trust fixture) -- all proven by
+# spec tests and the offline gate.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsHttpApiGateway
+metadata:
+  name: planton-oss-e2e-awshttpapigw
+  id: planton-oss-e2e-awshttpapigw
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awshttpapigateway
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsLambda"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E HTTP API over the Lambda fixture
+  corsConfiguration:
+    allowOrigins:
+      - "*"
+    allowMethods:
+      - GET
+      - POST
+    allowHeaders:
+      - Content-Type
+    maxAgeSeconds: 300
+  stage:
+    autoDeploy: true
+    defaultThrottle:
+      burstLimit: 100
+      rateLimit: 50
+    detailedMetricsEnabled: true
+    routeSettings:
+      - routeKey: "GET /status"
+        throttlingBurstLimit: 10
+        throttlingRateLimit: 5
+  routes:
+    - routeKey: "$default"
+      operationName: handleDefault
+      integration:
+        integrationType: AWS_PROXY
+        integrationUri:
+          valueFrom:
+            kind: AwsLambda
+            name: planton-oss-e2e-lambda-smoke
+            fieldPath: status.outputs.function_arn
+        payloadFormatVersion: "2.0"
+        timeoutMilliseconds: 5000
+    - routeKey: "GET /status"
+      operationName: getStatus
+      integration:
+        integrationType: HTTP_PROXY
+        integrationUri:
+          value: https://checkip.amazonaws.com/
+        integrationMethod: GET

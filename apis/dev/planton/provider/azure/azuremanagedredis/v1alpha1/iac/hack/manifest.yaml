@@ -1,0 +1,42 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureManagedRedis
+metadata:
+  name: test-managed-redis
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  clusterName: planton-hack-managed-redis
+  # Memory-optimized tier exercises a non-default SKU family mapping.
+  skuName: MEMORY_OPTIMIZED_M10
+  highAvailabilityEnabled: true
+  publicNetworkAccessEnabled: false
+  # Customer-managed key: the VERSIONED Key Vault key id; the same
+  # identity is attached through the identity block (ARM pairing).
+  customerManagedKey:
+    keyVaultKeyId:
+      value: https://planton-hack-kv.vault.azure.net/keys/redis-cmk/0123456789abcdef0123456789abcdef
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/redis-cmk-identity
+  identity:
+    type: USER_ASSIGNED
+    userAssignedIdentityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/redis-cmk-identity
+  defaultDatabase:
+    # Keys enabled here to exercise the non-default auth path; the
+    # keyless posture (the default) is exercised by the presets.
+    accessKeysAuthenticationEnabled: true
+    clientProtocol: ENCRYPTED
+    # EnterpriseCluster + NoEviction exercise the RediSearch pairing
+    # contracts alongside the module list.
+    clusteringPolicy: ENTERPRISE_CLUSTER
+    evictionPolicy: NO_EVICTION
+    modules:
+      - name: RediSearch
+      - name: RedisJSON
+      - name: RedisBloom
+        args: ERROR_RATE 0.01 INITIAL_SIZE 400
+    # RDB persistence exercises the frequency vocabulary seam.
+    persistenceRedisDatabaseBackupFrequency: 6h
+  tags:
+    cost-center: platform

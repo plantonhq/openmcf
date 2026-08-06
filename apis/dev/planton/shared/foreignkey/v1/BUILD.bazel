@@ -22,7 +22,7 @@ go_test(
     ],
     embed = [":foreignkey"],
     deps = [
-        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1:testcloudresourcegeneric",
+        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
         "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/cloudresourcekind",
         "@build_buf_go_protovalidate//:protovalidate",

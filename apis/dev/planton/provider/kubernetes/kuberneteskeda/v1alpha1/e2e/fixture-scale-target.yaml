@@ -1,0 +1,31 @@
+# Extra-instance fixture for the behavioral-scaling scenario: a plain
+# 1-replica Deployment for KEDA to scale. Deliberately needs nothing from
+# KEDA itself — scenario fixtures deploy BEFORE the component under test, so
+# the ScaledObject that drives it is applied by the BEHAVIORAL VERIFIER
+# after KEDA (and its CRDs) are up, never by a fixture.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-keda-scale-target
+spec:
+  namespace:
+    value: e2e-keda-behavioral
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: nginxinc/nginx-unprivileged
+        tag: "1.27"
+      ports:
+        - name: http
+          container_port: 8080
+          service_port: 80
+          network_protocol: TCP
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "16Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"

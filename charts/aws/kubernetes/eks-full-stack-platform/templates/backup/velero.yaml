@@ -3,7 +3,7 @@
 # machinery, and Velero on a schedule. Everything the backup story needs
 # rides this one toggle — flipping it off removes the role and bucket with
 # the workload, never stranding half an arm.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   # S3 bucket names are GLOBAL across all of AWS — the account id suffix is
@@ -19,7 +19,7 @@ spec:
   # SSE-S3 encryption, ACLs disabled.
   versioningStatus: Enabled
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: "{{ values.env }}-eks-velero-irsa"
@@ -71,7 +71,7 @@ spec:
 # snapshots PVCs through the Kubernetes snapshot API; without this
 # controller the VolumeSnapshot objects it creates would sit Pending
 # forever.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: "{{ values.env }}-eks-snapshot-controller"
@@ -87,7 +87,7 @@ spec:
 # velero.io/csi-volumesnapshot-class label — the backup still reports
 # Completed while the volumes were never snapshotted. Shipping the class
 # with the arm closes that trap at the source.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: "{{ values.env }}-velero-snapshot-class"
@@ -123,7 +123,7 @@ spec:
     # orphaned snapshots.
     deletionPolicy: Delete
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesVelero
 metadata:
   name: "{{ values.env }}-velero"

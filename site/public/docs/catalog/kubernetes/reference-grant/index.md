@@ -28,7 +28,7 @@ backend Services across namespace boundaries).
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesReferenceGrant
 metadata:
   name: allow-frontend-to-backend

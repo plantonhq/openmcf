@@ -38,7 +38,7 @@ policies on the referenced `AwsIamRole` nodes themselves.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsTaskDefinition
 metadata:
   name: api
@@ -95,7 +95,7 @@ planton apply -f task-definition.yaml
 ### Application with secrets and roles
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsTaskDefinition
 metadata:
   name: api
@@ -123,7 +123,7 @@ spec:
 ### Graviton worker with an EFS volume
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsTaskDefinition
 metadata:
   name: media-worker

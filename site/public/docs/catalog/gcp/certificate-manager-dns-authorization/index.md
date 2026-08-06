@@ -35,7 +35,7 @@ from the domain's zone (a `GcpDnsRecord`) completes validation.
 Create a file `dns-authorization.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCertManagerDnsAuthorization
 metadata:
   name: example-com-auth

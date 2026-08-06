@@ -24,7 +24,7 @@ A single SSL certificate uploaded from your PEM material — global when `region
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSslCertificate
 metadata:
   name: prod-app-cert

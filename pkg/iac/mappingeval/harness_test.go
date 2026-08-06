@@ -252,9 +252,9 @@ metadata:
 spec:
   members:
     - component: awssubnet
-      manifest_path: apis/dev/planton/provider/aws/awssubnet/v1/e2e/scenarios/routed.yaml
+      manifest_path: apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/scenarios/routed.yaml
     - component: awsvpc
-      manifest_path: apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml
+      manifest_path: apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml
   scan_scope:
     region: us-west-2
 `

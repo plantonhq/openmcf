@@ -32,7 +32,7 @@ When you deploy an OciPostgresqlDbSystem resource, Planton provisions:
 Create a file `postgresql.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPostgresqlDbSystem
 metadata:
   name: my-postgres
@@ -160,7 +160,7 @@ This creates a single-node PostgreSQL 16 DB System on a flexible shape with 2 OC
 A single-node PostgreSQL 16 instance with regionally durable storage — suitable for development:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPostgresqlDbSystem
 metadata:
   name: dev-postgres
@@ -194,7 +194,7 @@ spec:
 A multi-node PostgreSQL system with Vault-managed credentials, NSG-secured networking, a reader endpoint, and daily backups retained for 30 days:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPostgresqlDbSystem
 metadata:
   name: prod-postgres
@@ -240,7 +240,7 @@ spec:
 A cost-optimized single-AD setup with plain-text password and weekly backups — suitable for development or testing environments:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPostgresqlDbSystem
 metadata:
   name: test-postgres
@@ -282,7 +282,7 @@ spec:
 Reference Planton-managed compartment and subnet resources instead of hardcoding OCIDs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciPostgresqlDbSystem
 metadata:
   name: ref-postgres

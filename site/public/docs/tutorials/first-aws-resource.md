@@ -33,7 +33,7 @@ Before starting, ensure you have:
 Create a file named `s3-bucket.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: my-first-bucket
@@ -54,7 +54,7 @@ Here is what each field does:
 
 | Field | Purpose |
 |-------|---------|
-| `apiVersion` | Identifies the provider and API version (`aws.planton.dev/v1`) |
+| `apiVersion` | Identifies the provider and API version (`aws.planton.dev/v1alpha1`) |
 | `kind` | The deployment component type (`AwsS3Bucket`) |
 | `metadata.name` | A unique name for this resource instance |
 | `metadata.labels` | The `planton.dev/provisioner` label tells Planton which IaC engine to use |
@@ -125,7 +125,7 @@ One of Planton's strengths is idempotent updates. You can modify your manifest a
 Add a lifecycle rule that transitions objects older than 30 days to Infrequent Access storage. Update `s3-bucket.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: my-first-bucket

@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesudproute.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/gateway_api.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// KubernetesUdpRouteSpec defines a Kubernetes Gateway API UDPRoute: a namespaced
+// set of rules that forward UDP datagrams arriving on a Gateway listener to
+// backend Services. A UDPRoute has no matching logic at all -- traffic on the
+// listener's port is forwarded to the rule's backends. The route attaches to a
+// Gateway listener of protocol UDP through parent_refs. Typical backends are
+// DNS servers, syslog collectors, game servers, and other datagram protocols.
+//
+// 100% fidelity with the upstream Gateway API v1.6.1 UDPRouteSpec
+// (kubernetes-sigs/gateway-api apis/v1/udproute_types.go), standard channel.
+// UDPRoute graduated to GA and is served as gateway.networking.k8s.io/v1 (it
+// was an experimental v1alpha2 resource in earlier releases). The experimental
+// CommonRouteSpec field useDefaultGateways is intentionally excluded: it is
+// absent from the standard-channel CRD, so it would have no deployable target.
+//
+// UDPRoute is a layer-4 route: it has no hostnames, no matches, and no filters
+// (UDP has no connection or request structure to match on). Each rule simply
+// forwards to one or more backends, so it reuses the shared
+// KubernetesGatewayApiBackendRef directly rather than defining its own
+// per-route backend ref.
+message KubernetesUdpRouteSpec {
+  // Namespace in which the UDPRoute is created. Backends in other namespaces,
+  // and Gateways in other namespaces, are subject to the usual same-namespace /
+  // ReferenceGrant rules.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  // References to the parent resources (usually Gateways) this route attaches
+  // to. Each parent must have a UDP listener that allows attachment from
+  // UDPRoutes of this namespace. Each reference's name defaults to a
+  // KubernetesGateway foreign key — wire it with valueFrom in an infra chart
+  // and the route deploys after its Gateway.
+  //
+  // Flattened from the upstream CommonRouteSpec.
+  repeated dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference parent_refs = 3 [(buf.validate.field).repeated.max_items = 32];
+
+  // Routing rules. Each rule forwards matching datagrams to one or more
+  // backends. At least one rule is required; upstream allows up to 16.
+  repeated KubernetesUdpRouteRule rules = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 16
+  }];
+}
+
+// KubernetesUdpRouteRule forwards UDP datagrams to one or more backends
+// (backend_refs). There are no matches or filters for UDP routes.
+//
+// Upstream: UDPRouteRule in apis/v1/udproute_types.go.
+message KubernetesUdpRouteRule {
+  // Name of the route rule; must be unique within the route if set. Upstream
+  // support level: Extended.
+  //
+  // Upstream SectionName constraints: 1-253 chars, lowercase RFC 1123 subdomain.
+  // Pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+  optional string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+  }];
+
+  // Backends matching datagrams are forwarded to. When multiple backends are
+  // given, traffic is split by weight. At least one backend is required.
+  // Upstream support level: Core for Kubernetes Service. Each backend's name
+  // defaults to a KubernetesService foreign key — wire it with valueFrom in an
+  // infra chart and the route deploys after its backend.
+  repeated dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef backend_refs = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 16
+  }];
+}

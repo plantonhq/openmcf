@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsredshiftserverlessnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsRedshiftServerlessNamespaceSpec defines an Amazon Redshift
+// Serverless namespace -- the DATA plane of the serverless warehouse: the
+// database, its admin credentials, the KMS key that encrypts stored
+// data, the IAM roles the engine assumes for COPY/UNLOAD/Spectrum, and
+// audit log exports. A namespace stores; it never computes.
+//
+// Compute lives on AwsRedshiftServerlessWorkgroup nodes that attach to
+// this namespace by name -- many workgroups can serve one namespace,
+// each with its own capacity, VPC placement, and endpoint, and each can
+// be created and destroyed without touching the data. That split is
+// AWS's own resource model, mirrored here as two composable nodes.
+//
+// The namespace name comes from metadata.name (create-time immutable in
+// AWS). KMS keys and IAM roles compose by reference -- this namespace
+// never creates or mutates resources that deserve to be their own nodes.
+message AwsRedshiftServerlessNamespaceSpec {
+  // The AWS region the namespace is created in. Workgroups that attach
+  // to this namespace must live in the same region.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The name of the first database created in the namespace. Empty
+  // keeps the AWS default ("dev"). Create-time only -- changing it
+  // replaces the namespace (and the data in it); additional databases
+  // are created with SQL, not here.
+  string db_name = 2;
+
+  // The admin username for the first database. Empty keeps the AWS
+  // default ("admin"). Unlike the provisioned Redshift cluster, a
+  // serverless namespace does not hard-require an admin user at create
+  // time -- IAM identities can use temporary credentials
+  // (GetCredentials) without one.
+  string admin_username = 3;
+
+  // Let AWS manage the admin password in Secrets Manager: AWS generates
+  // it, stores it, rotates it on schedule, and no secret ever touches
+  // this manifest or the IaC state. The managed secret's ARN is
+  // exported as the admin_password_secret_arn output. Mutually
+  // exclusive with admin_user_password -- and the recommended posture.
+  bool manage_admin_password = 4 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // The admin password, supplied directly (8-64 chars with at least one
+  // uppercase letter, one lowercase letter, and one digit). Stored in
+  // IaC state -- prefer manage_admin_password, which keeps the secret
+  // in Secrets Manager entirely. Mutually exclusive with
+  // manage_admin_password.
+  string admin_user_password = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The KMS key that encrypts the Secrets Manager secret holding the
+  // managed admin password. Empty uses the AWS-managed
+  // aws/secretsmanager key. Only meaningful with
+  // manage_admin_password. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef admin_password_secret_kms_key_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The KMS key that encrypts the namespace's stored data. Empty uses
+  // the AWS-owned Redshift service key. Reference an AwsKmsKey key_arn
+  // output or pass a literal key ARN. Switching keys on a live
+  // namespace is an in-place but long-running re-encryption.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // IAM roles the serverless engine assumes to access other AWS
+  // services during COPY, UNLOAD, CREATE EXTERNAL FUNCTION, and
+  // Redshift Spectrum queries (S3, DynamoDB, Glue, Lambda, ...).
+  // Reference AwsIamRole role_arn outputs or pass literal role ARNs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef iam_roles = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The IAM role assumed when a SQL command does not name one
+  // explicitly (e.g. COPY ... IAM_ROLE default). Must also be present
+  // in iam_roles -- AWS rejects a default role it has not been given.
+  // Reference an AwsIamRole role_arn output or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef default_iam_role_arn = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Which audit log types the namespace exports to CloudWatch Logs:
+  // "connectionlog" (connection attempts), "useractivitylog" (every
+  // executed query), "userlog" (user create/alter/drop events). Empty
+  // exports nothing.
+  repeated string log_exports = 10 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "connectionlog",
+        "useractivitylog",
+        "userlog"
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "password_xor_managed"
+    message: "admin_user_password cannot be set when manage_admin_password is true -- pick one password strategy"
+    expression: "this.manage_admin_password ? this.admin_user_password == '' : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "secret_kms_requires_managed"
+    message: "admin_password_secret_kms_key_id is only meaningful with manage_admin_password -- it encrypts the AWS-managed secret, which exists only in managed mode"
+    expression: "!has(this.admin_password_secret_kms_key_id) || this.manage_admin_password"
+  };
+}

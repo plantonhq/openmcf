@@ -1,0 +1,75 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDataprocCluster
+metadata:
+  name: test-dataproc
+spec:
+  projectId:
+    value: my-gcp-project-123 # replace with your project ID
+  region: us-central1
+  clusterName: test-spark-cluster
+  gracefulDecommissionTimeout: "600s"
+  labels:
+    team: data-eng
+    workload: spark-etl
+  clusterConfig:
+    gceConfig:
+      subnetwork:
+        value: projects/my-gcp-project-123/regions/us-central1/subnetworks/dataproc-subnet # replace with your subnetwork self-link
+      internalIpOnly: true
+      tags:
+        - dataproc
+        - spark
+      shieldedInstanceConfig:
+        enableSecureBoot: true
+        enableVtpm: true
+        enableIntegrityMonitoring: true
+    masterConfig:
+      numInstances: 1
+      machineType: n2-standard-4
+      diskConfig:
+        bootDiskSizeGb: 100
+        bootDiskType: pd-ssd
+    workerConfig:
+      numInstances: 3
+      minNumInstances: 2
+      machineType: n2-standard-4
+      diskConfig:
+        bootDiskSizeGb: 200
+        bootDiskType: pd-balanced
+        numLocalSsds: 1
+        localSsdInterface: nvme
+    secondaryWorkerConfig:
+      numInstances: 4
+      preemptibility: SPOT
+      diskConfig:
+        bootDiskSizeGb: 100
+      instanceFlexibilityPolicy:
+        instanceSelectionList:
+          - machineTypes:
+              - n2-standard-4
+              - n2d-standard-4
+            rank: 0
+          - machineTypes:
+              - e2-standard-4
+            rank: 1
+        provisioningModelMix:
+          standardCapacityBase: 1
+          standardCapacityPercentAboveBase: 25
+    softwareConfig:
+      imageVersion: "2.2-debian12"
+      optionalComponents:
+        - JUPYTER
+      properties:
+        "spark:spark.executor.memory": "4g"
+        "spark:spark.dynamicAllocation.enabled": "true"
+        "yarn:yarn.nodemanager.resource.memory-mb": "12288"
+    autoscalingPolicyUri:
+      value: projects/my-gcp-project-123/locations/us-central1/autoscalingPolicies/etl-autoscaling # replace with your policy resource name
+    endpointConfig:
+      enableHttpPortAccess: true
+    lifecycleConfig:
+      idleDeleteTtl: "1800s"
+    dataprocMetricConfig:
+      metrics:
+        - metricSource: SPARK
+        - metricSource: YARN

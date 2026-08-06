@@ -34,7 +34,7 @@ When you deploy a KubernetesResourceQuota resource, Planton provisions:
 Create a file `resource-quota.yaml` — compute caps paired with container defaults, the safe pattern:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesResourceQuota
 metadata:
   name: team-alpha-quota
@@ -108,7 +108,7 @@ Each `limit_defaults` item governs one object type and must set at least one con
 The safest quota to introduce on a live namespace — it constrains nothing that pods must declare, so naive pod creation keeps working:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesResourceQuota
 metadata:
   name: team-alpha-object-caps
@@ -133,7 +133,7 @@ spec:
 The quota tracks only pods with no requests or limits at all — containing unbounded naive pods without touching well-behaved workloads. A `best_effort`-scoped quota may cap only `pods`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesResourceQuota
 metadata:
   name: besteffort-guard
@@ -157,7 +157,7 @@ spec:
 A scope selector budgets pods of a specific priority class independently:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesResourceQuota
 metadata:
   name: critical-tier-budget

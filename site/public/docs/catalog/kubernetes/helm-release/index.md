@@ -31,7 +31,7 @@ The chart's values surface is the configuration contract: values pass through to
 Create a file `helm-release.yaml` — podinfo 6.9.2 from its HTTPS repository:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHelmRelease
 metadata:
   name: podinfo
@@ -115,7 +115,7 @@ Both engines hand Helm one final merged map — the same manifest installs byte-
 The same chart pulled from an OCI registry — only the `repo` scheme changes:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHelmRelease
 metadata:
   name: podinfo-oci
@@ -144,7 +144,7 @@ Note the split: `replicaCount` rides `set` (coerced to a number, which the chart
 Credentials for the chart pull, a secret chart value kept out of plans and state, and production lifecycle knobs:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHelmRelease
 metadata:
   name: private-chart

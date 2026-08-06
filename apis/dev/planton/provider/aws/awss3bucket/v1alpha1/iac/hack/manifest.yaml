@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3Bucket
+metadata:
+  name: awss3bucket-demo
+spec:
+  region: us-east-1
+  versioningStatus: Enabled
+  encryption:
+    sseAlgorithm: AES256
+  lifecycleRules:
+    - id: prune-noncurrent
+      noncurrentVersionExpiration:
+        noncurrentDays: 30
+      abortIncompleteMultipartUploadDays: 7
+  forceDestroy: true

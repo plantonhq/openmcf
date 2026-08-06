@@ -13,7 +13,7 @@
 # already resident (rare — upstream's cluster-wide variant); the namespaced
 # default of a resident operator in another namespace can NOT see this
 # chart's declaration.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKeycloakOperator
 metadata:
   name: "{{ values.env }}-keycloak-operator"

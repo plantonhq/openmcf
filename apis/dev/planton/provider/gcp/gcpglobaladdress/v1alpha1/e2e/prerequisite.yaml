@@ -1,0 +1,23 @@
+# GcpGlobalAddress install profile used when the address is an E2E
+# PREREQUISITE for another component (the global forwarding rule's
+# ip_address). A plain EXTERNAL IPv4 reservation; GCP assigns the IP.
+# project_id is omitted and rides the harness-exported GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGlobalAddress
+metadata:
+  name: planton-oss-e2e-gcpgip-prereq
+  id: planton-oss-e2e-gcpgip-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpglobaladdress
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral global address created by the Planton E2E harness as a prerequisite; safe to delete
+  addressName: planton-oss-e2e-gcpgip-prereq
+  addressType: EXTERNAL
+  ipVersion: IPV4

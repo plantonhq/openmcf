@@ -110,11 +110,11 @@ For each `.md` file, check required sections:
 |-------|--------|---------|
 | Naming convention | PASS | |
 | Companion .md | PASS | |
-| apiVersion match | FAIL | Expected "aws.planton.dev/v1", found "aws.planton.ai/v1" |
+| apiVersion match | FAIL | Expected "aws.planton.dev/v1alpha1", found "aws.planton.ai/v1" |
 | StringValueOrRef | WARN | Field `subnets` uses plain string instead of value: wrapper |
 | ... | ... | ... |
 
-**Fix:** Update apiVersion to "aws.planton.dev/v1" on line 1.
+**Fix:** Update apiVersion to "aws.planton.dev/v1alpha1" on line 1.
 
 ## All Passed
 

@@ -33,7 +33,7 @@ granting one application access never disturbs the others.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbAcl
 metadata:
   name: payments-env-acl
@@ -53,7 +53,7 @@ spec:
 Attach the ACL to a cluster:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbCluster
 metadata:
   name: payments-sessions

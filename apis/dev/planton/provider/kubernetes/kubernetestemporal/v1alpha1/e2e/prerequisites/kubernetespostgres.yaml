@@ -1,0 +1,32 @@
+# Consumer-scoped PostgreSQL fixture for the KubernetesTemporal lanes —
+# the composed database every scenario wires against:
+# - SHARED NAMESPACE (e2e-temporal): the scenarios co-locate with this
+#   fixture because Temporal reads the database password through a
+#   secretKeyRef, and a secretKeyRef can only read Secrets in the
+#   workload's own namespace.
+# - TWO DATABASES, ONE BOOTSTRAP: initdb creates `temporal` owned by the
+#   `temporal` role; `post_init_sql` (superuser, once, right after
+#   initdb) creates `temporal_visibility` under the same owner — the
+#   documented composition for Temporal's default + visibility stores
+#   with a least-privilege application user (no CREATEDB grant needed;
+#   the chart's schema Jobs run with createDatabase=false).
+# - The operator maintains the `e2e-tprl-pg-app` credential Secret (keys
+#   username/password) across failovers — the scenarios' password
+#   secretKeyRef target.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPostgres
+metadata:
+  name: e2e-tprl-pg
+spec:
+  namespace:
+    value: e2e-temporal
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 2Gi
+  bootstrap:
+    initdb:
+      database: temporal
+      owner: temporal
+      post_init_sql:
+        - CREATE DATABASE temporal_visibility OWNER temporal;

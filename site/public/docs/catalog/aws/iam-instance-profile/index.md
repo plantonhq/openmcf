@@ -33,7 +33,7 @@ reference its `role_name` output.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamInstanceProfile
 metadata:
   name: web-server
@@ -63,7 +63,7 @@ planton apply -f instance-profile.yaml
 ### Profile for an Auto Scaling group's launch template
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamInstanceProfile
 metadata:
   name: app-fleet
@@ -80,7 +80,7 @@ spec:
 ### Wrapping a role that exists outside Planton
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamInstanceProfile
 metadata:
   name: legacy-app

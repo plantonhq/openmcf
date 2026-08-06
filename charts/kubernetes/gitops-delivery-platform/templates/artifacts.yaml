@@ -9,7 +9,7 @@
 # and that credentials Secret by reference — the key-name defaults on its
 # credentials field already match this Secret's shape, so no key
 # configuration appears anywhere.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSeaweedFs
 metadata:
   name: "{{ values.env }}-gitops-artifacts"

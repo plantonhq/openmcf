@@ -25,7 +25,7 @@ three individual keys are required.
 ## Example
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: my-vpc

@@ -26,7 +26,7 @@ When you deploy an OciCompartment resource, Planton provisions:
 Create a file `compartment.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciCompartment
 metadata:
   name: my-compartment
@@ -72,7 +72,7 @@ This creates a compartment named `my-compartment` under the specified tenancy. T
 A long-lived compartment for a project or team. Delete protection retains the compartment even if the IaC resource is destroyed:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciCompartment
 metadata:
   name: platform-compartment
@@ -92,7 +92,7 @@ spec:
 A temporary compartment for development or CI/CD pipelines. Setting `enableDelete` to `true` allows full teardown:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciCompartment
 metadata:
   name: ci-sandbox
@@ -113,7 +113,7 @@ spec:
 A child compartment referencing an Planton-managed parent via `valueFrom`, enabling declarative multi-level hierarchies:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciCompartment
 metadata:
   name: networking

@@ -1,0 +1,24 @@
+# Minimal GcpManagedSslCertificate scenario. project_id is deliberately
+# omitted: the module falls back to the provider's default project, which the
+# E2E harness exports as GOOGLE_PROJECT from the resolved test project. The
+# domain carries ${E2E_RUN_ID} so every run gets a unique hostname — no DNS or
+# proxy attachment is required for the smoke test (PROVISIONING status is
+# expected until DNS points at a load balancer).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpManagedSslCertificate
+metadata:
+  name: planton-oss-e2e-gcpmssl-smoke
+  id: planton-oss-e2e-gcpmssl-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmanagedsslcertificate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral managed SSL certificate created by the Planton E2E harness; safe to delete
+  domains:
+    - e2e-smoke-${E2E_RUN_ID}.example.com

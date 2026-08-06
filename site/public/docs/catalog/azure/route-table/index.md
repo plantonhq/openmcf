@@ -29,7 +29,7 @@ The subnet-side attachment is deliberately not part of this resource: a subnet d
 Create a file `route-table.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: egress-via-firewall
@@ -89,7 +89,7 @@ Every subnet that attaches this table now sends its internet-bound traffic to th
 Send everything through the VPN/ExpressRoute gateway and stop learned routes from bypassing it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: forced-tunnel
@@ -114,7 +114,7 @@ spec:
 ### Black-Hole Unwanted Prefixes
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: deny-lateral
@@ -140,7 +140,7 @@ spec:
 Route a whole Azure service's prefix set directly to the internet while everything else goes through the firewall:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: firewall-with-backup-bypass

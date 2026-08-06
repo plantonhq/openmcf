@@ -28,7 +28,7 @@ When you deploy an OciSecurityGroup resource, Planton provisions:
 Create a file `nsg.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSecurityGroup
 metadata:
   name: my-nsg
@@ -133,7 +133,7 @@ Set `min` equal to `max` to specify a single port (e.g., `min: 443, max: 443`).
 An NSG for internet-facing resources such as load balancers and web servers. Allows HTTPS and HTTP inbound from anywhere, ICMP Path MTU Discovery from the VCN, and all outbound traffic:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSecurityGroup
 metadata:
   name: web-tier-nsg
@@ -184,7 +184,7 @@ spec:
 An NSG for resources that should only accept traffic from within the VCN. Suitable for databases, application servers, and OKE worker nodes:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSecurityGroup
 metadata:
   name: backend-nsg
@@ -216,7 +216,7 @@ spec:
 An NSG that restricts ingress to traffic from a specific NSG rather than a CIDR block. This enables zero-trust micro-segmentation where only resources attached to the web-tier NSG can reach the application tier:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSecurityGroup
 metadata:
   name: app-tier-nsg
@@ -259,7 +259,7 @@ spec:
 Reference Planton-managed resources instead of hardcoding OCIDs. The compartment and VCN are resolved from deployed resources:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSecurityGroup
 metadata:
   name: ref-nsg

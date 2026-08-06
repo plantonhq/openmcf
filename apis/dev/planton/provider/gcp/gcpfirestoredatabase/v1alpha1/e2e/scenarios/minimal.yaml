@@ -1,0 +1,25 @@
+# GcpFirestoreDatabase scenario: a named Native-mode database.
+# project_id is deliberately omitted (ambient project). Delete
+# protection is disabled so DESTROY can run; the cloud-side database
+# name carries ${E2E_RUN_ID} because deleted database names are
+# reserved for a retention window and a fixed name could collide with
+# a prior run's ghost.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreDatabase
+metadata:
+  name: planton-oss-e2e-gcpfsdb-smoke
+  id: planton-oss-e2e-gcpfsdb-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoredatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  databaseName: e2e-fsdb-smoke-${E2E_RUN_ID}
+  locationId: nam5
+  type: FIRESTORE_NATIVE
+  deleteProtectionState: DELETE_PROTECTION_DISABLED

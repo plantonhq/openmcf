@@ -1,0 +1,27 @@
+# GcpBigQueryDataset scenario: an explicit authoritative ACL re-stating
+# projectOwners/projectReaders defaults alongside a projectWriters grant.
+# project_id is deliberately omitted (ambient project).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigQueryDataset
+metadata:
+  name: planton-oss-e2e-gcpbqds-access
+  id: planton-oss-e2e-gcpbqds-access
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigquerydataset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  datasetId: e2e_bqds_access
+  location: US
+  access:
+    - role: OWNER
+      specialGroup: projectOwners
+    - role: WRITER
+      specialGroup: projectWriters
+    - role: READER
+      specialGroup: projectReaders

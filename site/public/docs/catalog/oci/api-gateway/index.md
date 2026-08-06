@@ -31,7 +31,7 @@ When you deploy an OciApiGateway resource, Planton provisions:
 Create a file `api-gateway.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApiGateway
 metadata:
   name: my-api
@@ -162,7 +162,7 @@ This creates a public API gateway with a single health-check route that returns 
 A public gateway proxying requests to an upstream service:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApiGateway
 metadata:
   name: api-proxy
@@ -202,7 +202,7 @@ spec:
 A gateway routing to OCI Functions with JWT authentication via remote JWKS and CORS for a browser client:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApiGateway
 metadata:
   name: serverless-api
@@ -277,7 +277,7 @@ spec:
 A VCN-internal gateway with rate limiting for internal microservice communication:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApiGateway
 metadata:
   name: internal-api

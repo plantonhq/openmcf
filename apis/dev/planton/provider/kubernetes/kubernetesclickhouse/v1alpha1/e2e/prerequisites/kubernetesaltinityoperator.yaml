@@ -1,0 +1,14 @@
+# Consumer-scoped operator fixture for the KubernetesClickHouse lanes:
+# the Altinity operator watching ALL namespaces (its chart default is
+# own-namespace only), so ClickHouseInstallations reconcile wherever
+# the lane puts them.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAltinityOperator
+metadata:
+  name: e2e-altop-fix
+spec:
+  namespace:
+    value: clickhouse-operator-system
+  create_namespace: true
+  watch_namespaces:
+    - ".*"

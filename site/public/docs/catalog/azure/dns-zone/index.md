@@ -29,7 +29,7 @@ Records are separate resources: declare them with [Azure DNS Record](/docs/catal
 Create a file `zone.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDnsZone
 metadata:
   name: example-com

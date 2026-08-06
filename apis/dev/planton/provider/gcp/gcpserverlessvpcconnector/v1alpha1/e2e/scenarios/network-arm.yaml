@@ -1,0 +1,32 @@
+# Network-placement GcpServerlessVpcConnector scenario: the connector carves
+# a dedicated /28 (10.8.0.0/28 — outside every range the E2E prerequisites
+# use) out of the prerequisite VPC. project_id is deliberately omitted
+# (ambient project). Connector names are project-scoped with no soft-delete
+# reservation; the cloud-side name still carries ${E2E_RUN_ID} so an
+# orphaned run never blocks the next one.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: planton-oss-e2e-gcpvpcconn-network
+  id: planton-oss-e2e-gcpvpcconn-network
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserverlessvpcconnector
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  connectorName: e2e-conn-${E2E_RUN_ID}
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_name
+  ipCidrRange: 10.8.0.0/28
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 3

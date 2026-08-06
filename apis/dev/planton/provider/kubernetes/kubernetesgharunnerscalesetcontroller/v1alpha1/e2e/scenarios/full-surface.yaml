@@ -1,0 +1,40 @@
+# Every fixture-free knob at once: two replicas (the chart enables
+# leader election automatically), production-shaped flags (info/json
+# logging, eventual update strategy, tuned reconcile concurrency and API
+# client limits, the typed rate limiter, health probes), metrics on all
+# three endpoints, resources and an escape-hatch pod label. Same install
+# proof as minimal, plus both replicas running.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGhaRunnerScaleSetController
+metadata:
+  name: e2e-arc-full
+spec:
+  namespace:
+    value: e2e-arc-full
+  createNamespace: true
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  flags:
+    logLevel: info
+    logFormat: json
+    runnerMaxConcurrentReconciles: 4
+    updateStrategy: eventual
+    excludeLabelPropagationPrefixes:
+      - argocd.argoproj.io/instance
+    k8sClientRateLimiterQps: 30
+    k8sClientRateLimiterBurst: 60
+    rateLimiter: typed_rate_limiter
+    healthProbeBindAddress: ":8081"
+  metrics:
+    controllerManagerAddr: ":8080"
+    listenerAddr: ":8080"
+    listenerEndpoint: /metrics
+  helmValues: |
+    podLabels:
+      e2e-lane: full-surface

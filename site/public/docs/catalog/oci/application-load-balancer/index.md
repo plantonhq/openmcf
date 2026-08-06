@@ -35,7 +35,7 @@ When you deploy an OciApplicationLoadBalancer resource, Planton provisions:
 Create a file `load-balancer.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApplicationLoadBalancer
 metadata:
   name: web-lb
@@ -309,7 +309,7 @@ The `action` field determines which other fields are relevant for each rule:
 A public HTTP load balancer distributing traffic across two backends with round-robin policy and HTTP health checking:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApplicationLoadBalancer
 metadata:
   name: web-lb
@@ -351,7 +351,7 @@ spec:
 An HTTPS load balancer with a certificate for SSL termination. The HTTP listener on port 80 redirects all traffic to HTTPS using a rule set:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApplicationLoadBalancer
 metadata:
   name: secure-web
@@ -427,7 +427,7 @@ spec:
 A load balancer serving two applications on the same IP address using virtual hostname routing. Each hostname routes to a different backend set:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApplicationLoadBalancer
 metadata:
   name: multi-domain-lb
@@ -496,7 +496,7 @@ spec:
 A production load balancer with HTTPS, HTTP-to-HTTPS redirect, security headers, LB-managed session persistence, delete protection, request tracing, NSGs, and infrastructure references via `valueFrom`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciApplicationLoadBalancer
 metadata:
   name: prod-lb

@@ -30,7 +30,7 @@ The zone is deliberately just the zone. Which networks can resolve it is declare
 Create a file `private-dns-zone.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZone
 metadata:
   name: postgres-privatelink-zone
@@ -74,7 +74,7 @@ Then make it resolvable from a network with an `AzurePrivateDnsZoneVirtualNetwor
 ### Private Link Zone for PostgreSQL
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZone
 metadata:
   name: postgres-privatelink-zone
@@ -93,7 +93,7 @@ spec:
 ### Custom Internal Zone with SOA Tuning
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZone
 metadata:
   name: corp-internal-zone
@@ -117,7 +117,7 @@ spec:
 ### The Composed Trio: Network + Zone + Link
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZone
 metadata:
   name: redis-privatelink-zone
@@ -127,7 +127,7 @@ spec:
       name: network-rg
   name: privatelink.redis.cache.windows.net
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: redis-zone-hub-link

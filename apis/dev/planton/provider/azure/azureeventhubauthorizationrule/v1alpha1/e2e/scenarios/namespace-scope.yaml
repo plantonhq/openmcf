@@ -1,0 +1,26 @@
+# Namespace-scope AzureEventHubAuthorizationRule scenario: listen+send
+# over every hub in a scenario-local namespace -- proving the
+# namespace dispatch path (parent names parsed from the namespace ARM
+# id) and the credential-face outputs on both engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubAuthorizationRule
+metadata:
+  name: planton-oss-e2e-azureeventhubauthorizationrule-nsscope
+  id: planton-oss-e2e-azureeventhubauthorizationrule-nsscope
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubauthorizationrule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azureeventhubauthorizationrule/v1alpha1/e2e/fixture-namespace-nsscope.yaml"
+  tags:
+    - planton-e2e
+spec:
+  ruleName: e2e-app-rw
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-ehauth-ns-fixture
+  listen: true
+  send: true

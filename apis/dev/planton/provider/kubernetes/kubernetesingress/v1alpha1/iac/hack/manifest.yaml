@@ -1,0 +1,52 @@
+# Full-surface test manifest for the offline plan proofs. Exercises the
+# ingress class, a default backend, TLS blocks (named-secret and SNI-only),
+# host and wildcard-host rules, all three path types, and both backend port
+# forms (number and name).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIngress
+metadata:
+  name: test-ingress
+spec:
+  namespace:
+    value: default
+  name: test-ingress
+  labels:
+    team: platform-engineering
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 50m
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  ingress_class_name: nginx
+  default_backend:
+    service_name:
+      value: fallback-svc
+    port_number: 80
+  tls:
+    - hosts:
+        - app.example.com
+      secret_name:
+        value: app-example-com-tls
+    - hosts:
+        - "*.preview.example.com"
+  rules:
+    - host: app.example.com
+      paths:
+        - path: /
+          path_type: prefix
+          backend:
+            service_name:
+              value: app-svc
+            port_number: 8080
+        - path: /api
+          path_type: exact
+          backend:
+            service_name:
+              value: api-svc
+            port_name: http
+    - host: "*.preview.example.com"
+      paths:
+        - path: /
+          path_type: implementation_specific
+          backend:
+            service_name:
+              value: preview-router
+            port_number: 80

@@ -1,0 +1,38 @@
+# GcpFilestoreInstance scenario: the smallest live-provable shape — a
+# BASIC_HDD 1 TiB share on the chained VPC via DIRECT_PEERING, with an
+# NFS export option proving the access-control arm.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFilestoreInstance
+metadata:
+  name: planton-oss-e2e-gcpnfs-basic
+  id: planton-oss-e2e-gcpnfs-basic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfilestoreinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: e2e-nfs-${E2E_RUN_ID}
+  location: us-central1-a
+  tier: BASIC_HDD
+  fileShare:
+    name: vol1
+    capacityGb: 1024
+    nfsExportOptions:
+      - ipRanges:
+          - 10.0.0.0/8
+        accessMode: READ_WRITE
+        squashMode: NO_ROOT_SQUASH
+  networkConfig:
+    network:
+      valueFrom:
+        kind: GcpVpcNetwork
+        name: planton-oss-e2e-gcpvpcnetwork-prereq
+        fieldPath: status.outputs.network_name
+    connectMode: DIRECT_PEERING
+  labels:
+    e2e-suite: gcp

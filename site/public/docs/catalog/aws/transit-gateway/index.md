@@ -26,7 +26,7 @@ When you deploy an AwsTransitGateway resource, Planton provisions:
 Create a file `tgw.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGateway
 metadata:
   name: core-hub

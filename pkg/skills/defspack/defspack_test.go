@@ -222,7 +222,7 @@ func TestPackageReleaseManifest(t *testing.T) {
 // contract; broken-tree cases mutate exactly one thing at a time.
 func validFixtureTree() map[string]string {
 	return map[string]string{
-		"skills/demo/SKILL.md": "---\nname: demo\ndescription: A demo skill.\n---\n\n# Demo\n\nRead `references/topic.md` first.\n",
+		"skills/demo/SKILL.md":            "---\nname: demo\ndescription: A demo skill.\n---\n\n# Demo\n\nRead `references/topic.md` first.\n",
 		"skills/demo/references/topic.md": "The topic, explained.\n",
 		"skills/compat.yaml":              "minimum_daemon_version: v0.0.0\nminimum_cli_version: v0.0.0\n",
 		"agents/helper/instructions.md":   "You are the helper.\n",

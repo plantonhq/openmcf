@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpdataprocautoscalingpolicy.v1alpha1;
+
+// Outputs produced after provisioning a Dataproc autoscaling policy.
+message GcpDataprocAutoscalingPolicyStackOutputs {
+  // Fully qualified policy resource name as computed by the provider —
+  // projects/{project}/regions|locations/{location}/autoscalingPolicies/{policy_id}
+  // (the Dataproc API treats the regions and locations path segments as
+  // equivalent, and both engines compute the identical form). The handle
+  // a Dataproc cluster's autoscaling_policy_uri reference resolves to.
+  string name = 1;
+
+  // The policy ID (same as the spec's policy_id input).
+  string policy_id = 2;
+
+  // The region the policy lives in (same as the spec's location input).
+  string location = 3;
+}

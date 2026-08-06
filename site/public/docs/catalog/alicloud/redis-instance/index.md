@@ -27,7 +27,7 @@ When you deploy an AliCloudRedisInstance resource, Planton provisions:
 Create a file `redis-instance.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRedisInstance
 metadata:
   name: my-redis

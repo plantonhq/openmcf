@@ -35,7 +35,7 @@ When you deploy an AwsMskCluster resource, Planton provisions:
 Create a file `msk.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: my-kafka
@@ -125,7 +125,7 @@ This creates a 3-broker MSK cluster with SASL/IAM authentication across three su
 A 6-broker cluster with customer-managed encryption, tiered storage, and CloudWatch monitoring:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: prod-kafka
@@ -166,7 +166,7 @@ spec:
 All three authentication methods enabled for mixed client populations:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: multi-auth-kafka
@@ -197,7 +197,7 @@ spec:
 Broker logs delivered to all three destinations simultaneously:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: logged-kafka
@@ -235,7 +235,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: ref-kafka

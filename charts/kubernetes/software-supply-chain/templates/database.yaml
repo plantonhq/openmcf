@@ -6,7 +6,7 @@
 # handles flow into the registry BY REFERENCE, so the wiring can never
 # drift. Blobs never land here — they live in the object store
 # (object-store.yaml); this database stays small and hot.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-supply-db"

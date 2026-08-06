@@ -1,0 +1,93 @@
+# Full-surface shape: the composed external metadata database with SSL,
+# an authed external cache with Celery workers + beat + flower, the
+# websocket and MCP arms, feature flags, config overrides reading
+# env-sourced secrets, a bootstrap driver install and the env escape
+# hatches — the offline plan/preview proof for the widest typed
+# rendering.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSuperset
+metadata:
+  name: superset-full
+spec:
+  namespace:
+    value: superset-full
+  createNamespace: true
+  metadataDatabase:
+    host:
+      value: superset-pg-rw
+    port: 5432
+    databaseName: superset
+    username: superset
+    passwordSecret:
+      secretName:
+        value: superset-pg-app
+      secretKey: password
+    ssl:
+      enabled: true
+      mode: require
+  cache:
+    host:
+      value: superset-valkey
+    port: 6379
+    passwordSecret:
+      secretName:
+        value: superset-valkey-password
+      secretKey: password
+    cacheDb: 1
+    celeryDb: 0
+  web:
+    hpa:
+      minReplicas: 2
+      maxReplicas: 6
+      targetCpuUtilizationPercent: 70
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        memory: 3Gi
+  worker:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        memory: 3Gi
+  beat:
+    enabled: true
+  flower:
+    enabled: true
+  websockets:
+    enabled: true
+    image:
+      tag: "0.1.4"
+    replicas: 2
+  mcp:
+    enabled: true
+  init:
+    admin:
+      username: bi-admin
+      email: bi-admin@example.com
+    loadExamples: false
+  featureFlags:
+    DASHBOARD_RBAC: true
+    ALERT_REPORTS: true
+    GLOBAL_ASYNC_QUERIES: true
+  configOverrides:
+    mapbox: |
+      MAPBOX_API_KEY = env('MAPBOX_API_KEY', '')
+  extraEnvFromSecret:
+    MAPBOX_API_KEY:
+      secretName: superset-mapbox
+      secretKey: api_key
+  extraEnv:
+    GUNICORN_TIMEOUT: "300"
+  bootstrapScript: |
+    #!/bin/bash
+    if [ ! -f ~/bootstrap ]; then pip install trino elasticsearch-dbapi; echo "done" > ~/bootstrap; fi
+  service:
+    type: ClusterIP
+  scheduling:
+    nodeSelector:
+      workload: analytics

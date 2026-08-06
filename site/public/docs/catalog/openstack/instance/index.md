@@ -30,7 +30,7 @@ When you deploy an OpenStackInstance resource, Planton provisions:
 Create a file `instance.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackInstance
 metadata:
   name: my-instance
@@ -99,7 +99,7 @@ This creates a compute instance with the `m1.medium` flavor, booted from the `ub
 A minimal instance booted from a Glance image on a single network with an SSH keypair:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackInstance
 metadata:
   name: web-server
@@ -123,7 +123,7 @@ spec:
 An instance with a persistent 50 GB root disk created from a Glance image, recommended for production workloads where the root disk must survive instance rebuilds:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackInstance
 metadata:
   name: db-server
@@ -154,7 +154,7 @@ spec:
 Production instance with server group placement, cloud-init configuration, metadata, multiple networks, and a specific availability zone:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackInstance
 metadata:
   name: app-server-01
@@ -198,7 +198,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding UUIDs:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackInstance
 metadata:
   name: ref-instance

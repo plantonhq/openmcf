@@ -26,7 +26,7 @@ When you deploy an AzureCosmosdbSqlRoleDefinition resource, Planton provisions:
 Create a file `role.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbSqlRoleDefinition
 metadata:
   name: app-reader

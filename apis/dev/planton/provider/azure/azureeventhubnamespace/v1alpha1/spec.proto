@@ -1,0 +1,331 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureEventHubNamespaceSpec** defines the configuration for creating an
+// Azure Event Hubs namespace: the container and billing boundary for
+// high-throughput event streaming.
+//
+// Azure Event Hubs is a fully managed, real-time data ingestion service that
+// receives and processes millions of events per second -- telemetry
+// collection, log aggregation, IoT ingestion, change-data capture, and the
+// Kafka-compatible endpoint for existing Kafka producers and consumers. The
+// namespace is where the pricing tier, throughput capacity, network posture,
+// and authentication mode are set; the streaming entities are first-class
+// kinds that reference it: `AzureEventHub` (the event stream, with its
+// capture-to-storage block), `AzureEventHubConsumerGroup` (independent read
+// cursors), `AzureEventHubAuthorizationRule` (SAS credentials scoped to the
+// namespace or a single hub), `AzureEventHubSchemaGroup` (the schema
+// registry), `AzureEventHubDisasterRecoveryConfig` (the geo-DR alias
+// pairing two namespaces), and `AzureEventHubNamespaceCustomerManagedKey`
+// (BYOK encryption for namespaces on a dedicated cluster).
+//
+// **SKU tiers**:
+// - **BASIC**: 1-day retention, a single consumer group per hub, no Kafka
+//   endpoint, no VNet firewall. Simple telemetry ingestion only.
+// - **STANDARD** (default): the full-featured multi-tenant tier -- Kafka
+//   endpoint, up to 20 consumer groups per hub, 7-day retention,
+//   auto-inflate for elastic throughput. The right choice for most
+//   production workloads.
+// - **PREMIUM**: reserved processing units with predictable latency,
+//   dynamic partition scale-up, extended retention (up to 90 days), and
+//   VNet integration. Choose it for isolation and compliance workloads
+//   that do not need a whole dedicated cluster.
+//
+// **Capacity semantics differ by tier**: on BASIC/STANDARD, capacity is
+// throughput units (TUs; 1 MB/s ingress and 2 MB/s egress each); on
+// PREMIUM it is processing units (PUs) of reserved compute. Auto-inflate
+// (STANDARD's elastic scaling) grows TUs up to maximum_throughput_units
+// under load but never shrinks them back -- scale-down is a manual
+// capacity edit.
+//
+// **Authentication posture**: every namespace carries a root SAS rule
+// (`RootManageSharedAccessKey`) whose keys and connection strings surface
+// as sensitive outputs. Scoped credentials belong in
+// `AzureEventHubAuthorizationRule`; for a keyless posture, disable
+// local_authentication_enabled and grant Entra identities data-plane roles
+// (Azure Event Hubs Data Owner/Sender/Receiver) via `AzureRoleAssignment`.
+//
+// **ForceNew fields** (changing these replaces the namespace -- and
+// destroys every entity in it): `namespace_name`, `dedicated_cluster_id`,
+// and `sku` when moving into or out of PREMIUM (Azure cannot convert a
+// namespace across the reserved/multi-tenant boundary in place;
+// BASIC <-> STANDARD updates in place).
+message AzureEventHubNamespaceSpec {
+  // The Azure region where the Event Hubs namespace is created.
+  // Examples: "eastus", "westus2", "westeurope", "southeastasia".
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure Resource Group the namespace lives in.
+  // Can be a literal string or a reference to an AzureResourceGroup output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The namespace name -- globally unique across Azure, because it becomes
+  // the public endpoint `{name}.servicebus.windows.net` (Event Hubs shares
+  // the Service Bus DNS zone) and the Kafka bootstrap host
+  // `{name}.servicebus.windows.net:9093`.
+  //
+  // 6-50 characters; starts with a letter; ends with a letter or number;
+  // letters, numbers, and hyphens only.
+  //
+  // **ForceNew**: changing the name replaces the namespace and every
+  // entity in it. Treat it as permanent.
+  string namespace_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 6,
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "event_hub_namespace_name_format"
+      message: "namespace_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number"
+      expression: "this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The pricing tier. Unspecified deploys STANDARD -- the full-featured
+  // multi-tenant tier with the Kafka endpoint and auto-inflate. Choose
+  // PREMIUM for reserved capacity, VNet-scale isolation, and extended
+  // retention; choose BASIC only for simple single-consumer telemetry.
+  //
+  // Moving a namespace into or out of PREMIUM replaces it; BASIC <->
+  // STANDARD updates in place.
+  AzureEventHubNamespaceSku sku = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The namespace's capacity. On BASIC/STANDARD: throughput units (TUs,
+  // 1-40; each provides 1 MB/s ingress and 2 MB/s egress) -- Azure's
+  // default is 1. On PREMIUM: processing units (PUs) of reserved compute;
+  // Azure sells 1, 2, 4, 8, or 16. Scaling updates in place.
+  optional int32 capacity = 5 [(buf.validate.field).int32.gte = 1];
+
+  // Whether auto-inflate is enabled: STANDARD's elastic throughput --
+  // Azure grows the namespace's TUs automatically (up to
+  // maximum_throughput_units) when traffic would otherwise be throttled.
+  // Auto-inflate only scales UP; scale-down is a manual capacity edit.
+  // Not applicable to PREMIUM (reserved PUs) or BASIC.
+  // Default: false
+  optional bool auto_inflate_enabled = 6;
+
+  // The TU ceiling auto-inflate may grow the namespace to (0-40). Azure
+  // requires auto_inflate_enabled to be true for a non-zero ceiling to
+  // take effect -- Azure validates the pairing at apply time (setting a
+  // ceiling without enabling auto-inflate is rejected by ARM, not by the
+  // provider's schema).
+  optional int32 maximum_throughput_units = 7 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 40
+  }];
+
+  // The dedicated Event Hubs cluster to place this namespace on, by ARM
+  // ID. References an AzureEventHubCluster's cluster_id output.
+  // Namespaces on a dedicated cluster get single-tenant capacity, up to
+  // 1024 partitions per hub, and 90-day retention.
+  //
+  // **ForceNew**: a namespace cannot move on or off a cluster in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dedicated_cluster_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Managed identity for the namespace -- required for capture with
+  // identity-based storage authentication and for customer-managed-key
+  // encryption (the identity unwraps the key), and usable anywhere the
+  // namespace itself must authenticate to other Azure services.
+  AzureEventHubNamespaceIdentity identity = 9;
+
+  // Whether SAS (shared-access-signature) authentication is allowed on
+  // the namespace. Azure's default is true. Set false for a keyless
+  // posture: clients must then authenticate with Microsoft Entra ID
+  // identities, and every SAS rule's keys -- including the root rule
+  // surfaced in this kind's outputs -- stop being usable credentials.
+  // Default: true
+  optional bool local_authentication_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether the namespace accepts traffic from the public internet. When
+  // false, clients reach it only through private endpoints
+  // (AzurePrivateEndpoint) or admitted VNet service endpoints. Must agree
+  // with the network_rule_sets block's own public-access dial when that
+  // block is declared (Azure validates the pair server-side).
+  // Default: true
+  optional bool public_network_access_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // The namespace firewall: which networks may reach the data plane.
+  // Not available on BASIC (multi-tenant entry tier). Azure applies the
+  // rule set as a sub-resource of the namespace; the provider folds it
+  // into the namespace resource, and so does this spec -- it has no
+  // independent lifecycle and nothing references it.
+  AzureEventHubNamespaceNetworkRuleSets network_rule_sets = 12;
+
+  // Tags to apply to the namespace, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts). ARM tags are
+  // Azure's first-class governance surface -- Azure Policy enforces them
+  // and Microsoft Cost Management groups by them.
+  map<string, string> tags = 13;
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_network_rules_not_on_basic"
+    message: "network_rule_sets is not available on the BASIC tier -- Azure rejects firewall rule sets on basic namespaces; use STANDARD or PREMIUM"
+    expression: "!has(this.network_rule_sets) || this.sku != 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_ruleset_public_access_matches_namespace"
+    message: "the network_rule_sets block's public_network_access_enabled must equal the namespace-level public_network_access_enabled -- Azure rejects a mismatched pair"
+    expression: "!has(this.network_rule_sets) || ((!has(this.network_rule_sets.public_network_access_enabled) ? true : this.network_rule_sets.public_network_access_enabled) == (!has(this.public_network_access_enabled) ? true : this.public_network_access_enabled))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_premium_capacity_values"
+    message: "on the PREMIUM tier, capacity is processing units -- Azure sells 1, 2, 4, 8, or 16"
+    expression: "this.sku != 3 || !has(this.capacity) || this.capacity in [1, 2, 4, 8, 16]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_throughput_capacity_ceiling"
+    message: "on BASIC/STANDARD, capacity is throughput units -- 1 to 40"
+    expression: "this.sku == 3 || !has(this.capacity) || this.capacity <= 40"
+  };
+}
+
+// The pricing tier of the namespace.
+enum AzureEventHubNamespaceSku {
+  // Not specified -- deploys STANDARD, the full-featured multi-tenant tier.
+  azure_event_hub_namespace_sku_unspecified = 0;
+
+  // 1-day retention, single consumer group per hub, no Kafka endpoint.
+  // Simple telemetry ingestion only.
+  BASIC = 1;
+
+  // The full-featured multi-tenant tier: Kafka endpoint, 20 consumer
+  // groups per hub, 7-day retention, auto-inflate. The right choice for
+  // most production workloads.
+  STANDARD = 2;
+
+  // Reserved processing units: predictable latency, dynamic partition
+  // scale-up, extended retention, VNet integration. Moving into or out
+  // of PREMIUM replaces the namespace.
+  PREMIUM = 3;
+}
+
+// AzureEventHubNamespaceIdentity configures managed identity for the
+// namespace.
+message AzureEventHubNamespaceIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the namespace's lifecycle), USER_ASSIGNED
+  // (bring identities from user_assigned_identity_ids, shareable across
+  // resources), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureEventHubNamespaceIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references
+  // an AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the namespace.
+enum AzureEventHubNamespaceIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_event_hub_namespace_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the namespace's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the namespace exists.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// The namespace firewall (not available on BASIC): which networks may
+// reach the data plane.
+message AzureEventHubNamespaceNetworkRuleSets {
+  // What happens to traffic no explicit rule admits. Required by Azure
+  // when the rule set is declared: ALLOW (the firewall only annotates) or
+  // DENY (the production posture -- only admitted sources get through).
+  AzureEventHubNetworkRuleSetDefaultAction default_action = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Whether the data plane remains reachable over public IP space for
+  // the sources the rules admit. Must equal the namespace-level
+  // public_network_access_enabled (Azure validates the pair server-side;
+  // the spec front-loads the check).
+  // Default: true
+  optional bool public_network_access_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether trusted Microsoft services (Azure Monitor diagnostics, Event
+  // Grid delivery, IoT Hub routing, ...) bypass the firewall. Azure's
+  // default is false; enable it when platform services must deliver into
+  // a locked-down namespace.
+  optional bool trusted_service_access_enabled = 3;
+
+  // Public IPv4 addresses or CIDR ranges admitted to the data plane,
+  // e.g. "203.0.113.0/24". (Azure's per-rule action accepts exactly one
+  // value, Allow -- so each entry here IS an allow rule.)
+  repeated string ip_rules = 4;
+
+  // VNet subnets admitted to the data plane via service endpoints. Each
+  // subnet should carry the Microsoft.EventHub service endpoint.
+  repeated AzureEventHubNamespaceVirtualNetworkRule virtual_network_rules = 5;
+
+  option (buf.validate.message).cel = {
+    id: "event_hub_deny_requires_admitted_sources"
+    message: "default_action DENY needs at least one admitted source -- add ip_rules or virtual_network_rules, or the namespace would reject all data-plane traffic"
+    expression: "this.default_action != 2 || this.ip_rules.size() > 0 || this.virtual_network_rules.size() > 0"
+  };
+}
+
+// The firewall's default action for unmatched traffic.
+enum AzureEventHubNetworkRuleSetDefaultAction {
+  // Not specified -- invalid; Azure requires an explicit choice when the
+  // rule set is declared.
+  azure_event_hub_network_rule_set_default_action_unspecified = 0;
+
+  // Admit traffic no rule matches (the firewall only annotates).
+  ALLOW = 1;
+
+  // Reject traffic no rule matches -- the production posture. Requires
+  // at least one admitted ip_rule or virtual_network_rule.
+  DENY = 2;
+}
+
+// A VNet subnet admitted to the namespace's data plane.
+message AzureEventHubNamespaceVirtualNetworkRule {
+  // The admitted subnet, by ARM ID. References an AzureSubnet's subnet_id
+  // output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Whether to admit the subnet even if it does not (yet) carry the
+  // Microsoft.EventHub service endpoint -- useful when the endpoint is
+  // being rolled out separately. Azure's default is false.
+  optional bool ignore_missing_virtual_network_service_endpoint = 2;
+}

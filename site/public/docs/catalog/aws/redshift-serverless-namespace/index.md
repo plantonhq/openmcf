@@ -29,7 +29,7 @@ No compute is created -- attach one or more `AwsRedshiftServerlessWorkgroup` nod
 Create a file `redshift-serverless-namespace.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftServerlessNamespace
 metadata:
   name: my-analytics-data

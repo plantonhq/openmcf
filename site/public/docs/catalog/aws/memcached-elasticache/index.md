@@ -29,7 +29,7 @@ When you deploy an AwsMemcachedElasticache resource, Planton provisions:
 Create a file `memcached.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
 metadata:
   name: my-cache
@@ -98,7 +98,7 @@ This creates a single-node Memcached cluster on port 11211 in the specified subn
 A production cache spread across Availability Zones for resilience:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
 metadata:
   name: prod-cache
@@ -133,7 +133,7 @@ spec:
 A cluster with custom Memcached engine parameters and SNS notifications:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
 metadata:
   name: tuned-cache
@@ -170,7 +170,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
 metadata:
   name: ref-cache

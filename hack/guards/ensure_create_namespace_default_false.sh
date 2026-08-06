@@ -34,7 +34,7 @@ while IFS= read -r varsfile; do
   if grep -Eq 'create_namespace[[:space:]]*=[[:space:]]*optional\(bool,[[:space:]]*true\)' "$varsfile"; then
     violations+=("$varsfile")
   fi
-done < <(find "$provider_base" -type f -path "*/v1/iac/tf/variables.tf" 2>/dev/null | sort)
+done < <(find "$provider_base" -type f -path "*/v*/iac/tf/variables.tf" 2>/dev/null | sort)
 
 if [[ ${#violations[@]} -gt 0 ]]; then
   echo "ERROR: ${#violations[@]} iac/tf module(s) default create_namespace to true." >&2

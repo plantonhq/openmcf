@@ -75,7 +75,7 @@ brew install plantonhq/tap/planton
 Write a manifest in the shape you already know:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: my-first-postgres

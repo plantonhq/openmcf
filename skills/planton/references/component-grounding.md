@@ -30,13 +30,13 @@ Example (abbreviated):
 
 ```text
 KIND:    AwsVpc
-VERSION: aws.planton.dev/v1
+VERSION: aws.planton.dev/v1alpha1
 
 DESCRIPTION:
   AwsVpcSpec defines an Amazon VPC ...
 
 MANIFEST:
-  apiVersion: aws.planton.dev/v1
+  apiVersion: aws.planton.dev/v1alpha1
   kind: AwsVpc
   metadata:
     name: <resource-name>
@@ -87,7 +87,7 @@ with the exact path to look up.
 All of these live in the open-source repo `github.com/plantonhq/planton`.
 Read them from a local clone when one exists; otherwise fetch raw files
 directly, e.g.
-`https://raw.githubusercontent.com/plantonhq/planton/main/apis/dev/planton/provider/aws/awsvpc/v1/spec.proto`
+`https://raw.githubusercontent.com/plantonhq/planton/main/apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto`
 (same path shape for every artifact below). No clone and no network? The
 explain report alone is sufficient for correct composition.
 

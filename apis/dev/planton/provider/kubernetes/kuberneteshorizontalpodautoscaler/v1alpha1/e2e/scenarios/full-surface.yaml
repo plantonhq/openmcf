@@ -1,0 +1,77 @@
+# The full autoscaling/v2 surface: all five metric source families and both
+# behavior directions with velocity policies. Custom/object/external metrics
+# need a metrics adapter to PRODUCE values, but the object accepts them on
+# any cluster — the controller reports them unavailable, which is the
+# correct state on the metrics-less test cluster; behavioral scaling rides
+# the real-cluster lanes.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: e2e-hpa-full
+spec:
+  namespace:
+    value: default
+  name: e2e-hpa-full
+  scale_target:
+    name:
+      value: e2e-fixture-app
+  min_replicas: 2
+  max_replicas: 20
+  metrics:
+    - type: resource
+      resource:
+        name: cpu
+        target:
+          type: utilization
+          average_utilization: 60
+    - type: container_resource
+      container_resource:
+        name: memory
+        container: app
+        target:
+          type: average_value
+          average_value: 512Mi
+    - type: pods
+      pods:
+        metric:
+          name: requests_per_second
+        target:
+          type: average_value
+          average_value: "100"
+    - type: object
+      object:
+        described_object:
+          api_version: networking.k8s.io/v1
+          kind: Ingress
+          name: main-ingress
+        metric:
+          name: requests_per_second
+        target:
+          type: raw_value
+          value: 10k
+    - type: external
+      external:
+        metric:
+          name: queue_messages_ready
+          match_labels:
+            queue: orders
+        target:
+          type: average_value
+          average_value: "30"
+  behavior:
+    scale_up:
+      stabilization_window_seconds: 0
+      policies:
+        - type: pods
+          value: 4
+          period_seconds: 15
+        - type: percent
+          value: 100
+          period_seconds: 15
+    scale_down:
+      stabilization_window_seconds: 600
+      select_policy: min_change
+      policies:
+        - type: percent
+          value: 10
+          period_seconds: 60

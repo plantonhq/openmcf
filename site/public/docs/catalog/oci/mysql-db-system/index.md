@@ -34,7 +34,7 @@ When you deploy an OciMysqlDbSystem resource, Planton provisions:
 Create a file `mysql-db.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciMysqlDbSystem
 metadata:
   name: my-mysql
@@ -193,7 +193,7 @@ This creates a single-instance MySQL DB System with Oracle-managed encryption an
 A single-instance MySQL DB System with defaults — suitable for development or testing:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciMysqlDbSystem
 metadata:
   name: dev-mysql
@@ -218,7 +218,7 @@ spec:
 HA enabled with daily backups, point-in-time recovery, and a weekly maintenance window:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciMysqlDbSystem
 metadata:
   name: ha-mysql
@@ -260,7 +260,7 @@ spec:
 Full production configuration with customer-managed encryption, deletion safeguards, read scaling, NSG attachment, and customer contact notifications:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciMysqlDbSystem
 metadata:
   name: prod-mysql
@@ -333,7 +333,7 @@ spec:
 Reference Planton-managed compartment and subnet instead of hardcoding OCIDs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciMysqlDbSystem
 metadata:
   name: ref-mysql

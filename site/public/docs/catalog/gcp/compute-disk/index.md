@@ -26,7 +26,7 @@ Creates a zonal Google Compute Engine persistent disk — the durable block devi
 Create a file `disk.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeDisk
 metadata:
   name: app-data

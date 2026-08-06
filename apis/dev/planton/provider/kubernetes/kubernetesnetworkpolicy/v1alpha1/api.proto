@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesnetworkpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesnetworkpolicy/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesnetworkpolicy/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesNetworkPolicy** defines a Kubernetes NetworkPolicy resource
+ * following the Kubernetes Resource Model (KRM). A NetworkPolicy is the
+ * in-cluster firewall: it selects pods and allows the traffic its rules
+ * describe, isolating everything else in the governed directions. Enforcement
+ * requires a CNI that implements NetworkPolicy.
+ */
+message KubernetesNetworkPolicy {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1alpha1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesNetworkPolicy".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesNetworkPolicy"];
+
+  // Metadata for the NetworkPolicy resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the NetworkPolicy.
+  // Defines the target namespace, pod selection, and allow rules.
+  KubernetesNetworkPolicySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the NetworkPolicy resource.
+  // Contains outputs populated after deployment.
+  KubernetesNetworkPolicyStatus status = 5;
+}
+
+/**
+ * **KubernetesNetworkPolicyStatus** captures the runtime status of a
+ * NetworkPolicy deployment, including the outputs generated after the policy is
+ * created.
+ */
+message KubernetesNetworkPolicyStatus {
+  // Outputs from the NetworkPolicy deployment.
+  // Contains the policy name and namespace for downstream composition.
+  KubernetesNetworkPolicyStackOutputs outputs = 1;
+}

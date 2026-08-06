@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremonitormetricalert.v1alpha1;
+
+// **AzureMonitorMetricAlertStackOutputs** captures the outputs of provisioning
+// an Azure Monitor metric alert rule.
+message AzureMonitorMetricAlertStackOutputs {
+  // The Azure Resource Manager ID of the metric alert rule.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/metricAlerts/{name}
+  string metric_alert_id = 1;
+
+  // The name of the metric alert rule.
+  string metric_alert_name = 2;
+}

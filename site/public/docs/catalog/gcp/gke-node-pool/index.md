@@ -32,7 +32,7 @@ When you deploy a GcpGkeNodePool resource, Planton provisions:
 Create a file `node-pool.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: general-pool
@@ -156,7 +156,7 @@ This creates an autoscaled pool of `e2-medium` nodes on Container-Optimized OS w
 ### Scale-to-Zero Spot Pool for Batch
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: spot-batch
@@ -194,7 +194,7 @@ spec:
 ### GPU Inference Pool
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: gpu-inference
@@ -231,7 +231,7 @@ spec:
 ### Hardened Production Pool
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: hardened-pool

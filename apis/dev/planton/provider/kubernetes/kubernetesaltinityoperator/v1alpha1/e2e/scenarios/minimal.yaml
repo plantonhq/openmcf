@@ -1,0 +1,12 @@
+# The default install: chart defaults, own-namespace watch scope. The
+# verifier asserts the operator Deployment is Available and the four
+# CRDs are Established (installed by the chart's crds/ directory and
+# its pre-install hook).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAltinityOperator
+metadata:
+  name: e2e-altop-min
+spec:
+  namespace:
+    value: e2e-altop-min
+  create_namespace: true

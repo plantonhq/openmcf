@@ -27,7 +27,7 @@ When you deploy a CloudflareDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsRecord
 metadata:
   name: my-record
@@ -96,7 +96,7 @@ When using `valueFrom`, the `kind` defaults to `CloudflareDnsZone` and the `fiel
 ### MX Record for Mail Delivery
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsRecord
 metadata:
   name: mail-mx-record
@@ -114,7 +114,7 @@ spec:
 ### SRV Record (structured data)
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsRecord
 metadata:
   name: sip-srv-record
@@ -135,7 +135,7 @@ spec:
 ### CAA Record (structured data)
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsRecord
 metadata:
   name: caa-record

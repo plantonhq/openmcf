@@ -30,7 +30,7 @@ When you deploy an AzureContainerAppCustomDomain resource, Planton provisions:
 Create a file `custom-domain.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppCustomDomain
 metadata:
   name: app-custom-domain

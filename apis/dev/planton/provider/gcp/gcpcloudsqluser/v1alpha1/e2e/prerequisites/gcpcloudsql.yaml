@@ -1,0 +1,25 @@
+# Consumer-scoped GcpCloudSql install profile for the user chain. Shares the
+# same minimal Postgres shape as the database prerequisite — metadata.name
+# stays fixed for FK resolution; instanceName carries ${E2E_RUN_ID}.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
+metadata:
+  name: planton-oss-e2e-gcpsql-prereq
+  id: planton-oss-e2e-gcpsql-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudsql
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-sql-prereq-${E2E_RUN_ID}
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_15
+  tier: db-f1-micro
+  deletionProtection: false
+  deletionProtectionEnabled: false

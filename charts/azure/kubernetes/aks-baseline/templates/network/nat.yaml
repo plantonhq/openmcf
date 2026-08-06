@@ -7,7 +7,7 @@
 # exhaustion class that load-balancer egress (Azure's default outbound
 # model) hits under connection-heavy workloads. The static IP is also the
 # platform's stable egress address — what third parties allowlist.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: "{{ values.env }}-aks-nat-ip"
@@ -24,7 +24,7 @@ spec:
   # gateway restarts).
   sku: STANDARD
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: "{{ values.env }}-aks-nat"

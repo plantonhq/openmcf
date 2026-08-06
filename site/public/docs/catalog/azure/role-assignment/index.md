@@ -29,7 +29,7 @@ Role assignments carry no Azure tags -- the `Microsoft.Authorization` resource t
 Create a file `roleassignment.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: app-reader
@@ -81,7 +81,7 @@ This grants the principal read-only access to everything in `platform-rg`.
 ### Grant a Workload Identity Pull Access to a Registry
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: app-acr-pull
@@ -109,7 +109,7 @@ spec:
 Read access limited to blobs tagged `Project=Cascade`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: cascade-blob-reader
@@ -137,7 +137,7 @@ spec:
 ### Custom Role at Subscription Scope
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: cost-auditor

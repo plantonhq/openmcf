@@ -29,7 +29,7 @@ No namespaced workloads are created. The matching Gateway API controller observe
 Create a file `gateway-class.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayClass
 metadata:
   name: istio
@@ -67,7 +67,7 @@ planton apply -f gateway-class.yaml
 ### Istio GatewayClass
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayClass
 metadata:
   name: istio
@@ -79,7 +79,7 @@ spec:
 ### Envoy Gateway with a parameters reference
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayClass
 metadata:
   name: envoy-gateway

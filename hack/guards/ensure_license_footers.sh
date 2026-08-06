@@ -39,7 +39,7 @@ done < <(
   # Component READMEs: direct child of a v1/ folder anywhere under the APIs
   # tree (path-shaped, so future domains are covered without editing this
   # guard). The pattern cannot match v1/docs/README.md or v1/iac/**/README.md.
-  find apis/dev/planton -path '*/v1/README.md' 2>/dev/null
+  find apis/dev/planton -path '*/v*/README.md' 2>/dev/null
   # Helm chart READMEs: helm/<chart>/README.md — published distribution surfaces.
   find helm -mindepth 2 -maxdepth 2 -name README.md 2>/dev/null
 )

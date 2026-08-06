@@ -1,0 +1,51 @@
+# AwsElasticacheUser install profile used as a prerequisite by composed
+# components (AwsElasticacheUserGroup and, eventually, RBAC-enabled caches).
+# Two documents: a locked-down mandatory "default" user plus one
+# password-authenticated application user. AWS refuses to create a user group
+# unless a member's user NAME is "default". Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsElasticacheUser
+metadata:
+  name: planton-oss-e2e-ecuser-default-prereq
+  id: planton-oss-e2e-ecuser-default-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticacheuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engine: redis
+  userName: default
+  accessString: "off ~* +@all"
+  authenticationMode:
+    type: no-password-required
+---
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsElasticacheUser
+metadata:
+  name: planton-oss-e2e-ecuser-app-prereq
+  id: planton-oss-e2e-ecuser-app-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticacheuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engine: redis
+  userName: planton-e2e-app
+  accessString: "on ~* +@read +@write"
+  authenticationMode:
+    type: password
+    passwords:
+      - PlantonE2eTestPwd01!

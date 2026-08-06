@@ -1,0 +1,7 @@
+# Minimal-shape hack manifest: the empty spec (the manifest defaults) —
+# the plan proof must survive every optional block ABSENT.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTektonOperator
+metadata:
+  name: tekton-operator-min
+spec: {}

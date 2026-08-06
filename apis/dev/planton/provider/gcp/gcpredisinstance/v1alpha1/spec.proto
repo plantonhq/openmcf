@@ -1,0 +1,310 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpredisinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpRedisInstanceMaintenanceWindow defines a weekly maintenance window for
+// the Redis instance. GCP uses this to schedule updates and patches.
+// The maintenance window is fixed at 1 hour duration starting at the given
+// day/hour/minute (UTC).
+message GcpRedisInstanceMaintenanceWindow {
+  // Day of the week for the maintenance window.
+  string day = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+        "SUNDAY"
+      ]
+    }
+  ];
+
+  // Hour of day (0-23, UTC) when the maintenance window starts.
+  int32 hour = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 23
+  }];
+
+  // Minute of the hour (0-59, UTC) when the maintenance window starts.
+  // Combined with hour, this pins the window start to the exact minute —
+  // useful for coordinating with maintenance windows of dependent systems
+  // (e.g. start Redis maintenance 30 minutes after the database's window).
+  int32 minute = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 59
+  }];
+}
+
+// GcpRedisInstancePersistenceConfig controls RDB snapshot persistence for
+// the Redis instance. When enabled, data is periodically written to disk,
+// providing durability across restarts and failovers.
+//
+// Persistence is only meaningful for STANDARD_HA tier instances.
+message GcpRedisInstancePersistenceConfig {
+  // Persistence mode. DISABLED turns off persistence entirely.
+  // RDB enables periodic RDB snapshots.
+  string persistence_mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "DISABLED",
+        "RDB"
+      ]
+    }
+  ];
+
+  // How often RDB snapshots are taken. Required when persistence_mode is RDB.
+  string rdb_snapshot_period = 2 [(buf.validate.field).cel = {
+    id: "rdb_snapshot_period_valid_value"
+    expression: "this == '' || this in ['ONE_HOUR', 'SIX_HOURS', 'TWELVE_HOURS', 'TWENTY_FOUR_HOURS']"
+    message: "rdb_snapshot_period must be ONE_HOUR, SIX_HOURS, TWELVE_HOURS, or TWENTY_FOUR_HOURS"
+  }];
+
+  // Date and time the first snapshot was/will be attempted, to which all
+  // future snapshots align. RFC3339 UTC "Zulu" format (e.g.
+  // "2014-10-02T15:01:23Z"). Anchoring the schedule lets you place snapshot
+  // I/O in a low-traffic window instead of wherever instance creation time
+  // happened to fall. If not provided, GCP uses the creation time.
+  string rdb_snapshot_start_time = 3 [(buf.validate.field).cel = {
+    id: "rdb_snapshot_start_time_rfc3339"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?Z$')"
+    message: "rdb_snapshot_start_time must be an RFC3339 UTC timestamp like 2014-10-02T15:01:23Z"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "rdb_snapshot_period_requires_rdb_mode"
+    expression: "this.persistence_mode != 'RDB' || size(this.rdb_snapshot_period) > 0"
+    message: "rdb_snapshot_period is required when persistence_mode is RDB"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "rdb_snapshot_start_time_requires_rdb_mode"
+    expression: "this.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'"
+    message: "rdb_snapshot_start_time is only meaningful when persistence_mode is RDB"
+  };
+}
+
+// GcpRedisInstanceSpec defines the configuration for a Google Cloud Memorystore
+// for Redis instance.
+//
+// Memorystore for Redis provides a fully managed, in-memory data store backed
+// by the Redis protocol. It is used for caching, session management, real-time
+// analytics, rate limiting, leaderboards, and pub/sub messaging.
+//
+// Instances come in two tiers:
+//   - BASIC: standalone single-node instance, no replication, no SLA
+//   - STANDARD_HA: primary node with automatic failover to a replica in a
+//     different zone, 99.9% availability SLA
+//
+// Important behavioral notes:
+//
+//   - The instance_name, tier, connect_mode, transit_encryption_mode,
+//     authorized_network, reserved_ip_range, location_id,
+//     alternative_location_id, and customer_managed_key fields are immutable
+//     after creation. Changing them requires replacing the instance.
+//
+//   - When auth_enabled is true, GCP generates a random AUTH string that is
+//     rotated automatically. The current AUTH string is exported in stack outputs.
+//
+//   - Read replicas are only available with STANDARD_HA tier and require
+//     read_replicas_mode to be set to READ_REPLICAS_ENABLED.
+//
+//   - With connect_mode PRIVATE_SERVICE_ACCESS, the VPC must already carry a
+//     private services access connection (GcpServiceNetworkingConnection with
+//     a reserved GcpGlobalAddress range) before the instance is created.
+message GcpRedisInstanceSpec {
+  // GCP project where the Redis instance will be created.
+  // If not specified, the provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the Redis instance. This becomes the GCP resource name.
+  // Must start with a lowercase letter, contain only lowercase letters, numbers,
+  // and hyphens, and end with a lowercase letter or number. Maximum 40 characters.
+  // Immutable after creation.
+  string instance_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9-]{0,38}[a-z0-9]$",
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 40
+  ];
+
+  // GCP region where the instance will be deployed (e.g., "us-central1").
+  string region = 3 [(buf.validate.field).required = true];
+
+  // Service tier controlling availability and replication.
+  // BASIC: standalone instance, no replication, no SLA.
+  // STANDARD_HA: primary + replica with automatic failover, 99.9% SLA.
+  // Immutable after creation.
+  string tier = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "BASIC",
+        "STANDARD_HA"
+      ]
+    }
+  ];
+
+  // Memory size in GiB for the Redis instance. This is the total memory
+  // available for storing data. Minimum 1 GiB for BASIC; the GCP API requires
+  // at least 5 GiB for STANDARD_HA and for enabling read replicas.
+  int32 memory_size_gb = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  // Redis engine version (e.g., "REDIS_7_0", "REDIS_7_2", "REDIS_6_X").
+  // If not specified, the latest supported version is used. Upgrades apply
+  // in place; a version downgrade replaces the instance.
+  string redis_version = 6;
+
+  // Human-readable display name for the instance.
+  string display_name = 7;
+
+  // Zone within the region where the instance will be placed.
+  // For STANDARD_HA, this is the primary zone. GCP automatically selects
+  // a different zone for the replica unless alternative_location_id pins it.
+  // If not specified, GCP picks a zone. Immutable after creation.
+  string location_id = 8;
+
+  // Zone for the STANDARD_HA replica. Only applicable to STANDARD_HA tier;
+  // must differ from location_id. Pinning both zones matters when co-locating
+  // the cache with zonal workloads (e.g. keeping the replica in the same zone
+  // as a standby application stack to bound cross-zone latency after
+  // failover). If not specified, GCP picks a different zone automatically.
+  // Immutable after creation.
+  string alternative_location_id = 9;
+
+  // VPC network to which the instance is connected.
+  // If not specified, the default network is used.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorized_network = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // How the instance connects to the VPC network.
+  // DIRECT_PEERING: VPC peering (default). Simpler setup.
+  // PRIVATE_SERVICE_ACCESS: uses the network's private services access
+  // connection. Required for Shared VPC and lets the instance consume an
+  // address range you allocated (compose GcpGlobalAddress +
+  // GcpServiceNetworkingConnection on the network first).
+  // Immutable after creation.
+  string connect_mode = 11 [(buf.validate.field).cel = {
+    id: "connect_mode_valid_value"
+    expression: "this == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS']"
+    message: "connect_mode must be DIRECT_PEERING or PRIVATE_SERVICE_ACCESS"
+  }];
+
+  // CIDR range of internal addresses reserved for this instance.
+  // For DIRECT_PEERING: a /29 block (e.g., "10.0.0.0/29"), unique and
+  // non-overlapping with existing subnets; if not specified, GCP selects an
+  // unused /29 automatically. For PRIVATE_SERVICE_ACCESS: the NAME of an
+  // allocated address range on the private services access connection
+  // (a GcpGlobalAddress with purpose VPC_PEERING).
+  // Immutable after creation.
+  string reserved_ip_range = 12;
+
+  // Additional IP range for node placement. Required when enabling read
+  // replicas on an EXISTING instance (the original /29 has no room for the
+  // extra nodes). For DIRECT_PEERING: a /28 CIDR or "auto". For
+  // PRIVATE_SERVICE_ACCESS: the name of an allocated address range on the
+  // private services access connection, or "auto". Mutable — this is the
+  // field you set when scaling an in-place instance out to read replicas.
+  string secondary_ip_range = 13;
+
+  // Whether Redis AUTH is enabled. When true, clients must provide
+  // the AUTH string (exported in stack outputs) to connect.
+  // AUTH provides an additional layer of security beyond network controls.
+  bool auth_enabled = 14;
+
+  // TLS encryption mode for client-to-server traffic.
+  // DISABLED: no encryption (default).
+  // SERVER_AUTHENTICATION: clients verify the server's identity via TLS;
+  // pair with the server_ca_certs stack output, which carries the CA
+  // certificates clients must trust.
+  // Immutable after creation.
+  string transit_encryption_mode = 15 [(buf.validate.field).cel = {
+    id: "transit_encryption_mode_valid_value"
+    expression: "this == '' || this in ['DISABLED', 'SERVER_AUTHENTICATION']"
+    message: "transit_encryption_mode must be DISABLED or SERVER_AUTHENTICATION"
+  }];
+
+  // Redis configuration parameters as key-value pairs.
+  // See https://cloud.google.com/memorystore/docs/redis/reference/rest/v1/projects.locations.instances#Instance.FIELDS.redis_configs
+  // for the list of supported parameters (e.g., "maxmemory-policy", "notify-keyspace-events").
+  map<string, string> redis_configs = 16;
+
+  // Weekly maintenance window. If not specified, GCP schedules maintenance
+  // at its discretion.
+  GcpRedisInstanceMaintenanceWindow maintenance_window = 17;
+
+  // Self-service maintenance version. Setting this to a newer available
+  // version triggers the maintenance update on your schedule instead of
+  // waiting for GCP's rollout — the lever for applying a security patch
+  // immediately. Leave unset to follow GCP's automatic rollout.
+  string maintenance_version = 18;
+
+  // Read replica mode. Can only be set at creation time.
+  // READ_REPLICAS_DISABLED (default): no read endpoint, no scaling.
+  // READ_REPLICAS_ENABLED: read endpoint provided, instance can scale replicas.
+  // Only available with STANDARD_HA tier.
+  string read_replicas_mode = 19 [(buf.validate.field).cel = {
+    id: "read_replicas_mode_valid_value"
+    expression: "this == '' || this in ['READ_REPLICAS_DISABLED', 'READ_REPLICAS_ENABLED']"
+    message: "read_replicas_mode must be READ_REPLICAS_DISABLED or READ_REPLICAS_ENABLED"
+  }];
+
+  // Number of read replicas. Valid range is 1-5 when read_replicas_mode is
+  // READ_REPLICAS_ENABLED and tier is STANDARD_HA.
+  int32 replica_count = 20;
+
+  // Persistence configuration for RDB snapshots.
+  GcpRedisInstancePersistenceConfig persistence_config = 21;
+
+  // Cloud KMS key for customer-managed encryption at rest (CMEK).
+  // Format: projects/{project}/locations/{location}/keyRings/{keyRing}/cryptoKeys/{key}
+  // If not specified, data is encrypted with Google-managed keys.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef customer_managed_key = 22 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // -- Cross-field validations --
+
+  option (buf.validate.message).cel = {
+    id: "read_replicas_require_ha_tier"
+    expression: "this.read_replicas_mode != 'READ_REPLICAS_ENABLED' || this.tier == 'STANDARD_HA'"
+    message: "read_replicas_mode READ_REPLICAS_ENABLED requires tier STANDARD_HA"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replica_count_requires_ha_with_read_replicas"
+    expression: "this.replica_count == 0 || (this.tier == 'STANDARD_HA' && this.read_replicas_mode == 'READ_REPLICAS_ENABLED' && this.replica_count >= 1 && this.replica_count <= 5)"
+    message: "replica_count (1-5) requires tier STANDARD_HA with read_replicas_mode READ_REPLICAS_ENABLED"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alternative_location_requires_ha_tier"
+    expression: "this.alternative_location_id == '' || this.tier == 'STANDARD_HA'"
+    message: "alternative_location_id is only applicable to STANDARD_HA tier"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "alternative_location_must_differ"
+    expression: "this.alternative_location_id == '' || this.alternative_location_id != this.location_id"
+    message: "alternative_location_id must be a different zone from location_id"
+  };
+}

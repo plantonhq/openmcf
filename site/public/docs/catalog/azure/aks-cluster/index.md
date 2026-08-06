@@ -30,7 +30,7 @@ The cluster deliberately carries exactly ONE node pool -- the default (system) p
 Create a file `cluster.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: prod-aks
@@ -107,7 +107,7 @@ Secret-by-default: `windowsProfile.adminPassword` and `httpProxyConfig.trustedCa
 ### Private Cluster with Workload Identity
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: private-aks
@@ -141,7 +141,7 @@ spec:
 ### Monitored Production Cluster with Azure CNI Overlay
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: prod-aks

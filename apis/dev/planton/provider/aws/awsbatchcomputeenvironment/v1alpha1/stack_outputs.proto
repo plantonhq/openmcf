@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsbatchcomputeenvironment.v1alpha1;
+
+// AwsBatchComputeEnvironmentStackOutputs captures the observable identifiers
+// of the AWS Batch compute environment.
+//
+// The primary join key is `compute_environment_arn`: an AwsBatchJobQueue's
+// compute_environment_order entries reference it to map the queue onto this
+// environment.
+message AwsBatchComputeEnvironmentStackOutputs {
+  // The Amazon Resource Name (ARN) of the compute environment -- what job
+  // queues reference in their compute_environment_order.
+  string compute_environment_arn = 1;
+
+  // The compute environment's name (derived from metadata.name).
+  string compute_environment_name = 2;
+
+  // The ARN of the ECS cluster AWS Batch provisions behind a MANAGED
+  // compute environment -- useful for monitoring and debugging the tasks
+  // Batch actually runs.
+  string ecs_cluster_arn = 3;
+
+  // The environment's current status (e.g. "VALID", "INVALID"). A queue can
+  // only associate environments whose status is VALID.
+  string status = 4;
+}

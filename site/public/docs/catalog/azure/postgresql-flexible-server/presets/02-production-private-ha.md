@@ -43,7 +43,7 @@ The delegated subnet must carry the `Microsoft.DBforPostgreSQL/flexibleServers`
 delegation and hold no other resources:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: database-subnet

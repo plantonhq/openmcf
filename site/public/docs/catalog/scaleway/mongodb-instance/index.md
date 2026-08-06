@@ -31,7 +31,7 @@ When you deploy a ScalewayMongodbInstance resource, Planton provisions:
 Create a file `mongodb-instance.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayMongodbInstance
 metadata:
   name: my-mongo
@@ -97,7 +97,7 @@ This creates a single-node MongoDB 7.0 instance with default block storage (sbs_
 A minimal single-node MongoDB instance for development and testing:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayMongodbInstance
 metadata:
   name: dev-mongo
@@ -126,7 +126,7 @@ spec:
 A three-node replica set with Private Network connectivity, high-IOPS storage, automated snapshots, and multiple users with scoped roles:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayMongodbInstance
 metadata:
   name: prod-mongo
@@ -173,7 +173,7 @@ spec:
 A MongoDB instance referencing an Planton-managed Private Network while also exposing a public endpoint for admin access:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayMongodbInstance
 metadata:
   name: staging-mongo

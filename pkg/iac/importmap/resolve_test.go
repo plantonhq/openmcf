@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	componentv1 "github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1"
-	awsecrrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1"
+	awsecrrepov1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1alpha1"
 )
 
 func TestPlaceholders(t *testing.T) {
@@ -181,7 +181,7 @@ func TestResolveValues(t *testing.T) {
 
 	rctx := ResolveContext{
 		MetadataName: "my-bucket",
-		Spec:         &awsecrrepov1.AwsEcrRepoSpec{RepositoryName: "team/app"},
+		Spec:         &awsecrrepov1alpha1.AwsEcrRepoSpec{RepositoryName: "team/app"},
 		StackOutputs: map[string]string{},
 		AddressKey:   "archive",
 		ArnParts:     map[string]string{"resource_id": "vpc-0abc"},

@@ -1,0 +1,15 @@
+# Offline-plan manifest: a CMK configuration exercising the key list,
+# the infrastructure-encryption layer, and the user-assigned unwrapping
+# identity.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubNamespaceCustomerManagedKey
+metadata:
+  name: test-eventhub-cmk
+spec:
+  eventhubNamespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.EventHub/namespaces/my-ehns
+  keyVaultKeyIds:
+    - value: https://my-vault.vault.azure.net/keys/my-key
+  infrastructureEncryptionEnabled: true
+  userAssignedIdentityId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-uai

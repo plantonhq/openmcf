@@ -3,7 +3,7 @@
 # writes mirrored records, offset checkpoints, and its internal state
 # topics here, with the same dedicated-principal posture as every client
 # component.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   name: "{{ values.env }}-kafka-mirror-user"
@@ -32,7 +32,7 @@ spec:
 # The engine runs on Connect's protocol, so its group identity and
 # internal topics default from this resource's name — unique beside the
 # optional Kafka Connect cluster by construction.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaMirrorMaker2
 metadata:
   name: "{{ values.env }}-kafka-mirror"

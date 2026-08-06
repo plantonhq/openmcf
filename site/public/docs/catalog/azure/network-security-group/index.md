@@ -33,7 +33,7 @@ Azure automatically creates implicit default rules in every NSG (priorities 6500
 Create a file `nsg.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: my-nsg
@@ -113,7 +113,7 @@ Each entry in `securityRules` supports the following fields:
 A minimal NSG that allows inbound HTTPS and denies everything else (via Azure defaults):
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: web-nsg
@@ -141,7 +141,7 @@ spec:
 An NSG for a web tier that allows both HTTP and HTTPS inbound from the internet:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: web-tier-nsg
@@ -184,7 +184,7 @@ spec:
 An NSG for an application tier that only accepts traffic from the web tier subnet and allows SSH from a bastion host:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: app-tier-nsg
@@ -228,7 +228,7 @@ spec:
 An NSG for a data tier that allows database traffic from multiple application subnets using plural address prefixes:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: data-tier-nsg
@@ -275,7 +275,7 @@ spec:
 Reference an Planton-managed resource group instead of hardcoding the name:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: ref-nsg

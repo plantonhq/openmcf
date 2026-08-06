@@ -31,7 +31,7 @@ The namespace is an internal implementation detail. Users interact with the cont
 Create a file `serverless-container.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessContainer
 metadata:
   name: my-api
@@ -105,7 +105,7 @@ This creates a publicly accessible serverless container in the Paris region, lis
 A public-facing REST API deployed from a Scaleway Container Registry image, configured with environment variables and secrets:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessContainer
 metadata:
   name: order-api
@@ -145,7 +145,7 @@ spec:
 A private gRPC service using HTTP/2 cleartext protocol, custom health checks, request-based autoscaling, and a Private Network connection:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessContainer
 metadata:
   name: inference-grpc
@@ -193,7 +193,7 @@ spec:
 A container that runs scheduled data processing tasks via cron triggers, with a command override and ephemeral local storage for temporary files:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayServerlessContainer
 metadata:
   name: data-pipeline

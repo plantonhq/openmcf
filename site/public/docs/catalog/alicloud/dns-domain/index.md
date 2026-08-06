@@ -29,7 +29,7 @@ When you deploy an AliCloudDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsZone
 metadata:
   name: my-domain
@@ -76,7 +76,7 @@ This registers the domain in Alidns. After deployment, retrieve the `dns_servers
 Register a domain with only the required fields. Suitable for development or simple DNS hosting.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsZone
 metadata:
   name: dev-domain
@@ -95,7 +95,7 @@ spec:
 A production domain with resource group placement and organizational tags for governance.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsZone
 metadata:
   name: prod-domain

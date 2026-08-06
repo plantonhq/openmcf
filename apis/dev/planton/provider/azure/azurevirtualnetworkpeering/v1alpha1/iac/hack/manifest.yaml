@@ -1,0 +1,11 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualNetworkPeering
+metadata:
+  name: test-peering
+spec:
+  name: hub-to-spoke1
+  virtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet
+  remoteVirtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/spoke1-vnet
+  allowForwardedTraffic: true

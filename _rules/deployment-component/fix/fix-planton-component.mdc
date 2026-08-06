@@ -317,7 +317,7 @@ Next Steps:
 **Actions:**
 1. Update spec.proto (int32 → int64)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1/`
+3. Run component tests: `go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1alpha1/`
 4. Update spec_test.go (test with large values)
 5. Update Terraform variables.tf (int → number)
 6. Update README.md (mention TB-scale support)
@@ -339,7 +339,7 @@ Next Steps:
 2. Update Terraform main.tf (ensure same logic)
 3. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
 4. Update spec_test.go (test backup retention values)
-5. Run component tests: `go test ./apis/dev/planton/provider/aws/awsrdsinstance/v1/`
+5. Run component tests: `go test ./apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/`
 6. Run E2E tests to verify fix works
 7. Run all tests: `go test -v ./apis/dev/planton/provider/<provider>/<component>/v1/`
 8. Validate consistency
@@ -379,7 +379,7 @@ Next Steps:
    - If validation SHOULD exist: Add to spec.proto, fix test
    - If validation SHOULDN'T exist: Fix test to not expect error
 3. If proto changed: Run `make protos` to regenerate stubs
-4. Run component tests: `go test ./apis/dev/planton/provider/atlas/mongodbatlas/v1/`
+4. Run component tests: `go test ./apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
 5. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
 6. Update examples if validation behavior changed
 7. Update README if validation rules mentioned
@@ -415,7 +415,7 @@ Next Steps:
 **Actions:**
 1. Update spec.proto (fix regex pattern)
 2. Regenerate stubs: `make protos`
-3. Run component tests: `go test ./apis/dev/planton/provider/aws/awsvpc/v1/`
+3. Run component tests: `go test ./apis/dev/planton/provider/aws/awsvpc/v1alpha1/`
 4. Update spec_test.go (test 10.0.0.0/8 is now valid)
 5. Update docs/README.md (document valid CIDR ranges)
 7. Run build: `go build ./apis/dev/planton/provider/<provider>/<component>/v1/...`
@@ -672,7 +672,7 @@ All consistency checks passed!
 🧪 Running validation...
 
 Component Tests:
-  Command: go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
+  Command: go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
   Result: ✅ PASS
   Tests run: 18
   Tests passed: 18

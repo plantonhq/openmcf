@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awseksaccessentry.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEksAccessEntrySpec grants one IAM principal (a role or user) access
+// to an AwsEksCluster's Kubernetes API through EKS access entries -- the
+// modern access model that replaces hand-editing the aws-auth ConfigMap.
+// The cluster must have API authentication enabled
+// (access_config.authentication_mode "API" or "API_AND_CONFIG_MAP").
+//
+// Authorization comes from either side, or both:
+// - policy_associations attach AWS-managed EKS access policies
+//   (AmazonEKSViewPolicy, ...AdminPolicy, ...ClusterAdminPolicy, ...),
+//   scoped to the whole cluster or to namespaces -- no Kubernetes RBAC
+//   objects needed.
+// - kubernetes_groups names groups your OWN RBAC bindings reference --
+//   the entry maps the principal onto them; you own the (Cluster)Role
+//   and bindings inside the cluster.
+//
+// AWS keys the entry on (cluster, principal): one entry per principal
+// per cluster, and both keys are create-time immutable. Groups,
+// username, and policy associations update in place. EKS auto-creates
+// entries for the cluster creator and for managed node group / Fargate
+// roles -- model entries only for the principals you grant yourself.
+message AwsEksAccessEntrySpec {
+  // The AWS region the entry's cluster lives in. Must match the
+  // cluster's region. Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The EKS cluster the principal gets access to. Reference an
+  // AwsEksCluster's name output or pass a literal cluster name for a
+  // cluster managed outside Planton. Create-only in AWS.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // The IAM principal being granted access. Reference an AwsIamRole's
+  // role_arn output, or pass a literal role or user ARN (IAM users work
+  // as literals -- roles are the norm for team and workload access).
+  // Create-only in AWS: one entry per principal per cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef principal_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The entry type. Empty or "STANDARD" is the human/workload entry this
+  // kind exists for. The node types -- "EC2", "EC2_LINUX", "EC2_WINDOWS",
+  // "FARGATE_LINUX", "HYBRID_LINUX" -- exist for infrastructure roles
+  // (EKS creates them automatically for managed node groups and Fargate
+  // profiles; set one only when registering self-managed or hybrid
+  // nodes). AWS forbids groups, username, and policy associations on
+  // non-STANDARD entries (enforced below). Create-only in AWS.
+  string type = 4;
+
+  // Kubernetes groups the principal is mapped onto -- your own RBAC
+  // (Cluster)RoleBindings reference these group names; nothing is
+  // created in-cluster for you. Groups may not start with the reserved
+  // "system:" prefix. STANDARD entries only. Updates in place.
+  repeated string kubernetes_groups = 5 [(buf.validate.field).repeated.items = {
+    string: {
+      min_len: 1
+      max_len: 253
+      not_contains: " "
+    }
+  }];
+
+  // The Kubernetes username the principal authenticates as, visible in
+  // audit logs and usable in RBAC bindings. Empty lets AWS default it
+  // (the principal ARN for users; a session-templated name for roles --
+  // the right choice for audit trails, since it preserves the session
+  // name). STANDARD entries only. Updates in place.
+  string user_name = 6;
+
+  // AWS-managed EKS access policies attached to the principal,
+  // cluster-scoped or namespace-scoped -- authorization without any
+  // in-cluster RBAC objects. STANDARD entries only. Associations add,
+  // change scope, and remove in place.
+  repeated AwsEksAccessEntryPolicyAssociation policy_associations = 7;
+
+  // AWS rejects groups/username/associations on node-type entries at
+  // runtime ("EC2_LINUX, EC2_WINDOWS, FARGATE_LINUX types disallow
+  // users to input a username or groups, and prevent associations") --
+  // enforced here so it never surfaces as a deploy-time error.
+  option (buf.validate.message).cel = {
+    id: "type_valid"
+    message: "type must be 'STANDARD', 'EC2', 'EC2_LINUX', 'EC2_WINDOWS', 'FARGATE_LINUX', or 'HYBRID_LINUX' when set"
+    expression: "this.type == '' || this.type in ['STANDARD', 'EC2', 'EC2_LINUX', 'EC2_WINDOWS', 'FARGATE_LINUX', 'HYBRID_LINUX']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "non_standard_type_excludes_access_fields"
+    message: "kubernetes_groups, user_name, and policy_associations are only valid on STANDARD access entries"
+    expression: "this.type in ['', 'STANDARD'] || (size(this.kubernetes_groups) == 0 && this.user_name == '' && size(this.policy_associations) == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "kubernetes_groups_not_reserved"
+    message: "kubernetes_groups may not use the reserved 'system:' prefix"
+    expression: "this.kubernetes_groups.all(g, !g.startsWith('system:'))"
+  };
+}
+
+// AwsEksAccessEntryPolicyAssociation attaches one AWS-managed EKS access
+// policy to the principal, with a cluster or namespace scope.
+message AwsEksAccessEntryPolicyAssociation {
+  // The access policy's ARN. These are AWS-managed and account-less --
+  // "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy",
+  // ...EditPolicy, ...AdminPolicy (namespace-level admin),
+  // ...ClusterAdminPolicy (full cluster admin), plus service-specific
+  // policies. `aws eks list-access-policies` shows the catalog; custom
+  // policies do not exist.
+  string policy_arn = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.prefix = "arn:"
+  ];
+
+  // What the policy's permissions apply to: the whole cluster or a set
+  // of namespaces.
+  AwsEksAccessEntryAccessScope access_scope = 2 [(buf.validate.field).required = true];
+}
+
+// AwsEksAccessEntryAccessScope bounds a policy association to the whole
+// cluster or to specific namespaces.
+message AwsEksAccessEntryAccessScope {
+  // "cluster" applies the policy cluster-wide; "namespace" restricts it
+  // to the listed namespaces.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // The namespaces the policy applies to when type is "namespace" --
+  // e.g. give a team AmazonEKSAdminPolicy inside its own namespaces
+  // only. Trailing "*" wildcards are allowed ("team-*").
+  repeated string namespaces = 2 [(buf.validate.field).repeated.items = {
+    string: {
+      min_len: 1
+      max_len: 63
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "scope_type_valid"
+    message: "access scope type must be 'cluster' or 'namespace'"
+    expression: "this.type in ['cluster', 'namespace']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "namespace_scope_requires_namespaces"
+    message: "namespace-scoped associations must list at least one namespace"
+    expression: "this.type != 'namespace' || size(this.namespaces) > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cluster_scope_excludes_namespaces"
+    message: "cluster-scoped associations must not list namespaces"
+    expression: "this.type != 'cluster' || size(this.namespaces) == 0"
+  };
+}

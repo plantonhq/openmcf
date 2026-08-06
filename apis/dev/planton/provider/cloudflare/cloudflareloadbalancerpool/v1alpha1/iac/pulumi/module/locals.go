@@ -1,0 +1,20 @@
+package module
+
+import (
+	cloudflareprovider "github.com/plantonhq/planton/apis/dev/planton/provider/cloudflare"
+	cloudflareloadbalancerpoolv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/cloudflare/cloudflareloadbalancerpool/v1alpha1"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// Locals bundles handy references for the rest of the module.
+type Locals struct {
+	CloudflareProviderConfig   *cloudflareprovider.CloudflareProviderConfig
+	CloudflareLoadBalancerPool *cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool
+}
+
+func initializeLocals(_ *pulumi.Context, stackInput *cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPoolStackInput) *Locals {
+	return &Locals{
+		CloudflareProviderConfig:   stackInput.ProviderConfig,
+		CloudflareLoadBalancerPool: stackInput.Target,
+	}
+}

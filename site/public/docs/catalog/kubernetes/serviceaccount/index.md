@@ -31,7 +31,7 @@ When you deploy a KubernetesServiceAccount resource, Planton provisions:
 Create a file `service-account.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceAccount
 metadata:
   name: app-identity
@@ -94,7 +94,7 @@ All three arms follow the same mechanism: the cluster's OIDC issuer vouches for 
 ### GKE Workload Identity
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceAccount
 metadata:
   name: dns-manager
@@ -116,7 +116,7 @@ spec:
 ### EKS IRSA
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceAccount
 metadata:
   name: s3-reader
@@ -140,7 +140,7 @@ spec:
 Pull secrets attached at the identity level, token automount disabled for pods that never call the kube-apiserver:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceAccount
 metadata:
   name: web-frontend

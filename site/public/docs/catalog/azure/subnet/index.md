@@ -33,7 +33,7 @@ Subnets are not tracked ARM resources, so they carry no tags of their own.
 Create a file `subnet.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: my-subnet
@@ -94,7 +94,7 @@ This creates a /24 subnet (251 usable IPs) with private endpoint network policie
 A /24 subnet for general workloads with no special endpoints or delegations:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: workload-subnet
@@ -116,7 +116,7 @@ spec:
 A subnet delegated to PostgreSQL Flexible Server with service endpoints for secure access to Storage and Key Vault:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: postgres-subnet
@@ -146,7 +146,7 @@ spec:
 A subnet for private endpoints with NSG policies enabled for zero-trust architectures:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: pe-subnet
@@ -170,7 +170,7 @@ spec:
 Reference Planton-managed resources instead of hardcoding ARM IDs — for the parent network and for the route table, NSG, and NAT gateway attachments:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: app-subnet
@@ -210,7 +210,7 @@ Each reference resolves through the field's default kind (AzureVirtualNetwork, A
 A subnet delegated to Azure Container App Environments with the minimum /23 sizing recommended by Azure:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: cae-subnet

@@ -32,7 +32,7 @@ When you deploy an AzureFunctionApp resource, Planton provisions:
 Create a file `functionapp.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFunctionApp
 metadata:
   name: my-func
@@ -124,7 +124,7 @@ This creates a Python 3.12 Function App on the specified Service Plan with HTTPS
 ### Consumption HTTP API with Managed-Identity Storage
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFunctionApp
 metadata:
   name: events-fn
@@ -155,7 +155,7 @@ spec:
 ### Elastic Premium with Pre-Warmed Instances and VNet
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFunctionApp
 metadata:
   name: private-fn
@@ -189,7 +189,7 @@ spec:
 ### Using Foreign Key References
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFunctionApp
 metadata:
   name: ref-fn

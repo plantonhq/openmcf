@@ -40,7 +40,7 @@ mistakes surface at validate time.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenterEc2NodeClass
 metadata:
   name: default-al2023

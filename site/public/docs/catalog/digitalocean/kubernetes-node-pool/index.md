@@ -31,7 +31,7 @@ When you deploy a DigitalOceanKubernetesNodePool resource, Planton provisions:
 Create a file `node-pool.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: worker-pool
@@ -85,7 +85,7 @@ This creates a three-node pool of `s-4vcpu-8gb` Droplets in the specified DOKS c
 A simple, fixed-size pool for general-purpose workloads:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: web-workers
@@ -110,7 +110,7 @@ spec:
 A production pool that scales between 2 and 10 nodes, with Kubernetes labels for workload targeting:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: api-pool
@@ -141,7 +141,7 @@ spec:
 A dedicated high-memory pool that uses taints to isolate workloads and references the parent cluster via `valueFrom`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: ml-pool

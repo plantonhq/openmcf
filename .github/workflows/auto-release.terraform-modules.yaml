@@ -32,7 +32,7 @@ on:
         required: true
         type: string
       path:
-        description: 'Path to the Terraform module (e.g., apis/dev/planton/provider/aws/awsecsservice/v1/iac/tf)'
+        description: 'Path to the Terraform module (e.g., apis/dev/planton/provider/aws/awsecsservice/v1alpha1/iac/tf)'
         required: true
         type: string
 

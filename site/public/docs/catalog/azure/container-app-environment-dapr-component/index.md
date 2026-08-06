@@ -27,7 +27,7 @@ When you deploy an AzureContainerAppEnvironmentDaprComponent resource, Planton p
 Create a file `statestore.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentDaprComponent
 metadata:
   name: statestore

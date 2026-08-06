@@ -26,7 +26,7 @@ When you deploy an AzureServiceBusQueue resource, Planton provisions:
 Create a file `queue.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusQueue
 metadata:
   name: orders-queue

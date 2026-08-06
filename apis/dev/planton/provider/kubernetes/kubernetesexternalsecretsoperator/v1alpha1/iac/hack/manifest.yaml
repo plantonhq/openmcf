@@ -1,0 +1,65 @@
+# Full-surface offline-proof manifest: exercises the CRD lifecycle knobs,
+# HA controller with leader election, reconcile tuning, sharding and
+# scoping, workload identity, scheduling, sizing, per-component tuning,
+# observability, image override, and the helm_values escape hatch — so the
+# offline tofu plan and pulumi preview proofs cover arms the live kind
+# lanes exclude. Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesExternalSecretsOperator
+metadata:
+  name: hack-external-secrets
+spec:
+  namespace:
+    value: external-secrets
+  createNamespace: true
+  chartVersion: 2.8.0
+  crds:
+    install: true
+    keepOnUninstall: true
+  replicas: 2
+  leaderElect: true
+  concurrent: 5
+  controllerClass: platform
+  logLevel: debug
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  workloadIdentity:
+    gke:
+      serviceAccountEmail:
+        value: external-secrets@my-project.iam.gserviceaccount.com
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: platform
+      effect: NoSchedule
+  priorityClassName: system-cluster-critical
+  podDisruptionBudget: true
+  prometheus:
+    serviceMonitor: true
+    serviceMonitorInterval: 30s
+    serviceMonitorLabels:
+      release: kube-prometheus-stack
+  webhook:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  certController:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  imageRepository: registry.example.com/external-secrets/external-secrets
+  helmValues: |
+    revisionHistoryLimit: 3

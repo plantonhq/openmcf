@@ -31,7 +31,7 @@ When you deploy an OciNetworkLoadBalancer resource, Planton provisions:
 Create a file `nlb.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkLoadBalancer
 metadata:
   name: my-nlb
@@ -171,7 +171,7 @@ This creates a public NLB listening on port 80 (TCP) and distributing traffic to
 A public NLB distributing TCP traffic across two backends with five-tuple hashing and TCP health checks:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkLoadBalancer
 metadata:
   name: web-nlb
@@ -210,7 +210,7 @@ spec:
 A private NLB for internal services with instant failover and fail-open enabled. When a backend becomes unhealthy, existing connections immediately move to a healthy backend with a TCP RST signal:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkLoadBalancer
 metadata:
   name: internal-nlb
@@ -274,7 +274,7 @@ spec:
 An NLB in transparent mode forwarding all traffic to firewall appliances while preserving the original source and destination IPs. Symmetric hashing ensures return traffic follows the same path:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkLoadBalancer
 metadata:
   name: fw-nlb
@@ -321,7 +321,7 @@ spec:
 An NLB serving both TCP and UDP traffic on separate listeners, using DNS-based health checks for a DNS server backend set:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkLoadBalancer
 metadata:
   name: dns-nlb

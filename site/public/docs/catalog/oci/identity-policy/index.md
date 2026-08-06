@@ -27,7 +27,7 @@ When you deploy an OciIdentityPolicy resource, Planton provisions:
 Create a file `policy.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciIdentityPolicy
 metadata:
   name: my-admin-policy
@@ -76,7 +76,7 @@ This creates an IAM policy named `my-admin-policy` attached to the specified com
 A policy granting a group full administrative access to all resources within a compartment — the most common OCI policy pattern:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciIdentityPolicy
 metadata:
   name: compartment-admin-policy
@@ -98,7 +98,7 @@ spec:
 A policy granting a dynamic group access to specific OCI services — the standard workload identity pattern for compute instances and OKE pods that need to call OCI APIs without stored credentials:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciIdentityPolicy
 metadata:
   name: workload-service-access
@@ -122,7 +122,7 @@ spec:
 A tenancy-level policy granting read-only visibility across all compartments for compliance and security auditing:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciIdentityPolicy
 metadata:
   name: auditor-policy
@@ -145,7 +145,7 @@ spec:
 A policy using `valueFrom` to reference an Planton-managed compartment, with a version date for stable policy evaluation and custom metadata labels:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciIdentityPolicy
 metadata:
   name: network-admin-policy

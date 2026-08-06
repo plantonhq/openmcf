@@ -37,7 +37,7 @@ pools here by ID or `valueFrom`.
 ## Quick Start
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancer
 metadata:
   name: my-lb

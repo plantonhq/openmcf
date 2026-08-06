@@ -1,0 +1,41 @@
+# Interface STS endpoint scenario: the ENI-based PrivateLink endpoint type,
+# placed on both AZs of the shared subnet fixture. Private DNS is exercised
+# honestly -- the VPC prerequisite enables both DNS support and DNS hostnames,
+# which is exactly what AWS requires for a private hosted zone association.
+# No security groups are given, so AWS falls back to the VPC's default
+# security group (the documented default this component preserves). STS is
+# chosen because it exists in every region and carries no data-path setup.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpcEndpoint
+metadata:
+  name: planton-oss-e2e-vpce-if-sts
+  id: planton-oss-e2e-vpce-if-sts
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpcendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  endpointType: Interface
+  serviceName: com.amazonaws.us-west-2.sts
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  privateDnsEnabled: true

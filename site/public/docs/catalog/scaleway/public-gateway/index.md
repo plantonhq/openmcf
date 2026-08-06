@@ -30,7 +30,7 @@ When you deploy a ScalewayPublicGateway resource, Planton provisions:
 Create a file `public-gateway.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPublicGateway
 metadata:
   name: my-gateway
@@ -88,7 +88,7 @@ This creates a standard Public Gateway with NAT masquerade enabled, giving all r
 A standard gateway providing outbound internet access for private resources, referencing an Planton-managed Private Network:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPublicGateway
 metadata:
   name: nat-gateway
@@ -113,7 +113,7 @@ spec:
 A gateway configured as an SSH jump host with bastion access restricted to specific CIDR ranges:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPublicGateway
 metadata:
   name: bastion-gateway
@@ -140,7 +140,7 @@ spec:
 A production gateway with NAT, SSH bastion, PAT rules exposing internal services, SMTP enabled for an email relay, and reverse DNS configured:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPublicGateway
 metadata:
   name: prod-gateway

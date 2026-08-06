@@ -1,0 +1,51 @@
+# The stream-durability proof: 3 dual-role nodes — quorum survives one
+# controller loss AND a replication-factor-3 topic survives one broker
+# loss. The behavioral verifier (switched on by this scenario's name)
+# creates an RF-3/min-ISR-2 topic, produces run-unique markers with
+# acks=all through the bootstrap Service (the application path — every
+# acknowledged write is on two brokers before the producer hears
+# success), DELETES a node outright, consumes every marker back DURING
+# the outage, waits for full strength, and consumes again.
+#
+# Three dual-role nodes instead of separate controller/broker pools,
+# deliberately: the proof is about replicated data surviving a node loss,
+# and three JVMs is what a single-node kind cluster honestly fits — the
+# separate-pool production shape rides the full-surface scenario and the
+# real-cluster lanes.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafka
+metadata:
+  name: e2e-kaf-durability
+spec:
+  namespace:
+    value: e2e-kaf-durability
+  create_namespace: true
+  node_pools:
+    - name: dual
+      roles:
+        - controller
+        - broker
+      replicas: 3
+      storage:
+        size: 2Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 768Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+  config:
+    default.replication.factor: "3"
+    min.insync.replicas: "2"
+    offsets.topic.replication.factor: "3"
+    transaction.state.log.replication.factor: "3"
+    transaction.state.log.min.isr: "2"
+  jvm:
+    xms: 512m
+    xmx: 512m

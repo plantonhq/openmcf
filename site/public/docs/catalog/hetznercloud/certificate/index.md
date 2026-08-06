@@ -34,7 +34,7 @@ For **uploaded** certificates:
 Create a file `certificate.yaml`:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudCertificate
 metadata:
   name: my-cert
@@ -85,7 +85,7 @@ This component has no optional fields. All fields within the selected variant ar
 A SAN certificate covering a root domain and subdomains. All domains must resolve to a load balancer with an HTTPS service referencing this certificate.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudCertificate
 metadata:
   name: web-platform-cert
@@ -109,7 +109,7 @@ spec:
 A user-provided wildcard certificate and private key. Use when you need wildcard coverage, an EV/OV certificate, or a certificate from a specific CA.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudCertificate
 metadata:
   name: wildcard-cert
@@ -140,7 +140,7 @@ spec:
 A managed certificate deployed alongside a load balancer that references it for HTTPS termination. The load balancer uses `valueFrom` to resolve the certificate ID automatically.
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudCertificate
 metadata:
   name: api-cert
@@ -160,7 +160,7 @@ spec:
 The companion load balancer manifest references the certificate via `valueFrom`:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1
+apiVersion: hetzner-cloud.planton.dev/v1alpha1
 kind: HetznerCloudLoadBalancer
 metadata:
   name: api-lb

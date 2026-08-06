@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLbListenerRule
+metadata:
+  name: api-route-demo
+spec:
+  region: us-west-2
+  listenerArn:
+    value: arn:aws:elasticloadbalancing:us-west-2:123456789012:listener/app/demo/50dc6c495c0c9188/f2f7dc8efc522ab2
+  priority: 10
+  # Host AND path conditions plus a url-rewrite transform deliberately
+  # exercise the multi-criterion condition shape and the transform block --
+  # the parts of the variable contract that would break silently if the
+  # nested objects were mistyped.
+  conditions:
+    - hostHeader:
+        values:
+          - api.example.com
+    - pathPattern:
+        values:
+          - /v1/*
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              value: arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/943f017f100becff
+  transforms:
+    - type: url-rewrite
+      urlRewrite:
+        regex: "^/v1/(.*)$"
+        replace: "/v2/$1"

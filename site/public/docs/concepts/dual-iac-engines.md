@@ -133,7 +133,7 @@ Both engines produce the same outputs. A `KubernetesPostgres` deployment produce
 Every component's IaC directory contains both implementations side by side:
 
 ```text
-apis/dev/planton/provider/kubernetes/kubernetespostgres/v1/iac/
+apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/iac/
 |-- pulumi/
 |   |-- main.go                  # Entry point: load stack input, call module
 |   |-- Pulumi.yaml              # Pulumi project definition

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureapplicationsecuritygroup.v1alpha1;
+
+import "dev/planton/provider/azure/azureapplicationsecuritygroup/v1alpha1/api.proto";
+import "dev/planton/provider/azure/provider.proto";
+
+// AzureApplicationSecurityGroupStackInput is the input to the IaC modules
+// (Pulumi/Terraform). It contains the target resource definition and Azure
+// provider credentials.
+message AzureApplicationSecurityGroupStackInput {
+  // The application security group resource to deploy.
+  AzureApplicationSecurityGroup target = 1;
+
+  // Azure provider configuration (credentials).
+  dev.planton.provider.azure.AzureProviderConfig provider_config = 2;
+}

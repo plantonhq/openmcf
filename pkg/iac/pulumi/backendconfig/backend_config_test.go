@@ -3,7 +3,7 @@ package backendconfig
 import (
 	"testing"
 
-	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
+	awsvpcv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumiannotationkeys"
 	"github.com/stretchr/testify/assert"
@@ -12,14 +12,14 @@ import (
 func TestExtractFromManifest(t *testing.T) {
 	tests := []struct {
 		name      string
-		manifest  *awsvpcv1.AwsVpc
+		manifest  *awsvpcv1alpha1.AwsVpc
 		want      *PulumiBackendConfig
 		wantError bool
 		errorMsg  string
 	}{
 		{
 			name: "stack.fqdn takes precedence",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.StackFqdnAnnotationKey:    "demo-org/aws-examples/dev",
@@ -39,7 +39,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "individual annotations when stack.fqdn not present",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
@@ -58,7 +58,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "invalid stack.fqdn format",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.StackFqdnAnnotationKey: "invalid-format",
@@ -71,7 +71,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "missing required annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
@@ -86,7 +86,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "empty annotation values",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.OrganizationAnnotationKey: "my-org",
@@ -101,7 +101,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "no annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{},
 			},
 			want:      nil,
@@ -110,7 +110,7 @@ func TestExtractFromManifest(t *testing.T) {
 		},
 		{
 			name: "empty stack.fqdn components",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						pulumiannotationkeys.StackFqdnAnnotationKey: "org//stack", // Missing project

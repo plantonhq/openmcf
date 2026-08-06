@@ -29,7 +29,7 @@ HTTP API private integrations then reference the link by ID (`connectionId` with
 Create a file `vpc-link.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiVpcLink
 metadata:
   name: private-services-link
@@ -68,7 +68,7 @@ planton apply -f vpc-link.yaml
 ### Composed from Planton-Managed Networking
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiVpcLink
 metadata:
   name: internal-alb-link

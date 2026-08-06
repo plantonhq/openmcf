@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbSqlRoleDefinition
+metadata:
+  name: test-cosmos-sql-role-definition
+spec:
+  cosmosdbAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/planton-hack-cosmos
+  roleName: hack-container-writer
+  # Exercises the explicit-type seam (unspecified deploys CustomRole).
+  type: CUSTOM_ROLE
+  # Exercises both assignable-scope shapes: the whole account and a
+  # database path composed on the account ID.
+  assignableScopes:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/planton-hack-cosmos
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/planton-hack-cosmos/dbs/app-data
+  # Exercises multiple additive permission blocks.
+  permissions:
+    - dataActions:
+        - Microsoft.DocumentDB/databaseAccounts/readMetadata
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*
+    - dataActions:
+        - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/executeQuery
+  # Exercises the pinned-GUID seam.
+  roleDefinitionId: 9b7f3f6a-2f0e-4b9a-8f0d-2f6a8f0d2f6a

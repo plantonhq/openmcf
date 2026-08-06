@@ -39,7 +39,7 @@ that reference this VPC's `vpc_id` output.
 Create a file `vpc.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: my-vpc
@@ -85,7 +85,7 @@ planton apply -f vpc.yaml
 ### Dual-stack VPC with a secondary CIDR
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: dual-stack-vpc
@@ -101,7 +101,7 @@ spec:
 ### IPAM-allocated VPC
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: ipam-vpc

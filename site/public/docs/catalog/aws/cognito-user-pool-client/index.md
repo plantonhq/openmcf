@@ -27,7 +27,7 @@ When you deploy an AwsCognitoUserPoolClient resource, Planton provisions:
 Create a file `client.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: web-app
@@ -96,7 +96,7 @@ planton apply -f client.yaml
 ### Public SPA Client (PKCE, Hosted UI)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: web-spa
@@ -135,7 +135,7 @@ spec:
 ### Machine-to-Machine Client (client_credentials)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: billing-service

@@ -1,0 +1,60 @@
+# Autoscaling Spot GcpGkeNodePool scenario: exercises the autoscaling sizing
+# arm (scale-to-zero minimum, ANY location policy), Spot capacity, taints,
+# Kubernetes node labels, explicit management/upgrade settings, and kubelet
+# hardening — the depth surface of the rebuilt spec, live on the
+# prerequisite cluster.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGkeNodePool
+metadata:
+  name: planton-oss-e2e-gkenp-spot
+  id: planton-oss-e2e-gkenp-spot
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgkenodepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: planton-oss-e2e-gke-prereq
+      fieldPath: status.outputs.name
+  location:
+    valueFrom:
+      kind: GcpGkeCluster
+      name: planton-oss-e2e-gke-prereq
+      fieldPath: status.outputs.location
+  nodePoolName: planton-oss-e2e-spot-pool
+  # Start with one node (the API's default initial size of 3 would exceed
+  # maxNodes); the autoscaler owns the size from then on.
+  initialNodeCount: 1
+  autoscaling:
+    minNodes: 0
+    maxNodes: 2
+    locationPolicy: ANY
+  management:
+    autoRepair: true
+    autoUpgrade: true
+  upgradeSettings:
+    maxSurge: 1
+    maxUnavailable: 0
+  nodeConfig:
+    machineType: e2-standard-2
+    diskSizeGb: 50
+    diskType: pd-balanced
+    spot: true
+    labels:
+      workload-class: batch
+    taints:
+      - key: workload-class
+        value: batch
+        effect: NO_SCHEDULE
+    shieldedInstanceConfig:
+      enableSecureBoot: true
+    kubeletConfig:
+      insecureKubeletReadonlyPortEnabled: "FALSE"
+      podPidsLimit: 4096

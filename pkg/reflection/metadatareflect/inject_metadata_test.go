@@ -3,7 +3,7 @@ package metadatareflect
 import (
 	"testing"
 
-	awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
+	awss3bucketv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1"
 
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"google.golang.org/protobuf/proto"
@@ -18,17 +18,17 @@ func TestInjectMetadata(t *testing.T) {
 	}{
 		{
 			name:  "when metadata is injected it should appear in the output",
-			input: &awss3bucketv1.AwsS3Bucket{},
+			input: &awss3bucketv1alpha1.AwsS3Bucket{},
 			meta:  &shared.CloudResourceMetadata{Id: "test-id"},
-			want: &awss3bucketv1.AwsS3Bucket{
+			want: &awss3bucketv1alpha1.AwsS3Bucket{
 				Metadata: &shared.CloudResourceMetadata{Id: "test-id"},
 			},
 		},
 		{
 			name:  "when meta is nil the message must stay unchanged",
-			input: &awss3bucketv1.AwsS3Bucket{},
+			input: &awss3bucketv1alpha1.AwsS3Bucket{},
 			meta:  nil,
-			want:  &awss3bucketv1.AwsS3Bucket{},
+			want:  &awss3bucketv1alpha1.AwsS3Bucket{},
 		},
 	}
 

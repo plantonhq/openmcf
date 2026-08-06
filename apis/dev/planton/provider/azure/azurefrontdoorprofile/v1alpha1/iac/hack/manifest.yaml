@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorProfile
+metadata:
+  name: test-front-door-profile
+spec:
+  resourceGroup:
+    value: test-rg
+  profileName: test-frontdoor
+  # Exercises the Premium tier (Private Link origins and managed WAF
+  # rules are Premium-only; the sku is ForceNew and cannot downgrade).
+  sku: PREMIUM
+  responseTimeoutSeconds: 60
+  # Exercises the identity seam: a system-assigned identity for keyless
+  # Key Vault certificate access.
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Exercises log scrubbing (presence enables it).
+  logScrubbingVariables:
+    - REQUEST_IP_ADDRESS
+    - REQUEST_URI
+  tags:
+    cost-center: platform

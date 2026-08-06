@@ -3,7 +3,7 @@
 # targets the NAT gateway -- the first nat_gateway route target in any
 # exam. The deterministic baseline wires only internet-gateway targets, so
 # this edge is guaranteed headroom for a smarter proposer.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: hub-app-subnet

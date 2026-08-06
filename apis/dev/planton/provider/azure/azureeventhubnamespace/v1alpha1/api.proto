@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureeventhubnamespace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azureeventhubnamespace/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azureeventhubnamespace/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureEventHubNamespace is the top-level API resource for an Azure Event
+// Hubs namespace -- the container and billing boundary for high-throughput
+// event streaming. The namespace sets the pricing tier, throughput
+// capacity, network posture, and authentication mode; the streaming
+// entities compose onto it as first-class kinds (AzureEventHub,
+// AzureEventHubConsumerGroup, AzureEventHubAuthorizationRule,
+// AzureEventHubSchemaGroup, AzureEventHubDisasterRecoveryConfig,
+// AzureEventHubNamespaceCustomerManagedKey).
+message AzureEventHubNamespace {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventHubNamespace'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureEventHubNamespaceSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureEventHubNamespaceStatus status = 5;
+}
+
+// AzureEventHubNamespaceStatus holds the deployment status and outputs.
+message AzureEventHubNamespaceStatus {
+  // stack-outputs
+  AzureEventHubNamespaceStackOutputs outputs = 1;
+}

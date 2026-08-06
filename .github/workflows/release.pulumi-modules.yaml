@@ -14,7 +14,7 @@
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}_{platform}.gz
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}_{platform}.gz
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1/iac/pulumi
+# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1alpha1/iac/pulumi
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -43,7 +43,7 @@ jobs:
   # ============================================================================
   # Pre-flight: reject missing/misplaced Pulumi entrypoints before the long matrix
   # ============================================================================
-  # The matrix build below runs `go build ./<...>/v1/iac/pulumi` per component, which
+  # The matrix build below runs `go build ./<...>/v1alpha1/iac/pulumi` per component, which
   # requires a `package main` at the entrypoint root. Catch a broken entrypoint ONCE here
   # (seconds) instead of failing dozens of expensive matrix legs after long compiles.
   preflight:
@@ -159,7 +159,7 @@ jobs:
             COMPLETED=$((COMPLETED + 1))
             REMAINING=$((TOTAL - COMPLETED))
             
-            COMPONENT_PATH="${PROVIDER_PATH}/${component}/v1/iac/pulumi"
+            COMPONENT_PATH="${PROVIDER_PATH}/${component}/v1alpha1/iac/pulumi"
             
             # Handle Windows .exe extension
             if [ "$GOOS" = "windows" ]; then

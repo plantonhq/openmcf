@@ -32,7 +32,7 @@ When you deploy a ScalewayInstance resource, Planton provisions:
 Create a file `instance.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstance
 metadata:
   name: web-01
@@ -95,7 +95,7 @@ This creates a `DEV1-S` instance running Ubuntu Jammy in `fr-par-1` with a dedic
 A small development instance with a public IP and the default root volume:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstance
 metadata:
   name: dev-box
@@ -117,7 +117,7 @@ spec:
 A production instance on a Private Network, behind a custom security group, with a larger SBS root volume, cloud-init bootstrapping, and deletion protection enabled. The security group and Private Network are referenced from other Planton resources:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstance
 metadata:
   name: app-server
@@ -159,7 +159,7 @@ spec:
 A general-purpose instance with a larger local SSD root volume and two additional volumes — one for application data and one for temporary processing:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstance
 metadata:
   name: data-processor

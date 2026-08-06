@@ -1,0 +1,113 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises every typed block coherently: initdb bootstrap
+# with a declared owner password, a three-instance cluster with separate
+# WAL storage, tuned PostgreSQL configuration with quorum synchronous
+# replication, superuser access with a declared password, managed roles,
+# S3-compatible (MinIO-style) backups with declared access keys and two
+# schedules, TLS alt names, TLS metrics, hard anti-affinity with
+# tolerations, switchover updates, and image pull secrets. Both engines
+# must render identical CRs + credential Secrets from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPostgres
+metadata:
+  name: test-postgres
+spec:
+  namespace:
+    value: test-postgres-ns
+  createNamespace: true
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5
+  storage:
+    size: 20Gi
+    storageClass:
+      value: fast-ssd
+    resizeInUseVolumes: true
+  walStorage:
+    size: 5Gi
+    storageClass:
+      value: fast-ssd
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: 512MB
+      pg_stat_statements.max: "10000"
+    pgHba:
+      - hostssl app all 10.0.0.0/8 scram-sha-256
+    sharedPreloadLibraries:
+      - pg_stat_statements
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: required
+  bootstrap:
+    initdb:
+      database: appdb
+      owner: appuser
+      ownerPassword: initial-owner-password
+      dataChecksums: true
+      encoding: UTF8
+      postInitApplicationSql:
+        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+  superuser:
+    enabled: true
+    password: super-secret-postgres-password
+  roles:
+    - name: analyst
+      comment: read-only analytics user
+      password: analyst-password
+      login: true
+      inRoles:
+        - pg_read_all_data
+      connectionLimit: 10
+    - name: legacy-batch
+      ensure: absent
+  backup:
+    objectStore:
+      destinationPath: s3://backups/test-postgres
+      s3:
+        region: us-east-1
+        endpointUrl: http://minio.minio-system.svc:9000
+        accessKeys:
+          accessKeyId: minio-access-key
+          secretAccessKey: minio-secret-key
+      wal:
+        compression: zstd
+        maxParallel: 4
+      data:
+        compression: gzip
+        jobs: 2
+        immediateCheckpoint: true
+    retentionPolicy: 30d
+    schedules:
+      - name: daily
+        schedule: 0 0 2 * * *
+        immediate: true
+      - name: weekly
+        schedule: 0 30 4 * * 0
+        target: primary
+  certificates:
+    serverAltDnsNames:
+      - postgres.example.com
+  monitoring:
+    tlsEnabled: true
+  scheduling:
+    antiAffinityType: required
+    topologyKey: topology.kubernetes.io/zone
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: database
+        effect: NoSchedule
+  updateStrategy:
+    primaryUpdateStrategy: unsupervised
+    primaryUpdateMethod: switchover
+  enablePdb: true
+  imagePullSecrets:
+    - ghcr-pull-secret

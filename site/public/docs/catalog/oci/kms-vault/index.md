@@ -28,7 +28,7 @@ When you deploy an OciKmsVault resource, Planton provisions:
 Create a file `vault.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsVault
 metadata:
   name: my-vault
@@ -90,7 +90,7 @@ This creates a shared-HSM vault suitable for most workloads. The vault OCID, cry
 A default vault with shared HSM partition — suitable for most encryption use cases:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsVault
 metadata:
   name: shared-vault
@@ -110,7 +110,7 @@ spec:
 A virtual private vault with a dedicated HSM partition for high-throughput cryptographic operations:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsVault
 metadata:
   name: dedicated-vault
@@ -134,7 +134,7 @@ spec:
 A BYOK/EKMS vault connecting to a third-party HSM via IDCS OAuth and a KMS private endpoint:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsVault
 metadata:
   name: external-vault

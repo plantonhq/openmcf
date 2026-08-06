@@ -46,7 +46,7 @@ a Microsoft-managed key.
 The CMK identity's vault grant, composed so it exists before the server:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: postgres-cmk-unwrap

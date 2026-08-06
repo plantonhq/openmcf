@@ -23,7 +23,7 @@ A Firestore backup schedule with daily or weekly recurrence and configurable ret
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreBackupSchedule
 metadata:
   name: orders-daily-backups

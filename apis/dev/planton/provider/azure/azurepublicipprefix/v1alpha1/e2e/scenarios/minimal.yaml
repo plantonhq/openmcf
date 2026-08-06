@@ -1,0 +1,34 @@
+# Minimal AzurePublicIpPrefix scenario: the smallest reservable range (/31,
+# two addresses) in the fixture resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind. The explicit /31
+# exercises the non-default prefix length (Azure defaults to /28) and keeps
+# the per-minute reservation cost minimal; SKU/tier/version stay unset so
+# both engines exercise the let-Azure-default path. The ip_prefix output --
+# the actual reserved CIDR, known only after creation -- must populate on
+# both engines. User tags exercise the merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePublicIpPrefix
+metadata:
+  name: planton-oss-e2e-azurepublicipprefix-smoke
+  id: planton-oss-e2e-azurepublicipprefix-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurepublicipprefix
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-pippfx-smoke
+  prefixLength: 31
+  tags:
+    e2e-suite: azure
+    purpose: smoke

@@ -1,0 +1,48 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlDatabase
+metadata:
+  name: test-mssql-db
+spec:
+  serverId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Sql/servers/test-mssql-server
+  databaseName: orders
+  # A serverless sku exercises the auto-pause/min-capacity dials.
+  skuName: GP_S_Gen5_2
+  autoPauseDelayInMinutes: 60
+  minCapacity: 0.5
+  maxSizeGb: 32
+  collation: SQL_Latin1_General_CP1_CI_AS
+  # Exercises the license, redundancy, and enclave enum mappings.
+  licenseType: LICENSE_INCLUDED
+  storageAccountType: ZONE_REDUNDANT
+  enclaveType: VBS
+  zoneRedundant: false
+  ledgerEnabled: true
+  maintenanceConfigurationName: SQL_Default
+  # Exercises the database-scoped CMK with rotation.
+  userAssignedIdentityIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/db-uai
+  transparentDataEncryptionKeyVaultKeyId:
+    value: https://test-vault.vault.azure.net/keys/db-tde/0123456789abcdef0123456789abcdef
+  transparentDataEncryptionKeyAutomaticRotationEnabled: true
+  # Exercises both retention sub-APIs.
+  shortTermRetentionPolicy:
+    retentionDays: 14
+    backupIntervalInHours: 24
+  longTermRetentionPolicy:
+    weeklyRetention: P5W
+    monthlyRetention: P12M
+    yearlyRetention: P5Y
+    weekOfYear: 26
+  # Exercises the database-scoped Defender policy with the bool -> wire
+  # string mapping for email_account_admins.
+  threatDetectionPolicy:
+    state: ENABLED
+    disabledAlerts:
+      - Sql_Injection
+    emailAccountAdmins: true
+    emailAddresses:
+      - secops@contoso.com
+    retentionDays: 30
+  tags:
+    team: data

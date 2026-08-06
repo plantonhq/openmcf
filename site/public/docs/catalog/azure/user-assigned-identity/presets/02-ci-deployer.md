@@ -21,7 +21,7 @@ first of three composable pieces; the other two attach to its outputs:
 deployment rights:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: ci-deployer-contributor
@@ -39,7 +39,7 @@ spec:
 the pipeline's OIDC token:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: ci-deployer-trust

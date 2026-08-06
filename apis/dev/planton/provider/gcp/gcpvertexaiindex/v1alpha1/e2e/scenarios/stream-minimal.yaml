@@ -1,0 +1,34 @@
+# Minimal STREAM_UPDATE index with no initial data — the smallest live
+# corpus-free shape (streaming indexes are the norm for starting empty).
+# Small dimensions and SHARD_SIZE_SMALL keep the build fast; tree-AH with
+# its default tuning plus the API-required approximate_neighbors_count
+# exercises the algorithm arm the CEL rules guard. Proves ambient project,
+# API enablement, platform label attribution, and the GCP-assigned numeric
+# ID contract (the verifier asserts index_name matches the live resource).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVertexAiIndex
+metadata:
+  name: planton-oss-e2e-gcpvaidx-stream
+  id: planton-oss-e2e-gcpvaidx-stream
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiindex
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vaidx-stream-${E2E_RUN_ID}
+  location: us-central1
+  indexUpdateMethod: STREAM_UPDATE
+  config:
+    dimensions: 2
+    approximateNeighborsCount: 10
+    shardSize: SHARD_SIZE_SMALL
+    treeAhConfig:
+      leafNodeEmbeddingCount: 1000
+      leafNodesToSearchPercent: 10
+  labels:
+    e2e: stream-minimal

@@ -1,0 +1,24 @@
+# Minimal AzureCosmosdbSqlDatabase scenario: a database with dedicated
+# shared throughput (400 RU/s minimum) on a scenario-local SQL API
+# account.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCosmosdbSqlDatabase
+metadata:
+  name: planton-oss-e2e-azurecosmosdbsqldatabase-smoke
+  id: planton-oss-e2e-azurecosmosdbsqldatabase-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecosmosdbsqldatabase
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/azure/azurecosmosdbsqldatabase/v1alpha1/e2e/sql-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cosmosdbAccountId:
+    valueFrom:
+      name: planton-oss-e2e-cosmossqldb-fixture-account
+  databaseName: smoke
+  throughput: 400

@@ -1,0 +1,22 @@
+# Real issuance, minimal surface: the certificate's issuer resolves through
+# a foreign-key reference to a live self-signed ClusterIssuer fixture, and
+# the verifier requires the Ready condition PLUS signed material (tls.crt +
+# tls.key) in the target Secret — the full chain proven, not just the object
+# applied.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCertificate
+metadata:
+  name: e2e-cert-minimal
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesClusterIssuer"
+spec:
+  namespace:
+    value: default
+  secretName: e2e-cert-minimal-tls
+  issuerRef:
+    clusterIssuer:
+      name:
+        valueFrom:
+          name: e2e-clusterissuer-fixture
+  dnsNames:
+    - minimal.e2e.example.com

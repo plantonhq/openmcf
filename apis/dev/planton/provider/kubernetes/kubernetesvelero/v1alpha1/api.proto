@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesvelero.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesvelero/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesvelero/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// KubernetesVelero installs Velero — cluster backup and disaster recovery —
+// on a cluster from the official Helm chart: resource (and optionally
+// volume-data) backups to S3/GCS/Azure-Blob/S3-compatible object stores,
+// on-demand restores, and scheduled backups.
+message KubernetesVelero {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesVelero'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesVeleroSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesVeleroStatus status = 5;
+}
+
+// KubernetesVeleroStatus holds the deployment status and outputs.
+message KubernetesVeleroStatus {
+  // stack-outputs
+  KubernetesVeleroStackOutputs outputs = 1;
+}

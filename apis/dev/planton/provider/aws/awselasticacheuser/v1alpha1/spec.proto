@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awselasticacheuser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsElasticacheUserSpec defines the desired configuration for an AWS
+// ElastiCache user — one identity in the Redis/Valkey RBAC (Role-Based
+// Access Control) system.
+//
+// RBAC is AWS's recommended authentication model for ElastiCache: instead of
+// one shared AUTH token for every client, each application gets its own user
+// with an access string scoping exactly which commands and keys it may touch.
+// Users are grouped into user groups (AwsElasticacheUserGroup), and a user
+// group attaches to a replication group or serverless cache. Rotating one
+// application's credentials or revoking one application's access never
+// disturbs the others.
+//
+// The user's AWS identifier (user id) is taken from `metadata.name` — it is
+// create-time immutable, so renaming means replacement. The `user_name` below
+// is the name clients present in the AUTH command; several users may share a
+// user name (AWS resolves the credential set across them), and every user
+// group must contain a user whose user name is exactly "default" — that user
+// defines what unauthenticated clients may do.
+//
+// Memcached has no users: RBAC applies to the Redis and Valkey engines only.
+//
+// Notes:
+// - `user_name` and `engine` are create-time immutable (ForceNew) — changing
+//   either destroys and recreates the user. `access_string` and the
+//   authentication mode update in place.
+// - Credentials, region, and deployment workflow live outside this spec in
+//   stack inputs.
+message AwsElasticacheUserSpec {
+  // The AWS region where the user is created. ElastiCache users are regional
+  // resources — a user group can only contain users from its own region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Cache engine this user authenticates against. Values: "redis", "valkey".
+  // A user group only accepts users whose engine matches its own.
+  // Create-time immutable — changing it destroys and recreates the user.
+  string engine = 2 [(buf.validate.field).required = true];
+
+  // The name clients present in the AUTH command (`AUTH <user_name>
+  // <password>`). Unlike the user id (metadata.name), user names need not be
+  // unique — AWS unions the credentials of same-named users at
+  // authentication time. Every user group must include one user whose name
+  // is exactly "default": it defines the permissions of clients that connect
+  // without authenticating. Create-time immutable.
+  string user_name = 3 [(buf.validate.field).required = true];
+
+  // Redis ACL access string scoping what this user may do — the same syntax
+  // as the Redis ACL SETUSER rule list. Composed of switches ("on"/"off"
+  // enables or disables the user), key patterns ("~app1:*" grants access to
+  // matching keys, "~*" to all keys), and command categories ("+@read"
+  // grants the read category, "+@all" everything, "-@dangerous" subtracts
+  // the dangerous category).
+  //
+  // Common shapes:
+  //   "on ~* +@all"                      — full access (an admin user)
+  //   "on ~app1:* +@read +@write"        — read/write scoped to one key prefix
+  //   "on ~* +@read -@dangerous"         — read-only, no admin commands
+  //   "off ~* +@all"                     — a disabled "default" user (clients
+  //                                        MUST authenticate as someone else)
+  //
+  // Updates apply in place — tightening an access string takes effect on new
+  // connections without recreating the user.
+  string access_string = 4 [(buf.validate.field).required = true];
+
+  // How clients prove they are this user. Exactly one authentication type,
+  // with passwords carried inline only for the "password" type.
+  AwsElasticacheUserAuthenticationMode authentication_mode = 5 [(buf.validate.field).required = true];
+
+  // Engine must be redis or valkey — Memcached has no RBAC users.
+  option (buf.validate.message).cel = {
+    id: "engine_valid_values"
+    message: "engine must be 'redis' or 'valkey' — Memcached has no RBAC users"
+    expression: "this.engine in ['redis', 'valkey']"
+  };
+}
+
+// AwsElasticacheUserAuthenticationMode selects how a client authenticates as
+// this user. AWS offers three mechanisms; the type discriminates which one is
+// in effect, and only the "password" type carries credential material.
+message AwsElasticacheUserAuthenticationMode {
+  // Authentication mechanism. Values:
+  //
+  // - "password": the client presents one of the passwords below in the AUTH
+  //   command. Two passwords may be set simultaneously so credentials rotate
+  //   with zero downtime (add the new password, roll clients, remove the old).
+  //
+  // - "iam": the client signs a short-lived token with its AWS IAM identity —
+  //   no long-lived secret anywhere. AWS requires the user's `user_name` to
+  //   equal its user id (metadata.name) for IAM auth, and the attached cache
+  //   must have transit (TLS) encryption enabled.
+  //
+  // - "no-password-required": the user authenticates with no credential at
+  //   all. Intended for the mandatory "default" user when it is switched
+  //   "off" in its access string, or for migration windows — never for a
+  //   production user that is "on".
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Passwords for the "password" authentication type. One or two entries,
+  // each 16–128 printable characters; two entries enable zero-downtime
+  // rotation. Must be empty for the "iam" and "no-password-required" types.
+  repeated string passwords = 2 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).repeated = {
+      max_items: 2
+      items: {
+        string: {
+          min_len: 16
+          max_len: 128
+        }
+      }
+    }
+  ];
+
+  // type valid values.
+  option (buf.validate.message).cel = {
+    id: "auth_type_valid_values"
+    message: "authentication type must be 'password', 'iam', or 'no-password-required'"
+    expression: "this.type in ['password', 'iam', 'no-password-required']"
+  };
+
+  // password type requires at least one password.
+  option (buf.validate.message).cel = {
+    id: "password_type_requires_passwords"
+    message: "provide 1 or 2 passwords when the authentication type is 'password'"
+    expression: "this.type != 'password' || this.passwords.size() >= 1"
+  };
+
+  // non-password types must not carry passwords.
+  option (buf.validate.message).cel = {
+    id: "passwords_only_for_password_type"
+    message: "passwords are only accepted when the authentication type is 'password' — 'iam' and 'no-password-required' carry no credential material"
+    expression: "this.type == 'password' || this.passwords.size() == 0"
+  };
+}

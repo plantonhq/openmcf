@@ -45,7 +45,7 @@ def build_manifest_path(repo_root: str, provider: str, kind_folder: str) -> Tupl
         "provider",
         provider,
         kind_folder,
-        "v1",
+        "v1alpha1",
         "iac",
         "hack",
         "manifest.yaml",

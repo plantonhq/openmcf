@@ -1,0 +1,28 @@
+# Dedicated DESTINATION AzureStorageAccount for the object-replication
+# scenario only. Blob versioning (and change feed, harmless and
+# symmetric) are on -- versioning is Azure's apply-time prerequisite for
+# the replication destination.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageAccount
+metadata:
+  name: planton-oss-e2e-ordst-fixture-account
+  id: planton-oss-e2e-ordst-fixture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2eordstfix
+  replicationType: LRS
+  blobProperties:
+    versioningEnabled: true
+    changeFeedEnabled: true

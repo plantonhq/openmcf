@@ -25,7 +25,7 @@ A regional `google_dataproc_autoscaling_policy` resource holding worker-group bo
 Create a file `policy.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocAutoscalingPolicy
 metadata:
   name: etl-autoscaling
@@ -85,7 +85,7 @@ planton apply -f policy.yaml
 ## Example: Attaching from a Cluster
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: batch-spark

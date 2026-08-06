@@ -27,7 +27,7 @@ When you deploy an AliCloudSecurityGroup resource, Planton provisions:
 Create a file `security-group.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudSecurityGroup
 metadata:
   name: my-web-sg
@@ -97,7 +97,7 @@ This creates a security group that allows HTTPS inbound and all outbound traffic
 ### Web Tier with HTTP/HTTPS Ingress
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudSecurityGroup
 metadata:
   name: web-tier-sg
@@ -136,7 +136,7 @@ spec:
 ### Database Tier Restricted to VPC
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudSecurityGroup
 metadata:
   name: db-tier-sg

@@ -1,0 +1,27 @@
+# GcpUrlMap install profile used when the URL map is an E2E PREREQUISITE for
+# another component (e.g. a target proxy's url_map). A single default_service
+# pointing at the backend-service prerequisite is a complete, valid routing
+# table; the registry's own prerequisites chain (GcpBackendService →
+# GcpHealthCheck / GcpRegionNetworkEndpointGroup) installs everything below
+# it. project_id is omitted and rides the harness-exported GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpUrlMap
+metadata:
+  name: planton-oss-e2e-gcpum-prereq
+  id: planton-oss-e2e-gcpum-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpurlmap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral URL map created by the Planton E2E harness as a prerequisite; safe to delete
+  defaultService:
+    valueFrom:
+      kind: GcpBackendService
+      name: planton-oss-e2e-gcpbs-prereq
+      fieldPath: status.outputs.self_link

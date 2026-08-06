@@ -26,7 +26,7 @@ When you deploy an AzureCosmosdbMongoCollection resource, Planton provisions:
 Create a file `collection.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbMongoCollection
 metadata:
   name: events

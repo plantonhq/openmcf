@@ -1,0 +1,89 @@
+# Full-surface development manifest for the KubernetesIstio module.
+#
+# Exercises the AMBIENT arm (the larger valid surface: cni + ztunnel install,
+# no sidecar_injector — the spec forbids injector settings in ambient mode).
+# The sidecar arm (sidecar_injector + cni.enabled) is exercised by the presets
+# and the E2E scenarios.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIstio
+metadata:
+  name: hack-istio
+spec:
+  namespace:
+    value: istio-system
+  create_namespace: true
+  version: 1.30.3
+  revision: hack
+  dataplane_mode: ambient
+  istiod:
+    autoscale:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 5
+      target_cpu_utilization_percent: 75
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    log_level: default:info,validation:debug
+    pod_disruption_budget: true
+    priority_class_name: system-cluster-critical
+    node_selector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: control-plane
+        effect: NoSchedule
+  mesh_config:
+    trust_domain: mesh.example.internal
+    outbound_traffic_policy_mode: REGISTRY_ONLY
+    access_log_file: /dev/stdout
+    cluster_name: hack-cluster
+    network: hack-network
+    mesh_id: hack-mesh
+    enable_prometheus_merge: true
+  proxy:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "2"
+        memory: 1Gi
+    log_level: warning
+    auto_inject: enabled
+    cluster_domain: cluster.local
+  cni:
+    exclude_namespaces:
+      - kube-system
+      - kube-node-lease
+    cni_bin_dir: /opt/cni/bin
+    cni_conf_dir: /etc/cni/net.d
+    chained: true
+  ztunnel:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    log_level: info
+  gateway_defaults:
+    service_type: NodePort
+  images:
+    hub: mirror.example.com/istio
+    variant: distroless
+    image_pull_secrets:
+      - registry-pull-secret
+  helm_values:
+    istiod: |
+      pilot:
+        env:
+          PILOT_TRACE_SAMPLING: "1.0"
+    ztunnel: |
+      terminationGracePeriodSeconds: 20

@@ -32,7 +32,7 @@ When you deploy a GcpPubSubSubscription resource, Planton provisions:
 Create a file `pubsub-subscription.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSubscription
 metadata:
   name: my-subscription
@@ -113,7 +113,7 @@ This creates a pull subscription with default settings: 10-second ack deadline, 
 Delivers messages to an HTTPS endpoint with OIDC-based authentication:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSubscription
 metadata:
   name: push-subscription
@@ -143,7 +143,7 @@ spec:
 Streams messages directly to a BigQuery table, forwarding failures to a dead-letter topic after 10 attempts:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSubscription
 metadata:
   name: bq-subscription
@@ -179,7 +179,7 @@ spec:
 Batches messages into Avro-formatted objects in Cloud Storage:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSubscription
 metadata:
   name: gcs-subscription
@@ -214,7 +214,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding values:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpPubSubSubscription
 metadata:
   name: ref-subscription

@@ -31,7 +31,7 @@ Nothing else is created here. The disk does not attach itself to any VM (each `A
 Create a file `disk.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-data
@@ -147,7 +147,7 @@ For `COPY` and `FROM_IMAGE`, `diskSizeGb` may be omitted to inherit the source's
 The production default: an empty zonal Premium SSD, attached by the VM that mounts it. The disk knows nothing about the VM — replacing the VM never touches the data:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-data
@@ -166,7 +166,7 @@ spec:
   diskSizeGb: 512
   zone: "1"
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: orders-db
@@ -185,7 +185,7 @@ spec:
 Capacity, IOPS, and throughput provisioned independently — a small disk with big performance, impossible on the classic per-size tiers:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: ledger-data
@@ -212,7 +212,7 @@ spec:
 One disk, several VMs: `maxShares` enables the clustered-database seam, and the read-only dials budget the standby nodes' mounts:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: cluster-quorum
@@ -242,7 +242,7 @@ spec:
 A full, independent copy of a snapshot — the restore and environment-duplication workhorse. Size is inherited from the source; the SKU is free to differ:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-restored
@@ -267,7 +267,7 @@ spec:
 Encryption through a disk encryption set and network export disabled entirely — the posture for regulated data that never needs SAS-based export:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: pii-vault-data
@@ -298,7 +298,7 @@ spec:
 A ZRS SKU replicates the disk across availability zones — no `zone` field, because a ZRS disk cannot also be pinned to one:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: shared-content

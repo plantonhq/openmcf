@@ -1,0 +1,48 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsFsxWindowsFileSystem
+metadata:
+  org: test-org
+  env: test
+  name: test-windows-fs
+  id: awsfxw-test-windows-fs-test
+spec:
+  region: us-west-2
+  # Full-surface SINGLE_AZ_2 shape so the offline plan proof covers the arms
+  # the live lanes exclude: the self-managed AD Secrets Manager join, audit
+  # logging, user-provisioned IOPS, aliases, and backups with final-backup
+  # tags.
+  deployment_type: SINGLE_AZ_2
+  storage_capacity_gib: 64
+  storage_type: SSD
+  throughput_capacity: 32
+  subnet_ids:
+    - value: subnet-test123
+  security_group_ids:
+    - value: sg-test123
+  kms_key_id:
+    value: arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000
+  self_managed_active_directory:
+    domain_name: corp.example.com
+    dns_ips:
+      - 10.0.0.1
+      - 10.0.0.2
+    domain_join_service_account_secret_arn:
+      value: arn:aws:secretsmanager:us-west-2:123456789012:secret:fsx-ad-join-abc123
+    organizational_unit_distinguished_name: OU=FSx,DC=corp,DC=example,DC=com
+  aliases:
+    - files.corp.example.com
+  audit_log_configuration:
+    file_access_audit_log_level: SUCCESS_AND_FAILURE
+    file_share_access_audit_log_level: FAILURE_ONLY
+    audit_log_destination:
+      value: arn:aws:logs:us-west-2:123456789012:log-group:/aws/fsx/windows
+  disk_iops_configuration:
+    mode: USER_PROVISIONED
+    iops: 5000
+  automatic_backup_retention_days: 7
+  daily_automatic_backup_start_time: "03:00"
+  copy_tags_to_backups: true
+  skip_final_backup: false
+  final_backup_tags:
+    retention: decommission-audit
+  weekly_maintenance_start_time: "7:02:00"

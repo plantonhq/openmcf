@@ -1,7 +1,7 @@
 package manifestprotobuf
 
 import (
-	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
+	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"testing"
@@ -18,15 +18,15 @@ func TestSetProtoField(t *testing.T) {
 	}{
 		{
 			name: "Set existing string field in snake case",
-			message: &kubernetesvalkeyv1.KubernetesValkey{Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-				Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+			message: &kubernetesvalkeyv1alpha1.KubernetesValkey{Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+				Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 					MaxMemory: "256mb",
 				},
 			}},
 			fieldPath: "spec.config.max_memory",
 			value:     "512mb",
-			expected: &kubernetesvalkeyv1.KubernetesValkey{Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-				Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+			expected: &kubernetesvalkeyv1alpha1.KubernetesValkey{Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+				Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 					MaxMemory: "512mb",
 				},
 			}},
@@ -34,15 +34,15 @@ func TestSetProtoField(t *testing.T) {
 		},
 		{
 			name: "Set existing string field in camel case",
-			message: &kubernetesvalkeyv1.KubernetesValkey{Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-				Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+			message: &kubernetesvalkeyv1alpha1.KubernetesValkey{Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+				Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 					MaxMemory: "256mb",
 				},
 			}},
 			fieldPath: "spec.config.maxMemory",
 			value:     "512mb",
-			expected: &kubernetesvalkeyv1.KubernetesValkey{Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-				Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+			expected: &kubernetesvalkeyv1alpha1.KubernetesValkey{Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+				Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 					MaxMemory: "512mb",
 				},
 			}},

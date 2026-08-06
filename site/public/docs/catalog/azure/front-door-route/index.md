@@ -27,7 +27,7 @@ When you deploy an AzureFrontDoorRoute resource, Planton provisions:
 Create a file `route.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorRoute
 metadata:
   name: default-route

@@ -43,7 +43,7 @@ Every mode-gated field fails validation with a message naming the contract when 
 Create a file `fleet.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachineScaleSet
 metadata:
   name: web-fleet
@@ -149,7 +149,7 @@ This creates a three-instance FLEXIBLE Linux fleet in the subnet, SSH-key authen
 The production shape: instances join an AzureLoadBalancer pool by its name-keyed map output, the health extension reports instance health, and template changes roll in health-checked batches:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachineScaleSet
 metadata:
   name: web-fleet
@@ -215,7 +215,7 @@ spec:
 FLEXIBLE priority mixing guarantees two on-demand instances; everything above runs on spot at up to a quarter of the price:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachineScaleSet
 metadata:
   name: batch-workers

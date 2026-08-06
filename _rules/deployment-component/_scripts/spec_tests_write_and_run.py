@@ -53,7 +53,7 @@ def build_test_path(repo_root: str, provider: str, kind_folder: str) -> Tuple[st
         "provider",
         provider,
         kind_folder,
-        "v1",
+        "v1alpha1",
     )
     relative_path = os.path.join(base_rel, "spec_test.go")
     absolute_path = os.path.join(repo_root, relative_path)

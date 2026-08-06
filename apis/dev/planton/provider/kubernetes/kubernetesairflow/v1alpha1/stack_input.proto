@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesairflow.v1alpha1;
+
+import "dev/planton/provider/kubernetes/kubernetesairflow/v1alpha1/api.proto";
+import "dev/planton/provider/kubernetes/provider.proto";
+
+//airflow-kubernetes stack-input
+message KubernetesAirflowStackInput {
+  //target cloud-resource
+  KubernetesAirflow target = 1;
+  //provider-config
+  dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

@@ -14,7 +14,7 @@
 #
 # The operator's CRDs install once and are never cascade-deleted with the
 # release — uninstalling the operator strands no Kafka cluster.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: "{{ values.env }}-strimzi-operator"

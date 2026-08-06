@@ -1,0 +1,24 @@
+# Composed proof: the policy's target resolves a REAL Service fixture
+# through the foreign key (valueFrom) — the exposure chain's dependency edge
+# an infra chart gets for free. The Service fixture installs via the
+# annotation chain; GatewayApiCrds installs via the registry prerequisite.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesBackendTlsPolicy
+metadata:
+  name: e2e-btls-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesService"
+spec:
+  namespace:
+    value: default
+  target_refs:
+    - group: ""
+      kind: Service
+      name:
+        valueFrom:
+          kind: KubernetesService
+          name: e2e-svc-fixture
+          fieldPath: status.outputs.service_name
+  validation:
+    well_known_ca_certificates: System
+    hostname: backend.internal.example.com

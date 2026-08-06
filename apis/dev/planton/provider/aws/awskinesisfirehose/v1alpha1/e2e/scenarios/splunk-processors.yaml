@@ -1,0 +1,70 @@
+# AwsKinesisFirehose Splunk scenario: a Direct PUT delivery stream targeting
+# a Splunk HTTP Event Collector endpoint, with a multi-processor
+# transformation pipeline. AWS creates the stream and transitions it to
+# ACTIVE without probing the HEC endpoint (delivery failures are a runtime
+# concern that lands in the S3 backup), so a placeholder endpoint + token
+# prove the whole splunk_configuration wiring live without a Splunk tenant.
+# No records are ever put, so nothing is ever delivered anywhere.
+#
+# The processing pipeline is the canonical CloudWatch-Logs-to-Splunk shape:
+# GZIP decompression followed by subscription-envelope unwrapping (message
+# extraction) -- the two processor arms AWS documents for Splunk delivery.
+# (Record de-aggregation is S3-only -- AWS rejected it here on a live
+# create, now a CEL rule; the Lambda arm needs a function; metadata
+# extraction only matters with dynamic partitioning -- all proven in the
+# extended_s3 lane or by spec tests.)
+#
+# Splunk's tight buffering caps (0-60s / 1-5 MiB -- the tightest of any
+# destination) ride along at their maximums to prove the CEL bounds match
+# what AWS accepts. Both registry prerequisites (AwsS3Bucket, AwsIamRole)
+# install first; the role profile's firehose-delivery document is scoped to
+# the fixture bucket that receives failed events.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKinesisFirehose
+metadata:
+  name: planton-oss-e2e-awskfh-splunk
+  id: planton-oss-e2e-awskfh-splunk
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskinesisfirehose
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  splunk:
+    # Placeholder HEC endpoint -- syntactically valid, never contacted
+    # (no records are put). The port is part of the HEC contract.
+    hecEndpoint: https://hec.e2e-placeholder.invalid:8088
+    hecEndpointType: Raw
+    # Placeholder token in the HEC UUID shape; a real deployment should
+    # prefer secretsManager so the token never lands in the manifest.
+    hecToken: 00000000-0000-0000-0000-000000000000
+    hecAcknowledgmentTimeoutInSeconds: 180
+    buffering:
+      intervalInSeconds: 60
+      sizeInMbs: 5
+    retryDurationInSeconds: 300
+    s3BackupMode: FailedEventsOnly
+    s3Config:
+      bucketArn:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: planton-oss-e2e-awss3bucket-prereq
+          fieldPath: status.outputs.bucket_arn
+      roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-firehose-delivery-role
+          fieldPath: status.outputs.role_arn
+      prefix: "splunk-failed/"
+    processing:
+      enabled: true
+      processors:
+        - decompression:
+            compressionFormat: GZIP
+        - cloudwatchLogProcessing:
+            dataMessageExtraction: true

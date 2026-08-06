@@ -38,7 +38,7 @@ inside the conditional:
 ```yaml
 {% if values.cert_manager_enabled | bool %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: "{{ values.cluster_name }}-cert-manager"
@@ -66,7 +66,7 @@ documents -- but whole-document toggles are the common, legible case.
 ```yaml
 {% for az in values.availability_zones %}
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: "{{ values.env }}-subnet-{{ loop.index }}"

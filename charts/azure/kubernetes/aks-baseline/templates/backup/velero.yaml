@@ -5,7 +5,7 @@
 # schedule. Everything the backup story needs rides this one toggle —
 # flipping it off removes the identity and storage with the workload,
 # never stranding half an arm.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageAccount
 metadata:
   # Storage account names are GLOBAL across all of Azure and allow ONLY
@@ -31,7 +31,7 @@ spec:
     # malicious) overwrite of a backup object is recoverable.
     versioningEnabled: true
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageContainer
 metadata:
   name: "{{ values.env }}-aks-velero-container"
@@ -44,7 +44,7 @@ spec:
   # PRIVATE is the kind's default — no anonymous access exists for this
   # container regardless of account-level settings.
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: "{{ values.env }}-aks-velero"
@@ -55,7 +55,7 @@ spec:
       name: "{{ values.env }}-aks-rg"
   name: "{{ values.env }}-aks-velero"
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: "{{ values.env }}-aks-velero-fic"
@@ -77,7 +77,7 @@ spec:
 # account/container management reads, and the blob data operations backups
 # ride. A first-class role node: permission changes happen here and the
 # grants below pick them up by reference.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: "{{ values.env }}-aks-velero"
@@ -120,7 +120,7 @@ spec:
 # arrives by reference from the cluster's outputs (the node group's name
 # is Azure-derived — no render-time value can carry it), which also orders
 # cluster-before-grant.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: "{{ values.env }}-aks-velero-snapshots"
@@ -147,7 +147,7 @@ spec:
 # minting, and the blob data operations the backup store rides. Account-
 # scoped, never subscription-scoped: this identity can touch no other
 # storage.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: "{{ values.env }}-aks-velero-storage"
@@ -173,7 +173,7 @@ spec:
 # snapshot CONTROLLER with the cluster (storage profile default) but
 # creates NO class; shipping it with the arm closes that trap at the
 # source.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: "{{ values.env }}-velero-snapshot-class"
@@ -203,7 +203,7 @@ spec:
     # leaking orphaned snapshots.
     deletionPolicy: Delete
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesVelero
 metadata:
   name: "{{ values.env }}-velero"

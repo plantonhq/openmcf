@@ -18,7 +18,7 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/stack_outputs_reader.py`
 - Writer+Build: `_rules/deployment-component/_scripts/stack_outputs_write_and_build.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/stack_outputs.proto`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/stack_outputs.proto`
   and `aws/awsalb/v1/stack_outputs.proto` -- canonical examples of observable, non-secret outputs.
 
 SEQUENTIAL STEPS
@@ -46,7 +46,7 @@ EXAMPLE SKELETON (adapt to actual schema; do not copy verbatim)
 ```proto
 syntax = "proto3";
 
-package dev.planton.provider.aws.awscloudfront.v1;
+package dev.planton.provider.aws.awscloudfront.v1alpha1;
 
 // AwsCloudFrontStackOutputs captures observable identifiers from CloudFront.
 message AwsCloudFrontStackOutputs {

@@ -1,0 +1,25 @@
+# GcpComputeDisk install profile used when the disk is an E2E PREREQUISITE
+# for another component (the compute instance's attached-disk chain). A
+# small empty pd-balanced volume in the consumer's zone. Disk names are
+# project-scoped with no soft-delete reservation, so the name stays fixed.
+# project_id is omitted and rides the harness-exported GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeDisk
+metadata:
+  name: planton-oss-e2e-gcpdisk-prereq
+  id: planton-oss-e2e-gcpdisk-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputedisk
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  diskName: planton-oss-e2e-disk-prereq
+  zone: us-central1-a
+  type: pd-balanced
+  sizeGb: 20
+  description: Ephemeral data volume deployed as an E2E prerequisite; safe to delete

@@ -35,7 +35,7 @@ Before starting, ensure you have:
 Create a file named `postgres.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: tutorial-postgres

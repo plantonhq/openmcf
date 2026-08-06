@@ -1,0 +1,13 @@
+# The smallest useful claim: name + size, cluster-default StorageClass.
+# On kind the default class binds on first consumer, so the claim is
+# correctly Pending here — existence is the verifiable contract, and the
+# KubernetesDeployment with-pvc-mount scenario proves real binding live.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPersistentVolumeClaim
+metadata:
+  name: e2e-pvc-minimal
+spec:
+  namespace:
+    value: default
+  name: e2e-pvc-minimal
+  storage_request: 1Gi

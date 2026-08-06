@@ -1,0 +1,39 @@
+# The live-safe full surface: explicit group identity, worker config
+# (converters), JVM sizing, resources, and the JMX metrics ConfigMap.
+# The OCI `plugins` arm and the `build` arm are deliberately NOT in kind
+# lanes — image volumes need the cluster's ImageVolume feature and a
+# build needs a push registry (both offline-proven; see the deferred-E2E
+# ledger) — this scenario proves everything else at once.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaConnect
+metadata:
+  name: e2e-connect-tuned
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  bootstrap_servers:
+    valueFrom:
+      name: e2e-kaf-fix
+  replicas: 1
+  group_id: e2e-connect-tuned-group
+  config_storage_topic: e2e-connect-tuned-configs
+  status_storage_topic: e2e-connect-tuned-status
+  offset_storage_topic: e2e-connect-tuned-offsets
+  config:
+    config.storage.replication.factor: "-1"
+    offset.storage.replication.factor: "-1"
+    status.storage.replication.factor: "-1"
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.storage.StringConverter
+  jvm:
+    xms: 512m
+    xmx: 512m
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+  metrics:
+    enabled: true

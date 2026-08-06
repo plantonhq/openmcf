@@ -30,7 +30,7 @@ When you deploy a DigitalOceanDroplet resource, Planton provisions:
 Create a file `droplet.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
   name: my-droplet
@@ -87,7 +87,7 @@ This creates a single-vCPU Droplet running Ubuntu 22.04 in NYC3 with monitoring 
 A minimal Droplet for development and testing:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
   name: dev-server
@@ -112,7 +112,7 @@ spec:
 A staging web server that installs nginx on first boot, enables backups, and uses tags for Cloud Firewall integration:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
   name: staging-web
@@ -150,7 +150,7 @@ spec:
 A production Droplet with an attached block storage volume for persistent data, referencing a DigitalOceanVpc and DigitalOceanVolume by name:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
   name: prod-db

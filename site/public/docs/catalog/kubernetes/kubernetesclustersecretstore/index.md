@@ -23,7 +23,7 @@ Creates one External Secrets Operator ClusterSecretStore — a cluster-wide back
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterSecretStore
 metadata:
   name: aws-secrets-manager

@@ -40,7 +40,7 @@ resources to this listener's `listener_arn` output.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListener
 metadata:
   name: https
@@ -110,7 +110,7 @@ planton apply -f listener.yaml
 ### HTTP-to-HTTPS redirect listener
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListener
 metadata:
   name: http-redirect
@@ -134,7 +134,7 @@ spec:
 ### Multi-domain HTTPS with SNI and a 404 default
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListener
 metadata:
   name: https-multi-domain
@@ -169,7 +169,7 @@ spec:
 ### NLB TLS listener
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListener
 metadata:
   name: nlb-tls

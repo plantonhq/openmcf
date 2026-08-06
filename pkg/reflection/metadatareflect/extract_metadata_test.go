@@ -3,7 +3,7 @@ package metadatareflect
 import (
 	"testing"
 
-	awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
+	awss3bucketv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1"
 
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"google.golang.org/protobuf/proto"
@@ -17,7 +17,7 @@ func TestExtractMetadata(t *testing.T) {
 	}{
 		{
 			name: "when metadata is set should return the metadata from input",
-			input: &awss3bucketv1.AwsS3Bucket{
+			input: &awss3bucketv1alpha1.AwsS3Bucket{
 				Metadata: &shared.CloudResourceMetadata{
 					Id: "test-id",
 				},
@@ -25,7 +25,7 @@ func TestExtractMetadata(t *testing.T) {
 			want: &shared.CloudResourceMetadata{Id: "test-id"},
 		}, {
 			name: "when metadata object is empty in input, should return empty metadata object",
-			input: &awss3bucketv1.AwsS3Bucket{
+			input: &awss3bucketv1alpha1.AwsS3Bucket{
 				Metadata: &shared.CloudResourceMetadata{},
 			},
 			want: &shared.CloudResourceMetadata{},

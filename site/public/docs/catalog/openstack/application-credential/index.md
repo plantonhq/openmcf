@@ -27,19 +27,19 @@ When you deploy an OpenStackApplicationCredential resource, Planton provisions:
 Create a file `app-credential.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackApplicationCredential
 metadata:
   name: my-app-cred
   annotations:
     planton.dev/stack.jobId: prod.OpenstackApplicationCredential.monitoring-agent
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackApplicationCredential.temp-reader
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackApplicationCredential.dev-automation
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackApplicationCredential.my-app-cred
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec: {}
 ```
@@ -85,7 +85,7 @@ All spec fields are optional. The credential name is derived from `metadata.name
 A credential with default settings, suitable for development automation:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackApplicationCredential
 metadata:
   name: dev-automation
@@ -100,7 +100,7 @@ spec:
 A credential restricted to specific roles with a defined lifetime, suitable for temporary access:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackApplicationCredential
 metadata:
   name: temp-reader
@@ -119,7 +119,7 @@ spec:
 A credential locked down to specific API operations, allowing only compute server listing and identity project listing:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackApplicationCredential
 metadata:
   name: monitoring-agent

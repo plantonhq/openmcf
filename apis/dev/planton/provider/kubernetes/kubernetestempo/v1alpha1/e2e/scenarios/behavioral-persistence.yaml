@@ -1,0 +1,16 @@
+# THE persistence proof: push a span, DELETE the Tempo pod, wait for a
+# REPLACEMENT pod (a new UID — status flapping Ready on the dying pod is
+# not recovery), and retrieve the trace by ID — traces surviving pod loss
+# through the PersistentVolume is the proof. A single replica on the
+# default persistent volume is the honest shape on a single-node kind
+# cluster (Tempo flushes trace blocks to the local volume).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTempo
+metadata:
+  name: e2e-tempo-pers
+spec:
+  namespace:
+    value: e2e-tempo-pers
+  create_namespace: true
+  replicas: 1
+  disk_size: 2Gi

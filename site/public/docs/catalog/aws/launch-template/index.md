@@ -39,7 +39,7 @@ own).
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLaunchTemplate
 metadata:
   name: web
@@ -107,7 +107,7 @@ planton apply -f launch-template.yaml
 ### Attribute-based Spot template (no instance type named)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLaunchTemplate
 metadata:
   name: spot-workers
@@ -132,7 +132,7 @@ spec:
 ### Hardened template with encrypted storage
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLaunchTemplate
 metadata:
   name: hardened-base
@@ -161,7 +161,7 @@ spec:
 ### Kubernetes-CNI-friendly interface with prefix delegation
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLaunchTemplate
 metadata:
   name: k8s-workers

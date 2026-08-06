@@ -26,7 +26,7 @@ When you deploy a GcpBackendBucket resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBackendBucket
 metadata:
   name: static-assets

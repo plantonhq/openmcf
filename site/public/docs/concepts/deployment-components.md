@@ -22,7 +22,7 @@ apis/dev/planton/provider/{provider}/{component}/v1/
 Inside that directory, every component contains the same set of files:
 
 ```text
-apis/dev/planton/provider/kubernetes/kubernetespostgres/v1/
+apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/
 |-- api.proto              # Resource envelope: apiVersion, kind, metadata, spec, status
 |-- spec.proto             # Configuration fields with types and validation rules
 |-- stack_input.proto      # IaC input contract: the resource + provider credentials
@@ -55,7 +55,7 @@ Here is the `api.proto` for `KubernetesPostgres`:
 
 ```protobuf
 message KubernetesPostgres {
-  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
   string kind = 2 [(buf.validate.field).string.const = 'KubernetesPostgres'];
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
   KubernetesPostgresSpec spec = 4 [(buf.validate.field).required = true];
@@ -65,7 +65,7 @@ message KubernetesPostgres {
 
 Two things to notice. First, `api_version` and `kind` are enforced as constants using `buf.validate` -- this means a manifest with a wrong `apiVersion` or `kind` value will fail validation before any cloud API is ever called. Second, `metadata` and `spec` are required, while `status` is optional and populated by the system after deployment.
 
-Every component's `api.proto` follows this exact pattern. The only things that change are the provider group in `api_version` (e.g., `aws.planton.dev/v1`, `gcp.planton.dev/v1`), the `kind` value, and the spec/status message types.
+Every component's `api.proto` follows this exact pattern. The only things that change are the provider group in `api_version` (e.g., `aws.planton.dev/v1alpha1`, `gcp.planton.dev/v1alpha1`), the `kind` value, and the spec/status message types.
 
 ### spec.proto -- The Configuration Surface
 
@@ -241,7 +241,7 @@ The workflow is identical. The configuration is provider-specific.
 Here is a complete manifest for deploying PostgreSQL on Kubernetes:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: session-store

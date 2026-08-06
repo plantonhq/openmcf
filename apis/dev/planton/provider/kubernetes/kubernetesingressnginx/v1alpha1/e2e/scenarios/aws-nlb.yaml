@@ -1,0 +1,25 @@
+# The documented AWS recipe, validated as written on the aws-eks profile:
+# LoadBalancer service with the ALBC annotations from the spec's own
+# environment-injection guidance (aws-load-balancer-type "external" +
+# nlb-target-type "ip" — the AWS Load Balancer Controller path; the batch
+# cluster runs the controller as scaffolding). The LB-address behavioral
+# verifier (switched on by this scenario's name) asserts the controller
+# Service acquires a real NLB hostname — the module's readiness wait
+# already blocks on it, and the verifier makes the address itself the
+# recorded proof.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIngressNginx
+metadata:
+  name: e2e-ingx-aws-nlb
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+spec:
+  namespace:
+    value: e2e-ingx-aws-ns
+  createNamespace: true
+  service:
+    type: load_balancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: external
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing

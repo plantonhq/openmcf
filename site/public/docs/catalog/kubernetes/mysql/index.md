@@ -41,7 +41,7 @@ through the proxy Service (`<name>-haproxy` or `<name>-proxysql`).
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMysql
 metadata:
   name: orders-db

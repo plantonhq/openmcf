@@ -1,0 +1,13 @@
+# Consumer-scoped KubeRay operator fixture for the KubernetesRayCluster
+# lanes. Cluster-wide watch (the component default), installed in its
+# own namespace; every scenario runs its RayCluster in the
+# fixture-owned e2e-ray namespace below — the operator reconciles it
+# from across namespaces by design.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKubeRayOperator
+metadata:
+  name: e2e-ray-operator
+spec:
+  namespace:
+    value: e2e-ray
+  create_namespace: true

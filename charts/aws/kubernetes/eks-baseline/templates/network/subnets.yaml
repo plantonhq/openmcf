@@ -11,7 +11,7 @@
 # recovers — in-VPC and inbound-LB traffic is unaffected. Platforms that need
 # zone-independent egress add per-zone NAT gateways as a day-2 change.
 {% for az in values.availability_zones %}
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: "{{ values.env }}-eks-public-{{ az }}"
@@ -48,7 +48,7 @@ spec:
 {% endfor %}
 # The NAT gateway's public IP — a first-class Elastic IP so the platform's
 # egress address is stable (allow-list it at third parties once).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticIp
 metadata:
   name: "{{ values.env }}-eks-nat-eip"
@@ -57,7 +57,7 @@ spec:
 ---
 # The single NAT gateway, in the FIRST public subnet (the "first one"
 # placement — see the cost note at the top of this file).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNatGateway
 metadata:
   name: "{{ values.env }}-eks-nat"
@@ -72,7 +72,7 @@ spec:
       name: "{{ values.env }}-eks-nat-eip"
 ---
 {% for az in values.availability_zones %}
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: "{{ values.env }}-eks-private-{{ az }}"

@@ -30,7 +30,7 @@ what you need.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesEnvoyFilter
 metadata:
   name: outbound-timeout

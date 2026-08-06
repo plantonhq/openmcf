@@ -30,7 +30,7 @@ When you deploy a CloudflareR2Bucket resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareR2Bucket
 metadata:
   name: my-bucket
@@ -69,7 +69,7 @@ planton apply -f r2-bucket.yaml
 ## Example: public bucket with custom domain and CORS
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareR2Bucket
 metadata:
   name: media-bucket

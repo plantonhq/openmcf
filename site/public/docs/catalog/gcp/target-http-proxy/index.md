@@ -24,7 +24,7 @@ A single `google_compute_target_http_proxy` in the chosen GCP project.
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpTargetHttpProxy
 metadata:
   name: web-http-frontend

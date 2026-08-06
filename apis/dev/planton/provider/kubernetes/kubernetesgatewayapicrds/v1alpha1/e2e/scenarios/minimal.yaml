@@ -1,0 +1,10 @@
+# Standard channel at the pinned version -- the exact bundle the catalog's
+# projection kinds (Gateway, routes, ListenerSet, ReferenceGrant) deploy onto.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGatewayApiCrds
+metadata:
+  name: e2e-gwapi-crds
+spec:
+  version: v1.6.1
+  install_channel:
+    channel: standard

@@ -39,7 +39,7 @@ group's `target_group_arn` output.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbTargetGroup
 metadata:
   name: api
@@ -99,7 +99,7 @@ planton apply -f target-group.yaml
 ### NLB TCP target group with HTTP health checks
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbTargetGroup
 metadata:
   name: postgres-pool
@@ -124,7 +124,7 @@ spec:
 ### Lambda function target
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbTargetGroup
 metadata:
   name: webhook-handler
@@ -142,7 +142,7 @@ spec:
 ### Statically registered EC2 instances
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbTargetGroup
 metadata:
   name: legacy-web

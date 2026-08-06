@@ -1,0 +1,14 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAltinityOperator
+metadata:
+  name: altinity-operator
+spec:
+  namespace:
+    value: altinity-operator
+  createNamespace: true
+  watchNamespaces:
+    - ".*"
+  operatorCredentials:
+    username: clickhouse_operator
+    password:
+      value: ch0p-Str0ng-Passw0rd-2026

@@ -4,7 +4,7 @@
 # -- and downstream, the DynamoDB table and the SQS queue reference this
 # key's ARN, the cross-service edges a mapper must infer rather than
 # freeze into literals.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: orders-prod-data-key

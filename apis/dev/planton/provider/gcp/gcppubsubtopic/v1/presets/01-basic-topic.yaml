@@ -1,8 +1,0 @@
-apiVersion: gcp.planton.dev/v1
-kind: GcpPubSubTopic
-metadata:
-  name: order-events
-spec:
-  # Omitted projectId: the topic lands in the provider's default project.
-  # Set projectId (literal or a GcpProject reference) to target another.
-  topicName: order-events

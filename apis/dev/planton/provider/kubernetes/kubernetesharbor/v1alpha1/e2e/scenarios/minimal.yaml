@@ -1,0 +1,32 @@
+# The zero-dependency evaluation arm: chart-internal PostgreSQL + Redis
+# (upstream's own test-grade posture), artifact blobs on a filesystem
+# PVC, Trivy on with skipUpdate (the kind cluster must not depend on a
+# live vulnerability-DB download for install readiness), and a ClusterIP
+# front door. externalUrl is pinned to the verifier's port-forward
+# address — Harbor binds token-service auth to exactly that URL, so an
+# OCI push through the tunnel only authenticates when the two match.
+#
+# The verifier proves the product loop live: login as the
+# module-generated admin, create a project, OCI push/pull round-trip,
+# and the unauthenticated 401 auth gate.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHarbor
+metadata:
+  name: e2e-harbor-min
+spec:
+  namespace:
+    value: e2e-harbor-min
+  createNamespace: true
+  # MUST match the verifier's port-forward (127.0.0.1:18080). Change
+  # both together if the local port moves.
+  externalUrl: http://127.0.0.1:18080
+  database:
+    internal: {}
+  cache:
+    internal: {}
+  storage:
+    filesystem:
+      diskSize: 5Gi
+  trivy:
+    skipUpdate: true
+    offlineScan: true

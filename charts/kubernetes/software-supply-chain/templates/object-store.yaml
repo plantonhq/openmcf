@@ -16,7 +16,7 @@
 # generated `-s3-secret` shape so the store's exported
 # s3_credentials_secret_name output keeps its documented key contract
 # for any future consumer.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: "{{ values.env }}-supply-s3cfg"
@@ -38,7 +38,7 @@ spec:
 ---
 # SeaweedFS with its S3 gateway on, identities user-owned via the Secret
 # above, and the registry bucket created before Harbor's first push.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSeaweedFs
 metadata:
   name: "{{ values.env }}-supply-objects"

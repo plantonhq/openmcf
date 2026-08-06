@@ -17,7 +17,7 @@
 # binding on the controller, or the node identity). Cloudflare is the one
 # token-based exception. DNS-01 is the default because it issues wildcards and
 # works for services that are not publicly reachable.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterIssuer
 metadata:
   name: "{{ values.env }}-letsencrypt-prod"
@@ -102,7 +102,7 @@ spec:
 {% endif %}
 {% endif %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterIssuer
 metadata:
   name: "{{ values.env }}-letsencrypt-staging"

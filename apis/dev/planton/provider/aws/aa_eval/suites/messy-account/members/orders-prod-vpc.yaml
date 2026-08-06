@@ -5,7 +5,7 @@
 # the environment for the future partition-scoring axis. The managed-by
 # label marks the fixture for orphan sweeps; the eval pipeline redacts it
 # (and every planton.ai/* identity tag) from the proposer's view.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: orders-prod-vpc

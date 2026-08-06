@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpfirestoreindex.v1alpha1;
+
+// Outputs produced after provisioning a Firestore composite index.
+message GcpFirestoreIndexStackOutputs {
+  // Server-defined index resource name
+  // (projects/{project}/databases/{database}/collectionGroups/{collection}/indexes/{id}).
+  // The canonical identifier for Admin API calls.
+  string index_id = 1;
+
+  // The collection (group) the index applies to — confirms the target
+  // without chasing the reference chain.
+  string collection = 2;
+}

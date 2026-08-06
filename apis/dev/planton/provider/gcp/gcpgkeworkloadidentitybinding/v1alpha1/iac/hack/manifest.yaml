@@ -1,0 +1,11 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGkeWorkloadIdentityBinding
+metadata:
+  name: test-wib
+spec:
+  projectId:
+    value: test-gcp-project
+  serviceAccountEmail:
+    value: test-gsa@test-gcp-project.iam.gserviceaccount.com
+  ksaNamespace: cert-manager
+  ksaName: cert-manager

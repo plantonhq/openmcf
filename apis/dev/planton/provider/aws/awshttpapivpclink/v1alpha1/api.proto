@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awshttpapivpclink.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/aws/awshttpapivpclink/v1alpha1/spec.proto";
+import "dev/planton/provider/aws/awshttpapivpclink/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AwsHttpApiVpcLink is the API envelope for an API Gateway v2 VPC link -- the
+// shared network attachment that lets HTTP APIs proxy traffic to private
+// ALB/NLB/Cloud Map backends inside a VPC.
+message AwsHttpApiVpcLink {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsHttpApiVpcLink".
+  string kind = 2 [(buf.validate.field).string.const = "AwsHttpApiVpcLink"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the VPC link.
+  AwsHttpApiVpcLinkSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsHttpApiVpcLinkStatus status = 5;
+}
+
+// AwsHttpApiVpcLinkStatus describes the status of an API Gateway v2 VPC link
+// resource.
+message AwsHttpApiVpcLinkStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsHttpApiVpcLinkStackOutputs outputs = 1;
+}

@@ -32,7 +32,7 @@ When you deploy a KubernetesService resource, Planton provisions:
 Create a file `service.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesService
 metadata:
   name: my-app
@@ -104,7 +104,7 @@ This creates a ClusterIP Service named `my-app` in the `default` namespace, rout
 A ClusterIP service in front of pods deployed by a Helm chart:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesService
 metadata:
   name: legacy-api
@@ -130,7 +130,7 @@ spec:
 An AWS NLB preserving the client source IP:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesService
 metadata:
   name: public-web
@@ -162,7 +162,7 @@ spec:
 Per-pod DNS with addresses published during bootstrap:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesService
 metadata:
   name: db-peers
@@ -189,7 +189,7 @@ spec:
 One stable in-cluster name for an external database:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesService
 metadata:
   name: prod-db

@@ -29,7 +29,7 @@ No tags are applied to the record because the Scaleway DNS API does not support 
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: www-record
@@ -99,7 +99,7 @@ This creates an A record `www.example.com` pointing to `192.0.2.1` with a 1-hour
 A basic A record pointing a subdomain to a static IP address:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: api-record
@@ -125,7 +125,7 @@ Two MX records for a domain with primary and backup mail servers. Each record is
 Primary mail server (`mx-primary.yaml`):
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: mx-primary
@@ -149,7 +149,7 @@ spec:
 Backup mail server (`mx-backup.yaml`):
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: mx-backup
@@ -175,7 +175,7 @@ spec:
 An A record whose value is dynamically resolved from a ScalewayLoadBalancer output, and whose zone comes from a ScalewayDnsZone resource. This is the primary use case for standalone DNS records -- creating explicit dependency edges in infra charts:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: lb-record
@@ -204,7 +204,7 @@ spec:
 A CNAME record pointing to a Kapsule cluster endpoint:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsRecord
 metadata:
   name: k8s-ingress

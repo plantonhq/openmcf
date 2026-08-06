@@ -1,0 +1,287 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpglobalforwardingrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpGlobalForwardingRuleSpec defines a global Compute Engine forwarding rule
+// — the VIP node of a global load balancer. The forwarding rule is where
+// traffic enters: it binds an IP address and port to a target proxy, and
+// everything behind it (proxy → URL map → backend service → backends) is
+// wiring that decides what happens to the connection.
+//
+// One frontend commonly runs a PAIR of rules sharing a single static IP: a
+// port-80 rule pointing at a target HTTP proxy (serving an http→https
+// redirect URL map) and a port-443 rule pointing at the target HTTPS proxy
+// that serves the application.
+//
+// Beyond load balancing, the global forwarding rule is also the entry point
+// for Private Service Connect: with the load-balancing scheme set to NONE it
+// can forward a VPC's traffic privately to Google APIs (target "all-apis" /
+// "vpc-sc") or to a producer's published service attachment.
+//
+// target and labels update in place; everything else — name, IP, protocol,
+// port range, scheme, network wiring — is immutable and forces
+// destroy-and-recreate. Because target is mutable, the standard blue/green
+// frontend move is to repoint the rule at a new proxy with zero VIP churn.
+message GcpGlobalForwardingRuleSpec {
+  // The GCP project that owns the forwarding rule.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable: changing it destroys and recreates the rule.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the forwarding rule in GCP. Must be 1-63 characters: lowercase
+  // letters, digits, and hyphens; must start with a letter and end with a
+  // letter or digit. Private Service Connect rules that forward to Google
+  // APIs are stricter: 1-20 characters, lowercase letters and digits only,
+  // starting with a letter (the name doubles as the service-directory
+  // entry). If not specified, defaults to metadata.name.
+  // Immutable: changing it destroys and recreates the rule — the VIP
+  // itself survives only if it is a reserved static address.
+  string forwarding_rule_name = 2 [(buf.validate.field).cel = {
+    id: "valid_forwarding_rule_name"
+    message: "forwarding_rule_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit (Private Service Connect rules for Google APIs are limited to 20 characters, letters and digits only)"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')"
+  }];
+
+  // What this frontend serves and which proxy chain sits behind it — write
+  // it for the operator tracing an incident from the VIP inward. Immutable.
+  string description = 3 [(buf.validate.field).string.max_len = 2048];
+
+  // The target that receives matched traffic. Reference a
+  // GcpTargetHttpsProxy (the default) or a GcpTargetHttpProxy resource, or
+  // provide a target URI directly — other global targets (target SSL/TCP
+  // proxies, target gRPC proxies) attach by self-link until they exist as
+  // Planton kinds. For Private Service Connect, pass the literal bundle name
+  // "all-apis" or "vpc-sc" (Google APIs) or a service attachment URI
+  // (producer services). Required. Mutable: GCP repoints it in place (a
+  // dedicated setTarget call), enabling zero-downtime frontend swaps.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpTargetHttpsProxy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // The IP address this rule accepts traffic on. Reference a
+  // GcpGlobalAddress resource (its reserved IP), provide a literal IP
+  // ("34.120.1.2"), or an address resource URL. When omitted, Google Cloud
+  // assigns an ephemeral IP — fine for testing, but production frontends
+  // should reserve a static address so DNS never has to chase a new VIP.
+  // Required for Private Service Connect rules. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ip_address = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpGlobalAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.address"
+  ];
+
+  // The IP protocol this rule matches (default TCP). All proxy-based global
+  // load balancers and Private Service Connect use TCP; the other protocols
+  // exist for protocol forwarding. Immutable.
+  optional string ip_protocol = 6 [
+    (dev.planton.shared.options.default) = "TCP",
+    (buf.validate.field).cel = {
+      id: "valid_ip_protocol"
+      message: "ip_protocol must be one of TCP, UDP, ESP, AH, SCTP, or ICMP"
+      expression: "this == '' || this in ['TCP', 'UDP', 'ESP', 'AH', 'SCTP', 'ICMP']"
+    }
+  ];
+
+  // IP version for the auto-assigned ephemeral address (IPV4 or IPV6; GCP
+  // default IPV4). Only meaningful when ip_address is omitted — a referenced
+  // static address already fixes the version. Immutable.
+  string ip_version = 7 [(buf.validate.field).cel = {
+    id: "valid_ip_version"
+    message: "ip_version must be IPV4 or IPV6"
+    expression: "this == '' || this in ['IPV4', 'IPV6']"
+  }];
+
+  // Which load balancer family this frontend belongs to (default EXTERNAL,
+  // the classic global external Application LB). EXTERNAL_MANAGED is the
+  // newer envoy-based global external ALB; INTERNAL_MANAGED is the
+  // cross-region internal ALB; INTERNAL_SELF_MANAGED is Traffic Director /
+  // service mesh; NONE (sent to GCP as an empty scheme) is Private Service
+  // Connect. The scheme must match the family the target proxy's backend
+  // services were created for. Immutable — except the EXTERNAL →
+  // EXTERNAL_MANAGED canary migration driven by
+  // external_managed_backend_bucket_migration_state.
+  optional string load_balancing_scheme = 8 [
+    (dev.planton.shared.options.default) = "EXTERNAL",
+    (buf.validate.field).cel = {
+      id: "valid_load_balancing_scheme"
+      message: "load_balancing_scheme must be one of EXTERNAL, EXTERNAL_MANAGED, INTERNAL_MANAGED, INTERNAL_SELF_MANAGED, or NONE (NONE is the Private Service Connect form)"
+      expression: "this == '' || this in ['EXTERNAL', 'EXTERNAL_MANAGED', 'INTERNAL_MANAGED', 'INTERNAL_SELF_MANAGED', 'NONE']"
+    }
+  ];
+
+  // The port or contiguous port range ("443" or "8080-8090") this rule
+  // matches. Requires a TCP/UDP/SCTP protocol. Proxy-based global load
+  // balancers accept only specific ports (80/8080/443 for HTTP(S)); two
+  // external rules on the same IP+protocol cannot overlap ranges — which is
+  // exactly how the port-80 redirect rule and the port-443 serving rule
+  // share one VIP. Not used by Private Service Connect rules. Immutable.
+  string port_range = 9 [(buf.validate.field).cel = {
+    id: "valid_port_range"
+    message: "port_range must be a port (\"443\") or a contiguous range (\"8080-8090\")"
+    expression: "this == '' || this.matches('^[0-9]+(-[0-9]+)?$')"
+  }];
+
+  // The VPC network this frontend belongs to. Only used by internal-facing
+  // schemes and Private Service Connect (INTERNAL_MANAGED,
+  // INTERNAL_SELF_MANAGED, NONE); external load balancers live on Google's
+  // edge, not in a VPC. Reference a GcpVpcNetwork resource or provide a network
+  // self-link. For PSC rules a network is required. If omitted where
+  // applicable, GCP uses the default network. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // The subnetwork the load-balanced IP belongs to, for internal load
+  // balancing. Optional when the network is auto-mode; required when it is
+  // custom-mode. Reference a GcpSubnetwork resource or provide a subnetwork
+  // self-link. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Networking tier. Global forwarding rules only support PREMIUM (Google's
+  // global backbone); STANDARD tier exists only on regional forwarding
+  // rules. Empty means PREMIUM. If ip_address references a reserved
+  // address, the tiers must match. Immutable.
+  string network_tier = 12 [(buf.validate.field).cel = {
+    id: "global_rules_are_premium_tier"
+    message: "global forwarding rules only support the PREMIUM network tier — STANDARD tier load balancing is a regional forwarding rule feature"
+    expression: "this == '' || this == 'PREMIUM'"
+  }];
+
+  // Traffic Director metadata filters: restrict which xDS clients receive
+  // this forwarding rule's configuration, by matching labels the clients
+  // present in their node metadata. Only applies to INTERNAL_SELF_MANAGED
+  // frontends. Filters set here can be overridden by the URL map's own
+  // metadata filters. Immutable.
+  repeated GcpGlobalForwardingRuleMetadataFilter metadata_filters = 13;
+
+  // Register this Private Service Connect frontend in Service Directory so
+  // VPC workloads can discover the private Google-APIs endpoint by name.
+  // Only used by PSC-for-Google-APIs rules (scheme NONE with an "all-apis" /
+  // "vpc-sc" target). Immutable.
+  GcpGlobalForwardingRuleServiceDirectoryRegistration service_directory_registration = 14;
+
+  // Skip the DNS zone Google normally auto-creates for a Private Service
+  // Connect Google-APIs frontend (the zone that maps googleapis.com names to
+  // the private VIP). Set true when you manage that DNS yourself. Only
+  // meaningful for PSC rules (scheme NONE). Immutable.
+  bool no_automate_dns_zone = 15;
+
+  // Labels to organize and bill this forwarding rule (e.g. env, team,
+  // cost-center). Keys and values follow GCP label rules. Mutable.
+  map<string, string> labels = 16;
+
+  // Canary state for migrating this frontend's backend BUCKETS from the
+  // classic EXTERNAL scheme to EXTERNAL_MANAGED without recreating the VIP:
+  // PREPARE stages the migration, TEST_BY_PERCENTAGE shifts the fraction set
+  // in external_managed_backend_bucket_migration_testing_percentage, and
+  // TEST_ALL_TRAFFIC must be reached before flipping load_balancing_scheme
+  // to EXTERNAL_MANAGED. Roll back by walking the states in reverse.
+  // Mutable.
+  string external_managed_backend_bucket_migration_state = 17 [(buf.validate.field).cel = {
+    id: "valid_backend_bucket_migration_state"
+    message: "external_managed_backend_bucket_migration_state must be one of PREPARE, TEST_BY_PERCENTAGE, or TEST_ALL_TRAFFIC"
+    expression: "this == '' || this in ['PREPARE', 'TEST_BY_PERCENTAGE', 'TEST_ALL_TRAFFIC']"
+  }];
+
+  // Percentage (0-100) of backend-bucket requests served by the envoy-based
+  // Global external ALB during a TEST_BY_PERCENTAGE canary migration. Only
+  // meaningful with external_managed_backend_bucket_migration_state
+  // TEST_BY_PERCENTAGE. Mutable.
+  double external_managed_backend_bucket_migration_testing_percentage = 18 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 100
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "network_requires_internal_or_psc_scheme"
+    message: "network only applies to internal or Private Service Connect frontends — external load balancers live on Google's edge, not in a VPC; set load_balancing_scheme to INTERNAL_MANAGED, INTERNAL_SELF_MANAGED, or NONE, or remove network"
+    expression: "!has(this.network) || !(this.load_balancing_scheme in ['', 'EXTERNAL', 'EXTERNAL_MANAGED'])"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "metadata_filters_require_traffic_director"
+    message: "metadata_filters only apply to Traffic Director frontends — set load_balancing_scheme INTERNAL_SELF_MANAGED or remove them"
+    expression: "size(this.metadata_filters) == 0 || this.load_balancing_scheme == 'INTERNAL_SELF_MANAGED'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "service_directory_requires_psc"
+    message: "service_directory_registration only applies to Private Service Connect frontends — set load_balancing_scheme NONE or remove it"
+    expression: "!has(this.service_directory_registration) || this.load_balancing_scheme == 'NONE'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "no_automate_dns_zone_requires_psc"
+    message: "no_automate_dns_zone only applies to Private Service Connect frontends — set load_balancing_scheme NONE or remove it"
+    expression: "!this.no_automate_dns_zone || this.load_balancing_scheme == 'NONE'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "migration_percentage_requires_test_by_percentage"
+    message: "external_managed_backend_bucket_migration_testing_percentage only applies while external_managed_backend_bucket_migration_state is TEST_BY_PERCENTAGE"
+    expression: "this.external_managed_backend_bucket_migration_testing_percentage == 0.0 || this.external_managed_backend_bucket_migration_state == 'TEST_BY_PERCENTAGE'"
+  };
+}
+
+// A Traffic Director metadata filter: which xDS clients receive this
+// configuration.
+message GcpGlobalForwardingRuleMetadataFilter {
+  // How the labels combine: MATCH_ALL (every label must match) or MATCH_ANY
+  // (at least one).
+  string filter_match_criteria = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_filter_match_criteria"
+      message: "filter_match_criteria must be MATCH_ALL or MATCH_ANY"
+      expression: "this in ['MATCH_ALL', 'MATCH_ANY']"
+    }
+  ];
+
+  // The xDS node metadata labels to match against (1-64 entries).
+  repeated GcpGlobalForwardingRuleMetadataFilterLabel filter_labels = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 64
+  ];
+}
+
+// One xDS metadata label.
+message GcpGlobalForwardingRuleMetadataFilterLabel {
+  // Label name (1-1024 characters).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024
+  ];
+
+  // The value the label must match (up to 1024 characters).
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}
+
+// Service Directory registration for a Private Service Connect frontend.
+message GcpGlobalForwardingRuleServiceDirectoryRegistration {
+  // Service Directory namespace to register the forwarding rule under. If
+  // omitted, GCP registers it under a Google-managed namespace.
+  string namespace = 1 [(buf.validate.field).string.max_len = 255];
+
+  // Service Directory region to register this global rule under (GCP
+  // default us-central1). All PSC-for-Google-APIs rules on one network
+  // should use the same region.
+  string service_directory_region = 2 [(buf.validate.field).string.max_len = 63];
+}

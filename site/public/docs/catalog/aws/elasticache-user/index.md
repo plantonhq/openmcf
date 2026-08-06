@@ -35,7 +35,7 @@ rotation is an in-place update on the user.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUser
 metadata:
   name: orders-service
@@ -80,7 +80,7 @@ planton apply -f user.yaml
 ### IAM-authenticated user
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUser
 metadata:
   name: platform-cache-reader
@@ -96,7 +96,7 @@ spec:
 ### Locked-down default user (mandatory group member)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUser
 metadata:
   name: rbac-default-user

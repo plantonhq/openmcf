@@ -1,0 +1,76 @@
+# Minimal AzureFrontDoorRuleSet scenario: a three-rule delivery policy
+# on the fixture profile exercising the heavyweight seams -- a
+# STOP-behavior HTTPS redirect (the redirect protocol dialect), a
+# condition-less security-headers rule with both header-action kinds
+# (incl. DELETE without a value), and a caching override with the
+# override protocol dialect plus specified query strings. Conditions
+# cover geo-negation, url-path wildcard, closed-vocabulary methods, and
+# the unspecified-operator IP_MATCH default.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorRuleSet
+metadata:
+  name: planton-oss-e2e-azurefrontdoorruleset-smoke
+  id: planton-oss-e2e-azurefrontdoorruleset-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorruleset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  ruleSetName: e2esmokepolicy
+  rules:
+    - name: httpsupgrade
+      order: 1
+      behaviorOnMatch: STOP
+      conditions:
+        requestScheme:
+          - matchValue: HTTP
+        remoteAddress:
+          - operator: GEO_MATCH
+            negateCondition: true
+            matchValues: [US]
+      actions:
+        urlRedirect:
+          redirectType: PERMANENT_REDIRECT
+          redirectProtocol: HTTPS_ONLY
+    - name: securityheaders
+      order: 2
+      actions:
+        responseHeaders:
+          - headerAction: OVERWRITE
+            headerName: Strict-Transport-Security
+            value: max-age=31536000; includeSubDomains
+          - headerAction: OVERWRITE
+            headerName: X-Content-Type-Options
+            value: nosniff
+          - headerAction: DELETE
+            headerName: X-Powered-By
+        requestHeaders:
+          - headerAction: APPEND
+            headerName: X-Planton-E2E
+            value: "1"
+    - name: staticcache
+      order: 3
+      conditions:
+        urlPath:
+          - operator: WILDCARD
+            matchValues: [static/*]
+        requestMethod:
+          - matchValues: [GET, HEAD]
+        socketAddress:
+          - matchValues: [203.0.113.0/24]
+            negateCondition: true
+      actions:
+        routeConfigurationOverride:
+          cacheBehavior: OVERRIDE_ALWAYS
+          cacheDuration: 1.00:00:00
+          queryStringCachingBehavior: IGNORE_SPECIFIED_QUERY_STRINGS
+          queryStringParameters: [utm_source, utm_campaign]
+          compressionEnabled: true

@@ -12,7 +12,7 @@
 # never state), so the lean default is the honest one — the HA and
 # external-Valkey arms are values changes on the deployed resource when
 # availability needs grow.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesArgocd
 metadata:
   name: "{{ values.env }}-argocd"

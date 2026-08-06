@@ -27,7 +27,7 @@ When you deploy a DigitalOceanBucket resource, Planton provisions:
 Create a file `bucket.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
   name: my-assets
@@ -73,7 +73,7 @@ This creates a private Spaces bucket named `my-assets` in the NYC3 region with v
 A private bucket in Frankfurt tagged for a specific team and environment:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
   name: team-logs
@@ -95,7 +95,7 @@ spec:
 A publicly readable bucket for hosting static website assets with versioning enabled:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
   name: static-assets
@@ -119,7 +119,7 @@ spec:
 A private bucket with versioning enabled for data backups in Singapore:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
   name: db-backups

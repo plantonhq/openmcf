@@ -1,0 +1,22 @@
+# Kind-honest full surface: a single monolithic replica on a persistent
+# volume (object-storage backends compose with an in-cluster
+# KubernetesSeaweedFs — plan-proven only here, a deferred-ledger row), with
+# the config surface that needs no external dependency exercised — a longer
+# retention, the legacy Jaeger receivers opened, and the tempo-query
+# Jaeger-UI sidecar. The single-tenant default keeps the OTLP round-trip
+# header-free (multi-tenancy rendering is plan-proven). The metrics
+# generator composes onto a KubernetesKubePrometheusStack (its remote-write
+# receiver) — plan-proven here.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTempo
+metadata:
+  name: e2e-tempo-full
+spec:
+  namespace:
+    value: e2e-tempo-full
+  create_namespace: true
+  replicas: 1
+  disk_size: 2Gi
+  retention: 168h
+  jaeger_receivers_enabled: true
+  tempo_query_enabled: true

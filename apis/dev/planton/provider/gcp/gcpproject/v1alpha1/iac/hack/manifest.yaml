@@ -1,0 +1,11 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpProject
+metadata:
+  name: test-project
+spec:
+  projectId: test-project-123456
+  parentType: organization
+  parentId: "123456789012"
+  billingAccountId: 0123AB-4567CD-89EFGH
+  enabledApis:
+    - compute.googleapis.com

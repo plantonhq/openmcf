@@ -17,7 +17,7 @@ Two object storage buckets:
 
 | | AWS S3 | GCP GCS |
 |---|--------|---------|
-| apiVersion | `aws.planton.dev/v1` | `gcp.planton.dev/v1` |
+| apiVersion | `aws.planton.dev/v1alpha1` | `gcp.planton.dev/v1alpha1` |
 | kind | `AwsS3Bucket` | `GcpGcsBucket` |
 | Versioning | Enabled | Enabled |
 | Encryption | SSE-S3 (AES-256) | Google-managed (default) |
@@ -39,7 +39,7 @@ If you have only one provider configured, you can still follow along and deploy 
 Create a file named `aws-bucket.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: multi-provider-demo-aws
@@ -61,7 +61,7 @@ The `AwsS3Bucket` spec requires only `awsRegion`. Versioning, encryption, and ta
 Create a file named `gcp-bucket.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGcsBucket
 metadata:
   name: multi-provider-demo-gcp

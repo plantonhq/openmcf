@@ -1,0 +1,42 @@
+# THE durability proof: one shard with two replicas coordinated by a
+# managed Keeper, a ReplicatedMergeTree table with marker rows — then
+# the verifier DELETES a replica pod and the rows must stay served
+# during the outage and after recovery.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClickHouse
+metadata:
+  name: e2e-ch-dur
+spec:
+  namespace:
+    value: e2e-ch-dur
+  create_namespace: true
+  version: "25.3"
+  replicas: 2
+  disk_size: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  coordination:
+    type: managed_keeper
+    keeper:
+      replicas: 1
+      disk_size: 1Gi
+  users:
+    # The verifier authenticates as the first declared user. Its DDL
+    # runs ON CLUSTER (the ReplicatedMergeTree substrate), which needs
+    # the CLUSTER grant on top of the database-scoped CREATE, and its
+    # cluster-view convergence check reads system.clusters — a
+    # grants-declared user is RBAC-constrained to exactly these
+    # (system tables included).
+    - name: verifier
+      password:
+        value: e2e-verifier-pass
+      grants:
+        - GRANT SELECT, INSERT, CREATE ON e2e.*
+        - GRANT CLUSTER ON *.*
+        - GRANT SELECT ON system.clusters
+  pdb_max_unavailable: 1

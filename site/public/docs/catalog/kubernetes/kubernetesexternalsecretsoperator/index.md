@@ -23,7 +23,7 @@ Installs the External Secrets Operator — the machinery that syncs secrets from
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalSecretsOperator
 metadata:
   name: external-secrets-operator
@@ -36,7 +36,7 @@ spec:
 With ambient identity on EKS (one IAM role for every store without its own auth):
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalSecretsOperator
 metadata:
   name: external-secrets-operator

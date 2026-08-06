@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurewebapplicationfirewallpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurewebapplicationfirewallpolicy/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurewebapplicationfirewallpolicy/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureWebApplicationFirewallPolicy is the top-level API resource for a
+// regional Web Application Firewall (WAF) policy -- the rule set an Azure
+// Application Gateway enforces on HTTP traffic. It is modeled as a
+// first-class composable resource because one policy has its own lifecycle,
+// is shared across gateways, and is attached by reference at three levels:
+// gateway-wide, per HTTP listener, and per URL path rule.
+//
+// This is the Application Gateway WAF policy
+// (Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies).
+// Azure Front Door uses a DIFFERENT policy resource type with its own rule
+// vocabulary -- never attach one to the other.
+message AzureWebApplicationFirewallPolicy {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureWebApplicationFirewallPolicy".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureWebApplicationFirewallPolicy'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // WAF policy specification.
+  AzureWebApplicationFirewallPolicySpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureWebApplicationFirewallPolicyStatus status = 5;
+}
+
+// AzureWebApplicationFirewallPolicyStatus holds the deployment outputs.
+message AzureWebApplicationFirewallPolicyStatus {
+  // Stack outputs from the IaC deployment.
+  AzureWebApplicationFirewallPolicyStackOutputs outputs = 1;
+}

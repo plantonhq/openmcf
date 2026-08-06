@@ -30,7 +30,7 @@ Rules are separate `AzureFirewallPolicyRuleCollectionGroup` resources; enforceme
 Create a file `firewall-policy.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewallPolicy
 metadata:
   name: egress-baseline
@@ -91,7 +91,7 @@ After deployment, read `status.outputs.firewall_policy_id` for the ARM ID that r
 ### Premium Policy with TLS Inspection and IDPS
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewallPolicy
 metadata:
   name: inspected-egress

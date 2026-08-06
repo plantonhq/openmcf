@@ -1,0 +1,29 @@
+# GcpBigtableInstance scenario: a minimal single-node SSD cluster.
+# project_id is deliberately omitted: the instance rides the provider's
+# default project, which the E2E harness exports as GOOGLE_PROJECT from
+# the resolved test project. The cloud-side instance name carries
+# ${E2E_RUN_ID}; deletion protection is explicitly disabled so the
+# ephemeral create -> verify -> destroy cycle can tear down without a
+# two-step disable.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigtableInstance
+metadata:
+  name: planton-oss-e2e-gcpbt-smoke
+  id: planton-oss-e2e-gcpbt-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigtableinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: e2e-bt-${E2E_RUN_ID}
+  deletionProtection: false
+  clusters:
+    - clusterId: e2e-btc-${E2E_RUN_ID}
+      zone: us-central1-a
+      numNodes: 1
+      storageType: SSD

@@ -34,7 +34,7 @@ When you deploy an AzureLoadBalancer resource, Planton provisions:
 Create a file `loadbalancer.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: my-lb
@@ -123,7 +123,7 @@ This creates a public Standard load balancer with one backend pool, an HTTP heal
 ### Internal Load Balancer with a Zone-Redundant Static Frontend
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: internal-lb
@@ -163,7 +163,7 @@ spec:
 ### Explicit Outbound SNAT with Admin NAT Rules
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: egress-lb
@@ -212,7 +212,7 @@ spec:
 ### SQL AlwaysOn with Floating IP
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: sql-lb
@@ -252,7 +252,7 @@ spec:
 ### Using Foreign Key References
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: ref-lb

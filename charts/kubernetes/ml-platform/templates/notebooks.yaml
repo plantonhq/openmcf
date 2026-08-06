@@ -11,7 +11,7 @@
 # Hub state lives in the composed PostgreSQL rather than the default
 # sqlite volume: it survives PVC loss and gets snapshotted with the
 # database fleet — the platform posture.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJupyterHub
 metadata:
   name: "{{ values.env }}-jupyterhub"

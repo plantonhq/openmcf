@@ -6,7 +6,7 @@
 # driver, external-secrets, Velero — gets its own narrowly-scoped role whose
 # trust names this provider and exactly one ServiceAccount. No static keys
 # exist anywhere in this chart.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamOidcProvider
 metadata:
   name: "{{ values.env }}-eks-oidc"

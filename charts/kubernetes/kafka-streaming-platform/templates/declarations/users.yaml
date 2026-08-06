@@ -18,7 +18,7 @@
 {% if loop.index0 > 0 %}
 ---
 {% endif %}
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   # The resource name IS the Kafka principal and the credential Secret's

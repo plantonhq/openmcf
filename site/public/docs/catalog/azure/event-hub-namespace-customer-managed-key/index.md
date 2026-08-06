@@ -28,7 +28,7 @@ When you deploy an AzureEventHubNamespaceCustomerManagedKey resource, Planton pr
 Create a file `cmk.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubNamespaceCustomerManagedKey
 metadata:
   name: streaming-cmk

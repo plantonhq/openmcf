@@ -27,7 +27,7 @@ Creates a Google Cloud Artifact Registry repository — the package store for co
 Create a file `artifact-repo.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: app-images

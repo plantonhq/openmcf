@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremanagedredisaccesspolicyassignment.v1alpha1;
+
+import "dev/planton/provider/azure/azuremanagedredisaccesspolicyassignment/v1alpha1/api.proto";
+import "dev/planton/provider/azure/provider.proto";
+
+// AzureManagedRedisAccessPolicyAssignmentStackInput is the input to the
+// IaC module. It contains the target resource and provider configuration.
+message AzureManagedRedisAccessPolicyAssignmentStackInput {
+  // target cloud-resource to be deployed
+  AzureManagedRedisAccessPolicyAssignment target = 1;
+  // provider-config for Azure authentication
+  dev.planton.provider.azure.AzureProviderConfig provider_config = 2;
+}

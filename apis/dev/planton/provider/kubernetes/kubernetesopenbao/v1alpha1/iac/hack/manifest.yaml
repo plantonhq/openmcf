@@ -1,0 +1,81 @@
+# Full-surface development manifest — exercises every module-rendered arm
+# so the offline plan/preview proofs cover what the kind-cluster lanes
+# exclude (HA Raft with synthesized retry_join, TLS listener wiring, a
+# declared-credential auto-unseal seal, the injector, metrics +
+# ServiceMonitor, audit storage, the snapshot agent).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenBao
+metadata:
+  name: bao-dev
+spec:
+  namespace:
+    value: openbao-dev
+  createNamespace: true
+  server:
+    ha:
+      replicas: 3
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    dataStorage:
+      size: 10Gi
+    auditStorage:
+      size: 5Gi
+    logLevel: info
+    logFormat: json
+    scheduling:
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: secrets
+          effect: NoSchedule
+  tls:
+    enabled: true
+    certSecretName:
+      value: bao-dev-tls
+  autoUnseal:
+    awsKms:
+      region: us-west-2
+      kmsKeyId: alias/openbao-unseal
+      accessKeyId: AKIAEXAMPLEDEVONLY
+      secretAccessKey: dev-only-placeholder-secret-key
+  injector:
+    enabled: true
+    replicas: 1
+    failurePolicy: Ignore
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+  uiEnabled: true
+  networkPolicyEnabled: true
+  metrics:
+    enabled: true
+    serviceMonitorEnabled: true
+  snapshotAgent:
+    enabled: true
+    schedule: "0 */6 * * *"
+    s3Host:
+      value: s3.us-west-2.amazonaws.com
+    s3Bucket: bao-dev-snapshots
+    s3ExpireDays: 7
+    s3CredentialsSecretName: bao-dev-s3-credentials
+    baoRole: snapshot
+    baoAuthPath: kubernetes
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/bao-dev-unseal
+    authDelegatorEnabled: true
+  helmValues: |
+    server:
+      annotations:
+        example.planton.ai/full-surface: "true"

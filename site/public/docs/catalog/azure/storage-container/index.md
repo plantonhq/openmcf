@@ -26,7 +26,7 @@ When you deploy an AzureStorageContainer resource, Planton provisions:
 Create a file `container.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageContainer
 metadata:
   name: app-uploads

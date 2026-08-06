@@ -1,0 +1,21 @@
+# The composed CA-chain proof — the family's composition story live:
+#   self-signed Issuer fixture  →  root CA Certificate fixture (is_ca)
+#   →  THIS CA Issuer (signs with the root's Secret, resolved through a
+#      foreign-key reference to the Certificate fixture's secret output).
+# The verifier requires Ready, which cert-manager only grants after reading
+# a valid CA keypair out of the referenced Secret — proving the whole chain,
+# not just the object.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIssuer
+metadata:
+  name: e2e-iss-ca-chain
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesCertificate"
+spec:
+  namespace:
+    value: default
+  config:
+    ca:
+      caSecretName:
+        valueFrom:
+          name: e2e-cert-fixture

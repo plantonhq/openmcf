@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurevirtualnetwork.v1alpha1;
+
+// AzureVirtualNetworkStackOutputs captures the outputs of provisioning an
+// Azure Virtual Network.
+//
+// The primary output is `virtual_network_id`, the join key for everything
+// that lives inside or attaches to the network: AzureSubnet partitions it,
+// AzurePrivateDnsZoneVirtualNetworkLink makes private DNS zones resolvable
+// from it, and AzureVnetPeering connects it to other networks.
+message AzureVirtualNetworkStackOutputs {
+  // The Azure Resource Manager ID of the virtual network.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualNetworks/{name}
+  // This is the primary output referenced by downstream resources via StringValueOrRef.
+  string virtual_network_id = 1;
+
+  // The name of the virtual network. Echoed from the spec for convenience --
+  // resources created by name inside the network (subnets via azurerm's
+  // virtual_network_name argument, for example) join on this.
+  string virtual_network_name = 2;
+
+  // The stable GUID ARM assigns the virtual network at creation. Some Azure
+  // features (BGP community advertisement, network diagnostics) identify
+  // networks by this GUID rather than the ARM ID.
+  string guid = 3;
+
+  // The address space actually carried by the network. Echoes the spec's
+  // address_spaces when self-managed; when ip_address_pools delegate
+  // allocation, this surfaces the CIDR blocks the IPAM pool provisioned --
+  // the only place those ranges are visible for downstream planning.
+  repeated string address_spaces = 4;
+}

@@ -22,7 +22,7 @@ go_test(
     srcs = ["backend_config_test.go"],
     embed = [":backendconfig"],
     deps = [
-        "//apis/dev/planton/provider/aws/awsvpc/v1:awsvpc",
+        "//apis/dev/planton/provider/aws/awsvpc/v1alpha1",
         "//apis/dev/planton/shared",
         "//pkg/iac/tofu/tofuannotationkeys",
         "@com_github_stretchr_testify//assert",

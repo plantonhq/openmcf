@@ -28,7 +28,7 @@ When you deploy a ScalewayDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsZone
 metadata:
   name: my-dns-zone
@@ -81,7 +81,7 @@ This creates a root DNS zone for `example.com` with no inline records. The zone 
 A bare DNS zone for a domain, with all records managed as standalone ScalewayDnsRecord resources or by external systems:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsZone
 metadata:
   name: example-root
@@ -99,7 +99,7 @@ spec:
 A subdomain zone for `staging.example.com` with email routing (MX) and an SPF policy (TXT):
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsZone
 metadata:
   name: staging-zone
@@ -138,7 +138,7 @@ spec:
 A root zone for a production domain with A records, CNAME, CAA, DMARC, and mail routing:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayDnsZone
 metadata:
   name: prod-zone

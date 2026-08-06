@@ -31,7 +31,7 @@ Rules are managed inline on the group: the manifest is the complete statement of
 Create a file `sg.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: my-sg
@@ -96,7 +96,7 @@ Each `SecurityGroupRule` contains:
 A Security Group that allows inbound HTTP (80) and HTTPS (443) from anywhere, with unrestricted outbound:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: web-sg
@@ -136,7 +136,7 @@ spec:
 A Security Group that restricts SSH access to a specific CIDR range:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: bastion-sg
@@ -170,7 +170,7 @@ spec:
 A Security Group for internal services that allows traffic on a custom port from other instances in the same group:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: internal-svc-sg
@@ -208,7 +208,7 @@ spec:
 A Security Group for a database that only accepts traffic from a specific application Security Group:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: db-sg
@@ -242,7 +242,7 @@ spec:
 Reference an Planton-managed VPC instead of hardcoding the VPC ID:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: ref-sg

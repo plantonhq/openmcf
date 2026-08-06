@@ -1,0 +1,26 @@
+# AzureFrontDoorRuleSet install profile used as an extra fixture by the
+# route's rule-set-attach scenario (declared via the
+# planton.dev/e2e-prerequisites annotation -- attaching a rule set
+# is an OPTIONAL route seam, so it is never a registry prerequisite).
+# The fixture set is deliberately EMPTY: attaching is what the consumer
+# proves; the rules' own depth is proven by this kind's minimal
+# scenario.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorRuleSet
+metadata:
+  name: planton-oss-e2e-fd-ruleset-prereq
+  id: planton-oss-e2e-fd-ruleset-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorruleset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  ruleSetName: e2eprereqpolicy

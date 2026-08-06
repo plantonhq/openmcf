@@ -27,7 +27,7 @@ When you deploy an AzureUserAssignedIdentity resource, Planton provisions:
 Create a file `identity.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: my-identity
@@ -73,7 +73,7 @@ This creates the identity. It has no permissions until `AzureRoleAssignment` res
 ### Identity for a Workload
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: payments-identity
@@ -95,7 +95,7 @@ spec:
 Then grant what it needs -- for example, read access to Key Vault secrets:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: payments-kv-reader
@@ -116,7 +116,7 @@ spec:
 For regulated environments -- token issuance restricted to the identity's region and tags aligned with the org's Azure Policy conventions:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: regulated-identity
@@ -142,7 +142,7 @@ spec:
 The identity anchors keyless CI/CD: an `AzureRoleAssignment` grants it deployment rights, and an `AzureFederatedIdentityCredential` lets a GitHub Actions workflow act as it -- no secret anywhere:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: ci-deployer

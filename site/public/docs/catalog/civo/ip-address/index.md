@@ -28,7 +28,7 @@ The IP is created in an unattached state. You can later associate it with a Civo
 Create a file `civo-ip.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoIpAddress
 metadata:
   name: my-ip
@@ -70,7 +70,7 @@ This allocates a reserved IPv4 address in the New York region.
 A minimal manifest that allocates a reserved IP in Frankfurt:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoIpAddress
 metadata:
   name: basic-ip
@@ -88,7 +88,7 @@ spec:
 Adding a description makes the IP easier to identify in the Civo dashboard and in IaC state:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoIpAddress
 metadata:
   name: api-gateway-ip
@@ -107,7 +107,7 @@ spec:
 A reserved IP intended for a production load balancer, paired with a DNS record:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoIpAddress
 metadata:
   name: prod-lb-ip

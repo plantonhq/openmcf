@@ -28,7 +28,7 @@ When you deploy an AzureMssqlDatabase resource, Planton provisions:
 Create a file `database.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlDatabase
 metadata:
   name: orders-db
@@ -102,7 +102,7 @@ This creates a serverless database that pauses after an hour idle. Connect with 
 ### Pooled Database
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlDatabase
 metadata:
   name: tenant-42
@@ -122,7 +122,7 @@ spec:
 ### Geo Secondary for Disaster Recovery
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlDatabase
 metadata:
   name: orders-dr

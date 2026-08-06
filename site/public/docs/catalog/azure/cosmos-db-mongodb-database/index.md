@@ -26,7 +26,7 @@ When you deploy an AzureCosmosdbMongoDatabase resource, Planton provisions:
 Create a file `database.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbMongoDatabase
 metadata:
   name: app-data

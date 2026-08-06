@@ -59,7 +59,7 @@ The examples below use Pulumi labels. Swap the metadata labels to use OpenTofu i
 Object storage with versioning, encryption, and lifecycle management.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: my-app-assets
@@ -92,7 +92,7 @@ spec:
 Managed relational database (PostgreSQL, MySQL, MariaDB, Oracle, SQL Server).
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: my-app-database
@@ -126,7 +126,7 @@ spec:
 Virtual Private Cloud with subnets across availability zones.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: my-network
@@ -158,7 +158,7 @@ spec:
 Managed relational database (PostgreSQL or MySQL) on Google Cloud.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: my-gcp-database
@@ -189,7 +189,7 @@ spec:
 Google Kubernetes Engine cluster with private nodes and VPC-native networking.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: my-gke-cluster
@@ -227,7 +227,7 @@ spec:
 Azure Kubernetes Service cluster with system and user node pools.
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: my-aks-cluster
@@ -276,7 +276,7 @@ spec:
 Microservice deployment with container configuration, ingress, and autoscaling.
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-api-service
@@ -329,7 +329,7 @@ spec:
 PostgreSQL database on Kubernetes with custom databases, users, and resource tuning.
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: my-postgres
@@ -374,7 +374,7 @@ spec:
 Serverless function deployed to Cloudflare's edge network.
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareWorker
 metadata:
   name: my-edge-function
@@ -407,7 +407,7 @@ spec:
 Private network on the Civo cloud platform.
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoVpc
 metadata:
   name: my-civo-network

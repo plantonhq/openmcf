@@ -28,7 +28,7 @@ When you deploy an AwsS3ObjectSet resource, Planton provisions:
 Create a file `s3-objects.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: my-objects
@@ -98,7 +98,7 @@ This uploads a single JSON configuration file to the `config/app.json` key in th
 Upload several configuration files to a shared bucket:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: app-config
@@ -130,7 +130,7 @@ spec:
 Upload static assets with per-asset cache posture (public access comes from the bucket's policy, not per-object ACLs):
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: website-assets
@@ -171,7 +171,7 @@ spec:
 Per-object KMS encryption override plus WORM retention (the bucket must have been created with Object Lock enabled):
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: audit-artifacts
@@ -204,7 +204,7 @@ spec:
 Upload binary assets using base64-encoded content, placed in infrequent access:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: binary-assets

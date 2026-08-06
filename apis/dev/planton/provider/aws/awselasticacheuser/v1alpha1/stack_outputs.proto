@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awselasticacheuser.v1alpha1;
+
+// AwsElasticacheUserStackOutputs captures observable identifiers from a
+// provisioned ElastiCache user. These outputs are used by downstream
+// resources to wire dependencies via StringValueOrRef — most importantly
+// the user group's `user_ids` list.
+message AwsElasticacheUserStackOutputs {
+  // The user's AWS identifier (the user id). This is what user groups
+  // reference in their membership list and what the AWS CLI/API address.
+  string user_id = 1;
+
+  // The Amazon Resource Name of the user. Used in IAM policies — an
+  // IAM-authenticated client needs `elasticache:Connect` on both the user
+  // ARN and the cache ARN.
+  string arn = 2;
+
+  // The name this user presents in the AUTH command. Exported so
+  // application configuration can be wired from the resource graph instead
+  // of duplicating the value.
+  string user_name = 3;
+}

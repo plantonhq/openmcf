@@ -33,7 +33,7 @@ When you deploy an AwsEksAccessEntry resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAccessEntry
 metadata:
   name: platform-viewers
@@ -83,7 +83,7 @@ planton apply -f access-entry.yaml
 ### Namespace-scoped team admin
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAccessEntry
 metadata:
   name: team-a-admin
@@ -103,7 +103,7 @@ spec:
 ### RBAC group mapping (bring your own bindings)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAccessEntry
 metadata:
   name: platform-operators

@@ -1,0 +1,27 @@
+# Consumer-scoped GcpCloudSql install profile for the database chain. The
+# smallest Postgres tier, no network block (proxy-only public path) — fast
+# enough for a prerequisite while the registry still installs the service
+# networking chain first. metadata.name stays fixed for FK resolution;
+# instanceName carries ${E2E_RUN_ID} because deleted names are reserved.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
+metadata:
+  name: planton-oss-e2e-gcpsql-prereq
+  id: planton-oss-e2e-gcpsql-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudsql
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: planton-oss-e2e-sql-prereq-${E2E_RUN_ID}
+  region: us-central1
+  databaseEngine: POSTGRESQL
+  databaseVersion: POSTGRES_15
+  tier: db-f1-micro
+  deletionProtection: false
+  deletionProtectionEnabled: false

@@ -46,7 +46,7 @@ resources as destinations.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: main-alb
@@ -107,7 +107,7 @@ traffic.
 An ALB reachable only inside the VPC, for internal microservice routing:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: internal-api-alb
@@ -127,7 +127,7 @@ Deletion protection, strict desync mitigation, invalid-header dropping, and
 per-request logging:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: prod-alb
@@ -154,7 +154,7 @@ Everything by reference — subnets, security group, and hosted zone resolve
 from other components' outputs at deploy time:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: web-alb

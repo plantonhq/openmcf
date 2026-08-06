@@ -29,7 +29,7 @@ The policy is deliberately standalone: one policy is shared across Application G
 Create a file `waf-policy.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureWebApplicationFirewallPolicy
 metadata:
   name: waf-baseline
@@ -105,7 +105,7 @@ This creates an OWASP 3.2 policy in Prevention mode. Read `status.outputs.policy
 ### Rate Limiting and Geo Fencing
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureWebApplicationFirewallPolicy
 metadata:
   name: waf-edge
@@ -137,7 +137,7 @@ spec:
 ### Attach to an Application Gateway
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway

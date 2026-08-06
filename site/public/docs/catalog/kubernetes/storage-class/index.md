@@ -30,7 +30,7 @@ When you deploy a KubernetesStorageClass resource, Planton provisions:
 Create a file `storage-class.yaml` — an expandable gp3 class for EKS:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStorageClass
 metadata:
   name: fast-ssd
@@ -86,7 +86,7 @@ Claims request the class by name (`storage_class_name: {value: fast-ssd}`). With
 Volumes survive claim deletion — the right shape for data that must outlive its workload:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStorageClass
 metadata:
   name: pd-ssd-retain
@@ -110,7 +110,7 @@ spec:
 Volumes may only provision in the listed zones. Topology restrictions require `wait_for_first_consumer`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStorageClass
 metadata:
   name: gp3-us-east-1a
@@ -139,7 +139,7 @@ spec:
 Marks the class as the one claims receive when they name none. Demote the existing default first — two defaults make claim behavior undefined:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStorageClass
 metadata:
   name: standard-gp3

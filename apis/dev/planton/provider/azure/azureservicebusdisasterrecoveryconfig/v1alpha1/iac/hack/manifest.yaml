@@ -1,0 +1,15 @@
+# Offline-plan manifest: a geo-DR pairing with a scoped alias rule --
+# exercises both namespace references and the least-privilege alias
+# credential seam.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusDisasterRecoveryConfig
+metadata:
+  name: test-sb-geo-dr
+spec:
+  aliasName: hack-servicebus-alias
+  primaryNamespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-sb-eastus
+  partnerNamespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-sb-westus
+  aliasAuthorizationRuleId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ServiceBus/namespaces/hack-sb-eastus/authorizationRules/dr-clients

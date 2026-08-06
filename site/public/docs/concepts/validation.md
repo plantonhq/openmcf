@@ -18,7 +18,7 @@ Every deployment component's API is defined in Protocol Buffers with validation 
 **Constant enforcement** on `apiVersion` and `kind`:
 
 ```protobuf
-string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
 string kind = 2 [(buf.validate.field).string.const = 'KubernetesPostgres'];
 ```
 

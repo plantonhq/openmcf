@@ -4,7 +4,7 @@
 # records into the provider selected by dns_provider. Together with the
 # issuers, this closes the "deploy a service, get a name and a certificate"
 # loop with zero manual DNS work.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalDns
 metadata:
   name: "{{ values.env }}-external-dns"

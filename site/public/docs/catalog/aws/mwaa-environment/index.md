@@ -30,7 +30,7 @@ When you deploy an AwsMwaaEnvironment resource, Planton provisions:
 Create a file `mwaa.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMwaaEnvironment
 metadata:
   name: my-airflow
@@ -124,7 +124,7 @@ This creates a private Airflow environment with the default `mw1.small` instance
 A minimal environment with a referenced security group attached:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMwaaEnvironment
 metadata:
   name: dev-airflow
@@ -152,7 +152,7 @@ spec:
 Encrypted environment with all five log modules enabled, a weekly maintenance window, and graceful worker replacement:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMwaaEnvironment
 metadata:
   name: prod-airflow
@@ -214,7 +214,7 @@ spec:
 Every cross-resource input resolved from Planton-managed resources — the security group node owns the MWAA ingress pattern (self-referencing all-traffic + HTTPS 443 + egress):
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMwaaEnvironment
 metadata:
   name: team-airflow

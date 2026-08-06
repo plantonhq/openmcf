@@ -1,0 +1,88 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGateway
+metadata:
+  name: test-gateway
+spec:
+  namespace:
+    value: test-namespace
+  gatewayClassName:
+    value: istio
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - kind: HTTPRoute
+    - name: https
+      hostname: app.example.com
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name:
+              value: app-tls-cert
+        options:
+          example.com/minimum-tls-version: "1.3"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              team: web
+            matchExpressions:
+              - key: environment
+                operator: In
+                values:
+                  - staging
+                  - production
+    - name: tls-passthrough
+      hostname: db.example.com
+      port: 8443
+      protocol: TLS
+      tls:
+        mode: Passthrough
+  addresses:
+    - type: IPAddress
+      value: 203.0.113.10
+    - type: Hostname
+      value: gw.example.com
+  infrastructure:
+    labels:
+      example.com/cost-center: platform
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    parametersRef:
+      group: example.com
+      kind: GatewayParams
+      name: test-gateway-params
+  allowedListeners:
+    namespaces:
+      from: Same
+  tls:
+    backend:
+      clientCertificateRef:
+        name:
+          value: backend-client-cert
+    frontend:
+      default:
+        validation:
+          caCertificateRefs:
+            - group: ""
+              kind: ConfigMap
+              name:
+                value: client-ca-bundle
+          mode: AllowValidOnly
+      perPort:
+        - port: 443
+          tls:
+            validation:
+              caCertificateRefs:
+                - group: ""
+                  kind: ConfigMap
+                  name:
+                    value: strict-ca-bundle
+              mode: AllowValidOnly

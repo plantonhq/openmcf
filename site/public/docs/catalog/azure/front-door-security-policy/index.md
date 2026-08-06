@@ -28,7 +28,7 @@ When you deploy an AzureFrontDoorSecurityPolicy resource, Planton provisions:
 Create a file `security-policy.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorSecurityPolicy
 metadata:
   name: waf-attach

@@ -1,0 +1,31 @@
+# Tuned install: exercises the typed values rendering live — controller
+# replicas/log level, DNS-01 self-check resolvers, feature gates, webhook
+# timeout, cainjector replicas, and a helm_values escape-hatch override —
+# proving the merged values actually shape the release, identically on both
+# engines.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCertManager
+metadata:
+  name: e2e-cm-tuned
+spec:
+  namespace:
+    value: cert-manager
+  createNamespace: true
+  replicas: 1
+  logLevel: 4
+  enableCertificateOwnerRef: true
+  dns01SelfCheck:
+    recursiveNameservers:
+      - "1.1.1.1:53"
+      - "8.8.8.8:53"
+    recursiveNameserversOnly: true
+  maxConcurrentChallenges: 30
+  webhook:
+    timeoutSeconds: 20
+  cainjector:
+    replicas: 1
+  startupapicheck:
+    timeout: 2m
+  helmValues: |
+    prometheus:
+      enabled: false

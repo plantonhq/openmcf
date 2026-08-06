@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesingress.v1alpha1;
+
+/**
+ * **KubernetesIngressStackOutputs** captures the observable handles of a deployed
+ * Ingress. The load-balancer address handles are what DNS automation composes on:
+ * point records at `load_balancer_ip` / `load_balancer_hostname` (or let
+ * external-dns read the same status). Both stay empty until an ingress controller
+ * claims and reconciles the Ingress — an Ingress without a controller is valid
+ * but unserved.
+ */
+message KubernetesIngressStackOutputs {
+  // The name of the Ingress object as created in the cluster.
+  string ingress_name = 1;
+
+  // The namespace the Ingress was created in.
+  string namespace = 2;
+
+  /**
+   * The IP address the controller's load balancer exposes for this Ingress.
+   * Populated by IP-based controllers (GCE, ingress-nginx on most clouds);
+   * empty until a controller reconciles the Ingress.
+   */
+  string load_balancer_ip = 3;
+
+  /**
+   * The DNS hostname the controller's load balancer exposes for this Ingress.
+   * Populated by hostname-based controllers (AWS ALB/ELB); empty until a
+   * controller reconciles the Ingress.
+   */
+  string load_balancer_hostname = 4;
+
+  /**
+   * The first host declared in the Ingress rules — the primary public FQDN this
+   * Ingress serves, ready for downstream references (dashboards, smoke tests,
+   * DNS records). Empty when the Ingress only declares host-less catch-all
+   * rules or only a default backend.
+   */
+  string first_host = 5;
+}

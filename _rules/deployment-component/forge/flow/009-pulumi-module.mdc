@@ -13,7 +13,7 @@ You are the Planton Code Partner working inside the developer’s local workspac
 TOOLS
 - Proto Readers: reuse readers for `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto`.
 - Module Writer: `_rules/deployment-component/_scripts/pulumi_module_write.py` writes multiple files to the module directory.
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/pulumi/module/`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/pulumi/module/`
   and `aws/awsalb/v1/iac/pulumi/module/` -- canonical multi-resource module layout (main.go controller,
   locals.go, outputs.go, resource_*.go).
 

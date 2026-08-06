@@ -1,0 +1,33 @@
+# The component defaults against the composed database: the PostgreSQL
+# fixture (registry prerequisite chain: CloudNativePgOperator →
+# Postgres) wired through one valueFrom per field, running tasks on the
+# KubernetesExecutor (the spec default — no broker, every task its own
+# pod). Co-located with the fixture's namespace (create_namespace
+# false) because the module composes the connection Secret from the
+# fixture's credential Secret. load_examples gives the lane its proof
+# material: the verifier proves THE AUTH GATE (anonymous API read
+# rejected), the health contract (metadatabase + scheduler healthy),
+# and THE DAG PROOF — example_bash_operator triggered through the REST
+# API as the admin user (module-generated credential) and polled to a
+# SUCCESSFUL DagRun through real KubernetesExecutor task pods.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAirflow
+metadata:
+  name: e2e-aflw-min
+spec:
+  namespace:
+    value: e2e-airflow
+  database:
+    postgres:
+      host:
+        valueFrom:
+          name: e2e-aflw-pg
+      password_secret:
+        secret_name:
+          valueFrom:
+            name: e2e-aflw-pg
+  load_examples: true
+  components:
+    triggerer:
+      # The chart default is a 100Gi PVC — kind-cluster sizing.
+      persistence_size: 1Gi

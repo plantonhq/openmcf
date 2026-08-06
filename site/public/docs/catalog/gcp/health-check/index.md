@@ -26,7 +26,7 @@ When you deploy a GcpHealthCheck resource, Planton provisions exactly one of:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpHealthCheck
 metadata:
   name: web-backend-probe

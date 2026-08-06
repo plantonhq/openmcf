@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurediskencryptionset.v1alpha1;
+
+// **AzureDiskEncryptionSetStackOutputs** captures the outputs of
+// provisioning an Azure Disk Encryption Set.
+message AzureDiskEncryptionSetStackOutputs {
+  // The Azure Resource Manager ID of the set. This is the composition seam:
+  // AzureManagedDisk, AzureVirtualMachine, and AzureVirtualMachineScaleSet
+  // reference it (disk_encryption_set_id) to encrypt their disks with the
+  // customer-managed key.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/diskEncryptionSets/{name}
+  string disk_encryption_set_id = 1;
+
+  // The name of the set resource.
+  string disk_encryption_set_name = 2;
+
+  // The principal (object) ID of the set's system-assigned identity, when
+  // one is used. This is the principal to grant Key Vault crypto access
+  // (get/wrapKey/unwrapKey, or the "Key Vault Crypto Service Encryption
+  // User" role) so the set can unwrap the key.
+  string identity_principal_id = 3;
+
+  // The Entra tenant ID of the set's system-assigned identity.
+  string identity_tenant_id = 4;
+}

@@ -31,7 +31,7 @@ When you deploy a KubernetesPodDisruptionBudget resource, Planton provisions:
 Create a file `pod-disruption-budget.yaml` — this keeps at least one pod of a workload alive through any drain:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPodDisruptionBudget
 metadata:
   name: checkout-pdb
@@ -92,7 +92,7 @@ The selector targets the `checkout` workload's pods via the workload label contr
 One budget spanning every workload labelled `tier: web` or `tier: api`, allowing at most a quarter of them down at once:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPodDisruptionBudget
 metadata:
   name: frontline-tier-pdb
@@ -120,7 +120,7 @@ spec:
 A budget over an operator-managed database that keeps two replicas available but never lets a crash-looping replica wedge a node drain. `always_allow` requires the Pulumi provisioner:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPodDisruptionBudget
 metadata:
   name: postgres-pdb

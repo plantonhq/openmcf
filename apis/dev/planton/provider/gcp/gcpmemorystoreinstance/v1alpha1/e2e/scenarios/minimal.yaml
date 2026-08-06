@@ -1,0 +1,35 @@
+# GcpMemorystoreInstance scenario: a minimal standalone (CLUSTER_DISABLED)
+# Valkey instance reaching the prerequisite VPC through the prerequisite
+# service connection policy. project_id is deliberately omitted: the
+# instance and the PSC endpoint's consumer project ride the provider's
+# default project, which the E2E harness exports as GOOGLE_PROJECT.
+# The cloud-side instance name carries ${E2E_RUN_ID}; deletion protection
+# is explicitly disabled so the ephemeral create -> verify -> destroy
+# cycle can tear down without a two-step disable.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMemorystoreInstance
+metadata:
+  name: planton-oss-e2e-gcpmsi-smoke
+  id: planton-oss-e2e-gcpmsi-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmemorystoreinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  instanceName: e2e-msi-${E2E_RUN_ID}
+  location: us-central1
+  shardCount: 1
+  mode: CLUSTER_DISABLED
+  nodeType: SHARED_CORE_NANO
+  pscAutoConnections:
+    - network:
+        valueFrom:
+          kind: GcpVpcNetwork
+          name: planton-oss-e2e-gcpvpcnetwork-prereq
+          fieldPath: status.outputs.network_id
+  deletionProtectionEnabled: false

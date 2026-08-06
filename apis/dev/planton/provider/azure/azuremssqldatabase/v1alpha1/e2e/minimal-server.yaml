@@ -1,0 +1,28 @@
+# Dedicated AzureMssqlServer for the minimal database scenario only.
+# The logical-server name is globally unique in Azure, so each scenario
+# that creates and destroys its own parent server must carry a distinct
+# server_name -- reusing the shared fixture name across sequential subtests
+# hits Azure's post-delete reservation and the recreate hangs.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlServer
+metadata:
+  name: planton-oss-e2e-mssqldb-min-sql
+  id: planton-oss-e2e-mssqldb-min-sql
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqlserver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus3
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  serverName: planton-oss-e2e-mssqldb-min-sql
+  administratorLogin: sqladmin
+  administratorPassword:
+    value: PltnE2e-Mssql!1

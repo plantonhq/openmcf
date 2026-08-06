@@ -26,7 +26,7 @@ When you deploy an AzureEventHubConsumerGroup resource, Planton provisions:
 Create a file `consumer-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubConsumerGroup
 metadata:
   name: analytics-consumer

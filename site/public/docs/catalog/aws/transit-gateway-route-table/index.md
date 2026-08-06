@@ -30,7 +30,7 @@ When you deploy an AwsTransitGatewayRouteTable resource, Planton provisions:
 Create a file `route-table.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGatewayRouteTable
 metadata:
   name: prod-domain

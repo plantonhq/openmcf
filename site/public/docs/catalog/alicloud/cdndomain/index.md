@@ -31,7 +31,7 @@ When you deploy an AliCloudCdnDomain resource, Planton provisions:
 Create a file `cdn-domain.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCdnDomain
 metadata:
   name: my-cdn
@@ -95,7 +95,7 @@ This creates a CDN domain accelerating web content from a single IP origin in th
 ### Minimal Web CDN
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCdnDomain
 metadata:
   name: my-cdn
@@ -116,7 +116,7 @@ spec:
 ### OSS Static Assets with Failover
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCdnDomain
 metadata:
   name: assets-cdn
@@ -150,7 +150,7 @@ spec:
 ### HTTPS with CAS Certificate
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCdnDomain
 metadata:
   name: secure-cdn

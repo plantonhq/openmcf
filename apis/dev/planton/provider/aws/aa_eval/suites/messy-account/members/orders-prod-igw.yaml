@@ -2,7 +2,7 @@
 # value_from edge the scan can reconstruct only through the gateway's
 # attachment -- the same enrichment-driven inference the staples suite
 # proves, here amid two look-alike VPCs.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsInternetGateway
 metadata:
   name: orders-prod-igw

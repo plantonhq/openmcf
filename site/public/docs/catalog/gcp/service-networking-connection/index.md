@@ -24,7 +24,7 @@ One connection per (network, service) pair: a VPC peering on the network (e.g. `
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceNetworkingConnection
 metadata:
   name: prod-vpc-psa

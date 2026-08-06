@@ -1,0 +1,69 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlServer
+metadata:
+  name: test-mssql
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  serverName: test-mssql-server
+  version: "12.0"
+  administratorLogin: sqladmin
+  administratorPassword:
+    value: P@ssw0rd1234!
+  # Exercises the Entra administrator block alongside SQL auth (mixed
+  # mode) plus the tenant passthrough.
+  azureadAdministrator:
+    loginUsername: dba-team@contoso.com
+    objectId:
+      value: 11111111-2222-3333-4444-555555555555
+    azureadAuthenticationOnly: false
+  # Exercises the identity-type enum mapping, the primary-identity pin,
+  # and the TDE customer-managed key.
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/sql-uai
+  primaryUserAssignedIdentityId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/sql-uai
+  transparentDataEncryptionKeyVaultKeyId:
+    value: https://test-vault.vault.azure.net/keys/sql-tde/0123456789abcdef0123456789abcdef
+  # Exercises the connection-policy enum mapping.
+  connectionPolicy: REDIRECT
+  minimumTlsVersion: "1.2"
+  publicNetworkAccessEnabled: true
+  # Exercises the outbound restriction + FQDN rule sub-resources.
+  outboundNetworkRestrictionEnabled: true
+  outboundFirewallRules:
+    - peer.database.windows.net
+  expressVulnerabilityAssessmentEnabled: true
+  firewallRules:
+    - name: allow-azure-services
+      startIpAddress: "0.0.0.0"
+      endIpAddress: "0.0.0.0"
+    - name: allow-office
+      startIpAddress: "203.0.113.0"
+      endIpAddress: "203.0.113.255"
+  # Exercises the subnet service-endpoint allowlist sub-resource.
+  virtualNetworkRules:
+    - name: allow-app-subnet
+      subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/app
+  # Exercises the folded auditing singleton with blob export.
+  extendedAuditing:
+    storageEndpoint: https://testauditlogs.blob.core.windows.net
+    storageAccountAccessKey:
+      value: dGVzdC1rZXk=
+    retentionInDays: 90
+    logMonitoringEnabled: true
+  # Exercises the Defender policy with the alert-type enum mapping.
+  securityAlertPolicy:
+    state: ENABLED
+    disabledAlerts:
+      - UNSAFE_ACTION
+    emailAccountAdmins: true
+    emailAddresses:
+      - secops@contoso.com
+    retentionDays: 30
+  tags:
+    team: data

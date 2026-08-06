@@ -23,7 +23,7 @@ Declares one secret sync: the External Secrets Operator reads entries from a sto
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalSecret
 metadata:
   name: app-database-credentials

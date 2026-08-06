@@ -11,7 +11,7 @@
 # the current primary) with the credential from the `<name>-app` Secret —
 # both exported as outputs; the Secret also carries ready-made `uri` and
 # `jdbc-uri` connection strings.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: "{{ values.env }}-{{ values.namespace }}-db"

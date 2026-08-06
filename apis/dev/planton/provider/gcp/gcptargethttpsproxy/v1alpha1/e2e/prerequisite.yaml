@@ -1,0 +1,31 @@
+# GcpTargetHttpsProxy install profile used when the proxy is an E2E
+# PREREQUISITE for another component (the global forwarding rule's target).
+# It composes the URL map and managed-certificate prerequisites installed by
+# the registry chain. project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpTargetHttpsProxy
+metadata:
+  name: planton-oss-e2e-gcpthsp-prereq
+  id: planton-oss-e2e-gcpthsp-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcptargethttpsproxy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral target HTTPS proxy created by the Planton E2E harness as a prerequisite; safe to delete
+  urlMap:
+    valueFrom:
+      kind: GcpUrlMap
+      name: planton-oss-e2e-gcpum-prereq
+      fieldPath: status.outputs.self_link
+  sslCertificates:
+    - valueFrom:
+        kind: GcpManagedSslCertificate
+        name: planton-oss-e2e-gcpmssl-prereq
+        fieldPath: status.outputs.self_link

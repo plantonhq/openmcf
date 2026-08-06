@@ -28,7 +28,7 @@ When you deploy an Auth0ResourceServer resource, Planton provisions:
 Create a file `auth0-api.yaml`:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0ResourceServer
 metadata:
   name: my-api
@@ -80,7 +80,7 @@ This creates a Resource Server in Auth0 with the identifier `https://api.example
 A backend API with defined read and write permissions:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0ResourceServer
 metadata:
   name: orders-api
@@ -109,7 +109,7 @@ spec:
 An API with role-based access control that includes permissions in access tokens:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0ResourceServer
 metadata:
   name: admin-api
@@ -145,7 +145,7 @@ spec:
 A production API with restricted token lifetimes and no offline access:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0ResourceServer
 metadata:
   name: payments-api

@@ -1,0 +1,23 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesUdpRoute
+metadata:
+  name: test-udp-route
+spec:
+  namespace:
+    value: test-namespace
+  parentRefs:
+    - name:
+        value: test-gateway
+      sectionName: dns
+      port: 53
+  rules:
+    - name: dns-forward
+      backendRefs:
+        - name:
+            value: dns-backend
+          port: 53
+          weight: 90
+        - name:
+            value: dns-backend-canary
+          port: 53
+          weight: 10

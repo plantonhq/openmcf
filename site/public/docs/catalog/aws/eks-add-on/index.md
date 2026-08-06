@@ -36,7 +36,7 @@ required policies on the referenced `AwsIamRole` itself.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: platform-coredns
@@ -83,7 +83,7 @@ planton apply -f addon.yaml
 ### EBS CSI driver with Pod Identity
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: platform-ebs-csi
@@ -101,7 +101,7 @@ spec:
 ### Pinned coredns with custom replica count
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: platform-coredns

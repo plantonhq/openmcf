@@ -27,7 +27,7 @@ When you deploy an OciQueue resource, Planton provisions:
 Create a file `queue.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciQueue
 metadata:
   name: my-queue
@@ -85,7 +85,7 @@ This creates a queue with Oracle-managed encryption, 7-day default retention, an
 A queue with default settings for development:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciQueue
 metadata:
   name: dev-queue
@@ -104,7 +104,7 @@ spec:
 A production queue with dead-letter queue enabled, extended visibility timeout, and KMS encryption:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciQueue
 metadata:
   name: order-processing
@@ -135,7 +135,7 @@ spec:
 A queue supporting 512 KB messages with partitioned consumption via consumer groups:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciQueue
 metadata:
   name: event-bus

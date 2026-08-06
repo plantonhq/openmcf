@@ -33,7 +33,7 @@ go_test(
     embed = [":importmap"],
     deps = [
         "//apis/dev/planton/iac/componentimportmap/v1:componentimportmap",
-        "//apis/dev/planton/provider/aws/awsecrrepo/v1:awsecrrepo",
+        "//apis/dev/planton/provider/aws/awsecrrepo/v1alpha1",
         "//pkg/crkreflect",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",

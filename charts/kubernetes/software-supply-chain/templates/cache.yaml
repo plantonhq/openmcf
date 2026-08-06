@@ -4,7 +4,7 @@
 # stampedes the database), with a hard memory ceiling and
 # least-recently-used eviction — the cache posture: at the ceiling old
 # entries make room for new ones instead of the pod OOM-killing.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesValkey
 metadata:
   name: "{{ values.env }}-supply-cache"

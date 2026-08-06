@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurepublicip.v1alpha1;
+
+// **AzurePublicIpStackOutputs** captures the outputs of provisioning an
+// Azure Public IP Address.
+message AzurePublicIpStackOutputs {
+  // The Azure Resource Manager ID of the public IP. This is the primary
+  // output: AzureApplicationGateway, AzureLoadBalancer, and
+  // AzureNatGateway reference it to attach the address.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/publicIPAddresses/{name}
+  string public_ip_id = 1;
+
+  // The allocated address itself. Static for the resource's lifetime --
+  // the value that lands in DNS records and partner allowlists.
+  string ip_address = 2;
+
+  // The Azure-managed FQDN ({label}.{region}.cloudapp.azure.com), populated
+  // only when domain_name_label is set; empty otherwise.
+  string fqdn = 3;
+
+  // The name of the public IP resource.
+  string public_ip_name = 4;
+}

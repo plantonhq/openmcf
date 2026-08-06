@@ -1,0 +1,39 @@
+syntax = "proto3";
+package dev.planton.provider.aws.awsclientvpn.v1alpha1;
+
+// AwsClientVpnStackOutputs captures the output values obtained after
+// provisioning the AWS Client VPN endpoint. These outputs include the
+// identifiers needed for connecting to or managing the VPN, and can be
+// referenced by other resources via StringValueOrRef.
+message AwsClientVpnStackOutputs {
+  // The AWS-assigned identifier for the Client VPN endpoint
+  // (e.g. "cvpn-endpoint-012345abcdeEXAMPLE"). Used for AWS CLI/API
+  // operations — including exporting the client configuration file
+  // (`aws ec2 export-client-vpn-client-configuration`).
+  string client_vpn_endpoint_id = 1;
+
+  // The Amazon Resource Name of the endpoint. Used in IAM policies and
+  // cross-service permissions.
+  string client_vpn_endpoint_arn = 2;
+
+  // The DNS name clients connect to. Note AWS's quirk: the OpenVPN client
+  // configuration must prepend a random subdomain label to this name
+  // (e.g. "asdf.cvpn-endpoint-....amazonaws.com") — the exported client
+  // configuration handles this automatically.
+  string endpoint_dns_name = 3;
+
+  // The URL of the self-service portal where federated users download
+  // their own client configuration. Empty when the portal is disabled.
+  string self_service_portal_url = 4;
+
+  // A map of subnet ID → target network association ID
+  // (e.g. "cvpn-assoc-0abcd1234efgh5678") for each associated subnet in
+  // `spec.subnet_ids`. Useful for referencing or manually managing a
+  // specific association.
+  map<string, string> subnet_association_ids = 5;
+
+  // The transit gateway attachment created when the endpoint is associated
+  // with a transit gateway via `spec.transit_gateway_configuration`. Empty
+  // for VPC-attached endpoints.
+  string transit_gateway_attachment_id = 6;
+}

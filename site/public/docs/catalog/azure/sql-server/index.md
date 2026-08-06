@@ -32,7 +32,7 @@ When you deploy an AzureMssqlServer resource, Planton provisions:
 Create a file `sqlserver.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlServer
 metadata:
   name: my-sql
@@ -101,7 +101,7 @@ At least one authentication mechanism is required: `administratorLogin` + `admin
 ### Entra-Only (Passwordless) Server
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlServer
 metadata:
   name: entra-sql
@@ -124,7 +124,7 @@ spec:
 ### Private Server with a Customer-Managed TDE Key
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlServer
 metadata:
   name: hardened-sql

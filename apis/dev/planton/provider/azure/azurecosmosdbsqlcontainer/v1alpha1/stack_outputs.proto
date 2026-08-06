@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1alpha1;
+
+// **AzureCosmosdbSqlContainerStackOutputs** captures the outputs of
+// provisioning a Cosmos DB SQL (NoSQL) API container.
+//
+// No endpoint or credential outputs on purpose: connectivity and keys
+// live on the ACCOUNT (AzureCosmosdbAccount's endpoint and key outputs);
+// the container is addressed inside that connection by database and
+// container name.
+message AzureCosmosdbSqlContainerStackOutputs {
+  // The Azure Resource Manager ID of the container -- the management-
+  // plane identity and the scope for container-level data-plane RBAC.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/{account}/sqlDatabases/{db}/containers/{name}
+  string sql_container_id = 1;
+
+  // The container's name -- what SDK calls reference inside the
+  // database.
+  string sql_container_name = 2;
+
+  // The name of the database the container lives in, parsed from the
+  // resolved database ID.
+  string sql_database_name = 3;
+
+  // The name of the Cosmos DB account, parsed from the resolved
+  // database ID -- saves consumers a second reference when they need
+  // the full account/database/container triple.
+  string cosmosdb_account_name = 4;
+}

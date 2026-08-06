@@ -29,7 +29,7 @@ The network is deliberately just the network. Subnets (`AzureSubnet`), outbound 
 Create a file `network.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: prod-network
@@ -88,7 +88,7 @@ planton apply -f network.yaml
 ### Growing Network with Custom DNS
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: hub-network
@@ -115,7 +115,7 @@ spec:
 ### DDoS-Protected Public-Facing Network
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: edge-network
@@ -140,7 +140,7 @@ spec:
 ### Dual-Stack Network
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: dualstack-network

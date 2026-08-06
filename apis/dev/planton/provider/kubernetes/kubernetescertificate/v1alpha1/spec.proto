@@ -1,0 +1,501 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetescertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesCertificateSpec** requests one signed X.509 certificate from a
+ * cert-manager issuer and keeps it renewed for as long as the resource
+ * exists. The signed certificate, its private key, and the CA chain land in
+ * a Kubernetes TLS Secret (`secret_name`) that consumers — Ingress TLS
+ * blocks, Gateway listeners, workload volume mounts, CA issuers — reference
+ * by name.
+ *
+ * The issuer decides WHO signs (Let's Encrypt via ACME, an internal CA, a
+ * self-signed root, Vault); this resource decides WHAT is requested: the
+ * names, lifetime, key parameters, usages, and output formats. Covers the
+ * complete cert-manager.io/v1 Certificate surface.
+ *
+ * Requires cert-manager (KubernetesCertManager) on the cluster.
+ */
+message KubernetesCertificateSpec {
+  /**
+   * Namespace the Certificate (and its output Secret) is created in.
+   * A namespace-scoped Issuer must live in this same namespace; a
+   * ClusterIssuer serves any namespace. Accepts a literal namespace name or
+   * a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * Name of the Kubernetes Secret the signed certificate is written to
+   * (keys: tls.crt, tls.key, ca.crt). This is the handle every consumer
+   * references — exported as status.outputs.secret_name.
+   */
+  string secret_name = 2 [(buf.validate.field).required = true];
+
+  /**
+   * The issuer that signs this certificate.
+   */
+  KubernetesCertificateIssuerRef issuer_ref = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Requested DNS Subject Alternative Names (e.g. "api.example.com",
+   * "*.apps.example.com"). Wildcards require a DNS-01-capable ACME issuer or
+   * a private CA. At least one name field (dns_names, ip_addresses, uris,
+   * email_addresses, common_name, or literal_subject) must be set.
+   */
+  repeated string dns_names = 4;
+
+  /**
+   * Requested IP address SANs — for certificates presented on bare IPs
+   * (internal load balancers, node endpoints). Public ACME CAs generally
+   * refuse IP SANs; use with internal issuers.
+   */
+  repeated string ip_addresses = 5;
+
+  /**
+   * Requested URI SANs (e.g. SPIFFE IDs like
+   * "spiffe://cluster.local/ns/team-a/sa/api"). The mTLS workload-identity
+   * pattern with internal issuers.
+   */
+  repeated string uris = 6;
+
+  /**
+   * Requested email address SANs — for S/MIME client certificates.
+   */
+  repeated string email_addresses = 7;
+
+  /**
+   * Requested X.509 common name (CN). Modern TLS validation ignores CN in
+   * favor of SANs, and CNs are limited to 64 characters — set it only when a
+   * consumer requires it (legacy clients, LDAP, some private CAs).
+   */
+  string common_name = 8 [(buf.validate.field).string.max_len = 64];
+
+  /**
+   * Requested subject attributes (organization, country, ...). Most public
+   * CAs (Let's Encrypt) strip these; they matter for internal PKI. Mutually
+   * exclusive with literal_subject.
+   */
+  KubernetesCertificateSubject subject = 9;
+
+  /**
+   * The FULL subject as an LDAP RFC 4514 distinguished-name string (e.g.
+   * "CN=api,OU=platform,O=acme,C=US"). Preserves attribute ORDER — required
+   * for LDAP-authentication certificates where order is semantic. Mutually
+   * exclusive with subject and common_name (it embeds both).
+   */
+  string literal_subject = 10;
+
+  /**
+   * OtherName SANs (e.g. Microsoft User Principal Names for smart-card /
+   * AD-joined client certificates).
+   */
+  repeated KubernetesCertificateOtherName other_names = 11;
+
+  /**
+   * Requested certificate lifetime as a Go duration (e.g. "2160h" = 90
+   * days). The issuer may override (ACME CAs set their own policy; Let's
+   * Encrypt always issues 90 days). Default upstream: 90 days.
+   */
+  optional string duration = 12 [
+    (dev.planton.shared.options.default) = "2160h",
+    (buf.validate.field).cel = {
+      id: "duration.format"
+      message: "duration must be a Go duration string (e.g. '2160h', '720h30m')"
+      expression: "this == '' || this.matches('^([0-9]+(h|m|s|ms|us|ns))+$')"
+    }
+  ];
+
+  /**
+   * Renew this long before expiry, as a Go duration (e.g. "360h" = 15 days).
+   * Mutually exclusive with renew_before_percentage. Default upstream:
+   * a third of the certificate lifetime.
+   */
+  string renew_before = 13 [(buf.validate.field).cel = {
+    id: "renew_before.format"
+    message: "renew_before must be a Go duration string (e.g. '360h')"
+    expression: "this == '' || this.matches('^([0-9]+(h|m|s|ms|us|ns))+$')"
+  }];
+
+  /**
+   * Renew when this percentage of the certificate's lifetime REMAINS (e.g.
+   * 25 renews a 60-minute certificate 45 minutes after issuance). Scales
+   * with issuer-decided lifetimes, unlike the absolute renew_before.
+   * Mutually exclusive with renew_before.
+   */
+  optional int32 renew_before_percentage = 14 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 99
+  ];
+
+  /**
+   * Private key algorithm, size, encoding, and rotation policy.
+   */
+  KubernetesCertificatePrivateKey private_key = 15;
+
+  /**
+   * Requested key usages and extended key usages. Empty = upstream default
+   * ("digital signature" + "key encipherment"). Add "server auth" / "client
+   * auth" explicitly when an issuer requires exact usages (Vault, some
+   * private CAs); public ACME CAs typically override.
+   */
+  repeated string usages = 16 [(buf.validate.field).repeated.items.cel = {
+    id: "usages.vocabulary"
+    message: "Each usage must be one of cert-manager's x509 usage names, e.g. 'digital signature', 'key encipherment', 'server auth', 'client auth', 'cert sign', 'any' (full list: signing, digital signature, content commitment, key encipherment, key agreement, data encipherment, cert sign, crl sign, encipher only, decipher only, any, server auth, client auth, code signing, email protection, s/mime, ipsec end system, ipsec tunnel, ipsec user, timestamping, ocsp signing, microsoft sgc, netscape sgc)"
+    expression: "this in ['signing', 'digital signature', 'content commitment', 'key encipherment', 'key agreement', 'data encipherment', 'cert sign', 'crl sign', 'encipher only', 'decipher only', 'any', 'server auth', 'client auth', 'code signing', 'email protection', 's/mime', 'ipsec end system', 'ipsec tunnel', 'ipsec user', 'timestamping', 'ocsp signing', 'microsoft sgc', 'netscape sgc']"
+  }];
+
+  /**
+   * When true, the encoded usages are included in the CertificateRequest
+   * sent to the issuer (some issuers require it, most ignore it).
+   */
+  bool encode_usages_in_request = 17;
+
+  /**
+   * When true, request a CA certificate (adds the cert-sign usage and the CA
+   * basic constraint). THE internal-PKI bootstrap: a self_signed issuer +
+   * is_ca=true produces a root CA Secret, which a CA-backed issuer then
+   * signs leaf certificates with.
+   */
+  bool is_ca = 18;
+
+  /**
+   * Requested signature algorithm (e.g. "SHA256WithRSA", "ECDSAWithSHA384",
+   * "PureEd25519"). Empty = issuer default. Must match the private key
+   * algorithm family.
+   */
+  optional string signature_algorithm = 19 [(buf.validate.field).cel = {
+    id: "signature_algorithm.vocabulary"
+    message: "signature_algorithm must be one of SHA256WithRSA, SHA384WithRSA, SHA512WithRSA, ECDSAWithSHA256, ECDSAWithSHA384, ECDSAWithSHA512, PureEd25519"
+    expression: "this == '' || this in ['SHA256WithRSA', 'SHA384WithRSA', 'SHA512WithRSA', 'ECDSAWithSHA256', 'ECDSAWithSHA384', 'ECDSAWithSHA512', 'PureEd25519']"
+  }];
+
+  /**
+   * Java/PKCS#12 keystore outputs added to the Secret alongside the PEM
+   * data — for JVM and Windows consumers that cannot read PEM.
+   */
+  KubernetesCertificateKeystores keystores = 20;
+
+  /**
+   * Additional encodings of the certificate added to the Secret:
+   * "der" (tls-combined.der... binary DER of the key) and "combined_pem"
+   * (tls-combined.pem: key + certificate concatenated — HAProxy-style
+   * consumers).
+   */
+  repeated KubernetesCertificateAdditionalOutputFormat additional_output_formats = 21;
+
+  /**
+   * X.509 name constraints stamped into CA certificates (is_ca=true) —
+   * restricts what names the CA is allowed to sign. Defense-in-depth for
+   * delegated internal CAs.
+   */
+  KubernetesCertificateNameConstraints name_constraints = 22;
+
+  /**
+   * Labels and annotations copied onto the output Secret — for consumers
+   * that discover certificates by label (e.g. reflector/replicator tooling,
+   * Gateway API implementations with Secret label selectors).
+   */
+  KubernetesCertificateSecretTemplate secret_template = 23;
+
+  /**
+   * How many issued-certificate revisions (CertificateRequest resources)
+   * cert-manager retains. Upstream default: 1. Raise it to keep an audit
+   * trail of recent issuances.
+   */
+  optional int32 revision_history_limit = 24 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "spec.names_required"
+    message: "At least one name must be requested — set dns_names, ip_addresses, uris, email_addresses, common_name, literal_subject, or other_names"
+    expression: "size(this.dns_names) > 0 || size(this.ip_addresses) > 0 || size(this.uris) > 0 || size(this.email_addresses) > 0 || this.common_name != '' || this.literal_subject != '' || size(this.other_names) > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.literal_subject_exclusive"
+    message: "literal_subject embeds the full distinguished name (including CN and subject attributes) — it cannot be combined with subject or common_name"
+    expression: "this.literal_subject == '' || (!has(this.subject) && this.common_name == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.renew_before_exclusive"
+    message: "renew_before (absolute duration) and renew_before_percentage (relative) are two ways to express the same renewal window — set at most one"
+    expression: "!(this.renew_before != '' && has(this.renew_before_percentage))"
+  };
+}
+
+/**
+ * Selects the issuer that signs the certificate: a Planton-managed
+ * ClusterIssuer or Issuer (by reference, composable in infra charts), or an
+ * external issuer kind installed by a third-party controller.
+ */
+message KubernetesCertificateIssuerRef {
+  option (buf.validate.message).cel = {
+    id: "issuer_ref.one_required"
+    message: "An issuer reference is required — choose 'cluster_issuer' (cluster-scoped, serves any namespace), 'issuer' (namespace-scoped, same namespace as the certificate), or 'external' for a third-party issuer kind (e.g. AWS Private CA)"
+    expression: "[has(this.cluster_issuer), has(this.issuer), has(this.external)].filter(x, x).size() == 1"
+  };
+
+  oneof issuer_type {
+    // Cluster-scoped ClusterIssuer, by name.
+    KubernetesCertificateClusterIssuerRef cluster_issuer = 1;
+
+    // Namespace-scoped Issuer (must live in the certificate's namespace), by name.
+    KubernetesCertificateNamespacedIssuerRef issuer = 2;
+
+    // Third-party issuer kind (external issuer controller).
+    KubernetesCertificateExternalIssuerRef external = 3;
+  }
+}
+
+// Reference to a cluster-scoped ClusterIssuer.
+message KubernetesCertificateClusterIssuerRef {
+  // ClusterIssuer name. Accepts a literal name or a reference to a
+  // KubernetesClusterIssuer resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClusterIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_issuer_name",
+    (dev.planton.shared.options.diagram_label) = "issued by"
+  ];
+}
+
+// Reference to a namespace-scoped Issuer.
+message KubernetesCertificateNamespacedIssuerRef {
+  // Issuer name. Accepts a literal name or a reference to a
+  // KubernetesIssuer resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.issuer_name",
+    (dev.planton.shared.options.diagram_label) = "issued by"
+  ];
+}
+
+// Reference to a third-party issuer kind (e.g. awspca.cert-manager.io
+// AWSPCAClusterIssuer) installed by an external issuer controller.
+message KubernetesCertificateExternalIssuerRef {
+  // API group of the external issuer kind (e.g. "awspca.cert-manager.io").
+  string group = 1 [(buf.validate.field).required = true];
+
+  // Kind of the external issuer (e.g. "AWSPCAClusterIssuer").
+  string kind = 2 [(buf.validate.field).required = true];
+
+  // Name of the external issuer resource.
+  string name = 3 [(buf.validate.field).required = true];
+}
+
+/**
+ * X.509 subject attributes. Every field is a repeated RDN per the x509 spec.
+ */
+message KubernetesCertificateSubject {
+  // Organizations (O).
+  repeated string organizations = 1;
+  // Organizational units (OU).
+  repeated string organizational_units = 2;
+  // Countries (C), two-letter codes.
+  repeated string countries = 3;
+  // State/province names (ST).
+  repeated string provinces = 4;
+  // Locality/city names (L).
+  repeated string localities = 5;
+  // Street addresses.
+  repeated string street_addresses = 6;
+  // Postal codes.
+  repeated string postal_codes = 7;
+  // Serial number RDN (NOT the certificate serial — the subject attribute).
+  string serial_number = 8;
+}
+
+/**
+ * OtherName SAN: an OID-typed name (e.g. Microsoft UPN
+ * oid 1.3.6.1.4.1.311.20.2.3 with a user@domain value).
+ */
+message KubernetesCertificateOtherName {
+  // Object identifier in dotted form (e.g. "1.3.6.1.4.1.311.20.2.3").
+  string oid = 1 [(buf.validate.field).required = true];
+
+  // UTF-8 value for the name (e.g. "upn@domain.local").
+  string utf8_value = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Private key parameters and rotation behavior.
+ */
+message KubernetesCertificatePrivateKey {
+  /**
+   * **KubernetesCertificatePrivateKeyAlgorithm** — the key algorithm.
+   * ECDSA gives smaller, faster keys; RSA maximizes legacy compatibility;
+   * Ed25519 is modern but unsupported by many CAs (Let's Encrypt rejects it).
+   */
+  enum KubernetesCertificatePrivateKeyAlgorithm {
+    kubernetes_certificate_private_key_algorithm_unspecified = 0;
+    rsa = 1;
+    ecdsa = 2;
+    ed25519 = 3;
+  }
+
+  /**
+   * **KubernetesCertificatePrivateKeyEncoding** — how the key is serialized
+   * into the Secret: PKCS#1 (traditional "RSA PRIVATE KEY", upstream
+   * default) or PKCS#8 ("PRIVATE KEY", required by some consumers e.g.
+   * Java, some Ingress controllers).
+   */
+  enum KubernetesCertificatePrivateKeyEncoding {
+    kubernetes_certificate_private_key_encoding_unspecified = 0;
+    pkcs1 = 1;
+    pkcs8 = 2;
+  }
+
+  /**
+   * **KubernetesCertificatePrivateKeyRotationPolicy** — whether a NEW key is
+   * generated at each renewal. "always" (upstream default since v1.18) is
+   * the safe choice; "never" reuses the existing key (needed only for key-
+   * pinning setups, at the cost of never rotating a possibly-leaked key).
+   */
+  enum KubernetesCertificatePrivateKeyRotationPolicy {
+    kubernetes_certificate_private_key_rotation_policy_unspecified = 0;
+    always = 1;
+    never = 2;
+  }
+
+  // Key algorithm. Default upstream: RSA.
+  optional KubernetesCertificatePrivateKeyAlgorithm algorithm = 1 [(dev.planton.shared.options.default) = "rsa"];
+
+  // Key size: RSA 2048/3072/4096/8192 (default 2048); ECDSA 256/384/521
+  // (default 256). Ignored for Ed25519.
+  optional int32 size = 2 [(buf.validate.field).cel = {
+    id: "private_key.size"
+    message: "size must be 2048, 3072, 4096, or 8192 for RSA; 256, 384, or 521 for ECDSA"
+    expression: "this in [256, 384, 521, 2048, 3072, 4096, 8192]"
+  }];
+
+  // Serialization format in the Secret. Default upstream: PKCS#1.
+  optional KubernetesCertificatePrivateKeyEncoding encoding = 3 [(dev.planton.shared.options.default) = "pkcs1"];
+
+  // Key rotation at renewal. Default upstream (v1.18+): always.
+  optional KubernetesCertificatePrivateKeyRotationPolicy rotation_policy = 4 [(dev.planton.shared.options.default) = "always"];
+
+  option (buf.validate.message).cel = {
+    id: "private_key.size_matches_algorithm"
+    message: "Key size must match the algorithm family — RSA: 2048/3072/4096/8192, ECDSA: 256/384/521 (Ed25519 takes no size)"
+    expression: "!has(this.size) || (this.algorithm == 2 ? this.size in [256, 384, 521] : (this.algorithm == 3 ? false : this.size in [2048, 3072, 4096, 8192]))"
+  };
+}
+
+/**
+ * Keystore outputs added to the certificate Secret for JVM / Windows
+ * consumers. The keystore password protects the container format, not the
+ * key material itself — treat it as an access convention, sensitive
+ * nonetheless.
+ */
+message KubernetesCertificateKeystores {
+  // Java keystore (keystore.jks + truststore.jks entries in the Secret).
+  KubernetesCertificateJksKeystore jks = 1;
+
+  // PKCS#12 keystore (keystore.p12 + truststore.p12 entries in the Secret).
+  KubernetesCertificatePkcs12Keystore pkcs12 = 2;
+}
+
+// JKS keystore output.
+message KubernetesCertificateJksKeystore {
+  // Create the JKS entries.
+  bool create = 1;
+
+  // Certificate alias inside the keystore. Upstream default: "certificate".
+  optional string alias = 2 [(dev.planton.shared.options.default) = "certificate"];
+
+  // Password encrypting the keystore.
+  string password = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// PKCS#12 keystore output.
+message KubernetesCertificatePkcs12Keystore {
+  // Create the PKCS#12 entries.
+  bool create = 1;
+
+  // Password encrypting the keystore.
+  string password = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Encryption/MAC profile: "legacy_rc2" (upstream default — maximum
+  // compatibility, weak crypto), "legacy_des", or "modern2023" (AES/SHA256;
+  // requires consumers newer than ~2013).
+  optional string profile = 3 [(buf.validate.field).cel = {
+    id: "pkcs12.profile"
+    message: "profile must be one of legacy_rc2, legacy_des, modern2023"
+    expression: "this == '' || this in ['legacy_rc2', 'legacy_des', 'modern2023']"
+  }];
+}
+
+/**
+ * One additional output format entry.
+ */
+message KubernetesCertificateAdditionalOutputFormat {
+  // "der" (adds key.der — binary DER private key) or "combined_pem" (adds
+  // tls-combined.pem — private key and certificate concatenated).
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "output_format.type"
+      message: "type must be 'der' or 'combined_pem'"
+      expression: "this in ['der', 'combined_pem']"
+    }
+  ];
+}
+
+/**
+ * X.509 name constraints for CA certificates: which names the CA may (or may
+ * not) sign. Only meaningful with is_ca=true.
+ */
+message KubernetesCertificateNameConstraints {
+  // Mark the extension critical: validators that do not understand name
+  // constraints must reject the chain (the strict, recommended posture).
+  bool critical = 1;
+
+  // Names the CA is permitted to sign.
+  KubernetesCertificateNameConstraintSet permitted = 2;
+
+  // Names the CA is forbidden to sign.
+  KubernetesCertificateNameConstraintSet excluded = 3;
+}
+
+// One direction (permitted or excluded) of a name-constraints extension.
+message KubernetesCertificateNameConstraintSet {
+  // DNS domains (e.g. "internal.example.com" constrains all subdomains).
+  repeated string dns_domains = 1;
+
+  // IP ranges in CIDR form.
+  repeated string ip_ranges = 2;
+
+  // Email addresses or domains.
+  repeated string email_addresses = 3;
+
+  // URI domains.
+  repeated string uri_domains = 4;
+}
+
+/**
+ * Labels and annotations copied onto the output Secret.
+ */
+message KubernetesCertificateSecretTemplate {
+  // Labels for the Secret.
+  map<string, string> labels = 1;
+
+  // Annotations for the Secret.
+  map<string, string> annotations = 2;
+}

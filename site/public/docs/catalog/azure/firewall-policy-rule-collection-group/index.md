@@ -29,7 +29,7 @@ Azure evaluates groups by priority, collections by priority within a type, and a
 Create a file `rule-collection-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewallPolicyRuleCollectionGroup
 metadata:
   name: platform-baseline

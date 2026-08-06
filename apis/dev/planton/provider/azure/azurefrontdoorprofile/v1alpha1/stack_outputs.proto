@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorprofile.v1alpha1;
+
+// **AzureFrontDoorProfileStackOutputs** captures the outputs of
+// provisioning an Azure Front Door profile.
+//
+// The profile is the container; delivery resources compose against it by
+// reference: AzureFrontDoorEndpoint, AzureFrontDoorOriginGroup, and (via
+// those) AzureFrontDoorOrigin and AzureFrontDoorRoute all consume
+// `profile_id`. Client-facing hostnames live on the ENDPOINT kind's
+// outputs, not here.
+message AzureFrontDoorProfileStackOutputs {
+  // The Azure Resource Manager ID of the Front Door profile -- what
+  // AzureFrontDoorEndpoint and AzureFrontDoorOriginGroup reference as
+  // their parent.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Cdn/profiles/{name}
+  string profile_id = 1;
+
+  // The profile's name -- the namespace every child resource is nested
+  // under in ARM.
+  string profile_name = 2;
+
+  // The Front Door service's own GUID for this profile (distinct from
+  // the ARM resource ID). Azure asks for it when validating traffic
+  // ownership -- e.g. the apex-domain "afdverify" DNS record.
+  string resource_guid = 3;
+
+  // The object (principal) ID of the profile's system-assigned managed
+  // identity -- the principal to grant Key Vault access to for
+  // bring-your-own TLS certificates. Empty when the identity block is
+  // absent or user-assigned only.
+  string identity_principal_id = 4;
+}

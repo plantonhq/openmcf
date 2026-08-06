@@ -1,0 +1,73 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises every typed field plus the helm_values escape
+# hatch; both engines must render an identical release from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCertManager
+metadata:
+  name: test-cert-manager
+spec:
+  namespace:
+    value: cert-manager
+  createNamespace: true
+  chartVersion: v1.20.3
+  crds:
+    install: true
+    keepOnUninstall: false
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  logLevel: 4
+  clusterResourceNamespace: cert-manager-secrets
+  leaderElectionNamespace: cert-manager
+  enableCertificateOwnerRef: true
+  featureGates:
+    ServerSideApply: true
+  dns01SelfCheck:
+    recursiveNameservers:
+      - "1.1.1.1:53"
+      - "8.8.8.8:53"
+    recursiveNameserversOnly: true
+  maxConcurrentChallenges: 30
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: arn:aws:iam::123456789012:role/cert-manager-dns01
+  imageRegistry: mirror.example.com
+  prometheus:
+    enabled: true
+    serviceMonitor: false
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: platform
+      effect: NoSchedule
+  podDisruptionBudget: true
+  webhook:
+    replicas: 2
+    timeoutSeconds: 20
+    hostNetwork: false
+    securePort: 10260
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+  cainjector:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+  startupapicheck:
+    enabled: true
+    timeout: 2m
+  helmValues: |
+    extraArgs:
+      - --enable-certificate-owner-ref=true

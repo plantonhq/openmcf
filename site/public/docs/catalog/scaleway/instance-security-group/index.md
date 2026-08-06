@@ -28,7 +28,7 @@ When you deploy a ScalewayInstanceSecurityGroup resource, Planton provisions:
 Create a file `security-group.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: web-sg
@@ -96,7 +96,7 @@ This creates a stateful security group in `fr-par-1` that drops all inbound traf
 A security group for a web-facing Instance that drops all inbound traffic except SSH from a bastion IP, plus HTTP and HTTPS from any source:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: web-allowlist
@@ -131,7 +131,7 @@ spec:
 A security group that allows all traffic by default but drops inbound connections from specific CIDR blocks and blocks outbound access to a known bad range:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: denylist-sg
@@ -163,7 +163,7 @@ spec:
 A locked-down security group for a database Instance that only permits inbound PostgreSQL connections from a private subnet and restricts outbound traffic to DNS and NTP:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayInstanceSecurityGroup
 metadata:
   name: db-strict

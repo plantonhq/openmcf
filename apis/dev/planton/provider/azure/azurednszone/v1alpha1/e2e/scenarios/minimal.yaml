@@ -1,0 +1,30 @@
+# Minimal AzureDnsZone scenario: a public DNS zone in the fixture
+# resource group, with a customized SOA record (email + negative-caching
+# TTL -- proving the soa_record fold end to end) and user tags. The
+# domain is a test name that is never delegated at any registrar, which
+# is safe: creating a zone does not make it authoritative, and public
+# DNS zone names are not globally unique.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDnsZone
+metadata:
+  name: planton-oss-e2e-azurednszone-smoke
+  id: planton-oss-e2e-azurednszone-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneName: planton-e2e-zone.example.com
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  soaRecord:
+    email: dnsadmin.planton-e2e-zone.example.com
+    minimumTtl: 60
+  tags:
+    e2e-suite: web-domain

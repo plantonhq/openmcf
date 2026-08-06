@@ -26,19 +26,19 @@ When you deploy an OpenStackProject resource, Planton provisions:
 Create a file `project.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackProject
 metadata:
   name: my-project
   annotations:
     planton.dev/stack.jobId: prod.OpenstackProject.backend-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackProject.engineering
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackProject.dev-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackProject.my-project
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackproject/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec: {}
 ```
@@ -75,7 +75,7 @@ All spec fields are optional. The project name is derived from `metadata.name`.
 A simple project for a development team with default settings:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackProject
 metadata:
   name: dev-team
@@ -90,7 +90,7 @@ spec:
 A project assigned to a custom Keystone domain, useful in multi-domain deployments:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackProject
 metadata:
   name: engineering
@@ -109,7 +109,7 @@ spec:
 A child project under a parent project for organizational structuring and nested quota management:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackProject
 metadata:
   name: backend-team

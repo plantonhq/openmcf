@@ -1,0 +1,31 @@
+# AwsS3ObjectSet install profile used as a prerequisite by composed
+# components (declared via the scenario's e2e-prerequisites annotation).
+# Stages a minimal Node.js Lambda zip into the versioned S3 bucket fixture
+# so zip-based Lambda scenarios can reference a concrete object key without
+# hand-maintaining a pre-seeded bucket. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-lambda-code
+  id: planton-oss-e2e-lambda-code
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_id
+  objects:
+    - key: e2e/lambda.zip
+      content_base64: UEsDBAoAAAAAANOw5FyYBrlFQQAAAEEAAAAIABwAaW5kZXguanNVVAkAA5U2SWqVNklqdXgLAAEE9QEAAAQAAAAAZXhwb3J0cy5oYW5kbGVyID0gYXN5bmMgKCkgPT4gKHsgc3RhdHVzQ29kZTogMjAwLCBib2R5OiAib2siIH0pOwpQSwECHgMKAAAAAADTsORcmAa5RUEAAABBAAAACAAYAAAAAAABAAAApIEAAAAAaW5kZXguanNVVAUAA5U2SWp1eAsAAQT1AQAABAAAAABQSwUGAAAAAAEAAQBOAAAAgwAAAAAA
+      content_type: application/zip

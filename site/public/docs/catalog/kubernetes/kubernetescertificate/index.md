@@ -23,7 +23,7 @@ Requests one signed X.509 certificate from a cert-manager issuer and keeps it re
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertificate
 metadata:
   name: api-cert

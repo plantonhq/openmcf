@@ -11,7 +11,7 @@ import (
 
 func TestExpandManifestTokens_ReplacesAllOccurrences(t *testing.T) {
 	src := writeTempManifest(t, strings.Join([]string{
-		"apiVersion: gcp.planton.dev/v1",
+		"apiVersion: gcp.planton.dev/v1alpha1",
 		"kind: GcpWorkloadIdentityPool",
 		"metadata:",
 		"  name: fixed-name",
@@ -55,7 +55,7 @@ func TestExpandManifestTokens_ReplacesAllOccurrences(t *testing.T) {
 }
 
 func TestExpandManifestTokens_PassthroughWithoutToken(t *testing.T) {
-	src := writeTempManifest(t, "apiVersion: gcp.planton.dev/v1\nkind: GcpServiceAccount\n")
+	src := writeTempManifest(t, "apiVersion: gcp.planton.dev/v1alpha1\nkind: GcpServiceAccount\n")
 
 	out, err := ExpandManifestTokens(src, "ab12cd34")
 	if err != nil {

@@ -42,7 +42,7 @@ referenced `AwsIamRole` itself (`managedPolicyArns`).
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:
   name: general
@@ -116,7 +116,7 @@ planton apply -f node-group.yaml
 ### Dedicated GPU pool from a hardened launch template
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:
   name: gpu
@@ -149,7 +149,7 @@ spec:
 ### Spot pool with surge rollouts and auto-repair
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:
   name: batch-spot

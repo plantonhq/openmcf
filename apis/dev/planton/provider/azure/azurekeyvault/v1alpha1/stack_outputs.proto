@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurekeyvault.v1alpha1;
+
+// **AzureKeyVaultStackOutputs** captures the outputs of provisioning an Azure
+// Key Vault -- the values downstream resources reference to compose with the
+// vault.
+message AzureKeyVaultStackOutputs {
+  // The vault's ARM resource ID:
+  // /subscriptions/{subscription}/resourceGroups/{rg}/providers/Microsoft.KeyVault/vaults/{name}
+  // The reference every child object (AzureKeyVaultKey,
+  // AzureKeyVaultCertificate) and every vault-scoped grant
+  // (AzureRoleAssignment on an RBAC vault) targets.
+  string key_vault_id = 1;
+
+  // The vault's name.
+  string key_vault_name = 2;
+
+  // The vault's data-plane URI: https://{name}.vault.azure.net/.
+  // Applications and SDKs address keys, secrets, and certificates through
+  // this endpoint.
+  string vault_uri = 3;
+
+  // The Azure AD tenant the vault authenticates against (the deploying
+  // credential's tenant).
+  string tenant_id = 4;
+
+  // The resource group the vault was created in.
+  string resource_group_name = 5;
+}

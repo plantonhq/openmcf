@@ -1,0 +1,852 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsec2instance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsEc2InstanceSpec defines a single EC2 virtual machine: the launch source
+// (an AMI + instance type, a launch template, or a template with inline
+// overrides), network placement, IAM identity, storage, instance posture
+// (IMDSv2, monitoring, CPU topology), purchase options (On-Demand or Spot),
+// and lifecycle protections.
+//
+// A standalone instance is the pet of EC2 compute -- a bastion, a license
+// server, a singleton stateful workload -- as opposed to the cattle an
+// auto-scaling group manages. For fleets, compose AwsLaunchTemplate +
+// AwsAutoScalingGroup instead; this kind deliberately shares the launch
+// template's vocabulary (metadata_options, cpu_options, spot_options, block
+// devices) so a pet can graduate into a templated fleet without relearning
+// field names.
+//
+// Composition over embedding: the instance ATTACHES referenced first-class
+// nodes -- a subnet, security groups, an IAM instance profile, a launch
+// template, KMS keys for volume encryption -- and creates none of them.
+// Access posture is composed the same way: attach an instance profile whose
+// role carries AmazonSSMManagedInstanceCore for keyless SSM Session Manager
+// access (the modern default), or set key_name for SSH against a key pair
+// you manage.
+message AwsEc2InstanceSpec {
+  // The AWS region where the resource will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // --- Launch source ---
+  // AWS requires a complete picture at launch: an AMI and an instance type,
+  // each supplied either inline here or by the referenced launch template.
+
+  // The Amazon Machine Image the instance boots from (e.g.
+  // "ami-0abcdef1234567890"). AMI IDs are region-specific. Required unless
+  // launch_template supplies one. ForceNew: changing the AMI replaces the
+  // instance (see user_data_replace_on_change for the related user-data
+  // semantics).
+  string ami = 2;
+
+  // The EC2 instance type (e.g. "t4g.nano", "m7g.large", "c5.xlarge")
+  // determining vCPU count, memory, and network/EBS bandwidth. Required
+  // unless launch_template supplies one. Changing the type stops and
+  // restarts the instance in place (EBS-backed instances only).
+  string instance_type = 3;
+
+  // Launch from an AwsLaunchTemplate instead of (or in addition to) the
+  // inline fields. Every inline field set here OVERRIDES the template's
+  // value for this instance -- the template is the org's golden baseline,
+  // the inline fields are this pet's deviations.
+  AwsEc2InstanceLaunchTemplate launch_template = 4;
+
+  // --- IAM / access ---
+
+  // The IAM instance profile attached to the instance -- its identity for
+  // SSM Session Manager, ECR pulls, S3 access, and every other AWS API call
+  // the workload makes. Reference an AwsIamInstanceProfile's
+  // instance_profile_name output or pass a literal profile NAME (the EC2
+  // instance API takes the profile by name, unlike launch templates which
+  // accept an ARN). Attachable and replaceable in place on a running
+  // instance.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef instance_profile = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamInstanceProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_profile_name"
+  ];
+
+  // The name of an existing EC2 key pair injected for SSH access. Leave
+  // unset for keyless instances (SSM Session Manager via the instance
+  // profile is the modern posture). ForceNew: changing the key pair
+  // replaces the instance.
+  string key_name = 6;
+
+  // --- Networking ---
+
+  // The subnet the instance lives in. Reference an AwsSubnet's subnet_id
+  // output or pass a literal subnet ID. Unset launches into the account's
+  // default VPC (its default subnet in the chosen AZ) -- acceptable for
+  // experiments, not a production posture; org accounts frequently have no
+  // default VPC at all. ForceNew: changing the subnet replaces the
+  // instance.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups attached to the instance's primary network interface --
+  // what can reach the instance and what it can reach. Reference
+  // AwsSecurityGroup security_group_id outputs or pass literal group IDs.
+  // Unset falls back to the VPC's default security group -- not a
+  // production posture. Updatable in place.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Attach an EXISTING network interface (ENI) as the primary interface
+  // (eth0) instead of creating one -- how an instance inherits a
+  // pre-provisioned static identity (fixed private IP, fixed MAC, existing
+  // security groups). The ENI carries the network configuration, so the
+  // subnet/security-group/addressing fields here must stay unset.
+  // ForceNew: changing the ENI replaces the instance.
+  string primary_network_interface_id = 9;
+
+  // A specific primary private IPv4 address from the subnet's range.
+  // Unset lets AWS pick one. ForceNew: changing it replaces the instance.
+  string private_ip = 10;
+
+  // Additional private IPv4 addresses on the primary interface -- for
+  // hosting multiple TLS endpoints or failover addresses on one instance.
+  // Updatable in place.
+  repeated string secondary_private_ips = 11;
+
+  // Associate a public IPv4 address at launch. Optional tri-state: unset
+  // inherits the subnet's map-public-IP-on-launch setting; an explicit
+  // value overrides it either way. ForceNew: changing it replaces the
+  // instance. Note AWS now bills every public IPv4 address.
+  optional bool associate_public_ip_address = 12;
+
+  // Source/destination checking on the primary interface. AWS default:
+  // true. Set false ONLY for instances that forward traffic they neither
+  // originated nor terminate -- NAT instances, software routers, VPN
+  // appliances -- otherwise the network silently drops their forwarded
+  // packets.
+  optional bool source_dest_check = 13 [(dev.planton.shared.options.default) = "true"];
+
+  // Number of IPv6 addresses AWS auto-assigns from the subnet's IPv6
+  // range. Mutually exclusive with ipv6_addresses.
+  int32 ipv6_address_count = 14;
+
+  // Specific IPv6 addresses from the subnet's range. Mutually exclusive
+  // with ipv6_address_count.
+  repeated string ipv6_addresses = 15;
+
+  // Designate the first IPv6 address as the instance's stable primary
+  // IPv6 address (kept until the instance or ENI is deleted) -- required
+  // posture for IPv6-only workloads that must keep one consistent
+  // address. One-way: disabling it after enablement forces replacement.
+  optional bool enable_primary_ipv6 = 16;
+
+  // How the guest's private DNS hostname is formed and which DNS records
+  // resolve to it. Defaults inherit from the subnet's settings.
+  AwsEc2InstancePrivateDnsNameOptions private_dns_name_options = 17;
+
+  // Additional network interfaces created and attached at launch on OTHER
+  // network cards -- for high-bandwidth instance types with multiple
+  // network cards. For ordinary multi-homing on card 0, create standalone
+  // ENIs instead; for the primary interface, see
+  // primary_network_interface_id.
+  repeated AwsEc2InstanceSecondaryNetworkInterface secondary_network_interfaces = 18;
+
+  // --- Storage ---
+
+  // Reshape the root (boot) volume the AMI defines: grow it, switch it to
+  // gp3, encrypt it with a customer-managed key. Unset fields inherit
+  // from the AMI's block device mapping. Size, type, IOPS, throughput,
+  // and delete-on-termination are updatable in place; flipping encryption
+  // requires replacement.
+  AwsEc2InstanceRootBlockDevice root_block_device = 19;
+
+  // Additional EBS data volumes attached at launch, keyed by device name
+  // (e.g. "/dev/sdf"). Each volume's shape is create-time: changing a
+  // mapping replaces the instance -- attach post-launch volumes as
+  // separate resources when independent lifecycles matter.
+  repeated AwsEc2InstanceEbsBlockDevice ebs_block_devices = 20;
+
+  // Instance-store (ephemeral local disk) mappings for instance types
+  // with local disks. Data on instance store does not survive stop or
+  // termination. ForceNew: changing mappings replaces the instance.
+  repeated AwsEc2InstanceEphemeralBlockDevice ephemeral_block_devices = 21;
+
+  // Dedicated EBS throughput between the instance and its volumes. Only
+  // meaningful for instance types where EBS optimization is optional
+  // (most current-generation types have it always-on at no charge);
+  // enabling it on an unsupported type fails the launch. ForceNew.
+  bool ebs_optimized = 22;
+
+  // --- Instance posture ---
+
+  // Instance Metadata Service posture. Set http_tokens = "required" to
+  // enforce IMDSv2 -- the single most effective hardening against
+  // credential-stealing SSRF attacks, and the recommended default for
+  // every new instance. Updatable in place.
+  AwsEc2InstanceMetadataOptions metadata_options = 23;
+
+  // Detailed CloudWatch monitoring: metrics at 1-minute granularity
+  // instead of the free 5-minute default. Costs per instance-metric;
+  // alarms and dashboards react meaningfully faster with it enabled.
+  bool detailed_monitoring = 24;
+
+  // CPU topology and features: trim vCPUs on license-bound workloads
+  // (threads_per_core = 1), enable AMD SEV-SNP memory encryption, or
+  // enable nested virtualization on supported types. ForceNew: CPU
+  // options are fixed at launch.
+  AwsEc2InstanceCpuOptions cpu_options = 25;
+
+  // Credit option for burstable (T-family) instance types: "standard"
+  // (throttle when credits run out) or "unlimited" (keep bursting, pay
+  // for the excess). AWS default: "unlimited" for recent T families.
+  // Ignored for non-burstable types. Updatable in place.
+  string cpu_credits = 26;
+
+  // Request Spot capacity instead of On-Demand -- for interruption-
+  // tolerant standalone workloads (a build agent, a batch box). The
+  // instance can be reclaimed by AWS with two minutes' notice; pair with
+  // instance_interruption_behavior "stop"/"hibernate" (persistent
+  // requests) to survive reclaims. ForceNew: the purchase option is
+  // fixed at launch.
+  AwsEc2InstanceSpotOptions spot_options = 27;
+
+  // Target an EC2 Capacity Reservation: "open" (use a matching
+  // reservation if one exists -- the AWS default behavior), "none" (never
+  // consume a reservation), or a specific reservation / reservation
+  // group. Capacity reservations are how latency-critical or
+  // failover-critical instances guarantee capacity in an AZ.
+  AwsEc2InstanceCapacityReservation capacity_reservation = 28;
+
+  // Where the instance lands: availability zone pinning, placement group
+  // membership, tenancy, and Dedicated Host targeting.
+  AwsEc2InstancePlacement placement = 29;
+
+  // Launch as an AWS Nitro Enclaves parent, enabling isolated enclave VMs
+  // for secret-processing workloads. Not supported on every instance
+  // type; incompatible with hibernation. ForceNew.
+  bool enclave_enabled = 30;
+
+  // Pre-provision the instance for hibernation (requires an encrypted
+  // root volume large enough to hold RAM contents). Incompatible with
+  // Nitro Enclaves. ForceNew.
+  bool hibernation_enabled = 31;
+
+  // Simplified automatic recovery on instance impairment: "default"
+  // (recover onto healthy hardware) or "disabled" (leave the instance
+  // impaired -- for workloads with instance-store state that recovery
+  // would silently discard). Updatable in place.
+  string auto_recovery = 32;
+
+  // What an OS-initiated shutdown does to the instance: "stop" (AWS
+  // default; the instance can be started again) or "terminate" (the
+  // instance is gone). Updatable in place; cannot be set on
+  // instance-store-backed instances.
+  string instance_initiated_shutdown_behavior = 33;
+
+  // Protect the instance from being stopped via the API -- a guard for
+  // long-lived pets. Updatable in place.
+  optional bool disable_api_stop = 34;
+
+  // Protect the instance from being terminated via the API (termination
+  // protection) -- the classic guard against fat-fingered deletion of a
+  // stateful pet. Updatable in place; the module's destroy flips it off
+  // first only if you remove the protection from the spec.
+  optional bool disable_api_termination = 35;
+
+  // --- User data ---
+
+  // Instance user data: a cloud-init config or shell script executed on
+  // first boot. Provide PLAIN TEXT here (16 KiB limit before encoding);
+  // shell variable syntax like ${HOME} passes through literally. By
+  // default, changing user data stops and restarts the instance without
+  // replacing it -- and the NEW script does not re-run on an
+  // already-initialized instance (cloud-init runs per-instance); set
+  // user_data_replace_on_change to get a fresh boot. Mutually exclusive
+  // with user_data_base64.
+  string user_data = 36 [(buf.validate.field).string.max_bytes = 16384];
+
+  // Base64-encoded user data for binary payloads (e.g. gzip-compressed
+  // cloud-init) that cannot survive plain-text handling. Mutually
+  // exclusive with user_data.
+  string user_data_base64 = 37;
+
+  // Replace the instance (destroy and recreate) whenever user data
+  // changes, instead of the default stop-update-start. The right choice
+  // when user data IS the provisioning mechanism and a stale instance is
+  // worse than a new one.
+  bool user_data_replace_on_change = 38;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  // AWS validates the launch is fully formed: an image must come from
+  // somewhere.
+  option (buf.validate.message).cel = {
+    id: "ami_or_launch_template"
+    message: "provide ami, or reference a launch_template that supplies the image"
+    expression: "this.ami != '' || has(this.launch_template)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "instance_type_or_launch_template"
+    message: "provide instance_type, or reference a launch_template that supplies the type"
+    expression: "this.instance_type != '' || has(this.launch_template)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ami_format"
+    message: "ami must be an AMI ID beginning with 'ami-'"
+    expression: "this.ami == '' || this.ami.startsWith('ami-')"
+  };
+
+  // A pre-provisioned primary ENI carries the whole network configuration;
+  // inline networking fields would conflict with it at the EC2 API.
+  option (buf.validate.message).cel = {
+    id: "primary_eni_excludes_inline_networking"
+    message: "when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, and associate_public_ip_address"
+    expression: "this.primary_network_interface_id == '' || (!has(this.subnet_id) && size(this.security_group_ids) == 0 && this.private_ip == '' && size(this.secondary_private_ips) == 0 && this.ipv6_address_count == 0 && size(this.ipv6_addresses) == 0 && !has(this.associate_public_ip_address) && !has(this.enable_primary_ipv6))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ipv6_count_xor_addresses"
+    message: "ipv6_address_count and ipv6_addresses are mutually exclusive"
+    expression: "this.ipv6_address_count == 0 || size(this.ipv6_addresses) == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cpu_credits_valid"
+    message: "cpu_credits must be 'standard' or 'unlimited' when set"
+    expression: "this.cpu_credits == '' || this.cpu_credits in ['standard', 'unlimited']"
+  };
+
+  // AWS rejects the combination: an enclave parent cannot hibernate.
+  option (buf.validate.message).cel = {
+    id: "enclave_incompatible_with_hibernation"
+    message: "enclave_enabled and hibernation_enabled cannot both be true"
+    expression: "!(this.enclave_enabled && this.hibernation_enabled)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "auto_recovery_valid"
+    message: "auto_recovery must be 'default' or 'disabled' when set"
+    expression: "this.auto_recovery == '' || this.auto_recovery in ['default', 'disabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "shutdown_behavior_valid"
+    message: "instance_initiated_shutdown_behavior must be 'stop' or 'terminate' when set"
+    expression: "this.instance_initiated_shutdown_behavior == '' || this.instance_initiated_shutdown_behavior in ['stop', 'terminate']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "user_data_xor_base64"
+    message: "user_data and user_data_base64 are mutually exclusive"
+    expression: "this.user_data == '' || this.user_data_base64 == ''"
+  };
+}
+
+// AwsEc2InstanceLaunchTemplate launches the instance from an
+// AwsLaunchTemplate -- the org's golden baseline of AMI, hardening, and
+// storage defaults. Identify the template by ID (the composable form) or by
+// name; every inline spec field overrides the template's value.
+message AwsEc2InstanceLaunchTemplate {
+  // The launch template ID. Reference an AwsLaunchTemplate's
+  // launch_template_id output or pass a literal ID (e.g.
+  // "lt-0123456789abcdef0"). Mutually exclusive with name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLaunchTemplate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.launch_template_id"
+  ];
+
+  // The launch template name, for templates managed outside the resource
+  // graph. Mutually exclusive with id.
+  string name = 2;
+
+  // The template version to launch from: a version number ("12"),
+  // "$Latest" (track every new version -- each publish restarts the
+  // instance), or "$Default" (AWS default when unset; both Planton launch
+  // template modules promote each new version to default, so this tracks
+  // the template's releases).
+  string version = 3;
+
+  // Exactly one identity arm: protovalidate-java cannot evaluate
+  // message-level CEL that dereferences StringValueOrRef sub-fields, so
+  // "id XOR name" is validated by presence of the id message only.
+  option (buf.validate.message).cel = {
+    id: "template_id_xor_name"
+    message: "identify the launch template by id or by name, not both"
+    expression: "!has(this.id) || this.name == ''"
+  };
+}
+
+// AwsEc2InstancePrivateDnsNameOptions controls the guest's private DNS
+// hostname shape and records. Unset fields inherit from the subnet.
+message AwsEc2InstancePrivateDnsNameOptions {
+  // Hostname scheme: "ip-name" (ip-10-0-1-5.ec2.internal, the classic
+  // default) or "resource-name" (i-0123....ec2.internal -- stable across
+  // IP changes, required for IPv6-only subnets).
+  string hostname_type = 1;
+
+  // Publish an A record (IPv4) for the hostname.
+  bool enable_resource_name_dns_a_record = 2;
+
+  // Publish an AAAA record (IPv6) for the hostname.
+  bool enable_resource_name_dns_aaaa_record = 3;
+
+  option (buf.validate.message).cel = {
+    id: "hostname_type_valid"
+    message: "hostname_type must be 'ip-name' or 'resource-name' when set"
+    expression: "this.hostname_type == '' || this.hostname_type in ['ip-name', 'resource-name']"
+  };
+}
+
+// AwsEc2InstanceSecondaryNetworkInterface creates and attaches one
+// additional interface on a non-primary network card at launch -- for
+// high-bandwidth instance types (network-optimized, EFA-class) that expose
+// multiple physical cards. All fields are create-time: changing a secondary
+// interface replaces the instance.
+message AwsEc2InstanceSecondaryNetworkInterface {
+  // The physical network card the interface binds to. Required; card 0
+  // carries the primary interface, so secondary interfaces target 1+.
+  int32 network_card_index = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Position of the interface in the attachment order on its card.
+  // AWS default: 0.
+  int32 device_index = 2;
+
+  // The subnet the interface lives in. Reference an AwsSubnet's subnet_id
+  // output or pass a literal subnet ID; must be in the same AZ as the
+  // instance. Security groups are not configurable on secondary
+  // interfaces at launch (the EC2 API applies the VPC default group);
+  // manage them post-launch on the ENI itself.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Number of private IPv4 addresses to assign. AWS default: 1.
+  int32 private_ip_address_count = 4;
+
+  // Delete the interface when the instance terminates. AWS default: true.
+  // Optional so an explicit false ("keep the ENI for reuse") is
+  // distinguishable from unset.
+  optional bool delete_on_termination = 5;
+}
+
+// AwsEc2InstanceRootBlockDevice reshapes the root (boot) volume the AMI
+// defines. Unset fields inherit from the AMI's block device mapping.
+message AwsEc2InstanceRootBlockDevice {
+  // Volume size in GiB. Must be at least the AMI snapshot's size.
+  // Growable in place; shrinking requires replacement.
+  int32 volume_size_gb = 1;
+
+  // Volume type: "gp3" (the current general-purpose default choice),
+  // "gp2", "io1", "io2" (provisioned IOPS), "st1", "sc1"
+  // (throughput/cold HDD), "standard" (legacy magnetic). Unset inherits
+  // from the AMI mapping.
+  string volume_type = 2;
+
+  // Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3"
+  // (baseline 3000 without it); not valid for other types.
+  int32 iops = 3;
+
+  // Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+  int32 throughput_mibps = 4;
+
+  // Encrypt the root volume at rest. ForceNew on the root device: flipping
+  // encryption replaces the instance. When the account enforces
+  // EBS-encryption-by-default this is already true regardless.
+  bool encrypted = 5;
+
+  // The KMS key for encryption. Reference an AwsKmsKey's key_arn output
+  // or pass a literal key ARN. Unset with encrypted = true uses the AWS
+  // managed aws/ebs key; a customer-managed key adds revocation and
+  // cross-account control.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Delete the root volume when the instance terminates. AWS default:
+  // true. Optional so an explicit false ("keep the boot disk for
+  // forensics/reuse") is distinguishable from unset.
+  optional bool delete_on_termination = 7;
+
+  option (buf.validate.message).cel = {
+    id: "volume_type_valid"
+    message: "volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
+    expression: "this.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "throughput_range"
+    message: "throughput_mibps must be between 125 and 1000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "throughput_only_for_gp3"
+    message: "throughput_mibps only applies to gp3 volumes"
+    expression: "this.throughput_mibps == 0 || this.volume_type == 'gp3'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "iops_only_for_provisioned_types"
+    message: "iops only applies to gp3, io1, and io2 volumes"
+    expression: "this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']"
+  };
+}
+
+// AwsEc2InstanceEbsBlockDevice attaches one additional EBS data volume at
+// launch. The whole mapping is create-time on an instance: prefer
+// standalone volumes attached post-launch when the data's lifecycle should
+// outlive the instance.
+message AwsEc2InstanceEbsBlockDevice {
+  // The device name exposed to the instance (e.g. "/dev/sdf",
+  // "/dev/xvdb"). Required; must not collide with the root device.
+  string device_name = 1 [(buf.validate.field).required = true];
+
+  // Volume size in GiB. Required unless snapshot_id supplies the size.
+  int32 volume_size_gb = 2;
+
+  // Volume type: "gp3", "gp2", "io1", "io2", "st1", "sc1", "standard".
+  // AWS default: gp3 for new volumes.
+  string volume_type = 3;
+
+  // Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3".
+  int32 iops = 4;
+
+  // Throughput in MiB/s, 125-1000. "gp3" only.
+  int32 throughput_mibps = 5;
+
+  // Encrypt the volume at rest.
+  bool encrypted = 6;
+
+  // The KMS key for encryption. Reference an AwsKmsKey's key_arn output
+  // or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Create the volume from this EBS snapshot (e.g. a pre-warmed data
+  // volume) instead of empty.
+  string snapshot_id = 8;
+
+  // Delete the volume when the instance terminates. AWS default: true.
+  // Set an explicit false to keep the data volume after termination.
+  optional bool delete_on_termination = 9;
+
+  option (buf.validate.message).cel = {
+    id: "volume_type_valid"
+    message: "volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
+    expression: "this.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "throughput_range"
+    message: "throughput_mibps must be between 125 and 1000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "throughput_only_for_gp3"
+    message: "throughput_mibps only applies to gp3 volumes"
+    expression: "this.throughput_mibps == 0 || this.volume_type == 'gp3'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "iops_only_for_provisioned_types"
+    message: "iops only applies to gp3, io1, and io2 volumes"
+    expression: "this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "size_or_snapshot"
+    message: "provide volume_size_gb, or a snapshot_id that defines the size"
+    expression: "this.volume_size_gb > 0 || this.snapshot_id != ''"
+  };
+}
+
+// AwsEc2InstanceEphemeralBlockDevice maps one instance-store (local disk)
+// device for instance types that have them. Instance-store data does not
+// survive stop or termination.
+message AwsEc2InstanceEphemeralBlockDevice {
+  // The device name exposed to the instance (e.g. "/dev/sdc"). Required.
+  string device_name = 1 [(buf.validate.field).required = true];
+
+  // An instance-store virtual device name ("ephemeral0", "ephemeral1",
+  // ...). Mutually exclusive with no_device.
+  string virtual_name = 2;
+
+  // Suppress a device the AMI would otherwise attach -- the way to DROP
+  // an AMI-baked mapping. Mutually exclusive with virtual_name.
+  bool no_device = 3;
+
+  option (buf.validate.message).cel = {
+    id: "virtual_name_xor_no_device"
+    message: "virtual_name and no_device are mutually exclusive on one mapping"
+    expression: "this.virtual_name == '' || !this.no_device"
+  };
+}
+
+// AwsEc2InstanceMetadataOptions controls the Instance Metadata Service
+// (IMDS) -- the on-instance endpoint that serves credentials and instance
+// identity. The hardened posture: http_tokens = "required" (IMDSv2 only),
+// http_put_response_hop_limit = 2 when containers need metadata access
+// (1 confines it to the host).
+message AwsEc2InstanceMetadataOptions {
+  // Whether the metadata service is reachable at all: "enabled" (AWS
+  // default) or "disabled" (nothing on the instance can fetch credentials
+  // -- rare, for fully static workloads).
+  string http_endpoint = 1;
+
+  // IMDS version enforcement: "required" (IMDSv2 session tokens only --
+  // the recommended hardening) or "optional" (v1 and v2 both answer; the
+  // AWS default for backward compatibility).
+  string http_tokens = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "IMDS enforcement mode (required/optional), not a token value"];
+
+  // TTL of the IMDSv2 token-fetch packet, 1-64. 1 (AWS default) confines
+  // metadata to the instance itself; 2 lets containerized workloads (one
+  // extra network hop) reach it.
+  int32 http_put_response_hop_limit = 3;
+
+  // Serve metadata over the interface's IPv6 endpoint as well: "enabled"
+  // or "disabled" (AWS default).
+  string http_protocol_ipv6 = 4;
+
+  // Expose the instance's tags through the metadata service: "enabled" or
+  // "disabled" (AWS default). Lets on-instance agents read tags without
+  // ec2:DescribeTags permission.
+  string instance_metadata_tags = 5;
+
+  // ---------------------------------------------------------------------------
+  // Metadata options CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "http_endpoint_valid"
+    message: "http_endpoint must be 'enabled' or 'disabled' when set"
+    expression: "this.http_endpoint == '' || this.http_endpoint in ['enabled', 'disabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "http_tokens_valid"
+    message: "http_tokens must be 'required' or 'optional' when set"
+    expression: "this.http_tokens == '' || this.http_tokens in ['required', 'optional']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "hop_limit_range"
+    message: "http_put_response_hop_limit must be between 1 and 64 when set"
+    expression: "this.http_put_response_hop_limit == 0 || (this.http_put_response_hop_limit >= 1 && this.http_put_response_hop_limit <= 64)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "http_protocol_ipv6_valid"
+    message: "http_protocol_ipv6 must be 'enabled' or 'disabled' when set"
+    expression: "this.http_protocol_ipv6 == '' || this.http_protocol_ipv6 in ['enabled', 'disabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "instance_metadata_tags_valid"
+    message: "instance_metadata_tags must be 'enabled' or 'disabled' when set"
+    expression: "this.instance_metadata_tags == '' || this.instance_metadata_tags in ['enabled', 'disabled']"
+  };
+}
+
+// AwsEc2InstanceCpuOptions shapes the vCPU topology and CPU security
+// features. All options are fixed at launch (ForceNew).
+message AwsEc2InstanceCpuOptions {
+  // Number of physical cores. Combined with threads_per_core = 1 this
+  // trims the vCPU count -- the standard move for per-core licensed
+  // software (databases) on large instance types.
+  int32 core_count = 1;
+
+  // Threads per core: 2 (hyper-threading, the default on x86) or 1
+  // (disable SMT -- per-core licensing, or HPC codes that fight over
+  // shared core resources).
+  int32 threads_per_core = 2;
+
+  // AMD SEV-SNP memory encryption on supported AMD types: "enabled" or
+  // "disabled". Confidential-computing hardening.
+  string amd_sev_snp = 3;
+
+  // Nested virtualization on supported 8th-generation Intel types
+  // ("enabled" or "disabled") -- run hypervisors inside the instance.
+  // Enabling it automatically disables Virtual Secure Mode.
+  string nested_virtualization = 4;
+
+  option (buf.validate.message).cel = {
+    id: "threads_per_core_valid"
+    message: "threads_per_core must be 1 or 2 when set"
+    expression: "this.threads_per_core == 0 || this.threads_per_core in [1, 2]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "amd_sev_snp_valid"
+    message: "amd_sev_snp must be 'enabled' or 'disabled' when set"
+    expression: "this.amd_sev_snp == '' || this.amd_sev_snp in ['enabled', 'disabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "nested_virtualization_valid"
+    message: "nested_virtualization must be 'enabled' or 'disabled' when set"
+    expression: "this.nested_virtualization == '' || this.nested_virtualization in ['enabled', 'disabled']"
+  };
+}
+
+// AwsEc2InstanceSpotOptions turns the launch into a Spot request. Leave the
+// whole block unset for On-Demand.
+message AwsEc2InstanceSpotOptions {
+  // Maximum price per instance-hour, as a decimal string (e.g. "0.05").
+  // AWS default: the On-Demand price -- and leaving it unset is the AWS
+  // recommendation, since Spot's discount comes from interruption risk,
+  // not bidding.
+  string max_price = 1;
+
+  // Spot request type: "one-time" (the AWS default -- the request ends
+  // when the instance is interrupted) or "persistent" (EC2 re-requests
+  // capacity after interruption; required for "stop"/"hibernate"
+  // interruption behavior).
+  string spot_instance_type = 2;
+
+  // What happens to the instance on interruption: "terminate" (default),
+  // "stop", or "hibernate". "stop"/"hibernate" require a persistent
+  // request.
+  string instance_interruption_behavior = 3;
+
+  // Expiry of a persistent request, RFC3339 (e.g.
+  // "2027-01-01T00:00:00Z"). Only valid when spot_instance_type is
+  // "persistent".
+  string valid_until = 4;
+
+  // ---------------------------------------------------------------------------
+  // Spot options CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "spot_instance_type_valid"
+    message: "spot_instance_type must be 'one-time' or 'persistent' when set"
+    expression: "this.spot_instance_type == '' || this.spot_instance_type in ['one-time', 'persistent']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "interruption_behavior_valid"
+    message: "instance_interruption_behavior must be 'terminate', 'stop', or 'hibernate' when set"
+    expression: "this.instance_interruption_behavior == '' || this.instance_interruption_behavior in ['terminate', 'stop', 'hibernate']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "stop_hibernate_require_persistent"
+    message: "instance_interruption_behavior 'stop' or 'hibernate' requires spot_instance_type 'persistent'"
+    expression: "!(this.instance_interruption_behavior in ['stop', 'hibernate']) || this.spot_instance_type == 'persistent'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "valid_until_requires_persistent"
+    message: "valid_until only applies when spot_instance_type is 'persistent'"
+    expression: "this.valid_until == '' || this.spot_instance_type == 'persistent'"
+  };
+}
+
+// AwsEc2InstanceCapacityReservation targets an EC2 Capacity Reservation --
+// pre-purchased, AZ-pinned capacity that guarantees the instance can always
+// launch (failover fleets, latency-critical singletons).
+message AwsEc2InstanceCapacityReservation {
+  // Reservation preference: "open" (consume a matching reservation when
+  // one exists -- AWS's default behavior) or "none" (never consume a
+  // reservation, even when one matches). Mutually exclusive with the
+  // specific-target fields.
+  string preference = 1;
+
+  // Target one specific Capacity Reservation by ID (e.g. "cr-0123...").
+  // Mutually exclusive with preference and
+  // capacity_reservation_resource_group_arn.
+  string capacity_reservation_id = 2;
+
+  // Target a Capacity Reservation resource group by ARN -- a pool of
+  // reservations managed together. Mutually exclusive with preference and
+  // capacity_reservation_id.
+  string capacity_reservation_resource_group_arn = 3;
+
+  option (buf.validate.message).cel = {
+    id: "preference_valid"
+    message: "preference must be 'open' or 'none' when set"
+    expression: "this.preference == '' || this.preference in ['open', 'none']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "preference_xor_target"
+    message: "set preference, or target a specific reservation/group, not both"
+    expression: "this.preference == '' || (this.capacity_reservation_id == '' && this.capacity_reservation_resource_group_arn == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "reservation_id_xor_group_arn"
+    message: "capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive"
+    expression: "this.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''"
+  };
+}
+
+// AwsEc2InstancePlacement pins where the instance lands. All placement
+// options are fixed at launch (ForceNew).
+message AwsEc2InstancePlacement {
+  // Pin the instance to one availability zone (e.g. "us-west-2a"). Unset
+  // derives from the subnet (or lets AWS choose in the default VPC).
+  string availability_zone = 1;
+
+  // The placement group to launch into, by name: "cluster" groups pack
+  // instances for lowest latency, "spread" and "partition" groups
+  // separate them for fault isolation. Mutually exclusive with group_id
+  // and host_resource_group_arn.
+  string group_name = 2;
+
+  // The placement group by ID instead of name. Mutually exclusive with
+  // group_name and host_resource_group_arn.
+  string group_id = 3;
+
+  // Partition number within a partition placement group.
+  int32 partition_number = 4;
+
+  // Instance tenancy: "default" (shared hardware), "dedicated"
+  // (single-tenant hardware), or "host" (a Dedicated Host -- licensing
+  // scenarios).
+  string tenancy = 5;
+
+  // Launch onto a specific Dedicated Host by ID (e.g. "h-0123...").
+  string host_id = 6;
+
+  // Launch into a host resource group (License Manager-managed Dedicated
+  // Hosts) by ARN. Mutually exclusive with placement groups; omit
+  // tenancy or set it to "host" alongside this.
+  string host_resource_group_arn = 7;
+
+  option (buf.validate.message).cel = {
+    id: "tenancy_valid"
+    message: "tenancy must be 'default', 'dedicated', or 'host' when set"
+    expression: "this.tenancy == '' || this.tenancy in ['default', 'dedicated', 'host']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "group_name_xor_group_id"
+    message: "group_name and group_id are mutually exclusive"
+    expression: "this.group_name == '' || this.group_id == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "host_resource_group_excludes_placement_groups"
+    message: "host_resource_group_arn is mutually exclusive with group_name and group_id"
+    expression: "this.host_resource_group_arn == '' || (this.group_name == '' && this.group_id == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "partition_requires_group"
+    message: "partition_number requires a placement group (group_name or group_id)"
+    expression: "this.partition_number == 0 || this.group_name != '' || this.group_id != ''"
+  };
+}

@@ -10,7 +10,7 @@
 Every manifest is a KRM-style document with the same top-level shape:
 
 ```yaml
-apiVersion: <group>/<version>   # fixed per kind, e.g. aws.planton.dev/v1
+apiVersion: <group>/<version>   # fixed per kind, e.g. aws.planton.dev/v1alpha1
 kind: <Kind>                    # e.g. AwsVpc -- each reference page's title
 metadata:
   name: my-resource

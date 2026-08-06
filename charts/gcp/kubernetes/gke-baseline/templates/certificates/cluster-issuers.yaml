@@ -15,7 +15,7 @@
 # the solver inherits cert-manager's ambient identity (the Workload Identity
 # binding in the previous file). DNS-01 is the default because it issues
 # wildcards and works for services that are not publicly reachable.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterIssuer
 metadata:
   name: "{{ values.env }}-letsencrypt-prod"
@@ -83,7 +83,7 @@ spec:
 {% endif %}
 {% endif %}
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterIssuer
 metadata:
   name: "{{ values.env }}-letsencrypt-staging"

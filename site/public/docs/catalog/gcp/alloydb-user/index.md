@@ -18,7 +18,7 @@ Creates a database user on an AlloyDB cluster — classic username/password (`AL
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbUser
 metadata:
   name: orders-app-user

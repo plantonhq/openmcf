@@ -1,0 +1,25 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVertexAiDeployedIndex
+metadata:
+  name: test-deployed-index
+spec:
+  location: us-central1
+  deployedIndexId: products_v1
+  index:
+    value: projects/my-gcp-project/locations/us-central1/indexes/1234567890
+  indexEndpoint:
+    value: projects/my-gcp-project/locations/us-central1/indexEndpoints/9876543210
+  displayName: Products v1 Deployment
+  dedicatedResources:
+    machineType: e2-standard-16
+    minReplicaCount: 2
+    maxReplicaCount: 5
+  deploymentGroup: prod
+  enableAccessLogging: true
+  reservedIpRanges:
+    - value: vertex-ai-range-a
+  authConfig:
+    allowedIssuers:
+      - value: query-sa@my-gcp-project.iam.gserviceaccount.com
+    audiences:
+      - vector-search-clients

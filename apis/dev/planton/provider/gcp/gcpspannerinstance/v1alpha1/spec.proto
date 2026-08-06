@@ -1,0 +1,301 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpspannerinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// GcpSpannerInstanceAutoscalingLimits defines the minimum and maximum compute
+// capacity the autoscaler may allocate. Limits must use ONE unit — either
+// nodes (min_nodes + max_nodes) or processing units (min_processing_units +
+// max_processing_units). Mixing units in one limits block is rejected
+// pre-deploy because the Spanner API rejects it at create time.
+message GcpSpannerInstanceAutoscalingLimits {
+  // Minimum number of nodes the autoscaler may scale down to. Use together
+  // with max_nodes. Each node is 1000 processing units and provides roughly
+  // 10,000 QPS of reads or 2,000 QPS of writes plus 10 TB of storage.
+  int32 min_nodes = 1;
+
+  // Maximum number of nodes the autoscaler may scale up to.
+  // Must be >= min_nodes.
+  int32 max_nodes = 2;
+
+  // Minimum number of processing units the autoscaler may scale down to.
+  // Use together with max_processing_units. Values below 1000 must be
+  // multiples of 100; values 1000 and above must be multiples of 1000.
+  int32 min_processing_units = 3;
+
+  // Maximum number of processing units the autoscaler may scale up to.
+  // Must be >= min_processing_units.
+  int32 max_processing_units = 4;
+
+  // Exactly one unit family: nodes or processing units, never both.
+  option (buf.validate.message).cel = {
+    id: "autoscaling_limits_same_unit"
+    expression: "(this.min_nodes > 0 || this.max_nodes > 0) != (this.min_processing_units > 0 || this.max_processing_units > 0)"
+    message: "use either nodes (min_nodes + max_nodes) or processing_units (min_processing_units + max_processing_units), not both"
+  };
+
+  // When using nodes, both bounds must be set and coherent.
+  option (buf.validate.message).cel = {
+    id: "autoscaling_limits_nodes_max_gte_min"
+    expression: "this.min_nodes == 0 && this.max_nodes == 0 || (this.min_nodes > 0 && this.max_nodes >= this.min_nodes)"
+    message: "max_nodes must be >= min_nodes and both must be positive"
+  };
+
+  // When using processing units, both bounds must be set and coherent.
+  option (buf.validate.message).cel = {
+    id: "autoscaling_limits_pu_max_gte_min"
+    expression: "this.min_processing_units == 0 && this.max_processing_units == 0 || (this.min_processing_units > 0 && this.max_processing_units >= this.min_processing_units)"
+    message: "max_processing_units must be >= min_processing_units and both must be positive"
+  };
+}
+
+// GcpSpannerInstanceAutoscalingTargets defines the utilization thresholds
+// that trigger scaling decisions. When utilization exceeds a target, Spanner
+// adds capacity; when it drops below, Spanner removes capacity — always
+// within the configured limits. If not set, GCP applies its own defaults.
+message GcpSpannerInstanceAutoscalingTargets {
+  // Target percentage of high-priority CPU utilization (user reads/writes,
+  // as opposed to background maintenance work). When the instance runs
+  // hotter than this, the autoscaler adds capacity. Google recommends 65
+  // for regional configurations and lower (around 45) for multi-region
+  // configurations, where replication headroom matters during failover.
+  int32 high_priority_cpu_utilization_percent = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Target percentage of storage utilization. When storage crosses this
+  // threshold, the autoscaler adds capacity regardless of CPU (Spanner
+  // couples storage capacity to compute capacity). Google recommends 80
+  // to leave headroom for growth spikes.
+  int32 storage_utilization_percent = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+// GcpSpannerInstanceAsymmetricAutoscalingOverrides bounds the autoscaler
+// for one specific replica location, overriding the instance-wide
+// autoscaling_limits there. Only node-based bounds are supported for
+// per-replica overrides.
+message GcpSpannerInstanceAsymmetricAutoscalingOverrides {
+  // Minimum number of nodes for the selected replica location.
+  int32 min_nodes = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Maximum number of nodes for the selected replica location.
+  // Must be >= min_nodes.
+  int32 max_nodes = 2 [(buf.validate.field).int32.gte = 1];
+
+  option (buf.validate.message).cel = {
+    id: "asymmetric_override_max_gte_min"
+    expression: "this.max_nodes >= this.min_nodes"
+    message: "max_nodes must be >= min_nodes"
+  };
+}
+
+// GcpSpannerInstanceAsymmetricAutoscalingOption scales one read-only replica
+// region independently of the rest of a multi-region instance. The classic
+// use case: a read-heavy region (say, analytics traffic in asia-east1) gets
+// its own, larger node range while the write regions stay small — instead of
+// paying for the peak region's capacity everywhere. Applies only to
+// multi-region instance configurations.
+message GcpSpannerInstanceAsymmetricAutoscalingOption {
+  // The replica location (a region of the multi-region configuration,
+  // e.g. "europe-west1") whose autoscaling this option overrides.
+  string replica_location = 1 [(buf.validate.field).required = true];
+
+  // Node bounds for this replica location, replacing the instance-wide
+  // autoscaling_limits for it.
+  GcpSpannerInstanceAsymmetricAutoscalingOverrides overrides = 2 [(buf.validate.field).required = true];
+}
+
+// GcpSpannerInstanceAutoscalingConfig enables Spanner's managed autoscaler:
+// compute capacity follows utilization within the configured bounds instead
+// of being fixed. While autoscaling is enabled, num_nodes and
+// processing_units on the instance become read-only reflections of the
+// current allocation. All autoscaling knobs update in place — tightening
+// bounds or retargeting utilization never recreates the instance.
+message GcpSpannerInstanceAutoscalingConfig {
+  // Required. The floor and ceiling the autoscaler operates within.
+  GcpSpannerInstanceAutoscalingLimits autoscaling_limits = 1 [(buf.validate.field).required = true];
+
+  // Utilization targets that trigger scaling decisions.
+  // If not set, GCP uses default targets.
+  GcpSpannerInstanceAutoscalingTargets autoscaling_targets = 2;
+
+  // Per-replica-location overrides for multi-region instances: scale a
+  // read-heavy region independently instead of sizing every region for the
+  // hottest one. Each entry selects one replica location and bounds its
+  // node range.
+  repeated GcpSpannerInstanceAsymmetricAutoscalingOption asymmetric_autoscaling_options = 3;
+}
+
+// GcpSpannerInstanceSpec defines the configuration for a Google Cloud
+// Spanner instance.
+//
+// Cloud Spanner is Google's fully managed, globally distributed, strongly
+// consistent relational database. The INSTANCE is the unit of compute and
+// storage allocation: it pins a geographic topology (the instance
+// configuration) and a capacity envelope that all databases on it share.
+// Databases (GcpSpannerDatabase) and backup schedules
+// (GcpSpannerBackupSchedule) are separate composable resources that
+// reference this instance by name.
+//
+// Capacity is expressed exactly one way:
+//   - num_nodes — coarse units (1 node = 1000 processing units)
+//   - processing_units — fine-grained (multiples of 100 below 1000)
+//   - autoscaling_config — Spanner manages capacity within bounds
+//
+// Important behavioral notes:
+//
+//   - instance_name, config, and project are IMMUTABLE — changing any of
+//     them recreates the instance (and everything on it). Everything else,
+//     including capacity, edition, and autoscaling, updates in place.
+//
+//   - Capacity changes (nodes/processing units, or switching to/from
+//     autoscaling) are online operations with no downtime.
+//
+//   - Edition upgrades (STANDARD → ENTERPRISE → ENTERPRISE_PLUS) apply in
+//     place. Downgrades require first disabling features of the higher
+//     edition.
+//
+//   - FREE_INSTANCE provides one zero-cost instance per billing account
+//     with limited capacity (about 10 GB storage). It must not set capacity
+//     fields, edition, or an AUTOMATIC default backup schedule, and it can
+//     be upgraded to PROVISIONED in place (but never back).
+message GcpSpannerInstanceSpec {
+  // The GCP project the Spanner instance is created in. Accepts a literal
+  // project ID or a reference to a GcpProject resource. If omitted, the
+  // provider's default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Unique identifier of the Spanner instance in GCP. Immutable. If not
+  // specified, defaults to metadata.name. Must be 6-30 characters: start
+  // with a lowercase letter, contain only lowercase letters, digits, and
+  // hyphens, and end with a letter or digit. This is the value downstream
+  // databases and backup schedules reference.
+  string instance_name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      pattern: "^[a-z][-a-z0-9]*[a-z0-9]$"
+      min_len: 6
+      max_len: 30
+    }
+  ];
+
+  // Instance configuration defining geographic placement and replication
+  // topology. Immutable. Regional configs (e.g. "regional-us-central1")
+  // give the lowest latency in one region; multi-region configs (e.g.
+  // "nam6", "nam-eur-asia1") replicate across regions for higher
+  // availability and enable the 99.999% SLA on ENTERPRISE_PLUS. This is
+  // the single most consequential choice on the instance — it cannot be
+  // changed without recreating the instance and moving the data.
+  string config = 3 [(buf.validate.field).required = true];
+
+  // Human-readable display name shown in the GCP console.
+  // Must be 4-30 characters.
+  string display_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 4,
+    (buf.validate.field).string.max_len = 30
+  ];
+
+  // Labels applied to the instance for cost attribution and organization.
+  // Merged with Planton's platform labels (which win on key conflicts).
+  map<string, string> labels = 5;
+
+  // Number of nodes allocated to the instance. Each node provides roughly
+  // 10,000 QPS of reads or 2,000 QPS of writes and 10 TB of storage.
+  // Mutable — capacity changes apply online. Mutually exclusive with
+  // processing_units and autoscaling_config; must not be set for
+  // FREE_INSTANCE. If no capacity field is set for a PROVISIONED instance,
+  // GCP defaults to 1 node.
+  int32 num_nodes = 6;
+
+  // Number of processing units allocated to the instance — the
+  // fine-grained alternative to nodes (1 node = 1000 processing units).
+  // Values below 1000 must be multiples of 100 (the smallest billable
+  // Spanner footprint is 100). Mutable. Mutually exclusive with num_nodes
+  // and autoscaling_config; must not be set for FREE_INSTANCE.
+  int32 processing_units = 7;
+
+  // Managed autoscaling: Spanner adjusts capacity within bounds based on
+  // CPU and storage utilization, including per-replica overrides for
+  // multi-region instances. Mutually exclusive with num_nodes and
+  // processing_units; must not be set for FREE_INSTANCE.
+  GcpSpannerInstanceAutoscalingConfig autoscaling_config = 8;
+
+  // Instance type. PROVISIONED (default) requires explicit capacity via
+  // one of the capacity fields. FREE_INSTANCE provisions the billing
+  // account's one zero-cost development instance and must not set any
+  // capacity field. Upgrading FREE_INSTANCE → PROVISIONED works in place;
+  // the reverse does not exist.
+  string instance_type = 9 [(buf.validate.field).cel = {
+    id: "instance_type_valid_value"
+    expression: "this == '' || this in ['PROVISIONED', 'FREE_INSTANCE']"
+    message: "instance_type must be PROVISIONED or FREE_INSTANCE"
+  }];
+
+  // Edition controlling available features and SLA level. Mutable —
+  // upgrades apply in place. STANDARD: cost-optimized, single-region
+  // feature set. ENTERPRISE: adds granular sizing, asymmetric autoscaling,
+  // and incremental backups. ENTERPRISE_PLUS: 99.999% multi-region SLA and
+  // advanced compliance features. Cannot be set for FREE_INSTANCE.
+  string edition = 10 [(buf.validate.field).cel = {
+    id: "edition_valid_value"
+    expression: "this == '' || this in ['STANDARD', 'ENTERPRISE', 'ENTERPRISE_PLUS']"
+    message: "edition must be STANDARD, ENTERPRISE, or ENTERPRISE_PLUS"
+  }];
+
+  // Default backup schedule type for NEW databases created on this
+  // instance. NONE (default): new databases get no automatic backup
+  // schedule. AUTOMATIC: GCP attaches a default backup schedule to each
+  // new database (explicit GcpSpannerBackupSchedule resources give full
+  // control instead). Cannot be AUTOMATIC for FREE_INSTANCE.
+  string default_backup_schedule_type = 11 [(buf.validate.field).cel = {
+    id: "default_backup_schedule_type_valid_value"
+    expression: "this == '' || this in ['NONE', 'AUTOMATIC']"
+    message: "default_backup_schedule_type must be NONE or AUTOMATIC"
+  }];
+
+  // Whether destroying the instance also deletes all backups held on it.
+  // When false (default), destroy fails if any database on the instance
+  // has backups — a safety net against losing the last restore point. Set
+  // true only when the backups are intentionally disposable.
+  bool force_destroy = 12;
+
+  // -- Cross-field validations --
+
+  // At most one capacity method may be set.
+  option (buf.validate.message).cel = {
+    id: "capacity_mutual_exclusion"
+    expression: "(this.num_nodes > 0 ? 1 : 0) + (this.processing_units > 0 ? 1 : 0) + (has(this.autoscaling_config) ? 1 : 0) <= 1"
+    message: "only one of num_nodes, processing_units, or autoscaling_config may be set"
+  };
+
+  // FREE_INSTANCE must not have any capacity configuration.
+  option (buf.validate.message).cel = {
+    id: "free_instance_no_capacity"
+    expression: "this.instance_type != 'FREE_INSTANCE' || (this.num_nodes == 0 && this.processing_units == 0 && !has(this.autoscaling_config))"
+    message: "FREE_INSTANCE must not set num_nodes, processing_units, or autoscaling_config"
+  };
+
+  // FREE_INSTANCE must not set edition.
+  option (buf.validate.message).cel = {
+    id: "free_instance_no_edition"
+    expression: "this.instance_type != 'FREE_INSTANCE' || this.edition == ''"
+    message: "edition cannot be set when instance_type is FREE_INSTANCE"
+  };
+
+  // FREE_INSTANCE must not have AUTOMATIC backup schedule.
+  option (buf.validate.message).cel = {
+    id: "free_instance_no_automatic_backup"
+    expression: "this.instance_type != 'FREE_INSTANCE' || this.default_backup_schedule_type != 'AUTOMATIC'"
+    message: "default_backup_schedule_type cannot be AUTOMATIC when instance_type is FREE_INSTANCE"
+  };
+}

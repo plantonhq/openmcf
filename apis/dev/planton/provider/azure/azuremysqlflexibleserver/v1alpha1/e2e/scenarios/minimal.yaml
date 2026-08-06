@@ -1,0 +1,63 @@
+# Minimal AzureMysqlFlexibleServer scenario: a burstable public-access
+# server in the fixture resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind. The server_name embeds
+# no random suffix even though server names are GLOBALLY unique -- the
+# planton-oss-e2e prefix keeps collisions out of practical reach and the
+# name frees on destroy. zone is deliberately unset so Azure places the
+# server in whatever zone the region has burstable capacity in. The
+# database, firewall rule, and server-parameter entries prove all three
+# child-resource paths live; the parameter (max_connections) is DYNAMIC,
+# so no restart-pending state lingers on the run.
+#
+# The region is westus2 rather than the suite's eastus: the test
+# subscription can only provision MySQL Flexible Servers in a narrow set
+# of regions (ProvisionNotSupportedForRegion elsewhere -- westus3 verified
+# failing live even though it works for the PostgreSQL sibling; the offer
+# restrictions differ per RDBMS). Before moving this scenario, probe the
+# per-region capabilities:
+#   az rest --method get --url "https://management.azure.com/subscriptions/{sub}/providers/Microsoft.DBforMySQL/locations/{region}/capabilities?api-version=2023-12-30"
+# A region this subscription cannot provision in answers 500
+# InternalServerError; a usable region returns its edition ladder
+# (westus2 was the only region of 12 probed that answered). A server may
+# live in a different region than its resource group, so the eastus
+# fixture RG serves unchanged.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMysqlFlexibleServer
+metadata:
+  name: planton-oss-e2e-azuremysql-smoke
+  id: planton-oss-e2e-azuremysql-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremysqlflexibleserver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus2
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  serverName: planton-oss-e2e-mysql-smoke
+  administratorLogin: mysqladmin
+  administratorPassword:
+    value: PltnE2e-My5ql!
+  skuName: B_Standard_B1ms
+  storage:
+    sizeGb: 20
+  backupRetentionDays: 7
+  databases:
+    - name: smoke
+  firewallRules:
+    - name: allow-azure-services
+      startIpAddress: "0.0.0.0"
+      endIpAddress: "0.0.0.0"
+  serverParameters:
+    max_connections: "120"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

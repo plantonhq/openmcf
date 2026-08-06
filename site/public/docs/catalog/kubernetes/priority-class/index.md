@@ -31,7 +31,7 @@ When you deploy a KubernetesPriorityClass resource, Planton provisions:
 Create a file `priority-class.yaml` — the critical tier of the ladder:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPriorityClass
 metadata:
   name: critical-services
@@ -79,7 +79,7 @@ Any pod that sets `priority_class_name: critical-services` now schedules ahead o
 The class every unmarked pod lands in — exactly one class per cluster should carry `global_default: true`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPriorityClass
 metadata:
   name: standard-default
@@ -100,7 +100,7 @@ spec:
 Negative value (yields to everything) and preemption disabled (never evicts running pods):
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPriorityClass
 metadata:
   name: preemptable-batch

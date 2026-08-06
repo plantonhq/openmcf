@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteshorizontalpodautoscaler.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kuberneteshorizontalpodautoscaler/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kuberneteshorizontalpodautoscaler/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesHorizontalPodAutoscaler** defines a Kubernetes
+ * HorizontalPodAutoscaler (autoscaling/v2) resource following the Kubernetes
+ * Resource Model (KRM). The autoscaler owns a workload's replica count,
+ * scaling it between a floor and a ceiling based on resource, custom,
+ * object, or external metrics, with tunable per-direction scaling behavior.
+ */
+message KubernetesHorizontalPodAutoscaler {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1alpha1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesHorizontalPodAutoscaler".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesHorizontalPodAutoscaler"];
+
+  // Metadata for the HorizontalPodAutoscaler resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the HorizontalPodAutoscaler.
+  // Defines the scale target, replica bounds, metrics, and behavior.
+  KubernetesHorizontalPodAutoscalerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the HorizontalPodAutoscaler resource.
+  // Contains outputs populated after deployment.
+  KubernetesHorizontalPodAutoscalerStatus status = 5;
+}
+
+/**
+ * **KubernetesHorizontalPodAutoscalerStatus** captures the runtime status of
+ * a HorizontalPodAutoscaler deployment, including the outputs generated
+ * after the autoscaler is created.
+ */
+message KubernetesHorizontalPodAutoscalerStatus {
+  // Outputs from the HorizontalPodAutoscaler deployment.
+  // Contains the autoscaler identity and configured bounds.
+  KubernetesHorizontalPodAutoscalerStackOutputs outputs = 1;
+}

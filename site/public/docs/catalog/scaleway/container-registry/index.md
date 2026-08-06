@@ -28,7 +28,7 @@ Container Registry namespaces are regional resources. The namespace name becomes
 Create a file `container-registry.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayContainerRegistry
 metadata:
   name: my-registry
@@ -77,7 +77,7 @@ docker push rg.fr-par.scw.cloud/my-registry/myapp:latest
 A minimal private registry namespace for storing development container images:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayContainerRegistry
 metadata:
   name: dev-images
@@ -96,7 +96,7 @@ spec:
 A public registry namespace for distributing open-source container images and base images that external consumers can pull without credentials:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayContainerRegistry
 metadata:
   name: oss-images
@@ -116,7 +116,7 @@ spec:
 A private production registry in the same region as a Kapsule cluster for lowest image pull latency during deployments and pod scaling:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayContainerRegistry
 metadata:
   name: prod-services

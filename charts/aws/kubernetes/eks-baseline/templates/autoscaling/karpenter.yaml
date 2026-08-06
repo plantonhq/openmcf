@@ -4,7 +4,7 @@
 # scoped permission set, composed for THIS cluster), the interruption
 # plumbing (SQS + EventBridge, toggled), and the controller itself. The
 # machine templates it provisions from are the next file.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: "{{ values.env }}-eks-karpenter-irsa"
@@ -242,7 +242,7 @@ spec:
 # convention, and what the controller's interruptionQueue setting expects).
 # EC2 lifecycle warnings land here minutes before capacity disappears, and
 # Karpenter drains the affected node instead of losing it mid-flight.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: "{{ values.env }}-eks"
@@ -284,7 +284,7 @@ spec:
 #
 # Rule 1/5 — AWS Health events (scheduled maintenance that will touch
 # instances).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: "{{ values.env }}-eks-karpenter-scheduled-change"
@@ -305,7 +305,7 @@ spec:
 ---
 # Rule 2/5 — the two-minute Spot reclaim warning: the reason interruption
 # handling exists.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: "{{ values.env }}-eks-karpenter-spot-interruption"
@@ -326,7 +326,7 @@ spec:
 ---
 # Rule 3/5 — rebalance recommendations (elevated-risk Spot capacity;
 # Karpenter can move work before the hard reclaim ever arrives).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: "{{ values.env }}-eks-karpenter-rebalance"
@@ -347,7 +347,7 @@ spec:
 ---
 # Rule 4/5 — instance state changes (out-of-band terminations/stops that
 # would otherwise leave ghost nodes).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: "{{ values.env }}-eks-karpenter-instance-state-change"
@@ -368,7 +368,7 @@ spec:
 ---
 # Rule 5/5 — capacity-reservation interruption warnings (reserved capacity
 # being reclaimed).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: "{{ values.env }}-eks-karpenter-capacity-reservation"
@@ -391,7 +391,7 @@ spec:
 # The Karpenter controller itself — a Kubernetes workload, so from here on
 # the one-run contract applies: consume the cluster's connection and declare
 # the runs_on edge.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenter
 metadata:
   name: "{{ values.env }}-karpenter"

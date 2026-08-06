@@ -29,7 +29,7 @@ The resource is effectively immutable: everything except tags is create-time, so
 Create a file `msk-serverless.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskServerlessCluster
 metadata:
   name: my-kafka
@@ -77,7 +77,7 @@ SASL/IAM authentication is not a field: AWS requires it and offers no alternativ
 ### Composed with References
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskServerlessCluster
 metadata:
   name: events-kafka

@@ -29,7 +29,7 @@ When you deploy an AliCloudVswitch resource, Planton provisions:
 Create a file `vswitch.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudVswitch
 metadata:
   name: my-vswitch
@@ -82,7 +82,7 @@ This creates a VSwitch with a `/24` CIDR block in the `cn-hangzhou-a` Availabili
 A minimal VSwitch for non-production workloads with a standard `/24` CIDR block.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudVswitch
 metadata:
   name: dev-vswitch
@@ -104,7 +104,7 @@ spec:
 A production VSwitch with a large address space for Kubernetes node pools, organizational metadata, and cost-tracking tags.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudVswitch
 metadata:
   name: prod-app-vswitch
@@ -133,7 +133,7 @@ spec:
 References an AliCloudVpc component instead of hardcoding the VPC ID, establishing a declarative dependency between the VSwitch and its parent VPC.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudVswitch
 metadata:
   name: db-vswitch
@@ -159,7 +159,7 @@ spec:
 A VSwitch with IPv6 support. The parent VPC must have IPv6 enabled for the IPv6 CIDR allocation to succeed.
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudVswitch
 metadata:
   name: ipv6-vswitch

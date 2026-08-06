@@ -1,0 +1,54 @@
+# AwsTransitGatewayRouteTable scenario: the isolated-routing-domain story
+# live -- a custom table on the segmented gateway fixture that associates
+# the attachment fixture, accepts its propagation, steers a static route
+# through it, and blackholes a quarantine CIDR (statics beat propagations,
+# so the blackhole is provable regardless of what the attachment
+# advertises).
+#
+# The e2e-prerequisites annotation composes the attachment fixture
+# (optional composition -- an empty table deploys with only the gateway);
+# the gateway arrives through the registry chain. The attachment fixture
+# pins its default-table membership off, so the association here is its
+# only one (AWS allows one association per attachment, gateway-wide).
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsTransitGatewayRouteTable
+metadata:
+  name: planton-oss-e2e-awstgwrt-domain
+  id: planton-oss-e2e-awstgwrt-domain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awstransitgatewayroutetable
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsTransitGatewayVpcAttachment"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  transitGatewayId:
+    valueFrom:
+      kind: AwsTransitGateway
+      name: planton-oss-e2e-awstgw-prereq
+      fieldPath: status.outputs.transit_gateway_id
+  associations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: planton-oss-e2e-awstgwa-prereq
+        fieldPath: status.outputs.attachment_id
+  propagations:
+    - valueFrom:
+        kind: AwsTransitGatewayVpcAttachment
+        name: planton-oss-e2e-awstgwa-prereq
+        fieldPath: status.outputs.attachment_id
+  routes:
+    - destinationCidrBlock: 192.168.100.0/24
+      attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: planton-oss-e2e-awstgwa-prereq
+          fieldPath: status.outputs.attachment_id
+    - destinationCidrBlock: 10.99.0.0/16
+      blackhole: true

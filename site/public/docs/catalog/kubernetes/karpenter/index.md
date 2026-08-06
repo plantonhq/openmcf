@@ -47,7 +47,7 @@ provider — the canonical implementation. One installation per cluster.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenter
 metadata:
   name: karpenter

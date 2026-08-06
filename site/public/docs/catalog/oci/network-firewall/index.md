@@ -34,7 +34,7 @@ When you deploy an OciNetworkFirewall resource, Planton provisions:
 Create a file `network-firewall.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkFirewall
 metadata:
   name: my-firewall
@@ -186,7 +186,7 @@ All non-empty fields are AND-ed together. Within each field, values are OR-ed.
 A firewall allowing internal traffic and dropping everything else:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkFirewall
 metadata:
   name: basic-fw
@@ -224,7 +224,7 @@ spec:
 A firewall allowing HTTPS traffic to specific destinations and blocking known malicious URLs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkFirewall
 metadata:
   name: web-fw
@@ -299,7 +299,7 @@ spec:
 A firewall with intrusion detection on inbound traffic and private NAT:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNetworkFirewall
 metadata:
   name: ids-fw

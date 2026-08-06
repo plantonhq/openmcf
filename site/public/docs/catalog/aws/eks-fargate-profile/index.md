@@ -36,7 +36,7 @@ itself, with a trust policy for `eks-fargate-pods.amazonaws.com`.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksFargateProfile
 metadata:
   name: serverless
@@ -89,7 +89,7 @@ replaces the profile.
 ### Namespace-per-team wildcard
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksFargateProfile
 metadata:
   name: team-namespaces
@@ -109,7 +109,7 @@ spec:
 ### Label-scoped batch workloads
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksFargateProfile
 metadata:
   name: batch-fargate

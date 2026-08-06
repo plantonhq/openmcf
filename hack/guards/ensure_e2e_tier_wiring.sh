@@ -57,7 +57,7 @@ if [[ -z "$makefile_terraform_regexes" ]]; then
   exit 1
 fi
 
-for profile in "$provider_base"/*/v1/e2e/profile.yaml; do
+for profile in "$provider_base"/*/v*/e2e/profile.yaml; do
   component="$(basename "$(dirname "$(dirname "$(dirname "$profile")")")")"
 
   # Profiles that can never RUN need no tier wiring: deferred/skip/stub

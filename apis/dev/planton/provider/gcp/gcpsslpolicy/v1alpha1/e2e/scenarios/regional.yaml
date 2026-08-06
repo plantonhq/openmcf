@@ -1,0 +1,23 @@
+# Regional GcpSslPolicy scenario: exercises the module's regional branch
+# (google_compute_region_ssl_policy / compute.RegionSslPolicy) with a
+# RESTRICTED profile. Regional policies serve regional external and internal
+# ALB proxies and must live in the proxy's own region.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSslPolicy
+metadata:
+  name: planton-oss-e2e-gcpsslpol-regional
+  id: planton-oss-e2e-gcpsslpol-regional
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsslpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral regional SSL policy created by the Planton E2E harness; safe to delete
+  region: us-central1
+  profile: RESTRICTED
+  minTlsVersion: TLS_1_2

@@ -3,7 +3,7 @@
 # per client component (never a shared "app" credential) keeps access
 # auditable and revocable per component. The operator generates the
 # password into a Secret the registry consumes by reference below.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   name: "{{ values.env }}-schema-registry-user"
@@ -28,7 +28,7 @@ spec:
 # does: SASL_SSL — TLS trust from the cluster's CA Secret, SCRAM
 # credentials from its dedicated user's operator-generated Secret — every
 # handle resolved by reference.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarapace
 metadata:
   name: "{{ values.env }}-schema-registry"

@@ -1,0 +1,34 @@
+# Minimal AzureFrontDoorSecurityPolicy scenario: the enforcement seam
+# live -- the fixture WAF policy associated with the fixture endpoint's
+# default *.azurefd.net hostname. The registry prerequisites install
+# the endpoint (bringing the profile and resource group transitively)
+# and the STANDARD WAF policy (matching the fixture profile's sku --
+# Azure rejects mismatched pairings). Associating a validated CUSTOM
+# domain needs a delegated DNS zone the test subscription does not own;
+# the endpoint-scoped association is a first-class association, not a
+# shortcut (the provider's domain validator accepts endpoint ids).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorSecurityPolicy
+metadata:
+  name: planton-oss-e2e-azurefrontdoorsecuritypolicy-smoke
+  id: planton-oss-e2e-azurefrontdoorsecuritypolicy-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorsecuritypolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  securityPolicyName: e2e-waf-attach
+  firewallPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-fd-waf-prereq
+  domainIds:
+    - valueFrom:
+        name: planton-oss-e2e-fd-endpoint-prereq

@@ -1,0 +1,28 @@
+# The baseline: one replica set at the production shape (3 members,
+# operator defaults for everything else) — automated failover with the
+# smallest honest declaration. Resources sized for the kind cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesMongodb
+metadata:
+  name: e2e-mdb-minimal
+spec:
+  namespace:
+    value: e2e-mdb-minimal
+  create_namespace: true
+  replica_sets:
+    - name: rs0
+      storage:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      # The operator's default hostname anti-affinity can never place
+      # three members on a single-node cluster — "none" is the
+      # operator's own OFF switch (node placement is real-cluster
+      # material).
+      scheduling:
+        anti_affinity_topology_key: "none"

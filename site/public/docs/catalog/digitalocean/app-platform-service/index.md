@@ -32,7 +32,7 @@ When you deploy a DigitalOceanAppPlatformService resource, Planton provisions:
 Create a file `app-service.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: my-web-app
@@ -96,7 +96,7 @@ This creates a single-instance web service in the NYC3 region, built from the `m
 A Node.js web application built from source with explicit build and run commands:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: node-api
@@ -126,7 +126,7 @@ spec:
 A background worker deployed from a pre-built container image stored in DigitalOcean Container Registry:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: queue-processor
@@ -159,7 +159,7 @@ spec:
 A fully configured production web service with autoscaling, environment variables, and a custom domain backed by a DNS zone reference:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanAppPlatformService
 metadata:
   name: prod-frontend

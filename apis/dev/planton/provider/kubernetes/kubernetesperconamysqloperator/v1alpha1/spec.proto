@@ -1,0 +1,259 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesPerconaMysqlOperatorSpec** installs the Percona Operator
+ * for MySQL — based on Percona XtraDB Cluster — from the official
+ * `pxc-operator` Helm chart
+ * (https://percona.github.io/percona-helm-charts). The operator
+ * reconciles `PerconaXtraDBCluster` custom resources into highly
+ * available MySQL clusters: Galera synchronous multi-primary
+ * replication with automated failover, HAProxy or ProxySQL query
+ * routing, scheduled XtraBackup backups with point-in-time recovery,
+ * and TLS.
+ *
+ * This component installs and configures the ENGINE. The databases
+ * themselves are declared with KubernetesMysql resources — one per
+ * MySQL cluster — which the operator reconciles.
+ *
+ * WATCH SCOPE: by default the operator watches ITS OWN namespace only
+ * (the upstream default — databases live beside their operator). Set
+ * `watch.cluster_wide` for one operator managing databases in every
+ * namespace, or `watch.namespaces` for a fenced set.
+ *
+ * CRD LIFECYCLE: the chart ships the PerconaXtraDBCluster CRDs in its
+ * Helm-native `crds/` directory — installed on first install, never
+ * upgraded or deleted by Helm. Uninstalling the release therefore NEVER
+ * cascade-deletes the database clusters (the upstream safety posture).
+ * The same posture means a `chart_version` upgrade runs new operator
+ * code against the EXISTING CRDs — apply the new release's CRDs
+ * yourself when an upgrade's release notes call for it.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — a safety valve, never the primary interface.
+ */
+message KubernetesPerconaMysqlOperatorSpec {
+  /**
+   * Namespace to install the operator into. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "1.20.0" — chart and operator
+   * versions move together for this chart; the chart pin governs). Pin
+   * deliberately; upgrades re-run the release with the new chart.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.20.0"];
+
+  /**
+   * Operator replica count. Chart default: 1. Extra replicas are
+   * leader-elected warm standbys for the OPERATOR itself — they add no
+   * reconciliation throughput.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * What the operator watches. Omitted = its own namespace only (the
+   * upstream default).
+   */
+  KubernetesPerconaMysqlOperatorWatch watch = 5;
+
+  /**
+   * Maximum number of PerconaXtraDBCluster resources reconciled
+   * concurrently. Chart default: 1. Raise on control planes managing
+   * many databases.
+   */
+  optional int32 max_concurrent_reconciles = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Concurrent S3 workers for backup uploads/deletes across the
+   * databases this operator manages. Chart default: 10.
+   */
+  optional int32 s3_workers_limit = 7 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Operator logging.
+   */
+  KubernetesPerconaMysqlOperatorLog log = 8;
+
+  /**
+   * Disable Percona's anonymous telemetry (version and feature usage
+   * pings to check.percona.com). Chart default: false (telemetry on).
+   */
+  bool disable_telemetry = 9;
+
+  /**
+   * Leader election between operator replicas. Meaningful only with
+   * replicas above 1 — exactly one replica reconciles at a time.
+   */
+  KubernetesPerconaMysqlOperatorLeaderElection leader_election = 10;
+
+  /**
+   * Run XtraBackup as a SIDECAR of the database pods instead of
+   * separate backup jobs (the chart's xtrabackupSidecar feature gate).
+   * Chart default: false.
+   */
+  bool xtrabackup_sidecar = 11;
+
+  /**
+   * Operator container resources. Empty = the chart defaults (requests
+   * 100m/20Mi, limits 200m/500Mi).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 12;
+
+  /**
+   * Node selector for the operator pod.
+   */
+  map<string, string> node_selector = 13;
+
+  /**
+   * Tolerations for the operator pod.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 14;
+
+  /**
+   * Names of image-pull secrets (in the installation namespace) for
+   * pulling the operator image from a private mirror.
+   */
+  repeated string image_pull_secrets = 15 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  /**
+   * Override the operator image (registry mirrors, air-gapped
+   * clusters). Empty = the chart default
+   * (percona/percona-xtradb-cluster-operator at the chart version).
+   */
+  KubernetesPerconaMysqlOperatorImage image = 16;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (security contexts, RBAC toggles, extra env vars, pod
+   * annotations, ...) — never the substitute for them. Do not put
+   * secrets here.
+   */
+  string helm_values = 17;
+}
+
+/**
+ * Operator watch scope. At most one of cluster_wide / namespaces.
+ */
+message KubernetesPerconaMysqlOperatorWatch {
+  /**
+   * Watch every namespace in the cluster (cluster-wide RBAC). Chart
+   * default: false.
+   */
+  bool cluster_wide = 1;
+
+  /**
+   * Watch exactly these namespaces (rendered as the chart's
+   * comma-separated watchNamespace). Empty with cluster_wide false =
+   * the operator's own namespace only.
+   */
+  repeated string namespaces = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.watch.cluster_wide_xor_namespaces"
+    message: "cluster_wide and namespaces are mutually exclusive — a cluster-wide operator already watches everything"
+    expression: "!(this.cluster_wide && this.namespaces.size() > 0)"
+  };
+}
+
+/**
+ * Operator logging.
+ */
+message KubernetesPerconaMysqlOperatorLog {
+  /**
+   * Emit structured (JSON) logs instead of the console encoder. Chart
+   * default: false.
+   */
+  bool structured = 1;
+
+  /**
+   * Log level: DEBUG, INFO (the chart default), or ERROR.
+   */
+  optional string level = 2 [
+    (dev.planton.shared.options.default) = "INFO",
+    (buf.validate.field).cel = {
+      id: "spec.log.level_enum"
+      message: "log level must be DEBUG, INFO, or ERROR"
+      expression: "this == '' || this in ['DEBUG', 'INFO', 'ERROR']"
+    }
+  ];
+}
+
+/**
+ * Leader election between operator replicas.
+ */
+message KubernetesPerconaMysqlOperatorLeaderElection {
+  /**
+   * Enable leader election. Chart default: true — disable only for a
+   * single-replica operator where the election round-trips are pure
+   * overhead.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * How long a leader lease lasts before it must be renewed (Go
+   * duration). Chart default: "60s".
+   */
+  optional string lease_duration = 2 [(dev.planton.shared.options.default) = "60s"];
+
+  /**
+   * How long the leader keeps trying to renew before giving up (Go
+   * duration). Chart default: "40s".
+   */
+  optional string renew_deadline = 3 [(dev.planton.shared.options.default) = "40s"];
+
+  /**
+   * Wait between acquisition attempts by non-leaders (Go duration).
+   * Chart default: "10s".
+   */
+  optional string retry_period = 4 [(dev.planton.shared.options.default) = "10s"];
+}
+
+/**
+ * Operator image override.
+ */
+message KubernetesPerconaMysqlOperatorImage {
+  /**
+   * Image repository (e.g.
+   * "my-mirror.example.com/percona-xtradb-cluster-operator").
+   */
+  string repository = 1;
+
+  /**
+   * Image tag. Empty = the chart version.
+   */
+  string tag = 2;
+}

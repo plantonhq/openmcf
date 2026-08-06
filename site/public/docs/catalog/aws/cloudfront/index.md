@@ -27,7 +27,7 @@ Deploys an Amazon CloudFront distribution — the global CDN front door that ter
 Create a file `cdn.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudFront
 metadata:
   name: my-website-cdn

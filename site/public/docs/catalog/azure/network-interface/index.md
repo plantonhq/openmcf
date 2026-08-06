@@ -36,7 +36,7 @@ Nothing else is created here. The NIC does not create its subnet, public IP, or 
 Create a file `nic.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: my-nic
@@ -115,7 +115,7 @@ This creates a private-only NIC with one dynamic IPv4 configuration in the refer
 The shape virtually every VM starts from — one dynamic IPv4 configuration, no public exposure, accelerated networking on:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: app-nic
@@ -142,7 +142,7 @@ spec:
 A single internet-facing VM — a bastion host or an appliance's outside arm — fronted by a referenced public IP and carrying its own filtering:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: bastion-nic
@@ -175,7 +175,7 @@ spec:
 A web-tier NIC that joins an `AzureLoadBalancer`'s backend pool and completes its single-target SSH NAT rule — membership expressed from the member side, referencing the load balancer's name-keyed outputs:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: web-1-nic
@@ -212,7 +212,7 @@ Each membership is its own association resource: adding this NIC to another pool
 The inside interface of a firewall or router that routes other workloads' traffic — static next-hop address, IP forwarding on:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: fw-inside-nic
@@ -242,7 +242,7 @@ spec:
 An IPv4 and an IPv6 configuration side by side (in a dual-stack subnet). With multiple configurations, the first must be marked primary:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: dual-stack-nic
@@ -272,7 +272,7 @@ spec:
 The composition the NIC exists for — the VM references the NIC, never contains it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: web-nic
@@ -292,7 +292,7 @@ spec:
   tags:
     tier: web
 ---
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: web-vm

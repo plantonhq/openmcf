@@ -24,7 +24,7 @@ A single `google_compute_url_map` in the chosen GCP project.
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpUrlMap
 metadata:
   name: web-routing

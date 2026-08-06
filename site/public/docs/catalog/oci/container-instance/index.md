@@ -29,7 +29,7 @@ When you deploy an OciContainerInstance resource, Planton provisions:
 Create a file `container-instance.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerInstance
 metadata:
   name: web-server
@@ -212,7 +212,7 @@ This creates a single-container instance running nginx on a 1-OCPU E4 Flex shape
 A single nginx container — the simplest path to running a container on OCI:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerInstance
 metadata:
   name: web-server
@@ -240,7 +240,7 @@ spec:
 A web application container with a Fluent Bit sidecar collecting logs via a shared emptydir volume — the pod-like multi-container pattern:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerInstance
 metadata:
   name: web-with-logging
@@ -314,7 +314,7 @@ spec:
 A production container with a read-only root filesystem, non-root user enforcement, dropped capabilities, health checks, config file injection, and OCI Vault-based image pull credentials:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerInstance
 metadata:
   name: secure-api

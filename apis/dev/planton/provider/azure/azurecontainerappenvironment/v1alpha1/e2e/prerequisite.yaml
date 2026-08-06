@@ -1,0 +1,32 @@
+# AzureContainerAppEnvironment install profile used as a prerequisite by
+# the Container Apps family kinds (declared via prerequisites:
+# [AzureContainerAppEnvironment] in the kind registry). The E2E harness
+# deploys this document (via the environment's Pulumi module), captures
+# its outputs under its manifest name, and resolves dependents'
+# environment references against them. The resource group arrives
+# transitively through this kind's own AzureResourceGroup prerequisite.
+# A consumption-only environment (no workload profiles, streaming-only
+# logs) is the cheapest shape the family fixtures can run on; environment
+# names are resource-group-scoped, so sequential recreate is safe.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerAppEnvironment
+metadata:
+  name: planton-oss-e2e-azure-fixture-cae
+  id: planton-oss-e2e-azure-fixture-cae
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerappenvironment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: consistent with the app-hosting family's probe-verified
+  # region on the test subscription.
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  environmentName: planton-oss-e2e-fixture-cae

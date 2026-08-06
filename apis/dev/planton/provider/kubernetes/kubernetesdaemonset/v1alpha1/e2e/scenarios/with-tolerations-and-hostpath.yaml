@@ -1,0 +1,40 @@
+# The log-collector shape: a read-only HostPath mount of the node's /var/log
+# and a control-plane toleration so the agent lands on every node of the kind
+# cluster, including the control-plane node.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDaemonSet
+metadata:
+  name: e2e-ds-hostpath
+spec:
+  namespace:
+    value: e2e-ds-hostpath-ns
+  create_namespace: true
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
+      command:
+        - /bin/sh
+        - -c
+        - while true; do ls /host/var/log >/dev/null 2>&1; sleep 30; done
+      volume_mounts:
+        - name: varlog
+          mount_path: /host/var/log
+          read_only: true
+          host_path:
+            path: /var/log
+            type: Directory
+  pod:
+    scheduling:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule

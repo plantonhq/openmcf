@@ -1,0 +1,25 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpProjectIamMember
+metadata:
+  name: my-sample-iam-grant
+spec:
+  # GCP project whose IAM policy receives this grant.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # The role to grant: a predefined role, or a custom role's fully-qualified
+  # name (reference a GcpIamCustomRole — its `name` output is exactly this value)
+  role:
+    value: roles/storage.objectViewer
+
+  # The identity receiving the grant, in GCP IAM member format.
+  # Reference a GcpServiceAccount — its `member` output is exactly this value.
+  member:
+    value: serviceAccount:my-sample-sa@my-gcp-project-123.iam.gserviceaccount.com
+
+  # Optional IAM Condition restricting when the grant applies
+  # condition:
+  #   title: expires-2027
+  #   expression: request.time < timestamp("2027-01-01T00:00:00Z")
+  #   description: Temporary access for the migration

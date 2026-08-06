@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1alpha1;
+
+//flink-deployment-kubernetes stack outputs
+message KubernetesFlinkDeploymentStackOutputs {
+  //namespace the Flink cluster runs in.
+  string namespace = 1;
+
+  //the JobManager REST Service name (`<name>-rest`) — the Flink REST
+  //API and web UI (port 8081); where session-mode jobs submit and
+  //where job status reads from.
+  string rest_service = 2;
+
+  //in-cluster REST endpoint
+  //(`<rest_service>.<namespace>.svc.cluster.local:8081`).
+  string rest_endpoint = 3;
+
+  //kubectl port-forward one-liner for reaching the Flink UI from a
+  //workstation.
+  string port_forward_command = 4;
+}

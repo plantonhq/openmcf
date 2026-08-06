@@ -26,7 +26,7 @@ When you deploy an AzureDnsRecord resource, Planton provisions:
 Create a file `record.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDnsRecord
 metadata:
   name: www-a-record

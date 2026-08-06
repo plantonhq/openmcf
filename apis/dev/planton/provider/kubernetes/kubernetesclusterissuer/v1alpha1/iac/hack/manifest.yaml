@@ -1,0 +1,52 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises the ACME backend with EAB, selector-scoped
+# solvers across DNS-01 providers, and an HTTP-01 ingress solver; both
+# engines must render identical CR + credential Secrets from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClusterIssuer
+metadata:
+  name: test-cluster-issuer
+spec:
+  certManagerNamespace:
+    value: cert-manager
+  config:
+    acme:
+      email: platform@example.com
+      server: https://acme-staging-v02.api.letsencrypt.org/directory
+      profile: tlsserver
+      preferredChain: ISRG Root X1
+      skipTlsVerify: false
+      externalAccountBinding:
+        keyId: eab-key-id-123
+        hmacKey: dGVzdC1obWFjLWtleQ
+      disableAccountKeyGeneration: false
+      enableDurationFeature: true
+      solvers:
+        - selector:
+            dnsZones:
+              - example.com
+          dns01:
+            cnameStrategy: follow
+            cloudflare:
+              apiToken:
+                token: test-cloudflare-token
+        - selector:
+            dnsZones:
+              - example.org
+            matchLabels:
+              use-route53: "true"
+          dns01:
+            route53:
+              region: us-east-1
+              hostedZoneId: Z2E9THH2AEXAMPLE
+              assumeRoleArn: arn:aws:iam::123456789012:role/dns01-cross-account
+              staticCredentials:
+                accessKeyId: AKIAEXAMPLE
+                secretAccessKey: test-secret-access-key
+        - selector:
+            dnsNames:
+              - www.example.net
+          http01:
+            ingress:
+              ingressClassName: nginx
+              serviceType: ClusterIP

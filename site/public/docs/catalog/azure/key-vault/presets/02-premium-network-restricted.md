@@ -59,7 +59,7 @@ even behind the DENY posture.
 Put an HSM-backed CMK inside and wire it to a consumer:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultKey
 metadata:
   name: registry-cmk

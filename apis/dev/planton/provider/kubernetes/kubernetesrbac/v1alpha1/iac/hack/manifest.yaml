@@ -1,0 +1,17 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRbac
+metadata:
+  name: test-rbac
+spec:
+  namespaceScope:
+    namespace:
+      value: default
+  createRole:
+    rules:
+      - verbs: ["get", "list"]
+        apiGroups: [""]
+        resources: ["configmaps"]
+  subjects:
+    - serviceAccount:
+        name:
+          value: test-sa

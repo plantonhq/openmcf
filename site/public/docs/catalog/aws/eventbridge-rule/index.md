@@ -30,7 +30,7 @@ When you deploy an AwsEventBridgeRule resource, Planton provisions:
 Create a file `rule.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: hourly-cleanup
@@ -105,7 +105,7 @@ This creates a scheduled rule on the default event bus that triggers a Lambda fu
 Route order events from a custom bus to a Lambda processor and an SQS analytics queue:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: order-router
@@ -153,7 +153,7 @@ spec:
 Run a batch processor at 2 AM UTC daily with a constant JSON payload and reduced retry window:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: nightly-batch
@@ -184,7 +184,7 @@ spec:
 Match EC2 state-change events, reshape the payload, and invoke a Step Functions state machine:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: ec2-state-handler
@@ -227,7 +227,7 @@ spec:
 A rule created in disabled state for pre-production testing:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: staging-order-router

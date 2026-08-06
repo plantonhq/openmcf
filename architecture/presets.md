@@ -144,9 +144,9 @@ apis/dev/planton/provider/{provider}/{component}/v1/presets/
 **Examples:**
 
 ```
-apis/dev/planton/provider/aws/awsalb/v1/presets/
-apis/dev/planton/provider/gcp/gcpgkecluster/v1/presets/
-apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1/presets/
+apis/dev/planton/provider/aws/awsalb/v1alpha1/presets/
+apis/dev/planton/provider/gcp/gcpgkecluster/v1alpha1/presets/
+apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1alpha1/presets/
 ```
 
 ### Naming
@@ -500,7 +500,7 @@ When creating presets for a component:
 ### AwsAlb Preset: `01-internet-facing-https.yaml`
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: my-internet-facing-alb

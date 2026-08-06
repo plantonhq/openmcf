@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awssnssubscription.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/aws/awssnssubscription/v1alpha1/spec.proto";
+import "dev/planton/provider/aws/awssnssubscription/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AwsSnsSubscription is the API envelope for an SNS subscription — the
+// delivery edge that wires an SNS topic to a target endpoint (an SQS queue,
+// a Lambda function, an HTTP/S endpoint, an email address, an SMS number, a
+// Kinesis Data Firehose stream, or a mobile platform application endpoint).
+message AwsSnsSubscription {
+  // api-version must be set to "aws.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, must be "AwsSnsSubscription".
+  string kind = 2 [(buf.validate.field).string.const = "AwsSnsSubscription"];
+
+  // metadata captures identifying information (name, org, environment,
+  // labels) and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the desired configuration of the subscription.
+  AwsSnsSubscriptionSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds post-deployment information.
+  AwsSnsSubscriptionStatus status = 5;
+}
+
+// AwsSnsSubscriptionStatus describes the status of an SNS subscription resource.
+message AwsSnsSubscriptionStatus {
+  // outputs captures the observable values returned by Pulumi/Terraform
+  // after provisioning.
+  AwsSnsSubscriptionStackOutputs outputs = 1;
+}

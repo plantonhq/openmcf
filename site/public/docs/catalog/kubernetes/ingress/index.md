@@ -32,7 +32,7 @@ The Ingress is created **without waiting for a controller** (Terraform `wait_for
 Create a file `ingress.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngress
 metadata:
   name: web-ingress
@@ -110,7 +110,7 @@ Every backend (in `default_backend` and in each path) references a Service in th
 The Secret named in `tls` does not exist yet — the issuer annotation instructs cert-manager to create it under exactly that name:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngress
 metadata:
   name: secure-web
@@ -147,7 +147,7 @@ spec:
 One host, multiple backends — frontend on `/`, API on `/api` (by named port):
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngress
 metadata:
   name: app-fanout
@@ -183,7 +183,7 @@ spec:
 Everything the controller routes here goes to one Service — no host or path matching:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngress
 metadata:
   name: catch-all

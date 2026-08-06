@@ -1,0 +1,30 @@
+# Minimal AzureFrontDoorCustomDomain scenario: a managed-certificate
+# domain on the fixture profile for a hostname the test tenant does NOT
+# own. Creation returns with the domain in the pending-validation state
+# (Azure never blocks creation on DNS proof), which is exactly what this
+# scenario proves live: the domain exists, and the validation_token /
+# expiration_date outputs populate -- the DNS TXT challenge a real
+# operator would publish. Completing validation requires a delegated DNS
+# zone the subscription does not have; that seam is the kind's recorded
+# E2E exclusion.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorCustomDomain
+metadata:
+  name: planton-oss-e2e-azurefrontdoorcustomdomain-smoke
+  id: planton-oss-e2e-azurefrontdoorcustomdomain-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorcustomdomain
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  profileId:
+    valueFrom:
+      name: planton-oss-e2e-fd-profile-prereq
+  domainName: e2e-smoke-planton-oss-e2e-net
+  hostName: e2e-smoke.planton-oss-e2e.net
+  tls: {}

@@ -1,0 +1,18 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsTransitGateway
+metadata:
+  name: test-tgw
+  org: test-org
+  env: dev
+  id: test-tgw-dev
+spec:
+  region: us-west-2
+  description: Test Transit Gateway hub
+  amazonSideAsn: 64513
+  defaultRouteTableAssociation: false
+  defaultRouteTablePropagation: false
+  dnsSupport: true
+  vpnEcmpSupport: true
+  securityGroupReferencingSupport: true
+  transitGatewayCidrBlocks:
+    - 10.255.0.0/24

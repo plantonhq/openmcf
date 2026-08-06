@@ -34,7 +34,7 @@ A read replica or a restored server is simply another AzurePostgresqlFlexibleSer
 Create a file `postgresql.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: my-pg
@@ -112,7 +112,7 @@ This creates a Burstable PostgreSQL 16 server with Azure's default 32 GiB storag
 ### Production: VNet-Injected with Zone-Redundant HA
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: prod-pg
@@ -148,7 +148,7 @@ spec:
 ### Read Replica of a Primary
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: prod-pg-replica
@@ -171,7 +171,7 @@ The replica inherits the source's SKU, storage, and version. Promote it later by
 ### Entra-Only with Customer-Managed Key
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: hardened-pg

@@ -1,0 +1,30 @@
+# The component defaults against the composed telemetry store: the
+# ClickHouse fixture (registry prerequisite chain: AltinityOperator →
+# ClickHouse) wired through one valueFrom per field, one collector,
+# SQLite server state. Co-located with the fixture's namespace
+# (create_namespace false) because the password secretKeyRef cannot
+# cross namespaces. The verifier proves the PRODUCT on every lane:
+# health (answers only with a working telemetry-store connection) →
+# first-admin registration through SigNoz's own API → a session → an
+# OTLP span push → the trace retrieved BY ID through the authenticated
+# query API.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSignoz
+metadata:
+  name: e2e-signoz-min
+spec:
+  namespace:
+    value: e2e-signoz
+  clickhouse:
+    host:
+      valueFrom:
+        name: e2e-signoz-ch
+    clusterName:
+      valueFrom:
+        name: e2e-signoz-ch
+    username: signoz
+    passwordSecret:
+      secretName:
+        valueFrom:
+          name: e2e-signoz-ch
+      secretKey: signoz

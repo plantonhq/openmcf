@@ -1,0 +1,42 @@
+# Exercises the deep NAT surface offline: explicit subnetwork scoping with a
+# secondary-range selection, dynamic port allocation with power-of-two
+# bounds, tuned timeouts, a NAT rule with a dedicated egress IP, and full
+# translation logging.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpRouterNat
+metadata:
+  name: hack-router-nat
+spec:
+  # project_id omitted — falls back to the provider's default project.
+  routerName: hack-router
+  natName: hack-nat
+  region: us-central1
+  vpcSelfLink:
+    value: projects/hack-project/global/networks/hack-vpc
+  sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
+  subnetworks:
+    - subnetwork:
+        value: projects/hack-project/regions/us-central1/subnetworks/hack-subnet
+      sourceIpRangesToNat:
+        - PRIMARY_IP_RANGE
+        - LIST_OF_SECONDARY_IP_RANGES
+      secondaryIpRangeNames:
+        - pods
+  natIps:
+    - value: projects/hack-project/regions/us-central1/addresses/hack-nat-ip-a
+    - value: projects/hack-project/regions/us-central1/addresses/hack-nat-ip-b
+  minPortsPerVm: 64
+  maxPortsPerVm: 4096
+  enableDynamicPortAllocation: true
+  udpIdleTimeoutSec: 30
+  tcpEstablishedIdleTimeoutSec: 1200
+  tcpTransitoryIdleTimeoutSec: 30
+  tcpTimeWaitTimeoutSec: 60
+  rules:
+    - ruleNumber: 100
+      match: destination.ip == '203.0.113.10'
+      description: partner API egress pinned to a dedicated IP
+      action:
+        sourceNatActiveIps:
+          - value: projects/hack-project/regions/us-central1/addresses/hack-nat-ip-b
+  logFilter: ALL

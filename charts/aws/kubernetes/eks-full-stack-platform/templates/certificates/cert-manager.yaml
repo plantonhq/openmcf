@@ -3,7 +3,7 @@
 # cert-manager custom resources, and application Certificates in any
 # namespace are reconciled by it. Its DNS-01 solvers write Route 53 records
 # through the role below — keylessly.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: "{{ values.env }}-eks-cert-manager-irsa"
@@ -43,7 +43,7 @@ spec:
           Action: route53:ListHostedZonesByName
           Resource: "*"
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: "{{ values.env }}-cert-manager"

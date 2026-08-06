@@ -3,7 +3,7 @@
 # and the schema Jobs that prepare both databases before the server starts.
 # Nothing is bundled: every byte of workflow state lives in the PostgreSQL
 # cluster declared beside it (database.yaml).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTemporal
 metadata:
   name: "{{ values.env }}-temporal"

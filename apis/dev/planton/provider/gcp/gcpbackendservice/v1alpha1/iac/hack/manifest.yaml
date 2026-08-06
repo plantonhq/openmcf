@@ -1,0 +1,75 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBackendService
+metadata:
+  name: my-sample-backend-service
+spec:
+  # GCP project that owns the backend service.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  backendServiceName: web-backend
+
+  description: Serves the web application through the global external ALB
+
+  # LB→backend protocol; the frontend protocol is the target proxy's concern.
+  protocol: HTTP
+
+  # The classic global external Application Load Balancer.
+  loadBalancingScheme: EXTERNAL
+
+  # Named port defined on the instance groups below.
+  portName: http
+
+  timeoutSec: 30
+
+  # The health check deciding which backends receive traffic
+  # (or reference a GcpHealthCheck).
+  healthCheck:
+    value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/healthChecks/web-hc
+
+  # One instance-group backend balanced on CPU utilization.
+  backends:
+    - group:
+        value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/zones/us-central1-a/instanceGroups/web-ig
+      balancingMode: UTILIZATION
+      maxUtilization: 0.8
+      description: primary web pool
+
+  # Stick clients to a backend via a generated cookie for one hour.
+  sessionAffinity: GENERATED_COOKIE
+  affinityCookieTtlSec: 3600
+
+  # Cache static responses at Google's edge.
+  enableCdn: true
+  cdnPolicy:
+    cacheMode: CACHE_ALL_STATIC
+    defaultTtl: 3600
+    clientTtl: 1800
+    # Cache 404s briefly so missing-asset storms don't hammer the backends.
+    negativeCaching: true
+    negativeCachingPolicy:
+      - code: 404
+        ttl: 60
+    requestCoalescing: true
+    cacheKeyPolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: true
+      # Only these parameters change the response; everything else shares a
+      # cache entry.
+      queryStringWhitelist:
+        - v
+
+  # Compress compressible content types for clients that ask.
+  compressionMode: AUTOMATIC
+
+  # Log a 10% sample of requests.
+  logConfig:
+    enable: true
+    sampleRate: 0.1
+
+  # Surface the CDN verdict for debugging.
+  customResponseHeaders:
+    - "X-Cache-Status: {cdn_cache_status}"

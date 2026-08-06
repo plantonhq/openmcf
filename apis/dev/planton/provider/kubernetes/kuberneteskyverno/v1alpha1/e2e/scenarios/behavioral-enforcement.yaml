@@ -1,0 +1,16 @@
+# THE ENFORCEMENT-AND-MUTATION PROOF: on top of the every-lane
+# enforcement proof (violating Pod REJECTED, compliant Pod admitted),
+# this lane applies a verifier-owned mutate ClusterPolicy and asserts a
+# fresh Pod comes back wearing the policy-stamped label — the engine's
+# two headline verbs proven live in one lane. All proof artifacts are
+# verifier-owned and swept (policies, pods, the target namespace).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKyverno
+metadata:
+  name: e2e-kyv-behav
+spec:
+  namespace:
+    value: e2e-kyv-behav
+  create_namespace: true
+  admission_controller:
+    replicas: 2

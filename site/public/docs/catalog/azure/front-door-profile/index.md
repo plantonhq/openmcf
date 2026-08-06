@@ -26,7 +26,7 @@ When you deploy an AzureFrontDoorProfile resource, Planton provisions:
 Create a file `front-door.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorProfile
 metadata:
   name: my-front-door

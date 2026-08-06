@@ -31,7 +31,7 @@ The Cloud Composer API is enabled automatically. Environment creation takes 25-4
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudComposerEnvironment
 metadata:
   name: dev-airflow

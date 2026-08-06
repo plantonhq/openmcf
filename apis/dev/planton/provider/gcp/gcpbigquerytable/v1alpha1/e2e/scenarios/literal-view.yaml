@@ -1,0 +1,28 @@
+# GcpBigQueryTable scenario: a logical view whose query is a self-contained
+# literal SELECT — valid BigQuery with no base-table prerequisite and no
+# staged data. deletionProtection must be false so ephemeral DESTROY can run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigQueryTable
+metadata:
+  name: planton-oss-e2e-gcpbqtbl-view
+  id: planton-oss-e2e-gcpbqtbl-view
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigquerytable
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  datasetId:
+    valueFrom:
+      kind: GcpBigQueryDataset
+      name: planton-oss-e2e-gcpbqds-prereq
+      fieldPath: status.outputs.dataset_id
+  tableId: e2e_bqtbl_view
+  view:
+    query: SELECT 1 AS n
+    useLegacySql: false
+  deletionProtection: false

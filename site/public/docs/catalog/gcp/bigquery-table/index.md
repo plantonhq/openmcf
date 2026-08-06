@@ -28,7 +28,7 @@ When you deploy a GcpBigQueryTable resource, Planton provisions:
 Create a file `bigquery-table.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryTable
 metadata:
   name: my-events-table

@@ -27,7 +27,7 @@ When you deploy an OciDevopsProject resource, Planton provisions:
 Create a file `devops-project.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDevopsProject
 metadata:
   name: my-project
@@ -73,7 +73,7 @@ This creates a DevOps project in the specified compartment with pipeline events 
 A DevOps project with direct OCID values:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDevopsProject
 metadata:
   name: my-project
@@ -94,7 +94,7 @@ spec:
 A project referencing an OciCompartment for composability in infra charts:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDevopsProject
 metadata:
   name: platform-cicd
@@ -119,7 +119,7 @@ spec:
 A production project with a descriptive purpose:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDevopsProject
 metadata:
   name: backend-services

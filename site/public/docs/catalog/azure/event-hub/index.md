@@ -27,7 +27,7 @@ When you deploy an AzureEventHub resource, Planton provisions:
 Create a file `hub.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHub
 metadata:
   name: telemetry-stream

@@ -111,7 +111,7 @@ Design guidance:
 - Every manifest is a full Planton cloud resource:
 
 ```yaml
-apiVersion: aws.planton.dev/v1        # <provider>.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1        # <provider>.planton.dev/v1
 kind: AwsVpc                          # PascalCase kind
 metadata:
   name: "{{ values.env }}-vpc"        # ALWAYS env-prefixed

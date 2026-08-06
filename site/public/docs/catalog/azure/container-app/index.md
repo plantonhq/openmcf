@@ -23,7 +23,7 @@ Deploy a serverless, continuously running containerized service inside an Azure 
 ## Quick Start
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerApp
 metadata:
   name: my-web-service
@@ -82,7 +82,7 @@ spec:
 ### Canary Rollout with Traffic Splitting
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerApp
 metadata:
   name: my-api
@@ -113,7 +113,7 @@ spec:
 ### Queue Worker Scaling to Zero
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerApp
 metadata:
   name: my-worker
@@ -148,7 +148,7 @@ spec:
 ### Persistent Share Mount + Key Vault Secret
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerApp
 metadata:
   name: my-cms

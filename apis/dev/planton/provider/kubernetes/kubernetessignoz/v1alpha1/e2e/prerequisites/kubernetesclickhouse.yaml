@@ -1,0 +1,53 @@
+# Consumer-scoped ClickHouse fixture for the KubernetesSignoz lanes —
+# the composed telemetry store every scenario wires against:
+# - SHARED NAMESPACE (e2e-signoz): the scenarios co-locate with this
+#   fixture because SigNoz reads the ClickHouse password through a
+#   secretKeyRef, and a secretKeyRef can only read Secrets in the
+#   workload's own namespace.
+# - EXPLICIT MANAGED KEEPER on a 1x1: SigNoz's schema migrator runs its
+#   DDL `ON CLUSTER`, and distributed DDL requires a coordination
+#   service — a bare single-replica topology defaults to none. One
+#   keeper replica (dev posture) is quorum enough for the lane.
+# - The `signoz` user is declared with NO grants — verified live: a
+#   no-grants user carries ClickHouse's unrestricted config-user
+#   access, which covers the migrator's CREATE DATABASE + ON CLUSTER
+#   DDL.
+# - EXPLICIT `networks` on the user — verified live: the operator
+#   fences a user declared without networks to the ClickHouse pods
+#   and localhost (host_regexp + ::1/127.0.0.1), and ClickHouse masks
+#   the network rejection as "Authentication failed" — every real
+#   client (SigNoz's pods included) needs the user's networks opened.
+# - SIGNOZ'S TESTED CLICKHOUSE VERSION (25.12.5 at chart 0.133.0, the
+#   chart's own pairing) — verified live: the schema migrations use
+#   settings newer ClickHouse ships (object_serialization_version);
+#   on 25.3 the sync migration fails with UNKNOWN_SETTING.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClickHouse
+metadata:
+  name: e2e-signoz-ch
+spec:
+  namespace:
+    value: e2e-signoz
+  create_namespace: true
+  version: "25.12.5"
+  cluster_name: signoz
+  disk_size: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  coordination:
+    type: managed_keeper
+    keeper:
+      replicas: 1
+      disk_size: 2Gi
+  users:
+    - name: signoz
+      password:
+        value: e2e-signoz-pass
+      networks:
+        - 0.0.0.0/0
+        - "::/0"

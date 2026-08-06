@@ -1,0 +1,451 @@
+# AwsS3ObjectSet
+
+> Generated from the protobuf schema by `make generate-reference` -- do not
+> edit by hand. To change a fact on this page, change the proto field comment
+> or validation rule it is derived from, then regenerate.
+
+**apiVersion**: `aws.planton.dev/v1alpha1`
+
+AwsS3ObjectSetSpec defines a set of S3 objects declaratively managed in a
+single target bucket — configuration files, static website assets, seed
+data, Lambda deployment artifacts, and any other content that should be
+created, updated, and destroyed alongside the infrastructure that consumes
+it.
+
+Each entry in `objects` is one `aws_s3_object`-equivalent upload: the object
+key, its content (inline UTF-8 text or base64-encoded binary), and the full
+per-object HTTP/storage surface (content headers, user metadata, storage
+class, encryption override, checksum, Object Lock retention, canned ACL,
+tags).
+
+Division of responsibility with AwsS3Bucket — read this before reaching for
+the per-object security knobs:
+- Uniform posture belongs on the BUCKET. Default encryption (SSE algorithm,
+  KMS key, bucket key), versioning, public-access blocking, and ownership
+  controls are bucket-level settings on AwsS3Bucket, and S3 applies them to
+  every uploaded object automatically.
+- The per-object `server_side_encryption` / `kms_key` / `bucket_key_enabled`
+  / `acl` fields here are OVERRIDES for individual objects that must diverge
+  from the bucket's posture. If every object in the set carries the same
+  override, the setting is in the wrong place — move it to the bucket.
+
+Key behaviors:
+- `key` is the object's identity. Changing a key replaces that object
+  (delete + create); changing only content updates it in place.
+- On a versioning-enabled bucket, destroying an object removes ALL of its
+  versions.
+- Object Lock fields require the BUCKET to have been created with Object
+  Lock enabled; on a regular bucket they fail at apply time — and so does
+  `force_destroy`, whose only job is bypassing GOVERNANCE-mode retention
+  during delete.
+
+## Example
+
+```yaml
+# Full-surface development manifest. Exercises every spec arm — including the
+# ones the live E2E lanes exclude (acl needs an ACL-permitting bucket
+# ownership posture, Object Lock needs a lock-enabled bucket, SSE-KMS needs a
+# real key ARN) — so the offline tofu plan / pulumi preview proof covers the
+# complete contract.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: awss3objectset-demo
+spec:
+  region: us-east-1
+  bucket:
+    value: my-demo-bucket
+  tags:
+    environment: demo
+  objects:
+    - key: config/app.json
+      content: |
+        {
+          "database": "postgres",
+          "port": 5432,
+          "debug": false,
+          "policyVariable": "${aws:ResourceAccount}"
+        }
+      contentType: application/json
+      cacheControl: no-cache
+      contentDisposition: inline
+      contentLanguage: en-US
+      metadata:
+        generated-by: planton
+        build-commit: demo
+      serverSideEncryption: aws:kms
+      kmsKey:
+        value: arn:aws:kms:us-east-1:123456789012:key/11111111-2222-3333-4444-555555555555
+      bucketKeyEnabled: true
+      checksumAlgorithm: SHA256
+      tags:
+        purpose: config
+    - key: index.html
+      content: |
+        <!DOCTYPE html>
+        <html>
+        <head><title>Demo</title></head>
+        <body><h1>Hello from AwsS3ObjectSet</h1></body>
+        </html>
+      contentType: text/html
+      cacheControl: max-age=300
+      websiteRedirect: /welcome.html
+      acl: bucket-owner-full-control
+    - key: assets/pixel.png
+      contentBase64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
+      contentType: image/png
+      contentEncoding: identity
+      cacheControl: public, max-age=31536000, immutable
+      storageClass: STANDARD_IA
+    - key: audits/report.json
+      content: '{"finding": "none"}'
+      contentType: application/json
+      objectLockMode: GOVERNANCE
+      objectLockRetainUntilDate: "2033-01-01T00:00:00Z"
+      objectLockLegalHoldStatus: "ON"
+      # force_destroy pairs with GOVERNANCE retention: it sends the
+      # governance-bypass flag on delete (lock-enabled buckets only).
+      forceDestroy: true
+```
+
+## Spec Fields
+
+| Path | Type | Required | Default | References |
+|---|---|---|---|---|
+| `spec.region` | `string` | yes |  |  |
+| `spec.bucket` | `string \| valueFrom` | yes |  | AwsS3Bucket (`status.outputs.bucket_id`) |
+| `spec.objects` | `[]AwsS3Object` | yes |  |  |
+| `spec.objects[].key` | `string` | yes |  |  |
+| `spec.objects[].content` | `string` |  |  |  |
+| `spec.objects[].contentBase64` | `string` |  |  |  |
+| `spec.objects[].contentType` | `string` |  | `application/octet-stream` |  |
+| `spec.objects[].cacheControl` | `string` |  |  |  |
+| `spec.objects[].contentEncoding` | `string` |  |  |  |
+| `spec.objects[].contentDisposition` | `string` |  |  |  |
+| `spec.objects[].contentLanguage` | `string` |  |  |  |
+| `spec.objects[].metadata` | `map<string, string>` |  |  |  |
+| `spec.objects[].websiteRedirect` | `string` |  |  |  |
+| `spec.objects[].storageClass` | `string` |  |  |  |
+| `spec.objects[].serverSideEncryption` | `string` |  |  |  |
+| `spec.objects[].kmsKey` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.objects[].bucketKeyEnabled` | `bool` |  |  |  |
+| `spec.objects[].checksumAlgorithm` | `string` |  |  |  |
+| `spec.objects[].objectLockMode` | `string` |  |  |  |
+| `spec.objects[].objectLockRetainUntilDate` | `string` |  |  |  |
+| `spec.objects[].objectLockLegalHoldStatus` | `string` |  |  |  |
+| `spec.objects[].acl` | `string` |  |  |  |
+| `spec.objects[].forceDestroy` | `bool` |  |  |  |
+| `spec.objects[].tags` | `map<string, string>` |  |  |  |
+| `spec.tags` | `map<string, string>` |  |  |  |
+
+## Field Details
+
+### spec.region
+
+`string` · required
+
+The AWS region where the target bucket lives. Must match the bucket's own
+region — S3 PutObject is a regional API.
+Example: "us-west-2", "eu-west-1"
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.bucket
+
+`string | valueFrom` · required
+
+The target S3 bucket for every object in the set.
+Can be a literal bucket name or a reference to an AwsS3Bucket component
+(resolved from status.outputs.bucket_id). The literal arm also accepts an
+access-point ARN or an S3 Express directory-bucket name for buckets
+managed outside this catalog.
+
+- references: AwsS3Bucket (`status.outputs.bucket_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsS3Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_id}} -- a bare string does not parse
+
+### spec.objects
+
+`[]AwsS3Object` · required
+
+The objects to upload. At least one. Each object's `key` must be unique
+within the set — both engines key the underlying provider resources by it.
+
+- rule: {"repeated":{"minItems":"1"}}
+- rule: Exactly one of content or content_base64 must be specified
+- rule: object_lock_mode and object_lock_retain_until_date must be set together
+- rule: kms_key requires server_side_encryption to be unset, aws:kms, or aws:kms:dsse
+
+### spec.objects[].key
+
+`string` · required
+
+The S3 object key — the object's full path within the bucket and its
+identity in this set. Changing the key replaces the object.
+Examples: "config/app.json", "assets/logo.png", "data/seed.csv"
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.objects[].content
+
+`string`
+
+Inline UTF-8 text content.
+Suitable for configuration files, JSON, YAML, HTML, and other text.
+
+### spec.objects[].contentBase64
+
+`string`
+
+Base64-encoded binary content.
+Suitable for images, zip archives, or any binary payload small enough
+to carry in a manifest.
+
+### spec.objects[].contentType
+
+`string` · optional (explicit presence)
+
+The MIME content type stored with the object and returned as the
+Content-Type header on every GET. Set it correctly for anything a
+browser will fetch (e.g. "text/html", "application/json", "image/png") —
+the default is the generic binary type, which browsers download instead
+of rendering.
+Default: application/octet-stream
+
+- default: `application/octet-stream`
+
+### spec.objects[].cacheControl
+
+`string`
+
+The Cache-Control header stored with the object, governing CDN and
+browser caching. Examples: "max-age=86400" (cache for 24h),
+"no-cache" (revalidate every time), "public, max-age=31536000, immutable"
+(fingerprinted static assets).
+
+### spec.objects[].contentEncoding
+
+`string`
+
+The Content-Encoding header stored with the object. Set this when the
+content is pre-compressed (e.g. "gzip", "br") so clients decompress it
+transparently. The content itself must already be encoded — S3 does not
+compress.
+
+### spec.objects[].contentDisposition
+
+`string`
+
+The Content-Disposition header stored with the object, controlling
+whether browsers render inline or download. Examples: "inline",
+"attachment; filename=\"report.pdf\"".
+
+### spec.objects[].contentLanguage
+
+`string`
+
+The Content-Language header stored with the object — the natural
+language(s) of the content, e.g. "en-US".
+
+### spec.objects[].metadata
+
+`map<string, string>`
+
+User-defined metadata stored with the object and returned as
+x-amz-meta-* headers. Keys must be lowercase (the S3 API lowercases them
+on storage; requiring lowercase here keeps the manifest identical to
+what reads back and avoids phantom drift). Note: metadata is immutable
+in S3 — changing it rewrites the object.
+
+- rule: {"map":{"keys":{"string":{"pattern":"^[^A-Z]*$"}}}}
+
+### spec.objects[].websiteRedirect
+
+`string`
+
+The x-amz-website-redirect-location value: when the bucket is configured
+for static website hosting, a GET of this object's key redirects to the
+target instead of serving content — either another key in the same site
+("/new-page.html") or an absolute URL ("https://example.com/moved").
+Stored but inert on buckets without website hosting.
+
+### spec.objects[].storageClass
+
+`string`
+
+The storage class for the object, trading retrieval latency/cost against
+storage cost. Unset uses STANDARD.
+
+- "STANDARD": general purpose; the default.
+- "STANDARD_IA" / "ONEZONE_IA": infrequent access — cheaper storage,
+  per-GB retrieval fee, 30-day minimum billing (ONEZONE_IA is single-AZ).
+- "INTELLIGENT_TIERING": automatic tiering by access pattern; the safe
+  choice when access patterns are unknown.
+- "GLACIER_IR": archive with millisecond access; 90-day minimum.
+- "GLACIER" / "DEEP_ARCHIVE": archive requiring asynchronous restore
+  before reads (minutes-to-hours / hours); 90/180-day minimums. Rarely
+  right for declaratively managed objects, which are typically read.
+- "REDUCED_REDUNDANCY": legacy, not recommended.
+- "EXPRESS_ONEZONE": S3 Express — valid only when the bucket is a
+  directory bucket (literal bucket arm).
+- "OUTPOSTS" / "SNOW" / "FSX_OPENZFS" / "FSX_ONTAP": valid only when the
+  literal bucket arm targets the matching special infrastructure
+  (Outposts access point, Snow device, FSx-backed access point).
+
+- rule: storage_class must be one of STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER, GLACIER_IR, DEEP_ARCHIVE, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_OPENZFS, FSX_ONTAP
+
+### spec.objects[].serverSideEncryption
+
+`string`
+
+Per-object server-side encryption OVERRIDE. Leave unset to inherit the
+bucket's default encryption (the recommended posture — configure it on
+AwsS3Bucket). Set only for individual objects that must diverge.
+
+- "AES256": SSE-S3 (S3-managed keys).
+- "aws:kms": SSE-KMS with the key in `kms_key` (or the account's
+  aws/s3 key when no key is given).
+- "aws:kms:dsse": dual-layer SSE-KMS (two independent encryption layers;
+  compliance-driven).
+- "aws:fsx": valid only when the literal bucket arm targets an
+  FSx-backed access point.
+
+- rule: server_side_encryption must be one of AES256, aws:kms, aws:kms:dsse, aws:fsx
+
+### spec.objects[].kmsKey
+
+`string | valueFrom`
+
+The KMS key for SSE-KMS encryption of this object, as a key ARN.
+Can be a literal ARN or a reference to an AwsKmsKey component. Setting a
+key implies "aws:kms" encryption when `server_side_encryption` is unset;
+combining it with "AES256" is contradictory and rejected. The deploying
+principal needs kms:GenerateDataKey on the key.
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.objects[].bucketKeyEnabled
+
+`bool` · optional (explicit presence)
+
+Whether this object uses an S3 Bucket Key for SSE-KMS, batching KMS
+requests to cut KMS costs. Only meaningful with "aws:kms" encryption.
+Unset inherits the bucket's default; an explicit false opts this object
+out even when the bucket enables bucket keys.
+
+### spec.objects[].checksumAlgorithm
+
+`string`
+
+The checksum algorithm S3 uses to verify upload integrity and store an
+additional object checksum (retrievable via GetObjectAttributes).
+"CRC64NVME" is AWS's current full-object recommendation; the SHA variants
+suit compliance regimes that mandate them. Unset relies on the default
+TLS/MD5 integrity protection only.
+
+- rule: checksum_algorithm must be one of CRC32, CRC32C, CRC64NVME, SHA1, SHA256
+
+### spec.objects[].objectLockMode
+
+`string`
+
+Object Lock retention mode for this object version. Requires the BUCKET
+to have Object Lock enabled (an immutable create-time bucket setting)
+and must be paired with `object_lock_retain_until_date`.
+
+- "GOVERNANCE": privileged principals (s3:BypassGovernanceRetention) can
+  override the retention.
+- "COMPLIANCE": nobody — including the root user — can shorten it.
+  The object version genuinely cannot be deleted until the date passes;
+  destroy will fail until then.
+
+- rule: object_lock_mode must be GOVERNANCE or COMPLIANCE
+
+### spec.objects[].objectLockRetainUntilDate
+
+`string`
+
+The date until which this object version is retained under
+`object_lock_mode`, as an RFC 3339 timestamp (e.g.
+"2027-01-01T00:00:00Z"). Required with, and only valid with,
+`object_lock_mode`.
+
+- rule: object_lock_retain_until_date must be an RFC 3339 timestamp, e.g. 2027-01-01T00:00:00Z
+
+### spec.objects[].objectLockLegalHoldStatus
+
+`string`
+
+Object Lock legal hold for this object version — an indefinite deletion
+block independent of retention mode, toggled on ("ON") and off ("OFF")
+by principals with s3:PutObjectLegalHold. Requires an Object
+Lock-enabled bucket.
+
+- rule: object_lock_legal_hold_status must be ON or OFF
+
+### spec.objects[].acl
+
+`string`
+
+Canned ACL for this object. Leave unset for every modern bucket:
+AwsS3Bucket's default ownership posture (BucketOwnerEnforced) DISABLES
+object ACLs, and setting one fails at apply time with
+AccessControlListNotSupported. Only buckets whose object_ownership is
+relaxed to BucketOwnerPreferred or ObjectWriter accept ACLs — a legacy
+pattern; prefer bucket policies for public access.
+
+- rule: acl must be one of private, public-read, public-read-write, authenticated-read, aws-exec-read, bucket-owner-read, bucket-owner-full-control
+
+### spec.objects[].forceDestroy
+
+`bool`
+
+Allow this object to be deleted even while under GOVERNANCE-mode Object
+Lock retention or a legal hold, by sending the governance-bypass flag
+with the delete (the deploying principal needs
+s3:BypassGovernanceRetention). ONLY valid on Object Lock-enabled
+buckets — S3 rejects the bypass flag on regular buckets, failing the
+destroy. Not needed for ordinary versioned-bucket cleanup: destroying an
+object always removes all of its versions. COMPLIANCE-mode retention
+cannot be bypassed by anyone.
+
+### spec.objects[].tags
+
+`map<string, string>`
+
+Tags specific to this object. Merged with set-level tags (object tags
+take precedence on key collisions).
+
+### spec.tags
+
+`map<string, string>`
+
+Tags applied to every object in the set.
+Individual object tags are merged on top, with object-level tags taking
+precedence on key collisions.
+
+## Outputs
+
+Reference an output from another manifest as `valueFrom: {kind: AwsS3ObjectSet, name: <resource-name>, fieldPath: status.outputs.<output>}`.
+
+| Output | Type | Description |
+|---|---|---|
+| `status.outputs.bucket_id` | `string` | The bucket the objects were uploaded to. Carried for downstream references and for E2E verification (HeadObject per key). |
+| `status.outputs.object_arns` | `map<string, string>` | Map of object key to its ARN (arn:aws:s3:::bucket/key). Composes into IAM policy Resource lists that must grant access to exactly these objects. |
+| `status.outputs.object_etags` | `map<string, string>` | Map of object key to its ETag (content hash). The ETag changes when the object content changes, useful for cache invalidation. |
+| `status.outputs.object_version_ids` | `map<string, string>` | Map of object key to its version ID. Only populated when the target bucket has versioning enabled. |
+
+## References
+
+Fields that can point at another resource's outputs:
+
+| Field | Kind | Output |
+|---|---|---|
+| `spec.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
+| `spec.objects[].kmsKey` | AwsKmsKey | `status.outputs.key_arn` |
+
+## See Also
+
+- [Overview](./README.md)
+- [Design notes](./docs/README.md)

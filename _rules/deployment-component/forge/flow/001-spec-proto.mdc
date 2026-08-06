@@ -20,7 +20,7 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/spec_proto_reader.py`
 - Writer+Build: `_rules/deployment-component/_scripts/spec_proto_write_and_build.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/spec.proto`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec.proto`
   and `aws/awsalb/v1/spec.proto` -- canonical examples of schema shape, enums, and default options.
 
 SEQUENTIAL STEPS

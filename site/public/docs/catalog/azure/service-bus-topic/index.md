@@ -26,7 +26,7 @@ When you deploy an AzureServiceBusTopic resource, Planton provisions:
 Create a file `topic.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusTopic
 metadata:
   name: order-events

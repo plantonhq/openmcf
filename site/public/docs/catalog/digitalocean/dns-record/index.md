@@ -27,7 +27,7 @@ When you deploy a DigitalOceanDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
@@ -90,7 +90,7 @@ The protobuf schema enforces two cross-field rules:
 Points a subdomain to an IPv4 address:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
@@ -114,7 +114,7 @@ spec:
 Creates an alias from one hostname to another:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: blog-cname
@@ -138,7 +138,7 @@ spec:
 Routes email to a mail server with explicit priority:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: mail-mx
@@ -163,7 +163,7 @@ spec:
 Restricts which certificate authorities may issue certificates for the domain:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: caa-letsencrypt
@@ -189,7 +189,7 @@ spec:
 Uses a `valueFrom` reference to resolve the domain from a DigitalOceanDnsZone resource instead of specifying it inline:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: api-a-record

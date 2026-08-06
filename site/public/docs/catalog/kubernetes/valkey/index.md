@@ -53,7 +53,7 @@ certificate Secret.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesValkey
 metadata:
   name: sessions

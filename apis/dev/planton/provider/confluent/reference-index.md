@@ -8,4 +8,4 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [ConfluentKafka](confluentkafka/v1/reference.md) | confluent-kafka spec | yes |  |
+| [ConfluentKafka](confluentkafka/v1alpha1/reference.md) | confluent-kafka spec | yes |  |

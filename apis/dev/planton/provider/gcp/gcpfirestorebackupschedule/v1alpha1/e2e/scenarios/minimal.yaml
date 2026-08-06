@@ -1,0 +1,26 @@
+# GcpFirestoreBackupSchedule scenario: a daily backup schedule on the
+# prerequisite database. project_id is deliberately omitted (ambient
+# project). No backup is created during the run (the cadence never fires
+# inside the test window), so DESTROY needs no backup sweep.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreBackupSchedule
+metadata:
+  name: planton-oss-e2e-gcpfsbs-smoke
+  id: planton-oss-e2e-gcpfsbs-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestorebackupschedule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  database:
+    valueFrom:
+      kind: GcpFirestoreDatabase
+      name: planton-oss-e2e-gcpfsdb-prereq
+      fieldPath: status.outputs.database_name
+  retention: 86400s
+  daily: true

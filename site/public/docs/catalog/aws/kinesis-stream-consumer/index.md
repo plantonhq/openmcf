@@ -29,7 +29,7 @@ No additional sub-resources are created. This is a single-resource component.
 Create a file `kinesis-stream-consumer.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: my-consumer
@@ -76,7 +76,7 @@ The consumer name is derived from `metadata.name` (ForceNew — consumers cannot
 Register a consumer with an existing stream using a literal ARN:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: dashboard-consumer
@@ -96,7 +96,7 @@ spec:
 Reference an Planton-managed Kinesis stream. The platform resolves the ARN at deployment time:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: analytics-consumer
@@ -120,7 +120,7 @@ Deploy multiple consumers for different processing pipelines, each with dedicate
 
 ```yaml
 # Consumer 1: Real-time dashboard
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: dashboard-consumer
@@ -133,7 +133,7 @@ spec:
       fieldPath: status.outputs.stream_arn
 ---
 # Consumer 2: Audit trail
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: audit-consumer

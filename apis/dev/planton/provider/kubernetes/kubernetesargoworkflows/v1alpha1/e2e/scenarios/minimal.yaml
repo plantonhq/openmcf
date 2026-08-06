@@ -1,0 +1,16 @@
+# The component defaults on their own: the workflow controller with a
+# cluster-wide watch, the Argo server in `client` auth mode, the runner
+# ServiceAccount created in the install namespace only. The verifier
+# proves the ENGINE on every lane: controller + server rolled out, an
+# authenticated /api/v1/version round-trip as the runner identity (a
+# TokenRequest token — the client auth mode forwards Kubernetes
+# credentials), and a verifier-owned Workflow run to Succeeded under the
+# runner ServiceAccount.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesArgoWorkflows
+metadata:
+  name: e2e-argowf-min
+spec:
+  namespace:
+    value: e2e-argowf-min
+  create_namespace: true

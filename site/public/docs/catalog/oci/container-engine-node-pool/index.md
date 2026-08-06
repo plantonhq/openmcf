@@ -31,7 +31,7 @@ When you deploy an OciContainerEngineNodePool resource, Planton provisions:
 Create a file `node-pool.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineNodePool
 metadata:
   name: general-pool
@@ -170,7 +170,7 @@ This creates a 3-node pool using E4 Flex instances with 2 OCPUs and 32 GB of mem
 A basic node pool with a single placement config — the simplest path to running worker nodes:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineNodePool
 metadata:
   name: dev-pool
@@ -201,7 +201,7 @@ spec:
 A production node pool distributed across three availability domains with VCN-native pod networking, NSGs on nodes and pods, KMS boot volume encryption, and in-transit encryption. All infrastructure references use `valueFrom` for declarative composition:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineNodePool
 metadata:
   name: prod-pool
@@ -293,7 +293,7 @@ spec:
 A GPU-accelerated node pool for ML/AI workloads using preemptible instances for cost savings. Kubernetes labels enable workload scheduling via `nodeSelector`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineNodePool
 metadata:
   name: gpu-pool
@@ -340,7 +340,7 @@ spec:
 An Ampere A1 Flex node pool for cost-optimized workloads with a capacity reservation guarantee and fault domain constraints:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciContainerEngineNodePool
 metadata:
   name: arm-pool

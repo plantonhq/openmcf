@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesclusterissuer.v1alpha1;
+
+// KubernetesClusterIssuerStackOutputs captures observable outputs after
+// the ClusterIssuer is created.
+message KubernetesClusterIssuerStackOutputs {
+  // Name of the created ClusterIssuer (equals metadata.name). Use it in
+  // Certificate issuerRef.name (kind ClusterIssuer) and in the
+  // cert-manager.io/cluster-issuer ingress-shim annotation.
+  string cluster_issuer_name = 1;
+
+  // Namespace where credential Secrets for this issuer were materialized
+  // (cert-manager's cluster-resource namespace).
+  string secrets_namespace = 2;
+
+  // Name of the ACME account private key Secret cert-manager creates in the
+  // cluster-resource namespace. Empty for non-ACME backends.
+  string acme_account_key_secret_name = 3;
+}

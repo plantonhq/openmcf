@@ -1,0 +1,56 @@
+# Every fixture-free knob at once on the `all` profile: a custom target
+# namespace with metadata, the cluster-global CloudEvents sink (rendering
+# proof — the URL points at a cluster-local name; delivery failure is
+# non-blocking by Tekton's design), pipeline feature flags, resolver
+# toggles (the internet-reaching hub resolver OFF), metrics shape,
+# controller performance (2 replicas sharded into 2 buckets — Tekton's
+# HA story), trigger + read-only dashboard + Chains with a generated
+# signing key, keep-since pruning, and an additional operator param. The
+# verifier proves the same engine contract as minimal: TektonConfig
+# Ready → rollouts → a verifier-owned TaskRun to Succeeded — plus the
+# pruner CronJob present.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTekton
+metadata:
+  name: e2e-tekton-full
+spec:
+  profile: all
+  targetNamespace: e2e-tekton-ci
+  targetNamespaceMetadata:
+    labels:
+      team: platform
+  pipeline:
+    cloudEventsSinkUrl: http://events-receiver.e2e-tekton-ci.svc.cluster.local/events
+    enableApiFields: beta
+    defaultTimeoutMinutes: 90
+    features:
+      requireGitSshSecretKnownHosts: true
+      setSecurityContext: true
+      enableCelInWhenexpression: true
+    resolvers:
+      enableHubResolver: false
+    metrics:
+      taskrunLevel: task
+      pipelinerunLevel: pipeline
+      countWithReason: true
+    performance:
+      replicas: 2
+      buckets: 2
+      kubeApiQps: 20
+      kubeApiBurst: 40
+  trigger:
+    enableApiFields: stable
+    defaultServiceAccount: default
+  dashboard:
+    readonly: true
+  chain:
+    generateSigningSecret: true
+  pruner:
+    schedule: "0 */6 * * *"
+    resources:
+      - pipelinerun
+    keepSince: 1440
+    prunePerResource: true
+  additionalParams:
+    - name: createRbacResource
+      value: "true"

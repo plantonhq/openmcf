@@ -1,0 +1,375 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurekeyvaultcertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureKeyVaultCertificateSpec** defines the configuration for creating an
+// X.509 certificate inside an Azure Key Vault -- the TLS building block the
+// vault manages end to end: private key custody, enrollment or import,
+// renewal, and expiry notification.
+//
+// A vault certificate is really three linked objects sharing one name: the
+// certificate (public part + policy), its private KEY, and a SECRET whose
+// value is the full bundle (cert + key). That third face is the composition
+// seam -- Azure services that terminate TLS (Application Gateway listeners,
+// App Service custom domains) consume the certificate THROUGH its secret
+// identifier, which is why the secret_id / versionless_secret_id outputs
+// exist and are what downstream kinds reference.
+//
+// Two ways to get a certificate in, combinable per azurerm's contract:
+// - **Generate** (certificate_policy only): the vault creates the key and
+//   either self-signs (issuer "Self") or forwards a CSR to a configured CA.
+//   Self-signed + auto-renew is the fully-hands-off shape for internal TLS.
+// - **Import** (certificate): bring an existing PFX/PEM bundle; a policy may
+//   accompany it to govern the imported material (exportability, renewal
+//   actions). Without an explicit policy Azure derives one from the bundle.
+//
+// The deploying credential needs data-plane certificate permissions on the
+// vault (the "Key Vault Administrator" or "Key Vault Certificates Officer"
+// RBAC role, or certificate permissions in a legacy access policy).
+message AzureKeyVaultCertificateSpec {
+  // The certificate's name within the vault: 1-127 characters of letters,
+  // digits, and hyphens, unique among the vault's certificates. Changing
+  // the name replaces the certificate. A deleted certificate's name stays
+  // reserved for the vault's soft-delete retention window unless purged.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-zA-Z-]{1,127}$"
+  ];
+
+  // The vault the certificate lives in, by ARM resource ID. Defaults to
+  // referencing an AzureKeyVault's key_vault_id output in composed
+  // environments. Changing the vault replaces the certificate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // An existing certificate bundle to IMPORT. Changing the contents
+  // imports a new version of the certificate. Omit to have the vault
+  // generate the certificate from certificate_policy instead.
+  AzureKeyVaultCertificateImport certificate = 3;
+
+  // How the vault generates and manages the certificate: key shape,
+  // issuer, X.509 content, renewal actions. Required when generating;
+  // optional alongside an import (Azure derives a policy from the bundle
+  // when omitted). Changing any part except lifetime_actions creates a
+  // new certificate version.
+  AzureKeyVaultCertificatePolicy certificate_policy = 4;
+
+  // Free-form tags applied to the certificate, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Updatable in place.
+  map<string, string> tags = 5;
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_certificate_import_or_policy"
+    message: "provide certificate (to import an existing bundle) and/or certificate_policy (to have the vault generate one) -- with neither there is nothing to create"
+    expression: "has(this.certificate) || has(this.certificate_policy)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_certificate_generated_needs_x509"
+    message: "a vault-generated certificate needs certificate_policy.x509_certificate_properties -- Azure cannot issue without a subject; x509 properties are only derivable when importing a bundle"
+    expression: "has(this.certificate) || !has(this.certificate_policy) || has(this.certificate_policy.x509_certificate_properties)"
+  };
+}
+
+// An existing certificate bundle to import into the vault.
+message AzureKeyVaultCertificateImport {
+  // The base64-encoded certificate bundle: a PFX (PKCS#12) or PEM
+  // containing BOTH the certificate chain and its private key. This is
+  // secret material -- it carries the private key.
+  string contents = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The password protecting the bundle. Leave unset for unprotected PEMs
+  // and passwordless PFX bundles.
+  optional string password = 2 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// How the vault generates and manages a certificate.
+message AzureKeyVaultCertificatePolicy {
+  // Who issues the certificate:
+  // - "Self": the vault self-signs -- zero external dependencies, the
+  //   shape for internal/service-mesh TLS where consumers trust the cert
+  //   explicitly.
+  // - "Unknown": the vault mints a CSR and holds it for an out-of-band CA
+  //   to sign (the pending-signature flow).
+  // - The name of a CA issuer configured on the vault (DigiCert and
+  //   GlobalSign have first-party integrations) for automated public
+  //   issuance.
+  string issuer_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The shape of the certificate's private key.
+  AzureKeyVaultCertificateKeyProperties key_properties = 2 [(buf.validate.field).required = true];
+
+  // What the vault does as the certificate approaches expiry. One action
+  // per trigger; the classic shape is a single AUTO_RENEW at 80% lifetime
+  // (or EMAIL_CONTACTS for CA flows that need a human). Updatable without
+  // creating a new certificate version.
+  repeated AzureKeyVaultCertificateLifetimeAction lifetime_actions = 3;
+
+  // How the certificate's secret face is encoded -- what consumers reading
+  // the secret get.
+  AzureKeyVaultCertificateSecretProperties secret_properties = 4 [(buf.validate.field).required = true];
+
+  // The X.509 content of the certificate: subject, SANs, usages,
+  // validity. Required when the vault generates the certificate; omit for
+  // imports (derived from the bundle).
+  AzureKeyVaultCertificateX509Properties x509_certificate_properties = 5;
+}
+
+// The shape of a certificate's private key.
+message AzureKeyVaultCertificateKeyProperties {
+  // Whether the private key may leave the vault (inside the secret face
+  // consumers read). TLS terminators outside Key Vault integrations need
+  // true; keep false when only vault-integrated services (which fetch
+  // through Key Vault references) consume the certificate.
+  bool exportable = 1;
+
+  // The key's algorithm family. RSA is the universal TLS choice; EC for
+  // modern, smaller handshakes; the _HSM variants require the vault's
+  // PREMIUM SKU; OCT (symmetric) exists in the API surface but has no
+  // real X.509 use.
+  AzureKeyVaultCertificateKeyType key_type = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // For RSA keys: the modulus size in bits (2048, 3072, or 4096). For EC
+  // keys Azure accepts the curve's own size (256, 384, 521) or derives it
+  // from the curve when unset.
+  optional int32 key_size = 3 [(buf.validate.field).int32 = {
+    in: [
+      256,
+      384,
+      521,
+      2048,
+      3072,
+      4096
+    ]
+  }];
+
+  // For EC keys: the elliptic curve. Unspecified lets Azure derive it
+  // (P-256 baseline).
+  AzureKeyVaultCertificateKeyCurve curve = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Whether renewals re-use the existing private key (true) or mint a
+  // fresh one (false). Fresh keys are the safer default posture; re-use
+  // exists for pinned-key deployments.
+  bool reuse_key = 5;
+}
+
+// One renewal/notification action as the certificate approaches expiry.
+message AzureKeyVaultCertificateLifetimeAction {
+  // What the vault does when the trigger fires. AUTO_RENEW re-enrolls
+  // automatically (self-signed and integrated-CA issuers); EMAIL_CONTACTS
+  // notifies the vault's certificate contacts instead -- the only action
+  // available for "Unknown"-issuer certificates, whose renewal is
+  // inherently manual.
+  AzureKeyVaultCertificateLifetimeActionType action_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // When the action fires: a fixed number of days before expiry, or a
+  // percentage of the certificate's lifetime elapsed. Azure accepts
+  // exactly one trigger per action.
+  AzureKeyVaultCertificateLifetimeTrigger trigger = 2 [(buf.validate.field).required = true];
+}
+
+// When a lifetime action fires. Set exactly one of the two.
+message AzureKeyVaultCertificateLifetimeTrigger {
+  // Fire this many days before the certificate expires.
+  optional int32 days_before_expiry = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Fire when this percentage of the certificate's lifetime has elapsed
+  // (e.g. 80 -- the conventional renewal point).
+  optional int32 lifetime_percentage = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 99
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_certificate_trigger_exactly_one"
+    message: "set exactly one trigger -- days_before_expiry or lifetime_percentage, not both"
+    expression: "has(this.days_before_expiry) != has(this.lifetime_percentage)"
+  };
+}
+
+// How the certificate's secret face is encoded.
+message AzureKeyVaultCertificateSecretProperties {
+  // The media type consumers reading the certificate's secret get:
+  // PKCS12 (a .pfx bundle -- what Application Gateway and Windows-world
+  // consumers expect) or PEM (concatenated text -- the Linux/OpenSSL
+  // world).
+  AzureKeyVaultCertificateContentType content_type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+// The X.509 content of a vault-generated certificate.
+message AzureKeyVaultCertificateX509Properties {
+  // The certificate's subject distinguished name, e.g.
+  // "CN=internal.example.com". For TLS, modern clients validate SANs --
+  // list every hostname in subject_alternative_names and keep the subject
+  // CN as the primary name.
+  string subject = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The additional identities the certificate is valid for.
+  AzureKeyVaultCertificateSubjectAlternativeNames subject_alternative_names = 2;
+
+  // The X.509 key-usage extensions stamped on the certificate. TLS
+  // server certificates conventionally carry DIGITAL_SIGNATURE +
+  // KEY_ENCIPHERMENT.
+  repeated AzureKeyVaultCertificateKeyUsage key_usage = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
+
+  // Extended key usage OIDs, e.g. "1.3.6.1.5.5.7.3.1" (TLS server
+  // authentication) and "1.3.6.1.5.5.7.3.2" (client authentication).
+  // Empty leaves EKU to Azure's defaults.
+  repeated string extended_key_usage = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // How long each issued certificate is valid, in months (e.g. 12).
+  // Renewals issue for the same validity.
+  int32 validity_in_months = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1200
+  }];
+}
+
+// The additional identities a certificate is valid for. At least one list
+// must carry an entry when the block is present.
+message AzureKeyVaultCertificateSubjectAlternativeNames {
+  // DNS names (the usual TLS case), e.g. "internal.example.com".
+  repeated string dns_names = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Email addresses (S/MIME-style identities).
+  repeated string emails = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // User principal names (smart-card / client-auth identities).
+  repeated string upns = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_certificate_sans_not_empty"
+    message: "subject_alternative_names needs at least one entry across dns_names, emails, or upns -- omit the block entirely when the subject alone suffices"
+    expression: "this.dns_names.size() > 0 || this.emails.size() > 0 || this.upns.size() > 0"
+  };
+}
+
+// The algorithm family of a certificate's private key.
+enum AzureKeyVaultCertificateKeyType {
+  // Not specified -- invalid; pick the key's algorithm family explicitly.
+  azure_key_vault_certificate_key_type_unspecified = 0;
+
+  // RSA, software-protected -- the universal TLS choice.
+  RSA = 1;
+
+  // RSA, HSM-protected. Requires the vault's PREMIUM SKU.
+  RSA_HSM = 2;
+
+  // Elliptic curve, software-protected.
+  EC = 3;
+
+  // Elliptic curve, HSM-protected. Requires the vault's PREMIUM SKU.
+  EC_HSM = 4;
+
+  // Symmetric key -- present in Azure's API surface; no real X.509 use.
+  OCT = 5;
+}
+
+// The elliptic curve of an EC certificate key.
+enum AzureKeyVaultCertificateKeyCurve {
+  // Not specified: Azure derives the curve (P-256 baseline).
+  azure_key_vault_certificate_key_curve_unspecified = 0;
+
+  // NIST P-256 (secp256r1) -- the interoperable default.
+  P_256 = 1;
+
+  // SECG secp256k1.
+  P_256K = 2;
+
+  // NIST P-384 (secp384r1).
+  P_384 = 3;
+
+  // NIST P-521 (secp521r1).
+  P_521 = 4;
+}
+
+// What the vault does when a lifetime trigger fires.
+enum AzureKeyVaultCertificateLifetimeActionType {
+  // Not specified -- invalid; pick the action explicitly.
+  azure_key_vault_certificate_lifetime_action_type_unspecified = 0;
+
+  // Automatically re-enroll the certificate.
+  AUTO_RENEW = 1;
+
+  // Notify the vault's certificate contacts.
+  EMAIL_CONTACTS = 2;
+}
+
+// The media type of the certificate's secret face.
+enum AzureKeyVaultCertificateContentType {
+  // Not specified -- invalid; pick the encoding consumers expect.
+  azure_key_vault_certificate_content_type_unspecified = 0;
+
+  // PKCS#12 (.pfx) -- Application Gateway and Windows-world consumers.
+  PKCS12 = 1;
+
+  // PEM text -- the Linux/OpenSSL world.
+  PEM = 2;
+}
+
+// An X.509 key-usage extension.
+enum AzureKeyVaultCertificateKeyUsage {
+  // Not specified -- invalid; list usages explicitly.
+  azure_key_vault_certificate_key_usage_unspecified = 0;
+
+  // Sign certificate revocation lists.
+  CRL_SIGN = 1;
+
+  // Encrypt user data directly.
+  DATA_ENCIPHERMENT = 2;
+
+  // Decipher-only key agreement.
+  DECIPHER_ONLY = 3;
+
+  // Verify digital signatures -- half of the conventional TLS-server
+  // pair.
+  DIGITAL_SIGNATURE = 4;
+
+  // Encipher-only key agreement.
+  ENCIPHER_ONLY = 5;
+
+  // Key-agreement protocols (ECDH).
+  KEY_AGREEMENT = 6;
+
+  // Sign other certificates (CA use).
+  KEY_CERT_SIGN = 7;
+
+  // Encrypt keys in transport -- the other half of the conventional
+  // TLS-server pair.
+  KEY_ENCIPHERMENT = 8;
+
+  // Non-repudiation / content commitment.
+  NON_REPUDIATION = 9;
+}

@@ -14,7 +14,7 @@
 # operator installs into the upstream-fixed `tekton-operator` namespace
 # and its components into the operator-owned `tekton-pipelines` — neither
 # is this chart's to own (see pipelines.yaml).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-supply-ns"

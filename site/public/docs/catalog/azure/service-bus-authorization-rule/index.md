@@ -30,7 +30,7 @@ The scope you reference picks the resource; the credential surface is identical 
 Create a file `auth-rule.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusAuthorizationRule
 metadata:
   name: orders-sender

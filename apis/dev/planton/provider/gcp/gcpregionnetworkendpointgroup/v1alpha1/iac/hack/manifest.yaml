@@ -1,0 +1,20 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpRegionNetworkEndpointGroup
+metadata:
+  name: my-sample-region-neg
+spec:
+  # GCP project that owns the NEG.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Cloud-side name; omit to default to metadata.name.
+  networkEndpointGroupName: web-neg
+
+  # Region — required; must match the region of the serverless workload.
+  region: us-central1
+
+  # SERVERLESS is the default; front a Cloud Run service.
+  cloudRun:
+    service:
+      value: my-cloud-run-service

@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesvalkey.v1alpha1;
+
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+
+/**
+ * Outputs a KubernetesValkey deployment exports for composition —
+ * everything a workload (or an exposure kind) needs to reach the store.
+ */
+message KubernetesValkeyStackOutputs {
+  /**
+   * Namespace the instance runs in.
+   */
+  string namespace = 1;
+
+  /**
+   * The WRITE Service name (`<metadata.name>`). In replication mode it
+   * always targets the primary's role; standalone, it targets the one
+   * instance.
+   */
+  string service = 2;
+
+  /**
+   * The READ Service name (`<metadata.name>-read`) — replication mode
+   * with the read service enabled; empty otherwise. Load balances reads
+   * across all pods.
+   */
+  string read_service = 3;
+
+  /**
+   * The headless Service name (`<metadata.name>-headless`) for direct
+   * pod discovery. REPLICATION MODE ONLY — the chart renders no
+   * headless Service for a standalone instance (a Deployment, not a
+   * StatefulSet), so this is empty standalone.
+   */
+  string headless_service = 4;
+
+  /**
+   * In-cluster endpoint of the write Service:
+   * `<service>.<namespace>.svc.cluster.local:<port>`.
+   */
+  string kube_endpoint = 5;
+
+  /**
+   * kubectl port-forward one-liner for reaching the store from a
+   * workstation.
+   */
+  string port_forward_command = 6;
+
+  /**
+   * The ACL username applications authenticate with ("default" when
+   * auth is declared; empty when auth is off).
+   */
+  string username = 7;
+
+  /**
+   * The Kubernetes Secret key holding that user's password (the
+   * module-materialized `<metadata.name>-auth` Secret). Unset when auth
+   * is off.
+   */
+  dev.planton.provider.kubernetes.KubernetesSecretKey password_secret = 8;
+}

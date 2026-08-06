@@ -29,7 +29,7 @@ When you deploy an OciDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: example.com
@@ -93,7 +93,7 @@ This creates a public PRIMARY DNS zone for `example.com`. The zone OCID and OCI-
 A standard public DNS zone:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: example.com
@@ -116,7 +116,7 @@ spec:
 A DNSSEC-signed public zone for enhanced security:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: secure.example.com
@@ -137,7 +137,7 @@ spec:
 A private DNS zone resolvable only within VCNs via a DNS view:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: internal.example.local
@@ -160,7 +160,7 @@ spec:
 A secondary zone that replicates from on-premises DNS servers with TSIG authentication:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: corp.example.com
@@ -185,7 +185,7 @@ spec:
 A primary zone that pushes zone transfers to external DNS servers:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDnsZone
 metadata:
   name: distributed.example.com

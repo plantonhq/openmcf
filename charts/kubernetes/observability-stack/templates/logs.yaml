@@ -3,7 +3,7 @@
 # object storage and pays off at multi-tenant scale — see the README's day-2
 # notes for that migration). Log SHIPPING is collection.yaml's job; Grafana
 # queries this store through its gateway.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesLoki
 metadata:
   name: "{{ values.env }}-loki"

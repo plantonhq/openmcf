@@ -36,7 +36,7 @@ an in-place update on the user.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbUser
 metadata:
   name: orders-service
@@ -52,7 +52,7 @@ spec:
 Grant the user cluster access by adding it to an ACL:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbAcl
 metadata:
   name: payments-env-acl

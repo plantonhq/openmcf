@@ -32,7 +32,7 @@ When no `accessRules` are specified, the mount target uses the built-in DEFAULT_
 Create a file `nas.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudNasFileSystem
 metadata:
   name: shared-data
@@ -91,7 +91,7 @@ mount -t nfs -o vers=4,minorversion=0,noresvport <mount_target_domain>:/ /mnt/na
 ### Minimal NFS File System
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudNasFileSystem
 metadata:
   name: dev-share
@@ -106,7 +106,7 @@ spec:
 ### Production NFS with Encryption and Access Rules
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudNasFileSystem
 metadata:
   name: prod-storage
@@ -133,7 +133,7 @@ spec:
 ### Extreme NAS for High-Throughput Workloads
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudNasFileSystem
 metadata:
   name: hpc-scratch

@@ -10,7 +10,7 @@ componentName: "gcpcloudrunjob"
 
 Run-to-completion batch workloads on Cloud Run — parallel tasks, no serving endpoint. The job sibling to [GcpCloudRun](/docs/catalog/gcp/cloud-run): same container/volume/VPC vocabulary, batch semantics instead of request-serving.
 
-**Enum:** 720 · **ID prefix:** `cldrunjob` · **Provider:** GCP · **API:** `gcp.planton.dev/v1`
+**Enum:** 720 · **ID prefix:** `cldrunjob` · **Provider:** GCP · **API:** `gcp.planton.dev/v1alpha1`
 
 ## At a Glance
 
@@ -31,7 +31,7 @@ Run-to-completion batch workloads on Cloud Run — parallel tasks, no serving en
 ## Quick Example
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRunJob
 metadata:
   name: nightly-sync

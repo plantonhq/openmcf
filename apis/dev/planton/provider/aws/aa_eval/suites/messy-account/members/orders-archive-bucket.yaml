@@ -5,7 +5,7 @@
 # short name like "orders-archive" could collide with any AWS customer on
 # earth. forceDestroy is a declared config-only attribute (excluded from
 # the spec axis) and lets teardown remove a non-empty bucket cleanly.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: orders-archive-planton-eval

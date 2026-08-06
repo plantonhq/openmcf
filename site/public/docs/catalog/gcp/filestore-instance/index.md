@@ -30,7 +30,7 @@ Creates a Google Cloud Filestore instance — fully managed, high-performance NF
 Create a file `filestore.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFilestoreInstance
 metadata:
   name: my-nfs

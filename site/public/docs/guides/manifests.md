@@ -51,7 +51,7 @@ The proto file shows every field, its type, whether it is required, and any vali
 Every manifest has the same outer structure. Fill in `apiVersion` and `kind` from the catalog:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: my-database
@@ -66,7 +66,7 @@ The `apiVersion` follows the pattern `{provider}.planton.dev/v1`. The `name` in 
 Check the component's spec definition for required fields. For `AwsRdsInstance`, the spec includes engine configuration, instance sizing, and network settings:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: my-database
@@ -141,7 +141,7 @@ These examples are from the Planton repository and follow the actual proto schem
 ### PostgreSQL on Kubernetes
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -168,7 +168,7 @@ spec:
 ### PostgreSQL on GCP Cloud SQL
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: analytics-db
@@ -191,7 +191,7 @@ spec:
 ### PostgreSQL on AWS RDS
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: orders-db
@@ -224,7 +224,7 @@ Components with defaults let you write concise manifests. You only need to speci
 
 ```yaml
 # Minimal — relies on component defaults
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: dev-database
@@ -238,7 +238,7 @@ For production, be explicit about resource limits, replicas, and security settin
 
 ```yaml
 # Explicit — production configuration
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: prod-database

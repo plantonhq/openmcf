@@ -30,7 +30,7 @@ When you deploy a GcpVpcNetwork resource, Planton provisions:
 Create a file `vpc.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
 metadata:
   name: my-vpc
@@ -86,7 +86,7 @@ This creates a custom-mode VPC named `dev-network` with regional routing in the 
 A basic VPC for a single-region deployment:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
 metadata:
   name: dev-vpc
@@ -106,7 +106,7 @@ spec:
 A VPC with global dynamic routing for multi-region workloads or hybrid VPN/Interconnect setups:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
 metadata:
   name: prod-vpc
@@ -129,7 +129,7 @@ automatic default routes (workloads reach the internet only through an
 explicitly created NAT path):
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
 metadata:
   name: data-vpc

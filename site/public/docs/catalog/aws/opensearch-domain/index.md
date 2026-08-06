@@ -37,7 +37,7 @@ When you deploy an AwsOpenSearchDomain resource, Planton provisions:
 Create a file `opensearch-domain.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: my-search
@@ -131,7 +131,7 @@ This creates a single-node OpenSearch 2.11 domain with 20 GB gp3 storage, encryp
 A multi-AZ domain deployed into a VPC with dedicated master nodes, zone awareness across 3 AZs, and encryption enabled:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: prod-search
@@ -178,7 +178,7 @@ spec:
 A domain with FGAC enabled using the internal user database for authentication:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: fgac-search
@@ -213,7 +213,7 @@ spec:
 A domain with hot, warm, and cold storage tiers for cost-effective log analytics:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: analytics-search
@@ -256,7 +256,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: ref-search

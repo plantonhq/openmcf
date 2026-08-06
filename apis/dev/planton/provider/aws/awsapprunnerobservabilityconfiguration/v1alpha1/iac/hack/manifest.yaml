@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppRunnerObservabilityConfiguration
+metadata:
+  name: test-observability
+  org: test-org
+  env: dev
+  id: test-observability-dev
+spec:
+  region: us-west-2
+  traceConfiguration:
+    vendor: AWSXRAY

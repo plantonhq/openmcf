@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragequeue.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurestoragequeue/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurestoragequeue/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureStorageQueue is the top-level API resource for a Storage queue --
+// the simple, massive-scale message buffer of Azure storage, living
+// inside an AzureStorageAccount (referenced via storage_account_id).
+// Producers enqueue, workers poll -- the work-queue pattern Functions
+// triggers and worker pools consume.
+message AzureStorageQueue {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureStorageQueue'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureStorageQueueSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureStorageQueueStatus status = 5;
+}
+
+// AzureStorageQueueStatus holds the deployment status and outputs.
+message AzureStorageQueueStatus {
+  // stack-outputs
+  AzureStorageQueueStackOutputs outputs = 1;
+}

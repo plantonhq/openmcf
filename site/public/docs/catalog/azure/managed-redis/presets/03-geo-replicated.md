@@ -51,7 +51,7 @@ After deploying a sibling (e.g. `my-global-cache-west` in another
 region with the same group name), link the group ONCE:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedisGeoReplication
 metadata:
   name: my-global-cache-group

@@ -28,7 +28,7 @@ When you deploy an OpenStackNetworkPort resource, Planton provisions:
 Create a file `port.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetworkPort
 metadata:
   name: my-port
@@ -86,7 +86,7 @@ This creates a Neutron port named `my-port` on the specified network with defaul
 A port with a single auto-assigned IP, suitable for pre-provisioning a network identity before launching an instance:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetworkPort
 metadata:
   name: web-port
@@ -106,7 +106,7 @@ spec:
 A port with a specific IP address and multiple security groups, using `valueFrom` references to other Planton resources:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetworkPort
 metadata:
   name: app-port
@@ -148,7 +148,7 @@ spec:
 A port for a network appliance that bypasses all security groups, uses a specific MAC address, and disables port security:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackNetworkPort
 metadata:
   name: appliance-port

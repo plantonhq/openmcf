@@ -26,7 +26,7 @@ When you deploy an AzureEventHubDisasterRecoveryConfig resource, Planton provisi
 Create a file `geo-dr.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubDisasterRecoveryConfig
 metadata:
   name: telemetry-dr

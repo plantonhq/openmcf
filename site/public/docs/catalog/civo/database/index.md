@@ -29,7 +29,7 @@ When you deploy a CivoDatabase resource, Planton provisions:
 Create a file `civo-db.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDatabase
 metadata:
   name: my-db
@@ -85,7 +85,7 @@ This creates a single-node PostgreSQL 14 instance on a `g3.db.small` plan in New
 A minimal MySQL database for development:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDatabase
 metadata:
   name: dev-mysql
@@ -109,7 +109,7 @@ spec:
 A PostgreSQL cluster with two read replicas and firewall-controlled access:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDatabase
 metadata:
   name: prod-postgres
@@ -139,7 +139,7 @@ spec:
 Reference Planton-managed CivoVpc and CivoFirewall resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDatabase
 metadata:
   name: ref-db

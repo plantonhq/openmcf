@@ -35,7 +35,7 @@ HorizontalPodAutoscalers need to scale. One installation per cluster.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMetricsServer
 metadata:
   name: metrics-server

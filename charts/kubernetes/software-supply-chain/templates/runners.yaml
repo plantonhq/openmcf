@@ -12,7 +12,7 @@
 # namespaces, serving every scale set) and lives in its own namespace —
 # it is cluster infrastructure, not a supply-chain tenant. Its CRDs are
 # installed once and KEPT on uninstall by upstream design.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
   name: "{{ values.env }}-gha-controller"
@@ -37,7 +37,7 @@ spec:
 # `github_app_private_key` for a GitHub App (the recommended posture for
 # organizations). The credential never touches a manifest or a rendered
 # value.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: "{{ values.env }}-gha-runners"

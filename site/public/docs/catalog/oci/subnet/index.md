@@ -30,7 +30,7 @@ When you deploy an OciSubnet resource, Planton provisions:
 Create a file `subnet.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSubnet
 metadata:
   name: my-subnet
@@ -98,7 +98,7 @@ When `routeRules` are provided, a dedicated route table is created and associate
 A private subnet where VNICs cannot have public IPs and inbound internet traffic is blocked — suitable for databases, application backends, and OKE worker nodes:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSubnet
 metadata:
   name: private-app
@@ -123,7 +123,7 @@ spec:
 A public subnet with DNS resolution enabled — suitable for load balancers, bastion hosts, and services that need direct internet-facing access:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSubnet
 metadata:
   name: public-lb
@@ -147,7 +147,7 @@ spec:
 A private subnet with a dedicated route table that routes internet traffic through the VCN's NAT Gateway and OCI service traffic through the Service Gateway:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSubnet
 metadata:
   name: app-tier
@@ -184,7 +184,7 @@ spec:
 Reference Planton-managed resources instead of hardcoding OCIDs. The compartment, VCN, and gateway IDs are resolved from other deployed resources:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciSubnet
 metadata:
   name: ref-subnet

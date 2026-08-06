@@ -27,7 +27,7 @@ When you deploy a DigitalOceanVpc resource, Planton provisions:
 Create a file `vpc.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
   name: my-vpc
@@ -71,7 +71,7 @@ This creates a VPC in the NYC3 region with a DigitalOcean auto-generated `/20` C
 A minimal VPC for development, letting DigitalOcean auto-assign a `/20` CIDR block:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
   name: dev-vpc
@@ -90,7 +90,7 @@ spec:
 A staging VPC with a specific IP range to avoid conflicts when peering with other VPCs:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
   name: staging-vpc
@@ -110,7 +110,7 @@ spec:
 A production VPC with the maximum `/16` block (65,536 IPs) for workloads expected to scale, such as VPC-native Kubernetes clusters and managed databases:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
   name: prod-vpc

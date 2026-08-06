@@ -37,7 +37,7 @@ params:
     value: my-cluster
 
 # templates/cluster.yaml — the PRODUCER declares the connection's name
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   name: "{{ values.env }}-cluster"
@@ -47,7 +47,7 @@ spec:
   …
 
 # templates/kubernetes/istio.yaml — every CONSUMER references the same expression
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIstio
 metadata:
   name: "{{ values.env }}-istio"

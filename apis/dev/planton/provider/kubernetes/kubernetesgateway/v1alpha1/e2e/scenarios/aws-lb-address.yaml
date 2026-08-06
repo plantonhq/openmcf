@@ -1,0 +1,26 @@
+# The cloud-LB address proof on the aws-eks profile: an istio-class Gateway
+# whose istiod-provisioned service keeps the LoadBalancer default, so the
+# host cloud must hand the Gateway a real address. The LB-address behavioral
+# verifier (switched on by this scenario's name) asserts Programmed AND a
+# real value in .status.addresses — the half of the Gateway story the kind
+# lanes deliberately pinned away (their mesh fixture forces ClusterIP
+# because kind has no LB controller).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGateway
+metadata:
+  name: e2e-gw-aws-lb
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/kubernetes/kubernetesgateway/v1alpha1/e2e/fixture-istio-lb.yaml"
+spec:
+  namespace:
+    value: default
+  gateway_class_name:
+    value: istio
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowed_routes:
+        namespaces:
+          from: Same

@@ -1,0 +1,808 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurecontainerappjob.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureContainerAppJobSpec** defines the configuration for creating an
+// Azure Container App Job (Microsoft.App/jobs), a run-to-completion
+// containerized workload inside an Azure Container Apps Managed Environment.
+//
+// Where a Container App runs continuously and serves traffic, a Job starts,
+// does its work, and exits: database migrations, batch processing, report
+// generation, queue draining, CI runners. Each execution runs the job's
+// template to completion (or until `replica_timeout_in_seconds`).
+//
+// **Trigger models** (exactly one per job):
+//
+// Manual (`manual_trigger`):
+//   - Executions start on demand (CLI, SDK, or another system calling the
+//     job's start API)
+//   - The on-demand batch model
+//
+// Schedule (`schedule_trigger`):
+//   - Executions start on a cron expression (Cron format, UTC)
+//   - The nightly-report / periodic-cleanup model
+//
+// Event (`event_trigger`):
+//   - Executions start when a KEDA scaler fires (queue depth, Kafka lag,
+//     any KEDA source) -- the scale block controls execution fan-out
+//   - The queue-worker model: each message batch gets its own execution
+//
+// **Parallelism**: each trigger carries `parallelism` (how many replicas an
+// execution runs simultaneously) and `replica_completion_count` (how many
+// must succeed for the execution to count as successful) -- the
+// indexed-parallel-work model.
+//
+// **Containers**: the job's template mirrors a Container App's containers
+// (image, resources, env, probes, volume mounts) minus continuous-serving
+// concerns -- there is no ingress, no revision model, and no scale-to-zero
+// (executions ARE the scaling unit).
+//
+// **ForceNew fields** (changing these destroys and recreates the job):
+// `job_name`, `region`, `resource_group`, `container_app_environment_id`,
+// and the choice of trigger block.
+//
+// **Referenced by**: None (leaf workload resource)
+message AzureContainerAppJobSpec {
+  // The Azure region where the Container App Job will be created.
+  // Must match the environment's region.
+  // Examples: "eastus", "westus2", "westeurope".
+  //
+  // **ForceNew**: Changing this destroys and recreates the job.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure Resource Group where the Container App Job will be created.
+  // Can be a literal string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: Changing this destroys and recreates the job.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the Container App Job.
+  // Lowercase alphanumeric characters and hyphens; must start and end with
+  // an alphanumeric character; no consecutive hyphens; at most 32
+  // characters.
+  //
+  // **ForceNew**: Changing this destroys and recreates the job.
+  string job_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32,
+    (buf.validate.field).cel = {
+      id: "job_name_format"
+      message: "Job name must be lowercase alphanumeric characters or hyphens, start and end with an alphanumeric character, and contain no consecutive hyphens"
+      expression: "(this.matches('^[a-z0-9]$') || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')) && !this.contains('--')"
+    }
+  ];
+
+  // The Container App Environment where this job will run.
+  // The environment provides networking, logging, and compute capacity.
+  //
+  // **ForceNew**: Changing this destroys and recreates the job.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_app_environment_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerAppEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.environment_id"
+  ];
+
+  // Maximum seconds a replica may run before Azure terminates it -- the
+  // job's hard deadline. Size it to the slowest legitimate execution;
+  // a replica killed by this timeout counts as failed (and retries per
+  // replica_retry_limit).
+  int32 replica_timeout_in_seconds = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How many times a failed replica is retried before the execution is
+  // marked failed. 0 means no retries. Omit to use Azure's default (0).
+  optional int32 replica_retry_limit = 6 [(buf.validate.field).int32.gte = 0];
+
+  // The workload profile name to run this job on.
+  // References a profile defined in the Container App Environment.
+  //
+  // Omit to use the default Consumption (serverless) profile.
+  string workload_profile_name = 7;
+
+  // --- Template (what each execution runs) ---
+
+  // Main containers for the job. At least one container is required.
+  // All containers in a replica run to completion.
+  repeated AzureContainerAppJobContainer containers = 8 [(buf.validate.field).repeated.min_items = 1];
+
+  // Init containers run to completion before main containers start.
+  repeated AzureContainerAppJobInitContainer init_containers = 9;
+
+  // Volumes available to containers in this job.
+  // Containers reference volumes by name in their volume_mounts field.
+  repeated AzureContainerAppJobVolume volumes = 10;
+
+  // --- Trigger (exactly one) ---
+
+  // Start executions on demand (CLI, SDK, or the job start API).
+  //
+  // **ForceNew**: Switching trigger types destroys and recreates the job.
+  AzureContainerAppJobManualTrigger manual_trigger = 11;
+
+  // Start executions on a cron schedule (UTC).
+  //
+  // **ForceNew**: Switching trigger types destroys and recreates the job.
+  AzureContainerAppJobScheduleTrigger schedule_trigger = 12;
+
+  // Start executions when a KEDA scaler fires (queue depth, Kafka lag,
+  // any KEDA source).
+  //
+  // **ForceNew**: Switching trigger types destroys and recreates the job.
+  AzureContainerAppJobEventTrigger event_trigger = 13;
+
+  // --- Job-level configuration ---
+
+  // Secrets available to the job. Referenced by name in container env vars,
+  // registry password_secret_name, and event-trigger scale-rule
+  // authentication.
+  repeated AzureContainerAppJobSecret secrets = 14;
+
+  // Private container registry credentials. Required to pull images from
+  // private registries (ACR, Docker Hub, GitHub Container Registry, etc.).
+  repeated AzureContainerAppJobRegistry registries = 15;
+
+  // Managed identity configuration for the job. Enables the job to
+  // authenticate with Azure services (Key Vault, ACR, Storage, etc.)
+  // without managing credentials.
+  AzureContainerAppJobIdentity identity = 16;
+
+  // Free-form Azure resource tags applied to the job, merged over the
+  // platform's metadata-derived tags (user tags win on key collision).
+  // Updatable in place.
+  map<string, string> tags = 17;
+
+  option (buf.validate.message).cel = {
+    id: "job_exactly_one_trigger"
+    message: "a job has exactly one trigger: manual_trigger (on-demand), schedule_trigger (cron), or event_trigger (KEDA scaler)"
+    expression: "(has(this.manual_trigger) ? 1 : 0) + (has(this.schedule_trigger) ? 1 : 0) + (has(this.event_trigger) ? 1 : 0) == 1"
+  };
+}
+
+// AzureContainerAppJobManualTrigger starts executions on demand.
+message AzureContainerAppJobManualTrigger {
+  // How many replicas an execution runs simultaneously.
+  //
+  // Default: 1
+  optional int32 parallelism = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How many replicas must complete successfully for the execution to
+  // count as successful.
+  //
+  // Default: 1
+  optional int32 replica_completion_count = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AzureContainerAppJobScheduleTrigger starts executions on a cron schedule.
+message AzureContainerAppJobScheduleTrigger {
+  // Cron expression controlling when executions start (UTC).
+  // Standard five-field Cron format.
+  // Examples: "0 2 * * *" (02:00 daily), "*/15 * * * *" (every 15 minutes).
+  string cron_expression = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How many replicas an execution runs simultaneously.
+  //
+  // Default: 1
+  optional int32 parallelism = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How many replicas must complete successfully for the execution to
+  // count as successful.
+  //
+  // Default: 1
+  optional int32 replica_completion_count = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AzureContainerAppJobEventTrigger starts executions when a KEDA scaler
+// fires -- the queue-worker model.
+message AzureContainerAppJobEventTrigger {
+  // How many replicas an execution runs simultaneously.
+  //
+  // Default: 1
+  optional int32 parallelism = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How many replicas must complete successfully for the execution to
+  // count as successful.
+  //
+  // Default: 1
+  optional int32 replica_completion_count = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // The scale contract: how event pressure fans out into executions.
+  AzureContainerAppJobEventScale scale = 3;
+}
+
+// AzureContainerAppJobEventScale controls how the event trigger fans work
+// out into job executions.
+message AzureContainerAppJobEventScale {
+  // Maximum number of executions running at once.
+  //
+  // Default: 100
+  optional int32 max_executions = 1 [
+    (dev.planton.shared.options.default) = "100",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Minimum number of executions kept running.
+  //
+  // Default: 0
+  optional int32 min_executions = 2 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // How often (seconds) KEDA polls the event source.
+  //
+  // Default: 30
+  optional int32 polling_interval_in_seconds = 3 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // The KEDA scale rules that trigger executions.
+  repeated AzureContainerAppJobEventScaleRule rules = 4;
+}
+
+// AzureContainerAppJobEventScaleRule defines a KEDA scaler that triggers
+// job executions.
+message AzureContainerAppJobEventScaleRule {
+  // Rule name. Lowercase alphanumeric characters, hyphens, and periods.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).cel = {
+      id: "job_scale_rule_name_format"
+      message: "scale rule name must be lowercase alphanumeric characters, hyphens, or periods"
+      expression: "this.matches('^[a-z0-9.-]+$')"
+    }
+  ];
+
+  // KEDA scaler type identifier.
+  // Examples: "azure-queue", "azure-servicebus", "kafka", "rabbitmq"
+  string custom_rule_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "job_scale_rule_type_vocabulary"
+      message: "custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. azure-queue, azure-servicebus, kafka, rabbitmq (see keda.sh/docs/scalers)"
+      expression: "this in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']"
+    }
+  ];
+
+  // Scaler-specific metadata. Keys and values depend on the scaler type.
+  // Example for azure-queue: {"queueName": "work", "queueLength": "5"}
+  map<string, string> metadata = 3 [(buf.validate.field).map.min_pairs = 1];
+
+  // Authentication configuration for the scale rule -- maps a secret to
+  // the scaler parameter it feeds.
+  repeated AzureContainerAppJobScaleRuleAuth authentication = 4;
+
+  // Managed identity KEDA uses to execute the scale rule (workload
+  // identity for the scaler instead of connection-string secrets).
+  // The literal "System" (the job's system-assigned identity) or a User
+  // Assigned Identity ARM resource ID -- reference the identity that is
+  // also in the job's identity block so the scaler and the workload share
+  // one principal. With an identity set, Azure scalers need no
+  // `authentication` entries at all: grant the identity the data-plane
+  // read role on the scaled resource (e.g. Azure Service Bus Data
+  // Receiver for queue depth) and leave the connection secret out of the
+  // job entirely.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// AzureContainerAppJobScaleRuleAuth provides authentication for an
+// event-trigger scale rule.
+message AzureContainerAppJobScaleRuleAuth {
+  // Name of the secret in the job's `secrets` list.
+  string secret_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Scaler-specific trigger parameter name that this secret maps to
+  // (e.g. "connection" for azure-queue).
+  string trigger_parameter = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// AzureContainerAppJobContainer defines a main container within the job.
+//
+// The shape mirrors a Container App's containers: image, CPU/memory,
+// environment variables, entrypoint overrides, health probes, and volume
+// mounts. CPU and memory are required.
+message AzureContainerAppJobContainer {
+  // Container name. Must be unique within the job.
+  // Lowercase alphanumeric, hyphens, or dots; starts and ends with an
+  // alphanumeric character; max 46 characters.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 46,
+    (buf.validate.field).cel = {
+      id: "job_container_name_format"
+      message: "container name must be lowercase alphanumeric, hyphens, or dots, starting and ending with an alphanumeric character"
+      expression: "this.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')"
+    }
+  ];
+
+  // Container image in repository:tag format.
+  // Examples: "mcr.microsoft.com/k8se/quickstart-jobs:latest", "myregistry.azurecr.io/batch:v1.2.3"
+  string image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // CPU allocation in vCPU cores.
+  // Examples: 0.25, 0.5, 1.0, 2.0. CPU and memory scale together
+  // (0.25 vCPU pairs with 0.5Gi, and so on).
+  double cpu = 3 [(buf.validate.field).double.gte = 0.1];
+
+  // Memory allocation in Gi format.
+  // Examples: "0.5Gi", "1Gi", "2Gi", "4Gi". Must match the CPU allocation.
+  string memory = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Environment variables for the container.
+  // Each variable is a literal value or a reference to a secret by name.
+  repeated AzureContainerAppJobEnvVar env = 5;
+
+  // Container command (entrypoint override).
+  repeated string command = 6;
+
+  // Container arguments.
+  repeated string args = 7;
+
+  // Liveness probe. If the probe fails, the replica is restarted.
+  // Liveness probes never carry success_count_threshold, and their
+  // failure_count_threshold tops out at 30.
+  AzureContainerAppJobProbe liveness_probe = 8;
+
+  // Readiness probe. The only probe type that supports
+  // success_count_threshold; its failure_count_threshold tops out at 48.
+  AzureContainerAppJobProbe readiness_probe = 9;
+
+  // Startup probe. Disables liveness/readiness checks until the container
+  // has finished starting; failure_count_threshold tops out at 240.
+  AzureContainerAppJobProbe startup_probe = 10;
+
+  // Volume mounts for the container. References volumes defined in the
+  // spec's `volumes` field by name.
+  repeated AzureContainerAppJobVolumeMount volume_mounts = 11;
+
+  option (buf.validate.message).cel = {
+    id: "job_container_liveness_probe_shape"
+    message: "liveness probes do not support success_count_threshold, and failure_count_threshold must be between 1 and 30"
+    expression: "!has(this.liveness_probe) || (!has(this.liveness_probe.success_count_threshold) && (!has(this.liveness_probe.failure_count_threshold) || this.liveness_probe.failure_count_threshold <= 30))"
+  };
+  option (buf.validate.message).cel = {
+    id: "job_container_readiness_probe_shape"
+    message: "readiness probe failure_count_threshold must be between 1 and 48"
+    expression: "!has(this.readiness_probe) || !has(this.readiness_probe.failure_count_threshold) || this.readiness_probe.failure_count_threshold <= 48"
+  };
+  option (buf.validate.message).cel = {
+    id: "job_container_startup_probe_shape"
+    message: "startup probes do not support success_count_threshold"
+    expression: "!has(this.startup_probe) || !has(this.startup_probe.success_count_threshold)"
+  };
+}
+
+// AzureContainerAppJobInitContainer defines an init container that runs
+// to completion before main containers start.
+//
+// Init containers share the same volume mounts and secrets as main
+// containers but cannot have health probes. CPU and memory are optional --
+// when omitted, init containers inherit the job's overall allocation.
+message AzureContainerAppJobInitContainer {
+  // Container name. Must be unique within the job (across both containers
+  // and init containers).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 46,
+    (buf.validate.field).cel = {
+      id: "job_init_container_name_format"
+      message: "init container name must be lowercase alphanumeric, hyphens, or dots, starting and ending with an alphanumeric character"
+      expression: "this.matches('^[a-z0-9][a-z0-9.-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')"
+    }
+  ];
+
+  // Container image in repository:tag format.
+  string image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // CPU allocation in vCPU cores. Optional for init containers.
+  optional double cpu = 3;
+
+  // Memory allocation in Gi format. Optional for init containers.
+  optional string memory = 4;
+
+  // Environment variables for the init container.
+  repeated AzureContainerAppJobEnvVar env = 5;
+
+  // Container command (entrypoint override).
+  repeated string command = 6;
+
+  // Container arguments.
+  repeated string args = 7;
+
+  // Volume mounts for the init container.
+  repeated AzureContainerAppJobVolumeMount volume_mounts = 8;
+}
+
+// AzureContainerAppJobEnvVar defines an environment variable for a container.
+//
+// An env var is either a literal value or a reference to a secret by name --
+// never both.
+message AzureContainerAppJobEnvVar {
+  // Environment variable name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Literal value. Mutually exclusive with secret_name.
+  string value = 2;
+
+  // Reference to a secret name defined in the job's `secrets` list.
+  // When set, the env var's value comes from the secret.
+  string secret_name = 3;
+
+  option (buf.validate.message).cel = {
+    id: "job_env_var_value_xor_secret"
+    message: "an environment variable takes either a literal value or a secret_name, not both -- move the literal into the job's secrets list to reference it"
+    expression: "!(this.value != '' && this.secret_name != '')"
+  };
+}
+
+// AzureContainerAppJobProbe defines a health probe for a job container.
+//
+// Shared by liveness, readiness, and startup probes; the container-level
+// rules narrow it per probe type (success_count_threshold is
+// readiness-only, and the failure_count_threshold ceiling is 30 for
+// liveness, 48 for readiness, 240 for startup).
+message AzureContainerAppJobProbe {
+  // Probe transport type: TCP_SOCKET (port connectivity check), HTTP_GET
+  // (GET request), or HTTPS_GET (GET over TLS).
+  AzureContainerAppJobProbeTransport transport = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // Port to probe. Range: 1-65535.
+  int32 port = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // URI path for HTTP/HTTPS probes. Ignored for TCP probes.
+  string path = 3;
+
+  // Hostname for the probe request. When omitted, defaults to the container IP.
+  string host = 4;
+
+  // HTTP headers to include in probe requests. Only for HTTP/HTTPS probes.
+  repeated AzureContainerAppJobProbeHeader headers = 5;
+
+  // Seconds to wait before starting probes after container start.
+  //
+  // Unset deploys the probe type's own default: 1 for liveness, 0 for
+  // readiness and startup.
+  // Range: 0-60
+  optional int32 initial_delay_in_seconds = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 60
+  }];
+
+  // Seconds between probe executions.
+  //
+  // Default: 10
+  // Range: 1-240
+  optional int32 interval_seconds = 7 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 240
+    }
+  ];
+
+  // Seconds to wait for a probe response before timing out.
+  //
+  // Default: 1
+  // Range: 1-240
+  optional int32 timeout_seconds = 8 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 240
+    }
+  ];
+
+  // Number of consecutive failures before the probe is considered failed.
+  //
+  // Default: 3
+  // Ceiling by probe type: 30 (liveness), 48 (readiness), 240 (startup) --
+  // enforced on the container.
+  optional int32 failure_count_threshold = 9 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 240
+    }
+  ];
+
+  // Number of consecutive successes before the probe is considered successful.
+  // Only readiness probes support this (enforced on the container).
+  //
+  // Default: 3
+  // Range: 1-10
+  optional int32 success_count_threshold = 10 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 10
+    }
+  ];
+}
+
+// The transport a health probe uses.
+enum AzureContainerAppJobProbeTransport {
+  // Not specified -- invalid; pick TCP_SOCKET, HTTP_GET, or HTTPS_GET.
+  azure_container_app_job_probe_transport_unspecified = 0;
+
+  // Port connectivity check (Azure transport "TCP").
+  TCP_SOCKET = 1;
+
+  // HTTP GET request, healthy on 200-399 (Azure transport "HTTP").
+  HTTP_GET = 2;
+
+  // HTTPS GET request (Azure transport "HTTPS").
+  HTTPS_GET = 3;
+}
+
+// AzureContainerAppJobProbeHeader defines an HTTP header to include in a probe request.
+message AzureContainerAppJobProbeHeader {
+  // Header name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Header value.
+  string value = 2 [(buf.validate.field).required = true];
+}
+
+// AzureContainerAppJobVolumeMount mounts a volume into a container at a specified path.
+message AzureContainerAppJobVolumeMount {
+  // Name of the volume to mount. Must match a volume name in the spec's `volumes` field.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Absolute path inside the container where the volume is mounted.
+  // Example: "/data", "/mnt/work"
+  string path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Sub-path within the volume to mount. When omitted, the entire volume is mounted.
+  string sub_path = 3;
+}
+
+// AzureContainerAppJobVolume defines a volume available to job containers.
+//
+// Storage types mirror Container App volumes: EMPTY_DIR scratch space,
+// AZURE_FILE / NFS_AZURE_FILE persistent shares through an environment
+// storage resource, and SECRET mounts of the job's secrets.
+message AzureContainerAppJobVolume {
+  // Volume name. Referenced by containers in their volume_mounts field.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Storage type backing the volume. Unspecified deploys EMPTY_DIR.
+  AzureContainerAppJobVolumeStorageType storage_type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // Name of the Container App Environment storage resource backing the
+  // volume. Required for AZURE_FILE and NFS_AZURE_FILE volumes; must be
+  // omitted otherwise. Can be a literal name or a reference to an
+  // AzureContainerAppEnvironmentStorage output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerAppEnvironmentStorage,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_name"
+  ];
+
+  // Comma-separated mount options for the volume (SMB/NFS mounts).
+  // Example: "uid=1000,gid=1000"
+  string mount_options = 4;
+
+  option (buf.validate.message).cel = {
+    id: "job_volume_file_share_requires_storage_name"
+    message: "AZURE_FILE and NFS_AZURE_FILE volumes require storage_name (the environment storage resource backing the share); EMPTY_DIR and SECRET volumes must omit it"
+    expression: "(this.storage_type in [2, 3]) == has(this.storage_name)"
+  };
+}
+
+// The storage backing a job volume.
+enum AzureContainerAppJobVolumeStorageType {
+  // Not specified -- deploys EMPTY_DIR (ephemeral scratch space).
+  azure_container_app_job_volume_storage_type_unspecified = 0;
+
+  // Ephemeral storage local to the replica; lost on termination.
+  EMPTY_DIR = 1;
+
+  // Persistent SMB Azure Files share via an environment storage resource.
+  AZURE_FILE = 2;
+
+  // Persistent NFS Azure Files share via an environment storage resource;
+  // requires a VNet-injected environment.
+  NFS_AZURE_FILE = 3;
+
+  // Mounts the job's secrets as files inside the container.
+  SECRET = 4;
+}
+
+// AzureContainerAppJobSecret defines a secret available to the job.
+//
+// Secrets can be plain-text values or Key Vault references (requiring a
+// managed identity with read access to the vault secret).
+message AzureContainerAppJobSecret {
+  // Secret name. Lowercase alphanumeric or hyphens, max 253 characters.
+  // This name is used to reference the secret elsewhere in the spec.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "job_secret_name_format"
+      message: "secret name must be lowercase alphanumeric or hyphens, start and end with alphanumeric"
+      expression: "this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')"
+    }
+  ];
+
+  // Plain-text secret value. Mutually exclusive with key_vault_secret_id.
+  string value = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // Key Vault secret URI (versionless to track the latest version, or
+  // with an explicit version pinned).
+  //
+  // Requires `identity` for Key Vault access.
+  // Mutually exclusive with `value`.
+  string key_vault_secret_id = 3;
+
+  // Identity for Key Vault access. Required when key_vault_secret_id is
+  // set (and only meaningful then).
+  //
+  // Value is either:
+  // - "System": use the job's system-assigned managed identity
+  // - A User Assigned Identity ARM resource ID
+  string identity = 4;
+
+  option (buf.validate.message).cel = {
+    id: "job_secret_value_xor_key_vault"
+    message: "a secret takes either a plain-text value or a key_vault_secret_id, not both"
+    expression: "!(this.value != '' && this.key_vault_secret_id != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "job_secret_key_vault_requires_identity"
+    message: "key_vault_secret_id requires identity (\"System\" or a user-assigned identity ARM ID) so the job can read the vault, and identity is only meaningful with key_vault_secret_id"
+    expression: "(this.key_vault_secret_id != '') == (this.identity != '')"
+  };
+}
+
+// AzureContainerAppJobRegistry defines credentials for a private container registry.
+//
+// Authentication modes (exactly one must be used):
+// 1. Username/password: Set `username` and `password_secret_name` (references a secret).
+// 2. Managed identity: Set `identity` (system-assigned or user-assigned identity ID).
+message AzureContainerAppJobRegistry {
+  // Registry server hostname.
+  // Examples: "myregistry.azurecr.io", "ghcr.io", "docker.io"
+  string server = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Registry username. Required with password_secret_name.
+  string username = 2;
+
+  // Secret name containing the registry password.
+  // Must reference a secret defined in the job's `secrets` list.
+  // Required with username.
+  string password_secret_name = 3;
+
+  // Managed identity for registry authentication.
+  // Value is either "System" (system-assigned) or a User Assigned Identity
+  // ARM resource ID. Alternative to username/password.
+  string identity = 4;
+
+  option (buf.validate.message).cel = {
+    id: "job_registry_auth_mode"
+    message: "a registry authenticates with either a managed identity or a username + password_secret_name pair -- exactly one mode, and username and password_secret_name always travel together"
+    expression: "(this.identity != '' && this.username == '' && this.password_secret_name == '') || (this.identity == '' && this.username != '' && this.password_secret_name != '')"
+  };
+}
+
+// AzureContainerAppJobIdentity configures managed identity for the job.
+message AzureContainerAppJobIdentity {
+  // The identity model: SYSTEM_ASSIGNED (Azure creates and rotates a
+  // service principal bound to the job's lifecycle), USER_ASSIGNED (bring
+  // identities from user_assigned_identity_ids, shareable across
+  // resources), or SYSTEM_AND_USER_ASSIGNED (both).
+  AzureContainerAppJobIdentityType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // The user-assigned identities to attach -- required when (and only
+  // meaningful when) type includes USER_ASSIGNED. Each entry references
+  // an AzureUserAssignedIdentity's ARM id.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "job_identity_ids_match_type"
+    message: "user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED"
+    expression: "(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)"
+  };
+}
+
+// The managed-identity model for the job.
+enum AzureContainerAppJobIdentityType {
+  // Not specified -- invalid; choose an explicit identity model.
+  azure_container_app_job_identity_type_unspecified = 0;
+
+  // Azure creates a service principal bound to the job's lifecycle.
+  SYSTEM_ASSIGNED = 1;
+
+  // Bring your own AzureUserAssignedIdentity entries -- shareable across
+  // resources and grantable before the job exists.
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned principal and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

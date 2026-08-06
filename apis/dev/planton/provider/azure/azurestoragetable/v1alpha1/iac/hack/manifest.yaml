@@ -1,0 +1,21 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageTable
+metadata:
+  name: test-storage-table
+spec:
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackstorage
+  tableName: hackEntities
+  # Exercises the ACL block rendering -- table policies require the full
+  # validity window (start + expiry).
+  acls:
+    - id: readers
+      accessPolicies:
+        - permissions: r
+          start: "2026-07-01T00:00:00Z"
+          expiry: "2027-07-01T00:00:00Z"
+    - id: writers
+      accessPolicies:
+        - permissions: raud
+          start: "2026-07-01T00:00:00Z"
+          expiry: "2027-07-01T00:00:00Z"

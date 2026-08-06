@@ -29,7 +29,7 @@ When you deploy an AliCloudCenInstance resource, Planton provisions:
 Create a file `cen.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCenInstance
 metadata:
   name: my-cen
@@ -89,7 +89,7 @@ This creates a CEN instance and attaches one VPC in cn-hangzhou. Additional VPCs
 Connect multiple VPCs in the same region for private inter-VPC communication without VPC peering:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCenInstance
 metadata:
   name: intra-region-cen
@@ -116,7 +116,7 @@ spec:
 Connect VPCs across multiple regions with REDUCED protection for overlapping CIDRs:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCenInstance
 metadata:
   name: global-cen
@@ -151,7 +151,7 @@ spec:
 Connect VPCs managed as Planton resources, automatically resolving VPC IDs from their stack outputs:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudCenInstance
 metadata:
   name: managed-cen

@@ -27,7 +27,7 @@ When you deploy an AliCloudDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsRecord
 metadata:
   name: my-record
@@ -77,7 +77,7 @@ planton apply -f dns-record.yaml
 ### A Record
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsRecord
 metadata:
   name: web-server
@@ -98,7 +98,7 @@ spec:
 ### CNAME Record
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsRecord
 metadata:
   name: cdn-alias
@@ -118,7 +118,7 @@ spec:
 ### MX Record with Priority
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudDnsRecord
 metadata:
   name: mail-primary

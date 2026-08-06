@@ -32,7 +32,7 @@ When you deploy an OciFileSystem resource, Planton provisions:
 Create a file `filesystem.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFileSystem
 metadata:
   name: my-fs
@@ -122,7 +122,7 @@ mount -t nfs <mount_target_ip>:/shared /mnt/shared
 A file system with one export and default NFS access — suitable for development:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFileSystem
 metadata:
   name: dev-fs
@@ -147,7 +147,7 @@ spec:
 A file system with a predictable mount target address and DNS hostname:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFileSystem
 metadata:
   name: app-shared
@@ -177,7 +177,7 @@ spec:
 A production file system with separate exports for different teams, each with per-CIDR access rules:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFileSystem
 metadata:
   name: prod-shared
@@ -227,7 +227,7 @@ spec:
 Reference Planton-managed compartment, subnet, and NSG resources instead of hardcoding OCIDs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciFileSystem
 metadata:
   name: ref-fs

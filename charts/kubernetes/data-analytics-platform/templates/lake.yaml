@@ -5,7 +5,7 @@
 # (survives upgrades AND uninstall), and every declared bucket exists
 # before the first job runs. Removing a bucket entry later does NOT delete
 # the bucket or its data — buckets are data, not configuration.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSeaweedFs
 metadata:
   name: "{{ values.env }}-analytics-lake"

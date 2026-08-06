@@ -1,0 +1,36 @@
+# Offline-plan manifest: a STANDARD namespace exercising every deep seam
+# at once -- elastic throughput (auto-inflate + ceiling), the combined
+# identity model, the DENY firewall with both admitted-source lists, the
+# keyless posture, and user tags. (PREMIUM/dedicated placement and CMK
+# are exercised by their own kinds' manifests.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubNamespace
+metadata:
+  name: test-eh-namespace
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  namespaceName: hack-eventhubs-ns
+  sku: STANDARD
+  capacity: 2
+  autoInflateEnabled: true
+  maximumThroughputUnits: 10
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    userAssignedIdentityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/hack-uai
+  localAuthenticationEnabled: false
+  publicNetworkAccessEnabled: true
+  networkRuleSets:
+    defaultAction: DENY
+    trustedServiceAccessEnabled: true
+    ipRules:
+      - 203.0.113.0/24
+    virtualNetworkRules:
+      - subnetId:
+          value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hack-vnet/subnets/app
+        ignoreMissingVirtualNetworkServiceEndpoint: true
+  tags:
+    team: streaming
+    cost-center: cc-42

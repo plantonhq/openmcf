@@ -1,0 +1,78 @@
+# Full-surface AwsS3ObjectSet scenario: three objects proving the per-object
+# breadth against the shared versioned S3 bucket fixture —
+# - a JSON config with lowercase user metadata, cache/disposition/language
+#   headers, a SHA256 upload checksum, SSE-S3 (AES256) encryption override,
+#   set-level + object-level tag merging, and a ${...} template introducer in
+#   the content (proving the tfvars escape path);
+# - a base64-encoded binary (a 1x1 PNG) in STANDARD_IA with a long-lived
+#   immutable cache posture;
+# - a website-redirect marker object whose GET redirects when the bucket has
+#   website hosting (stored inert on the fixture bucket).
+# Destroy on the versioned fixture proves all versions go.
+#
+# Excluded arms, with reasons:
+# - acl: the fixture bucket (like every modern bucket) runs BucketOwnerEnforced
+#   ownership, which disables object ACLs — a live acl fails with
+#   AccessControlListNotSupported. Covered at plan/preview level by the hack
+#   manifest.
+# - object_lock_mode / retain_until_date / legal_hold AND force_destroy (the
+#   GOVERNANCE-retention delete bypass): all require a bucket created with
+#   Object Lock enabled, which the shared fixture deliberately is not — S3
+#   rejects the bypass flag on regular buckets with a 400 (proven live).
+# - server_side_encryption aws:kms + kms_key: needs a KMS key fixture; the
+#   wiring is proven at plan/preview level by the hack manifest.
+# - storage classes EXPRESS_ONEZONE / OUTPOSTS / SNOW / FSX_*: need special
+#   infrastructure (directory bucket, Outposts, Snow device, FSx access point).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-s3objs-full
+  id: planton-oss-e2e-s3objs-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_id
+  tags:
+    purpose: e2e-full-surface
+    layer: set
+  objects:
+    - key: config/app.json
+      content: |
+        {
+          "service": "e2e-full-surface",
+          "policyVariable": "${aws:ResourceAccount}",
+          "port": 8080
+        }
+      contentType: application/json
+      cacheControl: no-cache
+      contentDisposition: inline
+      contentLanguage: en-US
+      metadata:
+        build-commit: e2e-proof
+        generated-by: planton
+      serverSideEncryption: AES256
+      checksumAlgorithm: SHA256
+      tags:
+        layer: object
+    - key: assets/pixel.png
+      contentBase64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
+      contentType: image/png
+      cacheControl: public, max-age=31536000, immutable
+      storageClass: STANDARD_IA
+    - key: moved/old-page.html
+      content: |
+        <!DOCTYPE html><html><body>moved</body></html>
+      contentType: text/html
+      websiteRedirect: /new-page.html

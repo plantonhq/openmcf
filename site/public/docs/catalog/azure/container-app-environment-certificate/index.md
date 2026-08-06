@@ -27,7 +27,7 @@ When you deploy an AzureContainerAppEnvironmentCertificate resource, Planton pro
 Create a file `certificate.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentCertificate
 metadata:
   name: app-tls-cert

@@ -1,0 +1,27 @@
+# Consumer-scoped GcpAddress install profile for the NAT chain: an EXTERNAL
+# regional reservation the manual-allocation scenario attaches as its NAT
+# IP. The address kind's fallback (its minimal scenario) would also be
+# EXTERNAL, but this named profile makes the NAT chain's intent explicit and
+# keeps the scenario's reference stable if that scenario ever changes shape.
+# Address names are project+region-scoped with no soft-delete reservation,
+# so a fixed name is safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpAddress
+metadata:
+  name: planton-oss-e2e-gcprnat-egress-ip
+  id: planton-oss-e2e-gcprnat-egress-ip
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcprouternat
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral egress IP for the Cloud NAT E2E chain; safe to delete
+  addressName: planton-oss-e2e-gcprnat-egress-ip
+  region: us-central1
+  addressType: EXTERNAL
+  ipVersion: IPV4

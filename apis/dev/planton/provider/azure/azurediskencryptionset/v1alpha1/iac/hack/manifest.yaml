@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskEncryptionSet
+metadata:
+  name: test-disk-encryption-set
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-des
+  keyVaultKeyId:
+    value: https://test-vault.vault.azure.net/keys/cmk-key
+  autoKeyRotationEnabled: true
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    purpose: hack-test

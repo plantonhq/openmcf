@@ -1,0 +1,24 @@
+# Fixture AwsWafRegexPatternSet consumed by web-ACL scenarios that exercise
+# regex_pattern_set_reference statements. Dependency-free, fixed name so
+# name-aware resolution and orphan sweeps stay stable.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsWafRegexPatternSet
+metadata:
+  name: planton-oss-e2e-awswafregex-prereq
+  id: planton-oss-e2e-awswafregex-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awswafregexpatternset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  scope: REGIONAL
+  regularExpressions:
+    - ^/wp-admin/.*
+    - ^/\.env$
+  description: E2E fixture scanner-probe patterns

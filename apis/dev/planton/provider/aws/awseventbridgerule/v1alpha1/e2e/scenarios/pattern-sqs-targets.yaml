@@ -1,0 +1,51 @@
+# AwsEventBridgeRule scenario: event-pattern rule on the shared custom bus
+# prerequisite routing matching application events to the shared SQS queue
+# fixture with sqs_target and input_transformer blocks. Full metadata is
+# supplied for tagging/orphan cleanup.
+#
+# The e2e-prerequisites annotation composes the custom bus and SQS queue
+# fixtures that the rule references.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeRule
+metadata:
+  name: planton-oss-e2e-awseventbridgerule-pattern-sqs-targets
+  id: planton-oss-e2e-awseventbridgerule-pattern-sqs-targets
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgerule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsEventBridgeBus,AwsSqsQueue"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E event-pattern rule on a custom bus with SQS target
+  eventBusName:
+    valueFrom:
+      kind: AwsEventBridgeBus
+      name: planton-oss-e2e-awseventbridgebus-prereq
+      fieldPath: status.outputs.bus_name
+  eventPattern:
+    source:
+      - com.planton.e2e
+    detail-type:
+      - E2ETestEvent
+    detail:
+      status:
+        - ok
+  targets:
+    - name: e2e-events-queue
+      arn:
+        valueFrom:
+          kind: AwsSqsQueue
+          name: planton-oss-e2e-awssqsqueue-prereq
+          fieldPath: status.outputs.queue_arn
+      sqsTarget: {}
+      inputTransformer:
+        inputPaths:
+          eventId: "$.id"
+          detailStatus: "$.detail.status"
+        inputTemplate: '{"eventId": <eventId>, "status": <detailStatus>}'

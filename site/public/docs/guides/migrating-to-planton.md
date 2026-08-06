@@ -80,7 +80,7 @@ terraform {
 The equivalent Planton manifest:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: my-database
@@ -157,7 +157,7 @@ runtime: go
 ### After: Planton Manifest
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database

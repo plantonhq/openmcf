@@ -32,7 +32,7 @@ The cluster itself is free -- only the tasks and instances it schedules cost mon
 Create a file `cluster.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsCluster
 metadata:
   name: my-cluster

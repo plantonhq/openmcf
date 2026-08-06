@@ -220,7 +220,7 @@ Before marking the catalog page complete, verify all 6 checks:
 For a concrete example of a completed catalog page, read:
 
 ```
-apis/dev/planton/provider/aws/awsalb/v1/catalog-page.md
+apis/dev/planton/provider/aws/awsalb/v1alpha1/catalog-page.md
 ```
 
 This is the gold standard. Match its structure, tone, density, and level of detail.

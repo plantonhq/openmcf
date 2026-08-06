@@ -31,7 +31,7 @@ When you deploy an AzureLinuxWebApp resource, Planton provisions:
 Create a file `webapp.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: my-web
@@ -123,7 +123,7 @@ This creates a Node.js 20 LTS Web App with HTTPS-only access, TLS 1.2, and 64-bi
 A Node.js 20 LTS Web App with Application Insights and health checks:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: node-api
@@ -164,7 +164,7 @@ spec:
 A containerized Web App with VNet integration and managed identity:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: docker-web
@@ -201,7 +201,7 @@ spec:
 A Web App that authenticates every request against Microsoft Entra ID before it reaches application code. The client secret lives in an app setting; the auth block references it by name:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: internal-portal
@@ -243,7 +243,7 @@ spec:
 A Premium-tier Web App with private-only access, client certificate authentication, auto-heal, hardened publishing, and comprehensive logging:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: private-web
@@ -294,7 +294,7 @@ spec:
 Reference Planton-managed resources:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: ref-web

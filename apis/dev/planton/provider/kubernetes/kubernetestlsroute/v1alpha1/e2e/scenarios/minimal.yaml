@@ -1,0 +1,18 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTlsRoute
+metadata:
+  name: e2e-tls-route
+spec:
+  namespace:
+    value: default
+  parent_refs:
+    - name:
+        value: e2e-gateway
+      section_name: tls
+  hostnames:
+    - secure.example.com
+  rules:
+    - backend_refs:
+        - name:
+            value: secure-backend
+          port: 8443

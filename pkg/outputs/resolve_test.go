@@ -21,7 +21,7 @@ func TestResolve_ReturnsConcreteType(t *testing.T) {
 	}
 
 	fullName := string(msg.ProtoReflect().Descriptor().FullName())
-	expected := "dev.planton.provider.auth0.auth0resourceserver.v1.Auth0ResourceServerStackOutputs"
+	expected := "dev.planton.provider.auth0.auth0resourceserver.v1alpha1.Auth0ResourceServerStackOutputs"
 	if fullName != expected {
 		t.Errorf("expected message type %s, got %s", expected, fullName)
 	}

@@ -1,0 +1,600 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsrdsinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// AwsRdsInstanceSpec defines a single RDS DB instance: a standalone
+// database server (postgres, mysql, mariadb, oracle-*, sqlserver-*) with
+// its own EBS-backed storage -- optionally Multi-AZ with a synchronous
+// standby, or a read replica of another instance.
+//
+// This is the classic single-node RDS shape. For Aurora's shared-storage
+// clusters (and Multi-AZ DB clusters of mysql/postgres), use
+// AwsRdsCluster instead -- cluster members are modeled there, never here.
+//
+// The instance identifier comes from metadata.name. Security groups,
+// subnets, KMS keys, and the monitoring role compose by reference --
+// database ingress rules belong on the referenced AwsSecurityGroup node,
+// never inside this instance.
+message AwsRdsInstanceSpec {
+  // The AWS region the instance is created in. Must match the region of
+  // the subnets, security groups, and KMS keys it references.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Subnets for the instance's DB subnet group. Provide at least two
+  // subnets in DISTINCT availability zones -- AWS requires the subnet
+  // group to cover two AZs even for a single-AZ instance. Reference
+  // AwsSubnet subnet_id outputs or pass literal subnet IDs. The module
+  // manages the subnet group itself (pure glue); alternatively point
+  // db_subnet_group_name at an existing group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Name of an existing DB subnet group to place the instance in,
+  // instead of providing subnet_ids.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef db_subnet_group_name = 3;
+
+  // Security groups attached to the instance. Empty uses the VPC's
+  // default security group (the AWS default). Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal SG IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // The database engine: "postgres", "mysql", "mariadb", "oracle-ee",
+  // "oracle-se2", "sqlserver-ex", "sqlserver-web", "sqlserver-se",
+  // "sqlserver-ee", and license-included/CDB variants. Required for a
+  // new instance (a read replica inherits it from the source). Changing
+  // the engine replaces the instance.
+  string engine = 5;
+
+  // The engine version, e.g. "16.4" (postgres) or "8.0.39" (mysql).
+  // Leave empty to let AWS pick the engine's current default version --
+  // an empty pin never goes stale. Minor upgrades apply in place; major
+  // upgrades additionally need allow_major_version_upgrade.
+  string engine_version = 6;
+
+  // The instance class (compute size), e.g. "db.t4g.micro",
+  // "db.m6g.large". Required.
+  string instance_class = 7 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^db\\."
+  ];
+
+  // Provisioned storage in GiB. Required for a new instance (read
+  // replicas and snapshot restores inherit the source's storage).
+  // Growing it applies in place; shrinking requires a new instance.
+  int32 allocated_storage_gb = 8 [(buf.validate.field).int32.gte = 0];
+
+  // Storage autoscaling ceiling in GiB. When set above
+  // allocated_storage_gb, RDS grows storage automatically as the
+  // database approaches capacity -- the cheap insurance against
+  // disk-full outages. 0 disables autoscaling.
+  int32 max_allocated_storage_gb = 9 [(buf.validate.field).int32.gte = 0];
+
+  // The EBS storage type: "gp3" (the modern default -- baseline
+  // 3000 IOPS/125 MiB/s, independently tunable), "gp2" (legacy
+  // burst-credit SSD), "io1"/"io2" (provisioned-IOPS for
+  // latency-critical workloads), or "standard" (magnetic, legacy).
+  // Empty keeps the AWS default.
+  string storage_type = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "gp2",
+        "gp3",
+        "io1",
+        "io2",
+        "standard"
+      ]
+    }
+  ];
+
+  // Provisioned IOPS. Required for io1/io2; optional for gp3 to raise
+  // it above the 3000 baseline. 0 keeps the storage type's default.
+  int32 iops = 11 [(buf.validate.field).int32.gte = 0];
+
+  // Storage throughput in MiB/s, gp3 only, to raise it above the 125
+  // baseline. 0 keeps the default.
+  int32 storage_throughput = 12 [(buf.validate.field).int32.gte = 0];
+
+  // Use a dedicated EBS volume for database logs instead of sharing the
+  // data volume -- steadier I/O for audit-heavy or WAL-heavy workloads.
+  bool dedicated_log_volume = 13;
+
+  // Encrypt instance storage at rest. Strongly recommended -- and
+  // create-time only: an unencrypted instance cannot be encrypted later
+  // (requires a snapshot-restore migration). Read replicas inherit the
+  // source's encryption.
+  bool storage_encrypted = 14 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // The KMS key for storage encryption when storage_encrypted is true.
+  // Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
+  // key_arn output or pass a literal key ARN. Create-time only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The name of the initial database AWS creates. Empty creates no
+  // database. Create-time only. Not supported by SQL Server.
+  string db_name = 16;
+
+  // The master username. Required for a brand-new instance -- AWS has
+  // no default and rejects a blank value at CreateDBInstance. Only
+  // instances that inherit credentials from a source (a read replica,
+  // a snapshot restore, or a point-in-time restore) leave it empty.
+  // Avoid the engine's reserved names (e.g. "rdsadmin"). Create-time
+  // only -- changing it replaces the instance.
+  string username = 17;
+
+  // Let AWS manage the master password in Secrets Manager: AWS
+  // generates it, stores it, rotates it on schedule, and no secret ever
+  // touches this manifest or the IaC state. The managed secret's ARN is
+  // exported as the master_user_secret_arn output. Mutually exclusive
+  // with password -- and the recommended posture.
+  bool manage_master_user_password = 18 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // The KMS key that encrypts the AWS-managed master-user secret (only
+  // meaningful with manage_master_user_password). Empty uses the
+  // account's default aws/secretsmanager key. Reference an AwsKmsKey
+  // key_arn output or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef master_user_secret_kms_key_id = 19 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The master password, supplied directly. Stored in IaC state --
+  // prefer manage_master_user_password, which keeps the secret in
+  // Secrets Manager entirely. Mutually exclusive with
+  // manage_master_user_password.
+  string password = 20 [(dev.planton.shared.options.sensitive) = true];
+
+  // The port the instance accepts connections on. 0 keeps the engine
+  // default (5432 postgres, 3306 mysql/mariadb, 1521 oracle, 1433
+  // sqlserver).
+  int32 port = 21 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  // Deploy a synchronous standby replica in a second AZ with automatic
+  // failover -- the single most important availability knob on a
+  // production instance. (For a Multi-AZ CLUSTER with readable
+  // standbys, use AwsRdsCluster with a community engine instead.)
+  bool multi_az = 22;
+
+  // Pin a single-AZ instance to one availability zone. Empty lets AWS
+  // place it. Cannot be combined with multi_az.
+  string availability_zone = 23;
+
+  // Give the instance a public IP. Requires public subnets; keep false
+  // for anything production-shaped.
+  bool publicly_accessible = 24;
+
+  // The network stack: "IPV4" (AWS default when unset) or "DUAL" for
+  // dual-stack IPv4+IPv6.
+  string network_type = 25;
+
+  // Make this instance a read replica of the given source: a source
+  // instance identifier (same region) or ARN (cross-region). Engine,
+  // storage, and credentials are inherited from the source. Promote to
+  // a standalone instance by clearing the field.
+  string replicate_source_db = 26;
+
+  // Replica behavior, Oracle only: "open-read-only" (a queryable
+  // replica) or "mounted" (a running-but-closed disaster-recovery
+  // target). Empty keeps the AWS default (open-read-only).
+  string replica_mode = 27;
+
+  // Restore from an existing DB snapshot (name or ARN) at create time.
+  // Create-time only; mutually exclusive with restore_to_point_in_time
+  // and replicate_source_db.
+  string snapshot_identifier = 28;
+
+  // Restore from another instance's continuous backup at create time --
+  // point-in-time recovery as a first-class create shape. Create-time
+  // only; mutually exclusive with snapshot_identifier and
+  // replicate_source_db.
+  AwsRdsInstanceRestoreToPointInTime restore_to_point_in_time = 29;
+
+  // Days automated backups are retained, 0-35. 0 disables automated
+  // backups (and point-in-time recovery) -- production instances want
+  // 7+. Note: a MySQL-family read-replica source needs retention > 0.
+  int32 backup_retention_period = 30 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 35
+  ];
+
+  // The daily backup window in UTC, format "hh24:mi-hh24:mi" (e.g.
+  // "04:00-05:00"). Empty lets AWS assign one. Must not overlap the
+  // maintenance window.
+  string backup_window = 31 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$"
+  ];
+
+  // The weekly maintenance window in UTC, format
+  // "ddd:hh24:mi-ddd:hh24:mi" (e.g. "sun:05:00-sun:06:00"). Empty lets
+  // AWS assign one.
+  string maintenance_window = 32 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$"
+  ];
+
+  // Copy the instance's tags onto automated and manual snapshots.
+  bool copy_tags_to_snapshot = 33;
+
+  // Remove automated backups immediately when the instance is deleted.
+  // AWS defaults this to true; set false to retain the backups for the
+  // remainder of their retention window after deletion -- the last line
+  // of defense against a mistaken teardown.
+  optional bool delete_automated_backups = 34 [(dev.planton.shared.options.default) = "true"];
+
+  // Skip the final snapshot when the instance is deleted. When false
+  // (the safe default), final_snapshot_identifier must be set -- AWS
+  // refuses to delete without knowing the snapshot name.
+  bool skip_final_snapshot = 35;
+
+  // The name for the final snapshot taken on deletion. Required when
+  // skip_final_snapshot is false.
+  string final_snapshot_identifier = 36;
+
+  // Refuse deletion of the instance while enabled. Turn this on for
+  // anything holding data you cannot recreate.
+  bool deletion_protection = 37;
+
+  // Map IAM identities to database users -- connect with short-lived
+  // IAM auth tokens instead of passwords. MySQL and PostgreSQL engines.
+  bool iam_database_authentication_enabled = 38;
+
+  // Database log types to export to CloudWatch Logs. Valid types vary
+  // by engine: postgres exports "postgresql"/"upgrade"/"iam-db-auth-error";
+  // mysql/mariadb export "audit"/"error"/"general"/"slowquery"/
+  // "iam-db-auth-error"; oracle exports "alert"/"audit"/"listener"/
+  // "trace"/"oemagent"; sqlserver exports "agent"/"error".
+  repeated string enabled_cloudwatch_logs_exports = 39 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "agent",
+        "alert",
+        "audit",
+        "diag.log",
+        "error",
+        "general",
+        "iam-db-auth-error",
+        "listener",
+        "notify.log",
+        "oemagent",
+        "postgresql",
+        "slowquery",
+        "trace",
+        "upgrade"
+      ]
+    }
+  ];
+
+  // Performance Insights: per-query performance telemetry. Free at the
+  // default 7-day retention -- worth enabling on almost everything.
+  bool performance_insights_enabled = 40;
+
+  // The KMS key encrypting Performance Insights data. Empty uses the
+  // AWS default. Reference an AwsKmsKey key_arn output or pass a
+  // literal key ARN. Cannot change after Performance Insights is first
+  // enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef performance_insights_kms_key_id = 41 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Days of Performance Insights history: 7 (free tier), 731 (2
+  // years), or any multiple of 31 in between. 0 keeps the AWS default
+  // (7).
+  int32 performance_insights_retention_period = 42;
+
+  // Enhanced Monitoring granularity in seconds: 1, 5, 10, 15, 30, or
+  // 60. 0 disables (the AWS default). OS-level metrics (CPU per
+  // process, memory, disk) streamed to CloudWatch Logs -- requires
+  // monitoring_role_arn.
+  int32 monitoring_interval = 43;
+
+  // The IAM role Enhanced Monitoring publishes through (needs the
+  // AmazonRDSEnhancedMonitoringRole managed policy). Required by AWS
+  // when monitoring_interval is set. Reference an AwsIamRole role_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef monitoring_role_arn = 44 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // CloudWatch Database Insights tier: "standard" (free, included) or
+  // "advanced" (paid fleet-level analysis; requires Performance
+  // Insights with 465+ day retention). Empty keeps the AWS default
+  // (standard).
+  string database_insights_mode = 45;
+
+  // The DB parameter group to associate. Empty keeps the engine default
+  // group. A literal name -- parameter groups have no standalone
+  // Planton kind (a named parameter list is configuration, not
+  // infrastructure).
+  string parameter_group_name = 46;
+
+  // The option group to associate (engine features like Oracle TDE or
+  // SQL Server native backup). Empty keeps the engine default. A
+  // literal name.
+  string option_group_name = 47;
+
+  // Microsoft Active Directory domain join, for Windows/Kerberos
+  // authentication (SQL Server, and Kerberos auth on MySQL/PostgreSQL/
+  // Oracle).
+  AwsRdsInstanceActiveDirectory active_directory = 48;
+
+  // The license model, for engines that carry one: "license-included",
+  // "bring-your-own-license", or "general-public-license". Empty keeps
+  // the engine default.
+  string license_model = 49;
+
+  // The character set for Oracle and SQL Server instances (e.g.
+  // "AL32UTF8"). Create-time only. Empty keeps the engine default.
+  string character_set_name = 50;
+
+  // The national character set (NCHAR) for Oracle instances. Create-time
+  // only. Empty keeps the engine default.
+  string nchar_character_set_name = 51;
+
+  // The time zone, SQL Server only (e.g. "GMT Standard Time").
+  // Create-time only.
+  string timezone = 52;
+
+  // The CA certificate bundle for the instance (e.g.
+  // "rds-ca-rsa2048-g1"). Empty keeps the AWS default bundle.
+  string ca_cert_identifier = 53;
+
+  // Use RDS Blue/Green Deployments for updates: RDS provisions a
+  // synchronized green copy, applies the change there, and switches
+  // over in under a minute -- near-zero-downtime engine upgrades and
+  // parameter changes. MySQL, MariaDB, and PostgreSQL; not compatible
+  // with read replicas of this instance being modified in the same
+  // operation.
+  bool blue_green_update_enabled = 54;
+
+  // Apply minor engine version patches automatically during the
+  // maintenance window. AWS defaults this to true; disable only when
+  // patch timing must be controlled manually.
+  optional bool auto_minor_version_upgrade = 55 [(dev.planton.shared.options.default) = "true"];
+
+  // Permit engine_version changes that cross a major version. Off (the
+  // default) guards against an accidental major upgrade hidden in a
+  // version bump.
+  bool allow_major_version_upgrade = 56;
+
+  // Apply modifications immediately instead of waiting for the next
+  // maintenance window. Immediate changes can interrupt connections;
+  // deferred changes wait quietly. AWS defaults to deferred.
+  bool apply_immediately = 57;
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "subnets_or_group"
+    message: "provide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name"
+    expression: "(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "engine_required_unless_derived"
+    message: "engine is required unless the instance derives it from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)"
+    expression: "this.engine != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "storage_required_unless_derived"
+    message: "allocated_storage_gb is required unless storage is inherited from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)"
+    expression: "this.allocated_storage_gb > 0 || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "password_xor_managed"
+    message: "password cannot be set when manage_master_user_password is true -- pick one password strategy"
+    expression: "this.manage_master_user_password ? this.password == '' : true"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "username_required_unless_derived"
+    message: "username is required for a new instance -- AWS rejects a blank username; only read replicas and snapshot/point-in-time restores inherit credentials from their source"
+    expression: "this.username != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "final_snapshot_id_required_when_not_skipping"
+    message: "final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the instance without a final snapshot name"
+    expression: "this.skip_final_snapshot ? true : this.final_snapshot_identifier != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "multi_az_excludes_availability_zone"
+    message: "availability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself"
+    expression: "!(this.multi_az && this.availability_zone != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "one_create_source"
+    message: "replicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources"
+    expression: "(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replica_inherits_credentials"
+    message: "username, password, and manage_master_user_password cannot be set on a read replica -- credentials are inherited from the source"
+    expression: "this.replicate_source_db == '' || (this.username == '' && this.password == '' && !this.manage_master_user_password)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replica_mode_requires_replica"
+    message: "replica_mode only applies to a read replica (replicate_source_db set)"
+    expression: "this.replica_mode == '' || this.replicate_source_db != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "replica_mode_valid"
+    message: "replica_mode must be 'open-read-only' or 'mounted' when set"
+    expression: "this.replica_mode == '' || this.replica_mode in ['open-read-only', 'mounted']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "blue_green_not_with_replica"
+    message: "blue_green_update_enabled cannot be combined with replicate_source_db -- Blue/Green manages replicas itself"
+    expression: "!(this.blue_green_update_enabled && this.replicate_source_db != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "max_storage_above_allocated"
+    message: "max_allocated_storage_gb must exceed allocated_storage_gb to enable storage autoscaling (0 disables)"
+    expression: "this.max_allocated_storage_gb == 0 || this.max_allocated_storage_gb > this.allocated_storage_gb"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "iops_requires_provisioned_storage_type"
+    message: "iops applies to io1, io2, or gp3 storage"
+    expression: "this.iops == 0 || this.storage_type in ['io1', 'io2', 'gp3']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "throughput_is_gp3_only"
+    message: "storage_throughput only applies to gp3 storage"
+    expression: "this.storage_throughput == 0 || this.storage_type == 'gp3'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "pi_retention_valid"
+    message: "performance_insights_retention_period must be 7, 731, or a multiple of 31 (month granularity) when set"
+    expression: "this.performance_insights_retention_period == 0 || this.performance_insights_retention_period == 7 || this.performance_insights_retention_period == 731 || this.performance_insights_retention_period % 31 == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "monitoring_interval_valid"
+    message: "monitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds"
+    expression: "this.monitoring_interval in [0, 1, 5, 10, 15, 30, 60]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "monitoring_role_required_with_interval"
+    message: "monitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role"
+    expression: "this.monitoring_interval == 0 || has(this.monitoring_role_arn)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "database_insights_mode_valid"
+    message: "database_insights_mode must be 'standard' or 'advanced' when set"
+    expression: "this.database_insights_mode == '' || this.database_insights_mode in ['standard', 'advanced']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "network_type_valid"
+    message: "network_type must be 'IPV4' or 'DUAL' when set"
+    expression: "this.network_type == '' || this.network_type in ['IPV4', 'DUAL']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "license_model_valid"
+    message: "license_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set"
+    expression: "this.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license']"
+  };
+}
+
+// AwsRdsInstanceActiveDirectory joins the instance to a Microsoft Active
+// Directory for Windows/Kerberos authentication. Two shapes: an
+// AWS-managed directory (domain + domain_iam_role_name) or a
+// self-managed AD (domain_fqdn + domain_ou + domain_auth_secret_arn +
+// domain_dns_ips) -- the two sets are mutually exclusive.
+message AwsRdsInstanceActiveDirectory {
+  // The directory ID of an AWS Managed Microsoft AD (d-...). Pairs with
+  // domain_iam_role_name.
+  string domain = 1;
+
+  // The IAM role RDS uses to join the AWS-managed directory (needs the
+  // AmazonRDSDirectoryServiceAccess managed policy). Required with
+  // domain.
+  string domain_iam_role_name = 2;
+
+  // The fully qualified domain name of a self-managed Active Directory
+  // (e.g. "corp.example.com").
+  string domain_fqdn = 3;
+
+  // The organizational unit DN within the self-managed AD where the
+  // computer account is created.
+  string domain_ou = 4;
+
+  // The ARN of the Secrets Manager secret holding the self-managed AD
+  // join credentials. An ARN reference, not the secret itself.
+  string domain_auth_secret_arn = 5;
+
+  // Exactly two DNS server IPs inside the self-managed AD.
+  repeated string domain_dns_ips = 6;
+
+  option (buf.validate.message).cel = {
+    id: "managed_xor_self_managed"
+    message: "use either the AWS-managed shape (domain + domain_iam_role_name) or the self-managed shape (domain_fqdn/domain_ou/domain_auth_secret_arn/domain_dns_ips), not both"
+    expression: "(this.domain == '' && this.domain_iam_role_name == '') || (this.domain_fqdn == '' && this.domain_ou == '' && this.domain_auth_secret_arn == '' && this.domain_dns_ips.size() == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "managed_pair_together"
+    message: "domain and domain_iam_role_name are required together for the AWS-managed directory shape"
+    expression: "(this.domain == '') == (this.domain_iam_role_name == '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "self_managed_dns_ips_count"
+    message: "self-managed AD requires exactly two domain_dns_ips"
+    expression: "this.domain_fqdn == '' || this.domain_dns_ips.size() == 2"
+  };
+}
+
+// AwsRdsInstanceRestoreToPointInTime creates the instance from another
+// instance's continuous backup. Every field is create-time only.
+message AwsRdsInstanceRestoreToPointInTime {
+  // The source instance identifier. Exactly one source field must be
+  // set.
+  string source_db_instance_identifier = 1;
+
+  // The source instance's immutable resource ID (resource_id output) --
+  // survives identifier renames and points at deleted instances'
+  // retained backups.
+  string source_dbi_resource_id = 2;
+
+  // The ARN of a retained automated backup to restore from (for
+  // instances already deleted).
+  string source_db_instance_automated_backups_arn = 3;
+
+  // The UTC timestamp to restore to, RFC3339 (e.g.
+  // "2026-07-01T09:45:00Z"). Mutually exclusive with
+  // use_latest_restorable_time.
+  string restore_time = 4;
+
+  // Restore to the most recent recoverable moment. Mutually exclusive
+  // with restore_time.
+  bool use_latest_restorable_time = 5;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_source"
+    message: "exactly one of source_db_instance_identifier, source_dbi_resource_id, or source_db_instance_automated_backups_arn must be set"
+    expression: "(this.source_db_instance_identifier != '' ? 1 : 0) + (this.source_dbi_resource_id != '' ? 1 : 0) + (this.source_db_instance_automated_backups_arn != '' ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_time"
+    message: "exactly one of restore_time or use_latest_restorable_time must be set"
+    expression: "(this.restore_time != '') != this.use_latest_restorable_time"
+  };
+}

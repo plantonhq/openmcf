@@ -29,19 +29,19 @@ When no `publicKey` is provided in the spec, OpenStack generates a new keypair. 
 Create a file `keypair.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackKeypair
 metadata:
   name: my-keypair
   annotations:
     planton.dev/stack.jobId: prod.OpenstackKeypair.us-west-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackKeypair.ephemeral-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackKeypair.dev-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackKeypair.my-keypair
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackkeypair/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   publicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ... user@host"
@@ -75,7 +75,7 @@ All spec fields are optional. The keypair name is derived from `metadata.name`.
 The most common and recommended approach. Generate a key pair locally with `ssh-keygen` and import the public key:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackKeypair
 metadata:
   name: dev-keypair
@@ -90,7 +90,7 @@ spec:
 When no `publicKey` is provided, OpenStack generates a new keypair. The private key is stored encrypted in IaC state and must be retrieved immediately after creation. This approach is suitable for ephemeral environments where long-term key management is not required:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackKeypair
 metadata:
   name: ephemeral-keypair
@@ -110,7 +110,7 @@ pulumi stack output private_key --show-secrets
 Deploy a keypair to a specific region, overriding the default region from the provider config. Useful in multi-region deployments where keypairs need to exist in each region:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackKeypair
 metadata:
   name: us-west-keypair

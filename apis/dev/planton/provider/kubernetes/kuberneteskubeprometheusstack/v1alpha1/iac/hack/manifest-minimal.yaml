@@ -1,0 +1,13 @@
+# Minimal-shape offline-proof manifest: namespace only — every optional
+# block absent. The plan/preview lanes on THIS shape are what catch the
+# nil-optional dereference class (a direct field access on an absent
+# message panics at runtime; conditional-merge idioms explode at plan
+# type-checking). Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKubePrometheusStack
+metadata:
+  name: kps-hack-min
+spec:
+  namespace:
+    value: kps-hack-min
+  createNamespace: true

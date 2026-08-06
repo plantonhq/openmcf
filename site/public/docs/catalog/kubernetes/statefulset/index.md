@@ -36,7 +36,7 @@ External exposure is never created here: attach a first-class exposure kind (e.g
 Create a file `statefulset.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStatefulSet
 metadata:
   name: my-db
@@ -134,7 +134,7 @@ This creates a single-replica StatefulSet: pod `my-db-0` with its own 10Gi claim
 Anti-affinity across nodes, a quorum-guarding PDB, and parallel bootstrap:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStatefulSet
 metadata:
   name: kraft-broker
@@ -189,7 +189,7 @@ spec:
 Only the highest ordinal receives new templates until the partition is lowered:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStatefulSet
 metadata:
   name: search-cluster
@@ -222,7 +222,7 @@ spec:
 A reproducible cache whose volumes are removed with the workload:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStatefulSet
 metadata:
   name: render-cache

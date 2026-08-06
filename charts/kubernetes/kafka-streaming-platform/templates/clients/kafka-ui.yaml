@@ -1,7 +1,7 @@
 {% if values.kafka_ui_enabled | bool %}
 # The console's own identity on the cluster — dedicated, auditable,
 # revocable without touching any application's credential.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   name: "{{ values.env }}-kafka-ui-user"
@@ -25,7 +25,7 @@ spec:
 # by reference) and stays ClusterIP-internal; login is enabled anyway,
 # because anyone who reaches the console operates the cluster with the
 # credential it holds.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUi
 metadata:
   name: "{{ values.env }}-kafka-ui"

@@ -1,0 +1,59 @@
+# AwsClientVpn endpoint-only scenario: the fast lane. A zero-association
+# endpoint is provider-honest (a pre-staged front door that routes no
+# traffic) and creation is near-instant, so this lane proves the endpoint
+# surface -- certificate authentication (server cert AND client CA chain
+# both from the imported self-signed fixture, the documented self-signed
+# setup), split tunnel, TCP transport on 443, session dials with hard
+# disconnect, the login banner, route enforcement, custom DNS, and a
+# folded authorize-all rule (rules attach fine with no associations) --
+# without paying the ~10-minute association waits (the composed lane
+# covers those).
+#
+# Deliberately not exercised live: directory/federated authentication
+# (need an AD directory / IAM SAML provider), connection logging (needs a
+# log-group fixture; proven by the offline plan), IPv6/dual-stack address
+# types, and the transit-gateway arm -- see the profile.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsClientVpn
+metadata:
+  name: planton-oss-e2e-awsvpn-ep
+  id: planton-oss-e2e-awsvpn-ep
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsclientvpn
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E Client VPN endpoint-only lane
+  authenticationOptions:
+    - type: certificate-authentication
+      rootCertificateChainArn:
+        valueFrom:
+          kind: AwsCertManagerCert
+          name: planton-oss-e2e-acm-prereq
+          fieldPath: status.outputs.cert_arn
+  serverCertificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: planton-oss-e2e-acm-prereq
+      fieldPath: status.outputs.cert_arn
+  clientCidrBlock: 10.100.0.0/22
+  splitTunnel: true
+  transportProtocol: tcp
+  vpnPort: 443
+  sessionTimeoutHours: 12
+  disconnectOnSessionTimeout: true
+  clientRouteEnforcementEnabled: true
+  clientLoginBanner:
+    bannerText: Planton E2E -- authorized use only.
+  dnsServers:
+    - 10.0.0.2
+  authorizationRules:
+    - targetNetworkCidr: 10.0.0.0/16
+      authorizeAllGroups: true
+      description: reach the fixture VPC range

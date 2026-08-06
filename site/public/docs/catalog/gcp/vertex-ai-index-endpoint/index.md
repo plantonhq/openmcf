@@ -27,7 +27,7 @@ When you deploy a GcpVertexAiIndexEndpoint resource, Planton provisions:
 Create a file `index-endpoint.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: vector-serving
@@ -77,7 +77,7 @@ This creates a public index endpoint in the provider's default project. Once a `
 ### Public Endpoint
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: search-serving
@@ -97,7 +97,7 @@ spec:
 ### VPC-Peered Private Endpoint
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: private-search
@@ -118,7 +118,7 @@ spec:
 ### Private Service Connect Endpoint
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: psc-search
@@ -142,7 +142,7 @@ spec:
 ### Using Foreign Key References
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndexEndpoint
 metadata:
   name: composed-serving

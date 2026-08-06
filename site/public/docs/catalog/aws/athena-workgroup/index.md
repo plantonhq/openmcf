@@ -34,7 +34,7 @@ When you deploy an AwsAthenaWorkgroup resource, Planton provisions:
 Create a file `athena-workgroup.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: analytics
@@ -106,7 +106,7 @@ However, most practical deployments set at least `resultConfiguration.outputLoca
 A minimal workgroup directing query results to S3 with all governance defaults.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: analytics-team
@@ -126,7 +126,7 @@ spec:
 Workgroup with a 10 GB per-query scan limit and enforced minimum encryption.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: data-science
@@ -149,7 +149,7 @@ spec:
 Production workgroup with SSE_KMS encryption referencing a KMS key from another Planton resource.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: prod-analytics
@@ -182,7 +182,7 @@ secure, or lifecycle. Results are retained 24 hours and retrieved through the
 Athena APIs.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: bi-queries

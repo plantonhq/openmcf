@@ -32,7 +32,7 @@ When you deploy a ScalewayRdbInstance resource, Planton provisions:
 Create a file `rdb-instance.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRdbInstance
 metadata:
   name: my-db
@@ -103,7 +103,7 @@ This creates a single-node PostgreSQL 16 instance with local SSD storage, automa
 A minimal PostgreSQL instance for development with a single application database and user:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRdbInstance
 metadata:
   name: dev-postgres
@@ -133,7 +133,7 @@ spec:
 A production-grade HA PostgreSQL instance with Private Network connectivity, encryption, ACL rules, and tuned engine settings:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRdbInstance
 metadata:
   name: prod-postgres
@@ -187,7 +187,7 @@ spec:
 A MySQL instance referencing an Planton-managed Private Network:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRdbInstance
 metadata:
   name: mysql-db

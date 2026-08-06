@@ -1,0 +1,25 @@
+# Minimal GcpIamCustomRole scenario. project_id is deliberately omitted: the
+# module falls back to the provider's default project, which the E2E harness
+# exports as GOOGLE_PROJECT from the resolved test project. The permission set
+# is tiny and read-only so the ephemeral role is harmless even if orphaned.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamCustomRole
+metadata:
+  name: planton-oss-e2e-gcprole-smoke
+  id: planton-oss-e2e-gcprole-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpiamcustomrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  roleId: plantonOssE2eSmokeRole
+  title: Planton OSS E2E Smoke Role
+  description: Ephemeral role created by the Planton E2E harness; safe to delete
+  permissions:
+    - storage.objects.get
+    - storage.objects.list

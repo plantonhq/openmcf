@@ -27,7 +27,7 @@ When you deploy a DigitalOceanVolume resource, Planton provisions:
 Create a file `volume.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
   name: my-volume
@@ -77,7 +77,7 @@ This creates a 50 GiB block storage volume in the NYC3 region, pre-formatted wit
 A small, unformatted volume for experimentation:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
   name: dev-scratch
@@ -100,7 +100,7 @@ spec:
 A pre-formatted XFS volume sized for a staging database. XFS handles large files and concurrent I/O well, making it a common choice for PostgreSQL or MySQL data directories:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
   name: staging-db-data
@@ -125,7 +125,7 @@ spec:
 A production volume restored from an existing snapshot, with ext4 formatting and compliance tags:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
   name: prod-app-data

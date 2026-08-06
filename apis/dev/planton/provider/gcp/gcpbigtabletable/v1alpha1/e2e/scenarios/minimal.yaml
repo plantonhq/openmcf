@@ -1,0 +1,34 @@
+# GcpBigtableTable scenario: a table with two column families — one with
+# age-based GC, one aggregate counter family — on the prerequisite
+# instance. deletion protection is explicitly UNPROTECTED so the
+# ephemeral create -> verify -> destroy cycle can tear down without a
+# two-step unprotect. Table names are instance-scoped, so no run-id
+# token is needed on the table itself.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigtableTable
+metadata:
+  name: planton-oss-e2e-gcpbttbl-smoke
+  id: planton-oss-e2e-gcpbttbl-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpbigtabletable
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  tableName: e2e-events
+  instance:
+    valueFrom:
+      kind: GcpBigtableInstance
+      name: planton-oss-e2e-gcpbt-prereq
+      fieldPath: status.outputs.instance_name
+  columnFamilies:
+    - family: measurements
+      gcPolicy:
+        maxAge: 720h
+    - family: counters
+      type: intsum
+  deletionProtection: UNPROTECTED

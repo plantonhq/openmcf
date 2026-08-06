@@ -3,7 +3,7 @@ package backendconfig
 import (
 	"testing"
 
-	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
+	awsvpcv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofuannotationkeys"
 	"github.com/stretchr/testify/assert"
@@ -12,14 +12,14 @@ import (
 func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 	tests := []struct {
 		name      string
-		manifest  *awsvpcv1.AwsVpc
+		manifest  *awsvpcv1alpha1.AwsVpc
 		want      *TofuBackendConfig
 		wantError bool
 		errorMsg  string
 	}{
 		{
 			name: "valid s3 backend with terraform annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "s3",
@@ -39,7 +39,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "valid gcs backend with terraform annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "gcs",
@@ -57,7 +57,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "valid azurerm backend with terraform annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "azurerm",
@@ -75,7 +75,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "valid local backend with terraform annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"): "local",
@@ -91,7 +91,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "s3-compatible backend with endpoint",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):     "s3",
@@ -114,7 +114,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "no backend annotations - returns nil without error",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						"other.annotation": "value",
@@ -126,7 +126,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "backend keys in labels are ignored (labels are cloud-tag territory)",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Labels: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "s3",
@@ -140,7 +140,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "missing backend key - returns partial config",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "s3",
@@ -157,7 +157,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "unsupported backend type - returns config (validation happens later)",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("terraform"):   "unsupported",
@@ -175,7 +175,7 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 		},
 		{
 			name: "no annotations - returns nil without error",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{},
 			},
 			want:      nil,
@@ -202,14 +202,14 @@ func TestExtractFromManifest_TerraformProvisioner(t *testing.T) {
 func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 	tests := []struct {
 		name      string
-		manifest  *awsvpcv1.AwsVpc
+		manifest  *awsvpcv1alpha1.AwsVpc
 		want      *TofuBackendConfig
 		wantError bool
 		errorMsg  string
 	}{
 		{
 			name: "valid s3 backend with tofu annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("tofu"):   "s3",
@@ -229,7 +229,7 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 		},
 		{
 			name: "valid gcs backend with tofu annotations",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("tofu"):   "gcs",
@@ -247,7 +247,7 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 		},
 		{
 			name: "terraform-prefixed annotations are NOT read for the tofu provisioner",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						// The key prefix must match the provisioner; there is no cross-prefix fallback.
@@ -262,7 +262,7 @@ func TestExtractFromManifest_TofuProvisioner(t *testing.T) {
 		},
 		{
 			name: "missing backend key with tofu annotations - returns partial config",
-			manifest: &awsvpcv1.AwsVpc{
+			manifest: &awsvpcv1alpha1.AwsVpc{
 				Metadata: &shared.CloudResourceMetadata{
 					Annotations: map[string]string{
 						tofuannotationkeys.BackendTypeAnnotationKey("tofu"):   "s3",

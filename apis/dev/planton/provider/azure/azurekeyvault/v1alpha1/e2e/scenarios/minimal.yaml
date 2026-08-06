@@ -1,0 +1,41 @@
+# Minimal AzureKeyVault scenario: a Standard RBAC vault in the fixture
+# resource group.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs through the field's default kind. The vault_name embeds
+# no environment marker beyond the e2e prefix because vault names are
+# GLOBALLY unique (they become {name}.vault.azure.net) and capped at 24
+# characters. The network-ACL block exercises the enum seams (DENY +
+# AZURE_SERVICES bypass) without affecting control-plane verification --
+# ARM reads are not subject to the vault's data-plane firewall. Purge
+# protection stays at Azure's real default (off) so destroy purges and the
+# name frees immediately. User tags exercise the merge-over-metadata-tags
+# path.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureKeyVault
+metadata:
+  name: planton-oss-e2e-azurekeyvault-smoke
+  id: planton-oss-e2e-azurekeyvault-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurekeyvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  vaultName: pltn-oss-e2e-kv-smoke
+  networkAcls:
+    defaultAction: DENY
+    bypass: AZURE_SERVICES
+    ipRules:
+      - "203.0.113.0/24"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

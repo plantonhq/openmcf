@@ -28,7 +28,7 @@ When you deploy an OciKmsKey resource, Planton provisions:
 Create a file `key.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsKey
 metadata:
   name: my-key
@@ -98,7 +98,7 @@ This creates a 256-bit AES key with HSM protection (the default). The key OCID a
 A 256-bit AES symmetric key in an HSM — the most common choice for data-at-rest encryption:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsKey
 metadata:
   name: aes-key
@@ -122,7 +122,7 @@ spec:
 A 4096-bit RSA asymmetric key with automatic rotation every 90 days, using `valueFrom` to reference a vault:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsKey
 metadata:
   name: rsa-signing-key
@@ -155,7 +155,7 @@ spec:
 An ECDSA P-384 key with software-based protection — lower cost for non-regulatory workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsKey
 metadata:
   name: ecdsa-key
@@ -181,7 +181,7 @@ spec:
 A key backed by an external key manager for regulatory BYOK requirements:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciKmsKey
 metadata:
   name: byok-key

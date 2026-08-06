@@ -27,7 +27,7 @@ When you deploy an AzureStorageObjectReplication resource, Planton provisions:
 Create a file `replication.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageObjectReplication
 metadata:
   name: invoices-dr

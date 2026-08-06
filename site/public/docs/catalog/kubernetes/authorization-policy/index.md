@@ -27,7 +27,7 @@ operation, and conditions, or delegate the decision to an external authorizer.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesAuthorizationPolicy
 metadata:
   name: require-jwt

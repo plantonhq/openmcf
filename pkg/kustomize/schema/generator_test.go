@@ -39,7 +39,7 @@ func TestGenerate_KubernetesDeploymentMergeFields(t *testing.T) {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
 
-	def := extractDefinition(t, data, "kubernetes.planton.dev.v1.KubernetesDeployment")
+	def := extractDefinition(t, data, "kubernetes.planton.dev.v1alpha1.KubernetesDeployment")
 	assertMergeFieldExists(t, def, "spec", "container", "app", "env", "variables")
 	assertMergeFieldExists(t, def, "spec", "container", "app", "env", "secrets")
 	assertMergeFieldExists(t, def, "spec", "container", "app", "ports")
@@ -51,7 +51,7 @@ func TestGenerate_KubernetesCronJobMergeFields(t *testing.T) {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
 
-	def := extractDefinition(t, data, "kubernetes.planton.dev.v1.KubernetesCronJob")
+	def := extractDefinition(t, data, "kubernetes.planton.dev.v1alpha1.KubernetesCronJob")
 	assertMergeFieldExists(t, def, "spec", "env", "variables")
 	assertMergeFieldExists(t, def, "spec", "env", "secrets")
 }
@@ -62,7 +62,7 @@ func TestGenerate_KubernetesJobMergeFields(t *testing.T) {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
 
-	def := extractDefinition(t, data, "kubernetes.planton.dev.v1.KubernetesJob")
+	def := extractDefinition(t, data, "kubernetes.planton.dev.v1alpha1.KubernetesJob")
 	assertMergeFieldExists(t, def, "spec", "env", "variables")
 	assertMergeFieldExists(t, def, "spec", "env", "secrets")
 }
@@ -80,7 +80,7 @@ func TestGenerate_ExcludesKindsWithoutMergeFields(t *testing.T) {
 	defs := schema["definitions"].(map[string]any)
 
 	// AwsVpc should not be in the schema (no repeated message fields with name)
-	if _, ok := defs["aws.planton.dev.v1.AwsVpc"]; ok {
+	if _, ok := defs["aws.planton.dev.v1alpha1.AwsVpc"]; ok {
 		t.Error("AwsVpc should not be in the schema (no merge fields)")
 	}
 }
@@ -91,7 +91,7 @@ func TestGenerate_GroupVersionKindMetadata(t *testing.T) {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
 
-	def := extractDefinition(t, data, "kubernetes.planton.dev.v1.KubernetesDeployment")
+	def := extractDefinition(t, data, "kubernetes.planton.dev.v1alpha1.KubernetesDeployment")
 	gvkList, ok := def["x-kubernetes-group-version-kind"].([]any)
 	if !ok || len(gvkList) == 0 {
 		t.Fatal("missing x-kubernetes-group-version-kind")
@@ -101,7 +101,7 @@ func TestGenerate_GroupVersionKindMetadata(t *testing.T) {
 	if gvk["group"] != "kubernetes.planton.dev" {
 		t.Errorf("expected group 'kubernetes.planton.dev', got %v", gvk["group"])
 	}
-	if gvk["version"] != "v1" {
+	if gvk["version"] != "v1alpha1" {
 		t.Errorf("expected version 'v1', got %v", gvk["version"])
 	}
 	if gvk["kind"] != "KubernetesDeployment" {

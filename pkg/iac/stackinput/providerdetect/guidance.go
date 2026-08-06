@@ -234,7 +234,7 @@ func MissingProviderConfigGuidance(result *DetectionResult) string {
 func KindDetectionErrorGuidance() string {
 	return `The manifest must contain valid 'apiVersion' and 'kind' fields:
 
-  apiVersion: gcp.planton.dev/v1
+  apiVersion: gcp.planton.dev/v1alpha1
   kind: GkeCluster
   metadata:
     name: my-cluster

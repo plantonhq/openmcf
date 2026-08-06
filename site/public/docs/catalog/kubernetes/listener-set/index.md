@@ -40,7 +40,7 @@ attachment by default.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesListenerSet
 metadata:
   name: tenant-listeners

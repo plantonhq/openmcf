@@ -1,0 +1,32 @@
+# The full governance pair: compute caps + the companion LimitRange carrying
+# container defaults — the safe pattern, because a compute quota WITHOUT
+# defaults makes the API reject pods that omit requests/limits. Quota values
+# are deliberately generous: the shared default namespace hosts other
+# scenarios' pods while this quota exists.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesResourceQuota
+metadata:
+  name: e2e-rq-governed
+spec:
+  namespace:
+    value: default
+  name: e2e-rq-governed
+  hard:
+    requests.cpu: "100"
+    requests.memory: 200Gi
+    limits.cpu: "200"
+    limits.memory: 400Gi
+    persistentvolumeclaims: "100"
+  limit_defaults:
+    - type: container
+      default_request:
+        cpu: 10m
+        memory: 16Mi
+      default_limit:
+        cpu: 500m
+        memory: 512Mi
+    - type: persistent_volume_claim
+      min:
+        storage: 100Mi
+      max:
+        storage: 100Gi

@@ -1,0 +1,36 @@
+# AzureRedisCacheAccessPolicyAssignment chain scenario: the full
+# three-kind composition proven live -- a scenario-local Entra-enabled
+# cache, a custom prefix-scoped policy on it, and the assignment under
+# test granting that policy to the fixture user-assigned identity.
+# Exercises BOTH FK seams new this session: the policy-name reference
+# (custom policy path) and the identity principal-id reference.
+#
+# Extra fixtures deploy in declared order (cache before policy); the
+# identity resolves through its registry install profile by kind name.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRedisCacheAccessPolicyAssignment
+metadata:
+  name: planton-oss-e2e-azurerediscacheaccesspolicyassignment-chain
+  id: planton-oss-e2e-azurerediscacheaccesspolicyassignment-chain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurerediscacheaccesspolicyassignment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureUserAssignedIdentity, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1alpha1/e2e/entra-cache.yaml, apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1alpha1/e2e/prefix-policy.yaml"
+  tags:
+    - planton-e2e
+spec:
+  redisCacheId:
+    valueFrom:
+      name: planton-oss-e2e-redisgrant-fixture-cache
+  assignmentName: e2e-identity-read-only
+  accessPolicyName:
+    valueFrom:
+      name: planton-oss-e2e-redisgrant-fixture-policy
+  objectId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-identity
+  objectIdAlias: planton-oss-e2e-azure-fixture-identity

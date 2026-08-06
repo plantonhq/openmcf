@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpartifactregistryrepo.v1alpha1;
+
+//gcp-artifact-registry-repo stack outputs
+message GcpArtifactRegistryRepoStackOutputs {
+  // Short name of the repository (the repository ID), e.g. "app-images".
+  string name = 1;
+
+  // Fully qualified resource path of the repository:
+  //   projects/{project}/locations/{location}/repositories/{repository_id}
+  // This is the composition key other resources consume: a Cloud Function's
+  // docker_repository, a virtual repository's upstream policy, and a remote
+  // repository's common upstream all take exactly this value.
+  string repository_path = 2;
+
+  // The registry endpoint clients push to and pull from, e.g.
+  //   us-central1-docker.pkg.dev/my-project/app-images
+  // For Docker repositories, prefix an image name to get the full image
+  // reference ("{registry_uri}/api-server:v1.2.3").
+  string registry_uri = 3;
+
+  // Location of the repository (region or multi-region), echoed from spec.
+  string location = 4;
+}

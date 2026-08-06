@@ -1,0 +1,14 @@
+# Consumer-scoped operator fixture for the KubernetesKafka lanes: the
+# operator in ANY-NAMESPACE watch mode, because every cluster scenario
+# creates its Kafka in its own namespace — the operator's default
+# own-namespace watch would never see them.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStrimziKafkaOperator
+metadata:
+  name: e2e-stz-op-for-kafka
+spec:
+  namespace:
+    value: strimzi-system
+  create_namespace: true
+  watch:
+    any_namespace: true

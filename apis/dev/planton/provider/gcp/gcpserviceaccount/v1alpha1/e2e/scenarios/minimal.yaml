@@ -1,0 +1,23 @@
+# Minimal GcpServiceAccount scenario. project_id is deliberately omitted: the
+# module falls back to the provider's default project, which the E2E harness
+# exports as GOOGLE_PROJECT from the resolved test project — no manifest in the
+# repo ever hardcodes a project id. Keyless (create_key defaults to false), so
+# the scenario creates the identity, its display metadata, and nothing secret.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServiceAccount
+metadata:
+  name: planton-oss-e2e-gsa-smoke
+  id: planton-oss-e2e-gsa-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserviceaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  serviceAccountId: planton-oss-e2e-sa
+  displayName: Planton OSS E2E smoke identity
+  description: Ephemeral identity created by the Planton E2E harness; safe to delete

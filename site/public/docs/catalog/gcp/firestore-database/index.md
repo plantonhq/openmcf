@@ -26,7 +26,7 @@ Deploys a Google Cloud Firestore database with configurable type (Native or Data
 Create a file `firestore-database.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: my-db
@@ -79,7 +79,7 @@ This creates the project's default Firestore Native database in the US multi-reg
 The simplest starting point -- creates the project's default database that client libraries connect to by default:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: default-db
@@ -101,7 +101,7 @@ spec:
 A production database with 7-day point-in-time recovery and protection against accidental deletion:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: orders-db
@@ -125,7 +125,7 @@ spec:
 Maximum security configuration with Enterprise SLA, customer-managed encryption, and delete protection:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: secure-db
@@ -152,7 +152,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding values:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreDatabase
 metadata:
   name: composed-db

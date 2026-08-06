@@ -1,0 +1,35 @@
+# Full-surface offline-proof manifest: exercises the AWS backend with
+# static keys (the declared-credential materialization path), assume-role
+# and prefix scoping, the namespace fence in all three modes, and the
+# common store tuning — so the offline tofu plan and pulumi preview proofs
+# cover the credential-secret arm the live fake-backend lane excludes.
+# Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClusterSecretStore
+metadata:
+  name: hack-cluster-secret-store
+spec:
+  secretsNamespace:
+    value: external-secrets
+  config:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      role:
+        value: arn:aws:iam::123456789012:role/secrets-reader
+      prefix: prod/
+      accessKeyId: AKIAHACKPLACEHOLDER
+      secretAccessKey: hack-placeholder-secret-key
+    controllerClass: platform
+    refreshInterval: 5m
+    retry:
+      maxRetries: 5
+      retryInterval: 10s
+  conditions:
+    - namespaces:
+        - team-a
+        - team-b
+    - namespaceLabelSelector:
+        env: prod
+    - namespaceRegexes:
+        - "^app-.*"

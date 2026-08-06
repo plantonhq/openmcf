@@ -16,7 +16,7 @@ Every component follows the same structure: Protocol Buffer API definitions, dua
 A complete deployment component lives at `apis/dev/planton/provider/<provider>/<component>/v1/` and contains:
 
 ```text
-apis/dev/planton/provider/aws/awss3bucket/v1/
+apis/dev/planton/provider/aws/awss3bucket/v1alpha1/
 |-- api.proto              # KRM resource model (apiVersion, kind, metadata, spec, status)
 |-- spec.proto             # Configuration fields for the resource
 |-- stack_input.proto      # IaC input contract (target resource + provider config)
@@ -50,7 +50,7 @@ apis/dev/planton/provider/aws/awss3bucket/v1/
 |---------|-----------|---------|
 | Folder name | `<provider><resource>` lowercase, no separators | `awss3bucket` |
 | Kind name | `<Provider><Resource>` PascalCase | `AwsS3Bucket` |
-| apiVersion | `<provider>.planton.dev/v1` | `aws.planton.dev/v1` |
+| apiVersion | `<provider>.planton.dev/v1` | `aws.planton.dev/v1alpha1` |
 | Proto package | `dev.planton.provider.<provider>.<component>.v1` | `dev.planton.provider.aws.awss3bucket.v1` |
 | Pulumi project | `<component>-pulumi-project` | `awss3bucket-pulumi-project` |
 
@@ -67,7 +67,7 @@ The spec defines the user-facing configuration fields. Design the spec for full 
 ```protobuf
 syntax = "proto3";
 
-package dev.planton.provider.aws.awss3bucket.v1;
+package dev.planton.provider.aws.awss3bucket.v1alpha1;
 
 import "buf/validate/validate.proto";
 
@@ -123,7 +123,7 @@ Define the outputs that the IaC module will export after deployment:
 ```protobuf
 syntax = "proto3";
 
-package dev.planton.provider.aws.awss3bucket.v1;
+package dev.planton.provider.aws.awss3bucket.v1alpha1;
 
 message AwsS3BucketStackOutputs {
   string bucket_id = 1;
@@ -141,16 +141,16 @@ The API proto wires the spec and outputs into the KRM resource model:
 ```protobuf
 syntax = "proto3";
 
-package dev.planton.provider.aws.awss3bucket.v1;
+package dev.planton.provider.aws.awss3bucket.v1alpha1;
 
 import "buf/validate/validate.proto";
-import "dev/planton/provider/aws/awss3bucket/v1/spec.proto";
-import "dev/planton/provider/aws/awss3bucket/v1/stack_outputs.proto";
+import "dev/planton/provider/aws/awss3bucket/v1alpha1/spec.proto";
+import "dev/planton/provider/aws/awss3bucket/v1alpha1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
 message AwsS3Bucket {
   // Fixed apiVersion for this resource type
-  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1'];
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
 
   // Fixed kind name
   string kind = 2 [(buf.validate.field).string.const = 'AwsS3Bucket'];
@@ -180,9 +180,9 @@ The stack input combines the target resource with provider-specific configuratio
 ```protobuf
 syntax = "proto3";
 
-package dev.planton.provider.aws.awss3bucket.v1;
+package dev.planton.provider.aws.awss3bucket.v1alpha1;
 
-import "dev/planton/provider/aws/awss3bucket/v1/api.proto";
+import "dev/planton/provider/aws/awss3bucket/v1alpha1/api.proto";
 import "dev/planton/provider/aws/provider.proto";
 
 message AwsS3BucketStackInput {
@@ -202,7 +202,7 @@ package awss3bucket_v1_test
 
 import (
     "testing"
-    pb "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
+    pb "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1"
     "github.com/bufbuild/protovalidate-go"
 )
 
@@ -266,9 +266,9 @@ The Pulumi module translates the protobuf spec into actual cloud resources using
 package main
 
 import (
-    "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1/iac/pulumi/module"
+    "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/pulumi/module"
     "github.com/plantonhq/planton/pkg/iac/pulumi/stackinput"
-    awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
+    awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -291,7 +291,7 @@ The module's `Resources` function creates the actual cloud resources:
 package module
 
 import (
-    awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1"
+    awss3bucketv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awss3bucket/v1alpha1"
     "github.com/pulumi/pulumi-aws/sdk/v6/go/aws/s3"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -433,7 +433,7 @@ Create `docs/README.md` with deeper design rationale: the parity accounting (whi
 Create `iac/hack/manifest.yaml` with a minimal working manifest for development testing:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: awss3bucket-demo
@@ -454,16 +454,16 @@ make protos
 make generate-cloud-resource-kind-map
 
 # Build validation — proto-generated Go code compiles
-go build ./apis/dev/planton/provider/aws/awss3bucket/v1/...
+go build ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/...
 
 # Vet check
-go vet ./apis/dev/planton/provider/aws/awss3bucket/v1/iac/pulumi/...
+go vet ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/pulumi/...
 
 # Run validation tests
-go test -v ./apis/dev/planton/provider/aws/awss3bucket/v1/...
+go test -v ./apis/dev/planton/provider/aws/awss3bucket/v1alpha1/...
 
 # Validate Terraform module
-cd apis/dev/planton/provider/aws/awss3bucket/v1/iac/tf
+cd apis/dev/planton/provider/aws/awss3bucket/v1alpha1/iac/tf
 terraform init && terraform validate
 ```
 

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoororigingroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurefrontdoororigingroup/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurefrontdoororigingroup/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureFrontDoorOriginGroup is the top-level API resource for an origin
+// group inside an Azure Front Door profile (referenced via profile_id) --
+// the load-balanced pool of backends a route directs traffic to. The
+// backends are AzureFrontDoorOrigin resources referencing this group;
+// routes (AzureFrontDoorRoute) reference the group as their destination.
+message AzureFrontDoorOriginGroup {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFrontDoorOriginGroup'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureFrontDoorOriginGroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureFrontDoorOriginGroupStatus status = 5;
+}
+
+// AzureFrontDoorOriginGroupStatus holds the deployment status and outputs.
+message AzureFrontDoorOriginGroupStatus {
+  // stack-outputs
+  AzureFrontDoorOriginGroupStackOutputs outputs = 1;
+}

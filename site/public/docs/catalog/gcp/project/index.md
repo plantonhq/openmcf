@@ -40,7 +40,7 @@ IAM grants are NOT created here — model each grant as a first-class
 Create a file `project.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpProject
 metadata:
   name: my-project

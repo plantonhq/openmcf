@@ -1,0 +1,33 @@
+# Production-style AwsEventBridgeBus scenario: custom bus with error-level
+# logging and a bus-level dead-letter queue composed from the shared SQS
+# fixture. Full metadata is supplied for tagging/orphan cleanup.
+#
+# The e2e-prerequisites annotation composes the SQS queue that serves as
+# the bus-level DLQ target.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeBus
+metadata:
+  name: planton-oss-e2e-awseventbridgebus-production-bus
+  id: planton-oss-e2e-awseventbridgebus-production-bus
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgebus
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSqsQueue"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E production-style custom event bus with DLQ and logging
+  deadLetterConfig:
+    arn:
+      valueFrom:
+        kind: AwsSqsQueue
+        name: planton-oss-e2e-awssqsqueue-prereq
+        fieldPath: status.outputs.queue_arn
+  logConfig:
+    level: ERROR
+    includeDetail: NONE

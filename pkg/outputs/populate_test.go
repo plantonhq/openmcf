@@ -6,11 +6,11 @@ package outputs
 import (
 	"testing"
 
-	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1"
-	azurelbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1"
-	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1"
-	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
-	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
+	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1alpha1"
+	azurelbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureloadbalancer/v1alpha1"
+	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1alpha1"
+	gcpsubnetworkv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1alpha1"
+	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1"
 )
 
 func TestPopulate_StringFields(t *testing.T) {
@@ -173,7 +173,7 @@ func TestPopulate_NestedMessageJSON(t *testing.T) {
 }
 
 func TestPopulate_RepeatedMessageWithBracketIndex(t *testing.T) {
-	msg := &gcpsubnetworkv1.GcpSubnetworkStackOutputs{}
+	msg := &gcpsubnetworkv1alpha1.GcpSubnetworkStackOutputs{}
 	outputs := map[string]string{
 		"subnetwork_name":                   "my-subnet",
 		"secondary_ranges[0].range_name":    "pods",

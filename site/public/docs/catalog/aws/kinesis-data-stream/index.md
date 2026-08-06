@@ -28,7 +28,7 @@ When you deploy an AwsKinesisStream resource, Planton provisions:
 Create a file `kinesis-stream.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: my-stream
@@ -79,7 +79,7 @@ This creates an on-demand Kinesis stream with 24-hour default retention, no encr
 A provisioned stream with 4 shards, KMS encryption via the Kinesis-owned key, and 48-hour retention:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: order-events
@@ -102,7 +102,7 @@ spec:
 Production on-demand stream with 7-day retention, encryption, and all shard-level metrics for full observability:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: analytics-pipeline
@@ -133,7 +133,7 @@ spec:
 Reference an Planton-managed KMS key instead of hardcoding the ARN:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: audit-stream
@@ -158,7 +158,7 @@ spec:
 Grant another account's principals read access without role assumption:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: shared-events

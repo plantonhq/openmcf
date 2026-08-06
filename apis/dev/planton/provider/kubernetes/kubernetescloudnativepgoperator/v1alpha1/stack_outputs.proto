@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetescloudnativepgoperator.v1alpha1;
+
+/**
+ * **KubernetesCloudNativePgOperatorStackOutputs** — the composition handles
+ * a deployed CloudNativePG operator exports. The operator has no
+ * per-database surface of its own; KubernetesPostgres resources compose
+ * against the CRDs it installs, so the handles here identify the
+ * installation rather than any workload.
+ */
+message KubernetesCloudNativePgOperatorStackOutputs {
+  // Namespace the operator (and the plugin, when enabled) runs in.
+  string namespace = 1;
+
+  // Helm release name of the operator (fixed: "cnpg" — one installation
+  // per cluster).
+  string release_name = 2;
+
+  // Helm release name of the Barman Cloud plugin when enabled; empty
+  // otherwise. KubernetesPostgres backup blocks depend on this plugin
+  // being present.
+  string barman_plugin_release_name = 3;
+}

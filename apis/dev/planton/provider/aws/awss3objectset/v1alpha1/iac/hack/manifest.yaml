@@ -1,0 +1,64 @@
+# Full-surface development manifest. Exercises every spec arm — including the
+# ones the live E2E lanes exclude (acl needs an ACL-permitting bucket
+# ownership posture, Object Lock needs a lock-enabled bucket, SSE-KMS needs a
+# real key ARN) — so the offline tofu plan / pulumi preview proof covers the
+# complete contract.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: awss3objectset-demo
+spec:
+  region: us-east-1
+  bucket:
+    value: my-demo-bucket
+  tags:
+    environment: demo
+  objects:
+    - key: config/app.json
+      content: |
+        {
+          "database": "postgres",
+          "port": 5432,
+          "debug": false,
+          "policyVariable": "${aws:ResourceAccount}"
+        }
+      contentType: application/json
+      cacheControl: no-cache
+      contentDisposition: inline
+      contentLanguage: en-US
+      metadata:
+        generated-by: planton
+        build-commit: demo
+      serverSideEncryption: aws:kms
+      kmsKey:
+        value: arn:aws:kms:us-east-1:123456789012:key/11111111-2222-3333-4444-555555555555
+      bucketKeyEnabled: true
+      checksumAlgorithm: SHA256
+      tags:
+        purpose: config
+    - key: index.html
+      content: |
+        <!DOCTYPE html>
+        <html>
+        <head><title>Demo</title></head>
+        <body><h1>Hello from AwsS3ObjectSet</h1></body>
+        </html>
+      contentType: text/html
+      cacheControl: max-age=300
+      websiteRedirect: /welcome.html
+      acl: bucket-owner-full-control
+    - key: assets/pixel.png
+      contentBase64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
+      contentType: image/png
+      contentEncoding: identity
+      cacheControl: public, max-age=31536000, immutable
+      storageClass: STANDARD_IA
+    - key: audits/report.json
+      content: '{"finding": "none"}'
+      contentType: application/json
+      objectLockMode: GOVERNANCE
+      objectLockRetainUntilDate: "2033-01-01T00:00:00Z"
+      objectLockLegalHoldStatus: "ON"
+      # force_destroy pairs with GOVERNANCE retention: it sends the
+      # governance-bypass flag on delete (lock-enabled buckets only).
+      forceDestroy: true

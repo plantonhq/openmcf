@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAksNodePool
+metadata:
+  name: production-app-pool
+  labels:
+    environment: production
+    team: platform
+spec:
+  kubernetesClusterId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/production-rg/providers/Microsoft.ContainerService/managedClusters/production-aks-cluster
+  name: general
+  vmSize: Standard_D8s_v5
+  autoScalingEnabled: true
+  minCount: 2
+  maxCount: 10
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  mode: USER
+  nodeLabels:
+    workload: application
+  tags:
+    cost-center: platform

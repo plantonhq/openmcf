@@ -30,7 +30,7 @@ Depending on the creation mode, Planton provisions:
 Create a file `cert.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: my-cert
@@ -83,7 +83,7 @@ This requests a certificate for `example.com`, creates the DNS validation CNAME 
 ### Wildcard Certificate with Automated Validation
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: wildcard-cert
@@ -102,7 +102,7 @@ spec:
 ### External DNS (zone outside Route53)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: external-dns-cert
@@ -116,7 +116,7 @@ The deployment finishes with the certificate in `PENDING_VALIDATION`; create the
 ### Imported Certificate
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: imported-cert
@@ -136,7 +136,7 @@ spec:
 ### Private (ACM-PCA) Certificate
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: internal-cert

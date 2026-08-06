@@ -49,7 +49,7 @@ out of the box.
 Attach the policy gateway-wide:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway

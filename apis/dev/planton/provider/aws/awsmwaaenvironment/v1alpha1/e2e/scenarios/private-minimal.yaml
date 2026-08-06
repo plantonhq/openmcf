@@ -1,0 +1,59 @@
+# Minimal private AwsMwaaEnvironment scenario: the smallest environment
+# class (mw1.micro, one webserver) with a PRIVATE_ONLY webserver, DAGs
+# sourced from the versioned S3 bucket fixture, the MWAA execution-role
+# fixture, both subnet fixtures (MWAA requires exactly two AZs), and the
+# MWAA-shaped security-group fixture (self-referencing all-traffic +
+# HTTPS ingress -- without the self-referencing rule the environment
+# never reaches AVAILABLE). Deliberately not in the scenario: plugins /
+# requirements / startup scripts (need staged S3 objects), PUBLIC_ONLY
+# access, KMS encryption, and CUSTOMER endpoint management -- all proven
+# by CEL spec tests and the offline gate. Full metadata is supplied for
+# tagging/orphan cleanup.
+#
+# The e2e-prerequisites annotation composes the S3 bucket and IAM role
+# fixtures; subnets and the security group are registry prerequisites
+# (AWS requires both at creation).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsMwaaEnvironment
+metadata:
+  name: planton-oss-e2e-mwaa-private
+  id: planton-oss-e2e-mwaa-private
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmwaaenvironment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  sourceBucketArn:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_arn
+  dagS3Path: dags/
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-mwaa-execution-role
+      fieldPath: status.outputs.role_arn
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-mwaa-prereq
+        fieldPath: status.outputs.security_group_id
+  environmentClass: mw1.micro
+  webserverAccessMode: PRIVATE_ONLY

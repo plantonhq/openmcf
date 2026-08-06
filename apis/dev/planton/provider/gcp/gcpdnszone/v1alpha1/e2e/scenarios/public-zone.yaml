@@ -1,0 +1,20 @@
+# Public Cloud DNS managed zone: run-scoped dnsName under example.com so
+# parallel runs never collide. project_id is deliberately omitted (ambient).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDnsZone
+metadata:
+  name: planton-oss-e2e-zone
+  id: planton-oss-e2e-zone
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpdnszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  visibility: public
+  dnsName: planton-oss-e2e-${E2E_RUN_ID}.example.
+  description: Ephemeral public zone for the Planton OSS GCP E2E harness

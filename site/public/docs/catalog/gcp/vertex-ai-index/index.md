@@ -27,7 +27,7 @@ When you deploy a GcpVertexAiIndex resource, Planton provisions:
 Create a file `index.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: product-embeddings
@@ -91,7 +91,7 @@ This creates an empty streaming index in the provider's default project, ready f
 Near-real-time upserts with cosine-equivalent ranking:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: rag-chunks
@@ -122,7 +122,7 @@ spec:
 Bulk-built from a directory of embedding files:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: catalog-embeddings
@@ -148,7 +148,7 @@ spec:
 Exact search for measuring an approximate index's recall:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: eval-ground-truth
@@ -173,7 +173,7 @@ spec:
 Reference other Planton-managed resources for composable infrastructure:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: composed-index

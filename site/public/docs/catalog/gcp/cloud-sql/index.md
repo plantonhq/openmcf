@@ -29,7 +29,7 @@ Databases and users are separate composable resources ([GcpCloudSqlDatabase](/do
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: my-postgres
@@ -84,7 +84,7 @@ SQL Server-only: `timeZone`, `collation`, `threadsPerCore`, `sqlServerAuditConfi
 ### Production PostgreSQL on Private IP
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: orders-db-prod
@@ -114,7 +114,7 @@ spec:
 ### Read Replica
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: orders-db-replica

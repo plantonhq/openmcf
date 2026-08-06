@@ -42,7 +42,7 @@ func TestIndexCoversCompiledInProtos(t *testing.T) {
 // on a densely documented spec: message, plain field, and nested enum value
 // (enum values scope to the enum's PARENT per proto scoping rules).
 func TestLookupKeysMatchRuntimeReflection(t *testing.T) {
-	const specName = "dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec"
+	const specName = "dev.planton.provider.kubernetes.kubernetesnamespace.v1alpha1.KubernetesNamespaceSpec"
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(specName))
 	if err != nil {
 		t.Fatalf("spec message not registered: %v", err)

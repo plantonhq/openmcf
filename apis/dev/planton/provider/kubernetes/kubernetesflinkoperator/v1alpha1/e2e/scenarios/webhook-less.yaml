@@ -1,0 +1,16 @@
+# The webhook-less posture: no admission webhook, no certificate
+# machinery, no keystore Secret (the module renders none — asserted),
+# validation deferred to the operator's reconcile loop. The verifier
+# proves THE POSTURE CONTRAST: the invalid FlinkDeployment that the
+# webhook lanes reject at admission is ACCEPTED here (then swept before
+# the operator acts on it) — the honest trade this arm buys, taught by
+# a live assertion instead of a comment.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesFlinkOperator
+metadata:
+  name: e2e-flnkop-nowh
+spec:
+  namespace:
+    value: e2e-flnkop-nowh
+  createNamespace: true
+  webhookEnabled: false

@@ -1,0 +1,48 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGrpcRoute
+metadata:
+  name: test-grpc-route
+spec:
+  namespace:
+    value: test-namespace
+  parentRefs:
+    - name:
+        value: test-gateway
+      sectionName: https
+  hostnames:
+    - api.example.com
+  rules:
+    - name: greeter
+      matches:
+        - method:
+            type: Exact
+            service: helloworld.Greeter
+            method: SayHello
+          headers:
+            - type: Exact
+              name: x-tenant
+              value: acme
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: x-forwarded-tier
+                value: production
+        - type: RequestMirror
+          requestMirror:
+            backendRef:
+              name:
+                value: audit-svc
+              port: 9000
+            fraction:
+              numerator: 1
+              denominator: 10
+      backendRefs:
+        - name:
+            value: greeter
+          port: 9000
+          weight: 90
+        - name:
+            value: greeter-canary
+          port: 9000
+          weight: 10

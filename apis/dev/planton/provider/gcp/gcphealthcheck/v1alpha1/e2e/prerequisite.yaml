@@ -1,0 +1,26 @@
+# GcpHealthCheck install profile used when the health check is an E2E
+# PREREQUISITE for another component (e.g. a backend service's probe). A
+# GLOBAL HTTP probe on the serving port — the shape global backend services
+# consume. Health checks are project-scoped, free, and carry no soft-delete
+# reservation, so the cloud-side name stays fixed. project_id is omitted and
+# rides the harness-exported GOOGLE_PROJECT.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpHealthCheck
+metadata:
+  name: planton-oss-e2e-gcphc-prereq
+  id: planton-oss-e2e-gcphc-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcphealthcheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral health check created by the Planton E2E harness as a prerequisite; safe to delete
+  http:
+    portSpecification: USE_SERVING_PORT
+    requestPath: /healthz
+  enableLogging: false

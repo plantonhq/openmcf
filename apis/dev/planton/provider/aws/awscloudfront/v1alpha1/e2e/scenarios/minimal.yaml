@@ -1,0 +1,36 @@
+# Minimal AwsCloudFront scenario: one custom origin on a placeholder domain,
+# the default *.cloudfront.net certificate, and the AWS-managed
+# CachingOptimized policy. CloudFront validates configuration, not origin
+# reachability, so no real backend is needed and no traffic ever flows --
+# the lane's only cost is propagation time. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudFront
+metadata:
+  name: planton-oss-e2e-cdn-smoke
+  id: planton-oss-e2e-cdn-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudfront
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  comment: Planton E2E minimal CloudFront distribution
+  origins:
+    - originId: placeholder-origin
+      domainName: e2e-smoke.planton-oss-e2e.example.com
+      customOrigin:
+        protocolPolicy: https-only
+  defaultCacheBehavior:
+    targetOriginId: placeholder-origin
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized -- the AWS managed static-content policy.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  # PriceClass_100 keeps propagation to the smallest edge set.
+  priceClass: PriceClass_100

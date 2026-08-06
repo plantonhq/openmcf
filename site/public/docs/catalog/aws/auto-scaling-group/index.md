@@ -44,7 +44,7 @@ Identity tags are applied through the group's native tag mechanism with
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAutoScalingGroup
 metadata:
   name: web
@@ -120,7 +120,7 @@ planton apply -f autoscaling-group.yaml
 ### Spot-majority mixed fleet with an On-Demand base
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAutoScalingGroup
 metadata:
   name: workers
@@ -152,7 +152,7 @@ spec:
 ### Web service behind a target group with target tracking and rolling refresh
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAutoScalingGroup
 metadata:
   name: api
@@ -193,7 +193,7 @@ spec:
 ### Business-hours schedule with a warm pool
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAutoScalingGroup
 metadata:
   name: batch-workers

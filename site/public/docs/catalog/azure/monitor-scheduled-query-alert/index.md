@@ -28,7 +28,7 @@ When you deploy an AzureMonitorScheduledQueryAlert resource, Planton provisions:
 Create a file `query-alert.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorScheduledQueryAlert
 metadata:
   name: error-spike

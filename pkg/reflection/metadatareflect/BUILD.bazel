@@ -23,7 +23,7 @@ go_test(
     ],
     embed = [":metadatareflect"],
     deps = [
-        "//apis/dev/planton/provider/aws/awss3bucket/v1:awss3bucket",
+        "//apis/dev/planton/provider/aws/awss3bucket/v1alpha1",
         "//apis/dev/planton/shared",
         "@org_golang_google_protobuf//proto",
     ],

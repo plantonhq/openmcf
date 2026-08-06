@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskeycloakoperator.v1alpha1;
+
+/**
+ * **KubernetesKeycloakOperatorStackOutputs** — handles a deployed
+ * Keycloak Operator exports.
+ */
+message KubernetesKeycloakOperatorStackOutputs {
+  /**
+   * Namespace the operator runs in (where namespaced-watch Keycloak
+   * declarations must also live).
+   */
+  string namespace = 1;
+
+  /**
+   * The operator Deployment name (upstream-fixed:
+   * "keycloak-operator").
+   */
+  string deployment = 2;
+
+  /**
+   * The operator's metrics/health Service name (upstream-fixed:
+   * "keycloak-operator", port 80 → 8080).
+   */
+  string service = 3;
+}

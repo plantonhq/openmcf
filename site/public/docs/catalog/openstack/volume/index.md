@@ -29,21 +29,21 @@ When you deploy an OpenStackVolume resource, Planton provisions:
 Create a file `volume.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolume
 metadata:
   name: my-volume
   annotations:
     planton.dev/stack.jobId: prod.OpenstackVolume.managed-boot
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackVolume.db-restore
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolume.boot-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolume.app-data
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolume.my-volume
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackvolume/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   size: 20
@@ -85,7 +85,7 @@ This creates a blank 20 GB Cinder volume using the project's default volume type
 A minimal blank volume suitable for attaching to a compute instance as additional storage:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolume
 metadata:
   name: app-data
@@ -103,7 +103,7 @@ spec:
 A volume initialized from a Glance image, creating a persistent boot disk that can be attached to an instance via OpenStackVolumeAttach:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolume
 metadata:
   name: boot-disk
@@ -125,7 +125,7 @@ spec:
 Restore a volume from an existing Cinder snapshot, useful for disaster recovery or creating test environments from production data:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolume
 metadata:
   name: db-restore
@@ -146,7 +146,7 @@ spec:
 Reference an Planton-managed Glance image instead of hardcoding a UUID. The `valueFrom` reference creates a DAG dependency so the image is provisioned before the volume:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackVolume
 metadata:
   name: managed-boot

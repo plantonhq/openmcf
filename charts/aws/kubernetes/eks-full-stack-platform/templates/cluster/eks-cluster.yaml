@@ -5,7 +5,7 @@
 # resource in this chart consumes that same name via planton.dev/connection
 # (one values param drives both sides, so they can never drift) and carries a
 # runs_on relationship edge back to this resource so ordering is structural.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: "{{ values.env }}-eks-cluster-role"
@@ -26,7 +26,7 @@ spec:
     # how AWS-managed policies attach).
     - value: arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   # This name is load-bearing well beyond the cluster itself: it is the

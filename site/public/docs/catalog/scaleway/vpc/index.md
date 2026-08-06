@@ -26,7 +26,7 @@ When you deploy a ScalewayVpc resource, Planton provisions:
 Create a file `vpc.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayVpc
 metadata:
   name: my-vpc
@@ -69,7 +69,7 @@ This creates a VPC in `fr-par` with routing disabled. The VPC ID is exported as 
 A VPC with no routing — suitable for isolating a single Private Network:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayVpc
 metadata:
   name: isolated-vpc
@@ -87,7 +87,7 @@ spec:
 Enable routing so that resources in different Private Networks within the VPC can reach each other. This is the typical setup for multi-tier applications:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayVpc
 metadata:
   name: app-vpc
@@ -108,7 +108,7 @@ spec:
 Full networking capabilities enabled — routing between Private Networks plus custom routes advertised across them. Use this when deploying VPN gateways or network appliances that inject custom routes:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayVpc
 metadata:
   name: network-vpc

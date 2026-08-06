@@ -1,0 +1,231 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureApplicationGateway
+metadata:
+  name: test-agw
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-agw
+  subnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/agw
+  # Exercises the WAF_V2 SKU, the WAF-policy FK, and autoscale.
+  sku: WAF_V2
+  autoscale:
+    minCapacity: 2
+    maxCapacity: 10
+  zones: ["1", "2"]
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/agw-identity
+  firewallPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/test-waf
+  forceFirewallPolicyAssociation: true
+  frontendIpConfigurations:
+    - name: public
+      publicIpAddressId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/publicIPAddresses/agw-pip
+    # Exercises the private frontend with static allocation.
+    - name: internal
+      subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/agw
+      privateIpAddress: 10.0.2.10
+      privateIpAddressAllocation: STATIC
+  frontendPorts:
+    - name: http
+      port: 80
+    - name: https
+      port: 443
+    - name: amqps
+      port: 5671
+  backendAddressPools:
+    - name: web
+      ipAddresses:
+        - 10.0.1.4
+        - 10.0.1.5
+    - name: api
+      fqdns:
+        - api.internal.contoso.com
+  backendHttpSettings:
+    # Exercises affinity, draining, path prefix, probe wiring, and
+    # backend TLS trust.
+    - name: web-settings
+      port: 8080
+      protocol: HTTP
+      cookieBasedAffinityEnabled: true
+      affinityCookieName: AppGwAffinity
+      requestTimeout: 60
+      probeName: web-health
+      connectionDraining:
+        enabled: true
+        drainTimeoutSec: 60
+    - name: api-settings
+      port: 8443
+      protocol: HTTPS
+      pickHostNameFromBackendAddress: true
+      trustedRootCertificateNames:
+        - backend-ca
+      dedicatedBackendConnectionEnabled: true
+  httpListeners:
+    - name: http-listener
+      frontendIpConfigurationName: public
+      frontendPortName: http
+      protocol: HTTP
+    # Exercises HTTPS + SNI + host names + per-listener WAF + custom
+    # error pages + the mTLS profile.
+    - name: https-listener
+      frontendIpConfigurationName: public
+      frontendPortName: https
+      protocol: HTTPS
+      sslCertificateName: tls-cert
+      sslProfileName: mtls
+      requireSni: true
+      hostNames:
+        - www.contoso.com
+        - "*.contoso.com"
+      firewallPolicyId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/listener-waf
+      customErrorConfigurations:
+        - statusCode: HTTP_STATUS_502
+          customErrorPageUrl: https://errors.contoso.com/502.html
+  requestRoutingRules:
+    # Exercises the redirect arm.
+    - name: http-to-https
+      ruleType: BASIC_ROUTING
+      httpListenerName: http-listener
+      priority: 10
+      redirectConfigurationName: to-https
+    # Exercises path-based routing with rewrites.
+    - name: https-rule
+      ruleType: PATH_BASED_ROUTING
+      httpListenerName: https-listener
+      priority: 100
+      urlPathMapName: paths
+  urlPathMaps:
+    - name: paths
+      defaultBackendAddressPoolName: web
+      defaultBackendHttpSettingsName: web-settings
+      defaultRewriteRuleSetName: rewrites
+      pathRules:
+        - name: api
+          paths:
+            - /api/*
+          backendAddressPoolName: api
+          backendHttpSettingsName: api-settings
+          firewallPolicyId:
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/route-waf
+        - name: legacy-redirect
+          paths:
+            - /old/*
+          redirectConfigurationName: to-https
+  probes:
+    - name: web-health
+      protocol: HTTP
+      path: /healthz
+      pickHostNameFromBackendHttpSettings: true
+      interval: 30
+      timeout: 10
+      unhealthyThreshold: 3
+      minimumServers: 1
+      match:
+        statusCodes:
+          - "200-399"
+        body: ok
+    # Exercises the TCP probe arm.
+    - name: tcp-health
+      protocol: TCP
+      interval: 30
+      timeout: 10
+      unhealthyThreshold: 3
+      port: 5671
+      proxyProtocolHeaderEnabled: true
+  sslCertificates:
+    - name: tls-cert
+      keyVaultSecretId:
+        value: https://test-vault.vault.azure.net/secrets/tls-cert
+    # Exercises the inline PFX arm.
+    - name: inline-cert
+      data: bWljcm9zb2Z0LXBmeA==
+      password: changeit
+  trustedRootCertificates:
+    - name: backend-ca
+      data: YmFja2VuZC1jYQ==
+  trustedClientCertificates:
+    - name: client-ca
+      data: Y2xpZW50LWNh
+  sslProfiles:
+    - name: mtls
+      trustedClientCertificateNames:
+        - client-ca
+      verifyClientCertificateIssuerDn: true
+      verifyClientCertificateRevocation: OCSP
+      sslPolicy:
+        policyType: CUSTOM_V2
+        minProtocolVersion: TLS_V1_3
+        cipherSuites:
+          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+  sslPolicy:
+    policyType: PREDEFINED
+    policyName: AppGwSslPolicy20220101S
+  redirectConfigurations:
+    - name: to-https
+      redirectType: PERMANENT
+      targetListenerName: https-listener
+      includePath: true
+      includeQueryString: true
+  rewriteRuleSets:
+    - name: rewrites
+      rewriteRules:
+        - name: forward-host
+          ruleSequence: 100
+          conditions:
+            - variable: var_uri_path
+              pattern: ^/legacy/(.*)
+              ignoreCase: true
+          requestHeaderConfigurations:
+            - headerName: X-Forwarded-Host
+              headerValue: "{var_host}"
+          responseHeaderConfigurations:
+            - headerName: Server
+              headerValue: ""
+          url:
+            path: /{var_uri_path_1}
+            reroute: true
+  # Exercises the layer-4 trio.
+  listeners:
+    - name: amqps-listener
+      frontendIpConfigurationName: public
+      frontendPortName: amqps
+      protocol: TLS
+      sslCertificateName: inline-cert
+  backends:
+    - name: amqps-backend
+      port: 5671
+      protocol: TCP
+      clientIpPreservationEnabled: true
+      timeoutInSeconds: 120
+  routingRules:
+    - name: amqps-rule
+      listenerName: amqps-listener
+      backendAddressPoolName: web
+      backendSettingsName: amqps-backend
+      priority: 200
+  customErrorConfigurations:
+    - statusCode: HTTP_STATUS_403
+      customErrorPageUrl: https://errors.contoso.com/403.html
+  privateLinkConfigurations:
+    - name: pl
+      ipConfigurations:
+        - name: nat
+          subnetId:
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/agw
+          privateIpAddressAllocation: DYNAMIC
+          primary: true
+  http2Enabled: true
+  fipsEnabled: false
+  globalConfiguration:
+    requestBufferingEnabled: true
+    responseBufferingEnabled: false
+  tags:
+    team: platform

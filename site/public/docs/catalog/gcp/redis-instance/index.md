@@ -32,7 +32,7 @@ When you deploy a GcpRedisInstance resource, Planton provisions:
 Create a file `redis.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
   name: my-redis
@@ -103,7 +103,7 @@ This creates a standalone 1 GiB Redis instance in `us-central1` using the defaul
 A `STANDARD_HA` instance with Redis AUTH enabled for production workloads:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
   name: prod-cache
@@ -132,7 +132,7 @@ spec:
 A `STANDARD_HA` instance with read replicas and RDB snapshots for high-throughput, durable workloads:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
   name: analytics-redis
@@ -164,7 +164,7 @@ spec:
 A locked-down instance using Private Service Access, transit encryption, and customer-managed encryption keys:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
   name: secure-redis

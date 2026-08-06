@@ -1,0 +1,33 @@
+# AzurePublicIp install profile used as a fixture by scenarios that prove
+# address associations (declared via the planton.dev/e2e-prerequisites
+# annotation -- a NAT gateway's addresses are OPTIONAL references, so this
+# is never a registry prerequisite). The harness deploys this document (via
+# the address's Pulumi module) after the fixture resource group and captures
+# its outputs -- public_ip_id in particular -- for the associating
+# scenario's reference to resolve against. The address is a bare Standard
+# static IP: exactly what a NAT gateway association consumes.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePublicIp
+metadata:
+  name: planton-oss-e2e-azure-fixture-pip
+  id: planton-oss-e2e-azure-fixture-pip
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurepublicip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-pip
+  # Pinned to zone 1 to match the NAT gateway scenario's zonal gateway: ARM
+  # rejects associating a no-zone address with a zonal Standard NAT gateway
+  # (PublicIPOrPrefixAndStandardSkuNatGatewayZoneDoNotMatch).
+  zones:
+    - "1"

@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesdaemonset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/workload_container.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesDaemonSetSpec** deploys a node agent on a Kubernetes cluster as an
+ * apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's
+ * scheduling rules, and pods are added or garbage-collected as nodes join and leave.
+ * This is the kind for log shippers, node monitors, storage daemons, and CNI
+ * components. There is no replica count — node membership IS the replica count —
+ * and no Service or ingress: clients that must reach an agent do so on its node via
+ * per-container `host_port` or `pod.host_network`.
+ *
+ * Which nodes run the agent is controlled under `pod.scheduling`: `node_selector`
+ * and `node_affinity` narrow the node set, and `tolerations` unlock tainted nodes
+ * (e.g. control-plane nodes). Node-level access composes from the shared building
+ * blocks — `pod.host_network`/`pod.host_pid` for host namespaces, per-container
+ * `host_port` for node-IP exposure, and the container `security_context` for
+ * privileged operation. Identity and permissions are composed, not bundled:
+ * `pod.service_account` references a KubernetesServiceAccount, and API permissions
+ * come from KubernetesRbac grants targeting that identity.
+ */
+message KubernetesDaemonSetSpec {
+  /**
+   * The namespace to deploy into. Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource, so an infra chart creates the namespace and the
+   * workload in one run.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the module creates the namespace if it does not exist. Leave false when
+   * the namespace is owned by a KubernetesNamespace resource or pre-exists.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The containers of the per-node pod: one main agent container and any sidecars.
+   * DaemonSet containers commonly need HostPath volume mounts (node logs, the
+   * container runtime socket) and an elevated `security_context` — both are
+   * per-container settings on WorkloadContainer.
+   */
+  KubernetesDaemonSetContainer container = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Pod-level configuration shared by every node's pod: identity (ServiceAccount
+   * reference), init containers, scheduling (which nodes run the agent —
+   * node_selector, tolerations, affinity), host namespaces (host_network, host_pid),
+   * security hardening, DNS, and termination behavior. Host-network agents that
+   * resolve cluster services should also set `dns_policy: ClusterFirstWithHostNet`.
+   */
+  dev.planton.provider.kubernetes.WorkloadPod pod = 4;
+
+  /**
+   * How pods are replaced when the spec changes. Omit for the Kubernetes default:
+   * RollingUpdate, at most 1 node's pod unavailable at a time.
+   */
+  KubernetesDaemonSetUpdateStrategy update_strategy = 5;
+
+  /**
+   * Seconds a new pod must stay ready (no container crashes) before it counts as
+   * available during rollouts. A cheap flap detector — 10–30s catches a crashing
+   * agent build before the rollout replaces it on every node.
+   */
+  optional int32 min_ready_seconds = 6 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * How many old ControllerRevisions are retained for rollback. Kubernetes defaults
+   * to 10; 0 disables rollback entirely.
+   */
+  optional int32 revision_history_limit = 7 [(buf.validate.field).int32.gte = 0];
+}
+
+/**
+ * **KubernetesDaemonSetContainer** groups the main agent container and its sidecars,
+ * all of which run once per matching node.
+ */
+message KubernetesDaemonSetContainer {
+  /**
+   * The main agent container. Expose node-local endpoints (metrics, health) through
+   * each port's `host_port` — DaemonSets have no Service.
+   */
+  dev.planton.provider.kubernetes.WorkloadContainer app = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Sidecar containers running alongside the agent on every node. Sidecars are full
+   * containers: probes, mounts, security context, and lifecycle hooks all apply.
+   * Each sidecar must be named.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadContainer sidecars = 2 [(buf.validate.field).cel = {
+    id: "spec.container.sidecars.named"
+    message: "Every sidecar container must have a name"
+    expression: "this.all(c, c.name != '')"
+  }];
+}
+
+/**
+ * **KubernetesDaemonSetUpdateStrategy** controls how the per-node pods are replaced
+ * during updates.
+ */
+message KubernetesDaemonSetUpdateStrategy {
+  /**
+   * "RollingUpdate" (default) replaces pods node by node within the
+   * max_unavailable/max_surge bounds; "OnDelete" only recreates a pod (with the new
+   * template) when someone deletes it — full manual control per node, used when
+   * agent restarts must be coordinated with node maintenance.
+   */
+  string type = 1 [(buf.validate.field).cel = {
+    id: "spec.update_strategy.type"
+    message: "Update strategy type must be either \"RollingUpdate\" or \"OnDelete\""
+    expression: "this == '' || this in ['RollingUpdate', 'OnDelete']"
+  }];
+
+  /**
+   * Maximum nodes whose pod may be unavailable during a rolling update — absolute
+   * ("2") or percentage ("10%"). Kubernetes defaults to 1: one node's agent down at
+   * a time. Raise it to speed rollouts across large fleets when a brief per-node
+   * agent gap is acceptable. Ignored for OnDelete.
+   */
+  string max_unavailable = 2;
+
+  /**
+   * Maximum nodes that may run BOTH the old and new pod during a rolling update —
+   * absolute ("1") or percentage ("10%"). Kubernetes defaults to 0. Surging gives
+   * gapless updates for agents that must never miss data (log shippers), at the cost
+   * of doubled per-node resource usage during the update — and it requires the old
+   * and new pods to coexist, so it cannot be combined with exclusive host ports.
+   * Cannot be 0 when max_unavailable is 0. Ignored for OnDelete.
+   */
+  string max_surge = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.update_strategy.not_both_zero"
+    message: "max_unavailable and max_surge cannot both be 0 — the rollout would be unable to make progress"
+    expression: "!(this.max_unavailable in ['0', '0%'] && this.max_surge in ['0', '0%'])"
+  };
+}

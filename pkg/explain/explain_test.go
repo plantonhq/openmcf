@@ -41,7 +41,7 @@ func TestRootReport_AwsVpc(t *testing.T) {
 	if report.Kind != "AwsVpc" {
 		t.Errorf("kind = %q", report.Kind)
 	}
-	if report.ApiVersion != "aws.planton.dev/v1" {
+	if report.ApiVersion != "aws.planton.dev/v1alpha1" {
 		t.Errorf("apiVersion = %q", report.ApiVersion)
 	}
 	if !strings.Contains(report.Doc, "CIDR") {
@@ -325,8 +325,8 @@ func TestRenderRootView(t *testing.T) {
 	}
 	text := Render(report)
 	for _, want := range []string{
-		"KIND:", "AwsVpc", "VERSION:", "aws.planton.dev/v1",
-		"MANIFEST:", "apiVersion: aws.planton.dev/v1", // the envelope skeleton
+		"KIND:", "AwsVpc", "VERSION:", "aws.planton.dev/v1alpha1",
+		"MANIFEST:", "apiVersion: aws.planton.dev/v1alpha1", // the envelope skeleton
 		"SPEC:", "region <string> -required-", "OUTPUTS",
 	} {
 		if !strings.Contains(text, want) {

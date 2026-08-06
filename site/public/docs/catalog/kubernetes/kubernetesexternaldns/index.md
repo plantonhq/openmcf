@@ -34,7 +34,7 @@ Installs ExternalDNS — the controller that publishes DNS records for your Serv
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalDns
 metadata:
   name: external-dns

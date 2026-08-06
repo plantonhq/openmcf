@@ -27,7 +27,7 @@ When you deploy an OpenStackSecurityGroupRule resource, Planton provisions:
 Create a file `security-group-rule.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-ssh-ingress
@@ -83,7 +83,7 @@ This creates an ingress rule allowing SSH (TCP port 22) from any IPv4 address on
 A single ingress rule permitting SSH access from all IPv4 addresses:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-ssh
@@ -108,7 +108,7 @@ spec:
 An ingress rule opening the standard web ports from a private subnet, demonstrating a port range:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-https-from-private
@@ -133,7 +133,7 @@ spec:
 A rule that allows all TCP traffic from instances in one security group to instances in another, using `valueFrom` references to Planton-managed security groups. This is the primary use case for standalone rules over inline rules:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: app-to-db-tcp
@@ -166,7 +166,7 @@ spec:
 An egress rule allowing all outbound IPv4 traffic from a security group, with no protocol or port restrictions:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroupRule
 metadata:
   name: allow-all-egress

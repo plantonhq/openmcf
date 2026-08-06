@@ -1,0 +1,52 @@
+# Metric-math AwsCloudwatchAlarm scenario: the error-rate pattern (5xx /
+# requests * 100) over placeholder ALB dimensions. Exercises the deepest
+# spec arm — three queries with exactly one return_data, M-of-N evaluation,
+# notBreaching missing-data handling, and an explicit actions_enabled: false
+# (the presence-aware tri-state; the alarm evaluates but never acts, so the
+# lane is side-effect free). INSUFFICIENT_DATA against placeholder
+# dimensions is a valid resting state — the lane verifies the alarm object,
+# not live traffic.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchAlarm
+metadata:
+  name: planton-oss-e2e-awscloudwatchalarm-mq
+  id: planton-oss-e2e-awscloudwatchalarm-mq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchalarm
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  comparisonOperator: GreaterThanThreshold
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  threshold: 5.0
+  treatMissingData: notBreaching
+  actionsEnabled: false
+  alarmDescription: "Planton E2E: error rate above 5% (placeholder dimensions; actions disabled)"
+  metricQueries:
+    - id: errors
+      metric:
+        metricName: HTTPCode_Target_5XX_Count
+        namespace: AWS/ApplicationELB
+        period: 60
+        stat: Sum
+        dimensions:
+          LoadBalancer: app/planton-e2e-placeholder/0000000000000000
+    - id: requests
+      metric:
+        metricName: RequestCount
+        namespace: AWS/ApplicationELB
+        period: 60
+        stat: Sum
+        dimensions:
+          LoadBalancer: app/planton-e2e-placeholder/0000000000000000
+    - id: error_rate
+      expression: "errors/requests*100"
+      label: "Error Rate %"
+      returnData: true

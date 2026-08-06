@@ -1,0 +1,36 @@
+# Install fixture consumed by kinds that declare AwsBatchComputeEnvironment
+# as a prerequisite (job queues). Deliberately minimal: a Fargate environment
+# on the shared subnet + security-group fixtures -- Fargate reaches VALID in
+# seconds and launches zero instances until jobs run, so consumers pay the
+# minimum fixture cost. The component's own richer lane lives in
+# scenarios/fargate-full.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBatchComputeEnvironment
+metadata:
+  name: planton-oss-e2e-awsbat-prereq
+  id: planton-oss-e2e-awsbat-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbatchcomputeenvironment
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  computeResources:
+    type: FARGATE
+    maxVcpus: 8
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: planton-oss-e2e-awssg-prereq
+          fieldPath: status.outputs.security_group_id

@@ -8,7 +8,7 @@
 # remains available but is NOT the default — one entry point, one mental
 # model. The sibling gateway.yaml arm replaces this entirely when
 # use_gateway_api is true.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngressNginx
 metadata:
   name: "{{ values.env }}-ingress-nginx"

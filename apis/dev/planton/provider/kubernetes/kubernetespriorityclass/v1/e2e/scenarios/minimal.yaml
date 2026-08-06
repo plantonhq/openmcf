@@ -1,9 +1,0 @@
-# The smallest useful class: name + value. Preemption defaults to
-# PreemptLowerPriority (sent explicitly by both engines).
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPriorityClass
-metadata:
-  name: e2e-pc-minimal
-spec:
-  name: e2e-pc-minimal
-  value: 1000

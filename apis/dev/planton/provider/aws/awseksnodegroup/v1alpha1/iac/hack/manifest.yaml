@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEksNodeGroup
+metadata:
+  name: awseksnodegroup-demo
+spec:
+  region: us-west-2
+  clusterName:
+    value: awsekscluster-demo
+  nodeRoleArn:
+    value: arn:aws:iam::123456789012:role/EksNodeRole
+  subnetIds:
+    - value: subnet-0123456789abcdef0
+    - value: subnet-0123456789abcdef1
+  instanceTypes:
+    - t3.medium
+  amiType: AL2023_x86_64_STANDARD
+  scaling:
+    minSize: 1
+    maxSize: 3
+    desiredSize: 2
+  diskSizeGb: 100
+  labels:
+    pool: demo
+  updateConfig:
+    maxUnavailable: 1
+    updateStrategy: MINIMAL

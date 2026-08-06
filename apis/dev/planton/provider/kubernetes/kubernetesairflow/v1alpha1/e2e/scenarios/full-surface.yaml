@@ -1,0 +1,65 @@
+# The widest honest surface on a kind cluster: CeleryExecutor with the
+# bundled Redis broker (module-generated password + broker-url
+# Secrets), PgBouncer pooling (module-composed pgbouncer.ini/users.txt
+# — Airflow dials the pooler aliases), git-sync syncing a small public
+# repository (the sidecar path proven live — the repo carries no DAG
+# files, so the DAG list stays clean while the sync container must
+# reach Ready), two API servers sharing the module-generated session
+# keys, KEDA deliberately OFF (no KEDA operator on this lane — the
+# KubernetesKeda composition is the chart's own ScaledObject surface),
+# and StatsD metrics on. The verifier proves the Celery path end to
+# end: THE DAG PROOF's tasks dispatch through the broker to the worker
+# StatefulSet.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesAirflow
+metadata:
+  name: e2e-aflw-full
+spec:
+  namespace:
+    value: e2e-airflow
+  executor: CeleryExecutor
+  database:
+    postgres:
+      host:
+        valueFrom:
+          name: e2e-aflw-pg
+      password_secret:
+        secret_name:
+          valueFrom:
+            name: e2e-aflw-pg
+  broker:
+    bundled_redis:
+      persistence_size: 1Gi
+  dags:
+    git_sync:
+      # A small public repository (the ArgoCd guestbook precedent) —
+      # proves the git-sync sidecar clones and stays healthy; it
+      # carries no *.py, so the example DAGs below remain the lane's
+      # proof material.
+      repo: https://github.com/stefanprodan/podinfo.git
+      ref: master
+      sub_path: charts
+      period_seconds: 60
+  load_examples: true
+  components:
+    api_server:
+      replicas: 2
+    scheduler:
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    triggerer:
+      persistence_size: 1Gi
+    workers:
+      persistence_size: 1Gi
+  pgbouncer:
+    enabled: true
+    metadata_pool_size: 15
+  statsd_enabled: true
+  admin_user:
+    username: e2e-admin
+    email: e2e@example.com
+  helm_values: |
+    workers:
+      terminationGracePeriodSeconds: 60

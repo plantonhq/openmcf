@@ -27,7 +27,7 @@ When you deploy an AzureMonitorDiagnosticSetting resource, Planton provisions:
 Create a file `diagnostics.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorDiagnosticSetting
 metadata:
   name: vault-diagnostics

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1alpha1;
+
+/**
+ * Outputs exported after deploying the runner scale set.
+ */
+message KubernetesGhaRunnerScaleSetStackOutputs {
+  /**
+   * Namespace the scale set (listener + runner pods) runs in.
+   */
+  string namespace = 1;
+
+  /**
+   * Helm release name (equals metadata.name).
+   */
+  string release_name = 2;
+
+  /**
+   * Name the fleet registered under in GitHub — the exact value
+   * workflows put in `runs-on:` to target this fleet.
+   */
+  string runner_scale_set_name = 3;
+
+  /**
+   * The GitHub URL the fleet serves (repository, organization or
+   * enterprise).
+   */
+  string github_config_url = 4;
+}

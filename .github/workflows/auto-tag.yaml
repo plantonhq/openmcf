@@ -150,8 +150,8 @@ jobs:
             PULUMI_DIRS=$(find apis/dev/planton/provider -type d -name "pulumi" -path "*/iac/pulumi" 2>/dev/null | sort)
           else
             PULUMI_DIRS=$(echo "$CHANGED_FILES" | \
-              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+/iac/pulumi/' | \
-              sed 's|\(apis/dev/planton/provider/[^/]*/[^/]*/v[0-9]*/iac/pulumi\)/.*|\1|' | \
+              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi/' | \
+              sed -E 's|(apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi)/.*|\1|' | \
               sort -u)
           fi
 
@@ -160,8 +160,8 @@ jobs:
             TERRAFORM_DIRS=$(find apis/dev/planton/provider -type d -name "tf" -path "*/iac/tf" 2>/dev/null | sort)
           else
             TERRAFORM_DIRS=$(echo "$CHANGED_FILES" | \
-              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+/iac/tf/' | \
-              sed 's|\(apis/dev/planton/provider/[^/]*/[^/]*/v[0-9]*/iac/tf\)/.*|\1|' | \
+              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf/' | \
+              sed -E 's|(apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf)/.*|\1|' | \
               sort -u)
           fi
 

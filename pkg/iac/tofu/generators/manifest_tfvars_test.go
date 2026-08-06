@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	peerauthv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1"
-	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
+	peerauthv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1alpha1"
+	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
@@ -18,7 +18,7 @@ import (
 // (selector.match_labels -> selector.matchLabels), and an enum-like string.
 func newPeerAuthManifest() *peerauthv1.KubernetesPeerAuthentication {
 	return &peerauthv1.KubernetesPeerAuthentication{
-		ApiVersion: "kubernetes.planton.dev/v1",
+		ApiVersion: "kubernetes.planton.dev/v1alpha1",
 		Kind:       "KubernetesPeerAuthentication",
 		Metadata:   &shared.CloudResourceMetadata{Name: "pa-one"},
 		Spec: &peerauthv1.KubernetesPeerAuthenticationSpec{
@@ -85,12 +85,12 @@ func TestRenderTFVars_DispatchesByKind(t *testing.T) {
 
 	// Provider-abstraction kind -> snake_case path (the converter must not be
 	// flipped globally; only annotated kinds switch).
-	valkey := &kubernetesvalkeyv1.KubernetesValkey{
-		ApiVersion: "kubernetes.planton.dev/v1",
+	valkey := &kubernetesvalkeyv1alpha1.KubernetesValkey{
+		ApiVersion: "kubernetes.planton.dev/v1alpha1",
 		Kind:       "KubernetesValkey",
 		Metadata:   &shared.CloudResourceMetadata{Name: "vlk-one"},
-		Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-			Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+		Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+			Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 				MaxMemory:  "256mb",
 				AppendOnly: true,
 			},

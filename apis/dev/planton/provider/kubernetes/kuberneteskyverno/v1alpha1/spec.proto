@@ -1,0 +1,557 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskyverno.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKyvernoSpec** installs Kyverno — the Kubernetes-native
+ * policy engine — from the official `kyverno` chart
+ * (https://kyverno.github.io/kyverno, chart 3.x = Kyverno 1.18+).
+ *
+ * Kyverno validates, mutates, generates, and cleans up resources with
+ * policies written as Kubernetes resources (no new language). This
+ * component installs the ENGINE: four controllers (admission,
+ * background, cleanup, reports) plus the policy CRDs. Policies
+ * themselves (ClusterPolicy / Policy and the policies.kyverno.io v1
+ * families) are declared separately — apply them with
+ * KubernetesManifest resources or GitOps once the engine is running.
+ *
+ * WEBHOOK LIFECYCLE — the fact everything else follows from: the
+ * chart templates NO webhook configurations. The admission controller
+ * REGISTERS its ValidatingWebhookConfigurations /
+ * MutatingWebhookConfigurations at runtime (and keeps them updated per
+ * installed policies — the autoUpdateWebhooks feature). Uninstall
+ * runs the chart's pre-delete cleanup hook AND a module-owned
+ * post-release cleanup (the chart's delete-webhooks helper at the
+ * pinned Kyverno release deletes the wrong API — ValidatingAdmissionPolicies
+ * instead of ValidatingWebhookConfigurations — so validating configs
+ * would otherwise survive helm uninstall). If a release is force-deleted
+ * without either path, webhook configurations named `kyverno-*` can
+ * strand and must be deleted by hand
+ * (`kubectl delete validatingwebhookconfiguration,mutatingwebhookconfiguration -l webhook.kyverno.io/managed-by=kyverno`).
+ * Kyverno's own resource webhooks default to failurePolicy=Fail per
+ * policy rule, so a stranded webhook with no backing service can block
+ * admission for the resources it matches.
+ *
+ * ONE KYVERNO PER CLUSTER: webhook registration and the policy CRDs
+ * are cluster-global. The conventional namespace is `kyverno`.
+ */
+message KubernetesKyvernoSpec {
+  /**
+   * Namespace to install into (conventionally "kyverno"). Accepts a
+   * literal namespace name or a reference to a KubernetesNamespace
+   * resource. The webhooks the engine registers EXCLUDE this
+   * namespace by default (config.exclude_kyverno_namespace) so a
+   * misbehaving policy cannot lock Kyverno itself out.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "3.8.2" = Kyverno v1.18.2 —
+   * the chart's appVersion pins every controller image). Versions
+   * must exist in the SERVED index at
+   * https://kyverno.github.io/kyverno.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "3.8.2"];
+
+  /**
+   * Policy CRD lifecycle (the chart's `crds` subchart — ~23 CRDs
+   * across kyverno.io, policies.kyverno.io, reports.kyverno.io and
+   * wgpolicyk8s.io).
+   */
+  KubernetesKyvernoCrds crds = 4;
+
+  /**
+   * The engine's runtime ConfigMap: which resources and principals
+   * the engine SKIPS, and how the webhooks select namespaces.
+   */
+  KubernetesKyvernoConfig config = 5;
+
+  /**
+   * Engine feature flags shared by all controllers.
+   */
+  KubernetesKyvernoFeatures features = 6;
+
+  /**
+   * The admission controller — the webhook server that validates and
+   * mutates resources at admission time. Always installed.
+   */
+  KubernetesKyvernoAdmissionController admission_controller = 7;
+
+  /**
+   * The background controller — applies mutate-existing and generate
+   * rules outside the admission path. Omit for the chart default
+   * (enabled, 1 replica).
+   */
+  KubernetesKyvernoOptionalController background_controller = 8;
+
+  /**
+   * The cleanup controller — reconciles CleanupPolicy resources
+   * (scheduled deletion of matching resources). Runs its own webhook
+   * for cleanup-policy validation. Omit for the chart default
+   * (enabled, 1 replica).
+   */
+  KubernetesKyvernoOptionalController cleanup_controller = 9;
+
+  /**
+   * The reports controller — aggregates policy reports
+   * (wgpolicyk8s.io PolicyReports). Omit for the chart default
+   * (enabled, 1 replica). Disable to shed report load on very large
+   * clusters that use an external report store instead.
+   */
+  KubernetesKyvernoOptionalController reports_controller = 10;
+
+  /**
+   * TLS certificates for the webhook servers.
+   * Omit for the DEFAULT: Kyverno generates and ROTATES its own CA
+   * and serving certificates at runtime (Secrets named
+   * `<service>.<namespace>.svc.*` in the install namespace) — zero
+   * prerequisites. Declare the cert-manager arm to delegate issuance
+   * to cert-manager instead.
+   */
+  KubernetesKyvernoCertificates certificates = 11;
+
+  /**
+   * Prometheus metrics collection. Setting `service_monitor` creates
+   * a ServiceMonitor for EVERY enabled controller (all four expose
+   * the toggle) — requires the Prometheus operator CRDs on the
+   * cluster (KubernetesKubePrometheusStack).
+   */
+  KubernetesKyvernoMetrics metrics = 12;
+
+  /**
+   * Registry that serves ALL Kyverno images (air-gap / mirror path):
+   * sets the chart's `global.image.registry`, overriding the
+   * per-image registry (ghcr.io) across every controller and hook
+   * container. Repository paths and tags stay chart-managed.
+   */
+  string image_registry = 13;
+
+  /**
+   * Names of image-pull secrets (in the install namespace) for
+   * pulling Kyverno images from a private mirror. Applied to all
+   * controllers and hook jobs (the chart's global list).
+   */
+  repeated string image_pull_secrets = 14 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes imagePullSecrets (references), not secret material"];
+
+  /**
+   * Run the chart's pre-delete hook that scales controllers to zero
+   * and attempts to remove the runtime-registered webhook
+   * configurations at uninstall. Empty = true (the chart default) —
+   * LEAVE IT ON. The module also deletes `kyverno-*` webhook
+   * configurations by label after the release is gone (the chart
+   * helper alone is not sufficient at the pinned release); turning
+   * this off skips only the chart's scale-to-zero step and is almost
+   * never what you want. Force-deleted releases still need the manual
+   * unstick on the kind's top-level comment.
+   */
+  optional bool webhooks_cleanup_enabled = 15 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f`
+   * semantics, identical on both engines). For the chart surface
+   * beyond the typed fields (per-controller probes, tracing, PDBs,
+   * the grafana dashboard subchart, reports-server, ...) — never the
+   * substitute for them. Do not put secrets here.
+   */
+  string helm_values = 16;
+}
+
+/**
+ * Policy CRD lifecycle. The CRDs are TEMPLATED by the chart's `crds`
+ * subchart and carry the release's Helm ownership metadata — they
+ * install and DELETE with the release by default.
+ */
+message KubernetesKyvernoCrds {
+  /**
+   * Install the policy CRDs with the release. Empty = true (the
+   * chart default). Set false only when another install on the
+   * cluster already owns them (kept CRDs carry the owning release's
+   * Helm metadata — a second release must NOT also install them).
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs on uninstall (adds the `helm.sh/resource-policy:
+   * keep` annotation). Empty = false (the chart default): destroy
+   * deletes the CRDs, which CASCADE-DELETES every ClusterPolicy,
+   * Policy, PolicyException and policy report on the cluster. Set
+   * true when policies must survive an engine reinstall — but note
+   * the kept CRDs still carry this release's ownership metadata (a
+   * later install must set `install: false`).
+   */
+  bool keep_on_uninstall = 2;
+
+  /**
+   * Run the chart's post-upgrade CRD migration hook (a kyverno-cli
+   * Job that migrates stored resources to the current schema).
+   * Empty = true (the chart default). The hook image is pulled from
+   * reg.kyverno.io by default — air-gap installs must mirror it or
+   * route it via `image_registry`.
+   */
+  optional bool migration_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * The engine's runtime ConfigMap — what the engine skips and how the
+ * webhooks match. The chart ships a long default filter list that
+ * excludes kube-system/kube-public/kube-node-lease, control-plane
+ * resource types, and Kyverno's own resources; the include/exclude
+ * fields below EDIT that default list instead of replacing it.
+ */
+message KubernetesKyvernoConfig {
+  /**
+   * Namespaces to add to the webhooks' exclusion selector (the
+   * engine's webhooks then never see those namespaces' resources).
+   * The chart default already excludes kube-system and the Kyverno
+   * namespace itself. Excluding a namespace here is stronger than a
+   * resourceFilter: matching requests never reach the engine at all.
+   */
+  repeated string webhook_exclude_namespaces = 1 [(buf.validate.field).repeated.items.string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"];
+
+  /**
+   * Extra resource-filter entries APPENDED to the chart's default
+   * skip list. Each entry is Kyverno's `[Kind,namespace,name]`
+   * triple form, e.g. "[Secret,ci-*,*]" (wildcards allowed). Filtered
+   * resources are invisible to policies in both admission and
+   * background scans.
+   */
+  repeated string resource_filters_include = 2;
+
+  /**
+   * Entries REMOVED from the chart's default resource-filter list —
+   * use to make the engine see something the default skips, e.g. the
+   * kube-system wildcard entry (kind "any/any", namespace
+   * kube-system) to police kube-system. Understand the blast radius
+   * first: control-plane pods that fail policy stop admitting. Each
+   * entry must match a default-list entry byte-for-byte.
+   */
+  repeated string resource_filters_exclude = 3;
+
+  /**
+   * Principal groups the engine ignores entirely. Empty = the chart
+   * default ["system:nodes"]. Declaring the field REPLACES the
+   * default — include "system:nodes" unless kubelet-initiated
+   * requests must be policed.
+   */
+  repeated string exclude_groups = 4;
+
+  /**
+   * Usernames the engine ignores (e.g. a CI service account that
+   * applies platform manifests policies must not block). Prefix with
+   * `!` to negate. Empty = none (the chart default).
+   */
+  repeated string exclude_usernames = 5;
+
+  /**
+   * Registry hostname the engine's image mutation rewrites bare image
+   * references to. Empty = "docker.io" (the chart default). Only
+   * meaningful with `enable_default_registry_mutation`.
+   */
+  string default_registry = 6;
+
+  /**
+   * Mutate bare container image references to carry the
+   * `default_registry` hostname. Empty = true (the chart default).
+   */
+  optional bool enable_default_registry_mutation = 7 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * Engine feature flags (the chart's `features` block). Each controller
+ * consumes the subset relevant to it.
+ */
+message KubernetesKyvernoFeatures {
+  /**
+   * Force EVERY policy's failure policy to Ignore, regardless of what
+   * the policy declares. The cluster-wide safety valve: admission
+   * never blocks on a Kyverno outage, at the cost of enforcement
+   * gaps during one. Empty = false (the chart default — policies
+   * decide their own failure policy, which defaults to Fail).
+   */
+  bool force_failure_policy_ignore = 1;
+
+  /**
+   * Background scanning — re-evaluates existing resources against
+   * policies on an interval (report-only; enforcement happens at
+   * admission). Omit for the chart default (enabled, 2 workers, 1h
+   * interval).
+   */
+  KubernetesKyvernoBackgroundScan background_scan = 2;
+
+  /**
+   * Generate Kubernetes-native ValidatingAdmissionPolicy objects from
+   * Kyverno policies that declare it (offloads validation to the API
+   * server itself — no webhook round-trip). Empty = true (the chart
+   * default).
+   */
+  optional bool generate_validating_admission_policy = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Produce PolicyReport results for admission requests. Empty =
+   * true (the chart default).
+   */
+  optional bool admission_reports = 4 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Aggregate ephemeral reports into the wgpolicyk8s.io
+   * PolicyReport / ClusterPolicyReport resources. Empty = true (the
+   * chart default).
+   */
+  optional bool aggregate_reports = 5 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Produce PolicyReport resources at all. Empty = true (the chart
+   * default). Disabling stops report generation engine-wide.
+   */
+  optional bool policy_reports = 6 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Logging format. Empty = "text" (the chart default).
+   */
+  optional string logging_format = 7 [(buf.validate.field).string = {
+    in: [
+      "",
+      "text",
+      "json"
+    ]
+  }];
+
+  /**
+   * Logging verbosity (0 = quietest). Empty = 2 (the chart default).
+   */
+  optional int32 logging_verbosity = 8 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 10
+  ];
+
+  /**
+   * Event types the engine does NOT emit as Kubernetes Events. Empty
+   * = the chart default ["PolicyApplied","PolicySkipped"] (emitting
+   * those two floods etcd on busy clusters). Declaring the field
+   * REPLACES the default. Valid values: PolicyViolation,
+   * PolicyApplied, PolicyError, PolicySkipped.
+   */
+  repeated string omit_event_types = 9 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "PolicyViolation",
+      "PolicyApplied",
+      "PolicyError",
+      "PolicySkipped"
+    ]
+  }];
+}
+
+/**
+ * Background scan tuning.
+ */
+message KubernetesKyvernoBackgroundScan {
+  /**
+   * Enable background scanning. Empty = true (the chart default).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Concurrent scan workers. Empty = 2 (the chart default).
+   */
+  optional int32 workers = 2 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Scan interval as a Go duration (e.g. "1h", "30m"). Empty = "1h"
+   * (the chart default). Shorter intervals surface drift faster and
+   * cost proportionally more API load.
+   */
+  string interval = 3 [(buf.validate.field).string.pattern = "^$|^([0-9]+(h|m|s))+$"];
+}
+
+/**
+ * The admission controller — the engine's webhook server.
+ */
+message KubernetesKyvernoAdmissionController {
+  /**
+   * Number of replicas. Empty = 1 (the chart default; the chart
+   * REJECTS 0). Run 3 in production — admission sits on the cluster's
+   * write path, and Kyverno requires ≥2 replicas only when
+   * high-availability matters to you, not functionally.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the controller container. Empty = the chart
+   * defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * Scheduling for the controller pods (node selector +
+   * tolerations; affinity and spread ride `helm_values`).
+   */
+  KubernetesKyvernoScheduling scheduling = 3;
+
+  /**
+   * Horizontal pod autoscaling for the admission controller.
+   * Mutually exclusive with fixing `replicas` above — when declared,
+   * the HPA owns the replica count.
+   */
+  KubernetesKyvernoHpa autoscaling = 4;
+}
+
+/**
+ * HPA settings for the admission controller.
+ */
+message KubernetesKyvernoHpa {
+  /**
+   * Minimum replicas. Empty = 1 (the chart default).
+   */
+  optional int32 min_replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Maximum replicas.
+   */
+  int32 max_replicas = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Target CPU utilization percentage. Empty = 80 (the chart
+   * default).
+   */
+  optional int32 target_cpu_utilization_percentage = 3 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 100
+  ];
+}
+
+/**
+ * A non-admission controller (background / cleanup / reports): can be
+ * disabled entirely, sized, and scheduled.
+ */
+message KubernetesKyvernoOptionalController {
+  /**
+   * Install this controller. Empty = true (the chart default).
+   * Disabling removes the capability it serves: background =
+   * mutate-existing/generate rules, cleanup = CleanupPolicy
+   * reconciliation, reports = PolicyReport aggregation.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Number of replicas. Empty = 1 (the chart default; the chart
+   * rejects 0 — disable with `enabled: false` instead).
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the controller container. Empty = the chart
+   * defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * Scheduling for the controller pods (node selector +
+   * tolerations; affinity and spread ride `helm_values`).
+   */
+  KubernetesKyvernoScheduling scheduling = 4;
+}
+
+/**
+ * Pod scheduling constraints.
+ */
+message KubernetesKyvernoScheduling {
+  /**
+   * Node selector for the controller pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the controller pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/**
+ * Webhook TLS certificate management. Omit the whole block for the
+ * default: Kyverno-managed runtime certificates with automatic
+ * rotation (no prerequisites, nothing rendered into values).
+ */
+message KubernetesKyvernoCertificates {
+  /**
+   * Delegate certificate issuance to cert-manager: the chart renders
+   * Certificate resources for the admission and cleanup webhook
+   * servers. Requires cert-manager on the cluster
+   * (KubernetesCertManager) BEFORE this install.
+   */
+  KubernetesKyvernoCertManagerCertificates cert_manager = 1;
+}
+
+/**
+ * cert-manager-issued webhook certificates.
+ */
+message KubernetesKyvernoCertManagerCertificates {
+  /**
+   * Use an existing issuer instead of the self-signed ClusterIssuer
+   * the chart creates by default. Accepts a literal issuer name or a
+   * reference to a KubernetesClusterIssuer resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef issuer_name = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClusterIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Kind of the issuer referenced by `issuer_name`. Empty =
+   * "ClusterIssuer". Only meaningful when `issuer_name` is set.
+   */
+  optional string issuer_kind = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "ClusterIssuer",
+      "Issuer"
+    ]
+  }];
+}
+
+/**
+ * Prometheus metrics.
+ */
+message KubernetesKyvernoMetrics {
+  /**
+   * Create ServiceMonitor resources for every enabled controller
+   * (admission, background, cleanup, reports — each exposes its own
+   * metrics service). Requires the monitoring.coreos.com CRDs
+   * (KubernetesKubePrometheusStack) on the cluster.
+   */
+  bool service_monitor = 1;
+}

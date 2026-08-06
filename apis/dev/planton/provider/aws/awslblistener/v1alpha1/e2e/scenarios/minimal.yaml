@@ -1,0 +1,39 @@
+# Minimal AwsLbListener scenario: an HTTP listener on the AwsAlb prerequisite
+# whose default action forwards to the AwsLbTargetGroup prerequisite -- the
+# reference inside the forward action's nested target-group list resolves
+# against the deployed prerequisite, proving composed nested references end
+# to end. HTTP on purpose: an HTTPS listener needs an ACM certificate, and
+# issuance requires domain validation the test account cannot complete. Full
+# metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLbListener
+metadata:
+  name: planton-oss-e2e-lbl-smoke
+  id: planton-oss-e2e-lbl-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awslblistener
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: planton-oss-e2e-awsalb-prereq
+      fieldPath: status.outputs.load_balancer_arn
+  port: 80
+  protocol: HTTP
+  defaultActions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: planton-oss-e2e-lbtg-prereq
+                fieldPath: status.outputs.target_group_arn

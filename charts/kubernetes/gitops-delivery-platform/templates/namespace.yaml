@@ -11,7 +11,7 @@
 # a one-per-namespace product (its generated admin Secret has an
 # application-fixed name) — one namespace holds exactly one delivery
 # platform, and a second platform takes a second namespace.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-gitops-ns"

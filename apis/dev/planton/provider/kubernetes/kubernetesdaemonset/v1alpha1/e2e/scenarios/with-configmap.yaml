@@ -1,0 +1,34 @@
+# Composed configuration: the ConfigMap is a first-class KubernetesConfigMap
+# fixture (declared via the e2e-prerequisites annotation) and the agent
+# mounts it by name — configuration composes across kinds instead of being
+# inlined into the workload spec.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDaemonSet
+metadata:
+  name: e2e-ds-configmap
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesConfigMap"
+spec:
+  namespace:
+    value: default
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
+      command:
+        - /bin/sh
+        - -c
+        - sleep 3600
+      volume_mounts:
+        - name: app-config
+          mount_path: /etc/app-config
+          config_map:
+            name: e2e-cfg-minimal

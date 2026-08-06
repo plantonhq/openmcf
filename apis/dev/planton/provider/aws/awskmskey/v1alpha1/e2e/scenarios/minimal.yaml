@@ -1,0 +1,23 @@
+# Minimal AwsKmsKey scenario: one SYMMETRIC_DEFAULT encrypt/decrypt key
+# with a single friendly alias -- the shape every encryption-at-rest field
+# across the catalog references. Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKmsKey
+metadata:
+  name: planton-oss-e2e-kms-smoke
+  id: planton-oss-e2e-kms-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E minimal symmetric KMS key
+  aliases:
+    - alias/planton-oss-e2e-kms-smoke

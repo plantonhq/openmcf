@@ -6,7 +6,7 @@
 # configure here, nothing to weaken. The in-image tpch/tpcds sample
 # catalogs stay on (the component default), so SQL works on the first
 # login before any pipeline has landed data.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTrino
 metadata:
   name: "{{ values.env }}-trino"

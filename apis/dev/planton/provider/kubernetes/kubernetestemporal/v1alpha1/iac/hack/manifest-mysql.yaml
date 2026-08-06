@@ -1,0 +1,27 @@
+# The MySQL arm: a KubernetesMysql-composable default store (literal
+# values here — the offline proof for the mysql8 plugin rendering),
+# with schema setup skipped and databases created by the job — the
+# create/skip toggle combinations.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTemporal
+metadata:
+  name: temporal-mysql
+spec:
+  namespace:
+    value: temporal-mysql
+  createNamespace: true
+  database:
+    mysql:
+      host:
+        value: temporal-mysql-primary
+      username: root
+      passwordSecret:
+        secretName:
+          value: temporal-mysql-secrets
+        secretKey: root
+    databaseName: temporal
+    visibilityDatabaseName: temporal_visibility
+    createDatabases: true
+  adminToolsEnabled: false
+  webUi:
+    enabled: false

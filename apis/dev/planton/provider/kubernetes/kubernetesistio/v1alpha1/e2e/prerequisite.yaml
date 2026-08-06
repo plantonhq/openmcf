@@ -1,0 +1,18 @@
+# Install manifest used when OTHER components declare KubernetesIstio as an
+# E2E prerequisite (the behavioral-routing and behavioral-deny scenarios that
+# need a REAL mesh: istiod is the catalog's first in-catalog Gateway API
+# implementation). Sidecar mode; auto-provisioned Gateway API gateways get
+# ClusterIP services (kind has no cloud LB controller — with the default
+# LoadBalancer type the Gateway's Programmed condition could never honestly
+# assert; the request proof runs over a port-forward).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIstio
+metadata:
+  name: e2e-istio-prereq
+spec:
+  namespace:
+    value: istio-system
+  create_namespace: true
+  dataplane_mode: sidecar
+  gateway_defaults:
+    service_type: ClusterIP

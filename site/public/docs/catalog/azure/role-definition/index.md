@@ -29,7 +29,7 @@ Role definitions carry no Azure tags -- the `Microsoft.Authorization` resource t
 Create a file `roledefinition.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: vm-operator
@@ -84,7 +84,7 @@ This creates a subscription-scoped custom role that any `AzureRoleAssignment` ca
 "Contributor, except changing RBAC" -- the classic wildcard-minus-carve-out:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: project-admin
@@ -111,7 +111,7 @@ spec:
 Control-plane actions manage resources; data-plane actions read the data inside them. A role that reads blob contents needs `dataActions`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: blob-auditor
@@ -137,7 +137,7 @@ spec:
 Scope the definition to a deployed resource group by reference -- the default kind resolves it to the group's ARM ID:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: env-operator

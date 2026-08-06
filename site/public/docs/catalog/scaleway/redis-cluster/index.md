@@ -31,7 +31,7 @@ ACL rules and Private Network are mutually exclusive. Scaleway does not support 
 Create a file `redis-cluster.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRedisCluster
 metadata:
   name: my-cache
@@ -87,7 +87,7 @@ This creates a single-node Redis 7.2.5 cluster with a public endpoint accessible
 A minimal standalone Redis cluster for development and testing:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRedisCluster
 metadata:
   name: dev-cache
@@ -112,7 +112,7 @@ spec:
 A high-availability Redis cluster with TLS encryption, network ACL rules, and tuned settings for a production session store:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRedisCluster
 metadata:
   name: prod-sessions
@@ -146,7 +146,7 @@ spec:
 A three-node sharded Redis cluster attached to an Planton-managed Private Network for high-throughput workloads:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayRedisCluster
 metadata:
   name: analytics-cache

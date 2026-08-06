@@ -33,7 +33,7 @@ When you deploy an AzureRedisLinkedServer resource, Planton provisions:
 Create a file `geo-link.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisLinkedServer
 metadata:
   name: app-cache-geo-link

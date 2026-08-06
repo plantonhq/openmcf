@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudFront
+metadata:
+  name: awscloudfront-demo
+spec:
+  region: us-east-1
+  comment: Demo distribution on the default CloudFront certificate
+  origins:
+    - originId: s3-assets
+      domainName: demo-assets.s3.us-east-1.amazonaws.com
+      s3Origin:
+        createOriginAccessControl: true
+  defaultCacheBehavior:
+    targetOriginId: s3-assets
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized: the AWS managed cache policy for static
+    # content (respects origin cache headers, compresses the cache key).
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  defaultRootObject: index.html

@@ -47,7 +47,7 @@ atomic).
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUi
 metadata:
   name: kafka-console

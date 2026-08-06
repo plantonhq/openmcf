@@ -1,0 +1,53 @@
+# Minimal AzureMssqlServer scenario: a SQL-auth logical server in the
+# fixture resource group.
+#
+# The resource-group reference resolves against the registry
+# prerequisite's captured outputs through the field's default kind. The
+# server_name embeds no random suffix even though server names are
+# GLOBALLY unique -- the planton-oss-e2e prefix keeps collisions out of
+# practical reach and the name frees on destroy. The firewall rule proves
+# the child-resource path and the Defender alert policy proves the folded
+# security singleton; both are free, keeping the smoke run at zero compute
+# cost (the logical server itself carries no compute).
+#
+# The region is westus3 rather than the suite's eastus: this test
+# subscription is restricted from provisioning Microsoft.Sql servers in
+# eastus (ProvisioningDisabled, verified live -- the same
+# offer-restriction class the PostgreSQL sibling hit; westus3 verified
+# clean). A server may live in a different region than its resource
+# group, so the eastus fixture RG serves unchanged.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlServer
+metadata:
+  name: planton-oss-e2e-azuremssql-smoke
+  id: planton-oss-e2e-azuremssql-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremssqlserver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: westus3
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  serverName: planton-oss-e2e-sql-smoke
+  administratorLogin: sqladmin
+  administratorPassword:
+    value: PltnE2e-Mssql!1
+  connectionPolicy: DEFAULT
+  firewallRules:
+    - name: allow-azure-services
+      startIpAddress: "0.0.0.0"
+      endIpAddress: "0.0.0.0"
+  securityAlertPolicy:
+    state: ENABLED
+    emailAddresses:
+      - secops@planton.test
+  tags:
+    e2e-suite: azure
+    purpose: smoke

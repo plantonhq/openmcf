@@ -4,7 +4,7 @@
 # so a cluster without this add-on fails its first PersistentVolumeClaim.
 # (The core networking add-ons — vpc-cni, coredns, kube-proxy — ride the
 # cluster's bootstrap defaults; EKS installs and updates them itself.)
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
   name: "{{ values.env }}-eks-ebs-csi-irsa"
@@ -31,7 +31,7 @@ spec:
     # attach/snapshot, scoped by the driver's own tag conditions).
     - value: arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: "{{ values.env }}-eks-ebs-csi"

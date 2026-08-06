@@ -1,0 +1,61 @@
+# Full-surface test manifest: exercises the recommended AWS posture
+# (tag-based auto-discovery + IRSA) plus every cross-arm block (scaling,
+# extra_args, deployment, prometheus, helm_values) so the offline plan
+# proofs cover what the live lanes may not. Not a realistic production
+# shape — kube-system with create_namespace false is the real-world norm.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClusterAutoscaler
+metadata:
+  name: hack-cluster-autoscaler
+spec:
+  namespace:
+    value: hack-autoscaler
+  createNamespace: true
+  chartVersion: "9.59.0"
+  aws:
+    region: us-west-2
+    autoDiscovery:
+      clusterName: hack-eks-cluster
+      tags:
+        - k8s.io/cluster-autoscaler/enabled
+        - k8s.io/cluster-autoscaler/hack-eks-cluster
+    irsaRoleArn: arn:aws:iam::123456789012:role/hack-cluster-autoscaler
+  scaling:
+    expander: priority,least-waste
+    balanceSimilarNodeGroups: true
+    scanInterval: 30s
+    maxNodeProvisionTime: 15m
+    skipNodesWithLocalStorage: false
+    skipNodesWithSystemPods: true
+    scaleDown:
+      enabled: true
+      utilizationThreshold: "0.5"
+      unneededTime: 10m
+      delayAfterAdd: 10m
+      delayAfterDelete: 0s
+      delayAfterFailure: 3m
+  extraArgs:
+    max-graceful-termination-sec: "600"
+    v: "2"
+  deployment:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        cpu: "1"
+        memory: 600Mi
+    priorityClassName: system-cluster-critical
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  prometheus:
+    serviceMonitor: true
+    serviceMonitorSelectorRelease: kube-prometheus-stack
+  helmValues: |
+    podAnnotations:
+      hack.planton.ai/full-surface: "true"

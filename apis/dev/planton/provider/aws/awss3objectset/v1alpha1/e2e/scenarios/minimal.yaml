@@ -1,0 +1,35 @@
+# Minimal AwsS3ObjectSet scenario: one inline-text object uploaded to the
+# shared versioned S3 bucket fixture (installed by the registry-declared
+# AwsS3Bucket prerequisite). Defaults are exercised by omission: content_type
+# falls through to the spec default (application/octet-stream — both engines
+# must send it explicitly), and storage class, encryption, checksum, and all
+# HTTP presentation headers fall through to bucket/AWS defaults. Destroy on
+# the versioned fixture proves all versions go (no force_destroy — that flag
+# is the GOVERNANCE-retention bypass and is only valid on Object Lock-enabled
+# buckets; on this fixture S3 rejects it with a 400, proven live). Full
+# metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-s3objs-min
+  id: planton-oss-e2e-s3objs-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_id
+  objects:
+    - key: e2e/minimal.txt
+      content: |
+        planton e2e minimal object

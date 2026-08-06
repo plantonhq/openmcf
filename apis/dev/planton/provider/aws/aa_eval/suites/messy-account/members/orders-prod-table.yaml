@@ -7,7 +7,7 @@
 # exam only sets spec fields a scan-driven proposer could reconstruct
 # (fields driving scan-invisible state would deflate every proposer's
 # ceiling instead of testing judgment).
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: orders-prod-table

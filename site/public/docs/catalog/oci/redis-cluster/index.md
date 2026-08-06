@@ -28,7 +28,7 @@ When you deploy an OciRedisCluster resource, Planton provisions:
 Create a file `redis-cluster.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciRedisCluster
 metadata:
   name: my-cache
@@ -84,7 +84,7 @@ This creates a non-sharded Redis cluster with 2 nodes (1 primary + 1 replica), e
 A minimal non-sharded cluster with a single replica for development workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciRedisCluster
 metadata:
   name: dev-cache
@@ -108,7 +108,7 @@ spec:
 A sharded cluster with 3 shards and 3 nodes per shard for horizontally scaled production workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciRedisCluster
 metadata:
   name: prod-cache
@@ -139,7 +139,7 @@ spec:
 Reference Planton-managed compartment, subnet, and NSG resources instead of hardcoding OCIDs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciRedisCluster
 metadata:
   name: ref-cache
@@ -174,7 +174,7 @@ spec:
 A non-sharded cluster using a custom OCI Cache Config Set for tuned Redis configuration:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciRedisCluster
 metadata:
   name: custom-cache

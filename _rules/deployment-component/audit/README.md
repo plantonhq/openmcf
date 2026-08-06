@@ -200,7 +200,7 @@ Where:
 **Audit Date:** 2025-11-13 14:30:22
 **Component Kind:** MongodbAtlas
 **Provider:** atlas
-**Component Path:** `apis/dev/planton/provider/atlas/mongodbatlas/v1/`
+**Component Path:** `apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
 **Enum Value:** 51
 **ID Prefix:** mdbatl
 ```
@@ -410,7 +410,7 @@ Blocking issues that prevent production readiness:
 - Pulumi architecture overview
 - Complete IaC documentation
 
-**Path to Reference:** `apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/`
+**Path to Reference:** `apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/`
 
 **Recommendation:** Review GcpCertManagerCert as a template for completeness.
 ```
@@ -439,7 +439,7 @@ Blocking issues that prevent production readiness:
 Audit reports are saved with timestamps:
 
 ```
-apis/dev/planton/provider/atlas/mongodbatlas/v1/docs/audit/
+apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/docs/audit/
 ├── 2025-11-10-091500.md  # First audit (60%)
 ├── 2025-11-11-143000.md  # After adding Terraform (75%)
 └── 2025-11-13-143022.md  # After adding docs (98%)

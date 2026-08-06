@@ -1,0 +1,12 @@
+# Offline-plan manifest: a consumer group on an existing hub,
+# exercising the ARM-id parse into discrete names and the user_metadata
+# passthrough.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubConsumerGroup
+metadata:
+  name: test-eh-consumer-group
+spec:
+  eventHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/hack-eventhub-ns/eventhubs/orders-stream
+  consumerGroupName: analytics-loader
+  userMetadata: "owner=analytics-team purpose=hourly-batch-load"

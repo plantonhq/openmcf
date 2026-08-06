@@ -28,7 +28,7 @@ When you deploy an OpenStackSecurityGroup resource, Planton provisions:
 Create a file `security-group.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroup
 metadata:
   name: web-sg
@@ -109,7 +109,7 @@ The spec has no strictly required fields. A security group can be created with j
 A security group allowing HTTP, HTTPS, and SSH access from any source:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroup
 metadata:
   name: web-sg
@@ -150,7 +150,7 @@ spec:
 A locked-down security group that deletes the default egress rules and explicitly allows only the required outbound traffic:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroup
 metadata:
   name: db-sg
@@ -197,7 +197,7 @@ spec:
 A production security group with inter-group references, ICMP rules, a port range, stateful mode, tags, and a region override:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackSecurityGroup
 metadata:
   name: app-sg

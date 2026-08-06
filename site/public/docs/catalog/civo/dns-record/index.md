@@ -28,7 +28,7 @@ When you deploy a CivoDnsRecord resource, Planton provisions:
 Create a file `civo-dns-record.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsRecord
 metadata:
   name: www-record
@@ -113,7 +113,7 @@ zoneId:
 An A record pointing a subdomain to an IPv4 address with a 5-minute TTL:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsRecord
 metadata:
   name: api-a-record
@@ -137,7 +137,7 @@ spec:
 A mail exchange record directing email to a mail server with priority 10:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsRecord
 metadata:
   name: mail-mx-record
@@ -161,7 +161,7 @@ spec:
 A CNAME alias that resolves the zone ID from a CivoDnsZone resource:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoDnsRecord
 metadata:
   name: docs-cname

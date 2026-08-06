@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurefirewallpolicyrulecollectiongroup/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurefirewallpolicyrulecollectiongroup/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureFirewallPolicyRuleCollectionGroup is the top-level API resource for
+// a rule collection group inside an Azure Firewall Policy: an ordered
+// document of application, network, and DNAT rule collections. It is a
+// first-class composable resource because a policy carries many groups --
+// typically one per team or application -- each deployed and updated on
+// its own lifecycle.
+message AzureFirewallPolicyRuleCollectionGroup {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureFirewallPolicyRuleCollectionGroup".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFirewallPolicyRuleCollectionGroup'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Rule collection group specification.
+  AzureFirewallPolicyRuleCollectionGroupSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureFirewallPolicyRuleCollectionGroupStatus status = 5;
+}
+
+// AzureFirewallPolicyRuleCollectionGroupStatus holds the deployment outputs.
+message AzureFirewallPolicyRuleCollectionGroupStatus {
+  // Stack outputs from the IaC deployment.
+  AzureFirewallPolicyRuleCollectionGroupStackOutputs outputs = 1;
+}

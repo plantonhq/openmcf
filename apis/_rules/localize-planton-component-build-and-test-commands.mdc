@@ -40,10 +40,10 @@ Run `go build` scoped to the component's Pulumi module directory:
 
 ```bash
 # Verify Pulumi entrypoint compiles
-go build ./apis/dev/planton/provider/scaleway/scalewayvpc/v1/iac/pulumi/...
+go build ./apis/dev/planton/provider/scaleway/scalewayvpc/v1alpha1/iac/pulumi/...
 
 # Or from inside the directory
-cd apis/dev/planton/provider/scaleway/scalewayvpc/v1/iac/pulumi
+cd apis/dev/planton/provider/scaleway/scalewayvpc/v1alpha1/iac/pulumi
 go build ./...
 ```
 
@@ -52,13 +52,13 @@ go build ./...
 Run `go test` scoped to the component:
 
 ```bash
-go test ./apis/dev/planton/provider/scaleway/scalewayvpc/v1/...
+go test ./apis/dev/planton/provider/scaleway/scalewayvpc/v1alpha1/...
 ```
 
 ### 4. Go Vet (verify code quality)
 
 ```bash
-go vet ./apis/dev/planton/provider/scaleway/scalewayvpc/v1/iac/pulumi/...
+go vet ./apis/dev/planton/provider/scaleway/scalewayvpc/v1alpha1/iac/pulumi/...
 ```
 
 ### 5. Terraform Validate (verify TF module is syntactically valid)
@@ -66,7 +66,7 @@ go vet ./apis/dev/planton/provider/scaleway/scalewayvpc/v1/iac/pulumi/...
 Run `terraform validate` inside the component's TF directory:
 
 ```bash
-cd apis/dev/planton/provider/scaleway/scalewayvpc/v1/iac/tf
+cd apis/dev/planton/provider/scaleway/scalewayvpc/v1alpha1/iac/tf
 terraform init -backend=false
 terraform validate
 ```

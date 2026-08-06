@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpregionnetworkendpointgroup.v1alpha1;
+
+import "dev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1alpha1/api.proto";
+import "dev/planton/provider/gcp/provider.proto";
+
+message GcpRegionNetworkEndpointGroupStackInput {
+  GcpRegionNetworkEndpointGroup target = 1;
+  dev.planton.provider.gcp.GcpProviderConfig provider_config = 2;
+}

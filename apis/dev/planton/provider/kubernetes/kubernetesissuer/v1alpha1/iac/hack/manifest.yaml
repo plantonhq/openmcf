@@ -1,0 +1,21 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises the Vault backend (the arm the ClusterIssuer
+# hack manifest does not) with AppRole auth; both engines must render an
+# identical CR + credential Secret from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIssuer
+metadata:
+  name: test-issuer
+spec:
+  namespace:
+    value: team-a
+  config:
+    vault:
+      server: https://vault.example.com:8200
+      path: pki_int/sign/example-dot-com
+      vaultNamespace: platform
+      serverName: vault.example.com
+      appRoleAuth:
+        path: approle
+        roleId: test-role-id
+        secretId: test-secret-id

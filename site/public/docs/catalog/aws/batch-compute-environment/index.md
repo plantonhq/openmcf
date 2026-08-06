@@ -29,7 +29,7 @@ When you deploy an AwsBatchComputeEnvironment resource, Planton provisions:
 Create a file `batch-ce.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchComputeEnvironment
 metadata:
   name: etl-fargate

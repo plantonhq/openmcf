@@ -7,7 +7,7 @@
 # horizontally scalable later. The module generates the admin credential
 # into its `-admin-auth` Secret — the chart's public default password
 # never ships.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHarbor
 metadata:
   name: "{{ values.env }}-harbor"

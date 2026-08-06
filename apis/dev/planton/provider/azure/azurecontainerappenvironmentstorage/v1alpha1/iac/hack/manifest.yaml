@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerAppEnvironmentStorage
+metadata:
+  name: test-env-storage
+spec:
+  container_app_environment_id:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.App/managedEnvironments/test-env
+  storage_name: app-data
+  share_name:
+    value: shared-files
+  access_mode: READ_WRITE
+  account_name:
+    value: teststorageaccount
+  access_key:
+    value: dGVzdC1hY2Nlc3Mta2V5LXZhbHVl

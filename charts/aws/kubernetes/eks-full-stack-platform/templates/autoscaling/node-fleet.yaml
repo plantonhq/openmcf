@@ -1,7 +1,7 @@
 # The fleet's machine template and provisioning policy — what Karpenter
 # launches (EC2NodeClass) and when (NodePool). These are Kubernetes custom
 # resources reconciled by the controller in the previous file.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenterEc2NodeClass
 metadata:
   name: "{{ values.env }}-default"
@@ -46,7 +46,7 @@ spec:
   # instance-profile statements authorize.
   role: "{{ values.env }}-eks-node-role"
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenterNodePool
 metadata:
   name: "{{ values.env }}-default"

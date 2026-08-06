@@ -29,7 +29,7 @@ When you deploy an AwsSqsQueue resource, Planton provisions:
 Create a file `queue.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: my-queue
@@ -90,7 +90,7 @@ All other configuration is optional with AWS defaults.
 A FIFO queue for payment processing with content-based deduplication and a dead letter queue for failed messages:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: payment-events
@@ -119,7 +119,7 @@ spec:
 A Standard queue configured for long polling to reduce empty responses, with a 7-day retention period:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: task-queue
@@ -141,7 +141,7 @@ spec:
 A queue encrypted with a customer-managed KMS key and an IAM policy granting an SNS topic permission to publish messages:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: notifications-queue

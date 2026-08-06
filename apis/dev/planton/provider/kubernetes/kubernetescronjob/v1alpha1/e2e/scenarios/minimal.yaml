@@ -1,0 +1,28 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCronJob
+metadata:
+  name: e2e-cronjob-minimal
+spec:
+  namespace:
+    value: e2e-cronjob-minimal-ns
+  create_namespace: true
+  schedule: "*/1 * * * *"
+  job_template:
+    container:
+      app:
+        image:
+          repo: busybox
+          tag: "1.36"
+        command:
+          - /bin/sh
+          - -c
+          - echo "e2e-cronjob-test"
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+    restart_policy: Never
+    backoff_limit: 1

@@ -29,7 +29,7 @@ must use `tofu.*` keys, and one deployed with `terraform` must use `terraform.*`
 ## Example
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: my-vpc

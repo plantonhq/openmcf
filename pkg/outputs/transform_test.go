@@ -6,11 +6,11 @@ package outputs
 import (
 	"testing"
 
-	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1"
-	awsvpcv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1"
-	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1"
-	gcpsubnetworkv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1"
-	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
+	auth0v1 "github.com/plantonhq/planton/apis/dev/planton/provider/auth0/auth0resourceserver/v1alpha1"
+	awsvpcv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpc/v1alpha1"
+	gcpdnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnszone/v1alpha1"
+	gcpsubnetworkv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpsubnetwork/v1alpha1"
+	k8spgv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 )
 
@@ -114,7 +114,7 @@ func TestTransform_AwsVpc(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	typed, ok := msg.(*awsvpcv1.AwsVpcStackOutputs)
+	typed, ok := msg.(*awsvpcv1alpha1.AwsVpcStackOutputs)
 	if !ok {
 		t.Fatalf("expected *AwsVpcStackOutputs, got %T", msg)
 	}
@@ -216,7 +216,7 @@ func TestTransform_KeyPreprocessing(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	typed := msg.(*gcpsubnetworkv1.GcpSubnetworkStackOutputs)
+	typed := msg.(*gcpsubnetworkv1alpha1.GcpSubnetworkStackOutputs)
 	if len(typed.GetSecondaryRanges()) != 1 {
 		t.Fatalf("secondary_ranges: expected 1, got %d", len(typed.GetSecondaryRanges()))
 	}

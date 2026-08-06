@@ -25,7 +25,7 @@ When you deploy a GcpWorkloadIdentityPoolProvider resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpWorkloadIdentityPoolProvider
 metadata:
   name: github-oidc

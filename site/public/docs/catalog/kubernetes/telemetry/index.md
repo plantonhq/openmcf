@@ -27,7 +27,7 @@ span tags, metric dimensions and toggles, and access-log providers and filters.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTelemetry
 metadata:
   name: mesh-default

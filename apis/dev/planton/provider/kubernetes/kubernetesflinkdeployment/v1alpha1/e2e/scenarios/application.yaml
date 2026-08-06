@@ -1,0 +1,36 @@
+# THE STREAM PROOF: an APPLICATION cluster running the in-image
+# StateMachine example (local:// jar — no internet at runtime),
+# stateless upgrade mode (no state directories needed — the spec's own
+# rule), parallelism 2 through native-mode TaskManagers requested on
+# demand. The verifier polls the JobManager REST API to a job in
+# RUNNING state — a streaming job's steady state — and asserts the
+# TaskManager count materialized from the parallelism.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesFlinkDeployment
+metadata:
+  name: e2e-flnkd-app
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesFlinkOperator"
+spec:
+  namespace:
+    value: e2e-flink
+  flinkVersion: v2_1
+  job:
+    jarUri: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    parallelism: 2
+  taskManager:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1536Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+  jobManager:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1536Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi

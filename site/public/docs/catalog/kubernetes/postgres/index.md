@@ -54,7 +54,7 @@ operator-managed Services, which re-point automatically on failover.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: orders-db

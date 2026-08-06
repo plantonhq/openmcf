@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureroutetable.v1alpha1;
+
+// AzureRouteTableStackOutputs captures the outputs of provisioning an Azure
+// route table.
+//
+// The primary output is `route_table_id`, the join key subnets use to attach
+// the table (an AzureSubnet references it to adopt the table's routing).
+message AzureRouteTableStackOutputs {
+  // The Azure Resource Manager ID of the route table.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/routeTables/{name}
+  // This is the primary output referenced by downstream resources via StringValueOrRef.
+  string route_table_id = 1;
+
+  // The name of the route table. Echoed from the spec for convenience.
+  string route_table_name = 2;
+}

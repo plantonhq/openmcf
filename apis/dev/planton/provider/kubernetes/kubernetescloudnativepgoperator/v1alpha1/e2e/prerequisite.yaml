@@ -1,0 +1,13 @@
+# Install profile used when a consumer declares this operator as a registry
+# prerequisite and ships no consumer-scoped override: the lean shape, no
+# Barman Cloud plugin (KubernetesPostgres ships its own override that
+# enables the plugin + chains cert-manager, because its backup lanes need
+# the full posture).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCloudNativePgOperator
+metadata:
+  name: e2e-cnpg-fixture
+spec:
+  namespace:
+    value: cnpg-system
+  create_namespace: true

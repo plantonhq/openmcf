@@ -23,7 +23,7 @@ Declares one Kafka client identity on the Strimzi KafkaUser custom resource. The
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaUser
 metadata:
   name: order-service

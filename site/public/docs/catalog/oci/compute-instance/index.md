@@ -30,7 +30,7 @@ When you deploy an OciComputeInstance resource, Planton provisions:
 Create a file `instance.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciComputeInstance
 metadata:
   name: my-instance
@@ -186,7 +186,7 @@ This creates a 1-OCPU, 16 GB VM on the E4 Flex shape in the specified availabili
 A VM with the AMD E4 Flex shape, 1 OCPU, and 16 GB memory — the simplest production-capable configuration:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciComputeInstance
 metadata:
   name: web-server
@@ -216,7 +216,7 @@ spec:
 A private instance bootstrapped via cloud-init, secured by NSGs referenced from Planton-managed resources. No public IP; the instance is accessible only through the private subnet:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciComputeInstance
 metadata:
   name: app-server
@@ -267,7 +267,7 @@ spec:
 A cost-optimized preemptible instance for fault-tolerant batch processing. OCI can reclaim the instance when capacity is needed; the boot volume is preserved for resuming work:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciComputeInstance
 metadata:
   name: batch-worker
@@ -300,7 +300,7 @@ spec:
 A production instance with platform security enabled — Secure Boot, Measured Boot, TPM, and memory encryption — plus IMDSv2-only access, in-transit encryption, and live migration preference:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciComputeInstance
 metadata:
   name: secure-vm

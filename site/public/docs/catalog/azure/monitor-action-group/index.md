@@ -27,7 +27,7 @@ When you deploy an AzureMonitorActionGroup resource, Planton provisions:
 Create a file `action-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorActionGroup
 metadata:
   name: platform-oncall

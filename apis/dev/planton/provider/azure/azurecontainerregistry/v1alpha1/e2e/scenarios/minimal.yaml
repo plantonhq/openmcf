@@ -1,0 +1,35 @@
+# Minimal AzureContainerRegistry scenario: a Standard registry with the
+# admin account enabled.
+#
+# The resource-group reference resolves against the registry prerequisite's
+# captured outputs. The registry name embeds no environment marker beyond
+# the e2e prefix because ACR names are GLOBALLY unique (they become
+# {name}.azurecr.io) and allow only lowercase alphanumerics. The admin
+# account is deliberately on -- it exercises the credential outputs
+# (admin_username/admin_password), the least-composable surface. User tags
+# exercise the merge-over-metadata-tags path.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerRegistry
+metadata:
+  name: planton-oss-e2e-azurecontainerregistry-smoke
+  id: planton-oss-e2e-azurecontainerregistry-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerregistry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  registryName: plantonosse2eacrsmoke
+  sku: STANDARD
+  adminUserEnabled: true
+  tags:
+    e2e-suite: azure
+    purpose: smoke

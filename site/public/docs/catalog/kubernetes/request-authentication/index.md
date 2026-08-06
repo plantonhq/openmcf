@@ -27,7 +27,7 @@ authorization policies, and forward selected claims to your backends.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRequestAuthentication
 metadata:
   name: jwt-auth

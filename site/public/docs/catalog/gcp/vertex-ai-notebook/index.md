@@ -35,7 +35,7 @@ When you deploy a GcpVertexAiNotebook resource, Planton provisions:
 Create a file `notebook.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiNotebook
 metadata:
   name: my-notebook
@@ -117,7 +117,7 @@ This creates a CPU-only Workbench instance with a default deep learning VM image
 A minimal notebook for data exploration and light ML work.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiNotebook
 metadata:
   name: data-explorer
@@ -141,7 +141,7 @@ spec:
 A GPU-equipped notebook for training deep learning models.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiNotebook
 metadata:
   name: ml-training
@@ -174,7 +174,7 @@ spec:
 A security-hardened notebook inside a VPC with CMEK encryption, using `valueFrom` references for infra chart composition.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiNotebook
 metadata:
   name: secure-notebook

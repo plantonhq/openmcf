@@ -1,0 +1,51 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDestinationRule
+metadata:
+  name: test-destination-rule
+spec:
+  namespace:
+    value: test-namespace
+  host:
+    value: reviews.test-namespace.svc.cluster.local
+  traffic_policy:
+    load_balancer:
+      simple: LEAST_REQUEST
+    connection_pool:
+      tcp:
+        max_connections: 100
+        connect_timeout: 30ms
+      http:
+        http2_max_requests: 1000
+        max_requests_per_connection: 10
+        h2_upgrade_policy: UPGRADE
+    outlier_detection:
+      consecutive_5xx_errors: 7
+      interval: 5m
+      base_ejection_time: 15m
+      max_ejection_percent: 50
+    tls:
+      mode: ISTIO_MUTUAL
+    retry_budget:
+      percent: 25.5
+      min_retry_concurrency: 4
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+      traffic_policy:
+        load_balancer:
+          consistent_hash:
+            http_cookie:
+              name: session
+              ttl: 1h
+              attributes:
+                - name: SameSite
+                  value: Strict
+                - name: Secure
+        retry_budget:
+          percent: 10.0
+  export_to:
+    - "."

@@ -200,8 +200,8 @@ The beauty of this system is how little you need to do:
 
 ```bash
 # 1. Create your component docs
-mkdir -p apis/dev/planton/provider/aws/awsnewservice/v1/docs/
-cat > apis/dev/planton/provider/aws/awsnewservice/v1/docs/README.md << 'EOF'
+mkdir -p apis/dev/planton/provider/aws/awsnewservice/v1alpha1/docs/
+cat > apis/dev/planton/provider/aws/awsnewservice/v1alpha1/docs/README.md << 'EOF'
 # AWS New Service
 
 Comprehensive deployment guide for AWS New Service...
@@ -222,7 +222,7 @@ The documentation is now available at `/docs/catalog/aws/awsnewservice`.
 Just edit the source README:
 
 ```bash
-vim apis/dev/planton/provider/gcp/gcpcloudrun/v1/docs/README.md
+vim apis/dev/planton/provider/gcp/gcpcloudrun/v1alpha1/docs/README.md
 cd site && yarn build
 ```
 
@@ -405,7 +405,7 @@ When you add documentation for a new cloud provider:
 
 1. Create the provider directory structure:
    ```bash
-   mkdir -p apis/dev/planton/provider/newprovider/newcomponent/v1/docs/
+   mkdir -p apis/dev/planton/provider/newprovider/newcomponent/v1alpha1/docs/
    ```
 
 2. Add the provider to the clearing list in `copy-component-docs.ts`:

@@ -35,7 +35,7 @@ provisions:
 Create a file `policy.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisCacheAccessPolicy
 metadata:
   name: orders-read-only

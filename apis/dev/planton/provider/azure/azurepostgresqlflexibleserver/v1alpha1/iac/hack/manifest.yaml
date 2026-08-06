@@ -1,0 +1,61 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePostgresqlFlexibleServer
+metadata:
+  name: test-pg
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  serverName: test-pg-server
+  administratorLogin: pgadmin
+  administratorPassword:
+    value: P@ssw0rd1234!
+  version: "16"
+  skuName: GP_Standard_D2s_v3
+  storageMb: 131072
+  # Exercises the storage-tier enum mapping (P30 is valid for 128 GiB).
+  storageTier: P30
+  autoGrowEnabled: true
+  zone: "1"
+  # Exercises the HA-mode enum mapping.
+  highAvailability:
+    mode: ZONE_REDUNDANT
+    standbyAvailabilityZone: "2"
+  maintenanceWindow:
+    dayOfWeek: 6
+    startHour: 2
+    startMinute: 30
+  backupRetentionDays: 14
+  # Exercises the authentication block with Entra auth alongside password
+  # auth, which activates the AAD administrator sub-resource path.
+  authentication:
+    activeDirectoryAuthEnabled: true
+    passwordAuthEnabled: true
+  # Exercises the principal-type enum mapping and the administrator
+  # sub-resource.
+  aadAdministrators:
+    - objectId:
+        value: 11111111-2222-3333-4444-555555555555
+      principalName: dba-team@contoso.com
+      principalType: GROUP
+  # Exercises the identity-type enum mapping.
+  identity:
+    type: SYSTEM_ASSIGNED
+  databases:
+    - name: myapp
+    - name: legacy
+      charset: SQL_ASCII
+      collation: C
+  firewallRules:
+    - name: allow-azure-services
+      startIpAddress: "0.0.0.0"
+      endIpAddress: "0.0.0.0"
+    - name: allow-office
+      startIpAddress: "203.0.113.0"
+      endIpAddress: "203.0.113.255"
+  # Exercises the server-parameter configuration sub-resources.
+  serverParameters:
+    azure.extensions: PGCRYPTO
+    max_connections: "120"
+  tags:
+    team: data

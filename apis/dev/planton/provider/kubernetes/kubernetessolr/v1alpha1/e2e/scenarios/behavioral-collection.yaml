@@ -1,0 +1,41 @@
+# THE working-cluster proof: three nodes, persistent storage, basic-auth
+# security bootstrapped by the operator — the verifier creates a
+# collection through the Collections API with the bootstrapped admin
+# credentials, indexes a marker document, and queries it back.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolr
+metadata:
+  name: e2e-solr-coll
+spec:
+  namespace:
+    value: e2e-solr-coll
+  create_namespace: true
+  replicas: 3
+  version: 9.10.0
+  java_mem: -Xms300m -Xmx300m
+  log_level: INFO
+  zookeeper:
+    provided:
+      replicas: 1
+      persistence:
+        size: 2Gi
+  storage:
+    persistent:
+      size: 2Gi
+      reclaim_policy: Delete
+  security:
+    authentication_type: basic
+  update_strategy:
+    method: Managed
+    max_pods_unavailable: "1"
+  availability:
+    pdb_enabled: true
+  scaling:
+    vacate_pods_on_scale_down: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi

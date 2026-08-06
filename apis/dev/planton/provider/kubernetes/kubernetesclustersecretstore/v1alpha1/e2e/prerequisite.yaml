@@ -1,0 +1,24 @@
+# Dependency-install profile for a ClusterSecretStore.
+#
+# The E2E harness deploys this (via KubernetesExternalSecret scenarios that
+# declare it through the e2e-prerequisites annotation) after the External
+# Secrets Operator itself (the registry prerequisite graph chains through
+# this kind's own `prerequisites: [KubernetesExternalSecretsOperator]`).
+# Fake backend: reaches Ready with zero external dependencies — the
+# universal in-cluster fixture. The "conn" entry is a JSON document so
+# consumer scenarios can prove dataFrom extraction.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClusterSecretStore
+metadata:
+  name: e2e-css-fixture
+spec:
+  secretsNamespace:
+    valueFrom:
+      name: e2e-eso-prereq
+  config:
+    fake:
+      data:
+        - key: shared-token
+          value: e2e-shared-token-value
+        - key: conn
+          value: '{"host":"db.example.internal","port":"5432","password":"e2e-db-password"}'

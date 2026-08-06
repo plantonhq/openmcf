@@ -1,0 +1,46 @@
+# Composed GcpCloudFunction scenario: the function routes private egress
+# through the GcpServerlessVpcConnector prerequisite (declared in the kind
+# registry), resolved live via the vpcConnector reference — the FK
+# composition proof for the serverless family. Source staging works exactly
+# as in http-minimal.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudFunction
+metadata:
+  name: planton-oss-e2e-cldfunc-vpc
+  id: planton-oss-e2e-cldfunc-vpc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcloudfunction
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  functionName: e2e-fn-vpc-${E2E_RUN_ID}
+  description: Ephemeral function created by the Planton E2E harness; safe to delete
+  buildConfig:
+    runtime: python312
+    entryPoint: handler
+    source:
+      storageSource:
+        bucket:
+          value: planton-oss-e2e-cldfunc-src-${E2E_RUN_ID}
+        object: functions/hello.zip
+  serviceConfig:
+    availableMemory: 256M
+    timeoutSeconds: 60
+    vpcConnector:
+      valueFrom:
+        kind: GcpServerlessVpcConnector
+        name: planton-oss-e2e-gcpvpcconn-prereq
+        fieldPath: status.outputs.self_link
+    vpcConnectorEgressSettings: PRIVATE_RANGES_ONLY
+    ingressSettings: ALLOW_INTERNAL_ONLY
+    scaling:
+      minInstanceCount: 0
+      maxInstanceCount: 1
+  trigger:
+    triggerType: HTTP

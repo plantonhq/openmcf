@@ -28,7 +28,7 @@ When you deploy a CivoKubernetesCluster resource, Planton provisions:
 Create a file `civo-k8s.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesCluster
 metadata:
   name: my-cluster
@@ -85,7 +85,7 @@ This creates a two-node K3s cluster in New York running Kubernetes 1.28.2 on `g4
 A single-node cluster for development and testing:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesCluster
 metadata:
   name: dev-cluster
@@ -110,7 +110,7 @@ spec:
 A multi-node cluster with high availability and automatic patch upgrades:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesCluster
 metadata:
   name: prod-cluster
@@ -140,7 +140,7 @@ spec:
 Reference an Planton-managed CivoVpc instead of hardcoding the network ID:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesCluster
 metadata:
   name: ref-cluster

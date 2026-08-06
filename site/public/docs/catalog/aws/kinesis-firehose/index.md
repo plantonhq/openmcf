@@ -42,7 +42,7 @@ When you deploy an AwsKinesisFirehose resource, Planton provisions:
 Create a file `firehose.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: my-firehose
@@ -267,7 +267,7 @@ Every destination accepts a `processing` block: `enabled` plus an ordered `proce
 GZIP-compressed delivery to S3 with timestamp-based prefixes and buffering tuned for throughput:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: data-lake-firehose
@@ -294,7 +294,7 @@ spec:
 Indexes application logs into an OpenSearch domain with daily index rotation and S3 backup for failed documents. References the OpenSearch domain via `valueFrom`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: log-analytics-firehose
@@ -330,7 +330,7 @@ spec:
 Consumes from an existing Kinesis Data Stream, converts JSON to Parquet via AWS Glue Data Catalog, and writes columnar files to a partitioned S3 data lake:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: analytics-parquet-firehose
@@ -386,7 +386,7 @@ spec:
 Streams records into a Snowflake table via Snowpipe Streaming; the key-pair credential lives in Secrets Manager and never appears in the manifest:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: snowflake-streaming-firehose

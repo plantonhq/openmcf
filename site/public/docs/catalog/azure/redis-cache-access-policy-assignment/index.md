@@ -37,7 +37,7 @@ Planton provisions:
 Create a file `grant.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisCacheAccessPolicyAssignment
 metadata:
   name: orders-app-data-reader

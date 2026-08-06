@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDynamodb
+metadata:
+  name: awsdynamodb-demo
+spec:
+  region: us-west-2
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: pk
+      type: S
+    - name: sk
+      type: S
+    - name: gsi1pk
+      type: S
+  keySchema:
+    - attributeName: pk
+      keyType: HASH
+    - attributeName: sk
+      keyType: RANGE
+  globalSecondaryIndexes:
+    - name: gsi1
+      keySchema:
+        - attributeName: gsi1pk
+          keyType: HASH
+      projection:
+        type: ALL
+  ttl:
+    enabled: true
+    attributeName: expiresAt
+  streamEnabled: true
+  streamViewType: NEW_AND_OLD_IMAGES
+  pointInTimeRecovery:
+    enabled: true
+  serverSideEncryption:
+    enabled: true
+  deletionProtectionEnabled: false
+  contributorInsights:
+    enabled: true
+    gsiIndexNames:
+      - gsi1

@@ -1,0 +1,71 @@
+# WAF-attach AzureApplicationGateway scenario: a WAF_v2 gateway enforcing
+# the fixture WAF policy -- proving the policy FK end to end (the policy
+# resolves through its policy_id output and ARM accepts the association).
+#
+# Both the public IP and the WAF policy are scenario-declared extra
+# fixtures: a gateway can exist without either (private-only, no WAF), so
+# neither belongs in the registry prerequisites. Autoscale (the WAF_v2
+# grain) replaces fixed capacity, exercising the other sizing arm.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureApplicationGateway
+metadata:
+  name: planton-oss-e2e-azureagw-waf
+  id: planton-oss-e2e-azureagw-waf
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureapplicationgateway
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzurePublicIp,AzureWebApplicationFirewallPolicy"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-agw-waf
+  subnetId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-subnet
+  sku: WAF_V2
+  autoscale:
+    minCapacity: 1
+    maxCapacity: 2
+  firewallPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-waf
+  forceFirewallPolicyAssociation: true
+  frontendIpConfigurations:
+    - name: public
+      publicIpAddressId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-pip
+  frontendPorts:
+    - name: http
+      port: 80
+  backendAddressPools:
+    - name: web
+      ipAddresses:
+        - 10.240.250.100
+  backendHttpSettings:
+    - name: web-settings
+      port: 8080
+      protocol: HTTP
+  httpListeners:
+    - name: http-listener
+      frontendIpConfigurationName: public
+      frontendPortName: http
+      protocol: HTTP
+  requestRoutingRules:
+    - name: http-rule
+      ruleType: BASIC_ROUTING
+      httpListenerName: http-listener
+      priority: 100
+      backendAddressPoolName: web
+      backendHttpSettingsName: web-settings
+  tags:
+    e2e-suite: azure
+    purpose: waf-attach

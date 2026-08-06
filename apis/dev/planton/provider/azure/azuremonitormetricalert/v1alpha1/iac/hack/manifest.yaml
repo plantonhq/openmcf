@@ -1,0 +1,45 @@
+# Offline-plan test manifest. Exercises the dynamic-criteria path -- the
+# only place the sensitivity map renders -- plus the GreaterOrLessThan
+# operator, a dimension filter, the evaluation dials, an ignore-before
+# instant, and action webhook properties. (The static path's map rows
+# are exercised by the E2E scenarios.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorMetricAlert
+metadata:
+  name: test-metric-alert
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  alertName: storage-transactions-anomaly
+  scopes:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/testsa
+  description: Transactions deviate from the learned band
+  enabled: true
+  autoMitigate: true
+  severity: 2
+  frequency: PT5M
+  windowSize: PT15M
+  dynamicCriteria:
+    metricNamespace: Microsoft.Storage/storageAccounts
+    metricName: Transactions
+    aggregation: TOTAL
+    operator: GREATER_OR_LESS_THAN
+    alertSensitivity: MEDIUM
+    evaluationTotalCount: 4
+    evaluationFailureCount: 3
+    ignoreDataBefore: "2026-01-15T00:00:00Z"
+    dimensions:
+      - name: ApiName
+        operator: STARTS_WITH
+        values:
+          - Get
+    skipMetricValidation: false
+  actions:
+    - actionGroupId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/actionGroups/test-ag
+      webhookProperties:
+        source: planton
+  tags:
+    team: platform

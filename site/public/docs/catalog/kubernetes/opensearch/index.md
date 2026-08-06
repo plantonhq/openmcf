@@ -50,7 +50,7 @@ and — when enabled — the `<name>-dashboards` Deployment and Service.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenSearch
 metadata:
   name: main

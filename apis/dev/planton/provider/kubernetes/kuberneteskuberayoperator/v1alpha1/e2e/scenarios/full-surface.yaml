@@ -1,0 +1,24 @@
+# Full surface: the fenced watch posture (Ray CRs outside the listed
+# namespaces are ignored without an error), a feature-gate override
+# (exercising the list-replacement merge over the chart's defaults),
+# metrics explicit. No batch scheduler on this lane BY DESIGN — the
+# named scheduler (volcano/yunikorn) must already run on the cluster,
+# and none does; the arm stays plan-proven. The verifier additionally
+# asserts the fence: a RayCluster applied OUTSIDE the watched namespaces
+# is never reconciled (no head pod appears).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKubeRayOperator
+metadata:
+  name: e2e-krayop-full
+spec:
+  namespace:
+    value: e2e-krayop-full
+  createNamespace: true
+  chartVersion: 1.6.2
+  watchNamespaces:
+    - e2e-krayop-watched
+  leaderElectionEnabled: true
+  featureGates:
+    - name: RayServiceIncrementalUpgrade
+      enabled: true
+  metricsEnabled: true

@@ -30,7 +30,7 @@ When you deploy an AzureContainerAppEnvironmentManagedCertificate resource, Plan
 Create a file `managed-cert.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentManagedCertificate
 metadata:
   name: app-managed-cert

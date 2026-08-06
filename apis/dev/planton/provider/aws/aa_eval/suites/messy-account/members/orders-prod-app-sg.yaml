@@ -4,7 +4,7 @@
 # one requires containment judgment. Rules stay minimal and reconstructable
 # from the group's scanned model. revoke_rules_on_delete is deliberately
 # NOT set: it is a declared config-only attribute no scan can see.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: orders-prod-app-sg

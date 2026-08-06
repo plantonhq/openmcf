@@ -1,0 +1,78 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the deployment expressed at once — an
+# application-mode job on the savepoint upgrade path (exercising both
+# state-directory requirements), JobManager standbys behind Kubernetes
+# HA, explicit Flink configuration, the S3 credential seam as Secret
+# references with the plugin activation, log configuration, pull
+# secrets, scheduling, and both declarative nonces.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesFlinkDeployment
+metadata:
+  name: orders-pipeline-full
+spec:
+  namespace:
+    value: stream-processing
+  createNamespace: true
+  flinkVersion: v2_1
+  image: flink:2.1
+  job:
+    jarUri: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    entryClass: org.apache.flink.streaming.examples.statemachine.StateMachineExample
+    args:
+      - --error-rate
+      - "0.0"
+    parallelism: 4
+    state: running
+    upgradeMode: savepoint
+    allowNonRestoredState: false
+    savepointTriggerNonce: 1
+  jobManager:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+  taskManager:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    restart-strategy.type: exponential-delay
+  state:
+    checkpointsDir: s3://flink-state/checkpoints/orders
+    savepointsDir: s3://flink-state/savepoints/orders
+    highAvailability:
+      enabled: true
+      storageDir: s3://flink-state/ha/orders
+    s3:
+      endpoint:
+        value: http://objects-s3.stream-processing.svc.cluster.local:8333
+      pathStyleAccess: true
+      accessKeySecret:
+        name:
+          value: objects-s3-secret
+        key: admin_access_key_id
+      secretKeySecret:
+        name:
+          value: objects-s3-secret
+        key: admin_secret_access_key
+      builtinPluginJar: flink-s3-fs-hadoop-2.1.3.jar
+  mode: native
+  serviceAccount: flink
+  logConfiguration:
+    log4j-console.properties: |
+      rootLogger.level = INFO
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      workload: stream
+  restartNonce: 1

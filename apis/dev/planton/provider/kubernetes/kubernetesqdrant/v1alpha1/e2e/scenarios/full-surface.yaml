@@ -1,0 +1,40 @@
+# The tuned surface on kind-cluster-honest sizing: BOTH API keys
+# chart-generated (every verifier request carries the read-write key —
+# proving the auth wiring end to end), the separate snapshots volume,
+# explicit resources, and an engine-config escape-hatch entry. Replicas
+# stay 1 (multi-node needs anti-affinity headroom); the cluster shape is
+# plan-proven via the hack manifest. TLS stays plan-proven: the cert
+# Secret seam needs a certificate fixture — the proof lane may add that
+# arm against a cert-manager-equipped cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesQdrant
+metadata:
+  name: e2e-qdrant-full
+spec:
+  namespace:
+    value: e2e-qdrant-full
+  create_namespace: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  storage:
+    size: 3Gi
+  snapshots:
+    size: 3Gi
+  api_key:
+    generate: true
+  read_only_api_key:
+    generate: true
+  scheduling:
+    pod_anti_affinity: false
+  service_monitor_enabled: false
+  helm_values: |
+    config:
+      storage:
+        performance:
+          max_search_threads: 2

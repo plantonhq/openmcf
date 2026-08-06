@@ -27,7 +27,7 @@ When you deploy a CivoKubernetesNodePool resource, Planton provisions:
 Create a file `civo-node-pool.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesNodePool
 metadata:
   name: my-node-pool
@@ -79,7 +79,7 @@ This creates a two-node pool using `g4s.kube.medium` instances in the specified 
 A fixed-size pool added to an existing cluster by ID:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesNodePool
 metadata:
   name: workers
@@ -101,7 +101,7 @@ spec:
 A pool that scales between 2 and 8 nodes based on demand:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesNodePool
 metadata:
   name: autoscale-pool
@@ -129,7 +129,7 @@ spec:
 Reference an Planton-managed CivoKubernetesCluster instead of hardcoding the cluster ID:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoKubernetesNodePool
 metadata:
   name: ref-pool

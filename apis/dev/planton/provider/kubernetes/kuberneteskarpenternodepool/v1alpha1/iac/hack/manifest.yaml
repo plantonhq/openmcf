@@ -1,0 +1,68 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKarpenterNodePool
+metadata:
+  name: gp-spot-pool
+spec:
+  template:
+    labels:
+      pool-tier: general-purpose
+      karpenter.sh/capacity-type: spot
+    annotations:
+      example.com/owner: platform-team
+    nodeClassRef:
+      group: karpenter.k8s.aws
+      kind: EC2NodeClass
+      name:
+        value: gp-nodeclass
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - spot
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+          - arm64
+      - key: karpenter.k8s.aws/instance-category
+        operator: NotIn
+        values:
+          - t
+      - key: karpenter.k8s.aws/instance-generation
+        operator: Gt
+        values:
+          - "2"
+      - key: node.kubernetes.io/instance-type
+        operator: In
+        values:
+          - m5.large
+          - m5.xlarge
+          - m6i.large
+          - m6i.xlarge
+        minValues: 2
+      - key: topology.kubernetes.io/zone
+        operator: Exists
+    taints:
+      - key: dedicated
+        value: batch
+        effect: NoSchedule
+    startupTaints:
+      - key: example.com/cni-not-ready
+        effect: NoExecute
+    expireAfter: 720h
+    terminationGracePeriod: 48h
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 5m
+    budgets:
+      - nodes: 10%
+      - nodes: "0"
+        schedule: 0 9 * * 1-5
+        duration: 8h
+        reasons:
+          - Underutilized
+          - Empty
+  limits:
+    cpu: "1000"
+    memory: 1000Gi
+  weight: 50

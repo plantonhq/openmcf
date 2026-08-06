@@ -6,7 +6,7 @@
 # cache: a cache's contract tolerates brief unavailability, and the
 # replicated shape is a values change away on the deployed resource when
 # an app outgrows standalone.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesValkey
 metadata:
   name: "{{ values.env }}-{{ values.namespace }}-cache"

@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpvertexaiindex.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpVertexAiIndexTreeAhConfig tunes the tree-AH (shallow tree +
+// asymmetric hashing) approximate nearest-neighbor algorithm — the
+// production choice for large corpora, trading a small recall loss for
+// query latency that stays flat as the index grows.
+message GcpVertexAiIndexTreeAhConfig {
+  // Number of embeddings on each leaf node of the tree. Larger leaves
+  // mean fewer tree levels (faster build, coarser pruning); smaller
+  // leaves prune more aggressively per query. GCP's default is 1000.
+  optional int32 leaf_node_embedding_count = 1 [
+    (dev.planton.shared.options.default) = "1000",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  // Percentage of leaf nodes any single query may search, 1-100
+  // inclusive. Raising it improves recall at the cost of latency.
+  // GCP's default is 10.
+  optional int32 leaf_nodes_to_search_percent = 2 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+}
+
+// GcpVertexAiIndexBruteForceConfig selects exhaustive (exact)
+// nearest-neighbor search: every query scans every vector. Perfect
+// recall, linear cost — intended for small corpora and for producing
+// ground truth to measure an approximate index's recall against.
+message GcpVertexAiIndexBruteForceConfig {
+  // Brute-force search has no tuning parameters; presence of this
+  // block selects the algorithm.
+}
+
+// GcpVertexAiIndexConfig is the vector-search geometry of the index.
+// The whole block is immutable (ForceNew): dimensions, algorithm, and
+// shard size shape the physical data layout, so changing any of them
+// replaces the index.
+message GcpVertexAiIndexConfig {
+  // The algorithm arms are mutually exclusive; omitting both selects
+  // GCP's default (tree-AH with its default tuning).
+  option (buf.validate.message).cel = {
+    id: "at_most_one_algorithm"
+    expression: "!(has(this.tree_ah_config) && has(this.brute_force_config))"
+    message: "tree_ah_config and brute_force_config are mutually exclusive; pick the approximate (tree-AH) or the exact (brute-force) algorithm, not both"
+  };
+
+  // The API requires approximate_neighbors_count whenever tree-AH is
+  // used, but only rejects the create at runtime — enforce it
+  // pre-deploy instead.
+  option (buf.validate.message).cel = {
+    id: "tree_ah_requires_neighbors_count"
+    expression: "!has(this.tree_ah_config) || this.approximate_neighbors_count > 0"
+    message: "approximate_neighbors_count is required when tree_ah_config is set — it is the number of candidates fetched by approximate search before exact reordering"
+  };
+
+  // Number of dimensions of the input vectors — the embedding model's
+  // output size (e.g. 768 for many text encoders). Immutable.
+  int32 dimensions = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Number of neighbors found via approximate search before exact
+  // reordering (a more expensive distance computation over the
+  // candidates). Required by the API when tree-AH is used; not
+  // meaningful for brute-force. Immutable.
+  int32 approximate_neighbors_count = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Physical shard size for the index data. Determines how much data
+  // each shard holds and which machine types can serve it when
+  // deployed. If omitted, GCP picks a size based on the data.
+  // SHARD_SIZE_SMALL: 2 GB per shard.
+  // SHARD_SIZE_MEDIUM: 20 GB per shard.
+  // SHARD_SIZE_LARGE: 50 GB per shard.
+  // Immutable.
+  string shard_size = 3 [(buf.validate.field).cel = {
+    id: "shard_size_valid_value"
+    expression: "this == '' || this in ['SHARD_SIZE_SMALL', 'SHARD_SIZE_MEDIUM', 'SHARD_SIZE_LARGE']"
+    message: "shard_size must be SHARD_SIZE_SMALL, SHARD_SIZE_MEDIUM, or SHARD_SIZE_LARGE"
+  }];
+
+  // Distance measure used in nearest-neighbor search. Match it to how
+  // the embedding model was trained — a mismatched measure silently
+  // degrades result quality.
+  // SQUARED_L2_DISTANCE: Euclidean (L2) distance.
+  // L1_DISTANCE: Manhattan (L1) distance.
+  // COSINE_DISTANCE: 1 - cosine similarity.
+  // DOT_PRODUCT_DISTANCE: negative dot product (GCP's default).
+  // Immutable.
+  optional string distance_measure_type = 4 [
+    (dev.planton.shared.options.default) = "DOT_PRODUCT_DISTANCE",
+    (buf.validate.field).cel = {
+      id: "distance_measure_valid_value"
+      expression: "this == '' || this in ['SQUARED_L2_DISTANCE', 'L1_DISTANCE', 'COSINE_DISTANCE', 'DOT_PRODUCT_DISTANCE']"
+      message: "distance_measure_type must be SQUARED_L2_DISTANCE, L1_DISTANCE, COSINE_DISTANCE, or DOT_PRODUCT_DISTANCE"
+    }
+  ];
+
+  // Normalization applied to each vector before indexing.
+  // UNIT_L2_NORM: unit L2 normalization (with DOT_PRODUCT_DISTANCE this
+  //   makes ranking equivalent to cosine similarity).
+  // NONE: no normalization (GCP's default).
+  // Immutable.
+  optional string feature_norm_type = 5 [
+    (dev.planton.shared.options.default) = "NONE",
+    (buf.validate.field).cel = {
+      id: "feature_norm_valid_value"
+      expression: "this == '' || this in ['UNIT_L2_NORM', 'NONE']"
+      message: "feature_norm_type must be UNIT_L2_NORM or NONE"
+    }
+  ];
+
+  // Tree-AH approximate search configuration. Mutually exclusive with
+  // brute_force_config. Immutable.
+  GcpVertexAiIndexTreeAhConfig tree_ah_config = 6;
+
+  // Brute-force (exact) search. Mutually exclusive with tree_ah_config.
+  // Immutable.
+  GcpVertexAiIndexBruteForceConfig brute_force_config = 7;
+}
+
+// GcpVertexAiIndexSpec defines a Vertex AI Vector Search index — the
+// data structure that holds embedding vectors and answers
+// nearest-neighbor queries. An index by itself stores and organizes
+// vectors; serving queries additionally requires a
+// GcpVertexAiIndexEndpoint and a GcpVertexAiDeployedIndex placing this
+// index onto that endpoint.
+//
+// Two update regimes exist, chosen at creation and immutable:
+//
+//   - **BATCH_UPDATE** (GCP's default): contents are replaced or
+//     amended in bulk from Cloud Storage files. Rebuilds take from tens
+//     of minutes to hours depending on corpus size.
+//
+//   - **STREAM_UPDATE**: individual vectors are upserted/removed via
+//     the API within seconds. Streaming indexes cost more per GB and
+//     still compact in the background.
+//
+// Immutable fields (ForceNew): location, index_update_method, and the
+// entire config block. Mutable in place: display_name, description,
+// labels. contents_delta_uri travels in its OWN update: when it
+// changes, the provider PATCHes metadata alone (no other field can
+// ride along in the same apply), and the imported/refreshed state never
+// reports it back — expect a one-field diff on the first plan after an
+// out-of-band data load.
+message GcpVertexAiIndexSpec {
+  // GCP project where the index will be created.
+  // If omitted, the index is created in the provider's default project
+  // (from the credential or ambient configuration).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Region where the index will be created (e.g., "us-central1").
+  // Deployed indexes must live in the same region. Immutable after
+  // creation.
+  string location = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Display name of the index (up to 128 UTF-8 characters). The
+  // primary human-readable identifier; the numeric resource ID is
+  // GCP-assigned.
+  string display_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+
+  // Description of the index.
+  string description = 4;
+
+  // How the index contents are updated after creation. Immutable —
+  // migrating between regimes means recreating the index.
+  // BATCH_UPDATE: bulk rebuilds from Cloud Storage (GCP's default).
+  // STREAM_UPDATE: near-real-time upserts via the API.
+  optional string index_update_method = 5 [
+    (dev.planton.shared.options.default) = "BATCH_UPDATE",
+    (buf.validate.field).cel = {
+      id: "index_update_method_valid_value"
+      expression: "this == '' || this in ['BATCH_UPDATE', 'STREAM_UPDATE']"
+      message: "index_update_method must be BATCH_UPDATE or STREAM_UPDATE"
+    }
+  ];
+
+  // Cloud Storage DIRECTORY (not file) holding the initial or delta
+  // vector data, e.g. "gs://my-bucket/embeddings/". File format and
+  // layout: https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure
+  //
+  // May be omitted at creation (an empty index; the norm for
+  // STREAM_UPDATE) and set later to load data. Two provider quirks,
+  // both harmless but worth knowing: a change to this field travels in
+  // its own single-field update, and the value is write-only — GCP
+  // never reports it back on read, so out-of-band loads show up as a
+  // one-field diff on the next plan.
+  //
+  // A plain string (not a reference) because the gs:// directory URI
+  // has no matching stack output shape on the GCS kinds; compose by
+  // writing the bucket name into the URI.
+  string contents_delta_uri = 6 [(buf.validate.field).cel = {
+    id: "contents_delta_uri_gs_scheme"
+    expression: "this == '' || this.startsWith('gs://')"
+    message: "contents_delta_uri must be a Cloud Storage directory URI starting with gs://"
+  }];
+
+  // If true, an update that carries contents_delta_uri REPLACES the
+  // whole index contents with the files at the URI; if false (the
+  // default), the files are treated as a delta (upserts/deletes) on
+  // top of the existing contents. Only meaningful together with
+  // contents_delta_uri.
+  bool is_complete_overwrite = 7;
+
+  // Vector-search geometry: dimensions, algorithm, sharding, distance
+  // measure. Required — an index cannot exist without its geometry.
+  // The entire block is immutable.
+  GcpVertexAiIndexConfig config = 8 [(buf.validate.field).required = true];
+
+  // User-defined labels to organize the index (cost attribution, team
+  // ownership, environment tagging). Keys and values must follow GCP
+  // label rules: lowercase letters, digits, underscores, and dashes,
+  // at most 63 characters. Merged with the platform's attribution
+  // labels; on key conflicts the platform labels win. Mutable in place.
+  map<string, string> labels = 9;
+}

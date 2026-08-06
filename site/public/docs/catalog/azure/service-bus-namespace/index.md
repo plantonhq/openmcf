@@ -26,7 +26,7 @@ When you deploy an AzureServiceBusNamespace resource, Planton provisions:
 Create a file `namespace.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusNamespace
 metadata:
   name: orders-bus

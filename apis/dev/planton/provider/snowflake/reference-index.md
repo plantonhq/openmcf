@@ -8,4 +8,4 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [SnowflakeDatabase](snowflakedatabase/v1/reference.md) | snowflake-database spec | yes |  |
+| [SnowflakeDatabase](snowflakedatabase/v1alpha1/reference.md) | snowflake-database spec | yes |  |

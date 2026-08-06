@@ -1,0 +1,28 @@
+# Dedicated AzureStorageAccount for the table scenario only. Account
+# names are globally unique in Azure and hyphen-forbidden, so each
+# scenario that creates and destroys its own parent account carries a
+# distinct hyphen-free name -- reusing a name across sequential subtests
+# hits Azure's post-delete reservation and the recreate hangs. Shared
+# keys stay at Azure's default (enabled): the providers drive table
+# create/ACLs through the data plane with shared-key auth.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageAccount
+metadata:
+  name: planton-oss-e2e-storagetable-fixture-account
+  id: planton-oss-e2e-storagetable-fixture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2etblfix
+  replicationType: LRS

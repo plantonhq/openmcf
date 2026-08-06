@@ -52,7 +52,7 @@ enum CloudResourceProvider {
 }
 ```
 
-The `group` value directly maps to the `apiVersion` in manifests. A resource with `provider: aws` uses `apiVersion: aws.planton.dev/v1`. A resource with `provider: kubernetes` uses `apiVersion: kubernetes.planton.dev/v1`.
+The `group` value directly maps to the `apiVersion` in manifests. A resource with `provider: aws` uses `apiVersion: aws.planton.dev/v1alpha1`. A resource with `provider: kubernetes` uses `apiVersion: kubernetes.planton.dev/v1alpha1`.
 
 ## Provider Breakdown
 

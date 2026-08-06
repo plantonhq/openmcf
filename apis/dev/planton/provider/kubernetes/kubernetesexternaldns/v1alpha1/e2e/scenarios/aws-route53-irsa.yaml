@@ -1,0 +1,35 @@
+# The real record-write proof on the aws-eks profile: the Route 53 arm with
+# keyless IRSA identity, fenced to the batch's hosted zone. The zone is
+# deliberately NOT publicly delegated — external-dns writes records through
+# the Route 53 API regardless of delegation, and the behavioral verifier
+# (switched on by this scenario's name) creates an annotated Service source,
+# then asserts the A/CNAME and TXT-ownership records materialize in the zone
+# via the AWS API, and that they are gone again after the source is removed
+# (sync policy) — the full write-and-own loop against the real provider.
+#
+# metadata.name is load-bearing beyond the release: the chart SA takes this
+# name, and the batch bootstrap's IRSA trust policy binds to
+# external-dns/e2e-edns-route53 — rename them together.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesExternalDns
+metadata:
+  name: e2e-edns-route53
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+spec:
+  namespace:
+    value: external-dns
+  createNamespace: true
+  awsRoute53:
+    region: ${E2E_ENV:PLANTON_E2E_AWS_REGION}
+    zoneIdFilters:
+      - value: ${E2E_ENV:PLANTON_E2E_ROUTE53_ZONE_ID}
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: ${E2E_ENV:PLANTON_E2E_EDNS_IRSA_ROLE_ARN}
+  sources:
+    - service
+  policy: sync
+  txtOwnerId: e2e-route53
+  interval: 15s

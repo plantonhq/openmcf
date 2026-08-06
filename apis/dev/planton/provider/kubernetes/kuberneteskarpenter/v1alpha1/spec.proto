@@ -1,0 +1,486 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskarpenter.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKarpenterSpec** installs the Karpenter node-provisioning
+ * controller from the official OCI-served Helm charts
+ * (`oci://public.ecr.aws/karpenter/karpenter`, with the CRDs from the
+ * companion `karpenter-crd` chart). Karpenter watches for unschedulable pods
+ * and launches RIGHT-SIZED machines for them in seconds — no pre-created
+ * node groups, no per-ASG scaling policies: it picks instance types from the
+ * live catalog to fit the pending pods, consolidates under-used nodes away,
+ * and handles spot interruptions.
+ *
+ * WHAT to provision is declared separately: KubernetesKarpenterNodePool
+ * describes the shape and constraints of the fleet, and
+ * KubernetesKarpenterEc2NodeClass describes the cloud-level machine template
+ * (AMIs, subnets, security groups, IAM). This component installs and
+ * configures the ENGINE; an installation without at least one NodePool
+ * provisions nothing.
+ *
+ * ONE INSTALLATION PER CLUSTER: Karpenter owns the cluster-wide
+ * `karpenter.sh` label domain, its CRDs, and node lifecycle — a second
+ * controller fleet would fight over every NodeClaim. The Helm release names
+ * are therefore fixed ("karpenter-crd" and "karpenter").
+ *
+ * Karpenter is per-cloud upstream: each cloud ships its own controller,
+ * chart, and NodeClass CRD. This kind installs the AWS provider — the
+ * canonical, mature implementation — and carries the cloud-specific
+ * settings in a typed oneof so future providers land as additive arms.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — a safety valve, never the primary interface.
+ */
+message KubernetesKarpenterSpec {
+  /**
+   * Namespace to install Karpenter into ("kube-system" is upstream's
+   * recommended home since v1 — it keeps the controller under the
+   * system-critical eviction umbrella). Accepts a literal namespace name or
+   * a reference to a KubernetesNamespace resource.
+   *
+   * Treat the namespace as PERMANENT for a given cluster: the CRDs survive
+   * uninstall by design (so removing Karpenter never deletes the fleet),
+   * and kept CRDs pin the Helm release's namespace in their ownership
+   * metadata — re-installing into a DIFFERENT namespace then fails with
+   * Helm's release-ownership error on CRDs that "should not exist"
+   * (verified live). Moving an existing install requires first deleting
+   * the kept CRDs (only safe with an empty fleet: no NodePools,
+   * EC2NodeClasses, or NodeClaims).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist. Leave false when
+   * installing into kube-system.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "1.14.0" — the karpenter and
+   * karpenter-crd charts version together with the controller). Pin
+   * deliberately; upgrades re-run both releases with the new charts. Pick
+   * versions from the OCI registry's published tags
+   * (`oci://public.ecr.aws/karpenter`): the served chart is the contract —
+   * the upstream source tree's Chart.yaml can lag the published tags.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.14.0"];
+
+  /**
+   * Karpenter custom resource definitions (NodePool, NodeClaim,
+   * EC2NodeClass, ...) lifecycle — installed through the companion
+   * `karpenter-crd` chart as its own release, upstream's supported
+   * mechanism for keeping CRDs upgradable (Helm never upgrades CRDs
+   * bundled inside the main chart).
+   */
+  KubernetesKarpenterCrds crds = 4;
+
+  /**
+   * Identity of the cluster Karpenter provisions for. Required — the
+   * controller cannot start without knowing which cluster's pods and
+   * nodes it owns.
+   */
+  KubernetesKarpenterCluster cluster = 5 [(buf.validate.field).required = true];
+
+  /**
+   * Cloud-provider integration. Karpenter is per-cloud upstream; exactly
+   * one arm configures the provider this installation drives. Today the
+   * AWS provider (the canonical implementation) is the supported arm;
+   * future providers add as siblings without redesign.
+   */
+  oneof cloud {
+    /**
+     * AWS integration: EC2 provisioning, interruption handling, and the
+     * IAM identity the controller runs as.
+     */
+    KubernetesKarpenterAws aws = 6;
+  }
+
+  /**
+   * Controller deployment sizing. Extra replicas are leader-elected warm
+   * standbys, not horizontal capacity.
+   */
+  KubernetesKarpenterController controller = 7;
+
+  /**
+   * Pod-batching windows: how long Karpenter waits to gather pending pods
+   * before computing a provisioning decision. Longer windows consider more
+   * pods at once and usually produce fewer, larger nodes.
+   */
+  KubernetesKarpenterBatching batching = 8;
+
+  /**
+   * Scheduler-simulation posture: how Karpenter treats soft scheduling
+   * preferences and minValues when computing node shapes.
+   */
+  KubernetesKarpenterSchedulingPosture scheduling = 9;
+
+  /**
+   * Alpha/beta feature gates, mirroring the chart's featureGates block.
+   * Gates follow upstream's graduation process — flipping one on opts into
+   * pre-GA behavior.
+   */
+  KubernetesKarpenterFeatureGates feature_gates = 10;
+
+  /**
+   * Scheduling of the controller pods themselves (where Karpenter runs —
+   * NOT what it provisions). The chart already pins controller pods away
+   * from Karpenter-provisioned nodes so the controller never disrupts its
+   * own machine.
+   */
+  KubernetesKarpenterControllerScheduling controller_scheduling = 11;
+
+  /**
+   * Karpenter's own Prometheus telemetry.
+   */
+  KubernetesKarpenterPrometheus prometheus = 12;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (image digests/registries, extra volumes, sidecars, DNS
+   * config, pod disruption budget tuning, ...) — never the substitute for
+   * them. Do not put secrets here.
+   */
+  string helm_values = 13;
+}
+
+/**
+ * Karpenter CRD lifecycle (via the companion karpenter-crd chart).
+ */
+message KubernetesKarpenterCrds {
+  /**
+   * Install the Karpenter CRDs as a dedicated `karpenter-crd` release
+   * before the controller chart. Chart default posture: true. Disable
+   * only when something else manages them — the controller chart bundles
+   * copies Helm installs once and NEVER upgrades, so leaving this on is
+   * what keeps CRDs current across chart upgrades.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs (and therefore every NodePool/EC2NodeClass/NodeClaim in
+   * the cluster) when this resource is destroyed. Rendered as the
+   * `helm.sh/resource-policy: keep` annotation through the CRD chart's
+   * additionalAnnotations — the karpenter-crd chart serves CRDs as
+   * ordinary templates, so WITHOUT this a plain uninstall cascade-deletes
+   * every fleet declaration and Karpenter-provisioned NodeClaim record in
+   * the cluster. Leave true unless you deliberately want uninstall to
+   * purge them.
+   */
+  optional bool keep_on_uninstall = 2 [(dev.planton.shared.options.default) = "true"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.crds.keep_requires_install"
+    message: "keep_on_uninstall only applies when this resource installs the CRDs — with install false there is nothing to keep"
+    expression: "!(has(this.install) && this.install == false) || !(has(this.keep_on_uninstall) && this.keep_on_uninstall == true)"
+  };
+}
+
+/**
+ * Identity of the cluster Karpenter provisions for.
+ */
+message KubernetesKarpenterCluster {
+  /**
+   * Cluster name — the value nodes register under and (on EKS) the name
+   * used for control-plane discovery. The chart refuses to render without
+   * it.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Kubernetes API endpoint URL for provisioned nodes to join. Leave
+   * empty on EKS — the controller discovers it at startup (DescribeCluster).
+   * Required in practice for non-EKS control planes.
+   */
+  string endpoint = 2 [(buf.validate.field).cel = {
+    id: "spec.cluster.endpoint_format"
+    message: "endpoint must be an https URL (the cluster API server address, e.g. https://ABC123.gr7.us-east-1.eks.amazonaws.com)"
+    expression: "this == '' || this.startsWith('https://')"
+  }];
+
+  /**
+   * Marks the control plane as EKS, letting Karpenter discover cluster
+   * details (endpoint, CA) from the DescribeCluster API instead of
+   * requiring them here.
+   */
+  bool eks_control_plane = 3;
+
+  /**
+   * Cluster CA bundle (base64 PEM) for TLS bootstrap of provisioned
+   * nodes. Empty = taken from the controller's own API-server TLS
+   * configuration — correct for almost every cluster.
+   */
+  string ca_bundle = 4;
+}
+
+/**
+ * AWS-provider integration settings.
+ */
+message KubernetesKarpenterAws {
+  /**
+   * IAM role ARN for IRSA: annotates Karpenter's service account so the
+   * controller calls EC2/EKS/SQS/Pricing without stored keys (the role's
+   * trust policy must allow the cluster's OIDC provider and the
+   * "karpenter" service account). Reference an AwsIamRole's role_arn output
+   * -- the reference is also the deploy-ordering edge, so the role exists
+   * before the controller starts -- or pass a literal ARN
+   * (arn:aws:iam::<account>:role/<name>). Leave unset when using EKS Pod
+   * Identity — the association is configured on the AWS side and needs no
+   * annotation here.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef irsa_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  /**
+   * Name of the SQS queue receiving EC2 interruption events (spot
+   * interruptions, scheduled maintenance, instance rebalance). Empty
+   * disables interruption handling — provisioning still works, but
+   * Karpenter cannot drain ahead of an interruption. The controller role
+   * needs the queue permissions from upstream's IAM guidance.
+   */
+  string interruption_queue = 2;
+
+  /**
+   * The cluster runs in a VPC without internet-reachable AWS endpoints
+   * beyond the provisioned VPC endpoints. Karpenter then avoids services
+   * without a VPC endpoint — including the pricing API, so price-aware
+   * consolidation falls back to static data.
+   */
+  bool isolated_vpc = 3;
+
+  /**
+   * Number of ENIs per node reserved outside Karpenter's max-pods and
+   * kube-reserved math — used with VPC CNI custom networking, where one
+   * ENI per node belongs to the CNI. Chart default: 0.
+   */
+  optional int32 reserved_enis = 4 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  /**
+   * Respect AWS zonal-shift signals when placing NodeClaims (skips zones
+   * a shift has drained). Requires the cluster to be enabled for zonal
+   * shift and the controller role to carry the ARC permissions.
+   */
+  bool enable_zonal_shift = 5;
+
+  /**
+   * VM memory overhead subtracted from every instance type's reported
+   * memory, as a fraction (0.075 = 7.5% — the chart default). Tune only
+   * when nodes register with less allocatable memory than Karpenter
+   * expected.
+   */
+  optional string vm_memory_overhead_percent = 6 [
+    (dev.planton.shared.options.default) = "0.075",
+    (buf.validate.field).cel = {
+      id: "spec.aws.vm_memory_overhead_format"
+      message: "vm_memory_overhead_percent must be a decimal fraction between 0 and 1 (e.g. \"0.075\")"
+      expression: "this == '' || (this.matches('^0(\\\\.[0-9]+)?$|^1(\\\\.0+)?$'))"
+    }
+  ];
+}
+
+/**
+ * Controller deployment sizing.
+ */
+message KubernetesKarpenterController {
+  /**
+   * Replica count. Chart default: 2 (an active leader plus a warm
+   * standby, spread across zones by the chart's topology constraints).
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Container resources. Empty = no requests/limits (upstream leaves the
+   * choice to the operator; 1 CPU / 1Gi is the commonly documented
+   * starting point for large clusters).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * Global log level. Chart default: "info".
+   */
+  optional string log_level = 3 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).cel = {
+      id: "spec.controller.log_level_enum"
+      message: "log_level must be one of 'debug', 'info' or 'error'"
+      expression: "this == '' || this in ['debug', 'info', 'error']"
+    }
+  ];
+}
+
+/**
+ * Pod-batching windows.
+ */
+message KubernetesKarpenterBatching {
+  /**
+   * Maximum batch window (Go duration, e.g. "10s" — the chart default).
+   * The ceiling on how long pending pods wait for a provisioning
+   * decision.
+   */
+  optional string max_duration = 1 [
+    (dev.planton.shared.options.default) = "10s",
+    (buf.validate.field).cel = {
+      id: "spec.batching.max_duration_format"
+      message: "max_duration must be a Go duration such as \"10s\" or \"1m\""
+      expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+    }
+  ];
+
+  /**
+   * Idle window that closes a batch early: if no new pods arrive for this
+   * long, the batch is provisioned immediately (Go duration, chart
+   * default "1s").
+   */
+  optional string idle_duration = 2 [
+    (dev.planton.shared.options.default) = "1s",
+    (buf.validate.field).cel = {
+      id: "spec.batching.idle_duration_format"
+      message: "idle_duration must be a Go duration such as \"1s\""
+      expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+    }
+  ];
+}
+
+/**
+ * Scheduler-simulation posture.
+ */
+message KubernetesKarpenterSchedulingPosture {
+  /**
+   * How preferred (soft) node/pod affinities and ScheduleAnyways topology
+   * constraints influence provisioning: "Respect" (chart default — soft
+   * preferences shape the node) or "Ignore" (only hard requirements
+   * count, which can pick cheaper shapes).
+   */
+  optional string preference_policy = 1 [
+    (dev.planton.shared.options.default) = "Respect",
+    (buf.validate.field).cel = {
+      id: "spec.scheduling.preference_policy_enum"
+      message: "preference_policy must be either 'Respect' or 'Ignore'"
+      expression: "this == '' || this in ['Respect', 'Ignore']"
+    }
+  ];
+
+  /**
+   * How requirement minValues are treated: "Strict" (chart default —
+   * scheduling fails when minValues cannot be met) or "BestEffort" (relax
+   * minValues rather than leave pods pending).
+   */
+  optional string min_values_policy = 2 [
+    (dev.planton.shared.options.default) = "Strict",
+    (buf.validate.field).cel = {
+      id: "spec.scheduling.min_values_policy_enum"
+      message: "min_values_policy must be either 'Strict' or 'BestEffort'"
+      expression: "this == '' || this in ['Strict', 'BestEffort']"
+    }
+  ];
+}
+
+/**
+ * Feature gates (chart featureGates block). Names and defaults mirror the
+ * pinned chart; gates graduate (or disappear) with upstream releases.
+ */
+message KubernetesKarpenterFeatureGates {
+  /**
+   * ALPHA: automatically replace nodes that fail health checks.
+   */
+  bool node_repair = 1;
+
+  /**
+   * ALPHA: NodeOverlay resources influence scheduling simulations.
+   */
+  bool node_overlay = 2;
+
+  /**
+   * BETA (chart default true): native on-demand capacity-reservation
+   * support — NodeClasses can select ODCRs and Karpenter launches into
+   * them first.
+   */
+  optional bool reserved_capacity = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * ALPHA: allow consolidation to replace spot nodes with cheaper spot
+   * nodes (off by default because it can increase churn).
+   */
+  bool spot_to_spot_consolidation = 4;
+
+  /**
+   * ALPHA: static capacity — NodePools with a fixed replica count instead
+   * of demand-driven provisioning.
+   */
+  bool static_capacity = 5;
+
+  /**
+   * ALPHA: CapacityBuffer resources pre-provision spare headroom.
+   */
+  bool capacity_buffer = 6;
+}
+
+/**
+ * Scheduling of the controller pods themselves.
+ */
+message KubernetesKarpenterControllerScheduling {
+  /**
+   * PriorityClass for the controller pods. Chart default:
+   * "system-cluster-critical" — the provisioner must outlive the
+   * workloads it provisions for.
+   */
+  optional string priority_class_name = 1 [(dev.planton.shared.options.default) = "system-cluster-critical"];
+
+  /**
+   * Node selector for the controller pods. The chart always adds
+   * kubernetes.io/os=linux; entries here narrow it further (e.g. a
+   * dedicated management node group — remember Karpenter must run on
+   * capacity it does NOT manage).
+   */
+  map<string, string> node_selector = 2;
+
+  /**
+   * Tolerations for the controller pods. Chart default tolerates
+   * CriticalAddonsOnly.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 3;
+
+  /**
+   * Run the controller on the host network — required when the cluster's
+   * CNI cannot serve pod IPs before Karpenter runs (the chicken-and-egg
+   * of Karpenter provisioning the nodes the CNI runs on).
+   */
+  bool host_network = 4;
+}
+
+/**
+ * Karpenter's own telemetry.
+ */
+message KubernetesKarpenterPrometheus {
+  /**
+   * Create a ServiceMonitor for scrape discovery of the controller's
+   * metrics endpoint (provisioning latencies, disruption decisions,
+   * pricing lookups). Requires the Prometheus operator CRDs on the
+   * cluster — the release FAILS to install without them.
+   */
+  bool service_monitor = 1;
+}

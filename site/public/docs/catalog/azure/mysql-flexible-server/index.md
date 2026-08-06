@@ -34,7 +34,7 @@ A read replica or a restored server is simply another AzureMysqlFlexibleServer w
 Create a file `mysql.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: my-mysql
@@ -108,7 +108,7 @@ This creates a Burstable MySQL 8.0.21 server with Azure's default 20 GiB auto-gr
 ### Production: VNet-Injected with Zone-Redundant HA
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: prod-mysql
@@ -144,7 +144,7 @@ spec:
 ### Read Replica of a Primary
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: prod-mysql-replica
@@ -167,7 +167,7 @@ The replica inherits the source's SKU, storage, and version. Promote it later by
 ### Hardened: Customer-Managed Key and an Entra Administrator
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMysqlFlexibleServer
 metadata:
   name: hardened-mysql

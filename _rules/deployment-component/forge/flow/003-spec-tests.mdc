@@ -18,7 +18,7 @@ SCOPE
 TOOLS
 - Reader: `_rules/deployment-component/_scripts/spec_proto_reader.py`
 - Test Writer+Run: `_rules/deployment-component/_scripts/spec_tests_write_and_run.py`
-- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/spec_test.go`
+- Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/spec_test.go`
   and `aws/awsalb/v1/spec_test.go` -- the canonical test-suite skeleton and positive/negative cases.
 
 SEQUENTIAL STEPS

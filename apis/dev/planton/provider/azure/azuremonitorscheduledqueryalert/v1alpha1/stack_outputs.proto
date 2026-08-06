@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azuremonitorscheduledqueryalert.v1alpha1;
+
+// **AzureMonitorScheduledQueryAlertStackOutputs** captures the outputs of
+// provisioning an Azure Monitor scheduled query alert rule.
+message AzureMonitorScheduledQueryAlertStackOutputs {
+  // The Azure Resource Manager ID of the scheduled query alert rule.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/scheduledQueryRules/{name}
+  string scheduled_query_alert_id = 1;
+
+  // The name of the scheduled query alert rule.
+  string scheduled_query_alert_name = 2;
+
+  // The principal ID of the rule's system-assigned managed identity.
+  // Empty unless the identity block enables SYSTEM_ASSIGNED. Grant this
+  // principal read access on the queried workspace when the workspace
+  // enforces Entra-only query access.
+  string identity_principal_id = 3;
+}

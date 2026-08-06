@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsbatchjobdefinition.v1alpha1;
+
+// AwsBatchJobDefinitionStackOutputs captures the observable outputs of the
+// registered job definition revision, for EventBridge Batch targets and
+// SubmitJob callers to reference.
+message AwsBatchJobDefinitionStackOutputs {
+  // The full ARN of the registered revision, including the revision number
+  // (e.g. "arn:aws:batch:us-west-2:123456789012:job-definition/etl:7").
+  // The primary handle consumers reference -- because it carries the
+  // revision, each newly registered revision changes this output and rolls
+  // referencing EventBridge rules on their next deployment.
+  string job_definition_arn = 1;
+
+  // The ARN without the revision suffix (e.g. "arn:aws:batch:us-west-2:
+  // 123456789012:job-definition/etl"), for consumers that should always
+  // track the name's latest ACTIVE revision instead of a pinned one.
+  string arn_without_revision = 2;
+
+  // The job definition name (metadata.name) the revisions are registered
+  // under.
+  string job_definition_name = 3;
+
+  // The revision number this deployment registered (e.g. 7). Revisions are
+  // immutable; every spec change registers the next number.
+  int64 revision = 4;
+}

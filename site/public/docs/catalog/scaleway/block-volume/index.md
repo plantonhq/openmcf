@@ -28,7 +28,7 @@ When you deploy a ScalewayBlockVolume resource, Planton provisions:
 Create a file `block-volume.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayBlockVolume
 metadata:
   name: my-volume
@@ -74,7 +74,7 @@ This creates a 20 GB block volume with standard performance (5,000 IOPS) in the 
 A minimal 10 GB volume for a development Instance in Paris:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayBlockVolume
 metadata:
   name: dev-data
@@ -94,7 +94,7 @@ spec:
 A 500 GB volume with the high-performance tier for a database workload in Amsterdam. The `sbs_15k` tier provides 15,000 IOPS suitable for PostgreSQL, MySQL, or MongoDB data directories:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayBlockVolume
 metadata:
   name: prod-db-data
@@ -114,7 +114,7 @@ spec:
 A volume restored from an existing Block Storage snapshot. The size must be at least as large as the snapshot's source volume:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayBlockVolume
 metadata:
   name: restored-volume

@@ -1,0 +1,28 @@
+# Full-surface offline-proof manifest: exercises the Vault/OpenBao backend
+# with AppRole auth (the declared-credential materialization path), KV
+# engine addressing, namespace + CA trust, and the common store tuning — so
+# the offline tofu plan and pulumi preview proofs cover the credential arm
+# the live fake-backend lane excludes. Placeholder values; never applied to
+# a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSecretStore
+metadata:
+  name: hack-secret-store
+spec:
+  namespace:
+    value: team-a
+  config:
+    vault:
+      server: https://openbao.example.internal:8200
+      path: secret
+      version: v2
+      namespace: platform
+      caBundle: hack-placeholder-pem
+      appRole:
+        path: approle
+        roleId: hack-role-id
+        secretId: hack-placeholder-secret-id
+    refreshInterval: 5m
+    retry:
+      maxRetries: 3
+      retryInterval: 10s

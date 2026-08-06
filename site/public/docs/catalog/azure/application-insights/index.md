@@ -28,7 +28,7 @@ When you deploy an AzureApplicationInsights resource, Planton provisions:
 Create a file `app-insights.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationInsights
 metadata:
   name: web-app-insights

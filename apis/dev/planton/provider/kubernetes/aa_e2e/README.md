@@ -194,6 +194,6 @@ When extending E2E testing to a new provider (e.g., AWS):
 ## Test Manifests
 
 Test manifests live colocated with their components at
-`{component}/v1/e2e/*.yaml`, not in this directory. The test framework
+`{component}/v1alpha1/e2e/*.yaml`, not in this directory. The test framework
 discovers them automatically via `e2e/framework/discovery/`. Adding a new
 test scenario means dropping a YAML file -- zero Go code changes.

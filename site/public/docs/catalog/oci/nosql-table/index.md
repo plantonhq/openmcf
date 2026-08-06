@@ -28,7 +28,7 @@ When you deploy an OciNosqlTable resource, Planton provisions:
 Create a file `nosql-table.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNosqlTable
 metadata:
   name: my-nosql-table
@@ -112,7 +112,7 @@ This creates a NoSQL table with provisioned throughput (50 read units, 50 write 
 A simple key-value table with provisioned throughput — suitable for development or low-traffic workloads:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNosqlTable
 metadata:
   name: dev-kv
@@ -142,7 +142,7 @@ spec:
 A table with on-demand capacity and secondary indexes for query flexibility:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNosqlTable
 metadata:
   name: events-table
@@ -180,7 +180,7 @@ spec:
 A table that indexes specific fields within a JSON column:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNosqlTable
 metadata:
   name: orders-table
@@ -225,7 +225,7 @@ spec:
 Reference an Planton-managed compartment instead of hardcoding the OCID:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciNosqlTable
 metadata:
   name: ref-nosql

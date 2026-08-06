@@ -27,7 +27,7 @@ When you deploy an AzureKeyVaultKey resource, Planton provisions:
 Create a file `key-vault-key.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultKey
 metadata:
   name: storage-cmk
@@ -85,7 +85,7 @@ After deployment, read `status.outputs.versionless_id` -- the reference CMK cons
 Rotate every ~11 months with 2-year per-version expiry and 30-day notice:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultKey
 metadata:
   name: registry-cmk
@@ -109,7 +109,7 @@ spec:
 ### EC Signing Key
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultKey
 metadata:
   name: jwt-signing

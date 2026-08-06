@@ -30,7 +30,7 @@ When you deploy an AwsGlueCatalogDatabase resource, Planton provisions:
 Create a file `glue-catalog-database.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: analytics
@@ -86,7 +86,7 @@ A database is exactly one shape — regular, resource link, or federated; `targe
 An empty database for quick experimentation. Tables are added later via Glue Crawlers or DDL statements.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: experiments
@@ -104,7 +104,7 @@ spec:
 A database with a description documenting its purpose and contents.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: sales_analytics
@@ -125,7 +125,7 @@ spec:
 A production database with a default S3 storage location so all tables inherit a consistent base path. Recommended for organized data lakes.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: prod_warehouse
@@ -151,7 +151,7 @@ Formation-managed access — and grants a scoped default to the data-lake
 admin role instead.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: governed_lake
@@ -178,7 +178,7 @@ Lake Formation. Queries against the link resolve to the target database's
 tables, subject to the share's permissions.
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: shared_sales_link

@@ -5,7 +5,7 @@
 # nothing to operate (where EKS platforms install Karpenter, AKS ships the
 # equivalent loop). The system pool (on the cluster resource) is tainted
 # CriticalAddonsOnly, so THIS pool is where every application pod lands.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: "{{ values.env }}-aks-apps"
@@ -41,7 +41,7 @@ spec:
 # NoSchedule) and labels them with the same key, so nothing lands here
 # without an explicit toleration + nodeSelector — eviction can reclaim a
 # Spot VM at any time.
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: "{{ values.env }}-aks-spot"

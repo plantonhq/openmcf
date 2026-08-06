@@ -26,7 +26,7 @@ When you deploy an AzureStorageTable resource, Planton provisions:
 Create a file `table.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageTable
 metadata:
   name: app-entities

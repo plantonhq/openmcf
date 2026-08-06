@@ -6,16 +6,16 @@ import (
 
 	"github.com/hashicorp/hcl/v2/hclparse"
 
-	testkubernetesv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1"
+	testkubernetesv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
+	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestProtoToTFVars_NamespaceFlattened(t *testing.T) {
 	msg := &testkubernetesv1.TestCloudResourceKubernetes{
-		ApiVersion: "_test.planton.dev/v1",
+		ApiVersion: "_test.planton.dev/v1alpha1",
 		Kind:       "TestCloudResourceKubernetes",
 		Spec: &testkubernetesv1.TestCloudResourceKubernetesSpec{
 			Namespace: &foreignkeyv1.StringValueOrRef{
@@ -50,7 +50,7 @@ func TestProtoToTFVars_NamespaceFlattened(t *testing.T) {
 
 func TestProtoToTFVars_MapRefValuesFlattened(t *testing.T) {
 	msg := &testkubernetesv1.TestCloudResourceKubernetes{
-		ApiVersion: "_test.planton.dev/v1",
+		ApiVersion: "_test.planton.dev/v1alpha1",
 		Kind:       "TestCloudResourceKubernetes",
 		Spec: &testkubernetesv1.TestCloudResourceKubernetesSpec{
 			Namespace: &foreignkeyv1.StringValueOrRef{
@@ -83,7 +83,7 @@ func TestProtoToTFVars_MapRefValuesFlattened(t *testing.T) {
 
 func TestProtoToTFVars_ApiVersionKindSkipped(t *testing.T) {
 	msg := &testkubernetesv1.TestCloudResourceKubernetes{
-		ApiVersion: "_test.planton.dev/v1",
+		ApiVersion: "_test.planton.dev/v1alpha1",
 		Kind:       "TestCloudResourceKubernetes",
 		Spec: &testkubernetesv1.TestCloudResourceKubernetesSpec{
 			Namespace: &foreignkeyv1.StringValueOrRef{
@@ -108,8 +108,8 @@ func TestProtoToTFVars_ApiVersionKindSkipped(t *testing.T) {
 }
 
 func TestProtoToTFVars_Valkey_ProviderAbstraction(t *testing.T) {
-	msg := &kubernetesvalkeyv1.KubernetesValkey{
-		ApiVersion: "kubernetes.planton.dev/v1",
+	msg := &kubernetesvalkeyv1alpha1.KubernetesValkey{
+		ApiVersion: "kubernetes.planton.dev/v1alpha1",
 		Kind:       "KubernetesValkey",
 		Metadata: &shared.CloudResourceMetadata{
 			Name: "red-one",
@@ -117,8 +117,8 @@ func TestProtoToTFVars_Valkey_ProviderAbstraction(t *testing.T) {
 				"env": "production",
 			},
 		},
-		Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
-			Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+		Spec: &kubernetesvalkeyv1alpha1.KubernetesValkeySpec{
+			Config: &kubernetesvalkeyv1alpha1.KubernetesValkeyConfig{
 				MaxMemory:  "256mb",
 				AppendOnly: true,
 			},

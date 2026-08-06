@@ -28,7 +28,7 @@ When you deploy a GcpSpannerInstance resource, Planton provisions:
 Create a file `spanner-instance.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerInstance
 metadata:
   name: orders-spanner
@@ -78,7 +78,7 @@ This creates a single-node Spanner instance in `us-central1`, named after `metad
 ### Free Instance for Development
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerInstance
 metadata:
   name: dev-spanner
@@ -91,7 +91,7 @@ spec:
 ### Regional Production with Autoscaling
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerInstance
 metadata:
   name: prod-spanner
@@ -112,7 +112,7 @@ spec:
 ### Multi-Region with Asymmetric Read-Region Scaling
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerInstance
 metadata:
   name: global-spanner
@@ -137,7 +137,7 @@ spec:
 Reference a GcpProject managed by Planton instead of hardcoding the project ID:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerInstance
 metadata:
   name: ref-spanner

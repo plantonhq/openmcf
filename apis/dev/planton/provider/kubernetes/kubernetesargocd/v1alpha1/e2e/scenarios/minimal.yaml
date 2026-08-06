@@ -1,0 +1,22 @@
+# The component defaults on their own: all seven components at chart
+# defaults (bundled single-pod Redis, dex + notifications on, commit
+# server off), the local admin user enabled. The verifier proves the
+# PRODUCT on every lane: server/repo-server/controller rolled out, the
+# APPLICATION-generated argocd-initial-admin-secret read, a session
+# opened through POST /api/v1/session as admin, and an authenticated
+# applications-API round-trip.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesArgocd
+metadata:
+  name: e2e-argocd-min
+spec:
+  namespace:
+    value: e2e-argocd-min
+  create_namespace: true
+  # Shared-cluster lane hygiene: the chart TEMPLATES its CRDs, so kept
+  # CRDs carry this release's ownership metadata and would fail the NEXT
+  # lane's install (a different release cannot adopt them). This lane
+  # removes its CRDs on destroy; the KEEP posture is proven on the
+  # behavioral-gitops lane.
+  crds:
+    keep: false

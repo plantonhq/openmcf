@@ -1,7 +1,7 @@
 # The subnet that hosts the NAT gateway: a bare one-resource instance (no
 # inline routes, so the module creates no route table). Its job in the
 # exam is to be the target of the NAT gateway's subnet_id edge.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: hub-nat-subnet

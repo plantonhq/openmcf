@@ -24,7 +24,7 @@ go_test(
     ],
     embed = [":protodefaults"],
     deps = [
-        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1:testcloudresourcegeneric",
+        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
         "//apis/dev/planton/shared",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

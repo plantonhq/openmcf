@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSnsSubscription
+metadata:
+  name: test-sqs-subscription
+spec:
+  region: us-west-2
+  topicArn:
+    value: "<sns-topic-arn>"
+  protocol: sqs
+  endpoint:
+    value: "<sqs-queue-arn>"
+  rawMessageDelivery: true

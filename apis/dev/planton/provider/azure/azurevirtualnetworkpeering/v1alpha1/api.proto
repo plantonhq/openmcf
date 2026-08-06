@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurevirtualnetworkpeering.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/azure/azurevirtualnetworkpeering/v1alpha1/spec.proto";
+import "dev/planton/provider/azure/azurevirtualnetworkpeering/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// AzureVirtualNetworkPeering is the top-level API resource for one direction
+// of an Azure virtual network peering: private connectivity between two
+// networks over the Microsoft backbone. It is modeled as a first-class
+// composable resource because peerings are many-per-network with their own
+// lifecycle -- a hub network accumulates one pair per spoke, and spokes come
+// and go without the networks themselves changing.
+message AzureVirtualNetworkPeering {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureVirtualNetworkPeering".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureVirtualNetworkPeering'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Virtual network peering specification.
+  AzureVirtualNetworkPeeringSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureVirtualNetworkPeeringStatus status = 5;
+}
+
+// AzureVirtualNetworkPeeringStatus holds the deployment outputs.
+message AzureVirtualNetworkPeeringStatus {
+  // Stack outputs from the IaC deployment.
+  AzureVirtualNetworkPeeringStackOutputs outputs = 1;
+}

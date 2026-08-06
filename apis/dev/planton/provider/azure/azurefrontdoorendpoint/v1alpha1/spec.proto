@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefrontdoorendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzureFrontDoorEndpointSpec** defines the configuration for creating an
+// endpoint inside an Azure Front Door (Standard/Premium) profile -- the
+// public entry point client traffic arrives at.
+//
+// Each endpoint receives a generated, globally unique hostname of the form
+// `{name}-{hash}.z01.azurefd.net` (the hash suffix means the NAME only has
+// to be unique within the profile). Routes attach to an endpoint to define
+// which URL patterns it serves and which origin group answers them; custom
+// domains CNAME onto the endpoint's generated hostname.
+//
+// Endpoints are many-per-profile with independent lifecycles -- one
+// profile commonly fronts several applications, each behind its own
+// endpoint -- which is why the endpoint is a first-class kind referencing
+// the profile rather than a list folded into the profile's spec.
+//
+// **ForceNew fields**: `profile_id`, `endpoint_name` -- both fix the
+// endpoint's ARM identity at creation.
+message AzureFrontDoorEndpointSpec {
+  // The Front Door profile the endpoint lives in, by ARM ID. References
+  // an AzureFrontDoorProfile's profile_id output so the profile and its
+  // endpoints compose in one manifest set. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.profile_id"
+  ];
+
+  // The endpoint's name -- unique within the profile, and the prefix of
+  // the generated public hostname (`{name}-{hash}.z01.azurefd.net`), so
+  // pick something recognizable in browser address bars and DNS records.
+  //
+  // 2-46 characters; letters, digits, and hyphens; must start and end
+  // with a letter or digit.
+  //
+  // **ForceNew**: changing the name replaces the endpoint and changes its
+  // generated hostname -- every DNS record pointing at the old hostname
+  // breaks.
+  string endpoint_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 2,
+    (buf.validate.field).string.max_len = 46,
+    (buf.validate.field).cel = {
+      id: "front_door_endpoint_name_format"
+      message: "endpoint_name must be 2-46 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens"
+      expression: "this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,44}[a-zA-Z0-9]$')"
+    }
+  ];
+
+  // Whether the endpoint accepts traffic. Disabling stops all requests at
+  // the edge (returns errors to clients) without deleting the endpoint or
+  // its routes -- useful for maintenance windows and staged cutovers.
+  // Default true.
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // Free-form tags applied to the endpoint, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins. Tags are Azure's governance
+  // surface -- Azure Policy enforces them and Microsoft Cost Management
+  // groups by them. Updatable in place.
+  map<string, string> tags = 4;
+}

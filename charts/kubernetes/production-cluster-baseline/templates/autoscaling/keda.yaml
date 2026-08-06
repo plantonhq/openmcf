@@ -5,7 +5,7 @@
 # cluster singleton: Kubernetes allows exactly one external-metrics provider,
 # and KEDA registers it. Off by default — install it when the first workload
 # actually scales on events.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKeda
 metadata:
   name: "{{ values.env }}-keda"

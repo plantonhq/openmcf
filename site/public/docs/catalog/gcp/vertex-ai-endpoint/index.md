@@ -30,7 +30,7 @@ When you deploy a GcpVertexAiEndpoint resource, Planton provisions:
 Create a file `endpoint.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiEndpoint
 metadata:
   name: my-endpoint
@@ -86,7 +86,7 @@ This creates a public Vertex AI Endpoint in the provider's default project, acce
 A public endpoint for development or non-sensitive workloads:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiEndpoint
 metadata:
   name: dev-recommendations
@@ -108,7 +108,7 @@ spec:
 Production endpoint with network isolation and customer-managed encryption:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiEndpoint
 metadata:
   name: prod-scoring
@@ -134,7 +134,7 @@ spec:
 Strongest network isolation using PSC with an explicit project allowlist:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiEndpoint
 metadata:
   name: psc-inference
@@ -161,7 +161,7 @@ spec:
 Reference other Planton-managed resources for composable infrastructure:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiEndpoint
 metadata:
   name: composed-endpoint

@@ -28,7 +28,7 @@ When you deploy an AzureMonitorMetricAlert resource, Planton provisions:
 Create a file `metric-alert.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorMetricAlert
 metadata:
   name: storage-availability

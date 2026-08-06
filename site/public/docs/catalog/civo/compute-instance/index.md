@@ -28,7 +28,7 @@ When you deploy a CivoComputeInstance resource, Planton provisions:
 Create a file `civo-instance.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoComputeInstance
 metadata:
   name: my-instance
@@ -84,7 +84,7 @@ This creates a `g3.small` instance in New York running Ubuntu Focal, attached to
 A minimal instance with no SSH keys or firewalls:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoComputeInstance
 metadata:
   name: basic-vm
@@ -107,7 +107,7 @@ spec:
 An instance configured with an SSH key for login and a firewall for network access control:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoComputeInstance
 metadata:
   name: ssh-vm
@@ -137,7 +137,7 @@ spec:
 An instance referencing other Planton-managed resources, with a reserved IP, attached volume, and a cloud-init script:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoComputeInstance
 metadata:
   name: prod-app

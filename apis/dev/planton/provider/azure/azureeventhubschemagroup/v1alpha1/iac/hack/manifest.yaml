@@ -1,0 +1,12 @@
+# Offline-plan manifest: a schema group exercising the enum wire maps
+# (BACKWARD -> Backward, AVRO -> Avro).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubSchemaGroup
+metadata:
+  name: test-eh-schema-group
+spec:
+  namespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventHub/namespaces/hack-eventhub-ns
+  schemaGroupName: order-events
+  schemaCompatibility: BACKWARD
+  schemaType: AVRO

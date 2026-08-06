@@ -4,7 +4,7 @@
 # routes are declared) and this member is a bare one-resource instance
 # while its twin owns three. The asymmetry is what a half-mirrored staging
 # environment genuinely looks like.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: orders-stg-app-subnet

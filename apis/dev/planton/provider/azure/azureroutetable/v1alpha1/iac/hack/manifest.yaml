@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRouteTable
+metadata:
+  name: test-route-table
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-rt
+  routes:
+    - name: default-via-firewall
+      addressPrefix: "0.0.0.0/0"
+      nextHopType: VIRTUAL_APPLIANCE
+      nextHopInIpAddress:
+        value: "10.0.1.4"
+    - name: blackhole-rfc1918
+      addressPrefix: "192.168.0.0/16"
+      nextHopType: NONE
+  bgpRoutePropagationEnabled: false
+  tags:
+    cost-center: platform
+    owner: network-team

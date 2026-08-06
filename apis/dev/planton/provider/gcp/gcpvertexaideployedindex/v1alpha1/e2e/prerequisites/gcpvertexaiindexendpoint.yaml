@@ -1,0 +1,22 @@
+# Prerequisite public index endpoint for the deployed-index chain. Fixed
+# metadata.name for FK resolution; the endpoint has no user-chosen
+# cloud-side identifier (GCP assigns the numeric ID). Public connectivity
+# is the only arm live-provable without PSA/consumer wiring.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVertexAiIndexEndpoint
+metadata:
+  name: planton-oss-e2e-gcpvaiep-prereq
+  id: planton-oss-e2e-gcpvaiep-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpvertexaiindexendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: planton-oss-e2e-vaiep-prereq-${E2E_RUN_ID}
+  location: us-central1
+  publicEndpointEnabled: true

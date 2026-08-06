@@ -1,0 +1,21 @@
+# Published install profile: consumers (a subscription's topic reference,
+# a Cloud Function event trigger, a Scheduler pubsub target) attach in
+# their chains. Kept schema-free so the profile is a pure leaf beyond its
+# own registry chain. The cloud-side topic_name carries ${E2E_RUN_ID};
+# metadata.name stays fixed for FK resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPubSubTopic
+metadata:
+  name: planton-oss-e2e-gcppst-prereq
+  id: planton-oss-e2e-gcppst-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcppubsubtopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  topicName: e2e-pss-topic-${E2E_RUN_ID}

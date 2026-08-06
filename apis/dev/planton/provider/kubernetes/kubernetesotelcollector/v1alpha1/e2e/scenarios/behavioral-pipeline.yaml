@@ -1,0 +1,30 @@
+# Behavioral lane: THE RECONCILE PROOF. Starts as the minimal OTLP →
+# debug pipeline; the verifier then PATCHES the CR's config with a
+# resource-attribute marker and asserts the operator rolls the
+# collector onto the new pipeline — freshly pushed telemetry must carry
+# the patched attribute. Declared configuration change becoming live
+# pipeline behavior is this kind's whole contract.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelCollector
+metadata:
+  name: e2e-otelcol-beh
+spec:
+  namespace:
+    value: e2e-otelcol-beh
+  createNamespace: true
+  configYaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]

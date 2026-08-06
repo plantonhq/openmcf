@@ -30,7 +30,7 @@ When you deploy an AzurePublicIp resource, Planton provisions:
 Create a file `publicip.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: my-pip
@@ -90,7 +90,7 @@ This creates a static public IP on Azure's defaults: Standard SKU, Regional tier
 A minimal Public IP for development or testing:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: dev-pip
@@ -111,7 +111,7 @@ spec:
 A Public IP with a DNS label for a stable domain name, hashed with a tenant-scoped reuse policy so the label survives safely across environments:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: api-pip
@@ -136,7 +136,7 @@ After deployment, the Public IP is reachable at a stable FQDN under `westeurope.
 A production Public IP spread across all three availability zones with an extended idle timeout for long-lived connections:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: prod-lb-pip
@@ -163,7 +163,7 @@ spec:
 A next-generation SKU address drawn from an AzurePublicIpPrefix, for attachment to a StandardV2 NAT gateway (partners allowlist the whole prefix range once):
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: nat-egress-pip
@@ -188,7 +188,7 @@ spec:
 An IPv6 address with dedicated IP-level DDoS protection:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: v6-frontend-pip
@@ -216,7 +216,7 @@ spec:
 Reference a Planton-managed resource group instead of hardcoding the name:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: ref-pip

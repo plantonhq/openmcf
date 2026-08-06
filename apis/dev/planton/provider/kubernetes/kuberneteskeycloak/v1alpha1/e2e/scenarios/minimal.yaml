@@ -1,0 +1,35 @@
+# The smallest honest Keycloak: one instance on the composed PostgreSQL
+# fixture, the plain-HTTP listener with strict hostname resolution OFF
+# (the verifier reaches it through a port-forward — exactly the
+# behind-a-proxy posture that combination exists for; TLS lanes are
+# plan-proven offline, certificate material has no honest stand-in on a
+# kind cluster). The verifier asserts CR Ready, the naming contract,
+# the generated `<name>-initial-admin` Secret, then performs the REAL
+# admin login and an authenticated admin-API read.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKeycloak
+metadata:
+  name: e2e-kc-min
+spec:
+  namespace:
+    value: e2e-keycloak
+  db:
+    vendor: postgres
+    host:
+      valueFrom:
+        name: e2e-kc-pg
+    database: keycloak
+    usernameSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: username
+    passwordSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: password
+  http:
+    httpEnabled: true
+  hostname:
+    strict: false

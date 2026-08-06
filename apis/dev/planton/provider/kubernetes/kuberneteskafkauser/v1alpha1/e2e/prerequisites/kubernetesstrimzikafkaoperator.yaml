@@ -1,0 +1,13 @@
+# Consumer-scoped operator fixture for the KubernetesKafkaUser lanes:
+# any-namespace watch, so the Kafka fixture (and the users living beside
+# it) reconcile wherever the lane puts them.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStrimziKafkaOperator
+metadata:
+  name: e2e-stz-op-for-users
+spec:
+  namespace:
+    value: strimzi-system
+  create_namespace: true
+  watch:
+    any_namespace: true

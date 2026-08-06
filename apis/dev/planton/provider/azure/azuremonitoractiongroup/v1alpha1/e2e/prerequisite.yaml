@@ -1,0 +1,33 @@
+# AzureMonitorActionGroup install profile used as a prerequisite by the
+# alert kinds (declared via prerequisites: [AzureMonitorActionGroup] in
+# the kind registry). The E2E harness deploys this document (via the
+# action group's Pulumi module), captures its outputs under its manifest
+# name, and resolves dependents' action-group references against them.
+# The resource group arrives transitively through this kind's own
+# AzureResourceGroup prerequisite. A single email receiver keeps the
+# fixture side-effect-free (nothing sends unless an alert fires, and the
+# fixtures never breach); names are resource-group-scoped, so sequential
+# recreate is safe.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorActionGroup
+metadata:
+  name: planton-oss-e2e-azure-fixture-ag
+  id: planton-oss-e2e-azure-fixture-ag
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitoractiongroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  shortName: PltnE2EFix
+  emailReceivers:
+    - name: e2e-fixture-email
+      emailAddress: e2e-noreply@planton.dev
+      useCommonAlertSchema: true

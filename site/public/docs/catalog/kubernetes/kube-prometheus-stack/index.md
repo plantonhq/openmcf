@@ -74,7 +74,7 @@ an emptyDir that loses everything on restart).
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKubePrometheusStack
 metadata:
   name: metrics

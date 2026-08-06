@@ -27,7 +27,7 @@ When you deploy an AwsTransitGatewayVpcAttachment resource, Planton provisions:
 Create a file `attachment.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGatewayVpcAttachment
 metadata:
   name: app-vpc-attachment

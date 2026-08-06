@@ -47,7 +47,7 @@ KMS keys govern their own rotation.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNeptuneCluster
 metadata:
   name: knowledge-graph

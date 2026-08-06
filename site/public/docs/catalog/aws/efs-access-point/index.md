@@ -26,7 +26,7 @@ When you deploy an AwsEfsAccessPoint resource, Planton provisions:
 Create a file `access-point.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEfsAccessPoint
 metadata:
   name: app-data
@@ -86,7 +86,7 @@ The ENTIRE access point (everything except tags) is create-time immutable — ch
 Read-mostly model directory for a Lambda function:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEfsAccessPoint
 metadata:
   name: lambda-models

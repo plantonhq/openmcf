@@ -31,7 +31,7 @@ No gateway is deployed: istiod implements the Kubernetes Gateway API, so gateway
 ### Minimal (sidecar mode)
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIstio
 metadata:
   name: my-istio
@@ -46,7 +46,7 @@ Sidecar mode is the default. Enroll a namespace by labeling it `istio-injection=
 ### Ambient (sidecar-less)
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIstio
 metadata:
   name: ambient-mesh
@@ -65,7 +65,7 @@ Ambient additionally installs the `istio-cni` node agent and the `ztunnel` per-n
 ### Production (sidecar, hardened)
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIstio
 metadata:
   name: prod-mesh
@@ -101,7 +101,7 @@ spec:
 istiod serves the `istio` GatewayClass. Creating a Gateway with that class makes istiod provision and program the gateway deployment (named `<gateway>-istio`) — no gateway install step exists or is needed:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGateway
 metadata:
   name: web-gateway
@@ -118,7 +118,7 @@ spec:
         namespaces:
           from: All
 ---
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHttpRoute
 metadata:
   name: web-route
@@ -149,7 +149,7 @@ spec:
 Traffic policy composes from the typed kinds, which need only the CRDs this component installs — for example strict mTLS plus an allow-list:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPeerAuthentication
 metadata:
   name: strict-mtls

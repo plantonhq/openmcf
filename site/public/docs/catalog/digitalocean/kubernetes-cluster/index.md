@@ -30,7 +30,7 @@ When you deploy a DigitalOceanKubernetesCluster resource, Planton provisions:
 Create a file `doks.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: my-cluster
@@ -93,7 +93,7 @@ This creates a three-node Kubernetes cluster in the NYC3 region with `s-4vcpu-8g
 A production cluster with a highly available control plane and automatic patch upgrades:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: prod-cluster
@@ -121,7 +121,7 @@ spec:
 A cluster with auto-scaling nodes and restricted API server access for security:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: secure-cluster
@@ -156,7 +156,7 @@ spec:
 Production configuration using a VPC foreign key reference, DOCR integration, and all optional features:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: full-cluster

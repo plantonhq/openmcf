@@ -33,7 +33,7 @@ When you deploy a GcpDataprocCluster resource, Planton provisions:
 Create a file `dataproc.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: my-spark-cluster
@@ -138,7 +138,7 @@ This creates a cluster with 1 master, 2 workers, Spark 3.5, Component Gateway en
 ### HA Production Cluster (GCE arm)
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: prod-spark
@@ -196,7 +196,7 @@ spec:
 ### Autoscaled Batch Cluster with Spot Secondaries
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: batch-spark
@@ -233,7 +233,7 @@ spec:
 ### Spark on GKE (virtual arm)
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: spark-on-gke

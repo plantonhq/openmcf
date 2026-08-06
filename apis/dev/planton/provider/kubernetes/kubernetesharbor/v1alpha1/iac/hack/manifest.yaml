@@ -1,0 +1,114 @@
+# Full-surface development manifest — exercises every module-rendered arm
+# the kind-cluster lanes exclude (composed external PostgreSQL/Redis,
+# S3-compatible artifact storage with declared credentials + the
+# disable-redirect posture, LoadBalancer exposure with TLS from a
+# cert Secret, internal TLS from per-component Secrets, the air-gap
+# image mirror, Trivy air-gap knobs, metrics + ServiceMonitor, the
+# outbound proxy, and the escape hatch).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHarbor
+metadata:
+  name: harbor-dev
+spec:
+  namespace:
+    value: harbor-dev
+  createNamespace: true
+  externalUrl: https://harbor.dev.example.com
+  expose:
+    serviceType: LoadBalancer
+    tls:
+      enabled: true
+      certSecretName:
+        value: harbor-dev-tls
+    serviceAnnotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    sourceRanges:
+      - 10.0.0.0/8
+  database:
+    external:
+      host:
+        value: harbor-pg-rw
+      username: harbor
+      passwordSecretName:
+        value: harbor-pg-app
+      coreDatabase: registry
+      sslMode: require
+  cache:
+    external:
+      addr:
+        value: harbor-valkey:6379
+      password: dev-only-placeholder
+  storage:
+    s3:
+      bucket: harbor-dev-artifacts
+      region: us-east-1
+      endpoint:
+        value: http://harbor-objects-s3:8333
+      credentials:
+        accessKey: devonlyaccesskey
+        secretKey: dev-only-placeholder-secret
+      disableRedirect: true
+      secure: false
+  trivy:
+    enabled: true
+    replicas: 1
+    skipUpdate: true
+    offlineScan: true
+    severity: HIGH,CRITICAL
+    githubToken: dev-only-placeholder-token
+  core:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+  portal:
+    replicas: 2
+  registry:
+    replicas: 2
+  jobservice:
+    replicas: 2
+    maxJobWorkers: 20
+    logDiskSize: 2Gi
+  nginx:
+    replicas: 2
+  internalTls:
+    enabled: true
+    certSecrets:
+      coreSecretName: harbor-dev-core-tls
+      jobserviceSecretName: harbor-dev-js-tls
+      registrySecretName: harbor-dev-reg-tls
+      portalSecretName: harbor-dev-portal-tls
+      trivySecretName: harbor-dev-trivy-tls
+  metrics:
+    enabled: true
+    serviceMonitorEnabled: true
+    serviceMonitorLabels:
+      release: monitoring
+  cacheLayer:
+    enabled: true
+    expireHours: 48
+  outboundProxy:
+    httpProxy: http://proxy.internal:3128
+    httpsProxy: http://proxy.internal:3128
+  logLevel: warning
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  caBundleSecretName: harbor-dev-storage-ca
+  updateStrategy: Recreate
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: registry
+        effect: NoSchedule
+  helmValues: |
+    core:
+      podAnnotations:
+        example.planton.ai/full-surface: "true"

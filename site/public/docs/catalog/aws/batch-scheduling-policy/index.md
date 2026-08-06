@@ -26,7 +26,7 @@ When you deploy an AwsBatchSchedulingPolicy resource, Planton provisions:
 Create a file `fair-share.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchSchedulingPolicy
 metadata:
   name: team-fair-share

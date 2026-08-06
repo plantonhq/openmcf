@@ -28,7 +28,7 @@ When you deploy a SnowflakeDatabase resource, Planton provisions:
 Create a file `snowflake-database.yaml`:
 
 ```yaml
-apiVersion: snowflake.planton.dev/v1
+apiVersion: snowflake.planton.dev/v1alpha1
 kind: SnowflakeDatabase
 metadata:
   name: my-database
@@ -88,7 +88,7 @@ This creates a standard (non-transient) Snowflake database named `MY_DATABASE` w
 A cost-optimized transient database with 1-day Time Travel retention, suitable for staging or ephemeral workloads:
 
 ```yaml
-apiVersion: snowflake.planton.dev/v1
+apiVersion: snowflake.planton.dev/v1alpha1
 kind: SnowflakeDatabase
 metadata:
   name: staging-db
@@ -109,7 +109,7 @@ spec:
 A production database with 14-day Time Travel retention, extended data retention for stream staleness prevention, and debug-level logging:
 
 ```yaml
-apiVersion: snowflake.planton.dev/v1
+apiVersion: snowflake.planton.dev/v1alpha1
 kind: SnowflakeDatabase
 metadata:
   name: prod-analytics
@@ -133,7 +133,7 @@ spec:
 A database configured for Iceberg table workloads with task execution settings, suitable for data lake integration:
 
 ```yaml
-apiVersion: snowflake.planton.dev/v1
+apiVersion: snowflake.planton.dev/v1alpha1
 kind: SnowflakeDatabase
 metadata:
   name: data-lake-db

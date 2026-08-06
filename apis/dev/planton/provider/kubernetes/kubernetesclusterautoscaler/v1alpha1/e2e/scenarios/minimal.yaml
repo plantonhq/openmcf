@@ -1,0 +1,26 @@
+# Minimal Cluster Autoscaler on the KWOK simulation arm — the sandbox arm
+# is what makes a kind-cluster lane possible at all: every real arm needs a
+# cloud account, and the autoscaler exits when its provider cannot
+# initialize. The chart is SELF-CONTAINED for kwok: with cloudProvider=kwok
+# it renders the kwok-provider-config and kwok-provider-templates
+# ConfigMaps itself (pre-creating either collides with Helm's release
+# ownership check), and the provider bootstraps the KWOK toolkit at
+# startup. The verifier asserts the deployment is Available and the
+# cluster-autoscaler-status ConfigMap materializes (the reconcile loop's
+# own heartbeat artifact). Scale behavior against real node groups rides
+# the batched real-cluster lanes.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClusterAutoscaler
+metadata:
+  name: e2e-cas-minimal
+spec:
+  namespace:
+    value: cluster-autoscaler
+  create_namespace: true
+  scaling:
+    expander: least-waste
+    balance_similar_node_groups: true
+  deployment:
+    replicas: 1
+  kwok:
+    config_map_name: kwok-provider-config

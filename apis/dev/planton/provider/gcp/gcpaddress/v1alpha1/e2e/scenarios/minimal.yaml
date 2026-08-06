@@ -1,0 +1,26 @@
+# External GcpAddress scenario: a regional EXTERNAL IPv4 reservation — the
+# shape Cloud NAT and regional external LBs consume. project_id is
+# deliberately omitted: the module falls back to the provider's default
+# project, which the E2E harness exports as GOOGLE_PROJECT from the resolved
+# test project. Address names are project+region-scoped with no soft-delete
+# reservation, so a fixed name is safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpAddress
+metadata:
+  name: planton-oss-e2e-gcpaddr-smoke
+  id: planton-oss-e2e-gcpaddr-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpaddress
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral regional address created by the Planton E2E harness; safe to delete
+  addressName: planton-oss-e2e-gcpaddr-smoke
+  region: us-central1
+  addressType: EXTERNAL
+  ipVersion: IPV4

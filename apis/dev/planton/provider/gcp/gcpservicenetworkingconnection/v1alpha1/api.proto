@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpservicenetworkingconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/gcp/gcpservicenetworkingconnection/v1alpha1/spec.proto";
+import "dev/planton/provider/gcp/gcpservicenetworkingconnection/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+//gcp-service-networking-connection
+message GcpServiceNetworkingConnection {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpServiceNetworkingConnection'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpServiceNetworkingConnectionSpec spec = 4 [(buf.validate.field).required = true];
+  GcpServiceNetworkingConnectionStatus status = 5;
+}
+
+message GcpServiceNetworkingConnectionStatus {
+  GcpServiceNetworkingConnectionStackOutputs outputs = 1;
+}

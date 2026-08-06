@@ -36,7 +36,7 @@ mkdir -p services/api/kustomize/base
 **`services/api/kustomize/base/deployment.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -80,7 +80,7 @@ patches:
 **`services/api/kustomize/overlays/prod/patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -172,7 +172,7 @@ The most common approach - specify only the fields you want to change:
 **Base**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -189,7 +189,7 @@ spec:
 **Prod Patch** (`overlays/prod/patch.yaml`):
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -760,7 +760,7 @@ resources:
 **`base/deployment.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api
@@ -801,7 +801,7 @@ patches:
 **`overlays/prod/deployment-patch.yaml`**:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api

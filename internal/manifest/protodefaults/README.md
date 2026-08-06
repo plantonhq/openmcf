@@ -8,7 +8,7 @@ Proto field defaults allow you to define sensible default values directly in you
 
 **Without defaults** (verbose):
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: ExternalDnsKubernetes
 metadata:
   name: external-dns
@@ -20,7 +20,7 @@ spec:
 
 **With defaults** (concise):
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: ExternalDnsKubernetes
 metadata:
   name: external-dns
@@ -176,7 +176,7 @@ optional string name = 1 [(dev.planton.shared.options.default) = "my-resource"];
 Users write minimal manifests, specifying only what's unique to their deployment:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: CertManager
 metadata:
   name: cert-manager

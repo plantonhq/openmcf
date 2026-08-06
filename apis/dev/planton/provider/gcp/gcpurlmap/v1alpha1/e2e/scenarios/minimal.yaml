@@ -1,0 +1,35 @@
+# Minimal GcpUrlMap scenario: a single default_service pointing at a
+# GcpBackendService prerequisite (declared via prerequisites in the kind
+# registry). project_id is omitted and rides the harness-exported
+# GOOGLE_PROJECT. URL maps are free and carry no soft-delete reservation,
+# so the name stays fixed.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpUrlMap
+metadata:
+  name: planton-oss-e2e-gcpum-smoke
+  id: planton-oss-e2e-gcpum-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpurlmap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral URL map created by the Planton E2E harness; safe to delete
+  defaultService:
+    valueFrom:
+      kind: GcpBackendService
+      name: planton-oss-e2e-gcpbs-prereq
+      fieldPath: status.outputs.self_link
+  tests:
+    - host: smoke.example.com
+      path: /
+      service:
+        valueFrom:
+          kind: GcpBackendService
+          name: planton-oss-e2e-gcpbs-prereq
+          fieldPath: status.outputs.self_link
+      description: Catch-all resolves to the prerequisite backend service

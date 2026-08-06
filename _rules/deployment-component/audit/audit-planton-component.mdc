@@ -630,7 +630,7 @@ Blocking issues that prevent production readiness:
 
 ✅ **Passed:**
 
-- Folder exists: `apis/dev/planton/provider/atlas/mongodbatlas/v1/`
+- Folder exists: `apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
 - Folder name matches lowercase enum name
 - `v1/` subfolder exists
 
@@ -682,7 +682,7 @@ Blocking issues that prevent production readiness:
 To verify tests, run:
 
 ```bash
-cd apis/dev/planton/provider/atlas/mongodbatlas/v1/
+cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/
 go test -v
 ```
 
@@ -1197,11 +1197,11 @@ Displaying report in chat instead...
 **Expected behavior:**
 1. Search cloud_resource_kind.proto for `MongodbAtlas` enum entry
 2. Find: `MongodbAtlas = 51` with provider `atlas`
-3. Determine path: `apis/dev/planton/provider/atlas/mongodbatlas/v1/`
+3. Determine path: `apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/`
 4. Run all audit checks
 5. Calculate score (e.g., 65%)
 6. Get timestamp: `2025-11-13-143022`
-7. Write report to: `apis/dev/planton/provider/atlas/mongodbatlas/v1/docs/audit/2025-11-13-143022.md`
+7. Write report to: `apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/docs/audit/2025-11-13-143022.md`
 8. Display summary in chat with key findings
 
 ---

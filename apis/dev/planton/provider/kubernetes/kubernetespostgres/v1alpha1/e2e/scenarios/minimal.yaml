@@ -1,0 +1,14 @@
+# The baseline database: one instance, default initdb bootstrap (an `app`
+# database owned by an operator-generated credential), 1Gi storage — the
+# development shape. The verifier drives to Ready + the -rw Service.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPostgres
+metadata:
+  name: e2e-pg-minimal
+spec:
+  namespace:
+    value: e2e-pg-minimal
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 1Gi

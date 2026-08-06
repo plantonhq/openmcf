@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesistio.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesistio/v1alpha1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesistio/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// KubernetesIstio installs the Istio service-mesh control plane (istiod + the
+// Istio CRDs, plus the CNI agent and ztunnel node proxies in ambient mode) from
+// the official Helm charts. Gateways and routes compose from the Gateway API
+// kinds (istiod implements the `istio` GatewayClass); mesh traffic policy
+// composes from the typed Istio kinds (DestinationRule, AuthorizationPolicy, ...).
+message KubernetesIstio {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesIstio'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesIstioSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesIstioStatus status = 5;
+}
+
+// KubernetesIstioStatus holds the deployment status and outputs.
+message KubernetesIstioStatus {
+  // stack-outputs
+  KubernetesIstioStackOutputs outputs = 1;
+}

@@ -182,7 +182,7 @@ func TestScorerComparesRepeatedRefLiterals(t *testing.T) {
 	// Hand the baseline the role mapping it cannot produce itself, with the
 	// WRONG managed policy attached.
 	manifest, err := structpb.NewStruct(map[string]any{
-		"apiVersion": "aws.planton.dev/v1",
+		"apiVersion": "aws.planton.dev/v1alpha1",
 		"kind":       "AwsIamRole",
 		"metadata":   map[string]any{"name": hubRoleName},
 		"spec": map[string]any{

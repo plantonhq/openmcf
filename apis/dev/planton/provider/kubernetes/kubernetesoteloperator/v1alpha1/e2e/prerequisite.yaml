@@ -1,0 +1,17 @@
+# Dependency-install profile for the OpenTelemetry Operator.
+#
+# The E2E harness deploys this manifest (via the registry prerequisite
+# graph — KubernetesOtelCollector declares
+# `prerequisites: [KubernetesOtelOperator]`) before applying any
+# collector scenario. Minimal install: chart defaults, module-owned
+# CRDs applied, the chart's own self-signed cert-manager Issuer (the
+# cert-manager fixture chains transitively through this kind's own
+# prerequisite), the namespace created and owned by the fixture.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelOperator
+metadata:
+  name: e2e-otelop-prereq
+spec:
+  namespace:
+    value: otel-operator-system
+  createNamespace: true

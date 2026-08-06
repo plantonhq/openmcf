@@ -27,7 +27,7 @@ When you deploy an AliCloudRamPolicy resource, Planton provisions:
 Create a file `ram-policy.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRamPolicy
 metadata:
   name: my-oss-reader
@@ -86,7 +86,7 @@ This creates a custom RAM policy granting read-only access to a specific OSS buc
 A minimal policy granting read-only access to all OSS buckets:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRamPolicy
 metadata:
   name: oss-reader
@@ -121,7 +121,7 @@ spec:
 A policy granting full access to a specific OSS bucket with automatic version rotation for frequent updates:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRamPolicy
 metadata:
   name: app-data-access
@@ -159,7 +159,7 @@ spec:
 A cross-service policy for CI/CD pipelines with force delete enabled for clean teardowns:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRamPolicy
 metadata:
   name: cicd-deploy-policy

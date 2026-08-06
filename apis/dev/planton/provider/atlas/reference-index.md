@@ -8,4 +8,4 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [AtlasMongodb](atlasmongodb/v1/reference.md) | atlas-mongodb spec | yes |  |
+| [AtlasMongodb](atlasmongodb/v1alpha1/reference.md) | atlas-mongodb spec | yes |  |

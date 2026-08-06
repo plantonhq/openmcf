@@ -625,7 +625,7 @@ go build ./apis/.../v1/... && go test -v ./apis/.../v1/
 
 ```bash
 # 1. Edit spec.proto (add new fields)
-vim apis/dev/planton/provider/gcp/gcpcloudsl/v1/spec.proto
+vim apis/dev/planton/provider/gcp/gcpcloudsl/v1alpha1/spec.proto
 
 # 2. Propagate changes
 @update-planton-component GcpCloudSql --scenario proto-changed
@@ -817,7 +817,7 @@ grep "^\s*[A-Z]" apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.p
 **Solution:**
 ```bash
 # Check file sizes
-find apis/dev/planton/provider/atlas/mongodbatlas/v1 -type f -exec ls -lh {} \;
+find apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh {} \;
 ```
 
 ### "Update fails with build errors"

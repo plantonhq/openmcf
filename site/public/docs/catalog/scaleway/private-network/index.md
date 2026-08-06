@@ -29,7 +29,7 @@ When you deploy a ScalewayPrivateNetwork resource, Planton provisions:
 Create a file `private-network.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPrivateNetwork
 metadata:
   name: my-network
@@ -75,7 +75,7 @@ This creates a Private Network in the `fr-par` region with an IPAM-auto-allocate
 A Private Network with no explicit subnet — Scaleway's IPAM assigns one automatically:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPrivateNetwork
 metadata:
   name: dev-network
@@ -94,7 +94,7 @@ spec:
 A Private Network with a controlled address range and cross-network routing enabled:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPrivateNetwork
 metadata:
   name: app-network
@@ -115,7 +115,7 @@ spec:
 A Private Network referencing an Planton-managed VPC, with both IPv4 and IPv6 subnets:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayPrivateNetwork
 metadata:
   name: dual-stack-network

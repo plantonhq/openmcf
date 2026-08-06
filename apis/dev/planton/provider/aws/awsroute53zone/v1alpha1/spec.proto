@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awsroute53zone.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsRoute53ZoneSpec defines the configuration for an Amazon Route 53 hosted
+// zone — the DNS container for a domain. The zone's domain name comes from
+// metadata.name (e.g. a zone named "example.com" hosts that domain) and is
+// create-time immutable (ForceNew).
+//
+// A hosted zone is either PUBLIC (resolves on the internet; Route 53 assigns
+// four authoritative name servers, exported as stack outputs for registrar
+// delegation) or PRIVATE (resolves only inside the associated VPCs —
+// split-horizon DNS). The private/public choice shapes the rest of the
+// surface: reusable delegation sets, DNSSEC signing, accelerated recovery,
+// and query logging are public-zone features, while VPC associations define a
+// private zone.
+//
+// Individual DNS records are deliberately NOT part of the zone: each record
+// is its own AwsRoute53DnsRecord resource referencing this zone's zone_id
+// output. Records have independent lifecycles (create, repoint, and delete
+// without touching the zone), are many-per-zone, and carry their own routing
+// surface — folding them here would bury that composability inside one
+// document.
+message AwsRoute53ZoneSpec {
+  // The AWS region where the resource will be created.
+  // Route 53 itself is a global service; this selects the region used for
+  // provider API calls and for regional companions (e.g. a private zone's
+  // default VPC region).
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable comment stored on the hosted zone, visible in the AWS
+  // console and GetHostedZone responses. Useful for ownership or purpose
+  // notes (e.g. "production apex zone — owned by platform team").
+  // Maximum 256 characters.
+  string comment = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Marks the zone as a private hosted zone that resolves only inside the
+  // VPCs listed in vpc_associations. Private zones require at least one VPC
+  // association at creation (AWS bakes the first VPC into CreateHostedZone).
+  // Default: false (public zone, resolves globally).
+  bool is_private = 3;
+
+  // VPCs that can resolve this private zone. Required (at least one) when
+  // is_private is true; must be empty for public zones.
+  //
+  // Each associated VPC must have DNS support and DNS hostnames enabled.
+  // All associations here must be same-account: associating a VPC from
+  // ANOTHER account requires an authorization handshake between the two
+  // accounts (a separate cross-account surface, deliberately not modeled).
+  repeated AwsRoute53ZoneVpcAssociation vpc_associations = 4;
+
+  // ID of a reusable delegation set to assign this zone's name servers from.
+  // Reusable delegation sets give many zones the same four name servers —
+  // the white-label DNS pattern (vanity name servers) and bulk zone
+  // migrations. Public zones only (AWS rejects it for private zones), and
+  // create-time immutable (ForceNew).
+  // When omitted, Route 53 assigns a fresh set of name servers to the zone.
+  string delegation_set_id = 5 [(buf.validate.field).string.max_len = 32];
+
+  // When true, deleting the zone first purges every record in it (except the
+  // required NS/SOA pair) and disables DNSSEC signing, so deletion cannot
+  // fail on "zone not empty". Leave false (default) to protect a zone that
+  // still carries live records from accidental teardown.
+  bool force_destroy = 6;
+
+  // Enables accelerated recovery for the hosted zone: Route 53 pre-stages
+  // the zone's data so control-plane changes propagate faster during
+  // regional recovery events. Public zones only.
+  bool enable_accelerated_recovery = 7;
+
+  // DNS query logging to CloudWatch Logs — who is querying which names, with
+  // response codes. Used for security monitoring, debugging resolution
+  // issues, and understanding query patterns. Public zones only.
+  // Warning: high-traffic domains generate large log volumes (and cost).
+  AwsRoute53ZoneQueryLogging query_logging = 8;
+
+  // DNSSEC signing for the zone: Route 53 signs the zone's records with a
+  // key-signing key (KSK) backed by an asymmetric KMS key, protecting
+  // resolvers from spoofed responses. Public zones only.
+  //
+  // Enabling signing here is half the chain of trust — to complete it, the
+  // DS record from the signed zone must also be registered with the parent
+  // (the domain registrar), which is outside this resource.
+  AwsRoute53ZoneDnssec dnssec = 9;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // A private zone is defined by its VPCs — AWS requires one at creation.
+  option (buf.validate.message).cel = {
+    id: "private_zone_requires_vpc"
+    message: "at least one vpc_associations entry is required when is_private is true (AWS creates a private zone attached to its first VPC)"
+    expression: "!this.is_private || this.vpc_associations.size() > 0"
+  };
+
+  // VPC associations are the private-zone mechanism; public zones take none.
+  option (buf.validate.message).cel = {
+    id: "vpc_associations_require_private"
+    message: "vpc_associations can only be set when is_private is true (public zones resolve globally, not per-VPC)"
+    expression: "this.is_private || this.vpc_associations.size() == 0"
+  };
+
+  // The provider's own rule: reusable delegation sets are public-zone only.
+  option (buf.validate.message).cel = {
+    id: "delegation_set_public_only"
+    message: "delegation_set_id cannot be set for private zones (reusable delegation sets apply to public zones only)"
+    expression: "!this.is_private || this.delegation_set_id == ''"
+  };
+
+  // Accelerated recovery only applies to public zones.
+  option (buf.validate.message).cel = {
+    id: "accelerated_recovery_public_only"
+    message: "enable_accelerated_recovery cannot be set for private zones"
+    expression: "!this.is_private || !this.enable_accelerated_recovery"
+  };
+
+  // Query logging is an AWS public-zone-only feature.
+  option (buf.validate.message).cel = {
+    id: "query_logging_public_only"
+    message: "query_logging cannot be set for private zones (Route 53 query logging supports public hosted zones only)"
+    expression: "!this.is_private || !has(this.query_logging)"
+  };
+
+  // DNSSEC signing is an AWS public-zone-only feature.
+  option (buf.validate.message).cel = {
+    id: "dnssec_public_only"
+    message: "dnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)"
+    expression: "!this.is_private || !has(this.dnssec)"
+  };
+}
+
+// AwsRoute53ZoneVpcAssociation associates one VPC with a private hosted zone,
+// letting resolvers inside that VPC answer queries for the zone's records.
+message AwsRoute53ZoneVpcAssociation {
+  // The VPC to associate. Can reference an AwsVpc resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // The region the VPC lives in. Defaults to the zone's region when omitted
+  // — set it only for VPCs in other regions (a private zone can be resolved
+  // from VPCs across regions within the same account).
+  string vpc_region = 2;
+}
+
+// AwsRoute53ZoneQueryLogging sends the zone's DNS query logs to a CloudWatch
+// Logs log group.
+//
+// AWS operational requirements (the module wires the config; these are yours
+// to satisfy on the log group side):
+// - The log group MUST live in us-east-1 — Route 53 is a global service and
+//   delivers query logs there regardless of where anything else runs.
+// - The Route 53 service principal (route53.amazonaws.com) must be allowed to
+//   deliver: a CloudWatch Logs RESOURCE POLICY granting logs:CreateLogStream
+//   and logs:PutLogEvents on the log group. Resource policies are
+//   account-level (max 10 per region), shared across zones — typically one
+//   policy covering "/aws/route53/*" — so this resource deliberately does not
+//   create one per zone.
+message AwsRoute53ZoneQueryLogging {
+  // ARN of the destination CloudWatch Logs log group (must be in us-east-1).
+  // Can reference an AwsCloudwatchLogGroup resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_log_group_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+}
+
+// AwsRoute53ZoneDnssec enables DNSSEC signing for a public hosted zone: a
+// key-signing key (KSK) is created from the referenced KMS key and the zone's
+// signing status is switched on.
+//
+// KMS key requirements (AWS is strict about all three):
+// - The key MUST live in us-east-1 (the Route 53 DNSSEC control plane region).
+// - It must be an asymmetric key with key spec ECC_NIST_P256, usage
+//   SIGN_VERIFY.
+// - Its key policy must allow the Route 53 DNSSEC service principal
+//   (dnssec-route53.amazonaws.com) kms:DescribeKey, kms:GetPublicKey, and
+//   kms:Sign, plus kms:CreateGrant for the zone's grants.
+message AwsRoute53ZoneDnssec {
+  // The asymmetric KMS key backing the key-signing key. Can reference an
+  // AwsKmsKey resource (see the message comment for the us-east-1 /
+  // ECC_NIST_P256 / key-policy requirements).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Name of the key-signing key inside Route 53 (3–128 characters; letters,
+  // numbers, "._-"). Defaults to a name derived from the zone when omitted.
+  string key_signing_key_name = 2 [(buf.validate.field).string = {pattern: "^$|^[0-9A-Za-z._-]{3,128}$"}];
+}

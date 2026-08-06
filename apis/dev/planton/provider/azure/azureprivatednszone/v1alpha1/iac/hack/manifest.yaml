@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsZone
+metadata:
+  name: pg-private-dns
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  name: privatelink.postgres.database.azure.com
+  tags:
+    cost-center: platform
+    owner: network-team

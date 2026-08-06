@@ -33,7 +33,7 @@ Nothing else: DaemonSets have no Service, ingress, HPA, or PDB — clients reach
 Create a file `daemonset.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDaemonSet
 metadata:
   name: log-collector
@@ -118,7 +118,7 @@ This runs one collector pod on every schedulable node, reading node logs through
 Host network and PID, read-only kernel interfaces, a host-port scrape endpoint, and targeted capabilities:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDaemonSet
 metadata:
   name: node-monitor
@@ -173,7 +173,7 @@ spec:
 Surge-based rollout so no node ever lacks a running collector (note: no host ports, which surge cannot coexist with):
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDaemonSet
 metadata:
   name: log-shipper
@@ -209,7 +209,7 @@ spec:
 An agent that runs only on a tainted GPU pool:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDaemonSet
 metadata:
   name: gpu-device-agent

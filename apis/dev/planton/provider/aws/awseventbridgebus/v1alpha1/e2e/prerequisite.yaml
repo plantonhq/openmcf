@@ -1,0 +1,22 @@
+# AwsEventBridgeBus install profile used as a prerequisite by composed
+# components (declared via the scenario's e2e-prerequisites annotation).
+# A simple custom bus with AWS defaults -- enough for rule scenarios that
+# attach event-pattern rules to a named bus. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeBus
+metadata:
+  name: planton-oss-e2e-awseventbridgebus-prereq
+  id: planton-oss-e2e-awseventbridgebus-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgebus
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E shared custom event bus prerequisite

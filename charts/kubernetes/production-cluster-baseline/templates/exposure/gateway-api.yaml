@@ -9,7 +9,7 @@
 # platform choice with its own lifecycle and configuration surface — this arm
 # provides the standard resources it programs, and gateway_controller_name
 # names the implementation you run.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: "{{ values.env }}-gateway-api-crds"
@@ -28,7 +28,7 @@ spec:
 ---
 # The GatewayClass binds Gateways to the implementation. Cluster-scoped and
 # name-stable: HTTPRoute authors never see it, only the Gateway below does.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayClass
 metadata:
   name: "{{ values.env }}-gateway-class"
@@ -52,7 +52,7 @@ spec:
 # A dedicated namespace for the shared Gateway. Owned by this chart (the
 # Gateway kind, faithful to upstream, cannot create namespaces itself), and
 # referenced below so the create-before-use ordering is structural.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: "{{ values.env }}-gateway-namespace"
@@ -65,7 +65,7 @@ spec:
 ---
 # The shared platform Gateway — the single entry point application HTTPRoutes
 # attach to from any namespace.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGateway
 metadata:
   name: "{{ values.env }}-gateway"

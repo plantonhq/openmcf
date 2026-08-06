@@ -25,7 +25,7 @@ When you deploy an AliCloudKmsKey resource, Planton provisions:
 Create a file `kms-key.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudKmsKey
 metadata:
   name: my-key
@@ -75,7 +75,7 @@ This creates an AES-256 symmetric encryption key with software-based protection.
 ### Minimal KMS Key
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudKmsKey
 metadata:
   name: my-key
@@ -86,7 +86,7 @@ spec:
 ### Production Encryption Key with Rotation
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudKmsKey
 metadata:
   name: prod-encryption-key
@@ -109,7 +109,7 @@ spec:
 ### Asymmetric Signing Key
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudKmsKey
 metadata:
   name: signing-key

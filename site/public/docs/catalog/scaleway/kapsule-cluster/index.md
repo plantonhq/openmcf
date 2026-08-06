@@ -28,7 +28,7 @@ When you deploy a ScalewayKapsuleCluster resource, Planton provisions:
 Create a file `kapsule-cluster.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsuleCluster
 metadata:
   name: my-cluster
@@ -111,7 +111,7 @@ This creates a Kapsule cluster with Cilium CNI in `fr-par`, attached to the spec
 A minimal cluster for development with a small node pool:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsuleCluster
 metadata:
   name: dev-cluster
@@ -137,7 +137,7 @@ spec:
 A production-ready cluster with autoscaling, auto-upgrade, private nodes, and a dedicated control plane:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsuleCluster
 metadata:
   name: prod-cluster
@@ -183,7 +183,7 @@ spec:
 Reference an Planton-managed Private Network instead of hardcoding the UUID:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsuleCluster
 metadata:
   name: ref-cluster

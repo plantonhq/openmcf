@@ -27,7 +27,7 @@ Creates a Google Cloud Storage bucket — the durable object store behind static
 Create a file `bucket.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGcsBucket
 metadata:
   name: app-data

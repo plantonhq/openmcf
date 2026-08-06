@@ -31,7 +31,7 @@ When you deploy a GcpServiceAccount resource, Planton provisions:
 Create a file `service-account.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: my-app-sa
@@ -82,7 +82,7 @@ This creates a service account `my-app-sa@my-gcp-project-123.iam.gserviceaccount
 A service account with permissions to write logs and read Cloud Storage buckets:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: backend-worker
@@ -105,7 +105,7 @@ spec:
 A CI/CD service account with a generated JSON key and deployment permissions:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: ci-deployer
@@ -130,7 +130,7 @@ spec:
 A service account that needs both project-level and organization-level permissions:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: org-auditor
@@ -156,7 +156,7 @@ spec:
 Reference an Planton-managed GcpProject instead of hardcoding the project ID:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: app-runtime

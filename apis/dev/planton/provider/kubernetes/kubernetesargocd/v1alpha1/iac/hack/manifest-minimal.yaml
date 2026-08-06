@@ -1,0 +1,8 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesArgocd
+metadata:
+  name: argocd-min
+spec:
+  namespace:
+    value: argocd-min
+  createNamespace: true

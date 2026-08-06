@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awseksaddon.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEksAddonSpec installs an EKS MANAGED add-on on an AwsEksCluster:
+// cluster software (vpc-cni, coredns, kube-proxy, the EBS/EFS CSI
+// drivers, Pod Identity agent, marketplace add-ons, ...) whose lifecycle
+// -- install, version upgrades, configuration, removal -- AWS manages
+// through the EKS control plane instead of Helm charts you operate
+// yourself.
+//
+// The add-on composes onto its neighbors instead of embedding them: the
+// cluster attaches by reference (status.outputs.name), and the IAM
+// identity the add-on's pods run as -- when it needs one beyond the node
+// role -- is a referenced AwsIamRole, wired either through IRSA
+// (service_account_role_arn, requires the cluster's OIDC provider) or
+// through EKS Pod Identity (pod_identity_associations, requires the
+// eks-pod-identity-agent add-on). This component never modifies a role
+// it merely references.
+//
+// One add-on name per cluster: AWS keys the add-on on
+// (cluster, addon_name), so a second resource with the same pair
+// conflicts. The add-on name and namespace config are create-time
+// immutable; version, configuration, and the IAM wiring update in place.
+message AwsEksAddonSpec {
+  // The AWS region the add-on's cluster lives in. Must match the
+  // cluster's region. Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The EKS cluster the add-on installs on. Reference an AwsEksCluster's
+  // name output or pass a literal cluster name for a cluster managed
+  // outside Planton. Create-only in AWS.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
+  ];
+
+  // The add-on to install, by its EKS catalog name: AWS-built add-ons
+  // ("vpc-cni", "coredns", "kube-proxy", "aws-ebs-csi-driver",
+  // "aws-efs-csi-driver", "eks-pod-identity-agent", "snapshot-controller",
+  // "amazon-cloudwatch-observability", ...) or a marketplace add-on's
+  // vendor-prefixed name. `aws eks describe-addon-versions` lists what the
+  // cluster's Kubernetes version supports. Create-only in AWS -- changing
+  // the name replaces the add-on.
+  string addon_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // The add-on version to run, e.g. "v1.18.1-eksbuild.3". Empty installs
+  // the AWS default version for the cluster's Kubernetes version -- the
+  // never-goes-stale choice; pin a version for byte-identical clusters
+  // and controlled upgrades. Version changes update in place (the add-on
+  // rolls its own pods).
+  string addon_version = 4;
+
+  // How to resolve conflicts when the add-on's Kubernetes resources
+  // already exist on the cluster at install time -- typically because
+  // the cluster bootstrapped self-managed copies of vpc-cni / coredns /
+  // kube-proxy at creation. "OVERWRITE" adopts and overwrites the
+  // existing install (the standard way to migrate a self-managed add-on
+  // to a managed one); "NONE" (the default when empty) fails the install
+  // with a conflict instead. AWS accepts only these two at create time
+  // -- "PRESERVE" exists only for updates.
+  string resolve_conflicts_on_create = 5;
+
+  // How to resolve drift when an update finds fields changed out-of-band
+  // (e.g. someone kubectl-edited the add-on's config). "OVERWRITE"
+  // restores the managed values, "PRESERVE" keeps the hand-made changes,
+  // "NONE" (the default when empty) fails the update on conflict.
+  string resolve_conflicts_on_update = 6;
+
+  // Custom configuration for the add-on as a single JSON document (e.g.
+  // '{"replicaCount":3}' for coredns). Each add-on publishes its own
+  // schema -- `aws eks describe-addon-configuration` shows what is
+  // configurable. Empty keeps every add-on default. Updates in place.
+  string configuration_values = 7;
+
+  // The IAM role the add-on's service account assumes via IRSA. Requires
+  // an IAM OIDC provider for the cluster (AwsIamOidcProvider on the
+  // cluster's oidc_issuer_url output); without it AWS rejects the
+  // install. Empty means the add-on's pods fall back to the node role's
+  // permissions. Prefer pod_identity_associations on new clusters --
+  // Pod Identity needs no per-cluster OIDC provider. Reference an
+  // AwsIamRole's role_arn output or pass a literal ARN. Updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_role_arn = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // EKS Pod Identity wiring: bind the add-on's service account(s) to IAM
+  // roles through the Pod Identity agent (the modern, no-OIDC-provider
+  // alternative to IRSA). The role must trust
+  // "pods.eks.amazonaws.com"; the eks-pod-identity-agent add-on must be
+  // installed on the cluster. Updates in place.
+  repeated AwsEksAddonPodIdentityAssociation pod_identity_associations = 9;
+
+  // Keep the add-on's Kubernetes resources on the cluster when this
+  // resource is deleted -- AWS stops managing them but leaves them
+  // running (they become self-managed). Off by default: deletion removes
+  // the software. Turn it on when handing an add-on's lifecycle back to
+  // cluster operators without an outage.
+  bool preserve = 10;
+
+  // Install the add-on into a custom namespace instead of its default.
+  // Create-only in AWS: changing the namespace requires removing and
+  // re-creating the add-on. Only some add-ons support this.
+  AwsEksAddonNamespaceConfig namespace_config = 11;
+
+  // Semver-with-v format ("v<major>.<minor>.<patch>" plus the eksbuild /
+  // prerelease suffix AWS appends), matching what describe-addon-versions
+  // returns.
+  option (buf.validate.message).cel = {
+    id: "addon_version_format"
+    message: "addon_version must be a full add-on version like 'v1.18.1-eksbuild.3' (aws eks describe-addon-versions lists them)"
+    expression: "this.addon_version == '' || this.addon_version.matches('^v\\\\d+\\\\.\\\\d+\\\\.\\\\d+(-[0-9A-Za-z.\\\\-]+)?(\\\\+[0-9A-Za-z.\\\\-]+)?$')"
+  };
+
+  // AWS's CreateAddon accepts only NONE/OVERWRITE; PRESERVE is
+  // update-only -- the asymmetry is AWS's, enforced here so it never
+  // surfaces as a deploy-time error.
+  option (buf.validate.message).cel = {
+    id: "resolve_conflicts_on_create_valid"
+    message: "resolve_conflicts_on_create must be 'NONE' or 'OVERWRITE' when set (PRESERVE is update-only in AWS)"
+    expression: "this.resolve_conflicts_on_create == '' || this.resolve_conflicts_on_create in ['NONE', 'OVERWRITE']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "resolve_conflicts_on_update_valid"
+    message: "resolve_conflicts_on_update must be 'NONE', 'OVERWRITE', or 'PRESERVE' when set"
+    expression: "this.resolve_conflicts_on_update == '' || this.resolve_conflicts_on_update in ['NONE', 'OVERWRITE', 'PRESERVE']"
+  };
+}
+
+// AwsEksAddonPodIdentityAssociation binds one Kubernetes service account
+// used by the add-on to an IAM role through EKS Pod Identity.
+message AwsEksAddonPodIdentityAssociation {
+  // The IAM role the service account assumes. It must trust
+  // "pods.eks.amazonaws.com" and carry the permissions the add-on's
+  // documentation requires (e.g. the EBS CSI driver policy). Reference
+  // an AwsIamRole's role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The Kubernetes service account (in the add-on's namespace) the role
+  // binds to -- each add-on documents its service account name(s), e.g.
+  // "ebs-csi-controller-sa" for the EBS CSI driver.
+  string service_account = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// AwsEksAddonNamespaceConfig places the add-on in a custom namespace.
+message AwsEksAddonNamespaceConfig {
+  // The Kubernetes namespace to install the add-on into. Must be a valid
+  // RFC 1123 DNS label. Create-only in AWS.
+  string namespace = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+  ];
+}

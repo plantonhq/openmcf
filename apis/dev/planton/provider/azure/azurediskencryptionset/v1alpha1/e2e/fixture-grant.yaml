@@ -1,0 +1,28 @@
+# Grants the user-assigned identity crypto access on the vault so the disk
+# encryption set can unwrap the key. On an RBAC vault this is the "Key Vault
+# Crypto Service Encryption User" role at the vault scope. Deployed before
+# the set (the whole point of the user-assigned flavor).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRoleAssignment
+metadata:
+  name: planton-oss-e2e-des-grant
+  id: planton-oss-e2e-des-grant
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureroleassignment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  scope:
+    valueFrom:
+      kind: AzureKeyVault
+      name: planton-oss-e2e-des-vault
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: Key Vault Crypto Service Encryption User
+  principalId:
+    valueFrom:
+      name: planton-oss-e2e-des-uai

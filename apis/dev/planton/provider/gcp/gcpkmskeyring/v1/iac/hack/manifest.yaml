@@ -1,9 +1,0 @@
-apiVersion: gcp.planton.dev/v1
-kind: GcpKmsKeyRing
-metadata:
-  name: test-key-ring
-spec:
-  projectId:
-    value: "test-project"
-  keyRingName: test-key-ring
-  location: us-central1

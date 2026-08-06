@@ -1,0 +1,18 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-annot
+spec:
+  namespace:
+    value: default
+  name: e2e-svc-annot
+  selector:
+    app: test-app
+  annotations:
+    service.beta.kubernetes.io/description: "E2E test service with annotations"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9102"
+  ports:
+    - name: http
+      port: 80
+      target_port: "8080"

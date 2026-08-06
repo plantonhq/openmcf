@@ -40,7 +40,7 @@ override.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaConnector
 metadata:
   name: first-pipe

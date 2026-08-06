@@ -29,7 +29,7 @@ When you deploy a KubernetesConfigMap resource, Planton provisions:
 Create a file `configmap.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesConfigMap
 metadata:
   name: app-config
@@ -81,7 +81,7 @@ This creates a ConfigMap named `app-config` in the `default` namespace with two 
 Scalar settings plus a properties file, consumed as env vars and a mounted file respectively:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesConfigMap
 metadata:
   name: backend-config
@@ -107,7 +107,7 @@ spec:
 A roll-forward config version — changes ship as `app-config-v2` plus a workload update, never as an in-place edit:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesConfigMap
 metadata:
   name: app-config-v1
@@ -131,7 +131,7 @@ spec:
 A base64-encoded binary entry alongside a text entry. Binary keys mount as files only:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesConfigMap
 metadata:
   name: branding-assets

@@ -1,0 +1,77 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed block rendered at once (webhook postures both ways, audit tuning,
+# exemptions, engine capabilities, external cert, hooks, image override,
+# scheduling, escape hatch).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGatekeeper
+metadata:
+  name: gatekeeper
+spec:
+  namespace:
+    value: gatekeeper-system
+  createNamespace: true
+  chartVersion: 3.23.0
+  replicas: 3
+  validatingWebhook:
+    enabled: true
+    failurePolicy: Fail
+    timeoutSeconds: 5
+    enableDeleteOperations: true
+    checkIgnoreFailurePolicy: Ignore
+  mutatingWebhook:
+    enabled: true
+    failurePolicy: Ignore
+    timeoutSeconds: 3
+    mutationAnnotations: true
+  audit:
+    intervalSeconds: 120
+    constraintViolationsLimit: 50
+    fromCache: true
+    matchKindOnly: true
+    chunkSize: 200
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  exemptNamespaces:
+    - platform-system
+  exemptNamespacePrefixes:
+    - kube-
+  engine:
+    enableExternalData: true
+    enableK8sNativeValidation: true
+    enableGeneratorResourceExpansion: false
+    disabledBuiltins:
+      - "{http.send}"
+    logDenies: true
+    logLevel: DEBUG
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+  scheduling:
+    nodeSelector:
+      role: platform
+    tolerations:
+      - key: platform
+        operator: Exists
+        effect: NoSchedule
+  externalCert:
+    secretName:
+      value: gatekeeper-webhook-server-cert
+  hooks:
+    labelNamespace: true
+    probeWebhook: true
+    upgradeCrds: true
+    deleteWebhookConfigurationsOnUninstall: true
+  image:
+    repo: mirror.example.com/gatekeeper
+    tag: v3.23.0
+    pullSecretName: mirror-pull
+  helmValues: |
+    podLabels:
+      team: platform

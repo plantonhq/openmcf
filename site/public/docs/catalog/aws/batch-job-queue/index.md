@@ -27,7 +27,7 @@ When you deploy an AwsBatchJobQueue resource, Planton provisions:
 Create a file `job-queue.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchJobQueue
 metadata:
   name: etl-queue

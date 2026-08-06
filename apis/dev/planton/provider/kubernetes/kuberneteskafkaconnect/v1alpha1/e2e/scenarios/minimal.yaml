@@ -1,0 +1,21 @@
+# A minimal Connect cluster on the stock image against the lane's Kafka
+# fixture. The namespace is the fixture's namespace so KafkaConnector
+# lanes can share the placement. The storage replication-factor entries
+# are "-1" (broker default) DELIBERATELY: Connect's own default of 3
+# cannot be satisfied on the single-broker fixture and the workers would
+# wedge creating their internal topics.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaConnect
+metadata:
+  name: e2e-connect-minimal
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  bootstrap_servers:
+    valueFrom:
+      name: e2e-kaf-fix
+  replicas: 1
+  config:
+    config.storage.replication.factor: "-1"
+    offset.storage.replication.factor: "-1"
+    status.storage.replication.factor: "-1"

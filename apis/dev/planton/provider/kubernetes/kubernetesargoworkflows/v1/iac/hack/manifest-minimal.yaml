@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesArgoWorkflows
-metadata:
-  name: workflows-min
-spec:
-  namespace:
-    value: workflows-min
-  createNamespace: true

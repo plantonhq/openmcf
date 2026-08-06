@@ -45,7 +45,7 @@ def base_paths(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, st
         "provider",
         provider,
         kind_folder,
-        "v1",
+        "v1alpha1",
         "iac",
         "pulumi",
     )
@@ -89,7 +89,7 @@ def write_files(base_abs: str, base_rel: str, files: List[Dict[str, str]]) -> Tu
 
 def run_go_build(repo_root: str, base_rel: str) -> Tuple[int, str, str]:
     # Build the entrypoint directory NON-RECURSIVELY, exactly as the release pipeline does
-    # (release.pulumi-modules.yaml runs `go build -o <bin> ./<...>/v1/iac/pulumi`). A recursive
+    # (release.pulumi-modules.yaml runs `go build -o <bin> ./<...>/v1alpha1/iac/pulumi`). A recursive
     # `./<base_rel>/...` build would compile the module/ library and PASS even when the root
     # `package main` entrypoint is missing or misplaced -- masking the very failure this writer
     # must catch. `-o /dev/null` discards the binary while still requiring a buildable root main.

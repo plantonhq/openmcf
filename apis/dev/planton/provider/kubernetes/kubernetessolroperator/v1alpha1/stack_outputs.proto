@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetessolroperator.v1alpha1;
+
+//kubernetes-solr-operator stack outputs
+message KubernetesSolrOperatorStackOutputs {
+  //namespace the operator is installed into.
+  string namespace = 1;
+
+  //Helm release name of the operator install (= metadata.name).
+  string release_name = 2;
+
+  //name of the Solr operator Deployment.
+  string deployment_name = 3;
+}

@@ -1,0 +1,25 @@
+# The REAL sync loop, minimal form: this ExternalSecret resolves its store
+# through a foreign-key reference to the SecretStore fixture (declared via
+# the e2e-prerequisites annotation; the fixture's own registry graph brings
+# the operator), the operator reads the fake backend, and the verifier
+# requires Ready + actual data in the materialized Secret — the
+# customer-grade proof that store connection, backend read, and Secret
+# write-back all worked.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesExternalSecret
+metadata:
+  name: e2e-xsec-minimal
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesSecretStore"
+spec:
+  namespace:
+    value: default
+  storeRef:
+    name:
+      valueFrom:
+        name: e2e-sst-fixture
+  refreshInterval: 30s
+  data:
+    - secretKey: db-password
+      remoteRef:
+        key: db-password

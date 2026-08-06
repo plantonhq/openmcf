@@ -297,7 +297,7 @@ Create timestamped backup:
 
 **Creates:**
 ```
-apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/.backup-2025-11-13-143022/
+apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/.backup-2025-11-13-143022/
 ├── spec.proto
 ├── api.proto
 ├── iac/

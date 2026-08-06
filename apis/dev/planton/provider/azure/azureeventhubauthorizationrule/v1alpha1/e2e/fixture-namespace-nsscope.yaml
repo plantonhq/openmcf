@@ -1,0 +1,24 @@
+# Dedicated AzureEventHubNamespace for the namespace-scope scenario.
+# Namespace names are globally unique with a post-delete hold -- each
+# scenario carries its own distinct fixture name.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubNamespace
+metadata:
+  name: planton-oss-e2e-ehauth-ns-fixture
+  id: planton-oss-e2e-ehauth-ns-fixture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  namespaceName: pltn-oss-e2e-ehauthns-fx
+  sku: STANDARD

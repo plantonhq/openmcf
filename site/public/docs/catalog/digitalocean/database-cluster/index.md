@@ -29,7 +29,7 @@ When you deploy a DigitalOceanDatabaseCluster resource, Planton provisions:
 Create a file `database.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: my-database
@@ -83,7 +83,7 @@ This creates a single-node PostgreSQL 16 cluster in the NYC3 region with the `db
 A single-node MySQL 8 cluster placed in a private network:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: mysql-app-db
@@ -108,7 +108,7 @@ spec:
 A three-node PostgreSQL cluster with increased storage for production workloads:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: prod-postgres
@@ -134,7 +134,7 @@ spec:
 A Redis cluster using a foreign key reference to an Planton-managed VPC:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
   name: cache-redis

@@ -22,7 +22,7 @@ Grant it permissions with an `AzureRoleAssignment` referencing the identity's
 `principal_id` output:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: my-identity-kv-reader

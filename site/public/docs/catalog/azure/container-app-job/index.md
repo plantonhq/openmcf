@@ -28,7 +28,7 @@ When you deploy an AzureContainerAppJob resource, Planton provisions:
 Create a file `job.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppJob
 metadata:
   name: nightly-report

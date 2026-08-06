@@ -39,7 +39,7 @@ the referenced `AwsIamRole` itself (`managedPolicyArns`).
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   name: platform
@@ -107,7 +107,7 @@ planton apply -f eks-cluster.yaml
 ### Private, encrypted, deletion-protected control plane
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   name: prod
@@ -131,7 +131,7 @@ spec:
 ### EKS Auto Mode (no node groups to operate)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   name: hands-off
@@ -153,7 +153,7 @@ spec:
 ### IRSA in one reference
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamOidcProvider
 metadata:
   name: platform-irsa

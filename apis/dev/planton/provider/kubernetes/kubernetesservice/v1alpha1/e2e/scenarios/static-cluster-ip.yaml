@@ -1,0 +1,18 @@
+# Static cluster IP: pins the virtual IP inside the cluster's service CIDR
+# (kind's default service CIDR is 10.96.0.0/16; a high address avoids
+# collisions with allocated IPs).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-static-ip
+spec:
+  namespace:
+    value: default
+  name: e2e-svc-static-ip
+  cluster_ip_address: 10.96.255.250
+  selector:
+    app: test-app
+  ports:
+    - name: http
+      port: 80
+      target_port: "8080"

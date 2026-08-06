@@ -48,7 +48,7 @@ planton version
 Every Planton manifest follows the Kubernetes Resource Model (KRM) — the same `apiVersion`, `kind`, `metadata`, `spec` shape you already know, extended to every cloud. Create a file named `bucket.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: my-first-bucket

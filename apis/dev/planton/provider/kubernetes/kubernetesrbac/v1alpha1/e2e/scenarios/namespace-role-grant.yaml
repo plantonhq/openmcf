@@ -1,0 +1,17 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRbac
+metadata:
+  name: e2e-rbac-ns-grant
+spec:
+  namespaceScope:
+    namespace:
+      value: default
+  createRole:
+    rules:
+      - verbs: ["get", "list", "watch"]
+        apiGroups: [""]
+        resources: ["pods", "services", "configmaps"]
+  subjects:
+    - serviceAccount:
+        name:
+          value: e2e-rbac-reader-sa

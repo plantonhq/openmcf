@@ -1,0 +1,27 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorOrigin
+metadata:
+  name: test-front-door-origin
+spec:
+  originGroupId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor/originGroups/api-backends
+  originName: primary-app
+  # host_name and origin_host_header are references-or-literals; the
+  # hack manifest exercises the literal (value:) form -- the E2E
+  # reference scenario proves the valueFrom path.
+  hostName:
+    value: myapp.azurewebsites.net
+  certificateNameCheckEnabled: true
+  # Exercises the multi-tenant host-header seam (App Service routes by
+  # Host header).
+  originHostHeader:
+    value: myapp.azurewebsites.net
+  priority: 1
+  weight: 700
+  # Exercises the Private Link seam (Premium profiles; target_type
+  # "sites" for App Service).
+  privateLink:
+    location: eastus
+    privateLinkTargetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Web/sites/myapp
+    targetType: SITES
+    requestMessage: Front Door origin connection for myapp

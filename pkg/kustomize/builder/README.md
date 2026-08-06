@@ -261,7 +261,7 @@ resources:
 EOF
 
 cat > testdata/kustomize/base/deployment.yaml <<EOF
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: MicroserviceKubernetes
 metadata:
   name: test

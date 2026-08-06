@@ -22,7 +22,7 @@ Define an SES sending posture once — TLS enforcement, dedicated IP pool, open/
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSesConfigurationSet
 metadata:
   name: transactional-set

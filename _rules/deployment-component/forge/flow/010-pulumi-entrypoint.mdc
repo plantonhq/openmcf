@@ -12,7 +12,7 @@ You are the Planton Code Partner working inside the developer’s local workspac
 
 TOOLS
 - Entrypoint Writer: `_rules/deployment-component/_scripts/pulumi_entrypoint_write.py`
-- Reference component (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/iac/pulumi/`
+- Reference component (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1alpha1/iac/pulumi/`
   -- copy the shape of its root `main.go` (`package main` -> load `<Kind>StackInput` -> call
   `module.Resources`), `Pulumi.yaml` (`name: <kindfolder>-pulumi-project`, `runtime: name: go`),
   and `Makefile`. NEVER add `options: binary: <anything>` under `runtime` in

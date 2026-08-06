@@ -1,0 +1,794 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcomputeinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpComputeInstanceSpec defines the configuration for a Google Compute
+// Engine virtual machine — the general-purpose compute node behind
+// databases-on-VM, stateful application servers, GPU workers, bastion
+// hosts, and any workload that needs a full OS rather than a managed
+// runtime.
+//
+// Important behavioral notes:
+//
+//   - zone, machine confidential mode, boot-disk source/encryption, NIC
+//     count and their networks, scratch disks, hostname, and reservation
+//     affinity are create-time decisions — changing them replaces the VM.
+//     Many other properties (machine_type, labels, metadata, service
+//     account, shielded config) are updated by stopping the VM, which the
+//     provider only does when allow_stopping_for_update is true.
+//   - Spot VMs (scheduling.provisioning_model = "SPOT") can be preempted
+//     at any time. Both engines set the API's legacy preemptible flag
+//     automatically for Spot; automatic restart is forced off.
+//   - deletion_protection guards against accidental instance deletion but
+//     does NOT protect data: the boot disk's auto_delete and each attached
+//     disk's own lifecycle are the data levers. Attached data disks are
+//     first-class GcpComputeDisk resources referenced here — they survive
+//     the VM unless their own configuration says otherwise.
+//   - desired_status stops ("TERMINATED"), suspends ("SUSPENDED"), or
+//     starts ("RUNNING") the VM without destroying it — compute billing
+//     stops while terminated; disks keep billing.
+message GcpComputeInstanceSpec {
+  option (buf.validate.message).cel = {
+    id: "spot_requires_no_automatic_restart"
+    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'SPOT' || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false"
+    message: "Spot VMs cannot automatically restart after preemption — leave scheduling.automatic_restart unset or set it to false when provisioning_model is SPOT"
+  };
+  option (buf.validate.message).cel = {
+    id: "termination_action_requires_spot"
+    expression: "!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model == 'SPOT'"
+    message: "scheduling.instance_termination_action applies only to Spot VMs — set scheduling.provisioning_model to SPOT or remove the termination action"
+  };
+  option (buf.validate.message).cel = {
+    id: "confidential_requires_terminate_maintenance"
+    expression: "!has(this.confidential_instance_config) || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')"
+    message: "confidential VMs cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when confidential_instance_config is configured"
+  };
+  option (buf.validate.message).cel = {
+    id: "accelerators_require_terminate_maintenance"
+    expression: "size(this.guest_accelerators) == 0 || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')"
+    message: "VMs with guest accelerators (GPUs) cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when guest_accelerators are attached"
+  };
+  option (buf.validate.message).cel = {
+    id: "max_run_duration_conflicts_with_termination_time"
+    expression: "!has(this.scheduling) || !has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time == ''"
+    message: "max_run_duration_seconds and termination_time both bound the VM's lifetime — set at most one"
+  };
+
+  // The GCP project that owns the instance.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the Compute Engine instance. 1-63 characters, lowercase
+  // letters, numbers, and hyphens; must start with a letter and cannot end
+  // with a hyphen. When omitted, metadata.name is used.
+  // Immutable after creation.
+  string instance_name = 2 [(buf.validate.field).cel = {
+    id: "instance_name_format"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+    message: "instance_name must be 1-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen"
+  }];
+
+  // Zone where the instance runs, e.g. "us-central1-a".
+  // Immutable after creation (moving zones replaces the VM).
+  string zone = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+-[a-z]$"}
+  ];
+
+  // Machine type, e.g. "e2-medium", "n2-standard-4", "c3-highcpu-8", or a
+  // custom shape like "custom-6-20480". Mutable — changing it stops and
+  // restarts the VM (requires allow_stopping_for_update).
+  string machine_type = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Human-readable description of the instance.
+  string description = 5;
+
+  // Custom fully-qualified DNS hostname, e.g. "db-1.prod.internal".
+  // RFC-1035 labels separated by dots; when unset GCP derives
+  // "<name>.c.<project>.internal". Immutable after creation.
+  string hostname = 6 [(buf.validate.field).cel = {
+    id: "hostname_format"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z]([-a-z0-9]*[a-z0-9])?)+$')"
+    message: "hostname must be a fully qualified DNS name of RFC-1035 labels, e.g. host.example.internal"
+  }];
+
+  // Boot disk configuration — the disk the OS boots from.
+  GcpComputeInstanceBootDisk boot_disk = 7 [(buf.validate.field).required = true];
+
+  // Additional persistent data disks attached to the instance. Each disk
+  // is a first-class GcpComputeDisk resource referenced by self link — the
+  // disk has its own lifecycle and survives this VM unless its own
+  // configuration says otherwise.
+  repeated GcpComputeInstanceAttachedDisk attached_disks = 8;
+
+  // Ephemeral local-SSD scratch disks physically attached to the host.
+  // Contents are lost when the VM stops or is preempted — use only for
+  // caches, temp space, and high-IOPS scratch data. Create-time only.
+  repeated GcpComputeInstanceScratchDisk scratch_disks = 9;
+
+  // Network interfaces. At least one is required; multiple NICs must each
+  // attach to a different VPC network. NIC count and their target
+  // networks are immutable after creation.
+  repeated GcpComputeInstanceNetworkInterface network_interfaces = 10 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+
+  // Service account the VM's workloads authenticate as. When omitted, the
+  // Compute Engine default service account is used with its default
+  // scopes — prefer a dedicated least-privilege account for production.
+  GcpComputeInstanceServiceAccount service_account = 11;
+
+  // Scheduling policy: Spot vs standard provisioning, maintenance
+  // behavior, run-duration limits, and sole-tenant node placement.
+  GcpComputeInstanceScheduling scheduling = 12;
+
+  // Shielded VM configuration (secure boot, vTPM, integrity monitoring).
+  // Requires an image with Shielded VM support (all recent Google-provided
+  // images qualify).
+  GcpComputeInstanceShieldedConfig shielded_instance_config = 13;
+
+  // Confidential VM configuration — hardware memory encryption (AMD SEV /
+  // SEV-SNP or Intel TDX). Requires a supported machine family (e.g. N2D,
+  // C2D, C3) and on_host_maintenance = "TERMINATE". Create-time only.
+  GcpComputeInstanceConfidentialConfig confidential_instance_config = 14;
+
+  // Advanced machine features: nested virtualization, SMT control, visible
+  // core count, UEFI networking, performance monitoring unit, and turbo
+  // mode.
+  GcpComputeInstanceAdvancedMachineFeatures advanced_machine_features = 15;
+
+  // GPU accelerator cards attached to the instance. Requires a
+  // GPU-capable zone and on_host_maintenance = "TERMINATE".
+  repeated GcpComputeInstanceGuestAccelerator guest_accelerators = 16;
+
+  // Reservation affinity — whether this VM consumes capacity from any
+  // matching reservation, a specific reservation, or none.
+  GcpComputeInstanceReservationAffinity reservation_affinity = 17;
+
+  // Per-VM egress bandwidth tier. "TIER_1" raises the bandwidth cap on
+  // supported machine shapes (N2/N2D/C2/C3 with >= 30 vCPUs and gVNIC);
+  // "DEFAULT" is the standard cap.
+  string total_egress_bandwidth_tier = 18 [(buf.validate.field).cel = {
+    id: "valid_egress_bandwidth_tier"
+    expression: "this == '' || this in ['DEFAULT', 'TIER_1']"
+    message: "total_egress_bandwidth_tier must be DEFAULT or TIER_1"
+  }];
+
+  // Custom metadata key/value pairs made available to the guest OS via the
+  // metadata server. Well-known keys configure agents and features (e.g.
+  // "enable-oslogin", "startup-script-url").
+  map<string, string> metadata = 19;
+
+  // Startup script executed by the guest agent on every boot. Maps to the
+  // metadata_startup_script surface, which keeps it distinct from user
+  // metadata and re-runs it on each start.
+  string startup_script = 20;
+
+  // SSH public keys in "username:ssh-rsa AAAA... user" format. Folded into
+  // the instance metadata "ssh-keys" key (newline-joined) identically on
+  // both engines. Ignored by VMs using OS Login.
+  repeated string ssh_keys = 21;
+
+  // User labels merged with Planton attribution labels (which win on key
+  // conflicts). Keys and values must match GCP label constraints:
+  // lowercase letters, numbers, hyphens, underscores; keys start with a
+  // letter, max 63 characters.
+  map<string, string> labels = 22;
+
+  // Network tags used by firewall rules and network routes to select this
+  // instance.
+  repeated string tags = 23;
+
+  // Resource Manager tags bound to the instance for org-policy and IAM
+  // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+  // Create-time only.
+  map<string, string> resource_manager_tags = 24;
+
+  // Self links of compute resource policies to attach to the instance
+  // (e.g. an instance schedule that starts/stops the VM on a calendar).
+  // GCP currently allows at most one policy per instance.
+  repeated string resource_policies = 25 [(buf.validate.field).repeated.max_items = 1];
+
+  // Minimum CPU platform for the VM, e.g. "Intel Ice Lake" or
+  // "AMD Milan". Constrains scheduling to hosts with at least this
+  // platform.
+  string min_cpu_platform = 26;
+
+  // Allow sending/receiving packets with source or destination IPs that do
+  // not match the instance's own addresses — required for VMs acting as
+  // routers, NAT gateways, or VPN endpoints. Create-time only.
+  bool can_ip_forward = 27;
+
+  // Enable the virtual display device (needed by some remote-desktop and
+  // screen-capture tooling on headless VMs).
+  bool enable_display = 28;
+
+  // Protect the instance against accidental deletion. Deleting a protected
+  // instance fails until this is set back to false. Defaults to false: a
+  // VM is a compute node whose data levers are its disks — the boot disk's
+  // auto_delete and each GcpComputeDisk's own lifecycle guard the data.
+  bool deletion_protection = 29;
+
+  // Desired lifecycle status of the VM:
+  //   ""           -- same as "RUNNING"
+  //   "RUNNING"    -- started
+  //   "SUSPENDED"  -- suspended to disk (fast resume; memory persisted)
+  //   "TERMINATED" -- stopped (compute billing stops; disks keep billing)
+  // Changing this starts/suspends/stops the VM in place.
+  string desired_status = 30 [(buf.validate.field).cel = {
+    id: "valid_desired_status"
+    expression: "this == '' || this in ['RUNNING', 'SUSPENDED', 'TERMINATED']"
+    message: "desired_status must be RUNNING, SUSPENDED, or TERMINATED"
+  }];
+
+  // Allow the provider to stop and restart the VM when an update requires
+  // it (machine type, service account, network interface changes, ...).
+  // Without it those updates fail instead of causing downtime. Recommended
+  // true for instances whose brief restart is acceptable.
+  optional bool allow_stopping_for_update = 31 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Action GCP takes on the VM when a Cloud KMS key protecting it is
+  // revoked: "NONE" (default) or "STOP".
+  string key_revocation_action_type = 32 [(buf.validate.field).cel = {
+    id: "valid_key_revocation_action"
+    expression: "this == '' || this in ['NONE', 'STOP']"
+    message: "key_revocation_action_type must be NONE or STOP"
+  }];
+}
+
+// GcpComputeInstanceBootDisk defines the disk the instance boots from.
+// Exactly one source must be set: an image (fresh install), a snapshot
+// (restore), or an existing bootable GcpComputeDisk.
+message GcpComputeInstanceBootDisk {
+  option (buf.validate.message).cel = {
+    id: "boot_disk_exactly_one_source"
+    expression: "(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) == 1"
+    message: "exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)"
+  };
+
+  // Source image for a fresh boot disk. Accepts an image family
+  // ("debian-cloud/debian-12", "ubuntu-os-cloud/ubuntu-2404-lts-amd64") or
+  // a specific image self link. Families resolve to the newest image at
+  // create time. Create-time only.
+  string image = 1;
+
+  // Source snapshot to restore the boot disk from (name or self link).
+  // Create-time only.
+  string source_snapshot = 2;
+
+  // Existing bootable disk to boot from, referenced as a GcpComputeDisk.
+  // The disk must live in the instance's zone. When booting from an
+  // existing disk, size/type/encryption below are ignored — the disk
+  // already owns them.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_disk = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpComputeDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Size of the boot disk in GB. When omitted, the image or snapshot size
+  // is used. Grows in place; never shrinks.
+  int32 size_gb = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 10
+      lte: 65536
+    }
+  ];
+
+  // Disk type: "pd-standard" (HDD), "pd-balanced" (default in GCP for most
+  // machine shapes and the sensible choice), "pd-ssd" (high IOPS), or a
+  // hyperdisk type on supported machine families ("hyperdisk-balanced").
+  string type = 5;
+
+  // Delete the boot disk automatically when the instance is deleted.
+  // Defaults to true (matching GCP). Set false to keep the OS disk for
+  // forensics or re-attachment.
+  optional bool auto_delete = 6 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Device name exposed under /dev/disk/by-id/google-*. When omitted GCP
+  // assigns one.
+  string device_name = 7;
+
+  // Customer-managed encryption key (CMEK) for the boot disk, referenced
+  // as a GcpKmsKey. The Compute Engine service agent
+  // (service-<project-number>@compute-system.iam.gserviceaccount.com) must
+  // hold roles/cloudkms.cryptoKeyEncrypterDecrypter on the key.
+  // Create-time only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Labels applied to the boot disk itself (distinct from instance
+  // labels) — useful for disk-level cost attribution and snapshot
+  // policies.
+  map<string, string> disk_labels = 9;
+
+  // Provisioned IOPS for hyperdisk types that support tuning
+  // (e.g. hyperdisk-extreme, hyperdisk-balanced). Leave unset for pd-*
+  // types.
+  optional int64 provisioned_iops = 10 [(buf.validate.field).int64.gt = 0];
+
+  // Provisioned throughput in MB/s for hyperdisk types that support
+  // tuning (e.g. hyperdisk-throughput, hyperdisk-balanced). Leave unset
+  // for pd-* types.
+  optional int64 provisioned_throughput = 11 [(buf.validate.field).int64.gt = 0];
+
+  // CPU architecture of the disk/image: "X86_64" or "ARM64" (e.g. for
+  // Tau T2A/Axion machine types). Normally inferred from the image.
+  string architecture = 12 [(buf.validate.field).cel = {
+    id: "valid_boot_disk_architecture"
+    expression: "this == '' || this in ['X86_64', 'ARM64']"
+    message: "architecture must be X86_64 or ARM64"
+  }];
+
+  // Create the boot disk in confidential-compute mode (hyperdisk SKUs
+  // only; requires kms_key).
+  bool enable_confidential_compute = 13;
+
+  // Self links of resource policies to attach to the boot disk at create
+  // time (e.g. a snapshot schedule). GCP currently allows at most one.
+  // Changing this replaces the instance.
+  repeated string resource_policies = 14 [(buf.validate.field).repeated.max_items = 1];
+
+  // URL of the storage pool to create the boot disk in (hyperdisk storage
+  // pools).
+  string storage_pool = 15;
+}
+
+// GcpComputeInstanceAttachedDisk attaches an existing persistent disk —
+// a first-class GcpComputeDisk — to the instance.
+message GcpComputeInstanceAttachedDisk {
+  // The disk to attach, referenced as a GcpComputeDisk (or a literal disk
+  // name/self link). The disk must live in the instance's zone.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpComputeDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Device name exposed under /dev/disk/by-id/google-*. When omitted GCP
+  // assigns "persistent-disk-N".
+  string device_name = 2;
+
+  // Attachment mode: "READ_WRITE" (default) or "READ_ONLY" (lets many VMs
+  // attach the same disk simultaneously).
+  string mode = 3 [(buf.validate.field).cel = {
+    id: "valid_attached_disk_mode"
+    expression: "this == '' || this in ['READ_WRITE', 'READ_ONLY']"
+    message: "mode must be READ_WRITE or READ_ONLY"
+  }];
+
+  // The CMEK key protecting the attached disk, referenced as a GcpKmsKey.
+  // Required only when the disk is CMEK-encrypted — the attachment must
+  // present the same key the disk was created with.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+}
+
+// GcpComputeInstanceScratchDisk defines an ephemeral local-SSD disk.
+message GcpComputeInstanceScratchDisk {
+  // Disk interface: "NVME" (recommended; highest performance) or "SCSI".
+  string interface = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "NVME",
+        "SCSI"
+      ]
+    }
+  ];
+
+  // Size in GB. Local SSDs come in fixed 375 GB units (or 3000 GB on
+  // supported Z3 shapes). When omitted, 375 is used.
+  int32 size_gb = 2 [(buf.validate.field).cel = {
+    id: "valid_scratch_disk_size"
+    expression: "this == 0 || this == 375 || this == 3000"
+    message: "scratch disk size_gb must be 375 (standard local SSD unit) or 3000 (Z3 shapes)"
+  }];
+
+  // Device name exposed under /dev/disk/by-id/google-*.
+  string device_name = 3;
+}
+
+// GcpComputeInstanceNetworkInterface defines one vNIC.
+message GcpComputeInstanceNetworkInterface {
+  option (buf.validate.message).cel = {
+    id: "network_interface_network_or_subnetwork_required"
+    expression: "(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from)))"
+    message: "each network interface needs a network (auto-mode VPC) or a subnetwork (custom-mode VPC) — set at least one"
+  };
+
+  // VPC network for this interface, referenced as a GcpVpcNetwork.
+  // Sufficient alone only for auto-mode VPCs; custom-mode VPCs need
+  // subnetwork.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // Subnetwork for this interface, referenced as a GcpSubnetwork. The
+  // subnetwork's region must contain the instance's zone.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Project owning the subnetwork — set when attaching to a Shared VPC
+  // host project's subnetwork from a service project.
+  string subnetwork_project = 3;
+
+  // Static internal IP for this interface. Accepts a literal IP or a
+  // reference to a reserved INTERNAL GcpAddress. When omitted, GCP
+  // assigns an ephemeral internal IP from the subnetwork range.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network_ip = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.address"
+  ];
+
+  // External IPv4 access configs. Empty means no external IP (private
+  // VM — pair with Cloud NAT for egress). GCP supports at most one
+  // access config per interface.
+  repeated GcpComputeInstanceAccessConfig access_configs = 5 [(buf.validate.field).repeated.max_items = 1];
+
+  // External IPv6 access configs. Requires stack_type "IPV4_IPV6" and a
+  // subnetwork with an external IPv6 range. At most one per interface.
+  repeated GcpComputeInstanceIpv6AccessConfig ipv6_access_configs = 6 [(buf.validate.field).repeated.max_items = 1];
+
+  // IP stack of the interface:
+  //   ""            -- same as "IPV4_ONLY" (GCP default)
+  //   "IPV4_ONLY"   -- IPv4 addresses only
+  //   "IPV4_IPV6"   -- dual stack (subnetwork must have an IPv6 range)
+  //   "IPV6_ONLY"   -- IPv6 only (supported on IPv6-enabled subnetworks)
+  string stack_type = 7 [(buf.validate.field).cel = {
+    id: "valid_stack_type"
+    expression: "this == '' || this in ['IPV4_ONLY', 'IPV4_IPV6', 'IPV6_ONLY']"
+    message: "stack_type must be IPV4_ONLY, IPV4_IPV6, or IPV6_ONLY"
+  }];
+
+  // vNIC type: "" (GCP picks), "GVNIC" (recommended on modern machine
+  // families; required for TIER_1 bandwidth), "VIRTIO_NET" (legacy), or
+  // the RDMA types "IDPF", "MRDMA", "IRDMA" on specialized shapes.
+  string nic_type = 8 [(buf.validate.field).cel = {
+    id: "valid_nic_type"
+    expression: "this == '' || this in ['GVNIC', 'VIRTIO_NET', 'IDPF', 'MRDMA', 'IRDMA']"
+    message: "nic_type must be one of GVNIC, VIRTIO_NET, IDPF, MRDMA, IRDMA"
+  }];
+
+  // Networking queue count for Rx and Tx (1-32). When omitted GCP sizes
+  // queues from vCPU count.
+  optional int32 queue_count = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 32
+  }];
+
+  // Alias IP ranges served by this interface — the mechanism behind
+  // per-pod/per-container IPs and multi-IP VMs.
+  repeated GcpComputeInstanceAliasIpRange alias_ip_ranges = 10;
+}
+
+// GcpComputeInstanceAccessConfig grants the interface an external IPv4.
+message GcpComputeInstanceAccessConfig {
+  // Static external IP, as a literal or a reference to a reserved
+  // EXTERNAL GcpAddress. When omitted, GCP assigns an ephemeral external
+  // IP.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef nat_ip = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.address"
+  ];
+
+  // Network service tier for this IP: "PREMIUM" (default; Google's global
+  // backbone) or "STANDARD" (regional, cheaper).
+  string network_tier = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "PREMIUM",
+        "STANDARD"
+      ]
+    }
+  ];
+
+  // Domain name for the public PTR (reverse DNS) record of this IP.
+  string public_ptr_domain_name = 3;
+}
+
+// GcpComputeInstanceIpv6AccessConfig grants the interface external IPv6
+// connectivity.
+message GcpComputeInstanceIpv6AccessConfig {
+  // Network service tier for IPv6 traffic. Only "PREMIUM" is valid.
+  string network_tier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["PREMIUM"]
+    }
+  ];
+
+  // Domain name for the public PTR (reverse DNS) record of the external
+  // IPv6 range.
+  string public_ptr_domain_name = 2;
+}
+
+// GcpComputeInstanceAliasIpRange defines an alias IP range on an
+// interface.
+message GcpComputeInstanceAliasIpRange {
+  // The alias range: a CIDR ("10.1.2.0/24"), a single IP ("10.1.2.3"), or
+  // a netmask ("/24") to auto-allocate from the range.
+  string ip_cidr_range = 1 [(buf.validate.field).required = true];
+
+  // Secondary range name on the subnetwork to allocate from. When omitted
+  // the primary range is used.
+  string subnetwork_range_name = 2;
+}
+
+// GcpComputeInstanceServiceAccount configures the VM's identity.
+message GcpComputeInstanceServiceAccount {
+  // Service account email, referenced as a GcpServiceAccount or a literal
+  // email. Changing it stops and restarts the VM (requires
+  // allow_stopping_for_update).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef email = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // OAuth scopes for the attached account. The modern practice is a
+  // single "https://www.googleapis.com/auth/cloud-platform" scope with
+  // access controlled entirely by IAM roles; narrower legacy scopes
+  // remain supported. Required when this block is set.
+  repeated string scopes = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeInstanceScheduling defines provisioning model, maintenance
+// behavior, lifetime limits, and sole-tenant placement.
+//
+// Spot semantics: setting provisioning_model = "SPOT" is the single
+// switch — both engines automatically set the API's legacy preemptible
+// flag that Spot requires. Legacy preemptible-only VMs (the pre-Spot
+// product) are deliberately not modeled; Spot supersedes them with the
+// same discount and fewer restrictions.
+message GcpComputeInstanceScheduling {
+  // Provisioning model:
+  //   ""         -- same as "STANDARD"
+  //   "STANDARD" -- on-demand capacity
+  //   "SPOT"     -- deeply discounted preemptible capacity; GCP may
+  //                 reclaim the VM at any time
+  // Create-time only.
+  string provisioning_model = 1 [(buf.validate.field).cel = {
+    id: "valid_provisioning_model"
+    expression: "this == '' || this in ['STANDARD', 'SPOT']"
+    message: "provisioning_model must be STANDARD or SPOT"
+  }];
+
+  // Restart the VM automatically when Compute Engine (not a user) stops
+  // it. Defaults to true for standard VMs; must be false (or unset) for
+  // Spot.
+  optional bool automatic_restart = 2 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Host maintenance behavior: "" (GCP default "MIGRATE"), "MIGRATE"
+  // (live-migrate; zero downtime), or "TERMINATE" (stop during
+  // maintenance — required for GPUs and confidential VMs).
+  string on_host_maintenance = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MIGRATE",
+        "TERMINATE"
+      ]
+    }
+  ];
+
+  // What GCP does when a Spot VM is preempted or its run duration
+  // expires: "STOP" (keep the stopped VM and disks) or "DELETE" (remove
+  // the VM). Spot only.
+  string instance_termination_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "STOP",
+        "DELETE"
+      ]
+    }
+  ];
+
+  // Maximum run duration in seconds, after which
+  // instance_termination_action is executed. The duration clock starts at
+  // every VM start. Mutually exclusive with termination_time.
+  optional int64 max_run_duration_seconds = 5 [(buf.validate.field).int64 = {
+    gte: 1
+    lte: 315576000000
+  }];
+
+  // Absolute timestamp (RFC 3339) at which the VM is terminated. Mutually
+  // exclusive with max_run_duration_seconds.
+  string termination_time = 6;
+
+  // Discard local-SSD contents when the VM is stopped by a lifetime limit
+  // (max_run_duration/termination_time) instead of preserving them.
+  optional bool discard_local_ssds_on_stop = 7;
+
+  // Availability domain for spread-placement within the zone (used with
+  // spread placement policies). 0 means unset.
+  optional int32 availability_domain = 8 [(buf.validate.field).int32.gte = 1];
+
+  // Minimum vCPUs on the sole-tenant node this VM can be scheduled onto.
+  // Sole-tenancy only.
+  optional int32 min_node_cpus = 9 [(buf.validate.field).int32.gte = 1];
+
+  // Sole-tenant node affinities selecting which node groups this VM may
+  // run on. Setting any affinity places the VM on sole-tenant hardware.
+  repeated GcpComputeInstanceNodeAffinity node_affinities = 10;
+
+  // How long Compute Engine waits for a local-SSD-preserving recovery
+  // when the host fails, in seconds, before falling back to default
+  // recovery.
+  optional int64 local_ssd_recovery_timeout_seconds = 11 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 604800
+  }];
+}
+
+// GcpComputeInstanceNodeAffinity selects sole-tenant node groups.
+message GcpComputeInstanceNodeAffinity {
+  // Node-group label key to match (e.g.
+  // "compute.googleapis.com/node-group-name").
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Match operator: "IN" or "NOT_IN".
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "IN",
+        "NOT_IN"
+      ]
+    }
+  ];
+
+  // Label values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeInstanceShieldedConfig hardens the boot chain.
+message GcpComputeInstanceShieldedConfig {
+  // Verify the boot loader's signature chain; blocks boot on tampering.
+  // GCP default is false because some third-party images are unsigned.
+  optional bool enable_secure_boot = 1;
+
+  // Virtual Trusted Platform Module. GCP default is true.
+  optional bool enable_vtpm = 2 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Boot-integrity measurement and monitoring via the vTPM. GCP default
+  // is true.
+  optional bool enable_integrity_monitoring = 3 [(dev.planton.shared.options.recommended_default) = "true"];
+}
+
+// GcpComputeInstanceConfidentialConfig enables hardware memory
+// encryption.
+message GcpComputeInstanceConfidentialConfig {
+  // Confidential computing technology:
+  //   "SEV"     -- AMD Secure Encrypted Virtualization (N2D/C2D/C3D)
+  //   "SEV_SNP" -- AMD SEV Secure Nested Paging (requires an AMD Milan+
+  //                min_cpu_platform)
+  //   "TDX"     -- Intel Trust Domain Extensions (C3)
+  string confidential_instance_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "SEV",
+        "SEV_SNP",
+        "TDX"
+      ]
+    }
+  ];
+}
+
+// GcpComputeInstanceAdvancedMachineFeatures tunes the virtual hardware.
+message GcpComputeInstanceAdvancedMachineFeatures {
+  // Expose nested virtualization support (VMX) to the guest — run VMs
+  // inside this VM.
+  optional bool enable_nested_virtualization = 1;
+
+  // Threads per physical core: 1 disables simultaneous multithreading
+  // (SMT) — common for licensing and security isolation; 2 is the
+  // hardware default.
+  optional int32 threads_per_core = 2 [(buf.validate.field).int32 = {
+    in: [
+      1,
+      2
+    ]
+  }];
+
+  // Number of physical cores exposed to the guest (core visibility for
+  // per-core licensing). When unset all cores are visible.
+  optional int32 visible_core_count = 3 [(buf.validate.field).int32.gte = 1];
+
+  // Enable UEFI networking in the guest firmware. Create-time only.
+  optional bool enable_uefi_networking = 4;
+
+  // Performance monitoring unit exposure level: "STANDARD", "ENHANCED",
+  // or "ARCHITECTURAL".
+  string performance_monitoring_unit = 5 [(buf.validate.field).cel = {
+    id: "valid_pmu"
+    expression: "this == '' || this in ['STANDARD', 'ENHANCED', 'ARCHITECTURAL']"
+    message: "performance_monitoring_unit must be STANDARD, ENHANCED, or ARCHITECTURAL"
+  }];
+
+  // Turbo frequency mode. "ALL_CORE_MAX" runs all cores at maximum turbo
+  // frequency (supported machine families only).
+  string turbo_mode = 6 [(buf.validate.field).cel = {
+    id: "valid_turbo_mode"
+    expression: "this == '' || this == 'ALL_CORE_MAX'"
+    message: "turbo_mode must be ALL_CORE_MAX"
+  }];
+}
+
+// GcpComputeInstanceGuestAccelerator attaches GPU cards.
+message GcpComputeInstanceGuestAccelerator {
+  // Accelerator type available in the instance's zone, e.g.
+  // "nvidia-tesla-t4", "nvidia-l4", "nvidia-a100-80gb".
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Number of cards of this type.
+  int32 count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// GcpComputeInstanceReservationAffinity controls reserved-capacity
+// consumption.
+message GcpComputeInstanceReservationAffinity {
+  option (buf.validate.message).cel = {
+    id: "specific_reservation_coherence"
+    expression: "(this.type == 'SPECIFIC_RESERVATION') == has(this.specific_reservation)"
+    message: "specific_reservation must be set when (and only when) type is SPECIFIC_RESERVATION"
+  };
+
+  // Reservation consumption mode:
+  //   "ANY_RESERVATION"      -- consume any matching reservation (GCP
+  //                             default)
+  //   "SPECIFIC_RESERVATION" -- consume only the named reservation
+  //   "NO_RESERVATION"       -- never consume reserved capacity
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ANY_RESERVATION",
+        "SPECIFIC_RESERVATION",
+        "NO_RESERVATION"
+      ]
+    }
+  ];
+
+  // The specific reservation to consume (type SPECIFIC_RESERVATION).
+  GcpComputeInstanceSpecificReservation specific_reservation = 2;
+}
+
+// GcpComputeInstanceSpecificReservation names one reservation.
+message GcpComputeInstanceSpecificReservation {
+  // Reservation label key — use
+  // "compute.googleapis.com/reservation-name" to target by name.
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Reservation label values (the reservation name when using the
+  // reservation-name key).
+  repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}

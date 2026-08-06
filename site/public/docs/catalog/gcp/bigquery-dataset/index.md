@@ -30,7 +30,7 @@ When you deploy a GcpBigQueryDataset resource, Planton provisions:
 Create a file `bigquery-dataset.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: my-dataset
@@ -106,7 +106,7 @@ Each entry is either a **principal grant** (`role` + exactly one of the five pri
 Automatically delete tables after 90 days, useful for staging or transient data:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: staging-events
@@ -130,7 +130,7 @@ spec:
 Production dataset using customer-managed encryption and physical storage billing for cost optimization:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: prod-analytics
@@ -156,7 +156,7 @@ spec:
 Grant access to specific users, groups, a time-bounded contractor, and an authorized view:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: finance-data
@@ -197,7 +197,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding values:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: ref-dataset

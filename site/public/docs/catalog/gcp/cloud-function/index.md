@@ -10,7 +10,7 @@ componentName: "gcpcloudfunction"
 
 Source-based serverless compute on Cloud Run: ship a zip, Cloud Build containerizes it, Cloud Run serves it — HTTP endpoints or CloudEvent consumers via Eventarc.
 
-**Enum:** 602 · **ID prefix:** `cldfunc` · **Provider:** GCP · **API:** `gcp.planton.dev/v1`
+**Enum:** 602 · **ID prefix:** `cldfunc` · **Provider:** GCP · **API:** `gcp.planton.dev/v1alpha1`
 
 ## At a Glance
 
@@ -31,7 +31,7 @@ Source-based serverless compute on Cloud Run: ship a zip, Cloud Build containeri
 ## Quick Example
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudFunction
 metadata:
   name: hello-api

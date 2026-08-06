@@ -30,7 +30,7 @@ When you deploy a GcpBigtableInstance resource, Planton provisions:
 Create a file `bigtable.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: my-bigtable
@@ -91,7 +91,7 @@ This creates a Bigtable instance with a single SSD cluster in `us-central1-a`. B
 A Bigtable instance with a fixed 3-node SSD cluster for predictable workloads:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: analytics-bt
@@ -115,7 +115,7 @@ spec:
 A Bigtable instance that scales between 2 and 20 nodes based on CPU utilization:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: timeseries-bt
@@ -144,7 +144,7 @@ spec:
 Two clusters in different zones for automatic replication and failover:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: ha-bigtable
@@ -179,7 +179,7 @@ spec:
 Clusters encrypted with a Cloud KMS key, referenced from a GcpKmsKey resource:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: encrypted-bt
@@ -217,7 +217,7 @@ spec:
 All optional fields configured for an enterprise deployment:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: enterprise-bt

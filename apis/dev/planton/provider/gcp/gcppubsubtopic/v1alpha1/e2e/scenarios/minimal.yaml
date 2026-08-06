@@ -1,0 +1,24 @@
+# GcpPubSubTopic scenario: a minimal topic with user labels (the
+# label-merge proof — the verifier asserts the platform attribution
+# labels landed on top of them). project_id is deliberately omitted
+# (ambient project). The cloud-side topic_name carries ${E2E_RUN_ID} so
+# reruns never collide.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPubSubTopic
+metadata:
+  name: planton-oss-e2e-gcppst-smoke
+  id: planton-oss-e2e-gcppst-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcppubsubtopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  topicName: e2e-pst-${E2E_RUN_ID}
+  messageRetentionDuration: "3600s"
+  labels:
+    team: platform-e2e

@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorSecret
+metadata:
+  name: test-front-door-secret
+spec:
+  profileId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cdn/profiles/test-frontdoor
+  secretName: wildcard-example-com
+  # Versionless certificate id -- Front Door follows the latest version
+  # (rotation propagates without redeploying).
+  keyVaultCertificateId:
+    value: https://test-vault.vault.azure.net/certificates/wildcard-example-com

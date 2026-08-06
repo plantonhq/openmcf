@@ -1,0 +1,25 @@
+# THE STATE PROOF: run a workflow to completion, DELETE the history and
+# frontend pods (UID-verified replacements — status flapping Ready on a
+# dying pod is not recovery), then DESCRIBE the completed workflow (its
+# history must survive in the composed PostgreSQL — the
+# storage-separation proof) and run a SECOND workflow end to end. The
+# component defaults against the fixture are the honest shape for this.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTemporal
+metadata:
+  name: e2e-tprl-state
+spec:
+  namespace:
+    value: e2e-temporal
+  database:
+    postgres:
+      host:
+        valueFrom:
+          name: e2e-tprl-pg
+      username: temporal
+      passwordSecret:
+        secretName:
+          valueFrom:
+            name: e2e-tprl-pg
+  temporalNamespaces:
+    - name: default

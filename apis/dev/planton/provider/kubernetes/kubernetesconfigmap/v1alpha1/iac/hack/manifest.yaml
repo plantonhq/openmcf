@@ -1,0 +1,13 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesConfigMap
+metadata:
+  name: test-configmap
+spec:
+  name: test-configmap
+  namespace:
+    value: default
+  labels:
+    created-by: planton
+  data:
+    LOG_LEVEL: info
+    GREETING: hello-from-planton

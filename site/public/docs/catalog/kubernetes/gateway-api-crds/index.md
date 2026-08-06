@@ -30,7 +30,7 @@ No namespaced workloads are created. The CRDs are cluster-scoped and make the Ga
 Create a file `gateway-api-crds.yaml`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
@@ -70,7 +70,7 @@ This component has no strictly required spec fields. An empty `spec: {}` install
 Installs the stable Gateway API CRDs using all defaults:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api
@@ -87,7 +87,7 @@ spec: {}
 Installs all Gateway API CRDs, including the experimental resources, at a pinned version:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-experimental
@@ -107,7 +107,7 @@ spec:
 Installs the standard CRDs on a named GKE cluster in a production environment:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-prod

@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azureprivatednszone.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// **AzurePrivateDnsZoneSpec** defines the configuration for creating an
+// Azure Private DNS zone: name resolution inside virtual networks without
+// running a DNS server. Private DNS zones serve two primary scenarios:
+//
+// 1. **Private Link DNS resolution** -- zones like
+//    "privatelink.postgres.database.azure.com" enable automatic DNS
+//    resolution for Azure Private Endpoints. When a private endpoint is
+//    created for an Azure PaaS service, its private IP is registered in the
+//    corresponding privatelink zone, so VNet-connected clients resolve the
+//    service's FQDN to its private IP instead of its public one.
+//
+// 2. **Custom internal DNS** -- zones like "corp.internal" provide internal
+//    name resolution for VMs, containers, and other resources.
+//
+// The zone is deliberately just the zone -- a global record container with
+// no reach of its own. Which networks can resolve it is declared through
+// AzurePrivateDnsZoneVirtualNetworkLink resources referencing this zone's
+// zone_id output: one link per network, added and removed without touching
+// the zone. A zone with no links answers nobody, so every deployment pairs
+// the zone with at least one link.
+//
+// **Note:** Private DNS zones are global Azure resources -- they have no
+// region. This is why this spec omits the `region` field that other Azure
+// resources include.
+message AzurePrivateDnsZoneSpec {
+  // The Azure resource group the private DNS zone will be created in.
+  // Can be a literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the private DNS zone. Must be a valid DNS domain name;
+  // changing it replaces the zone and every record in it. For Private Link
+  // scenarios, this must match the Azure-defined privatelink zone name for
+  // the target service.
+  //
+  // Common Private Link zone names:
+  // - "privatelink.postgres.database.azure.com" -- PostgreSQL Flexible Server
+  // - "privatelink.mysql.database.azure.com" -- MySQL Flexible Server
+  // - "privatelink.database.windows.net" -- Azure SQL Database
+  // - "privatelink.documents.azure.com" -- Cosmos DB
+  // - "privatelink.redis.cache.windows.net" -- Azure Cache for Redis
+  // - "privatelink.blob.core.windows.net" -- Azure Blob Storage
+  // - "privatelink.vaultcore.azure.net" -- Azure Key Vault
+  //
+  // For custom internal DNS, use any valid domain (e.g., "corp.internal").
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "zone_name"
+      message: "Zone name must be a valid DNS domain (e.g., privatelink.postgres.database.azure.com or corp.internal)"
+      expression: "this.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  // Customize the zone's Start of Authority record. Nearly every
+  // deployment leaves this unset and takes Azure's defaults; set it only
+  // when operational tooling requires a specific contact email or
+  // negative-caching behavior. The SOA record is created with the zone and
+  // cannot be customized afterwards (changing this replaces the zone).
+  AzurePrivateDnsZoneSoaRecord soa_record = 3;
+
+  // Free-form tags applied to the zone, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Tags are Azure's governance surface -- Azure
+  // Policy enforces them and Microsoft Cost Management groups by them --
+  // so carry your org's ownership/cost-center conventions here. Updatable
+  // in place.
+  map<string, string> tags = 4;
+}
+
+// Customization of the zone's Start of Authority (SOA) record. Field
+// defaults mirror what Azure creates when the block is omitted entirely.
+message AzurePrivateDnsZoneSoaRecord {
+  // The email contact for the zone, in SOA host format (dots instead of
+  // "@", e.g. "azureprivatedns-host.microsoft.com" or
+  // "dnsadmin.contoso.com" for dnsadmin@contoso.com).
+  string email = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Seconds a secondary considers the zone valid without a successful
+  // refresh. Azure's default is 2419200 (28 days).
+  optional int64 expire_time = 2 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "2419200"
+  ];
+
+  // Negative-caching TTL: how long resolvers cache a "name does not
+  // exist" answer, in seconds. Azure's default is 10. The one field with
+  // real operational impact -- raising it slows how quickly newly-created
+  // records become visible to clients that asked before the record
+  // existed.
+  optional int64 minimum_ttl = 3 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "10"
+  ];
+
+  // Seconds between secondary refresh attempts. Azure's default is 3600.
+  optional int64 refresh_time = 4 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "3600"
+  ];
+
+  // Seconds a secondary waits before retrying a failed refresh. Azure's
+  // default is 300.
+  optional int64 retry_time = 5 [
+    (buf.validate.field).int64.gte = 0,
+    (dev.planton.shared.options.default) = "300"
+  ];
+
+  // TTL of the SOA record itself, in seconds. Azure's default is 3600.
+  optional int64 ttl = 6 [
+    (buf.validate.field).int64.gte = 0,
+    (buf.validate.field).int64.lte = 2147483647,
+    (dev.planton.shared.options.default) = "3600"
+  ];
+
+  // Tags applied to the SOA record set (distinct from the zone's own
+  // tags). Rarely used; exists because ARM models record-set tags.
+  map<string, string> tags = 7;
+}

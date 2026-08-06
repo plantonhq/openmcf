@@ -1,0 +1,12 @@
+# Chart-default install: namespace + release, CRDs included with the
+# keep-on-uninstall guard (the Planton default), nothing tuned. Verifies the
+# three component Deployments (controller, webhook, cert-controller) become
+# Available and the core CRDs are Established.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesExternalSecretsOperator
+metadata:
+  name: e2e-eso-minimal
+spec:
+  namespace:
+    value: external-secrets
+  createNamespace: true

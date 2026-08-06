@@ -36,7 +36,7 @@ Custom domains are the separate `AwsHttpApiDomain` component; VPC links for priv
 Create a file `api.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api
@@ -137,7 +137,7 @@ This creates an HTTP API with a single catch-all route (`$default`) that forward
 Multiple routes to different Lambda functions with cross-origin support:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: users-api
@@ -186,7 +186,7 @@ spec:
 Routes guarded by a JWT authorizer backed by Amazon Cognito:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: secure-api
@@ -249,7 +249,7 @@ spec:
 An HTTP proxy API with access logging and default throttle settings:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: proxy-api
@@ -288,7 +288,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding ARNs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: ref-api

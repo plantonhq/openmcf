@@ -28,7 +28,7 @@ When you deploy a AtlasMongodb resource, Planton provisions:
 Create a file `atlas-mongodb.yaml`:
 
 ```yaml
-apiVersion: atlas.planton.dev/v1
+apiVersion: atlas.planton.dev/v1alpha1
 kind: AtlasMongodb
 metadata:
   name: my-cluster
@@ -85,7 +85,7 @@ This creates a 3-node replica set cluster on AWS using M10 instances running Mon
 A minimal 3-node replica set on AWS with M10 instances, suitable for development or small production workloads:
 
 ```yaml
-apiVersion: atlas.planton.dev/v1
+apiVersion: atlas.planton.dev/v1alpha1
 kind: AtlasMongodb
 metadata:
   name: dev-cluster
@@ -110,7 +110,7 @@ spec:
 A production-grade replica set on GCP with cloud backup enabled, auto-scaling disk storage, and read-only nodes for offloading analytics queries:
 
 ```yaml
-apiVersion: atlas.planton.dev/v1
+apiVersion: atlas.planton.dev/v1alpha1
 kind: AtlasMongodb
 metadata:
   name: prod-cluster
@@ -138,7 +138,7 @@ spec:
 A sharded cluster on Azure with M40 instances for high-throughput workloads that require horizontal scaling across multiple shards:
 
 ```yaml
-apiVersion: atlas.planton.dev/v1
+apiVersion: atlas.planton.dev/v1alpha1
 kind: AtlasMongodb
 metadata:
   name: analytics-cluster

@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesKeycloakOperator
-metadata:
-  name: keycloak-operator
-spec:
-  namespace:
-    value: keycloak
-  createNamespace: true

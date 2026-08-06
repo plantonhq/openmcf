@@ -29,7 +29,7 @@ When you deploy an AwsIamUser resource, Planton provisions:
 Create a file `iam-user.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: my-ci-user
@@ -78,7 +78,7 @@ This creates an IAM user named `my-ci-user` with one active access key pair and 
 A user for a CI pipeline that needs to push artifacts to an S3 bucket:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: ci-deploy-user
@@ -99,7 +99,7 @@ spec:
 A user for a third-party integration with a scoped inline policy granting read access to a specific DynamoDB table:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: analytics-service
@@ -128,7 +128,7 @@ spec:
 A user intended for AWS Management Console access only, with no programmatic access keys:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: audit-viewer
@@ -150,7 +150,7 @@ spec:
 A production service account with both managed and inline policies for SQS and CloudWatch access:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: worker-service

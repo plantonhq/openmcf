@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpcloudrunjob.v1alpha1;
+
+// GcpCloudRunJobStackOutputs captures values returned after provisioning.
+message GcpCloudRunJobStackOutputs {
+  // Name of the Cloud Run job as created in GCP — the handle gcloud and
+  // Scheduler reference when triggering executions.
+  string job_name = 1;
+
+  // Region the job is deployed in (plain region name).
+  string location = 2;
+
+  // Server-assigned unique identifier of the job, stable across its
+  // lifetime and never reused after deletion.
+  string uid = 3;
+
+  // Name of the most recently created execution, if any. Empty until the
+  // job has been run at least once.
+  string latest_created_execution = 4;
+}

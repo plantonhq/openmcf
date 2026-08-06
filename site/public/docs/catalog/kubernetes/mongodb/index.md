@@ -47,7 +47,7 @@ connect through the operator-managed Services.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMongodb
 metadata:
   name: orders-db

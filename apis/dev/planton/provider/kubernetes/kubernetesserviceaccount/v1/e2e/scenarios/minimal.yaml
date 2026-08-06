@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesServiceAccount
-metadata:
-  name: e2e-sa-minimal
-spec:
-  name: e2e-sa-minimal
-  namespace:
-    value: default

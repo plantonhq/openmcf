@@ -59,9 +59,14 @@ create_zip() {
   count=$(wc -l < "$tmp_list" | tr -d ' ')
 
   if [ "$count" -eq 0 ]; then
-    echo "  WARNING: No files found for ${description}. Skipping ${zip_name}."
+    # An empty selection means a selector pattern no longer matches the tree
+    # (e.g. an api-version directory rename) -- shipping a release with a
+    # silently empty content zip is worse than failing the release.
+    echo "  ERROR: No files found for ${description} (${zip_name}). A selector"
+    echo "         pattern no longer matches the repository layout; fix the"
+    echo "         pattern before releasing."
     rm -f "$tmp_list"
-    return
+    exit 1
   fi
 
   if [ "$DRY_RUN" = "--dry-run" ]; then
@@ -81,7 +86,7 @@ create_zip() {
 # ─── 1. Presets ───────────────────────────────────────────────────────────────
 echo "1/5  Presets..."
 {
-  find "$PROVIDER_BASE" \( -path '*/v1/presets/*.yaml' -o -path '*/v1/presets/*.md' \)
+  find "$PROVIDER_BASE" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \)
   echo "apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto"
 } | create_zip "presets.zip" "presets"
 
@@ -89,7 +94,7 @@ echo "1/5  Presets..."
 # Mirrors the ALLOWED_EXTENSIONS in iac-bundler.ts: .go, .tf, .md, .yaml
 # Excludes hidden dirs, vendor, and node_modules (same as iac-bundler.ts).
 echo "2/5  IaC source..."
-find "$PROVIDER_BASE" -path '*/v1/iac/*' \
+find "$PROVIDER_BASE" -path '*/v1alpha1/iac/*' \
     \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
     ! -path '*/vendor/*' \
     ! -path '*/node_modules/*' \
@@ -99,16 +104,16 @@ find "$PROVIDER_BASE" -path '*/v1/iac/*' \
 
 # ─── 3. Catalog Pages ────────────────────────────────────────────────────────
 echo "3/5  Catalog pages..."
-find "$PROVIDER_BASE" -path '*/v1/catalog-page.md' \
+find "$PROVIDER_BASE" -path '*/v1alpha1/catalog-page.md' \
   | create_zip "catalog-pages.zip" "catalog pages"
 
 # ─── 4. Proto Source ──────────────────────────────────────────────────────────
 echo "4/5  Proto source..."
 find "$PROVIDER_BASE" \( \
-    -path '*/v1/spec.proto' \
-    -o -path '*/v1/api.proto' \
-    -o -path '*/v1/stack_input.proto' \
-    -o -path '*/v1/stack_outputs.proto' \
+    -path '*/v1alpha1/spec.proto' \
+    -o -path '*/v1alpha1/api.proto' \
+    -o -path '*/v1alpha1/stack_input.proto' \
+    -o -path '*/v1alpha1/stack_outputs.proto' \
   \) | create_zip "proto-source.zip" "proto source"
 
 # ─── 5. Reference Pack ────────────────────────────────────────────────────────

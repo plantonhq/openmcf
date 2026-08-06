@@ -30,7 +30,7 @@ When you deploy an AliCloudRdsInstance resource, Planton provisions:
 Create a file `rds-instance.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudRdsInstance
 metadata:
   name: my-mysql

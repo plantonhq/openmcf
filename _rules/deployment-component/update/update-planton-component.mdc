@@ -925,7 +925,7 @@ Show:
 
 # Update executes:
 # - make protos (regenerate proto stubs)
-# - go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1/ (validate spec tests)
+# - go test ./apis/dev/planton/provider/gcp/gcpcloudsql/v1alpha1/ (validate spec tests)
 # - Update Terraform variables.tf (add enable_ssl variable)
 # - Validate presets against new schema (check for stale fields, add enable_ssl if appropriate)
 # - go build ./apis/dev/planton/provider/<provider>/<component>/v1/... (validate build)
@@ -1028,7 +1028,7 @@ If update would overwrite custom changes:
 ### Backup Before Update
 Use `--backup` flag to create backup:
 ```
-apis/dev/planton/provider/atlas/mongodbatlas/v1/.backup-2025-11-13-143022/
+apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/.backup-2025-11-13-143022/
 ```
 
 ### Dry-Run Mode

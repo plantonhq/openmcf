@@ -3,7 +3,7 @@ package fieldsextractor
 import (
 	"testing"
 
-	awslambdav1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslambda/v1"
+	awslambdav1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awslambda/v1alpha1"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
@@ -12,9 +12,9 @@ import (
 // TestExtractApiResourceSpecField_Success tests the success scenario where fields are valid and messages are correctly structured.
 func TestExtractApiResourceSpecField_Success(t *testing.T) {
 	// Create mock input
-	mockSpec := &awslambdav1.AwsLambdaSpec{}
-	mockTarget := &awslambdav1.AwsLambda{Spec: mockSpec}
-	mockStackInput := &awslambdav1.AwsLambdaStackInput{Target: mockTarget}
+	mockSpec := &awslambdav1alpha1.AwsLambdaSpec{}
+	mockTarget := &awslambdav1alpha1.AwsLambda{Spec: mockSpec}
+	mockStackInput := &awslambdav1alpha1.AwsLambdaStackInput{Target: mockTarget}
 
 	// Call the function under test
 	result, err := ExtractApiResourceSpecField(mockStackInput)
@@ -38,7 +38,7 @@ func TestExtractApiResourceSpecField_NilInput(t *testing.T) {
 // TestExtractApiResourceSpecField_InvalidTargetField tests the scenario where the target field is missing or invalid.
 func TestExtractApiResourceSpecField_InvalidTargetField(t *testing.T) {
 	// Create a mock input without a valid PostgresOperatorKubernetes field
-	mockStackInput := &awslambdav1.AwsLambdaStackInput{Target: nil}
+	mockStackInput := &awslambdav1alpha1.AwsLambdaStackInput{Target: nil}
 
 	// Call the function under test
 	result, err := ExtractApiResourceSpecField(mockStackInput)
@@ -51,8 +51,8 @@ func TestExtractApiResourceSpecField_InvalidTargetField(t *testing.T) {
 // TestExtractApiResourceSpecField_InvalidSpecField tests the scenario where the spec field in the target is missing or invalid.
 func TestExtractApiResourceSpecField_InvalidSpecField(t *testing.T) {
 	// Create a mock input with an invalid Spec field
-	mockTarget := &awslambdav1.AwsLambda{Spec: nil}
-	mockStackInput := &awslambdav1.AwsLambdaStackInput{Target: mockTarget}
+	mockTarget := &awslambdav1alpha1.AwsLambda{Spec: nil}
+	mockStackInput := &awslambdav1alpha1.AwsLambdaStackInput{Target: mockTarget}
 
 	// Call the function under test
 	result, err := ExtractApiResourceSpecField(mockStackInput)

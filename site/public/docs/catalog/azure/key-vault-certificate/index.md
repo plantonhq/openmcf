@@ -27,7 +27,7 @@ When you deploy an AzureKeyVaultCertificate resource, Planton provisions:
 Create a file `key-vault-certificate.yaml` (self-signed, auto-renewing internal TLS):
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultCertificate
 metadata:
   name: internal-tls
@@ -111,7 +111,7 @@ At least one of `certificate` (import) / `certificatePolicy` (generate) is requi
 ### Import an Existing PFX
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultCertificate
 metadata:
   name: purchased-wildcard

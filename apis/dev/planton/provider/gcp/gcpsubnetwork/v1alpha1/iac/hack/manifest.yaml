@@ -1,0 +1,38 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSubnetwork
+metadata:
+  name: my-sample-subnetwork
+spec:
+  # GCP project that owns the subnetwork.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Self-link of the parent VPC (or reference a GcpVpcNetwork resource).
+  vpcSelfLink:
+    value: projects/my-gcp-project-123/global/networks/my-vpc
+
+  subnetworkName: app-subnet
+  region: us-central1
+
+  # Primary range: /20 leaves room to grow (expansion is in-place;
+  # shrinking recreates).
+  ipCidrRange: 10.10.0.0/20
+
+  description: Primary workload subnet for the app tier
+
+  # Secondary ranges for GKE alias IPs.
+  secondaryIpRanges:
+    - rangeName: pods
+      ipCidrRange: 10.16.0.0/14
+    - rangeName: services
+      ipCidrRange: 10.20.0.0/20
+
+  # Private-only workloads still reach Google APIs internally.
+  privateIpGoogleAccess: true
+
+  # VPC Flow Logs at half sampling with all metadata.
+  logConfig:
+    aggregationInterval: INTERVAL_5_SEC
+    flowSampling: 0.5
+    metadata: INCLUDE_ALL_METADATA

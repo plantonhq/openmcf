@@ -41,7 +41,7 @@ declared separately, one KubernetesOpenSearch resource per cluster.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenSearchOperator
 metadata:
   name: opensearch-operator

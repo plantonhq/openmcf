@@ -27,7 +27,7 @@ When you deploy a ScalewayKapsulePool resource, Planton provisions:
 Create a file `kapsule-pool.yaml`:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsulePool
 metadata:
   name: my-pool
@@ -93,7 +93,7 @@ This creates a two-node pool of `DEV1-M` instances in the `fr-par` region, attac
 A minimal additional pool for development workloads:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsulePool
 metadata:
   name: dev-workers
@@ -120,7 +120,7 @@ spec:
 A production pool with autoscaling, private nodes, Kubernetes labels for workload scheduling, and a safe upgrade policy:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsulePool
 metadata:
   name: app-pool
@@ -158,7 +158,7 @@ spec:
 A dedicated pool for GPU workloads using taints to prevent non-GPU pods from being scheduled, pinned to a specific zone:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1
+apiVersion: scaleway.planton.dev/v1alpha1
 kind: ScalewayKapsulePool
 metadata:
   name: gpu-pool

@@ -29,7 +29,7 @@ When you deploy an OciStreamPool resource, Planton provisions:
 Create a file `stream-pool.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciStreamPool
 metadata:
   name: my-pool
@@ -102,7 +102,7 @@ This creates a stream pool with Oracle-managed encryption and one stream with a 
 A stream pool with a single stream for development:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciStreamPool
 metadata:
   name: dev-pool
@@ -124,7 +124,7 @@ spec:
 A pool with Kafka auto-topic creation enabled, 48-hour retention, and multiple streams:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciStreamPool
 metadata:
   name: event-hub
@@ -159,7 +159,7 @@ spec:
 A pool accessible only from a private subnet, with customer-managed encryption:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciStreamPool
 metadata:
   name: secure-pool

@@ -28,7 +28,7 @@ When you deploy an AwsWafRegexPatternSet resource, Planton provisions:
 Create a file `pattern-set.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafRegexPatternSet
 metadata:
   name: scanner-probes
@@ -75,7 +75,7 @@ planton apply -f pattern-set.yaml
 ### Admin Path Protection
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafRegexPatternSet
 metadata:
   name: internal-admin-paths
@@ -91,7 +91,7 @@ spec:
 ### CloudFront Global Scanner Block
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafRegexPatternSet
 metadata:
   name: global-scanner-probes

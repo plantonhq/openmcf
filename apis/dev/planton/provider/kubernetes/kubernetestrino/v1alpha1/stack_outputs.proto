@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetestrino.v1alpha1;
+
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+
+/**
+ * **KubernetesTrinoStackOutputs** — the composition handles a
+ * deployed Trino exports. SQL clients (the trino CLI, JDBC/ODBC,
+ * BI tools like a KubernetesSuperset) point at the coordinator
+ * endpoint; the admin credential is exported as a Secret handle.
+ */
+message KubernetesTrinoStackOutputs {
+  // Namespace Trino runs in.
+  string namespace = 1;
+
+  // Name of the coordinator Service (`<name>-trino-coordinator`
+  // at default naming) — the handle exposure kinds route to.
+  string coordinator_service = 2;
+
+  // In-cluster coordinator endpoint,
+  // `http://<coordinator_service>.<namespace>.svc.cluster.local:8080`
+  // — the URL SQL clients and BI tools connect to (with auth on,
+  // pair it with the admin credential below).
+  string coordinator_endpoint = 3;
+
+  // The bootstrap admin username (`auth.admin_username`, default
+  // "trino"). Empty when auth is disabled or a bring-your-own
+  // password file is declared.
+  string admin_username = 4;
+
+  // The admin credential: the Secret and key holding the bootstrap
+  // admin password (module-generated `<name>-auth`, key
+  // `password`). Empty when auth is disabled or bring-your-own.
+  dev.planton.provider.kubernetes.KubernetesSecretKey admin_password_secret = 5;
+
+  // Name of the worker Service (`<name>-trino-worker` at default
+  // naming) — internal; exported for network-policy composition.
+  string worker_service = 6;
+
+  // Port-forward command for reaching the Trino Web UI from a
+  // workstation when no exposure is composed.
+  string port_forward_command = 7;
+}

@@ -24,7 +24,7 @@ When you deploy a GcpCloudSqlDatabase resource, Planton provisions:
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlDatabase
 metadata:
   name: orders-database
@@ -56,7 +56,7 @@ planton apply -f database.yaml
 ### MySQL Database with Modern UTF-8
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlDatabase
 metadata:
   name: app-database

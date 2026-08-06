@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.provider.aws.awslblistener.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/aws/awslblistener/v1alpha1/spec.proto";
+import "dev/planton/provider/aws/awslblistener/v1alpha1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+//aws-lb-listener
+message AwsLbListener {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AwsLbListener'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AwsLbListenerSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AwsLbListenerStatus status = 5;
+}
+
+//aws-lb-listener status
+message AwsLbListenerStatus {
+  //stack-outputs
+  AwsLbListenerStackOutputs outputs = 1;
+}

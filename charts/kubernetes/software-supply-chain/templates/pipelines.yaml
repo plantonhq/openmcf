@@ -15,7 +15,7 @@
 # not configurable, not this chart's namespace). The spec is empty by
 # design: the release manifest is the contract, and the component pins
 # the release.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTektonOperator
 metadata:
   name: "{{ values.env }}-tekton-operator"
@@ -38,7 +38,7 @@ spec: {}
 # The dashboard ships with NO built-in authentication — it stays
 # ClusterIP, and any exposure composed in front needs an authenticating
 # layer (the README says it louder).
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTekton
 metadata:
   name: "{{ values.env }}-tekton"

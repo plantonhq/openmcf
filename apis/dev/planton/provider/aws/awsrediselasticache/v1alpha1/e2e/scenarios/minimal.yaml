@@ -1,0 +1,35 @@
+# Minimal single-node Redis replication group: cheapest footprint for live
+# E2E. Subnet pair prerequisite satisfies the two-AZ subnet group pattern;
+# transit encryption is off so no AUTH token or user group is required.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRedisElasticache
+metadata:
+  name: planton-oss-e2e-redis-smoke
+  id: planton-oss-e2e-redis-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrediselasticache
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engine: redis
+  description: Planton OSS E2E single-node Redis
+  nodeType: cache.t4g.micro
+  numCacheClusters: 1
+  atRestEncryptionEnabled: true
+  transitEncryptionEnabled: false
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id

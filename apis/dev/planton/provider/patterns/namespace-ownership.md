@@ -41,7 +41,7 @@ target is exactly this kind — the wiring below is what the schema itself
 steers toward.
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: team-data
@@ -53,7 +53,7 @@ spec:
 ```
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: orders-db
@@ -69,7 +69,7 @@ spec:
 ```
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesValkey
 metadata:
   name: orders-cache
@@ -116,8 +116,8 @@ violation of this pattern.
 
 ## See also
 
-- [KubernetesNamespace reference](../kubernetes/kubernetesnamespace/v1/reference.md)
-  and [guide](../kubernetes/kubernetesnamespace/v1/GUIDE.md)
-- [KubernetesPostgres reference](../kubernetes/kubernetespostgres/v1/reference.md)
-  and [guide](../kubernetes/kubernetespostgres/v1/GUIDE.md)
-- [KubernetesValkey reference](../kubernetes/kubernetesvalkey/v1/reference.md)
+- [KubernetesNamespace reference](../kubernetes/kubernetesnamespace/v1alpha1/reference.md)
+  and [guide](../kubernetes/kubernetesnamespace/v1alpha1/GUIDE.md)
+- [KubernetesPostgres reference](../kubernetes/kubernetespostgres/v1alpha1/reference.md)
+  and [guide](../kubernetes/kubernetespostgres/v1alpha1/GUIDE.md)
+- [KubernetesValkey reference](../kubernetes/kubernetesvalkey/v1alpha1/reference.md)

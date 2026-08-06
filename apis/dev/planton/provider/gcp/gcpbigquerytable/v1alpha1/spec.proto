@@ -1,0 +1,676 @@
+syntax = "proto3";
+
+package dev.planton.provider.gcp.gcpbigquerytable.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// GcpBigQueryTableTimePartitioning splits the table into time-based
+// partitions so queries that filter on the partitioning column scan (and
+// bill for) only the matching partitions. The workhorse pattern for
+// event/fact tables.
+message GcpBigQueryTableTimePartitioning {
+  // Partition granularity: DAY, HOUR, MONTH, or YEAR. DAY is the common
+  // default for event data; HOUR suits very high-volume streams.
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "DAY",
+        "HOUR",
+        "MONTH",
+        "YEAR"
+      ]
+    }
+  ];
+
+  // The DATE, TIMESTAMP, or DATETIME column to partition on. Immutable.
+  // If omitted, the table is ingestion-time partitioned (the pseudo-columns
+  // _PARTITIONTIME / _PARTITIONDATE carry the partition key).
+  string field = 2;
+
+  // Number of milliseconds to keep each partition before it is dropped.
+  // If not set (0), partitions never expire (the dataset's
+  // default_partition_expiration_ms still applies to new tables).
+  int64 expiration_ms = 3;
+}
+
+// GcpBigQueryTableRangePartitioningRange defines the integer key space:
+// values from start (inclusive) to end (exclusive) in steps of interval,
+// each step one partition. Rows outside the range land in special
+// __UNPARTITIONED__ / __NULL__ partitions.
+message GcpBigQueryTableRangePartitioningRange {
+  // Start of range partitioning, inclusive.
+  int64 start = 1;
+
+  // End of range partitioning, exclusive. Must be greater than start.
+  int64 end = 2;
+
+  // Width of each partition interval. Must be at least 1.
+  int64 interval = 3;
+
+  option (buf.validate.message).cel = {
+    id: "range_partition_coherent"
+    expression: "this.end > this.start && this.interval >= 1"
+    message: "range partitioning requires end > start and interval >= 1"
+  };
+}
+
+// GcpBigQueryTableRangePartitioning partitions the table on an INTEGER
+// column over a fixed key range — e.g. customer_id 0..4000 in steps of 10.
+// The alternative to time partitioning for integer-keyed data.
+message GcpBigQueryTableRangePartitioning {
+  // The INTEGER column to partition on. Immutable.
+  string field = 1 [(buf.validate.field).required = true];
+
+  // The partition key space (start / end / interval).
+  GcpBigQueryTableRangePartitioningRange range = 2 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryTableView makes the table a logical (virtual) view: a saved
+// SQL query evaluated at read time. Pair with the dataset's authorized-view
+// access entries to expose filtered slices of sensitive data.
+message GcpBigQueryTableView {
+  // The SQL query defining the view. Referenced tables must live in the
+  // same location as the view's dataset.
+  string query = 1 [(buf.validate.field).required = true];
+
+  // Whether the query uses BigQuery's legacy SQL dialect. Defaults to
+  // false (GoogleSQL) — both engines always send the value explicitly, so
+  // the BigQuery API's own legacy-SQL-by-default behavior for views never
+  // silently applies.
+  bool use_legacy_sql = 2;
+}
+
+// GcpBigQueryTableMaterializedView makes the table a materialized view:
+// BigQuery precomputes and incrementally refreshes the query's results,
+// trading storage for read latency and cost on hot aggregations.
+message GcpBigQueryTableMaterializedView {
+  // The SQL query defining the materialized view. Immutable — changing the
+  // query recreates the table.
+  string query = 1 [(buf.validate.field).required = true];
+
+  // Whether BigQuery automatically refreshes the results when base tables
+  // change. When omitted, GCP's default (enabled) applies; set false to
+  // refresh only manually.
+  optional bool enable_refresh = 2;
+
+  // Maximum staleness between refreshes, in milliseconds. If not set (0),
+  // GCP's default of 1800000 (30 minutes) applies.
+  int64 refresh_interval_ms = 3;
+
+  // Allow a query shape BigQuery cannot refresh incrementally (full
+  // re-computation on refresh). Immutable. Default false.
+  bool allow_non_incremental_definition = 4;
+}
+
+// GcpBigQueryTableCsvOptions parses CSV external data.
+message GcpBigQueryTableCsvOptions {
+  // The value used to quote data sections. When omitted, the API default
+  // double-quote (") applies; set an explicit empty string for unquoted
+  // data. Presence-tracked because the empty string is meaningful.
+  optional string quote = 1;
+
+  // Accept rows missing trailing optional columns (missing values become
+  // NULL).
+  bool allow_jagged_rows = 2;
+
+  // Allow quoted data sections containing newlines.
+  bool allow_quoted_newlines = 3;
+
+  // Character encoding of the data: UTF-8 (default) or ISO-8859-1.
+  string encoding = 4 [(buf.validate.field).cel = {
+    id: "csv_encoding_valid"
+    expression: "this == '' || this in ['UTF-8', 'ISO-8859-1']"
+    message: "encoding must be UTF-8 or ISO-8859-1"
+  }];
+
+  // Field separator. Defaults to comma.
+  string field_delimiter = 5;
+
+  // Number of header rows to skip.
+  int32 skip_leading_rows = 6;
+}
+
+// GcpBigQueryTableJsonOptions parses newline-delimited JSON external data.
+message GcpBigQueryTableJsonOptions {
+  // Character encoding of the data. Defaults to UTF-8.
+  string encoding = 1 [(buf.validate.field).cel = {
+    id: "json_encoding_valid"
+    expression: "this == '' || this in ['UTF-8', 'UTF-16BE', 'UTF-16LE', 'UTF-32BE', 'UTF-32LE']"
+    message: "encoding must be one of UTF-8, UTF-16BE, UTF-16LE, UTF-32BE, UTF-32LE"
+  }];
+}
+
+// GcpBigQueryTableGoogleSheetsOptions reads a Google Sheets range as
+// external data.
+message GcpBigQueryTableGoogleSheetsOptions {
+  // Sheet range to query, e.g. "sheet1!A1:B20". When omitted the first
+  // sheet is used.
+  string range = 1;
+
+  // Number of header rows to skip.
+  int32 skip_leading_rows = 2;
+}
+
+// GcpBigQueryTableHivePartitioningOptions derives partition columns from
+// GCS object paths laid out hive-style (gs://bucket/path/dt=2026-01-01/...).
+message GcpBigQueryTableHivePartitioningOptions {
+  // Partition-key inference mode: AUTO (infer types), STRINGS (all keys as
+  // strings), or CUSTOM (types encoded in source_uri_prefix).
+  string mode = 1 [(buf.validate.field).cel = {
+    id: "hive_mode_valid"
+    expression: "this == '' || this in ['AUTO', 'STRINGS', 'CUSTOM']"
+    message: "mode must be AUTO, STRINGS, or CUSTOM"
+  }];
+
+  // Require a partition filter predicate in every query against the table.
+  bool require_partition_filter = 2;
+
+  // Common prefix of all source URIs before partition-key encoding begins,
+  // e.g. gs://bucket/path (or gs://bucket/path/{dt:DATE} for CUSTOM mode).
+  string source_uri_prefix = 3;
+}
+
+// GcpBigQueryTableAvroOptions parses Avro external data.
+message GcpBigQueryTableAvroOptions {
+  // Interpret Avro logical types (timestamp-micros, decimal, ...) as their
+  // corresponding BigQuery types instead of raw primitives. Both engines
+  // always send this value explicitly.
+  bool use_avro_logical_types = 1;
+}
+
+// GcpBigQueryTableParquetOptions parses Parquet external data.
+message GcpBigQueryTableParquetOptions {
+  // Infer Parquet ENUM logical type as STRING instead of BYTES.
+  bool enum_as_string = 1;
+
+  // Infer Parquet LIST logical type as the list's element type instead of
+  // a repeated record wrapper.
+  bool enable_list_inference = 2;
+}
+
+// GcpBigQueryTableBigtableColumn exposes one Bigtable column as a table
+// field.
+message GcpBigQueryTableBigtableColumn {
+  // Qualifier of the column, base64-encoded (for qualifiers that are not
+  // valid UTF-8). Exactly one of qualifier_encoded or qualifier_string.
+  string qualifier_encoded = 1;
+
+  // Qualifier of the column as a UTF-8 string.
+  string qualifier_string = 2;
+
+  // Field name to use in the table instead of the qualifier.
+  string field_name = 3;
+
+  // Type to convert the value to: BYTES (default), STRING, INTEGER, FLOAT,
+  // BOOLEAN, JSON.
+  string type = 4;
+
+  // Encoding of the values: TEXT or BINARY (default).
+  string encoding = 5;
+
+  // Expose only the latest cell version instead of all versions.
+  bool only_read_latest = 6;
+
+  option (buf.validate.message).cel = {
+    id: "bigtable_column_one_qualifier"
+    expression: "(this.qualifier_encoded != '') != (this.qualifier_string != '')"
+    message: "exactly one of qualifier_encoded or qualifier_string must be set"
+  };
+}
+
+// GcpBigQueryTableBigtableColumnFamily exposes one Bigtable column family.
+message GcpBigQueryTableBigtableColumnFamily {
+  // Identifier of the column family.
+  string family_id = 1;
+
+  // Default type for values in this family (overridable per column).
+  string type = 2;
+
+  // Default encoding for values in this family (overridable per column).
+  string encoding = 3;
+
+  // Default only-latest-version posture for this family.
+  bool only_read_latest = 4;
+
+  // Columns of the family to expose individually.
+  repeated GcpBigQueryTableBigtableColumn columns = 5;
+}
+
+// GcpBigQueryTableBigtableOptions reads a Cloud Bigtable table as external
+// data.
+message GcpBigQueryTableBigtableOptions {
+  // Skip unspecified column families instead of failing.
+  bool ignore_unspecified_column_families = 1;
+
+  // Read the row key as a STRING instead of BYTES.
+  bool read_rowkey_as_string = 2;
+
+  // Expose unlisted column families as a JSON-typed column each.
+  bool output_column_families_as_json = 3;
+
+  // Column families to expose, with per-family and per-column typing.
+  repeated GcpBigQueryTableBigtableColumnFamily column_families = 4;
+}
+
+// GcpBigQueryTableExternalDataConfiguration makes the table EXTERNAL: the
+// data stays in the source (GCS, Sheets, Bigtable, ...) and BigQuery reads
+// it at query time. Pair with connection_id for BigLake tables with
+// fine-grained security and metadata caching.
+message GcpBigQueryTableExternalDataConfiguration {
+  // Let BigQuery infer the schema and options from the source. Both
+  // engines always send this value explicitly (the API requires the field).
+  bool autodetect = 1;
+
+  // Fully qualified source URIs, e.g. gs://bucket/path/*. Wildcards are
+  // allowed after the bucket name (not for Bigtable or Google Drive).
+  repeated string source_uris = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Format of the data: CSV, GOOGLE_SHEETS, NEWLINE_DELIMITED_JSON, AVRO,
+  // ICEBERG, DATASTORE_BACKUP, PARQUET, ORC, BIGTABLE, or DELTA_LAKE.
+  // Mutually exclusive with object_metadata (object tables).
+  string source_format = 3 [(buf.validate.field).cel = {
+    id: "source_format_valid"
+    expression: "this == '' || this in ['CSV', 'GOOGLE_SHEETS', 'NEWLINE_DELIMITED_JSON', 'AVRO', 'ICEBERG', 'DATASTORE_BACKUP', 'PARQUET', 'ORC', 'BIGTABLE', 'DELTA_LAKE']"
+    message: "source_format must be one of CSV, GOOGLE_SHEETS, NEWLINE_DELIMITED_JSON, AVRO, ICEBERG, DATASTORE_BACKUP, PARQUET, ORC, BIGTABLE, DELTA_LAKE"
+  }];
+
+  // Set to SIMPLE to create an OBJECT table over unstructured GCS objects
+  // (requires connection_id; mutually exclusive with source_format).
+  string object_metadata = 4 [(buf.validate.field).cel = {
+    id: "object_metadata_valid"
+    expression: "this == '' || this == 'SIMPLE'"
+    message: "object_metadata must be SIMPLE when set"
+  }];
+
+  // Compression of the source data: NONE (default) or GZIP.
+  string compression = 5 [(buf.validate.field).cel = {
+    id: "compression_valid"
+    expression: "this == '' || this in ['NONE', 'GZIP']"
+    message: "compression must be NONE or GZIP"
+  }];
+
+  // Explicit schema for the external data as a JSON array of field
+  // definitions. Immutable. Mutually exclusive with autodetect in
+  // practice; most formats are self-describing.
+  string schema = 6;
+
+  // Tolerate rows with values that do not match the schema (extra columns
+  // ignored, missing values become NULL).
+  bool ignore_unknown_values = 7;
+
+  // Maximum number of bad records to tolerate before failing the query.
+  int32 max_bad_records = 8;
+
+  // Connection (projects/{p}/locations/{l}/connections/{c}) whose
+  // credential reads the source — this is what upgrades a plain external
+  // table to a BigLake table. Plain string until a connection kind exists.
+  string connection_id = 9;
+
+  // Reference file providing the table schema for AVRO/PARQUET/ORC.
+  string reference_file_schema_uri = 10;
+
+  // Metadata caching for BigLake tables: AUTOMATIC (refresh within
+  // max_staleness) or MANUAL (on-demand refresh). Requires connection_id.
+  string metadata_cache_mode = 11 [(buf.validate.field).cel = {
+    id: "metadata_cache_mode_valid"
+    expression: "this == '' || this in ['AUTOMATIC', 'MANUAL']"
+    message: "metadata_cache_mode must be AUTOMATIC or MANUAL"
+  }];
+
+  // How source URIs are interpreted: FILE_SYSTEM_MATCH (default; expand
+  // via object listing) or NEW_LINE_DELIMITED_MANIFEST (URIs point to
+  // manifest files, one data URI per line).
+  string file_set_spec_type = 12 [(buf.validate.field).cel = {
+    id: "file_set_spec_type_valid"
+    expression: "this == '' || this in ['FILE_SET_SPEC_TYPE_FILE_SYSTEM_MATCH', 'FILE_SET_SPEC_TYPE_NEW_LINE_DELIMITED_MANIFEST']"
+    message: "file_set_spec_type must be FILE_SET_SPEC_TYPE_FILE_SYSTEM_MATCH or FILE_SET_SPEC_TYPE_NEW_LINE_DELIMITED_MANIFEST"
+  }];
+
+  // Parse extension for JSON data: GEOJSON (newline-delimited GeoJSON).
+  string json_extension = 13 [(buf.validate.field).cel = {
+    id: "json_extension_valid"
+    expression: "this == '' || this == 'GEOJSON'"
+    message: "json_extension must be GEOJSON when set"
+  }];
+
+  // Format-specific parsing options — set the block matching source_format.
+  GcpBigQueryTableCsvOptions csv_options = 14;
+  GcpBigQueryTableJsonOptions json_options = 15;
+  GcpBigQueryTableGoogleSheetsOptions google_sheets_options = 16;
+  GcpBigQueryTableHivePartitioningOptions hive_partitioning_options = 17;
+  GcpBigQueryTableAvroOptions avro_options = 18;
+  GcpBigQueryTableParquetOptions parquet_options = 19;
+  GcpBigQueryTableBigtableOptions bigtable_options = 20;
+
+  // The table reads objects (SIMPLE) or structured data (source_format) —
+  // never both.
+  option (buf.validate.message).cel = {
+    id: "format_xor_object_metadata"
+    expression: "!(this.source_format != '' && this.object_metadata != '')"
+    message: "source_format and object_metadata are mutually exclusive"
+  };
+}
+
+// GcpBigQueryTablePrimaryKey declares the table's primary key columns.
+// BigQuery constraints are NOT ENFORCED — they are metadata the query
+// optimizer uses for join elimination and that tools use for lineage.
+message GcpBigQueryTablePrimaryKey {
+  // Columns composing the primary key.
+  repeated string columns = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpBigQueryTableForeignKeyReferencedTable identifies the table a foreign
+// key points at.
+message GcpBigQueryTableForeignKeyReferencedTable {
+  // Project of the referenced table.
+  string project_id = 1 [(buf.validate.field).required = true];
+
+  // Dataset of the referenced table.
+  string dataset_id = 2 [(buf.validate.field).required = true];
+
+  // The referenced table. Accepts a literal table ID or a reference to a
+  // GcpBigQueryTable resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef table_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryTable,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.table_id"
+  ];
+}
+
+// GcpBigQueryTableForeignKeyColumnReferences pairs the referencing column
+// with the referenced column.
+message GcpBigQueryTableForeignKeyColumnReferences {
+  // The column in this table.
+  string referencing_column = 1 [(buf.validate.field).required = true];
+
+  // The column in the referenced table.
+  string referenced_column = 2 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryTableForeignKey declares one (unenforced) foreign-key
+// relationship.
+message GcpBigQueryTableForeignKey {
+  // Optional name of the constraint.
+  string name = 1;
+
+  // The table this key references.
+  GcpBigQueryTableForeignKeyReferencedTable referenced_table = 2 [(buf.validate.field).required = true];
+
+  // The referencing/referenced column pair.
+  GcpBigQueryTableForeignKeyColumnReferences column_references = 3 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryTableConstraints declares primary/foreign keys. BigQuery does
+// not enforce them; they inform the optimizer and lineage tooling.
+message GcpBigQueryTableConstraints {
+  // Primary key of the table.
+  GcpBigQueryTablePrimaryKey primary_key = 1;
+
+  // Foreign keys of the table.
+  repeated GcpBigQueryTableForeignKey foreign_keys = 2;
+}
+
+// GcpBigQueryTableReplicationInfo makes the table a replica of a source
+// materialized view (cross-dataset/cross-region MV replication). Entirely
+// immutable.
+message GcpBigQueryTableReplicationInfo {
+  // Project of the source materialized view.
+  string source_project_id = 1 [(buf.validate.field).required = true];
+
+  // Dataset of the source materialized view.
+  string source_dataset_id = 2 [(buf.validate.field).required = true];
+
+  // The source materialized view.
+  string source_table_id = 3 [(buf.validate.field).required = true];
+
+  // Replication interval in milliseconds. If not set (0), GCP's default of
+  // 300000 (5 minutes) applies.
+  int64 replication_interval_ms = 4;
+}
+
+// GcpBigQueryTableBiglakeConfiguration stores the table as open-format
+// files (Iceberg) in your own GCS bucket while BigQuery manages it — the
+// BigLake managed-table arrangement. Entirely immutable.
+message GcpBigQueryTableBiglakeConfiguration {
+  // Connection (projects/{p}/locations/{l}/connections/{c}) whose
+  // credential accesses the storage. Plain string until a connection kind
+  // exists.
+  string connection_id = 1 [(buf.validate.field).required = true];
+
+  // Fully qualified storage location prefix, e.g. gs://bucket/path.
+  string storage_uri = 2 [(buf.validate.field).required = true];
+
+  // Open-source file format of the data. Currently PARQUET.
+  string file_format = 3 [(buf.validate.field).required = true];
+
+  // Open-source table format managing the metadata. Currently ICEBERG.
+  string table_format = 4 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryTableSchemaForeignTypeInfo marks the schema as expressed in a
+// foreign type system (e.g. HIVE for external catalog tables).
+message GcpBigQueryTableSchemaForeignTypeInfo {
+  // The type system of the schema, e.g. HIVE. Immutable.
+  string type_system = 1 [(buf.validate.field).required = true];
+}
+
+// GcpBigQueryTableSerDeInfo names the Hive serializer/deserializer for
+// catalog interop.
+message GcpBigQueryTableSerDeInfo {
+  // Optional name of the SerDe.
+  string name = 1;
+
+  // Fully qualified SerDe class name, e.g.
+  // org.apache.hadoop.hive.ql.io.orc.OrcSerde.
+  string serialization_library = 2 [(buf.validate.field).required = true];
+
+  // SerDe key/value parameters.
+  map<string, string> parameters = 3;
+}
+
+// GcpBigQueryTableStorageDescriptor describes the physical storage of an
+// external catalog table (Hive metastore compatibility).
+message GcpBigQueryTableStorageDescriptor {
+  // Physical location of the table, e.g. gs://bucket/path.
+  string location_uri = 1;
+
+  // Fully qualified Hive input format class name.
+  string input_format = 2;
+
+  // Fully qualified Hive output format class name.
+  string output_format = 3;
+
+  // Serializer/deserializer information.
+  GcpBigQueryTableSerDeInfo serde_info = 4;
+}
+
+// GcpBigQueryTableExternalCatalogTableOptions carries Hive-metastore-
+// compatible metadata so open-source engines (Spark) can address the table
+// as a Hive table.
+message GcpBigQueryTableExternalCatalogTableOptions {
+  // Hive-table-style key/value parameters (the whole map is limited to
+  // 30 KB by the API).
+  map<string, string> parameters = 1;
+
+  // Connection whose credential accesses the storage.
+  string connection_id = 2;
+
+  // Physical storage description of the table.
+  GcpBigQueryTableStorageDescriptor storage_descriptor = 3;
+}
+
+// GcpBigQueryTableSpec defines a BigQuery table — a native table, a logical
+// view, a materialized view, or an external/BigLake table, all arms of the
+// same resource.
+//
+// The table lives inside a GcpBigQueryDataset (which pins the location and
+// supplies encryption/expiration defaults) and is the unit application SQL
+// actually reads. Model the tables infrastructure should own: partitioned
+// fact tables, authorized views over sensitive data, external tables over
+// data-lake files. Application-owned schemas (dbt models, migrations) can
+// coexist in the same dataset without conflict — the dataset never
+// enumerates its tables.
+//
+// Important behavioral notes:
+//
+//   - table_id, dataset_id, and project are IMMUTABLE, as are the
+//     encryption key, BigLake configuration, replication info, foreign
+//     type info, a materialized view's query, and each partitioning
+//     field. Everything else updates in place.
+//
+//   - deletion_protection defaults TRUE on both engines: a destroy fails
+//     until it is set false — the guard for tables holding real data.
+//
+//   - The four table arms are mutually exclusive: at most one of view,
+//     materialized_view, or external_data_configuration (none = native
+//     table). Partitioning/clustering apply to native tables.
+message GcpBigQueryTableSpec {
+  // The GCP project the table is created in. Accepts a literal project ID
+  // or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // The dataset containing the table. Accepts a literal dataset ID or a
+  // reference to a GcpBigQueryDataset resource. Immutable.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dataset_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBigQueryDataset,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.dataset_id"
+  ];
+
+  // Unique identifier for the table within the dataset. Immutable.
+  // Letters, numbers, and underscores; maximum 1024 characters.
+  // Example: "events_raw", "revenue_summary"
+  string table_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9A-Za-z_]+$",
+    (buf.validate.field).string.max_len = 1024
+  ];
+
+  // User-friendly display name for the table.
+  string friendly_name = 4;
+
+  // Description of the table's contents or purpose.
+  string description = 5;
+
+  // Labels applied to the table for cost attribution and organization.
+  // Merged with Planton's platform labels (which win on key conflicts).
+  map<string, string> labels = 6;
+
+  // Resource Manager tags bound to the table, as
+  // "tagKeys-namespaced-name" -> "tagValue short name" pairs. Unlike
+  // labels, tags participate in IAM conditions and organization policy.
+  map<string, string> resource_tags = 7;
+
+  // Table schema as a JSON array of field definitions, e.g.
+  // [{"name":"id","type":"INT64","mode":"REQUIRED"},
+  //  {"name":"payload","type":"JSON"}]. Columns are add-only in place:
+  // removing or retyping a column recreates the table. Omit for views
+  // (defined by their query) and autodetected external tables.
+  string schema = 8;
+
+  // Time-based partitioning. Mutually exclusive with range_partitioning.
+  // The partitioning field is immutable.
+  GcpBigQueryTableTimePartitioning time_partitioning = 9;
+
+  // Integer-range partitioning. Mutually exclusive with time_partitioning.
+  // The partitioning field is immutable.
+  GcpBigQueryTableRangePartitioning range_partitioning = 10;
+
+  // Up to four columns to cluster by, in precedence order. Queries
+  // filtering on the leading clustering columns scan less data.
+  repeated string clustering = 11 [(buf.validate.field).repeated.max_items = 4];
+
+  // Require every query against the table to carry a partition filter
+  // predicate — the cost guard for large partitioned tables.
+  bool require_partition_filter = 12;
+
+  // Time when the table expires and is deleted, in milliseconds since
+  // epoch. If not set (0), the table never expires (the dataset's
+  // default_table_expiration_ms applied at creation still governs).
+  int64 expiration_time = 13;
+
+  // Maximum staleness tolerated when reading a BigLake table with metadata
+  // caching (SQL interval string, e.g. "0-0 0 4:0:0" for 4 hours).
+  string max_staleness = 14;
+
+  // Cloud KMS key encrypting the table (CMEK). Immutable — changing the
+  // key recreates the table. Overrides the dataset's default key. The
+  // BigQuery service agent must hold cryptoKeyEncrypterDecrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_name = 15 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Makes the table a logical view. Mutually exclusive with
+  // materialized_view and external_data_configuration.
+  GcpBigQueryTableView view = 16;
+
+  // Makes the table a materialized view. Mutually exclusive with view and
+  // external_data_configuration.
+  GcpBigQueryTableMaterializedView materialized_view = 17;
+
+  // Makes the table external (data stays in GCS/Sheets/Bigtable/...).
+  // Mutually exclusive with view and materialized_view.
+  GcpBigQueryTableExternalDataConfiguration external_data_configuration = 18;
+
+  // Unenforced primary/foreign keys for the optimizer and lineage tools.
+  GcpBigQueryTableConstraints table_constraints = 19;
+
+  // Makes the table a replica of a source materialized view. Immutable.
+  GcpBigQueryTableReplicationInfo table_replication_info = 20;
+
+  // BigLake managed-table storage (Iceberg files in your GCS bucket).
+  // Immutable.
+  GcpBigQueryTableBiglakeConfiguration biglake_configuration = 21;
+
+  // Marks the schema as expressed in a foreign type system (e.g. HIVE).
+  // Immutable.
+  GcpBigQueryTableSchemaForeignTypeInfo schema_foreign_type_info = 22;
+
+  // Hive-metastore-compatible metadata for open-source engines.
+  GcpBigQueryTableExternalCatalogTableOptions external_catalog_table_options = 23;
+
+  // Prevents the table from being destroyed while true. Defaults to true:
+  // a destroy fails until this is set to false — the guard for tables
+  // holding real data. Set false for disposable/dev tables.
+  optional bool deletion_protection = 24 [(dev.planton.shared.options.default) = "true"];
+
+  // -- Cross-field validations --
+
+  // A table is partitioned one way, never both.
+  option (buf.validate.message).cel = {
+    id: "one_partitioning_method"
+    expression: "!(has(this.time_partitioning) && has(this.range_partitioning))"
+    message: "time_partitioning and range_partitioning are mutually exclusive"
+  };
+
+  // At most one non-native arm: view, materialized view, or external.
+  option (buf.validate.message).cel = {
+    id: "one_table_arm"
+    expression: "(has(this.view) ? 1 : 0) + (has(this.materialized_view) ? 1 : 0) + (has(this.external_data_configuration) ? 1 : 0) <= 1"
+    message: "at most one of view, materialized_view, or external_data_configuration may be set"
+  };
+
+  // A logical view is defined entirely by its query — no schema,
+  // partitioning, or clustering. (Materialized views DO support
+  // partitioning and clustering aligned with their base tables.)
+  option (buf.validate.message).cel = {
+    id: "logical_view_has_no_native_shape"
+    expression: "!has(this.view) || (this.schema == '' && !has(this.time_partitioning) && !has(this.range_partitioning) && this.clustering.size() == 0)"
+    message: "a logical view must not set schema, time_partitioning, range_partitioning, or clustering"
+  };
+
+  // Views (both kinds) never carry a schema — the query defines it.
+  option (buf.validate.message).cel = {
+    id: "materialized_view_has_no_schema"
+    expression: "!has(this.materialized_view) || this.schema == ''"
+    message: "a materialized view must not set schema (the query defines it)"
+  };
+}

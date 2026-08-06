@@ -1,0 +1,13 @@
+# Self-signed namespace-scoped issuer. The verifier requires the Ready
+# condition, which a self-signed backend reaches with no external
+# dependency. (cert-manager itself installs first through the registry
+# prerequisite.)
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesIssuer
+metadata:
+  name: e2e-iss-selfsigned
+spec:
+  namespace:
+    value: default
+  config:
+    selfSigned: {}

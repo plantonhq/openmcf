@@ -1,0 +1,25 @@
+# Dependency-install profile for Cilium. Deployed when a scenario names
+# KubernetesCilium in its e2e-prerequisites (the NetworkPolicy behavioral
+# proof needs an ENFORCING CNI). Such scenarios also carry the cilium-cni
+# cluster profile, so this installs onto the CNI-less profile cluster as the
+# PRIMARY CNI — the nodes there are NotReady until this fixture lands.
+#
+# Posture notes (kind profile cluster):
+#   - ipam mode "kubernetes": kind's control plane already allocates per-node
+#     PodCIDRs; Cilium consumes them (the upstream kind guidance).
+#   - operator replicas 1: the chart default of 2 lead-elected replicas can
+#     never both schedule on the single-node profile cluster (pod
+#     anti-affinity) and the install would wait forever.
+#   - kube-proxy is present on the profile cluster, so kube-proxy
+#     replacement stays off — a per-scenario Cilium choice, not a fixture's.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesCilium
+metadata:
+  name: e2e-cilium-prereq
+spec:
+  namespace:
+    value: kube-system
+  ipam:
+    mode: kubernetes
+  operator:
+    replicas: 1

@@ -33,7 +33,7 @@ When you deploy an AwsRedshiftCluster resource, Planton provisions:
 Create a file `redshift-cluster.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftCluster
 metadata:
   name: my-warehouse
@@ -128,7 +128,7 @@ This creates a single-node ra3.large Redshift cluster across two subnets, encryp
 A minimal single-node cluster for development and testing. Uses ra3.large (the smallest orderable class), skips the final snapshot, and retains automated snapshots for 1 day:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftCluster
 metadata:
   name: dev-warehouse
@@ -155,7 +155,7 @@ spec:
 A 2-node RA3 cluster with customer-managed KMS encryption, SSL enforcement, enhanced VPC routing, CloudWatch audit logging, and a 7-day snapshot retention policy:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftCluster
 metadata:
   name: prod-warehouse
@@ -205,7 +205,7 @@ spec:
 A 4-node ra3.4xlarge cluster for large-scale analytics. Multi-AZ provides automatic failover, concurrency scaling handles query bursts with up to 5 additional transient clusters, and two IAM roles are attached for S3 data loading and Redshift Spectrum external table queries:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftCluster
 metadata:
   name: analytics-cluster

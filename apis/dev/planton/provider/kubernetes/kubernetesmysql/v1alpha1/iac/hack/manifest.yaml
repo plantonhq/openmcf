@@ -1,0 +1,123 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises every typed block coherently: a three-node
+# Galera cluster with HAProxy, tuned my.cnf, declarative users with
+# declared passwords, S3-compatible (MinIO-style) backups with declared
+# access keys and a schedule, PITR, cert-manager TLS alt names, hard
+# anti-affinity with tolerations, log-collector resources, and image pull
+# secrets. Both engines must render identical CRs + credential Secrets
+# from it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesMysql
+metadata:
+  name: test-mysql
+spec:
+  namespace:
+    value: test-mysql-ns
+  create_namespace: true
+  instances: 3
+  image_name: percona/percona-xtradb-cluster:8.4.8-8.1
+  storage:
+    size: 20Gi
+    storage_class:
+      value: fast-ssd
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  mysql_config: |
+    [mysqld]
+    max_connections=200
+  auto_recovery: true
+  proxy:
+    haproxy:
+      replicas: 3
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      expose_replicas:
+        enabled: true
+        only_readers: true
+  tls:
+    sans:
+      - mysql.example.com
+  users:
+    - name: appuser
+      dbs:
+        - appdb
+      hosts:
+        - "%"
+      grants:
+        - SELECT
+        - INSERT
+        - UPDATE
+        - DELETE
+      password: initial-app-password
+    - name: readonly
+      dbs:
+        - appdb
+      hosts:
+        - "%"
+      grants:
+        - SELECT
+      password: readonly-password
+  backup:
+    storages:
+      - name: minio
+        verify_tls: false
+        s3:
+          bucket: mysql-backups
+          region: minio
+          prefix: test-mysql
+          endpoint_url: http://minio.minio-system.svc:9000
+          force_path_style: true
+          access_keys:
+            access_key_id: minio-access-key
+            secret_access_key: minio-secret-key
+      - name: pitr-store
+        verify_tls: false
+        s3:
+          bucket: mysql-pitr
+          region: minio
+          endpoint_url: http://minio.minio-system.svc:9000
+          force_path_style: true
+          access_keys:
+            access_key_id: minio-access-key
+            secret_access_key: minio-secret-key
+    schedules:
+      - name: nightly
+        schedule: "0 2 * * *"
+        storage_name: minio
+        keep: 7
+        delete_from_storage: true
+    pitr:
+      enabled: true
+      storage_name: pitr-store
+      time_between_uploads: 60
+  scheduling:
+    anti_affinity_topology_key: topology.kubernetes.io/zone
+    node_selector:
+      workload: database
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: database
+        effect: NoSchedule
+    priority_class_name: database-critical
+  pod_disruption_budget:
+    max_unavailable: 1
+  log_collector:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  update_strategy: SmartUpdate
+  image_pull_secrets:
+    - ghcr-pull-secret

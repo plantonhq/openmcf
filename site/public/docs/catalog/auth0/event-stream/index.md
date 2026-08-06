@@ -30,7 +30,7 @@ For EventBridge destinations, Auth0 creates a partner event source in the target
 Create a file `auth0-event-stream.yaml`:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0EventStream
 metadata:
   name: login-events
@@ -98,7 +98,7 @@ Required when `destinationType` is `webhook`. Webhook configurations can be upda
 Stream authentication events to AWS EventBridge for processing by Lambda functions or a SIEM integration:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0EventStream
 metadata:
   name: security-events
@@ -126,7 +126,7 @@ After deployment, associate the partner event source (available in `status.outpu
 Deliver user lifecycle events to an HTTPS endpoint, authenticated with a bearer token:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0EventStream
 metadata:
   name: user-lifecycle
@@ -159,7 +159,7 @@ openssl rand -base64 32
 Deliver API authorization events to an internal endpoint using HTTP Basic authentication:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0EventStream
 metadata:
   name: api-audit

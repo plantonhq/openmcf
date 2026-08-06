@@ -1,0 +1,11 @@
+# The baseline install: the operator alone, chart defaults — watching its
+# own namespace, the upstream default posture. Proves the leanest path a
+# single-namespace MongoDB deployment uses.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPerconaMongoOperator
+metadata:
+  name: e2e-psmdb-op-minimal
+spec:
+  namespace:
+    value: e2e-psmdb-op-minimal
+  create_namespace: true

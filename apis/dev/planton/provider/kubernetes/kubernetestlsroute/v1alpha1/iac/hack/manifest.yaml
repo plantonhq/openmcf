@@ -1,0 +1,21 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTlsRoute
+metadata:
+  name: test-tls-route
+spec:
+  namespace:
+    value: test-namespace
+  parentRefs:
+    - name:
+        value: test-gateway
+      sectionName: tls-passthrough
+  hostnames:
+    - secure.example.com
+    - "*.tenants.example.com"
+  rules:
+    - name: passthrough
+      backendRefs:
+        - name:
+            value: secure-backend
+          port: 8443
+          weight: 100

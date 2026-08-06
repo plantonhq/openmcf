@@ -5,7 +5,7 @@
 # capacity is node auto-provisioning's job (cluster/gke-cluster.yaml), not
 # this pool's. GKE repairs and upgrades these nodes automatically — the
 # management block's defaults, inherited deliberately.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: "{{ values.env }}-gke-system"
@@ -53,7 +53,7 @@ spec:
 # reclaimed with 30 seconds' notice, so the pool is TAINTED: nothing lands
 # here without an explicit toleration, and GKE's own graceful-shutdown
 # handling drains reclaimed nodes.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
   name: "{{ values.env }}-gke-spot"

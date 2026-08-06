@@ -23,7 +23,7 @@ Installs cert-manager — the cluster's certificate machinery — from the offic
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: cert-manager

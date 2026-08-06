@@ -31,7 +31,7 @@ When you deploy a CivoBucket resource, Planton provisions:
 Create a file `civo-bucket.yaml`:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoBucket
 metadata:
   name: my-bucket
@@ -76,7 +76,7 @@ This creates an object storage bucket named `my-bucket` in the New York region w
 A minimal bucket for development or scratch storage:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoBucket
 metadata:
   name: dev-assets
@@ -95,7 +95,7 @@ spec:
 A production bucket that records the intent to enable versioning and applies organizational tags:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoBucket
 metadata:
   name: prod-uploads
@@ -127,7 +127,7 @@ aws s3api put-bucket-versioning \
 Separate buckets across regions for geo-distributed backups:
 
 ```yaml
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoBucket
 metadata:
   name: backup-us
@@ -143,7 +143,7 @@ spec:
     - purpose:backup
     - region:us
 ---
-apiVersion: civo.planton.dev/v1
+apiVersion: civo.planton.dev/v1alpha1
 kind: CivoBucket
 metadata:
   name: backup-eu

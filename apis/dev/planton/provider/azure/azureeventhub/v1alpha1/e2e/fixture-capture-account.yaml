@@ -1,0 +1,25 @@
+# Dedicated AzureStorageAccount for the hub scenario's capture
+# destination. Storage account names are globally unique (3-24 lowercase
+# alphanumerics, no hyphens) with the same never-reuse discipline as
+# namespaces.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageAccount
+metadata:
+  name: planton-oss-e2e-ehub-capture-account
+  id: planton-oss-e2e-ehub-capture-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2eehubcap
+  replicationType: LRS

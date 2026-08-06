@@ -12,7 +12,7 @@
 {% if loop.index0 > 0 %}
 ---
 {% endif %}
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaTopic
 metadata:
   # The resource name is DNS-sanitized (Kafka topic names allow '.', '_'

@@ -1,0 +1,40 @@
+# Offline-plan manifest: a PREMIUM namespace exercising every deep seam
+# at once -- the capacity/partitions pairing, the combined identity
+# model, CMK (key + unwrapping identity), the DENY firewall with both
+# admitted-source lists, the keyless posture, and user tags.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServiceBusNamespace
+metadata:
+  name: test-sb-namespace
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  namespaceName: hack-servicebus-ns
+  sku: PREMIUM
+  capacity: 2
+  premiumMessagingPartitions: 2
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    userAssignedIdentityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/hack-uai
+  customerManagedKey:
+    keyVaultKeyId:
+      value: https://hack-vault.vault.azure.net/keys/sb-cmk
+    userAssignedIdentityId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/hack-uai
+    infrastructureEncryptionEnabled: true
+  localAuthEnabled: false
+  publicNetworkAccessEnabled: true
+  networkRuleSet:
+    defaultAction: DENY
+    trustedServicesAllowed: true
+    ipRules:
+      - 203.0.113.0/24
+    networkRules:
+      - subnetId:
+          value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hack-vnet/subnets/app
+        ignoreMissingVnetServiceEndpoint: true
+  tags:
+    team: messaging
+    cost-center: cc-42

@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMssqlFailoverGroup
+metadata:
+  name: test-failover-group
+spec:
+  name: test-fog-planton
+  serverId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Sql/servers/primary-server
+  partnerServers:
+    - serverId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg-dr/providers/Microsoft.Sql/servers/partner-server
+  databaseIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Sql/servers/primary-server/databases/app-db
+  readWriteEndpointFailoverPolicy:
+    mode: AUTOMATIC
+    graceMinutes: 60
+  tags:
+    purpose: hack-test

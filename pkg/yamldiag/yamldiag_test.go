@@ -26,7 +26,7 @@ func one(t *testing.T, mismatches []Mismatch) Mismatch {
 }
 
 func TestUnknownFieldWithSuggestion(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe
@@ -64,7 +64,7 @@ spec:
 // diagnosis must name the path, the REAL line, and both authorable shapes
 // with the field's declared reference target.
 func TestBareStringForForeignKeyWrapper(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: probe
@@ -176,7 +176,7 @@ spec:
 }
 
 func TestValidManifestNoMismatches(t *testing.T) {
-	manifest := `apiVersion: aws.planton.dev/v1
+	manifest := `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: probe

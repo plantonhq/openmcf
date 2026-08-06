@@ -34,7 +34,7 @@ When you deploy an AwsServerlessElasticache resource, Planton provisions:
 Create a file `serverless-cache.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: my-cache
@@ -96,7 +96,7 @@ This creates a Redis Serverless cache with AWS-managed scaling defaults, placed 
 A Redis serverless cache with explicit storage and compute boundaries:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: session-cache
@@ -126,7 +126,7 @@ spec:
 A Valkey serverless cache with daily snapshots, customer-managed encryption, and Redis ACL authentication:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: prod-kv-store
@@ -165,7 +165,7 @@ spec:
 A Memcached serverless cache for ephemeral data with no persistence or authentication:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: html-fragment-cache
@@ -193,7 +193,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: ref-cache

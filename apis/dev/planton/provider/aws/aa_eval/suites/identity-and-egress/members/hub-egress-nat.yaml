@@ -6,7 +6,7 @@
 # matched. Private connectivity needs no Elastic IP and exercises the
 # identical mapping surface: the gateway as its own instance and the
 # subnet_id value_from edge no deterministic mapper wires.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNatGateway
 metadata:
   name: hub-egress-nat

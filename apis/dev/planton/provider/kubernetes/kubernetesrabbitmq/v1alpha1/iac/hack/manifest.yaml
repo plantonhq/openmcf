@@ -1,0 +1,84 @@
+# Full-surface offline-proof manifest: exercises a 3-node quorum cluster
+# with an image override and pull secrets, a LoadBalancer client Service
+# with cloud annotations and dual-stack policy, persistent storage on an
+# explicit class, resources, every configuration layer (plugins,
+# rabbitmq.conf, advanced.config, rabbitmq-env.conf, Erlang inet), mutual
+# TLS with closed plain listeners, tolerations + node selector + the
+# spread-across-nodes anti-affinity, the tuning knobs at non-default
+# values, and the Vault secret backend with PKI TLS — so the offline tofu
+# plan and pulumi preview proofs cover the full typed surface.
+# Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRabbitMq
+metadata:
+  name: rabbitmq-hack
+spec:
+  namespace:
+    value: rabbitmq-hack
+  createNamespace: true
+  replicas: 3
+  image:
+    repo: mirror.internal/rabbitmq
+    tag: 4.2.6-management
+    pullSecretName: mirror-pull
+  imagePullSecrets:
+    - mirror-pull
+  service:
+    type: load_balancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      external-dns.alpha.kubernetes.io/hostname: mq.example.internal
+    labels:
+      team: platform
+    ipFamilyPolicy: prefer_dual_stack
+  diskSize: 50Gi
+  storageClass:
+    value: fast-ssd
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  configuration:
+    additionalPlugins:
+      - rabbitmq_shovel
+      - rabbitmq_shovel_management
+      - rabbitmq_mqtt
+    additionalConfig: |
+      vm_memory_high_watermark.relative = 0.8
+      consumer_timeout = 1800000
+    advancedConfig: |
+      [
+        {rabbit, [{channel_max, 1024}]}
+      ].
+    envConfig: |
+      RABBITMQ_LOGS=-
+    erlangInetConfig: |
+      {lookup, [dns]}.
+  tls:
+    secretName:
+      value: rabbitmq-hack-tls
+    caSecretName:
+      value: rabbitmq-hack-ca
+    disableNonTlsListeners: true
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: messaging
+      effect: NoSchedule
+  spreadAcrossNodes: true
+  nodeSelector:
+    kubernetes.io/os: linux
+  terminationGracePeriodSeconds: 3600
+  delayStartSeconds: 10
+  skipPostDeploySteps: true
+  autoEnableAllFeatureFlags: true
+  secretBackend:
+    vault:
+      role: rabbitmq
+      defaultUserPath: secret/data/rabbitmq/config
+      annotations:
+        vault.hashicorp.com/template-static-secret-render-interval: 15s
+      pkiIssuerPath: pki/issue/cert-issuer

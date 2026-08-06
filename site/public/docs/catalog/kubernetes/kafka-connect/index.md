@@ -50,7 +50,7 @@ runs the Kaniko/Buildah image build first.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaConnect
 metadata:
   name: dev-connect

@@ -32,7 +32,7 @@ When you deploy a KubernetesManifest resource, Planton provisions:
 Create a file `manifest.yaml` — a ConfigMap and Secret anchored in one namespace:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: app-config
@@ -93,7 +93,7 @@ Neither document declares a namespace, so both land in `my-app`, which is create
 Both engines order the CRD install before the custom resource that uses it — one apply, no two-pass workaround. The CRD is cluster-scoped and untouched by the anchor; the custom resource declares no namespace, so it lands in `crontab-demo`:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: crontab-operator-config
@@ -145,7 +145,7 @@ spec:
 The "paste the vendor's install YAML" pattern: the manifest is applied byte-for-byte as published. `skip_await: true` because install bundles often contain resources (webhook configurations, custom resources awaiting their operator) that are not ready until the whole bundle settles:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: vendor-install
@@ -174,7 +174,7 @@ Documents in a vendor bundle that hard-code their namespace keep it; only unanch
 The anchor can reference a KubernetesNamespace resource instead of naming a literal, so the namespace and the manifest compose in one deployment graph:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: team-quotas

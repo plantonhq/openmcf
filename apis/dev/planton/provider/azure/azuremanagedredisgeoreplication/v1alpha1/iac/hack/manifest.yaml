@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureManagedRedisGeoReplication
+metadata:
+  name: test-managed-redis-geo
+spec:
+  # The managing member; the group is reciprocal so ONE resource manages
+  # the whole group.
+  managedRedisId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Cache/redisEnterprise/planton-hack-redis-east
+  # The other members (the managing member is implicit and never
+  # repeated here).
+  linkedManagedRedisIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg-west/providers/Microsoft.Cache/redisEnterprise/planton-hack-redis-west
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg-europe/providers/Microsoft.Cache/redisEnterprise/planton-hack-redis-europe

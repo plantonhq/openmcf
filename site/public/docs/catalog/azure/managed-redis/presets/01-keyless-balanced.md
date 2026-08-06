@@ -50,7 +50,7 @@ data-plane grants.
 Grant each consuming identity data-plane access:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedisAccessPolicyAssignment
 metadata:
   name: my-app-cache-grant

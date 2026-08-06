@@ -39,7 +39,7 @@ them.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsService
 metadata:
   name: api
@@ -98,7 +98,7 @@ planton apply -f service.yaml
 ### Cost-optimized Spot blend
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsService
 metadata:
   name: worker
@@ -124,7 +124,7 @@ spec:
 ### Request-count autoscaling behind an ALB
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsService
 metadata:
   name: api

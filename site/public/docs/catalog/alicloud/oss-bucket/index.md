@@ -33,7 +33,7 @@ When you deploy an AliCloudStorageBucket resource, Planton provisions:
 Create a file `oss-bucket.yaml`:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudStorageBucket
 metadata:
   name: my-bucket
@@ -85,7 +85,7 @@ This creates a private Standard-tier OSS bucket with LRS redundancy in the `cn-h
 ### Minimal Private Bucket
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudStorageBucket
 metadata:
   name: dev-bucket
@@ -97,7 +97,7 @@ spec:
 ### Production Bucket with Versioning and Encryption
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudStorageBucket
 metadata:
   name: prod-bucket
@@ -118,7 +118,7 @@ spec:
 ### Archive Bucket with Lifecycle Rules
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1
+apiVersion: alicloud.planton.dev/v1alpha1
 kind: AliCloudStorageBucket
 metadata:
   name: log-archive

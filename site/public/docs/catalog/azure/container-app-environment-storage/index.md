@@ -27,7 +27,7 @@ When you deploy an AzureContainerAppEnvironmentStorage resource, Planton provisi
 Create a file `storage.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentStorage
 metadata:
   name: app-data

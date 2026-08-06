@@ -29,7 +29,7 @@ When you deploy a DigitalOceanDnsZone resource, Planton provisions:
 Create a file `dns-zone.yaml`:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsZone
 metadata:
   name: my-zone
@@ -80,7 +80,7 @@ This creates a DNS zone for `example.com` on DigitalOcean with no inline records
 Register a domain on DigitalOcean DNS with no inline records. DigitalOcean creates default NS and SOA records automatically.
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsZone
 metadata:
   name: bare-zone
@@ -98,7 +98,7 @@ spec:
 A zone with apex and `www` A records pointing to the same IP address, plus a CNAME for the `api` subdomain:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsZone
 metadata:
   name: web-app
@@ -132,7 +132,7 @@ spec:
 A production zone with web records, Google Workspace MX, SPF/DMARC TXT records, and a CAA policy restricting certificate issuance to Let's Encrypt:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsZone
 metadata:
   name: prod-zone

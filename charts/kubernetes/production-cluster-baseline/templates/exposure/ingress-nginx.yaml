@@ -5,7 +5,7 @@
 # exactly what a baseline should promise. The sibling gateway-api.yaml arm
 # replaces this entirely when use_gateway_api is true — one entry point, one
 # mental model, never both.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIngressNginx
 metadata:
   name: "{{ values.env }}-ingress-nginx"

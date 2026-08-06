@@ -32,7 +32,7 @@ Every policy carries a default rule at priority 2147483647: leave `rules` empty 
 Create a file `cloud-armor.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudArmorPolicy
 metadata:
   name: my-waf-policy
@@ -133,7 +133,7 @@ This creates a Cloud Armor policy that allows traffic from the `10.0.0.0/8` rang
 Block traffic from specific countries:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudArmorPolicy
 metadata:
   name: geo-blocking
@@ -165,7 +165,7 @@ spec:
 Protect APIs from abuse with per-IP request throttling:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudArmorPolicy
 metadata:
   name: api-rate-limit
@@ -205,7 +205,7 @@ spec:
 Full-featured OWASP protection with DDoS defense and rate limiting:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudArmorPolicy
 metadata:
   name: prod-waf

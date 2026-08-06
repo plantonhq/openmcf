@@ -27,7 +27,7 @@ The role is pure definition: it grants nothing until an IAM grant (a GcpProjectI
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpIamCustomRole
 metadata:
   name: log-bucket-writer

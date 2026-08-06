@@ -52,7 +52,7 @@ referenced resources -- the appliance never creates or mutates them.
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
   name: vpc-runner
@@ -97,7 +97,7 @@ planton apply -f runner.yaml
 ### Runner for a private EKS cluster (recommended posture)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
   name: prod-vpc-runner
@@ -119,7 +119,7 @@ the cluster's allowed sources.
 ### Dual-mode runner with its own AWS identity
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
   name: ops-runner

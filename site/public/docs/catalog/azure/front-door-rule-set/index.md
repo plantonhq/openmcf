@@ -27,7 +27,7 @@ When you deploy an AzureFrontDoorRuleSet resource, Planton provisions:
 Create a file `rule-set.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorRuleSet
 metadata:
   name: security-headers

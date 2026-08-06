@@ -30,7 +30,7 @@ When you deploy a GcpCloudSchedulerJob resource, Planton provisions:
 Create a file `scheduler-job.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSchedulerJob
 metadata:
   name: my-cron-job
@@ -125,7 +125,7 @@ This creates a Cloud Scheduler job that sends an HTTP GET to `https://example.co
 Securely invoke a Cloud Run service every weekday at 9am Eastern:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSchedulerJob
 metadata:
   name: daily-report
@@ -165,7 +165,7 @@ spec:
 Publish a message to a Pub/Sub topic every 5 minutes:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSchedulerJob
 metadata:
   name: pipeline-trigger
@@ -197,7 +197,7 @@ spec:
 Wire dependencies from other Planton-managed resources:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSchedulerJob
 metadata:
   name: composed-scheduler

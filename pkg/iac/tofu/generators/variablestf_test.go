@@ -7,11 +7,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 
-	awsecrrepov1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1"
-	awsiamrolev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1"
-	awsroute53zonev1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1"
-	awssubnetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1"
-	kubernetescronjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1"
+	awsecrrepov1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecrrepo/v1alpha1"
+	awsiamrolev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamrole/v1alpha1"
+	awsroute53zonev1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1alpha1"
+	awssubnetv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awssubnet/v1alpha1"
+	kubernetescronjobv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1alpha1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -24,7 +24,7 @@ func TestProtoToVariablesTF_FreeFormJsonMapIsAnyNotMapAny(t *testing.T) {
 	// Terraform module fails input validation with "all map elements must have the same
 	// type" the moment two differently-shaped policies are passed. trust_policy is a single
 	// Struct and stays `any`.
-	msg := &awsiamrolev1.AwsIamRole{}
+	msg := &awsiamrolev1alpha1.AwsIamRole{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestTFFreeFormMap_RendersAnyWithEmptyMapDefault(t *testing.T) {
 }
 
 func TestProtoToVariablesTF_CronJob_NamespaceIsString(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
+	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestProtoToVariablesTF_CronJob_NamespaceIsString(t *testing.T) {
 }
 
 func TestProtoToVariablesTF_CronJob_VariablesIsMapString(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
+	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestProtoToVariablesTF_CronJob_VariablesIsMapString(t *testing.T) {
 }
 
 func TestProtoToVariablesTF_CronJob_ApiVersionKindStatusSkipped(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
+	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestProtoToVariablesTF_CronJob_ApiVersionKindStatusSkipped(t *testing.T) {
 }
 
 func TestProtoToVariablesTF_CronJob_HasMetadataAndSpec(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
+	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestProtoToVariablesTF_CronJob_HasMetadataAndSpec(t *testing.T) {
 }
 
 func TestProtoToVariablesTF_CronJob_ValidHCL(t *testing.T) {
-	msg := &kubernetescronjobv1.KubernetesCronJob{}
+	msg := &kubernetescronjobv1alpha1.KubernetesCronJob{}
 
 	got, err := ProtoToVariablesTF(msg)
 	if err != nil {
@@ -217,7 +217,7 @@ func generateVariables(t *testing.T, msg proto.Message) string {
 // is emitted from the canonical block (name required, rest optional) and never
 // leaks orchestrator-only envelope fields (slug/group/relationships) or version.
 func TestProtoToVariablesTF_CanonicalMetadata(t *testing.T) {
-	got := generateVariables(t, &awssubnetv1.AwsSubnet{})
+	got := generateVariables(t, &awssubnetv1alpha1.AwsSubnet{})
 
 	if !strings.Contains(got, canonicalMetadataBlock) {
 		t.Errorf("metadata block is not the canonical form.\nwant:\n%s\n\ngot:\n%s", canonicalMetadataBlock, got)
@@ -234,7 +234,7 @@ func TestProtoToVariablesTF_CanonicalMetadata(t *testing.T) {
 // buf.validate required OR a presence-implying constraint (string min_len) keeps
 // an attribute bare; everything else is optional() with a zero default.
 func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
-	spec := extractBlock(generateVariables(t, &awssubnetv1.AwsSubnet{}), `variable "spec"`)
+	spec := extractBlock(generateVariables(t, &awssubnetv1alpha1.AwsSubnet{}), `variable "spec"`)
 
 	// region (string.min_len) and cidr_block / vpc_id (required) stay bare.
 	for _, bare := range []string{"region = string", "cidr_block = string", "vpc_id = string", "availability_zone = string"} {
@@ -261,12 +261,12 @@ func TestProtoToVariablesTF_RequiredVsOptional(t *testing.T) {
 // production (route53 records, ecr force_delete): all must be optional so a
 // pruned tfvars validates instead of erroring "attribute X is required".
 func TestProtoToVariablesTF_OptionalScalarsAndMaps(t *testing.T) {
-	r53spec := extractBlock(generateVariables(t, &awsroute53zonev1.AwsRoute53Zone{}), `variable "spec"`)
+	r53spec := extractBlock(generateVariables(t, &awsroute53zonev1alpha1.AwsRoute53Zone{}), `variable "spec"`)
 	if !strings.Contains(r53spec, "vpc_associations = optional(list(object({") {
 		t.Errorf("route53 spec.vpc_associations must be optional list-of-object:\n%s", r53spec)
 	}
 
-	ecrspec := extractBlock(generateVariables(t, &awsecrrepov1.AwsEcrRepo{}), `variable "spec"`)
+	ecrspec := extractBlock(generateVariables(t, &awsecrrepov1alpha1.AwsEcrRepo{}), `variable "spec"`)
 	if !strings.Contains(ecrspec, "force_delete = optional(bool, false)") {
 		t.Errorf("ecr spec.force_delete must be optional(bool, false):\n%s", ecrspec)
 	}

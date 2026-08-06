@@ -1,0 +1,28 @@
+# The cloud-LB provisioning proof on the aws-eks profile: a LoadBalancer
+# Service with the in-tree NLB annotation (the annotation surface IS this
+# kind's cloud integration — no typed per-cloud fields by design). Neither
+# engine blocks on LB provisioning (documented never-wait posture), so the
+# LB-address behavioral verifier (switched on by this scenario's name)
+# polls .status.loadBalancer.ingress for a real hostname — the assertion no
+# kind cluster can make. A backend fixture gives the Service endpoints so
+# the NLB target group is non-empty.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-aws-lb
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/kubernetes/kubernetesservice/v1alpha1/e2e/fixture-lb-backend.yaml"
+spec:
+  namespace:
+    value: e2e-svc-lb
+  name: e2e-svc-aws-lb
+  type: load_balancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  selector:
+    app: e2e-lb-backend
+  ports:
+    - name: http
+      port: 80
+      target_port: "8080"

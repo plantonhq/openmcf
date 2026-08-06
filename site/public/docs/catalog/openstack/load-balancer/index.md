@@ -28,7 +28,7 @@ When you deploy an OpenStackLoadBalancer resource, Planton provisions:
 Create a file `loadbalancer.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancer
 metadata:
   name: my-lb
@@ -75,7 +75,7 @@ This creates an Octavia load balancer with a VIP auto-allocated from the specifi
 A minimal load balancer with a VIP auto-allocated from a subnet:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancer
 metadata:
   name: web-lb
@@ -94,7 +94,7 @@ spec:
 Pin the VIP to a known IP address on the subnet, useful when DNS records or firewall rules reference a stable address:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancer
 metadata:
   name: api-lb
@@ -117,7 +117,7 @@ spec:
 Use an Octavia flavor to control the load balancer's resource allocation (amphora size, topology, provider):
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancer
 metadata:
   name: premium-lb
@@ -143,7 +143,7 @@ spec:
 Reference an Planton-managed subnet instead of hardcoding its UUID:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackLoadBalancer
 metadata:
   name: ref-lb

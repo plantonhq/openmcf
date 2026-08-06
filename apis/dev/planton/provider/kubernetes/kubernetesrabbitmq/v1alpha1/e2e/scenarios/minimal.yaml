@@ -1,0 +1,13 @@
+# The component defaults on their own: a single node on a 10Gi PVC
+# (the default storage class), operator-default image and sizing — the
+# verifier proves the live message round-trip through the management API
+# (declare a queue → publish a marker → get it back) with the
+# operator-generated admin credentials.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesRabbitMq
+metadata:
+  name: e2e-rmq-min
+spec:
+  namespace:
+    value: e2e-rmq-min
+  create_namespace: true

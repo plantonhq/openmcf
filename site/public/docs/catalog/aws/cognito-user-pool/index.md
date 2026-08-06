@@ -33,7 +33,7 @@ App clients (`AwsCognitoUserPoolClient`), federated identity providers (`AwsCogn
 Create a file `cognito.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPool
 metadata:
   name: my-auth
@@ -190,7 +190,7 @@ All trigger fields accept a Lambda ARN or a `valueFrom` reference to an AwsLambd
 ### Passwordless Sign-In (Email OTP + Passkeys)
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPool
 metadata:
   name: passwordless-auth
@@ -225,7 +225,7 @@ spec:
 ### Production Pool with MFA, Threat Protection, and a Hosted UI
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPool
 metadata:
   name: prod-auth
@@ -273,7 +273,7 @@ spec:
 The pool's `issuer` output and an app client's `client_id` output wire directly into an AwsHttpApiGateway JWT authorizer:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api

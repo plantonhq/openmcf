@@ -1,0 +1,21 @@
+# GcpCertManagerDnsAuthorization leaf: run-scoped domain authorization.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertManagerDnsAuthorization
+metadata:
+  name: planton-oss-e2e-cmda-minimal
+  id: planton-oss-e2e-cmda-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertmanagerdnsauthorization
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  authorizationName: planton-oss-e2e-cmda-${E2E_RUN_ID}
+  domain: e2e-${E2E_RUN_ID}.example.com
+  description: Ephemeral DNS authorization for Planton OSS E2E
+  labels:
+    e2e-suite: gcp

@@ -4,7 +4,7 @@
 # namespace are reconciled by it. It installs first by dependency order — the
 # issuers reference its cluster-resource namespace, so the platform's graph
 # deploys it before them.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertManager
 metadata:
   name: "{{ values.env }}-cert-manager"

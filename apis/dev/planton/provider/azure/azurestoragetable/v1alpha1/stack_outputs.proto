@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurestoragetable.v1alpha1;
+
+// **AzureStorageTableStackOutputs** captures the outputs of provisioning
+// a Storage table.
+//
+// No URL output on purpose: the table's data-plane URL is the ACCOUNT's
+// table endpoint plus the table name, and only the account knows its
+// real endpoint (partitioned-DNS accounts use a different hostname than
+// the classic shared DNS). Compose client URLs from
+// AzureStorageAccount's primary_table_endpoint output + table_name.
+message AzureStorageTableStackOutputs {
+  // The Azure Resource Manager ID of the table. Role assignments
+  // (Storage Table Data Reader/Contributor) scope to it for table-level
+  // data access.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{account}/tableServices/default/tables/{name}
+  string table_id = 1;
+
+  // The table's name -- what SDK clients, Functions table bindings, and
+  // app settings reference within the account.
+  string table_name = 2;
+
+  // The name of the storage account the table lives in, parsed from the
+  // resolved account ID -- saves consumers a second reference when they
+  // need the account/table pair.
+  string storage_account_name = 3;
+}

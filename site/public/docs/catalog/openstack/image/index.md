@@ -27,7 +27,7 @@ When you deploy an OpenStackImage resource, Planton provisions:
 Create a file `image.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackImage
 metadata:
   name: ubuntu-2204
@@ -79,7 +79,7 @@ This uploads an Ubuntu 22.04 cloud image to Glance with `bare` container format 
 Upload an Ubuntu 22.04 cloud image from the official Canonical repository:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackImage
 metadata:
   name: ubuntu-2204
@@ -103,7 +103,7 @@ spec:
 A production golden image with deletion protection, minimum hardware requirements, and shared visibility so it can be distributed to specific projects:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackImage
 metadata:
   name: golden-rhel9
@@ -132,7 +132,7 @@ spec:
 Register an ISO image for use as installation media, hidden from default listings:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackImage
 metadata:
   name: debian-12-netinst

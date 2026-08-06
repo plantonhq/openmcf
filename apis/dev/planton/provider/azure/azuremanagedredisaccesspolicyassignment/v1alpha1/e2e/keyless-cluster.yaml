@@ -1,0 +1,26 @@
+# Dedicated AzureManagedRedis for the grant-chain scenario only. The
+# smallest size with access keys at their KEYLESS default (off) -- the
+# posture the grant under test exists for: with no keys, granted
+# identities are how clients connect at all.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureManagedRedis
+metadata:
+  name: planton-oss-e2e-amrgrant-fixture-cluster
+  id: planton-oss-e2e-amrgrant-fixture-cluster
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremanagedredis
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  clusterName: pltn-oss-e2e-amrgrant-fix
+  skuName: BALANCED_B0
+  defaultDatabase: {}

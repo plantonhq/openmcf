@@ -1,0 +1,40 @@
+# The tuned surface on kind-honest sizing: two code-provisioned
+# datasources (the verifier must find BOTH through the authenticated API —
+# provisioning presence is the proof; connectivity to the URLs is not
+# required by Grafana and not asserted), the dashboard-discovery sidecar,
+# anonymous viewing, a root URL, and resources. Plugin installs and
+# community-dashboard downloads are deliberately NOT exercised live (both
+# pull from the internet at pod start — flaky-by-design for a gate;
+# plan-proven via the hack manifest).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGrafana
+metadata:
+  name: e2e-grafana-full
+spec:
+  namespace:
+    value: e2e-grafana-full
+  create_namespace: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  datasources:
+    - name: Prometheus
+      url:
+        value: http://monitoring-prometheus.observability.svc.cluster.local:9090
+      is_default: true
+      uid: prom-main
+      json_data: |
+        httpMethod: POST
+    - name: Loki
+      type: loki
+      url:
+        value: http://loki-gateway.observability.svc.cluster.local
+  dashboard_sidecar_enabled: true
+  server:
+    root_url: http://e2e-grafana-full.e2e-grafana-full.svc.cluster.local
+  auth:
+    anonymous_enabled: true

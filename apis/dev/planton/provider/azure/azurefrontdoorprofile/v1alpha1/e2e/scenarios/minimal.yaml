@@ -1,0 +1,30 @@
+# Minimal AzureFrontDoorProfile scenario: a Standard profile exercising
+# the non-default response timeout, log scrubbing (all three variables),
+# and user tags. Front Door is global -- no region on the resource.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFrontDoorProfile
+metadata:
+  name: planton-oss-e2e-azurefrontdoorprofile-smoke
+  id: planton-oss-e2e-azurefrontdoorprofile-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefrontdoorprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  profileName: planton-oss-e2e-fd-smoke
+  sku: STANDARD
+  responseTimeoutSeconds: 60
+  logScrubbingVariables:
+    - QUERY_STRING_ARG_NAMES
+    - REQUEST_IP_ADDRESS
+    - REQUEST_URI
+  tags:
+    purpose: e2e-smoke

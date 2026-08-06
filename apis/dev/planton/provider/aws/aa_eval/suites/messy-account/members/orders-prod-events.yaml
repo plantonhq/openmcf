@@ -3,7 +3,7 @@
 # an inference no deterministic mapper attempts. This member proves the
 # refs axis discriminates even inside the baseline's covered territory:
 # the queue itself scores, the missing key edge does not.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: orders-prod-events

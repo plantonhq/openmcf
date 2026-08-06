@@ -1,0 +1,28 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageShare
+metadata:
+  name: test-storage-share
+spec:
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/plantonhackstorage
+  shareName: hack-team-files
+  quotaGb: 500
+  # Exercises the protocol enum mapping (SMB is also the default; stated
+  # to prove the seam renders).
+  enabledProtocol: SMB
+  # Exercises the tier enum mapping (Cool = cheapest at rest, priciest
+  # per operation).
+  accessTier: COOL
+  # Exercises the ACL block rendering, including a policy with the full
+  # validity window and one leaving the window to the SAS token.
+  acls:
+    - id: readers
+      accessPolicies:
+        - permissions: rl
+          start: "2026-07-01T00:00:00Z"
+          expiry: "2027-07-01T00:00:00Z"
+    - id: writers
+      accessPolicies:
+        - permissions: rwdl
+  metadata:
+    purpose: hack-validation

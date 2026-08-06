@@ -1,0 +1,39 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkloadIdentityPoolProvider
+metadata:
+  name: my-sample-pool-provider
+spec:
+  # The pool this provider belongs to (bare pool ID). Reference a
+  # GcpWorkloadIdentityPool resource — its workload_identity_pool_id output
+  # is exactly this value.
+  workloadIdentityPoolId:
+    value: github-actions
+
+  # Provider ID (4-32 chars; lowercase letters, digits, hyphens; the "gcp-"
+  # prefix is reserved)
+  workloadIdentityPoolProviderId: github-oidc
+
+  # GCP project that owns the pool.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # Name shown in the GCP console
+  displayName: GitHub Actions OIDC
+
+  # Which issuer this trusts and any operational notes
+  description: Trusts GitHub-minted OIDC tokens for the engineering org
+
+  # Claim -> Google-attribute mappings. google.subject is required for OIDC;
+  # custom attribute.* entries become IAM-targetable principal sets.
+  attributeMapping:
+    google.subject: assertion.sub
+    attribute.repository: assertion.repository
+
+  # Gate which of the issuer's otherwise valid tokens are accepted — for
+  # multi-tenant issuers like GitHub Actions, always restrict to your org.
+  attributeCondition: assertion.repository_owner == "my-org"
+
+  # The issuer — exactly one of aws / oidc / saml / x509
+  oidc:
+    issuerUri: https://token.actions.githubusercontent.com

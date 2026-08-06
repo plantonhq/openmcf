@@ -27,21 +27,21 @@ When you deploy an OpenStackDnsRecord resource, Planton provisions:
 Create a file `dns-record.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsRecord
 metadata:
   name: my-a-record
   annotations:
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.api-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.mail-mx
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.docs-cname
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsRecord.web-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsRecord.my-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
@@ -85,7 +85,7 @@ This creates an A record for `www.example.com.` pointing to `192.0.2.1` in the s
 A single IPv4 address record with a 5-minute TTL:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsRecord
 metadata:
   name: web-a-record
@@ -107,7 +107,7 @@ spec:
 An alias record pointing a subdomain to another hostname:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsRecord
 metadata:
   name: docs-cname
@@ -127,7 +127,7 @@ spec:
 Mail exchange records with priority values for primary and backup mail servers:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsRecord
 metadata:
   name: mail-mx
@@ -149,7 +149,7 @@ spec:
 Reference an Planton-managed DNS zone instead of hardcoding the zone UUID:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackDnsRecord
 metadata:
   name: api-record

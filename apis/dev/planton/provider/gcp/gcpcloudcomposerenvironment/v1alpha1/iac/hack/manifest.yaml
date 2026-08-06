@@ -1,0 +1,69 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudComposerEnvironment
+metadata:
+  name: test-composer
+spec:
+  # GCP project for the environment. Replace with your project ID.
+  # Omit entirely to ride the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  region: us-central1
+
+  # Composer 3 image — supports the DAG processor workload below.
+  softwareConfig:
+    imageVersion: composer-3-airflow-2.10.5 # replace with a current image version
+    airflowConfigOverrides:
+      core-dags_are_paused_at_creation: "True"
+    pypiPackages:
+      apache-airflow-providers-google: ""
+    envVariables:
+      DATA_ENV: test
+
+  environmentSize: ENVIRONMENT_SIZE_SMALL
+
+  # All five Airflow components. The triggerer's cpu/memory/count are all
+  # required by the API when the block is present.
+  workloadsConfig:
+    scheduler:
+      cpu: 1.0
+      memoryGb: 4.0
+      storageGb: 1.0
+      count: 1
+    webServer:
+      cpu: 1.0
+      memoryGb: 2.0
+      storageGb: 1.0
+    worker:
+      cpu: 1.0
+      memoryGb: 4.0
+      storageGb: 1.0
+      minCount: 1
+      maxCount: 3
+    triggerer:
+      cpu: 0.5
+      memoryGb: 1.0
+      count: 1
+    dagProcessor:
+      cpu: 1.0
+      memoryGb: 2.0
+      storageGb: 1.0
+      count: 1
+
+  # Composer requires at least a 12-hour window.
+  maintenanceWindow:
+    startTime: "2026-01-01T00:00:00Z"
+    endTime: "2026-01-01T12:00:00Z"
+    recurrence: "FREQ=WEEKLY;BYDAY=SA,SU"
+
+  # Only these ranges reach the Airflow web UI.
+  webServerNetworkAccessControl:
+    allowedIpRanges:
+      - value: "10.0.0.0/8"
+        description: Internal network
+      - value: "203.0.113.0/24" # replace with your office/VPN range
+        description: Office network
+
+  labels:
+    team: data-platform
+    purpose: smoke-test

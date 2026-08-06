@@ -1,0 +1,34 @@
+# GcpServiceConnectionPolicy install profile used when the policy is an
+# E2E PREREQUISITE for another component (the Memorystore instance chain):
+# authorizes the gcp-memorystore service class on the chain's VPC. The
+# cloud-side policy name carries ${E2E_RUN_ID}; metadata.name stays fixed —
+# prerequisite FK resolution keys off it.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServiceConnectionPolicy
+metadata:
+  name: planton-oss-e2e-gcpscp-prereq
+  id: planton-oss-e2e-gcpscp-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpserviceconnectionpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  policyName: e2e-scp-prereq-${E2E_RUN_ID}
+  location: us-central1
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_id
+  serviceClass: gcp-memorystore
+  pscConfig:
+    subnetworks:
+      - valueFrom:
+          kind: GcpSubnetwork
+          name: planton-oss-e2e-gcpsnw-scp-prereq
+          fieldPath: status.outputs.subnetwork_self_link

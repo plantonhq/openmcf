@@ -1,0 +1,33 @@
+# Validation CNAME from the DNS authorization outputs into the chained zone.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDnsRecord
+metadata:
+  name: planton-oss-e2e-drec-cert-prereq
+  id: planton-oss-e2e-drec-cert-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpdnsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  managedZone:
+    valueFrom:
+      kind: GcpDnsZone
+      name: planton-oss-e2e-zone-cert-prereq
+      fieldPath: status.outputs.zone_name
+  type: CNAME
+  name:
+    valueFrom:
+      kind: GcpCertManagerDnsAuthorization
+      name: planton-oss-e2e-cmda-cert-prereq
+      fieldPath: status.outputs.dns_record_name
+  values:
+    - valueFrom:
+        kind: GcpCertManagerDnsAuthorization
+        name: planton-oss-e2e-cmda-cert-prereq
+        fieldPath: status.outputs.dns_record_data
+  ttlSeconds: 300

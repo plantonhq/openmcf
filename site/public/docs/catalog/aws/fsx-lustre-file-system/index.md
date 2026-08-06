@@ -30,7 +30,7 @@ When you deploy an AwsFsxLustreFileSystem resource, Planton provisions:
 Create a file `fsx-lustre.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: my-fsx-lustre
@@ -105,7 +105,7 @@ This creates a SCRATCH_2 SSD file system with 1200 GiB in the specified subnet. 
 A temporary file system that imports data from S3 for batch processing jobs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: batch-fsx
@@ -130,7 +130,7 @@ spec:
 PERSISTENT_2 with maximum throughput tier, LZ4 compression, automatic backups, and metadata IOPS scaling for production ML workloads:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: ml-training-fsx
@@ -163,7 +163,7 @@ spec:
 PERSISTENT_1 HDD for large-capacity, sequential-throughput workloads where cost per GiB is the primary concern:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: datalake-fsx
@@ -195,7 +195,7 @@ spec:
 Production PERSISTENT_2 deployment with CloudWatch audit logging, customer-managed KMS encryption, explicit metadata IOPS, and final backup on deletion:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: prod-fsx
@@ -235,7 +235,7 @@ spec:
 Reference other Planton-managed resources instead of hardcoding IDs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: ref-fsx

@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcsTaskDefinition
+metadata:
+  name: awsecstaskdefinition-demo
+spec:
+  region: us-west-2
+  cpu: 256
+  memory: 512
+  executionRole:
+    value: arn:aws:iam::123456789012:role/ecsTaskExecutionRole
+  containers:
+    - name: app
+      image: public.ecr.aws/nginx/nginx:stable
+      portMappings:
+        - containerPort: 80
+          name: http
+          appProtocol: http
+      environment:
+        APP_ENV: demo

@@ -1,0 +1,38 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the operator expressed at once — the fenced
+# watch posture, an explicit leader-election restatement, a batch
+# scheduler, feature-gate overrides (exercising the list-replacement
+# merge over the chart defaults), metrics + ServiceMonitor, resources,
+# the image-registry mirror, and an escape-hatch document (logging
+# encoder) — while the module's fullname re-pin stays assertable in the
+# rendered plan.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKubeRayOperator
+metadata:
+  name: kuberay-operator-full
+spec:
+  namespace:
+    value: ray-system
+  createNamespace: true
+  chartVersion: 1.6.2
+  watchNamespaces:
+    - ml-team-a
+    - ml-team-b
+  leaderElectionEnabled: true
+  batchScheduler: yunikorn
+  featureGates:
+    - name: RayServiceIncrementalUpgrade
+      enabled: true
+  metricsEnabled: true
+  serviceMonitorEnabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  imageRegistry: mirror.example.com
+  helmValues: |
+    logging:
+      stdoutEncoder: console

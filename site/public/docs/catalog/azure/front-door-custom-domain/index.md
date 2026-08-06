@@ -28,7 +28,7 @@ When you deploy an AzureFrontDoorCustomDomain resource, Planton provisions:
 Create a file `custom-domain.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorCustomDomain
 metadata:
   name: www-example-com

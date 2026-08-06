@@ -5,7 +5,7 @@
 # resources declared afterwards. Workflow pods run as the runner
 # ServiceAccount (the chart's default `argo-workflow`), never the
 # controller's — annotate THAT identity for cloud access.
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesArgoWorkflows
 metadata:
   name: "{{ values.env }}-argo-workflows"

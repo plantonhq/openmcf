@@ -1,0 +1,86 @@
+# Full-surface offline-proof manifest: the composed ClickHouse connection
+# over verified TLS with a Secret-referenced password, a fully tuned
+# server (SMTP with a Secret-referenced password, external URL, an
+# advanced env entry), the collector with autoscaling and every receiver
+# toggle exercised (zipkin ON — the non-default), a private-mirror image
+# registry with a pull secret, scheduling, and an escape-hatch entry — so
+# the offline tofu plan and pulumi preview proofs cover the full typed
+# surface. Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSignoz
+metadata:
+  name: signoz-hack
+spec:
+  namespace:
+    value: signoz-hack
+  createNamespace: true
+  chartVersion: 0.133.0
+  clickhouse:
+    host:
+      value: clickhouse-analytics.signoz-hack.svc.cluster.local
+    clusterName:
+      value: analytics
+    tcpPort: 9440
+    httpPort: 8443
+    username: signoz
+    passwordSecret:
+      secretName:
+        value: analytics-clickhouse-auth
+      secretKey: signoz
+    secure: true
+    verify: true
+  server:
+    diskSize: 2Gi
+    storageClass:
+      value: gp3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    externalUrl: https://signoz.example.com
+    smtp:
+      address: smtp.example.com:587
+      from: signoz@example.com
+      username: smtp-user
+      passwordSecret:
+        name: smtp-auth
+        key: password
+    env:
+      signoz_prometheus_active__query__tracker_enabled: "true"
+  otelCollector:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCpuUtilizationPercent: 60
+      targetMemoryUtilizationPercent: 70
+    zipkinReceiverEnabled: true
+    lowCardinalityExceptionGrouping: true
+  clusterName: hack-cluster
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    signoz:
+      podAnnotations:
+        team: observability

@@ -33,7 +33,7 @@ When you deploy an OciDbSystem resource, Planton provisions:
 Create a file `db-system.yaml`:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDbSystem
 metadata:
   name: my-db
@@ -147,7 +147,7 @@ This creates a single-node VM DB System running Oracle Database 19c with default
 A single-node VM DB System with Oracle 19c and default settings:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDbSystem
 metadata:
   name: dev-db
@@ -178,7 +178,7 @@ spec:
 An Enterprise Edition DB System with explicit storage sizing, BYOL licensing, and automatic daily backups:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDbSystem
 metadata:
   name: staging-db
@@ -220,7 +220,7 @@ spec:
 A 2-node RAC cluster distributed across fault domains, with network security groups and a quarterly maintenance window:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDbSystem
 metadata:
   name: prod-rac
@@ -292,7 +292,7 @@ spec:
 Reference Planton-managed compartment and subnet resources instead of hardcoding OCIDs:
 
 ```yaml
-apiVersion: oci.planton.dev/v1
+apiVersion: oci.planton.dev/v1alpha1
 kind: OciDbSystem
 metadata:
   name: ref-db

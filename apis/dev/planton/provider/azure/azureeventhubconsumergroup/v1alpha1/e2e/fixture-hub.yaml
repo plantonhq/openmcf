@@ -1,0 +1,23 @@
+# The event hub the consumer group reads, on the scenario-local
+# namespace.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHub
+metadata:
+  name: planton-oss-e2e-ehcg-fixture-hub
+  id: planton-oss-e2e-ehcg-fixture-hub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhub
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-ehcg-fixture-namespace
+  eventHubName: e2e-stream
+  partitionCount: 2
+  messageRetention: 1

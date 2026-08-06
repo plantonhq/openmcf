@@ -1,0 +1,14 @@
+# The canonical default-deny: empty pod selector governs every pod in the
+# namespace, both directions declared, no allow rules — everything is denied
+# (where the CNI enforces NetworkPolicy).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: e2e-np-deny-all
+spec:
+  namespace:
+    value: default
+  name: e2e-np-deny-all
+  policy_types:
+    - ingress
+    - egress

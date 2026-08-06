@@ -1,0 +1,32 @@
+# The simplest real service: a public sample image straight to an HTTPS
+# endpoint -- no IAM roles, no VPC, no companions. Auto deployments stay
+# off (AWS rejects them for ECR_PUBLIC images). HTTP health check on the
+# image's port proves application-level readiness rather than just a TCP
+# accept.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppRunnerService
+metadata:
+  name: planton-oss-e2e-awsar-min
+  id: planton-oss-e2e-awsar-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsapprunnerservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  imageSource:
+    imageIdentifier: "public.ecr.aws/aws-containers/hello-app-runner:latest"
+    imageRepositoryType: "ECR_PUBLIC"
+  port: "8000"
+  cpu: "1024"
+  memory: "2048"
+  healthCheck:
+    protocol: "HTTP"
+    path: "/"
+    interval: 10
+    timeout: 5

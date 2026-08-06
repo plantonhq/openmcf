@@ -29,19 +29,19 @@ All fields on a server group are immutable. Changing any field recreates the ser
 Create a file `server-group.yaml`:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackServerGroup
 metadata:
   name: my-server-group
   annotations:
     planton.dev/stack.jobId: prod.OpenstackServerGroup.regional-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackServerGroup.worker-soft-spread
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackServerGroup.app-cache-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackServerGroup.db-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//apis/dev/planton/provider/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
@@ -88,7 +88,7 @@ This creates a server group named `my-server-group` with an anti-affinity policy
 Spread database replicas across different hypervisors for high availability. If a hypervisor fails, at most one replica is affected:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackServerGroup
 metadata:
   name: db-anti-affinity
@@ -106,7 +106,7 @@ spec:
 Co-locate application and cache instances on the same hypervisor to minimize network latency between them:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackServerGroup
 metadata:
   name: app-cache-affinity
@@ -124,7 +124,7 @@ spec:
 Use a soft policy when the cluster may not have enough distinct hypervisors to satisfy a hard anti-affinity constraint. Instances are spread on a best-effort basis without scheduling failures:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackServerGroup
 metadata:
   name: worker-soft-spread
@@ -142,7 +142,7 @@ spec:
 Override the provider region for a server group that must be created in a particular OpenStack region:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1
+apiVersion: openstack.planton.dev/v1alpha1
 kind: OpenStackServerGroup
 metadata:
   name: regional-anti-affinity

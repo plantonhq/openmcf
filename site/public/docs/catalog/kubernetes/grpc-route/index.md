@@ -31,7 +31,7 @@ split traffic across weighted backends.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGrpcRoute
 metadata:
   name: greeter-route

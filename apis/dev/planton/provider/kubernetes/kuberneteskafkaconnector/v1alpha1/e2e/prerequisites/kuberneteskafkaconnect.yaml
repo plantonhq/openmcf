@@ -1,0 +1,20 @@
+# Consumer-scoped Connect fixture for the KubernetesKafkaConnector lanes:
+# a single stock-image worker in the Kafka fixture's namespace. Connector
+# scenarios MUST deploy into THIS fixture's namespace — the operator binds
+# connectors to their Connect cluster through the strimzi.io/cluster label
+# in the same namespace (the placement contract on the spec).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaConnect
+metadata:
+  name: e2e-con-fix
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  bootstrap_servers:
+    valueFrom:
+      name: e2e-kaf-fix
+  replicas: 1
+  config:
+    config.storage.replication.factor: "-1"
+    offset.storage.replication.factor: "-1"
+    status.storage.replication.factor: "-1"

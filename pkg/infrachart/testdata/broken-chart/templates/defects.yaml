@@ -1,7 +1,7 @@
 # Each document carries exactly one defect class the validator must catch.
 ---
 # Unknown field: the spec has cidrBlock, not cidrBlok.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: unknown-field
@@ -10,7 +10,7 @@ spec:
   cidrBlok: 10.0.0.0/16
 ---
 # Constraint violation: region is required but missing.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: missing-region
@@ -18,7 +18,7 @@ spec:
   cidrBlock: 10.0.0.0/16
 ---
 # Dangling reference: AwsVpc has no status.outputs.does_not_exist.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: dangling-ref
@@ -35,7 +35,7 @@ spec:
 # Undefined target: the reference is well-formed (known kind, resolvable
 # fieldPath) but no document in this chart defines an AwsVpc named
 # "phantom-vpc" -- the intra-chart target-resolution check must reject it.
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSubnet
 metadata:
   name: undefined-target

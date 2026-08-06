@@ -56,7 +56,7 @@ external reachability composes from ingress and gateway kinds.
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNeo4j
 metadata:
   name: knowledge-graph

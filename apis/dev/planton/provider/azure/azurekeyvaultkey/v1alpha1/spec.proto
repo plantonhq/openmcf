@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurekeyvaultkey.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureKeyVaultKeySpec** defines the configuration for creating a
+// cryptographic key inside an Azure Key Vault -- the customer-managed-key
+// (CMK) building block of an Azure platform.
+//
+// A Key Vault key is asymmetric key material the vault guards: the private
+// part never leaves the vault (or its HSM on the Premium tier); consumers
+// call the vault to encrypt/decrypt, wrap/unwrap, or sign/verify. This is
+// how "bring your own key" works across Azure -- Storage accounts, disk
+// encryption sets, container registries, and database services all encrypt
+// their data with a data-encryption key that THIS key wraps, which is why
+// revoking or rotating it revokes access to everything downstream.
+//
+// Composition seams: the parent vault is a first-class AzureKeyVault
+// (referenced by key_vault_id); CMK consumers reference this key's
+// versionless_id output so Azure services follow rotation automatically
+// (pin key_id only when a compliance regime demands a frozen version). The
+// deploying credential needs data-plane key permissions on the vault (the
+// "Key Vault Administrator" or "Key Vault Crypto Officer" RBAC role, or
+// key permissions in a legacy access policy).
+message AzureKeyVaultKeySpec {
+  // The key's name within the vault: 1-127 characters of letters, digits,
+  // and hyphens, unique among the vault's keys. Changing the name replaces
+  // the key. A deleted key's name stays reserved for the vault's
+  // soft-delete retention window unless purged.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-zA-Z-]{1,127}$"
+  ];
+
+  // The vault the key lives in, by ARM resource ID. Defaults to
+  // referencing an AzureKeyVault's key_vault_id output in composed
+  // environments. Changing the vault replaces the key -- key material
+  // never moves between vaults.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The key's algorithm family, fixed at creation. RSA is the
+  // general-purpose choice every Azure CMK integration accepts; EC keys
+  // sign and verify (JWTs, code signing) but do not encrypt. The _HSM
+  // variants keep the private key inside a FIPS 140-2 Level 3 hardware
+  // module and require the vault's PREMIUM SKU.
+  AzureKeyVaultKeyType key_type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+
+  // For RSA / RSA_HSM keys: the modulus size in bits. Key Vault supports
+  // 2048 (the baseline every integration accepts), 3072, and 4096. Fixed
+  // at creation. Must be unset for EC keys (set curve instead).
+  optional int32 key_size = 4 [(buf.validate.field).int32 = {
+    in: [
+      2048,
+      3072,
+      4096
+    ]
+  }];
+
+  // For EC / EC_HSM keys: the elliptic curve. Unspecified lets Azure
+  // default to P-256. Fixed at creation. Must be unset for RSA keys (set
+  // key_size instead).
+  AzureKeyVaultKeyCurve curve = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // The cryptographic operations this key may perform -- Azure rejects any
+  // operation not listed here, so the list is the key's capability
+  // boundary. CMK/envelope encryption needs WRAP_KEY + UNWRAP_KEY; direct
+  // encryption needs ENCRYPT + DECRYPT; signing needs SIGN + VERIFY.
+  // Grant only what the key's consumers actually perform.
+  repeated AzureKeyVaultKeyOperation key_opts = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
+
+  // The UTC instant before which the key must not be used, RFC 3339
+  // format (e.g. "2027-01-01T00:00:00Z"). Leave unset for a key usable
+  // immediately.
+  optional string not_before_date = 7 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"];
+
+  // The UTC instant the key expires, RFC 3339 format. Expired keys refuse
+  // cryptographic operations. Prefer rotation_policy over hard expiry for
+  // keys that encrypt live data -- an expired CMK takes its dependents
+  // down with it. Once set, expiry cannot be fully unset on the underlying
+  // key even across delete/recreate (Azure restores purged names' state).
+  optional string expiration_date = 8 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"];
+
+  // Automatic rotation policy: when Azure mints a new key version on its
+  // own, and when it notifies (Event Grid) before expiry. Rotation is why
+  // consumers should reference versionless_id -- each rotation creates a
+  // new version and versionless references follow it with zero
+  // intervention.
+  AzureKeyVaultKeyRotationPolicy rotation_policy = 9;
+
+  // Free-form tags applied to the key, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins. Updatable in place.
+  map<string, string> tags = 10;
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_rsa_requires_size"
+    message: "RSA and RSA_HSM keys need key_size (2048, 3072, or 4096) -- pick 2048 unless a compliance regime demands larger"
+    expression: "!(this.key_type == 1 || this.key_type == 2) || has(this.key_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_ec_forbids_size"
+    message: "key_size applies only to RSA keys -- an EC key's strength is set by its curve"
+    expression: "(this.key_type == 1 || this.key_type == 2) || !has(this.key_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_rsa_forbids_curve"
+    message: "curve applies only to EC keys -- an RSA key's strength is set by key_size"
+    expression: "(this.key_type == 3 || this.key_type == 4) || this.curve == 0"
+  };
+}
+
+// Automatic rotation policy for a Key Vault key.
+message AzureKeyVaultKeyRotationPolicy {
+  // How long each key version lives before it expires, as an ISO 8601
+  // duration between P28D and P100Y (e.g. "P90D" for 90 days, "P2Y" for
+  // two years). Sets the expiry attribute on every newly created version.
+  // Must be set together with notify_before_expiry.
+  optional string expire_after = 1 [(buf.validate.field).string.pattern = "^P((\\d+Y)(\\d+M)?(\\d+D)?|(\\d+M)(\\d+D)?|(\\d+D))$"];
+
+  // How far before a version expires Azure raises the near-expiry Event
+  // Grid notification, as an ISO 8601 duration of at least P7D. Must be
+  // set together with expire_after.
+  optional string notify_before_expiry = 2 [(buf.validate.field).string.pattern = "^P((\\d+Y)(\\d+M)?(\\d+D)?|(\\d+M)(\\d+D)?|(\\d+D))$"];
+
+  // When Azure automatically rotates to a new version. Without this block
+  // the policy only sets per-version expiry and notification -- rotation
+  // itself stays manual.
+  AzureKeyVaultKeyRotationPolicyAutomatic automatic = 3;
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_rotation_policy_not_empty"
+    message: "a rotation policy needs expire_after and/or an automatic block -- an empty policy configures nothing"
+    expression: "has(this.expire_after) || has(this.automatic)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_rotation_expiry_pair"
+    message: "expire_after and notify_before_expiry go together -- set both or neither"
+    expression: "has(this.expire_after) == has(this.notify_before_expiry)"
+  };
+}
+
+// When automatic rotation fires. Set exactly one trigger.
+message AzureKeyVaultKeyRotationPolicyAutomatic {
+  // Rotate this long after each version's creation, as an ISO 8601
+  // duration (e.g. "P83D" to rotate ~every quarter with a week of slack).
+  optional string time_after_creation = 1 [(buf.validate.field).string.pattern = "^P((\\d+Y)(\\d+M)?(\\d+D)?|(\\d+M)(\\d+D)?|(\\d+D))$"];
+
+  // Rotate this long before each version's expiry, as an ISO 8601
+  // duration (requires expire_after on the policy so there is an expiry
+  // to count back from).
+  optional string time_before_expiry = 2 [(buf.validate.field).string.pattern = "^P((\\d+Y)(\\d+M)?(\\d+D)?|(\\d+M)(\\d+D)?|(\\d+D))$"];
+
+  option (buf.validate.message).cel = {
+    id: "key_vault_key_rotation_automatic_trigger"
+    message: "the automatic block needs a trigger -- time_after_creation or time_before_expiry"
+    expression: "has(this.time_after_creation) || has(this.time_before_expiry)"
+  };
+}
+
+// The algorithm family of a Key Vault key.
+enum AzureKeyVaultKeyType {
+  // Not specified -- invalid; pick the key's algorithm family explicitly.
+  azure_key_vault_key_type_unspecified = 0;
+
+  // RSA, software-protected -- the general-purpose choice every Azure CMK
+  // integration accepts.
+  RSA = 1;
+
+  // RSA, HSM-protected (FIPS 140-2 Level 3). Requires the vault's PREMIUM
+  // SKU.
+  RSA_HSM = 2;
+
+  // Elliptic curve, software-protected -- signing and verification
+  // workloads.
+  EC = 3;
+
+  // Elliptic curve, HSM-protected. Requires the vault's PREMIUM SKU.
+  EC_HSM = 4;
+}
+
+// The elliptic curve of an EC key. Unspecified lets Azure default to P-256.
+enum AzureKeyVaultKeyCurve {
+  // Not specified: Azure defaults to P-256.
+  azure_key_vault_key_curve_unspecified = 0;
+
+  // NIST P-256 (secp256r1) -- the interoperable default.
+  P_256 = 1;
+
+  // SECG secp256k1 -- the curve used by blockchain ecosystems.
+  P_256K = 2;
+
+  // NIST P-384 (secp384r1).
+  P_384 = 3;
+
+  // NIST P-521 (secp521r1).
+  P_521 = 4;
+}
+
+// A cryptographic operation a Key Vault key may perform.
+enum AzureKeyVaultKeyOperation {
+  // Not specified -- invalid; list the operations explicitly.
+  azure_key_vault_key_operation_unspecified = 0;
+
+  // Decrypt ciphertext with the private key.
+  DECRYPT = 1;
+
+  // Encrypt plaintext with the public key.
+  ENCRYPT = 2;
+
+  // Sign digests with the private key.
+  SIGN = 3;
+
+  // Unwrap (decrypt) a wrapped data-encryption key -- the operation every
+  // CMK consumer performs at startup.
+  UNWRAP_KEY = 4;
+
+  // Verify signatures with the public key.
+  VERIFY = 5;
+
+  // Wrap (encrypt) a data-encryption key.
+  WRAP_KEY = 6;
+}

@@ -1,0 +1,99 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the collector CR expressed at once — statefulset
+# mode with the operator-managed autoscaler (CPU + memory targets), a
+# custom image, an existing ServiceAccount, plain env vars plus the
+# secret-env credential path (referenced in config as ${env:...} — the
+# secret-safe contract), emptyDir and secret volumes with mounts, an
+# extra UDP Service port the operator cannot infer, resources sized with
+# the memory_limiter, and full scheduling — while the spec's validation
+# rules stay satisfied (autoscaler excludes replicas; scaling only in
+# workload modes).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelCollector
+metadata:
+  name: otel-gateway-full
+spec:
+  namespace:
+    value: observability
+  createNamespace: true
+  mode: statefulset
+  configYaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      syslog:
+        udp:
+          listen_address: 0.0.0.0:54527
+        protocol: rfc5424
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 100
+      batch: {}
+    exporters:
+      otlphttp:
+        endpoint: http://tempo.observability.svc.cluster.local:4318
+        headers:
+          authorization: "Bearer ${env:TEMPO_BEARER_TOKEN}"
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp]
+        logs:
+          receivers: [syslog]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp]
+  autoscaler:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCpuUtilization: 75
+    targetMemoryUtilization: 80
+  image: mirror.example.com/otel/custom-collector:0.156.0
+  serviceAccount: otel-gateway-sa
+  env:
+    GOMAXPROCS: "2"
+  envFromSecrets:
+    - tempo-credentials
+  volumes:
+    - name: scratch
+      mountPath: /var/lib/otelcol
+      emptyDir:
+        sizeLimit: 1Gi
+    - name: extra-ca
+      mountPath: /etc/ssl/extra
+      readOnly: true
+      secret:
+        name: extra-ca-bundle
+        key: ca.crt
+  additionalPorts:
+    - name: syslog
+      port: 54527
+      protocol: UDP
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+  scheduling:
+    nodeSelector:
+      workload: observability
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: high-priority
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault

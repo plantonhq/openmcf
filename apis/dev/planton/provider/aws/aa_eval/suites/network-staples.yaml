@@ -24,16 +24,16 @@ metadata:
 spec:
   members:
     - component: awsvpc
-      manifest_path: apis/dev/planton/provider/aws/awsvpc/v1/e2e/prerequisite.yaml
+      manifest_path: apis/dev/planton/provider/aws/awsvpc/v1alpha1/e2e/prerequisite.yaml
     - component: awsinternetgateway
-      manifest_path: apis/dev/planton/provider/aws/awsinternetgateway/v1/e2e/prerequisite.yaml
+      manifest_path: apis/dev/planton/provider/aws/awsinternetgateway/v1alpha1/e2e/prerequisite.yaml
     - component: awssubnet
-      manifest_path: apis/dev/planton/provider/aws/awssubnet/v1/e2e/scenarios/routed.yaml
+      manifest_path: apis/dev/planton/provider/aws/awssubnet/v1alpha1/e2e/scenarios/routed.yaml
     - component: awss3bucket
-      manifest_path: apis/dev/planton/provider/aws/awss3bucket/v1/e2e/scenarios/minimal.yaml
+      manifest_path: apis/dev/planton/provider/aws/awss3bucket/v1alpha1/e2e/scenarios/minimal.yaml
     - component: awssqsqueue
-      manifest_path: apis/dev/planton/provider/aws/awssqsqueue/v1/e2e/scenarios/fifo-full-surface.yaml
+      manifest_path: apis/dev/planton/provider/aws/awssqsqueue/v1alpha1/e2e/scenarios/fifo-full-surface.yaml
     - component: awssnstopic
-      manifest_path: apis/dev/planton/provider/aws/awssnstopic/v1/e2e/scenarios/standard-topic.yaml
+      manifest_path: apis/dev/planton/provider/aws/awssnstopic/v1alpha1/e2e/scenarios/standard-topic.yaml
   scan_scope:
     region: us-west-2

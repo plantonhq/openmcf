@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.provider.azure.azurefirewallpolicy.v1alpha1;
+
+// **AzureFirewallPolicyStackOutputs** captures the outputs of provisioning
+// an Azure Firewall Policy.
+message AzureFirewallPolicyStackOutputs {
+  // The Azure Resource Manager ID of the firewall policy. This is the
+  // composition seam: rule collection groups nest under it
+  // (firewall_policy_id), firewalls attach it (firewall_policy_id), and
+  // child policies inherit from it (base_policy_id).
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/firewallPolicies/{name}
+  string firewall_policy_id = 1;
+
+  // The name of the firewall policy resource.
+  string firewall_policy_name = 2;
+
+  // The principal (object) id of the policy's system-assigned managed
+  // identity -- grant it Key Vault secret read access when TLS inspection
+  // rides the system identity. Empty when no system-assigned identity is
+  // configured.
+  string identity_principal_id = 3;
+}

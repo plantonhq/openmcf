@@ -1,0 +1,35 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed override rendered at once (mirror images, both resource blocks,
+# scheduling, pull secrets).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesTektonOperator
+metadata:
+  name: tekton-operator-full
+spec:
+  operatorImage:
+    repo: mirror.example.com/tektoncd/operator
+    tag: v0.80.0
+    pullSecretName: mirror-pull
+  webhookImage:
+    repo: mirror.example.com/tektoncd/operator-webhook
+    tag: v0.80.0
+  operatorResources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  webhookResources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  nodeSelector:
+    role: platform
+  tolerations:
+    - key: platform
+      operator: Exists
+      effect: NoSchedule
+  imagePullSecrets:
+    - mirror-pull
+    - extra-pull

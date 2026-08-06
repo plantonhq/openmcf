@@ -30,7 +30,7 @@ DNS is composed downstream: the exported `target_domain_name` / `hosted_zone_id`
 Create a file `domain.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiDomain
 metadata:
   name: api-example-com
@@ -85,7 +85,7 @@ Then create a Route 53 alias record pointing `api.example.com` at the exported `
 ### Multi-API Domain with Path Keys
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiDomain
 metadata:
   name: api-example-com
@@ -107,7 +107,7 @@ spec:
 ### Mutual TLS for Machine-to-Machine APIs
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiDomain
 metadata:
   name: partner-api-domain

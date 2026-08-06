@@ -28,7 +28,7 @@ When you deploy an AwsEcrRepo resource, Planton provisions:
 Create a file `ecr-repo.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: my-service
@@ -84,7 +84,7 @@ This creates an ECR repository with mutable tags, AES256 encryption, and scan-on
 ### Production: frozen release tags, movable `latest`
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: prod-api
@@ -99,7 +99,7 @@ spec:
 ### KMS Encryption
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: compliant-repo
@@ -115,7 +115,7 @@ spec:
 ### Lifecycle Rules for Cost Control
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: ci-images
@@ -145,7 +145,7 @@ spec:
 ### Cross-Service Pull Access
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: lambda-images
@@ -167,7 +167,7 @@ spec:
 ### Development Repository with Force Delete
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: dev-scratch

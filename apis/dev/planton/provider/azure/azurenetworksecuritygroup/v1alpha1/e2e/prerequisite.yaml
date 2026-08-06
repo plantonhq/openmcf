@@ -1,0 +1,29 @@
+# AzureNetworkSecurityGroup install profile used as a fixture by scenarios
+# that prove the subnet-side attach seam (declared via the
+# planton.dev/e2e-prerequisites annotation -- attaching an NSG is
+# OPTIONAL for a subnet, so it is never a registry prerequisite). The
+# harness deploys this document (via the group's Pulumi module) after the
+# fixture resource group and captures its outputs --
+# network_security_group_id in particular -- for the attaching scenario's
+# reference to resolve against. The group is a bare fixture (no rules):
+# Azure's implicit defaults govern, which is itself a meaningful NSG state.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureNetworkSecurityGroup
+metadata:
+  name: planton-oss-e2e-azure-fixture-nsg
+  id: planton-oss-e2e-azure-fixture-nsg
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurenetworksecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-nsg

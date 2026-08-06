@@ -26,7 +26,7 @@ Deploys an AWS CloudWatch Logs log group with configurable retention policy, opt
 ## Quick Start
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
@@ -80,7 +80,7 @@ No fields are strictly required. An empty spec creates a STANDARD class log grou
 A general-purpose log group for application logging:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
@@ -99,7 +99,7 @@ spec:
 A log group with 90-day retention and KMS encryption for compliance workloads:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: prod-app-logs
@@ -123,7 +123,7 @@ spec:
 A log group whose metric filter counts `ERROR` events, ready to alarm on with an AWS CloudWatch Alarm:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
@@ -150,7 +150,7 @@ spec:
 A cost-optimized log group for VPC flow logs or CDN access logs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: vpc-flow-logs

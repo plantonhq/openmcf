@@ -1,0 +1,29 @@
+# Published install profile: the autoscaling policy consumers (a Dataproc
+# cluster's autoscaling_policy_uri reference) attach in their chains. The
+# cloud-side policy_id carries ${E2E_RUN_ID}; metadata.name stays fixed
+# for FK resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpDataprocAutoscalingPolicy
+metadata:
+  name: planton-oss-e2e-gcpdpasp-prereq
+  id: planton-oss-e2e-gcpdpasp-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpdataprocautoscalingpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  policyId: e2e-dpc-policy-${E2E_RUN_ID}
+  location: us-central1
+  workerConfig:
+    maxInstances: 4
+    minInstances: 2
+  basicAlgorithm:
+    yarnConfig:
+      gracefulDecommissionTimeout: 300s
+      scaleUpFactor: 0.5
+      scaleDownFactor: 0.5

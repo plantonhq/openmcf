@@ -333,7 +333,7 @@ All consistency checks passed!
 🧪 Running Validation
 
 Component Tests:
-  go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
+  go test ./apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
   ✅ PASS (18/18 tests, +2 new tests)
 
 Build Validation:

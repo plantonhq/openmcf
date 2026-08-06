@@ -1,0 +1,72 @@
+# The composed surface: sharded AND replicated (2×2) with a managed
+# single-node Keeper, provisioned users bound to declared profiles and
+# quotas, server settings, a separate log volume, PDB tuning and
+# service annotations — every live-safe field class exercised.
+# (spread_replicas_across_nodes stays off: the persistent test cluster
+# does not guarantee multiple schedulable nodes. External-coordination
+# arms ride the offline plan proofs; they need external fixtures.)
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesClickHouse
+metadata:
+  name: e2e-ch-full
+spec:
+  namespace:
+    value: e2e-ch-full
+  create_namespace: true
+  version: "25.3"
+  cluster_name: analytics
+  shards: 2
+  replicas: 2
+  disk_size: 2Gi
+  log_disk_size: 1Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  coordination:
+    type: managed_keeper
+    keeper:
+      replicas: 1
+      disk_size: 1Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+  users:
+    # The verifier authenticates as the FIRST declared user — it must
+    # be one that can run the SQL round-trip's DDL. The readonly
+    # analyst below exercises the profile/quota binding and would be
+    # (correctly) rejected for writes.
+    - name: writer
+      password:
+        value: e2e-writer-pass
+      grants:
+        - GRANT SELECT, INSERT, CREATE ON e2e.*
+    - name: analyst
+      password:
+        value: e2e-analyst-pass
+      profile: readonly
+      quota: default
+      networks:
+        - "0.0.0.0/0"
+  profiles:
+    - name: readonly
+      settings:
+        readonly: "2"
+        max_memory_usage: "1000000000"
+  quotas:
+    - name: default
+      settings:
+        interval/duration: "3600"
+        interval/queries: "10000"
+  settings:
+    max_concurrent_queries: "150"
+  pdb_max_unavailable: 1
+  service_annotations:
+    e2e.planton.dev/lane: full-surface

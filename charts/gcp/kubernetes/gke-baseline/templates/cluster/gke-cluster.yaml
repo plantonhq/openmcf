@@ -5,7 +5,7 @@
 # resource in this chart consumes that same name via planton.dev/connection
 # (one values param drives both sides, so they can never drift) and carries a
 # runs_on relationship edge back to this resource so ordering is structural.
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   # ONE dedicated node identity serves the system pool AND every pool node
@@ -28,7 +28,7 @@ spec:
     # bindings, never the node identity.
     - roles/artifactregistry.reader
 ---
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   # This name is load-bearing beyond the cluster itself: node pools attach

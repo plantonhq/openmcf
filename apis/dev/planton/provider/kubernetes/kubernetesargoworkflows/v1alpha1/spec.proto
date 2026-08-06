@@ -1,0 +1,652 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesargoworkflows.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesArgoWorkflowsSpec** deploys Argo Workflows — the
+ * Kubernetes-native workflow engine for DAG/step pipelines (CI jobs,
+ * data and ML pipelines, batch orchestration) — from the official
+ * `argo-workflows` Helm chart (https://argoproj.github.io/argo-helm).
+ *
+ * WHAT GETS INSTALLED: the workflow controller (turns Workflow custom
+ * resources into pods), the Argo server (UI + REST API, on by
+ * default), and the workflow runner ServiceAccount + RBAC that
+ * workflow pods execute under.
+ *
+ * RUNNING WORKFLOWS: this kind installs the ENGINE only. Workflows,
+ * WorkflowTemplates and CronWorkflows are Kubernetes custom resources
+ * declared like any other manifest (KubernetesManifest, a chart, the
+ * Argo CLI/UI) once the engine runs. Submit against the runner service
+ * account (`workflow_service_account`, default "argo-workflow") —
+ * pods run with ITS permissions, never the controller's.
+ *
+ * CRD INSTALL REACHES THE INTERNET by default: the chart applies the
+ * full-schema CRDs through a hook Job that downloads them from the
+ * chart's GitHub release at install time (they are too large to
+ * template inline). Air-gapped clusters set
+ * `crds.full_schema = false` (chart-templated minified CRDs, no
+ * download, weaker server-side validation) or mirror via
+ * `crds.base_url`.
+ *
+ * ARTIFACTS AND ARCHIVE are the two durability seams: declare
+ * `artifact_repository` so steps can pass files (S3-compatible — a
+ * KubernetesSeaweedFs pairs naturally — GCS, or Azure Blob), and
+ * `archive` (Postgres/MySQL — a KubernetesPostgres pairs naturally) so
+ * workflow history survives the Workflow CRs' garbage collection.
+ * Without an archive, history lives only in etcd until
+ * `retention_policy` (or TTL) prunes it.
+ *
+ * EXPOSURE: the server Service stays ClusterIP; expose via first-class
+ * kinds (KubernetesIngress, Gateway API kinds) over the exported
+ * service handle.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — workflow defaults documents, executor tuning, extra env —
+ * a safety valve, never the primary interface. Never put secret
+ * material in `helm_values`; every credential path in this spec rides
+ * existing Secrets.
+ */
+message KubernetesArgoWorkflowsSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "1.0.23" — chart 1.0.23 ships
+   * Argo Workflows v4.0.8). Versions must exist as SERVED charts in
+   * the repository index (https://argoproj.github.io/argo-helm).
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.0.23"];
+
+  /**
+   * The workflow controller.
+   */
+  KubernetesArgoWorkflowsController controller = 4;
+
+  /**
+   * The Argo server (UI + REST API).
+   */
+  KubernetesArgoWorkflowsServer server = 5;
+
+  /**
+   * Name of the ServiceAccount workflow pods run as (created by the
+   * chart, with Role/RoleBinding in every watched namespace). Empty =
+   * "argo-workflow". Grant IRSA/Workload-Identity annotations or extra
+   * RBAC to THIS account when workflows need cloud or cluster access —
+   * never widen the controller's account.
+   */
+  optional string workflow_service_account = 6 [(dev.planton.shared.options.default) = "argo-workflow"];
+
+  /**
+   * Where workflow steps read and write artifacts. Empty = no artifact
+   * repository — steps can still run, but input/output artifacts and
+   * archived logs have nowhere to live.
+   */
+  KubernetesArgoWorkflowsArtifactRepository artifact_repository = 7;
+
+  /**
+   * The workflow archive — completed workflows written to a relational
+   * database so history survives CR garbage collection.
+   */
+  KubernetesArgoWorkflowsArchive archive = 8;
+
+  /**
+   * How many COMPLETED Workflow CRs of each outcome the controller
+   * keeps in the cluster (older ones are deleted; the `archive` keeps
+   * their history). Empty = keep everything until TTLs or humans clean
+   * up.
+   */
+  KubernetesArgoWorkflowsRetentionPolicy retention_policy = 9;
+
+  /**
+   * CRD lifecycle (see the CRD note on the spec).
+   */
+  KubernetesArgoWorkflowsCrds crds = 10;
+
+  /**
+   * Create ServiceMonitors for the controller's /metrics (requires the
+   * Prometheus Operator CRDs — deploy KubernetesKubePrometheusStack
+   * first). Chart default: false.
+   */
+  bool service_monitor_enabled = 11;
+
+  /**
+   * Override the Argo Workflows images (air-gap path). One override
+   * serves controller, server and executor — the chart composes
+   * {registry}/{repository}:{tag} per component.
+   */
+  KubernetesArgoWorkflowsImage image = 12;
+
+  /**
+   * Scheduling for the controller and server pods.
+   */
+  KubernetesArgoWorkflowsScheduling scheduling = 13;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (workflowDefaults, executor resources, sso, extra env,
+   * priority-class per component, ...) — never the substitute for
+   * them. Do not put secrets here; credential material belongs in
+   * referenced Secrets.
+   */
+  string helm_values = 14;
+}
+
+/**
+ * The workflow controller.
+ */
+message KubernetesArgoWorkflowsController {
+  /**
+   * Number of controller replicas. Empty = 1. Extra replicas are HOT
+   * STANDBYS behind leader election — they take over on failure, they
+   * do not share the workload.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the controller container. Empty = no
+   * requests/limits (the chart default).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * Additional namespaces workflows will run in. The chart creates the
+   * runner ServiceAccount + Role/RoleBinding in each listed namespace
+   * AND in the install namespace (always included) — a workflow
+   * submitted in a namespace without that identity fails at pod
+   * creation. Empty = the install namespace only. KNOW THIS: the
+   * controller WATCHES cluster-wide either way; this list places the
+   * runner RBAC, it does not scope the watch.
+   */
+  repeated string workflow_namespaces = 3;
+
+  /**
+   * Instance ID label this controller claims. Set it when running
+   * SEVERAL Argo Workflows installs in one cluster: each controller
+   * only reconciles Workflow CRs labeled with its instance ID, and
+   * ignores the rest. Empty = unlabeled single-instance behavior.
+   */
+  string instance_id = 4;
+
+  /**
+   * Maximum number of workflows running at once, cluster-wide
+   * (additional ones queue as Pending). Empty = unlimited.
+   */
+  optional int32 parallelism = 5 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Maximum number of workflows running at once PER NAMESPACE. Empty =
+   * unlimited.
+   */
+  optional int32 namespace_parallelism = 6 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * The Argo server (UI + REST API).
+ */
+message KubernetesArgoWorkflowsServer {
+  /**
+   * Run the server. Empty = true (the chart default). Disable for
+   * controller-only installs where workflows are submitted purely as
+   * CRs.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Number of server replicas. Empty = 1.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the server container. Empty = no requests/limits
+   * (the chart default).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * Authentication modes the server accepts. Empty = ["client"] (the
+   * application default): callers present a Kubernetes bearer token
+   * and act with ITS permissions. "server": the server performs every
+   * request with its own ServiceAccount — no login, anyone who can
+   * reach the endpoint has the server's full power; acceptable only
+   * behind trusted network boundaries. "sso": OIDC login (configure
+   * the chart's `server.sso` block via `helm_values`; its client
+   * ID/secret ride existing Secrets by the chart's own contract —
+   * declare "sso" here to open the mode).
+   */
+  repeated string auth_modes = 4 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "server",
+          "client",
+          "sso"
+        ]
+      }
+    }
+  }];
+
+  /**
+   * Serve HTTPS with the server's self-signed certificate instead of
+   * plain HTTP. The chart default is false (plain HTTP behind
+   * composed exposure). KNOW THIS: flipping it changes the scheme
+   * probes and clients use — the exported endpoint output follows it.
+   */
+  bool secure = 5;
+
+  /**
+   * The public base URL when composing exposure in front of the server
+   * (e.g. "https://workflows.example.com/"). SSO redirects and UI
+   * links embed it. Empty = relative links.
+   */
+  string base_href = 6;
+}
+
+/**
+ * Where workflow artifacts live. Exactly one backend.
+ */
+message KubernetesArgoWorkflowsArtifactRepository {
+  /**
+   * Also archive each step's main-container logs into the repository
+   * (the UI can then show logs after pods are gone).
+   */
+  bool archive_logs = 1;
+
+  oneof backend {
+    /**
+     * An S3-compatible object store — AWS S3 or an in-cluster
+     * KubernetesSeaweedFs.
+     */
+    KubernetesArgoWorkflowsArtifactS3 s3 = 2;
+
+    /**
+     * Google Cloud Storage.
+     */
+    KubernetesArgoWorkflowsArtifactGcs gcs = 3;
+
+    /**
+     * Azure Blob Storage.
+     */
+    KubernetesArgoWorkflowsArtifactAzure azure = 4;
+  }
+}
+
+/**
+ * S3-compatible artifact storage.
+ */
+message KubernetesArgoWorkflowsArtifactS3 {
+  /**
+   * Bucket name. The bucket must exist — Argo Workflows never creates
+   * it.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * S3 endpoint as host[:port] — no scheme (e.g. "s3.amazonaws.com",
+   * or an in-cluster SeaweedFS S3 endpoint). Accepts a literal
+   * endpoint or a reference to a KubernetesSeaweedFs resource (its S3
+   * endpoint). Empty = "s3.amazonaws.com".
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_endpoint"
+  ];
+
+  /**
+   * AWS region (real S3 only; in-cluster stores ignore it).
+   */
+  string region = 3;
+
+  /**
+   * Speak plain HTTP to the endpoint (in-cluster stores without TLS).
+   * Never set it towards real S3.
+   */
+  bool insecure = 4;
+
+  /**
+   * Keyless access: sign requests with the pod's ambient cloud
+   * identity (IRSA / workload identity on the RUNNER service account)
+   * instead of declared keys. Mutually exclusive with
+   * `credentials_secret` (enforced below).
+   */
+  bool use_ambient_credentials = 5;
+
+  /**
+   * The existing Secret holding the access keys. Defaults compose a
+   * KubernetesSeaweedFs resource's generated credentials Secret
+   * (`<name>-s3-secret`) as-is — its name by reference, its admin key
+   * pair through the key-name defaults below. Required unless
+   * `use_ambient_credentials`.
+   */
+  KubernetesArgoWorkflowsS3CredentialsSecret credentials_secret = 6;
+
+  option (buf.validate.message).cel = {
+    id: "spec.artifact_repository.s3.credentials"
+    message: "declare exactly one credential path — credentials_secret for declared keys, or use_ambient_credentials for keyless pod identity"
+    expression: "this.use_ambient_credentials ? !has(this.credentials_secret) : has(this.credentials_secret)"
+  };
+}
+
+/**
+ * A reference to an existing Secret carrying S3 access keys in two
+ * keys. Defaults compose a KubernetesSeaweedFs resource's generated
+ * `-s3-secret` (its admin credential pair). The controller resolves
+ * the keys at runtime through secret selectors — nothing
+ * credential-bearing ever renders into chart values.
+ */
+message KubernetesArgoWorkflowsS3CredentialsSecret {
+  /**
+   * Name of the Secret. Accepts a literal name or a reference to a
+   * KubernetesSeaweedFs resource (its S3 credentials Secret). The
+   * Secret must live in the install namespace (the controller reads
+   * it there).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSeaweedFs,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.s3_credentials_secret_name"
+  ];
+
+  /**
+   * Key NAME within the Secret (a reference, not secret material)
+   * holding the access key ID. Empty = "admin_access_key_id"
+   * (the KubernetesSeaweedFs convention — the generated `-s3-secret`
+   * composes with zero key configuration). For a Secret shaped to the
+   * argo-workflows chart's documented example (keys
+   * `accesskey`/`secretkey`), set both key names explicitly.
+   */
+  optional string access_key_id_key = 2 [(dev.planton.shared.options.default) = "admin_access_key_id"];
+
+  /**
+   * Key holding the secret access key. Empty =
+   * "admin_secret_access_key".
+   */
+  optional string secret_access_key_key = 3 [
+    (dev.planton.shared.options.default) = "admin_secret_access_key",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * GCS artifact storage.
+ */
+message KubernetesArgoWorkflowsArtifactGcs {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Existing Secret holding a service-account JSON key (key
+   * `serviceAccountKey`). Empty = keyless: GKE Workload Identity on
+   * the runner service account.
+   */
+  string credentials_secret_name = 2;
+}
+
+/**
+ * Azure Blob artifact storage.
+ */
+message KubernetesArgoWorkflowsArtifactAzure {
+  /**
+   * Storage-account blob endpoint (e.g.
+   * "https://mystorageaccount.blob.core.windows.net").
+   */
+  string endpoint = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Container name.
+   */
+  string container = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Existing Secret holding the storage-account access key (key
+   * `account-access-key`). Empty = keyless: Azure Workload Identity /
+   * managed identity on the runner service account.
+   */
+  string credentials_secret_name = 3;
+}
+
+/**
+ * The workflow archive database.
+ */
+message KubernetesArgoWorkflowsArchive {
+  /**
+   * Database engine.
+   */
+  KubernetesArgoWorkflowsArchiveEngine engine = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  /**
+   * Database host — name or FQDN, no port (e.g.
+   * "workflows-db-rw.data.svc.cluster.local"). Accepts a literal host
+   * or a reference to a KubernetesPostgres resource (its read-write
+   * Service; same-namespace referencing may use the short name,
+   * cross-namespace needs the FQDN).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * Database port. Empty = the engine's default (5432 postgres, 3306
+   * mysql).
+   */
+  optional int32 port = 3 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Database name. The database must exist — the controller creates
+   * its tables, never the database.
+   */
+  string database = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Existing Secret holding the database credentials.
+   */
+  KubernetesArgoWorkflowsArchiveCredentials credentials_secret = 5 [(buf.validate.field).required = true];
+
+  /**
+   * Require TLS towards the database ("require", "verify-ca",
+   * "verify-full"). Empty = plain ("disable") — the in-cluster
+   * default.
+   */
+  string ssl_mode = 6 [(buf.validate.field).string = {
+    in: [
+      "",
+      "disable",
+      "require",
+      "verify-ca",
+      "verify-full"
+    ]
+  }];
+}
+
+/**
+ * Archive database engine.
+ */
+enum KubernetesArgoWorkflowsArchiveEngine {
+  // Unspecified. Declare the engine explicitly.
+  kubernetes_argo_workflows_archive_engine_unspecified = 0;
+
+  // PostgreSQL — pairs naturally with a KubernetesPostgres resource.
+  postgres = 1;
+
+  // MySQL — pairs naturally with a KubernetesMysql resource.
+  mysql = 2;
+}
+
+/**
+ * Archive database credentials from an existing Secret.
+ */
+message KubernetesArgoWorkflowsArchiveCredentials {
+  /**
+   * Secret name. Accepts a literal name or a reference to a
+   * KubernetesPostgres resource (its operator-maintained application
+   * Secret — whose `username`/`password` keys are exactly the key-name
+   * defaults below, so it composes untouched). The Secret must live in
+   * the install namespace (the controller reads it there).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key holding the username. Empty = "username".
+   */
+  optional string username_key = 2 [(dev.planton.shared.options.default) = "username"];
+
+  /**
+   * Key holding the password. Empty = "password".
+   */
+  optional string password_key = 3 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Name of a key within an existing Secret, not secret material"
+  ];
+}
+
+/**
+ * How many completed Workflow CRs stay in the cluster, per outcome.
+ */
+message KubernetesArgoWorkflowsRetentionPolicy {
+  /**
+   * Completed-successfully workflows to keep.
+   */
+  optional int32 completed = 1 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Failed workflows to keep.
+   */
+  optional int32 failed = 2 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Errored workflows to keep.
+   */
+  optional int32 errored = 3 [(buf.validate.field).int32.gte = 0];
+}
+
+/**
+ * CRD lifecycle.
+ */
+message KubernetesArgoWorkflowsCrds {
+  /**
+   * Install (and upgrade) the Argo Workflows CRDs with the release.
+   * Disable only when another release in the cluster already owns
+   * them.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs when this resource is destroyed. Default true —
+   * REMOVING the CRDs DELETES EVERY Workflow, WorkflowTemplate and
+   * CronWorkflow in the cluster with them. Turn off only on throwaway
+   * clusters.
+   */
+  optional bool keep = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Install the FULL-SCHEMA CRDs via the chart's hook Job, which
+   * DOWNLOADS them from the chart's GitHub release at install time
+   * (they exceed inline-template limits). Default true. Set false on
+   * air-gapped clusters: the chart falls back to templated MINIFIED
+   * CRDs (no download, no full server-side validation), or mirror the
+   * files and point `base_url` at the mirror.
+   */
+  optional bool full_schema = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Base URL the full-schema hook Job downloads CRD YAMLs from. Empty
+   * = the chart's GitHub release for the pinned version. Set it to an
+   * internal mirror on restricted networks.
+   */
+  string base_url = 4;
+}
+
+/**
+ * Image override. The chart composes each component's image as
+ * {registry}/{repository}:{tag} with SEPARATE registry and repository
+ * values — this override maps onto that split correctly (a mirror like
+ * "my.registry.com" replaces the registry part for all three
+ * components: workflow-controller, argocli, argoexec).
+ */
+message KubernetesArgoWorkflowsImage {
+  /**
+   * Registry to pull all Argo Workflows images from (e.g.
+   * "my.registry.com"). Empty = "quay.io". The per-component
+   * repository paths (argoproj/workflow-controller, argoproj/argocli,
+   * argoproj/argoexec) stay upstream; override those via `helm_values`
+   * when a mirror re-paths them.
+   */
+  string registry = 1;
+
+  /**
+   * Tag for all Argo Workflows images. Empty = the chart's appVersion
+   * for the pinned chart_version.
+   */
+  string tag = 2;
+
+  /**
+   * Name of an existing image-pull Secret in the namespace, for
+   * private mirrors (applied to all components).
+   */
+  string pull_secret_name = 3;
+}
+
+/**
+ * Pod scheduling for the controller and server.
+ */
+message KubernetesArgoWorkflowsScheduling {
+  /**
+   * Node selector for the controller and server pods (workflow pods
+   * schedule per their own Workflow specs).
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the controller and server pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the controller and server pods.
+   */
+  string priority_class_name = 3;
+}

@@ -32,7 +32,7 @@ When you deploy an AwsWafWebAcl resource, Planton provisions:
 Create a file `waf.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafWebAcl
 metadata:
   name: my-web-acl
@@ -114,7 +114,7 @@ This creates a REGIONAL Web ACL that allows all traffic by default and blocks kn
 ### Managed Rules with Rate Limiting
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafWebAcl
 metadata:
   name: api-protection
@@ -151,7 +151,7 @@ spec:
 ### Geographic Blocking with Custom Error Response
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafWebAcl
 metadata:
   name: geo-restricted
@@ -183,7 +183,7 @@ spec:
 ### Production Web ACL with Logging
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafWebAcl
 metadata:
   name: prod-waf

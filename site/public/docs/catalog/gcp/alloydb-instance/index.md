@@ -23,7 +23,7 @@ Creates an AlloyDB instance on an existing cluster — typically a READ_POOL for
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbInstance
 metadata:
   name: orders-read-pool

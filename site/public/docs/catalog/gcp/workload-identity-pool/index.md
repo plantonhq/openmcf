@@ -27,7 +27,7 @@ The pool holds no issuer configuration; attach one GcpWorkloadIdentityPoolProvid
 ## Quick Start
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpWorkloadIdentityPool
 metadata:
   name: github-actions-pool

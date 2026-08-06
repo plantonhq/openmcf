@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGcsBucket
+metadata:
+  name: test-gcs-bucket
+spec:
+  bucketName: planton-test-gcs-bucket
+  location: us-central1
+  uniformBucketLevelAccessEnabled: true
+  publicAccessPrevention: enforced
+  versioningEnabled: true
+  forceDestroy: true
+  lifecycleRules:
+    - action:
+        type: Delete
+      condition:
+        numNewerVersions: 3
+        withState: ARCHIVED
+  labels:
+    team: platform

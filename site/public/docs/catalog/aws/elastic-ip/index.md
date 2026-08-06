@@ -26,7 +26,7 @@ When you deploy an AwsElasticIp resource, Planton provisions:
 Create a file `eip.yaml`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticIp
 metadata:
   name: my-eip
@@ -70,7 +70,7 @@ This allocates a VPC Elastic IP from Amazon's default pool in `us-east-1`. The `
 Allocate Elastic IPs and bind them to a Network Load Balancer for static ingress IPs:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticIp
 metadata:
   name: nlb-eip-az1
@@ -88,7 +88,7 @@ spec:
 Wire the Elastic IP into an NLB subnet mapping via `valueFrom`:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: api-nlb
@@ -122,7 +122,7 @@ the load balancer itself.
 Allocate from your organization's registered IP address range:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticIp
 metadata:
   name: byoip-eip

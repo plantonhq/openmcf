@@ -29,7 +29,7 @@ When you deploy a GcpSpannerDatabase resource, Planton provisions:
 Create a file `spanner-database.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerDatabase
 metadata:
   name: orders-db
@@ -77,7 +77,7 @@ This creates an empty database named `orders-db` with the default GoogleSQL dial
 ### PostgreSQL-Dialect Database
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerDatabase
 metadata:
   name: analytics-db
@@ -94,7 +94,7 @@ spec:
 ### Database with Initial Schema
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerDatabase
 metadata:
   name: orders-db
@@ -112,7 +112,7 @@ spec:
 ### CMEK-Encrypted with Drop Protection
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerDatabase
 metadata:
   name: payments-db

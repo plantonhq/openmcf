@@ -222,7 +222,7 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 **Example Structure:**
 ```
-apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
+apis/dev/planton/provider/gcp/gcpcertmanagercert/v1alpha1/
 ├── api.proto
 ├── spec.proto
 ├── stack_input.proto

@@ -1,0 +1,25 @@
+# Consumer-scoped GcpFirestoreDatabase install profile for the composite
+# index chain. Firestore reserves a deleted database's ID for several
+# minutes, so each consumer chain carries its OWN cloud-side database
+# name — consecutive chains in one run reusing the shared profile's name
+# would collide with the previous chain's just-deleted ghost.
+# metadata.name stays fixed for FK resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirestoreDatabase
+metadata:
+  name: planton-oss-e2e-gcpfsdb-prereq
+  id: planton-oss-e2e-gcpfsdb-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirestoredatabase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  databaseName: e2e-fsidx-db-${E2E_RUN_ID}
+  locationId: nam5
+  type: FIRESTORE_NATIVE
+  deleteProtectionState: DELETE_PROTECTION_DISABLED

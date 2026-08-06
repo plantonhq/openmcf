@@ -1,0 +1,42 @@
+# Consumer-scoped Kafka fixture for the KubernetesKafkaConnect lanes: a
+# single dual-role node with the entity operators ON (the topic operator
+# is what reconciles the scenarios' topics). Topic scenarios MUST deploy
+# into THIS fixture's namespace — the topic operator watches only there
+# (the placement contract on the KubernetesKafkaTopic spec).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafka
+metadata:
+  name: e2e-kaf-fix
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  create_namespace: true
+  node_pools:
+    - name: dual
+      roles:
+        - controller
+        - broker
+      replicas: 1
+      storage:
+        size: 2Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 1536Mi
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+  config:
+    default.replication.factor: "1"
+    min.insync.replicas: "1"
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+  jvm:
+    xms: 512m
+    xmx: 512m

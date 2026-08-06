@@ -10,7 +10,7 @@ componentName: "gcpserverlessvpcconnector"
 
 The managed bridge from serverless into a VPC: Cloud Functions, Cloud Run, and App Engine route egress through the connector to reach private IPs (Cloud SQL private IP, Memorystore, internal load balancers).
 
-**Enum:** 721 · **ID prefix:** `gcpvpcconn` · **Provider:** GCP · **API:** `gcp.planton.dev/v1`
+**Enum:** 721 · **ID prefix:** `gcpvpcconn` · **Provider:** GCP · **API:** `gcp.planton.dev/v1alpha1`
 
 ## At a Glance
 
@@ -30,7 +30,7 @@ The managed bridge from serverless into a VPC: Cloud Functions, Cloud Run, and A
 ## Quick Example
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServerlessVpcConnector
 metadata:
   name: svc-egress

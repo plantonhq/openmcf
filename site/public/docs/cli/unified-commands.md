@@ -14,7 +14,7 @@ Unified commands let you deploy, preview, initialize, destroy, and refresh infra
 Every Planton manifest can include a label that declares which provisioner to use:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: my-database

@@ -26,7 +26,7 @@ Creates a Cloud KMS cryptographic key within an existing key ring — the resour
 Create a file `kms-key.yaml`:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpKmsKey
 metadata:
   name: cmek-data-key

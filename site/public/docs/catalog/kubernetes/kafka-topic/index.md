@@ -23,7 +23,7 @@ Declares one Kafka topic on the Strimzi KafkaTopic custom resource. The target c
 ## Quick Start
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafkaTopic
 metadata:
   name: order-events

@@ -1,0 +1,25 @@
+# THE durability proof: push an OCI artifact through the front door,
+# DELETE the registry pod, wait for a UID-verified replacement, reopen
+# the port-forward (deliberate dead-tunnel defense — the tunnel targets
+# the nginx front door and a fresh one costs nothing), and pull the
+# artifact back byte-identical — registry blobs surviving pod loss
+# through the filesystem PVC.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHarbor
+metadata:
+  name: e2e-harbor-dur
+spec:
+  namespace:
+    value: e2e-harbor-dur
+  createNamespace: true
+  externalUrl: http://127.0.0.1:18080
+  database:
+    internal: {}
+  cache:
+    internal: {}
+  storage:
+    filesystem:
+      diskSize: 5Gi
+  trivy:
+    skipUpdate: true
+    offlineScan: true

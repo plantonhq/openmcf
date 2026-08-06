@@ -30,7 +30,7 @@ The link is an ARM child of the zone: the zone's name and resource group are der
 Create a file `zone-link.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-hub-link
@@ -78,7 +78,7 @@ Workloads in `hub-vnet` now resolve the zone's records to their private IPs.
 ### Composed: Zone + Network by Reference
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-spoke-link
@@ -100,7 +100,7 @@ spec:
 ### Internal Zone with VM Auto-Registration
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: corp-zone-hub-link
@@ -127,7 +127,7 @@ Every VM in the hub network is now discoverable by hostname in `corp.internal`.
 Deploy several link resources referencing the same zone -- one per network. Networks join and leave the resolution audience without touching the zone or each other:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
   name: postgres-zone-spoke2-link

@@ -1,0 +1,24 @@
+# The install-grade lane — NO GitHub account needed: a deliberately
+# non-functional placeholder credential proves everything the cluster
+# alone can prove. The registry-prerequisite controller installs first;
+# this scenario then proves the module contract: the materialized
+# `<name>-github-auth` Secret (the declared-PAT arm), the
+# AutoscalingRunnerSet rendered with the declared name and bounds, and
+# the CONTROLLER OBSERVING it (a status recorded on the CR — the
+# reconcile-attempt proof). The listener CANNOT authenticate with
+# GitHub by design here; the behavioral-github lane owns the live
+# registration proof with a real credential.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesGhaRunnerScaleSet
+metadata:
+  name: e2e-gharss-min
+spec:
+  namespace:
+    value: e2e-gharss-min
+  createNamespace: true
+  githubConfigUrl: https://github.com/planton-e2e-placeholder/does-not-exist
+  auth:
+    pat:
+      token: ghp_e2e_placeholder_never_valid
+  minRunners: 0
+  maxRunners: 3
