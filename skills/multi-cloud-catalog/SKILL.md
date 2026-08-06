@@ -1,6 +1,6 @@
 ---
 name: multi-cloud-catalog
-description: Research Planton's cloud component catalog from its file-based reference pack -- generated per-component reference pages (spec fields, validation rules, outputs, cross-component wiring in both directions, a validated example manifest), per-provider and root indexes, the catalog-wide foreign-key graph, and the authored GUIDE.md / patterns wisdom layer. Use when composing or reviewing an architecture and you need component facts (what exists for a provider, which fields a component requires, what an output is called, what can reference what), operational judgment before choosing between components, or a compatible alternative when the software the user asked for has no component of its own. The discipline is absolute -- every schema claim is read from a pack file at answer time, never recalled from model memory; when no pack is reachable, fall back to `planton explain` per component and say what that fallback cannot see. Do not use for editing the catalog itself (schemas, reference pages, guides) and do not use for deploying resources -- this skill is the research layer that other workflows build on.
+description: Research Planton's cloud component catalog from its file-based reference pack -- generated per-component reference pages (spec fields, validation rules, outputs, cross-component wiring in both directions, a validated example manifest), per-provider and root indexes, the catalog-wide foreign-key graph, and the authored GUIDE.md / patterns wisdom layer. Use when composing or reviewing an architecture and you need component facts (what exists for a provider, which fields a component requires, what an output is called, what can reference what), operational judgment before choosing between components, or a compatible alternative when the software the user asked for has no component of its own. Also covers giving wisdom back -- when a session learns judgment the pack does not teach, this skill's contribution workflow turns it into a reviewed pull request against the catalog's guides and patterns. The discipline is absolute -- every schema claim is read from a pack file at answer time, never recalled from model memory; when no pack is reachable, fall back to `planton explain` per component and say what that fallback cannot see. Do not use for editing schemas or generated reference pages (facts are fixed at their proto source, never on the page) and do not use for deploying resources -- this skill is the research layer, plus the loop that improves it, that other workflows build on.
 ---
 
 # Multi-Cloud Catalog
@@ -43,6 +43,7 @@ that contains `reference-commons.md`.
 | What is the judgment call before choosing K? | `GUIDE.md` beside K's page -- the page head links it when one exists -- and `patterns/` for multi-component recipes |
 | The asked-for software has no component of its own | The catalog `GUIDE.md` beside the root index owns this workflow: search the pack by the name the user said, propose the compatible alternative openly, generic mechanisms only as the last resort |
 | Manifest grammar: envelope, value/valueFrom, fieldPath spelling | `reference-commons.md` -- read it once per session; it also documents the search grammar these pages share |
+| This session learned judgment the pack does not teach | `references/contributing-wisdom.md` -- offer once, verify, draft, and deliver it as a pull request |
 
 The concrete command moves for each row -- with the friction traps already
 learned so you do not relearn them -- are in
@@ -68,7 +69,8 @@ learned so you do not relearn them -- are in
    value, or an output name in an answer or a manifest, confirm the exact
    spelling in the page you have open. If a guide and a generated page ever
    disagree on a fact, the generated page wins -- and the disagreement is
-   worth reporting to the catalog's maintainers.
+   worth contributing back (`references/contributing-wisdom.md`), as is any
+   judgment this session had to work out that no guide teaches.
 
 ## Speak the user's language
 
@@ -82,10 +84,12 @@ never substitute silently.
 
 ## Boundaries
 
-- **Research, not editing.** A wrong or thin fact on a generated page is
-  fixed at its source (the proto comment or validation rule it derives
-  from), never by editing the page -- that is catalog contribution work,
-  out of this skill's scope.
+- **Facts are never edited on the page.** A wrong or thin fact on a
+  generated page is fixed at its source (the proto comment or validation
+  rule it derives from), never by editing the page. Wisdom -- judgment in
+  guides and patterns -- IS contributable from here: follow
+  `references/contributing-wisdom.md`. Schema and generator changes remain
+  out of scope.
 - **No pack, no guessing.** When neither a pack nor the `planton` CLI is
   reachable, say plainly that schema facts are unavailable rather than
   answering from memory.
