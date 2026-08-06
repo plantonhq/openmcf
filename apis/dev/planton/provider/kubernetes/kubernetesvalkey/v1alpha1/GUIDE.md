@@ -31,6 +31,27 @@ adds read scaling and a warm copy, but no automated promotion: durability
 through a primary restart comes from persistence, not from replicas (the
 full story is on [reference.md](reference.md)). If losing the store's
 contents is unacceptable, persistence is the lever to reach for first.
+One composition flips this judgment outright: backing a Ray cluster's
+GCS fault tolerance (next section).
+
+## Backing Ray's GCS flips the durability call
+
+[KubernetesRayCluster](../../kubernetesraycluster/v1alpha1/GUIDE.md)
+composes this kind for GCS fault tolerance: its
+`spec.gcsFaultTolerance.redisAddress` wires to this store's exported
+`kube_endpoint`. In that role the data is NOT a cache — it is the Ray
+cluster's control state (every job, actor, and worker registration),
+externalized here precisely so it survives head-pod loss. A Valkey
+that restarts empty erases the state Ray would have recovered from:
+the fault tolerance the composition was built for is silently
+defeated, and nothing fails at apply time. So the judgment above
+flips — declare persistence (`spec.persistence`, with
+`config.appendOnly: true` for lossless restarts) even standalone, and
+leave `config.maxMemoryPolicy` at its noeviction default: evicting
+keys from a state store corrupts it as surely as losing the volume.
+Declare auth in the same manifest — Ray's `redisPasswordSecret` reads
+the `password_secret` output this kind exports when ACL users are
+declared.
 
 ## Namespace ownership
 
@@ -48,5 +69,8 @@ ACL users live inside this spec, so client identity does not add nodes.
 ## Pairs well with
 
 - KubernetesNamespace — the shared namespace's owner (pattern above).
+- KubernetesRayCluster — backs its GCS fault tolerance through the
+  exported `kube_endpoint`; the one pairing where this store must not
+  be treated as a cache (section above).
 - The application workloads that consume it, connecting through the
   exported `kube_endpoint`.
