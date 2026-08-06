@@ -11,16 +11,22 @@
 # checksum before installing -- which is why the manifest publishes checksums
 # explicitly rather than relying on transport integrity alone.
 #
-# Artifacts created (per skill/agent present in the tree):
-#   definitions-manifest.json
-#   skill-<slug>.zip
-#   agent-<slug>-instructions.md
+# Job shape -- the Actions UI shows exactly what a release ships:
+#   package                  builds everything ONCE (the manifest's checksums
+#                            cover all artifacts, so packaging is atomic) and
+#                            discovers the skill/agent slugs from the output
+#   skill (<slug>)           one job per skill, uploads skill-<slug>.zip
+#   agent (<slug>)           one job per agent, uploads agent-<slug>-instructions.md
+#   publish-manifest         uploads definitions-manifest.json, then moves the
+#                            stable channel pointer -- it needs every upload
+#                            job, so the DAG itself enforces that the pointer
+#                            never names a release whose artifacts are not yet
+#                            retrievable
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/definitions/{file}
 # Public URL:  https://downloads.planton.dev/releases/{tag}/definitions/{file}
 #
-# Channel pointer (written LAST, after every artifact is uploaded, so the
-# pointer never names a release whose artifacts are not yet retrievable):
+# Channel pointer:
 #   s3://downloads-dot-planton-dot-dev-bucket/definitions/stable/version.txt
 #   https://downloads.planton.dev/definitions/stable/version.txt
 # Runtime consumers (the desktop daemon's definitions roll-forward) resolve
@@ -57,6 +63,9 @@ jobs:
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      skills: ${{ steps.discover.outputs.skills }}
+      agents: ${{ steps.discover.outputs.agents }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,24 +79,112 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           go run ./pkg/skills/defspack -version "$TAG" -out build/definitions
 
-      - name: Upload definitions to R2
+      # The slug lists are derived from what defspack actually built, so a
+      # new skill or agent gets its own upload job with zero workflow edits.
+      # Any file outside the three contractual name patterns fails the
+      # release -- a straggler would upload nowhere.
+      - name: Discover skills and agents
+        id: discover
+        run: |
+          cd build/definitions
+          for f in *; do
+            case "$f" in
+              definitions-manifest.json|skill-*.zip|agent-*-instructions.md) ;;
+              *)
+                echo "ERROR: unexpected artifact '$f' matches no upload job"
+                exit 1
+                ;;
+            esac
+          done
+          skills=$(find . -maxdepth 1 -name 'skill-*.zip' | sed -E 's|^\./skill-(.+)\.zip$|\1|' | sort | jq -R . | jq -cs .)
+          agents=$(find . -maxdepth 1 -name 'agent-*-instructions.md' | sed -E 's|^\./agent-(.+)-instructions\.md$|\1|' | sort | jq -R . | jq -cs .)
+          echo "skills=$skills" >> "$GITHUB_OUTPUT"
+          echo "agents=$agents" >> "$GITHUB_OUTPUT"
+          echo "skills: $skills"
+          echo "agents: $agents"
+
+      - name: Share the packaged release with the upload jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: definitions
+          path: build/definitions/
+          if-no-files-found: error
+
+  skill:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.package.outputs.skills) }}
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Upload skill-${{ matrix.slug }}.zip to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          echo "Uploading definitions release to R2 (releases/${TAG}/definitions/)..."
-          for file in build/definitions/*; do
-            name="$(basename "$file")"
-            R2_KEY="releases/${TAG}/definitions/${name}"
-            aws s3 cp "$file" "s3://${R2_BUCKET}/${R2_KEY}" \
-              --endpoint-url "${AWS_ENDPOINT_URL}"
-            echo "  uploaded: https://downloads.planton.dev/${R2_KEY}"
-          done
+          R2_KEY="releases/${GITHUB_REF_NAME}/definitions/skill-${{ matrix.slug }}.zip"
+          aws s3 cp "skill-${{ matrix.slug }}.zip" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
 
-      # The stable channel pointer moves only after every artifact above is
-      # uploaded, so no consumer can resolve a tag whose content is missing.
+  agent:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.package.outputs.agents) }}
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Upload agent-${{ matrix.slug }}-instructions.md to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/definitions/agent-${{ matrix.slug }}-instructions.md"
+          aws s3 cp "agent-${{ matrix.slug }}-instructions.md" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
+  # Runs only after EVERY artifact upload succeeded: the manifest that names
+  # the artifacts, then the channel pointer that names the release. A consumer
+  # can never resolve a tag whose content is missing -- the ordering is
+  # enforced by the job DAG, not by step order inside one job.
+  publish-manifest:
+    needs: [skill, agent]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Upload definitions-manifest.json to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/definitions/definitions-manifest.json"
+          aws s3 cp "definitions-manifest.json" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
       - name: Move the stable channel pointer
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}

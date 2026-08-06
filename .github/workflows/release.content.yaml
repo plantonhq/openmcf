@@ -1,9 +1,15 @@
 # =============================================================================
 # Content Distribution Release (Reusable Workflow)
 # =============================================================================
-# Packages Planton content into five zips and uploads them to Cloudflare R2
+# Packages Planton content into six zips and uploads them to Cloudflare R2
 # (downloads.planton.dev). These zips decouple downstream consumers (e.g. the
 # Planton upgrade-planton script) from needing a local Planton checkout.
+#
+# Every artifact is built by its OWN job so the Actions UI shows exactly what
+# a release ships -- the job list IS the artifact inventory. The five
+# source-file zips share one matrix job (each entry displayed by artifact
+# name); the catalog bundle has a dedicated job because it is a compiled,
+# verified artifact with its own toolchain (Go + buf), not a file collection.
 #
 # Artifacts created:
 #   presets.zip         -- Preset YAML + MD, kind enum proto
@@ -44,7 +50,41 @@ env:
   R2_BUCKET: downloads-dot-planton-dot-dev-bucket
 
 jobs:
-  package:
+  # One matrix entry per source-file zip, displayed by artifact name.
+  # fail-fast is off: the artifacts are independent, so one broken selector
+  # must not cancel the other uploads.
+  zip:
+    name: ${{ matrix.zip }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        zip:
+          - presets
+          - iac-source
+          - catalog-pages
+          - proto-source
+          - reference-pack
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package ${{ matrix.zip }}.zip
+        run: bash tools/ci/release/package_content.sh "${GITHUB_REF_NAME}" "${{ matrix.zip }}"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/content/${{ matrix.zip }}.zip"
+          aws s3 cp "${{ matrix.zip }}.zip" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
+  catalog-bundle:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -64,30 +104,16 @@ jobs:
 
       - name: Build and verify the catalog bundle
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          make build-catalog-bundle tag="$TAG"
+          make build-catalog-bundle tag="${GITHUB_REF_NAME}"
           make verify-catalog-bundle
-          cp build/catalog-bundle.zip .
 
-      - name: Package and upload content zips
+      - name: Upload to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-
-          bash tools/ci/release/package_content.sh "$TAG"
-
-          echo ""
-          echo "Uploading content zips to R2 (releases/${TAG}/content/)..."
-          for zip in presets.zip iac-source.zip catalog-pages.zip proto-source.zip reference-pack.zip catalog-bundle.zip; do
-            if [ -f "$zip" ]; then
-              R2_KEY="releases/${TAG}/content/${zip}"
-              aws s3 cp "$zip" "s3://${R2_BUCKET}/${R2_KEY}" \
-                --endpoint-url "${AWS_ENDPOINT_URL}"
-              echo "  uploaded: https://downloads.planton.dev/${R2_KEY}"
-            else
-              echo "  WARNING: $zip not found, skipping upload"
-            fi
-          done
+          R2_KEY="releases/${GITHUB_REF_NAME}/content/catalog-bundle.zip"
+          aws s3 cp "build/catalog-bundle.zip" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"

@@ -10,10 +10,15 @@
 # Architecture:
 #   1. CLI job runs first (GoReleaser creates the GitHub Release)
 #   2. Website job runs in parallel
-#   3. Pulumi modules, Terraform modules, and Content jobs upload to
-#      Cloudflare R2 (downloads.planton.dev) after CLI completes
+#   3. Pulumi modules, Terraform modules, Content, and Definitions jobs
+#      upload to Cloudflare R2 (downloads.planton.dev) after CLI completes
 #   4. Charts job attaches the InfraChart catalog zip to the GitHub Release
 #      after CLI completes
+#
+# Job visibility: the content and definitions workflows run ONE JOB PER
+# ARTIFACT (content: one per zip; definitions: one per skill/agent, with the
+# manifest + channel pointer as the fan-in) so the Actions job list reads as
+# the release's artifact inventory.
 #
 # Artifact hosting:
 #   - CLI binaries   -> GitHub Release (via GoReleaser)
@@ -76,8 +81,8 @@ jobs:
       CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
 
   # ============================================================================
-  # Content Distribution - presets, IaC source, catalog pages, proto source,
-  # reference pack
+  # Content Distribution - one job per zip: presets, IaC source, catalog
+  # pages, proto source, reference pack, catalog bundle
   # ============================================================================
   content:
     needs: cli
@@ -95,7 +100,8 @@ jobs:
     uses: ./.github/workflows/release.charts.yaml
 
   # ============================================================================
-  # Definitions - skill/agent definition trees (uploads to Cloudflare R2)
+  # Definitions - one job per skill/agent definition, manifest + channel
+  # pointer published last (uploads to Cloudflare R2)
   # ============================================================================
   definitions:
     needs: cli
