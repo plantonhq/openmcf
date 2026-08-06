@@ -273,12 +273,12 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 **Content Quality (3.34%):**
 - [ ] Contains landscape analysis sections (check for headers like "Level", "Approach", "Method", "Comparison")
 - [ ] Contains best practices or recommendations section
-- [ ] Explains 90/10 coverage decisions (what's covered, and what's skipped and why)
+- [ ] States the pinned provider version, affirms full configurable-argument coverage of the mapped provider resources, and enumerates any compositions and recorded exclusions (deprecated/superseded only) with reasons
 - [ ] Documents deployment methods comparison
 
 **Note:** This document is the **primary source of truth** for understanding:
 - Component's purpose and design philosophy
-- Why certain features are in-scope vs out-of-scope
+- The parity accounting: which provider resources the component maps to, how their arguments are represented, and every recorded composition or exclusion
 - Provider-specific considerations and gotchas
 - Deployment architecture and best practices
 

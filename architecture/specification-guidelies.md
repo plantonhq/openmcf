@@ -6,9 +6,9 @@ When writing `spec.proto` files for Planton resources, we follow a fundamental p
 
 Think of it like ordering food at a restaurant. You tell the waiter "I'd like a medium-rare steak with mashed potatoes," not "Please cook beef at 135°F for 4 minutes per side, boil potatoes, mash them with butter..." The kitchen (deployment layer) handles the implementation details.
 
-## The 90/10 Coverage Principle
+## The Provider Parity Standard
 
-Our specifications cover the broad majority of what real users need, benchmarked against the underlying provider's own API as the **floor** for completeness -- never the ceiling. Where a provider's surface is bounded (a Terraform provider is the reference), we reach the long tail of fields production deployments actually use, with sensible defaults so breadth never costs usability. Where the underlying tool's configuration is effectively unbounded (large Helm charts, raw manifests), we cover the real surface and add an escape hatch for the genuine edge.
+Our specifications model **100% of the configurable surface** of the underlying provider at a pinned version -- partial coverage is never a design choice. Where a provider's surface is bounded (a Terraform provider is the reference), every configurable argument of the mapped resources remains representable, with sensible defaults so full coverage never costs usability; anything excluded (deprecated or superseded surface only) carries a recorded reason. Where the underlying tool's configuration is effectively unbounded (large Helm charts, raw manifests), we model the full upstream surface and add an escape hatch as a safety valve on top of the fully modeled spec -- never instead of it.
 
 ### Why This Matters
 
@@ -17,12 +17,12 @@ Consider MongoDB deployment options:
 - Percona operator CRD has 150+ fields
 - Raw Kubernetes manifests have unlimited possibilities
 
-Our `MongodbKubernetesSpec` covers what real deployments use without drowning users in Helm internals:
+Our `MongodbKubernetesSpec` models that surface in Planton's own vocabulary instead of exposing raw Helm internals:
 - `container` - replicas, resources, persistence, disk size
 - `ingress` - external access configuration
-- `helm_values` - escape hatch for the unbounded tail
+- `helm_values` - escape hatch, a safety valve on top of the modeled spec so nothing upstream is ever inexpressible
 
-This reaches the vast majority of use cases while keeping the API intuitive and maintainable.
+This keeps the API intuitive and maintainable while leaving the full upstream surface reachable.
 
 ## Deployment-Agnostic Design
 
@@ -90,15 +90,17 @@ message BadSpec {
 }
 ```
 
-❌ Over-configuration:
+❌ Raw knob passthrough instead of modeling:
 ```protobuf
 message BadSpec {
   string sysctl_vm_swappiness = 1;
   string kernel_transparent_hugepage = 2;
   int32 mongodb_net_max_incoming_connections = 3;
-  // ... 200 more fields
+  // ... hundreds of upstream internals dumped flat
 }
 ```
+
+Full coverage means every upstream knob stays representable -- it does not mean mirroring the upstream's flat structure. Model the surface idiomatically (structured messages, meaningful names, sensible defaults) rather than transcribing it.
 
 ## Future Flexibility
 
@@ -176,14 +178,14 @@ spec: {}  # All defaults work!
 
 ### 3. Provide Escape Hatches
 
-For users whose needs go beyond the covered surface, provide escape hatches:
+Where the underlying tool's configuration is extensible or effectively unbounded, provide an escape hatch:
 
 ```protobuf
 // Advanced users can override specific Helm values
 map<string, string> helm_values = 3;
 ```
 
-This doesn't compromise the core design but gives power users flexibility.
+An escape hatch is a safety valve on top of a fully modeled spec, never a substitute for modeling. A spec that leans on its escape hatch instead of modeling the upstream surface is a failed design.
 
 ### 4. Document Examples, Not Implementation
 
@@ -323,7 +325,7 @@ Add a comment explaining why you're deviating from the lowercase pattern.
 When you write a spec, ask yourself:
 
 1. ✅ **Deployment-agnostic?** Could this spec work with a different deployment tool?
-2. ✅ **90/10 coverage?** Does it reach the provider's real surface (benchmarked against the schema as the floor) with sensible defaults, without overwhelming users?
+2. ✅ **Provider parity?** Does it model the full configurable surface of the underlying provider at the pinned version, with sensible defaults and every exclusion recorded?
 3. ✅ **Intuitive?** Would a Kubernetes engineer understand it without reading documentation?
 4. ✅ **Future-proof?** Can we add features without breaking changes?
 5. ✅ **Sensible defaults?** Can users deploy with minimal configuration?

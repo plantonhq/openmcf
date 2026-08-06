@@ -38,7 +38,7 @@ When you run forge, you get a fully-implemented deployment component:
   - Deployment landscape analysis
   - Method comparisons
   - Best practices
-  - 90/10 coverage rationale
+  - Parity accounting (pinned provider version, compositions, recorded exclusions)
 
 ### Supporting Files
 - ✅ `iac/hack/manifest.yaml` - Test manifest
@@ -307,7 +307,7 @@ Forge creates a **production-ready baseline**. Common customizations:
 
 1. **Research the resource** - Understand what you're creating
 2. **Check if it exists** - Run `@audit-planton-component` first
-3. **Plan your API** - Know the provider's real surface and cover it to the floor (90/10)
+3. **Plan your API** - Read the provider schema at the pinned version fully and model it fully (100% of the configurable surface)
 4. **Gather examples** - Have reference configurations ready
 
 ### During Forge

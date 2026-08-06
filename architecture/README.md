@@ -610,10 +610,10 @@ This document defines:
 - Complete checklist of required artifacts
 - Quality standards for each category
 - Scoring weights and rationale
-- 90/10 principle (provider schema as the floor)
+- Provider parity standard (100% of the provider's configurable surface at the pinned version)
 - Examples of complete components
 
-**Key Insight:** The ideal state is **intentionally pragmatic**—it focuses effort on the highest-leverage work. Not every component needs every possible artifact, but every production component should reach 95%+ completion, covering the provider's real surface to the floor.
+**Key Insight:** The ideal state is **intentionally pragmatic**—it focuses effort on the highest-leverage work. Not every component needs every possible artifact, but every production component should reach 95%+ completion, modeling the full configurable surface of its mapped provider resources at the pinned provider version.
 
 ---
 
@@ -688,11 +688,11 @@ planton validate --manifest config.yaml
 
 **Result:** 90%+ of errors caught before making any cloud API calls.
 
-### The 90/10 Principle
+### The Provider Parity Standard
 
-**Coverage is benchmarked against the provider, not trimmed below it.**
+**Coverage is the provider's full configurable surface, never a trimmed subset.**
 
-For every cloud resource, Planton covers the broad majority of what real users need -- the ~90% of the provider's surface that production deployments actually reach -- using the provider's own API as the floor for completeness, never the ceiling.
+Every deployment component models 100% of the configurable arguments of the provider resources it maps to, at the pinned provider version. Partial coverage is not a design choice: where something is not covered, that is an explicitly recorded decision with a reason (deprecated or superseded surface only), never a silent omission.
 
 **Example: PostgreSQL on Kubernetes**
 
@@ -702,15 +702,16 @@ For every cloud resource, Planton covers the broad majority of what real users n
 - CPU and memory limits
 - Database name and credentials
 
-**Long tail (covered, with sensible defaults):**
+**Advanced surface (equally modeled, with sensible defaults):**
 - Custom WAL configuration
 - Replication topologies
 - Fine-grained operator settings
 
 **Planton's approach:**
-- Default modules cover the real surface to the provider floor
+- Modules model the full upstream surface at the pinned version
 - Sensible defaults keep the common path simple
-- Genuinely beta/niche knobs are skipped with a recorded reason (or left to an escape hatch)
+- Escape hatches (e.g. Helm values overrides) are safety valves on top of a fully modeled spec, never a substitute for modeling
+- Deprecated or superseded surface may be excluded, always with a recorded reason -- omission is a decision, and every decision is recorded
 
 ### Provider-Specific vs. Generic
 
@@ -1038,7 +1039,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 1. **Research Phase**
    - Understand the resource (AWS RDS, GKE Cluster, etc.)
    - Research deployment methods (manual, Terraform, Pulumi)
-   - Identify 90/10 coverage (the provider's real surface, benchmarked against the schema as the floor)
+   - Map the full configurable surface of the mapped provider resources at the pinned provider version (the parity target)
    - Document findings
 
 2. **Forge Phase**
@@ -1568,7 +1569,7 @@ Planton is a multi-cloud deployment framework that provides **consistency withou
 
 **Philosophy:**
 - Consistency of experience, not abstraction of providers
-- 90/10 principle (cover the provider surface to the floor, with sensible defaults)
+- Provider parity (model the provider's full configurable surface at the pinned version, with sensible defaults)
 - Deliberately simple IaC modules (adoption over perfection)
 - Language neutrality (build tools in any language)
 - Open source foundation (transparent, forkable, extendable)

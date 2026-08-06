@@ -82,14 +82,14 @@ Completeness of a deployment component is **contextual and principle-driven**, n
 
 ### Philosophy of Completeness
 
-**The 90/10 Principle:**
+**The Provider Parity Standard:**
 
-A complete deployment component covers the broad majority of what real users need -- the ~90% of a provider's surface that production deployments actually reach -- benchmarked against the provider's own canonical API as the **floor** for completeness, never the ceiling for ambition. This means:
+A complete deployment component models **100% of the configurable argument surface** of the provider resources it maps to, at the pinned provider version. Partial coverage is not a design choice available to any component; where something is not covered, that is an explicitly recorded decision with a reason, never a silent omission. This means:
 
-- **Schema as the Floor** - The provider's canonical API is the minimum bar for how complete a component should be. An advanced organization should be able to reach the long tail of what the provider offers, not just the surface knobs. For cloud providers with an official Terraform provider, that cloned provider source is the reference. For Kubernetes, there is no single Terraform-provider floor: the reference is the pinned upstream artifact for that component (Helm chart values/templates, CRD schemas, or core Kubernetes API types), read locally — never designed from web memory. Kubernetes admitted components target complete typed coverage of that upstream surface (with typed escape hatches only as safety valves on top of a fully modeled spec), not a deliberately trimmed subset. References are read for facts (field sets, defaults, constraints, ForceNew behavior) — never as a source of code text: the Terraform provider repos are MPL-2.0 and HashiCorp's BUSL repos are not open source, so catalog modules are always original Apache-2.0 authorship informed by those facts (consuming the Apache-2.0 Pulumi SDKs as dependencies is, of course, normal usage).
-- **Broad, Production-Grade Coverage** - Expose the fields production deployments actually use, across both common and advanced scenarios.
-- **Research-Driven** - Coverage is grounded in the provider schema and real-world usage patterns, not guesswork.
-- **Opinionated Defaults** - Provide sensible defaults so breadth never costs usability: advanced fields default well and stay out of the way until a user needs them.
+- **Schema as the Parity Target** - The provider's canonical API at the pinned version defines the parity target: read it fully, model it fully. For cloud providers with an official Terraform provider, that cloned provider source at the pinned version is the reference. For Kubernetes, there is no single canonical provider catalog: the reference is the pinned upstream artifact for that component (Helm chart values/templates, CRD schemas, or core Kubernetes API types), read locally — never designed from web memory. Kubernetes admitted components model complete typed coverage of that upstream surface (with typed escape hatches only as safety valves on top of a fully modeled spec), never a deliberately trimmed subset. References are read for facts (field sets, defaults, constraints, ForceNew behavior) — never as a source of code text: the Terraform provider repos are MPL-2.0 and HashiCorp's BUSL repos are not open source, so catalog modules are always original Apache-2.0 authorship informed by those facts (consuming the Apache-2.0 Pulumi SDKs as dependencies is, of course, normal usage).
+- **Unconditional Depth** - Every configurable argument of the mapped provider resources remains representable in the spec. Restructuring is encouraged — idiomatic proto shapes, renames that read better — as long as nothing the provider can configure becomes inexpressible. A kind that cannot express a provider argument is incomplete, regardless of how rarely that argument is used.
+- **Research-Driven** - Coverage is grounded in the provider schema at the pinned version, not guesswork or web memory.
+- **Opinionated Defaults** - Provide sensible defaults so full coverage never costs usability: advanced fields default well and stay out of the way until a user needs them.
 
 **Example:** For `GcpCertManagerCert`, the most-reached fields are:
 - `gcp_project_id` - Where to deploy
@@ -97,31 +97,32 @@ A complete deployment component covers the broad majority of what real users nee
 - `cloud_dns_zone_id` - Where to create validation records
 - `certificate_type` - MANAGED vs LOAD_BALANCER
 
-Advanced fields like certificate scope, location, and labels are exposed with sensible defaults so the long tail is reachable without burdening the common case.
+Advanced fields like certificate scope, location, and labels are equally modeled, with sensible defaults so the full provider surface is reachable without burdening the common case.
 
 ### Contextual vs Absolute Completeness
 
 **Contextual Completeness** means a component is complete when:
 
-1. **Research Validates Coverage** - The `docs/README.md` research document maps the deployment landscape and the provider's surface, and justifies the coverage reached (and any genuinely-niche surface deliberately skipped, with a reason)
+1. **Research Accounts for Coverage** - The `docs/README.md` research document maps the deployment landscape and the provider's surface, states the pinned provider version parity is declared against, and records every coverage decision: compositions (provider resources deliberately folded into this kind) and exclusions (deprecated or superseded surface only), each with its reason
 
-2. **Proto Schema Meets the Floor** - The `spec.proto` covers the provider's real surface to the 90/10 bar, benchmarked against the provider's API as the floor -- not arbitrarily trimmed below it
+2. **Proto Schema Achieves Parity** - The `spec.proto` models the full configurable argument surface of the mapped provider resources at the pinned provider version -- no deliberate field exclusions, however rarely a field is used
 
 3. **Both IaC Modules Implement the Schema** - Every field defined in `spec.proto` is actually used in both Pulumi and Terraform modules (no unused fields, no missing implementations)
 
 4. **Presets Validate the API** - The preset YAML files contain working, deployable configurations that demonstrate the API's capabilities and validate against the current schema
 
-5. **Documentation Explains Decisions** - Users understand the coverage and the rationale for anything deliberately skipped, reducing support burden
+5. **Documentation Explains Decisions** - Users understand the coverage accounting and the rationale for every composition and recorded exclusion, reducing support burden
 
-**What we still avoid** (90/10 is deliberately not literal 100%):
+**The recorded-exclusion rule** (omission is a decision, and every decision is recorded):
 
-- Genuinely beta, deprecated, or vendor-locked fields with no real-world use -- skipped *with a recorded reason*, not silently
-- Supporting every possible deployment method
-- Field count for its own sake -- coverage must be tested, parity-verified, and deploy-validated
+- Deprecated or superseded provider surface may be excluded -- always *with a recorded reason*, never silently; these are the only permitted exclusion categories
+- Beta-only provider capability enters the GA parity baseline only through an explicitly enumerated admission list, each entry with a recorded reason, implemented with the idiomatic per-resource beta-provider declaration inside the module -- wholesale beta parity is rejected
+- Supporting every possible deployment method remains out of scope; a component models its mapped provider resources, not every way to deploy the technology
+- Field count is never the goal for its own sake -- every covered field must be tested, parity-verified, and deploy-validated
 
 ### Quality At Scale
 
-A deployment component reaches 90/10 by covering the provider's real surface **with** the same rigor -- every field researched, documented, validated, and exercised in both engines. Breadth never excuses a hastily-added, undocumented, or untested field: quality is the constant, and coverage is raised to the floor on top of it.
+A deployment component reaches parity by covering the provider's full configurable surface **with** the same rigor -- every field researched, documented, validated, and exercised in both engines. Breadth never excuses a hastily-added, undocumented, or untested field: quality is the constant, and coverage is raised to the parity target on top of it. Parity without that rigor is not parity; it is untested surface area.
 
 Breadth is never a reason to lower the bar on any single unit of the catalog -- not across providers (the number of clouds supported never justifies a weaker experience for one cloud), and not within a provider (the number of components in a cloud's catalog never justifies a shallow experience for one component). Build and evolve every component as if the entire platform existed solely to give the best possible self-service experience for that one resource. Design and implementation decisions are never driven by implementation complexity, and never by how another component or another provider happened to solve a similar problem; the only test that decides a design is the experience a user of *this* provider and *this* component will come to expect.
 
@@ -319,7 +320,7 @@ apis/dev/planton/provider/gcp/gcpcertmanagercert/v1/
   - String patterns: `[(buf.validate.field).string.pattern = "regex"]`
   - Numeric ranges: `[(buf.validate.field).int32 = {gte: 1, lte: 100}]`
 - [ ] **Documentation** - Every field has a comment explaining its purpose
-- [ ] **90/10 Coverage** - Fields reach the provider's real surface (benchmarked against the schema as the floor), with sensible defaults
+- [ ] **Provider Parity** - Fields model the full configurable argument surface of the mapped provider resources at the pinned provider version, with sensible defaults
 - [ ] **Enums for Choices** - Use enums for fields with fixed choices (not free-form strings)
 
 **Example:**
@@ -652,10 +653,11 @@ variable "alternate_domain_names" {
   - IaC tools (Terraform, Pulumi, CloudFormation, etc.)
   - Specialized tools (Helm, Ansible, Crossplane, etc.)
   - Comparison of approaches
-- [ ] **90/10 Coverage Decision** - Explicit explanation of:
-  - Which provider surface is covered and why
-  - Which genuinely-niche features are skipped, and the reason
-  - How coverage was benchmarked against the provider schema as the floor
+- [ ] **Parity Accounting** - Explicit statement of:
+  - The pinned provider version parity is declared against
+  - Full configurable-argument coverage of the mapped provider resources (no deliberate exclusions)
+  - Any provider resources deliberately composed into this kind, with the mapping documented
+  - Any recorded exclusions (deprecated or superseded surface only), each with its reason
 - [ ] **Best Practices** - Production-ready recommendations
 - [ ] **Common Pitfalls** - Known issues and how to avoid them
 - [ ] **Research-Backed** - References to official documentation, community discussions, real-world usage

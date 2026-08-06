@@ -730,7 +730,7 @@ audit-all:
 - **Ideal State Definition:** [`../../architecture/deployment-component.md`](../../architecture/deployment-component.md)
   - Defines what "complete" means
   - Provides checklist for all requirements
-  - Explains 90/10 principle
+  - Explains the provider parity standard
 
 ### Rule Documentation
 - **Forge:** [`forge/README.md`](forge/README.md)
@@ -742,7 +742,7 @@ audit-all:
 - **Research Document:** `<component>/v1/docs/README.md`
   - **Critical Reference:** Consult this when executing any rule on a component
   - Contains comprehensive research about the component
-  - Explains design decisions and 90/10 coverage rationale
+  - Explains design decisions and parity accounting (pinned provider version, compositions, recorded exclusions)
   - Documents deployment landscape and best practices
   - Provides context for understanding what the component does and why
   - **Use when:**

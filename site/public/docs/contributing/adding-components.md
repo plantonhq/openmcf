@@ -62,7 +62,7 @@ The Protocol Buffer definitions are the foundation. Every other piece — IaC mo
 
 #### 1.1 Create `spec.proto`
 
-The spec defines the user-facing configuration fields. Design the spec around the 90/10 principle: cover the broad majority of the provider's real surface, benchmarked against the provider's own API as the floor for completeness, with sensible defaults so advanced fields stay out of the way until needed.
+The spec defines the user-facing configuration fields. Design the spec for full provider parity: model 100% of the configurable arguments of the provider resources the component maps to, at the pinned provider version. Restructure and rename freely to get an idiomatic spec, but leave nothing the provider can configure inexpressible — and use sensible defaults so advanced fields stay out of the way until needed.
 
 ```protobuf
 syntax = "proto3";
@@ -426,7 +426,7 @@ Create `README.md` at the component root with a concise overview of what the com
 
 #### 5.2 Research Doc
 
-Create `docs/README.md` with deeper design rationale: why certain fields were chosen, what the 90/10 coverage trade-offs are, deployment best practices, and anti-patterns to avoid.
+Create `docs/README.md` with deeper design rationale: the parity accounting (which provider resources the component maps to at which pinned provider version, how their arguments are represented, and any recorded exclusions or compositions), deployment best practices, and anti-patterns to avoid.
 
 #### 5.3 Hack Manifest
 
@@ -471,9 +471,9 @@ All checks must pass before submitting a pull request.
 
 ## Design Principles
 
-### 90/10 Coverage
+### Provider Parity
 
-Cover the broad majority of the provider's real surface, benchmarked against the provider's own API as the floor -- reach the long tail an advanced user needs, with sensible defaults so the common path stays simple. Quality is the constant: every field is researched, validated, and exercised in both engines; genuinely beta or niche knobs are skipped with a recorded reason.
+Model 100% of the configurable arguments of the provider resources the component maps to, at the pinned provider version -- read the provider schema fully, model it fully. Restructuring and renaming for an idiomatic spec is encouraged; deliberate field exclusions are not. Sensible defaults keep the common path simple while the full surface stays reachable. Quality is the constant: every field is researched, validated, and exercised in both engines. The only permitted exclusions are deprecated or superseded surface, always with a recorded reason -- omission is a decision, and every decision is recorded.
 
 ### Deployment-Agnostic Specs
 
