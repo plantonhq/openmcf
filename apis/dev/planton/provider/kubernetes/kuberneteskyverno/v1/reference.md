@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKyvernoSpec** installs Kyverno — the Kubernetes-native
 policy engine — from the official `kyverno` chart
 (https://kyverno.github.io/kyverno, chart 3.x = Kyverno 1.18+).

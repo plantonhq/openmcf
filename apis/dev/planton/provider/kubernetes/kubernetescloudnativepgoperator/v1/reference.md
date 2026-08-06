@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesCloudNativePgOperatorSpec** installs CloudNativePG — the CNCF
 PostgreSQL operator — from the official Helm chart (`cloudnative-pg` at
 https://cloudnative-pg.github.io/charts). The operator reconciles

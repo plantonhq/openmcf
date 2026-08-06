@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesVeleroSpec** installs Velero — cluster backup and disaster
 recovery — from the official Helm chart (`velero` at
 https://vmware-tanzu.github.io/helm-charts). Velero backs up Kubernetes

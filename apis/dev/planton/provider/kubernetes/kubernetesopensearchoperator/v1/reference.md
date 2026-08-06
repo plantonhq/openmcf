@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesOpenSearchOperatorSpec** installs the OpenSearch
 Kubernetes Operator — the opensearch-project's operator for running
 OpenSearch (the Apache-2.0 search and analytics engine) on

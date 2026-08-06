@@ -34,7 +34,7 @@ Start with:
 | [digitalocean](digitalocean/reference-index.md) | 15 | 1 | 0 |
 | [gcp](gcp/reference-index.md) | 79 | 79 | 0 |
 | [hetznercloud](hetznercloud/reference-index.md) | 12 | 12 | 0 |
-| [kubernetes](kubernetes/reference-index.md) | 120 | 119 | 60 |
+| [kubernetes](kubernetes/reference-index.md) | 120 | 119 | 71 |
 | [oci](oci/reference-index.md) | 37 | 7 | 0 |
 | [openfga](openfga/reference-index.md) | 3 | 3 | 0 |
 | [openstack](openstack/reference-index.md) | 25 | 25 | 0 |

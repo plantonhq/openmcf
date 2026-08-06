@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesSeaweedFsSpec** deploys SeaweedFS — the catalog's
 in-cluster S3-compatible object store (Apache-2.0) — from the
 official `seaweedfs` Helm chart

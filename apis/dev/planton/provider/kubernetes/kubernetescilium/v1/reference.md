@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesCiliumSpec** installs Cilium — the eBPF-based networking,
 network-security, and observability engine — from the official Helm chart
 (`cilium` at https://helm.cilium.io). Cilium is the cluster's CNI: it wires

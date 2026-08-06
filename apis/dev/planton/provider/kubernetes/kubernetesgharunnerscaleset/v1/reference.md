@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesGhaRunnerScaleSetSpec** declares an autoscaling fleet of
 self-hosted GitHub Actions runners for one GitHub repository,
 organization or enterprise — from the official

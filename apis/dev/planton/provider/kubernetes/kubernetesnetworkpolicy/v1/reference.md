@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesNetworkPolicySpec** declares which network traffic is allowed to and
 from a set of pods — the in-cluster firewall. A NetworkPolicy selects pods with
 `pod_selector` and then ALLOWS the traffic its rules describe; everything not

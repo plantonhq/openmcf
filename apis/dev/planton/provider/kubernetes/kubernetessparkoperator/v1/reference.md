@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesSparkOperatorSpec** deploys the Apache Spark Kubernetes
 Operator — the official ASF controller that runs Spark workloads
 declared as SparkApplication (one batch/streaming job, run to
