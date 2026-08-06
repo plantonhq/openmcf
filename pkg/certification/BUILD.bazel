@@ -11,14 +11,22 @@ go_library(
 go_test(
     name = "certification_test",
     srcs = [
+        "bundle_test.go",
         "conversion_test.go",
         "manifest_lifecycle_test.go",
     ],
     embed = [":certification"],
     deps = [
+        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
         "//internal/manifest",
+        "//pkg/catalogbundle",
         "//pkg/conversion",
         "//pkg/crkreflect",
         "@io_k8s_sigs_yaml//:yaml",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protodesc",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/descriptorpb",
     ],
 )
