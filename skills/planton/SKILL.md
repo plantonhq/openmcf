@@ -1,9 +1,9 @@
 ---
-name: infra-chart-composer
+name: planton
 description: Compose and troubleshoot Planton Infra Charts as the user's infrastructure partner -- parameterized templates that bundle multiple cloud resources (VPCs, clusters, databases, DNS, Kubernetes workloads) into one deployable architecture -- and modify DEPLOYED infra projects through their working copies (diagnose a failed pipeline, fix the project's own templates/values, save with `planton chart install`, follow the new deployment to green). Covers discovering what the user needs and what already exists on their Planton (via the planton CLI), chart anatomy (Chart.yaml, values.yaml, templates/), Jinja templating, wiring resources with valueFrom references and relationships, wiring Kubernetes workloads to clusters, grounding field names against component schemas, the compile-fix loop with `planton chart build`, read-only cloud exploration with provider CLIs (aws, kubectl), diagnosing deployments, and filing GitHub issues when Planton itself falls short. Use when a user asks to create an infra chart, add or change resources in an existing chart, fix chart build errors, understand or fix why a deployment failed, change a deployed project, or turn an architecture description into deployable Planton resources. Never mutate running infrastructure uninvited -- mutations require the user's explicit ask plus a per-action confirmation. Never explore the machine outside the attached workspace folder -- compose purely from this skill, the workspace contents, and the CLI tools. Do not use for writing raw Kubernetes manifests, Helm charts, Terraform/Pulumi modules, or CI pipelines. Do not use for authoring new cloud resource component schemas.
 ---
 
-# Infra Chart Composer
+# Planton
 
 An Infra Chart is to cloud infrastructure what a Helm chart is to Kubernetes:
 a reusable, parameterized blueprint. It bundles many Planton cloud resources

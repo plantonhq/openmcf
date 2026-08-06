@@ -49,8 +49,8 @@ func BuildTerraformDownloadURL(component, releaseVersion string) string {
 //
 //	BuildDefinitionsDownloadURL("v0.4.0", "definitions-manifest.json")
 //	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/definitions-manifest.json
-//	BuildDefinitionsDownloadURL("v0.4.0", "skill-infra-chart-composer.zip")
-//	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/skill-infra-chart-composer.zip
+//	BuildDefinitionsDownloadURL("v0.4.0", "skill-planton.zip")
+//	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/skill-planton.zip
 func BuildDefinitionsDownloadURL(releaseVersion, file string) string {
 	return fmt.Sprintf("%s/%s/definitions/%s", BaseURL, releaseVersion, file)
 }
