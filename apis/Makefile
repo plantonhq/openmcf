@@ -103,9 +103,10 @@ buf-lint: build-optional-linter-plugin
 	buf lint
 
 .PHONY: buf-breaking
-# Compares the module's protos against the main branch. The rule set lives in
-# buf.yaml (breaking:). While every kind sits in the pre-launch alpha posture
-# this check is advisory — CI surfaces findings as warnings; it becomes
-# channel-aware blocking once versions declare beta/stable channels.
+# Compares the module's protos against the main branch, classified by the
+# maturity channel each finding's version directory declares: alpha findings
+# are advisory (alpha may break in place, visibly); beta/stable/shared
+# findings fail. The rule set lives in buf.yaml (breaking:); the channel
+# policy lives in tools/ci/proto/buf_breaking_channel_gate.sh.
 buf-breaking:
-	buf breaking --against '../.git#branch=main,subdir=apis'
+	bash ../tools/ci/proto/buf_breaking_channel_gate.sh

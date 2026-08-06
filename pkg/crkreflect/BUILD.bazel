@@ -658,7 +658,9 @@ go_test(
         "kind_from_string_test.go",
         "kind_version_test.go",
         "prerequisites_test.go",
+        "registry_snapshot_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":crkreflect"],
     deps = [
         "//apis/dev/planton/shared/cloudresourcekind",

@@ -94,6 +94,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Module change-detection self-test
+        # The detection patterns live in tools/ci/release/detect_module_dirs.sh
+        # (single source, maturity-grammar-aware). The self-test proves they
+        # fire for every version channel BEFORE any detection runs -- a
+        # pattern that silently stops matching would otherwise stop module
+        # releases with no error anywhere.
+        run: bash tools/ci/release/detect_module_dirs.sh --self-test
+
       - name: Detect changes and create tags
         id: detect
         run: |
@@ -149,20 +157,14 @@ jobs:
             echo "Pulumi: forced all via manual dispatch"
             PULUMI_DIRS=$(find apis/dev/planton/provider -type d -name "pulumi" -path "*/iac/pulumi" 2>/dev/null | sort)
           else
-            PULUMI_DIRS=$(echo "$CHANGED_FILES" | \
-              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi/' | \
-              sed -E 's|(apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi)/.*|\1|' | \
-              sort -u)
+            PULUMI_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --pulumi)
           fi
 
           if [ "${{ inputs.force_terraform_all }}" = "true" ]; then
             echo "Terraform: forced all via manual dispatch"
             TERRAFORM_DIRS=$(find apis/dev/planton/provider -type d -name "tf" -path "*/iac/tf" 2>/dev/null | sort)
           else
-            TERRAFORM_DIRS=$(echo "$CHANGED_FILES" | \
-              grep -E '^apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf/' | \
-              sed -E 's|(apis/dev/planton/provider/[^/]+/[^/]+/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf)/.*|\1|' | \
-              sort -u)
+            TERRAFORM_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --terraform)
           fi
 
           # Count unique changed components, keyed on provider/component: a

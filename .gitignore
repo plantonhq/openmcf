@@ -55,6 +55,10 @@ web-app/src/gen/
 *.sh
 !app/entrypoint-unified.sh
 !tools/ci/release/package_content.sh
+# CI pipeline scripts must be tracked (referenced by .github/workflows/ and
+# the Makefile -- an ignored script exists only on the machine that wrote it
+# and breaks every fresh checkout).
+!tools/ci/**/*.sh
 # CI guard scripts must be tracked (run by .github/workflows/lint.*.yaml)
 !hack/guards/*.sh
 **/*.env

@@ -6,11 +6,13 @@
 # runs the two buf checks on every PR that touches them:
 #
 #   buf-lint     (BLOCKING)  -- style/structure rules from apis/buf.yaml.
-#   buf-breaking (ADVISORY)  -- wire/API compatibility against main. Advisory
-#                 while every kind sits in the pre-launch alpha posture, where
-#                 breaking in place is legal but must never be invisible; it
-#                 becomes channel-aware blocking once kinds declare beta or
-#                 stable versions (their channels forbid in-place breaks).
+#   buf-breaking (CHANNEL-AWARE) -- wire/API compatibility against main,
+#                 classified by the maturity channel each finding's version
+#                 directory declares: alpha findings are advisory (alpha may
+#                 break in place, visibly), beta/stable/shared findings FAIL
+#                 the job (those channels forbid in-place breaks). Policy and
+#                 classification live in
+#                 tools/ci/proto/buf_breaking_channel_gate.sh.
 #
 # Local equivalents: `make buf-lint` and `make buf-breaking`.
 # =============================================================================
@@ -42,7 +44,7 @@ jobs:
         run: buf lint
 
   buf-breaking:
-    name: buf breaking vs main (advisory)
+    name: buf breaking vs main (channel-aware)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,9 +53,8 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
-      - name: buf breaking against main
+      - name: classifier self-test
+        run: bash tools/ci/proto/buf_breaking_channel_gate.sh --self-test
+      - name: buf breaking against main (alpha advisory, beta/stable/shared blocking)
         working-directory: apis
-        run: |
-          if ! buf breaking --against '../.git#branch=origin/main,subdir=apis'; then
-            echo "::warning title=buf breaking::Breaking proto changes detected against main. Advisory while all kinds are alpha-posture; beta/stable channels make this blocking."
-          fi
+        run: bash ../tools/ci/proto/buf_breaking_channel_gate.sh '../.git#branch=origin/main,subdir=apis'

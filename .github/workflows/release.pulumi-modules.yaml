@@ -124,14 +124,20 @@ jobs:
             exit 0
           fi
           
-          # Get all component directories that have the pulumi folder
+          # Get all component/version entries that have a pulumi module. A
+          # version directory is any name matching the maturity grammar; each
+          # served version releases its own binary (the version segment in
+          # the R2 key keeps them from colliding).
           COMPONENTS=()
           for component_dir in "$PROVIDER_PATH"/*/; do
             component=$(basename "$component_dir")
-            pulumi_path="${component_dir}v1/iac/pulumi"
-            if [ -d "$pulumi_path" ]; then
-              COMPONENTS+=("$component")
-            fi
+            for version_dir in "$component_dir"*/; do
+              vname=$(basename "$version_dir")
+              if echo "$vname" | grep -qE '^v[0-9]+((alpha|beta)[0-9]+)?$' \
+                && [ -d "${version_dir}iac/pulumi" ]; then
+                COMPONENTS+=("${component}/${vname}")
+              fi
+            done
           done
           
           TOTAL=${#COMPONENTS[@]}
@@ -155,26 +161,28 @@ jobs:
           COMPLETED=0
           FAILED=0
           
-          for component in "${COMPONENTS[@]}"; do
+          for entry in "${COMPONENTS[@]}"; do
             COMPLETED=$((COMPLETED + 1))
             REMAINING=$((TOTAL - COMPLETED))
             
-            COMPONENT_PATH="${PROVIDER_PATH}/${component}/v1alpha1/iac/pulumi"
+            component="${entry%%/*}"
+            vname="${entry##*/}"
+            COMPONENT_PATH="${PROVIDER_PATH}/${entry}/iac/pulumi"
             
             # Handle Windows .exe extension
             if [ "$GOOS" = "windows" ]; then
               BINARY_NAME="${component}.exe"
-              ARTIFACT_NAME="${component}_${PLATFORM_LABEL}.exe.gz"
+              ARTIFACT_NAME="${vname}_${PLATFORM_LABEL}.exe.gz"
             else
               BINARY_NAME="${component}"
-              ARTIFACT_NAME="${component}_${PLATFORM_LABEL}.gz"
+              ARTIFACT_NAME="${vname}_${PLATFORM_LABEL}.gz"
             fi
             
-            R2_KEY="releases/${TAG}/modules/pulumi/${ARTIFACT_NAME}"
+            R2_KEY="releases/${TAG}/modules/pulumi/${component}/${ARTIFACT_NAME}"
             
             echo ""
             echo "----------------------------------------"
-            echo "BUILDING: ${component} (${PLATFORM_LABEL})"
+            echo "BUILDING: ${entry} (${PLATFORM_LABEL})"
             echo "Progress: ${COMPLETED}/${TOTAL} (${REMAINING} remaining)"
             echo "----------------------------------------"
             

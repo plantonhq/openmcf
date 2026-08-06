@@ -14,8 +14,8 @@
 #   - darwin_amd64   - Intel Macs
 #   - windows_amd64  - Windows
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}_{platform}.gz
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}_{platform}.gz
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
 #
 # Triggered by: auto-tag.yaml via workflow_dispatch (one call per component)
 # =============================================================================
@@ -66,7 +66,11 @@ jobs:
           TAG="${{ inputs.tag }}"
           COMPONENT="${{ inputs.component }}"
           PROVIDER="${{ inputs.provider }}"
-          BASE_URL="https://downloads.planton.dev/releases/${TAG}/modules/pulumi"
+          # The api-version segment is part of module identity
+          # (.../{component}/{version}/iac/pulumi) -- same layout the full
+          # release workflow writes.
+          VNAME=$(basename "$(dirname "$(dirname "${{ inputs.path }}")")")
+          BASE_URL="https://downloads.planton.dev/releases/${TAG}/modules/pulumi/${COMPONENT}"
           
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists"
@@ -93,10 +97,10 @@ jobs:
 
           | Platform | Download |
           |----------|----------|
-          | Linux x86-64 | [${COMPONENT}_linux_amd64.gz](${BASE_URL}/${COMPONENT}_linux_amd64.gz) |
-          | macOS Apple Silicon | [${COMPONENT}_darwin_arm64.gz](${BASE_URL}/${COMPONENT}_darwin_arm64.gz) |
-          | macOS Intel | [${COMPONENT}_darwin_amd64.gz](${BASE_URL}/${COMPONENT}_darwin_amd64.gz) |
-          | Windows x86-64 | [${COMPONENT}_windows_amd64.exe.gz](${BASE_URL}/${COMPONENT}_windows_amd64.exe.gz) |
+          | Linux x86-64 | [${VNAME}_linux_amd64.gz](${BASE_URL}/${VNAME}_linux_amd64.gz) |
+          | macOS Apple Silicon | [${VNAME}_darwin_arm64.gz](${BASE_URL}/${VNAME}_darwin_arm64.gz) |
+          | macOS Intel | [${VNAME}_darwin_amd64.gz](${BASE_URL}/${VNAME}_darwin_amd64.gz) |
+          | Windows x86-64 | [${VNAME}_windows_amd64.exe.gz](${BASE_URL}/${VNAME}_windows_amd64.exe.gz) |
 
           ---
 
@@ -104,14 +108,14 @@ jobs:
 
           \`\`\`bash
           # Linux x86-64
-          curl -LO ${BASE_URL}/${COMPONENT}_linux_amd64.gz
-          gunzip ${COMPONENT}_linux_amd64.gz
-          chmod +x ${COMPONENT}_linux_amd64
+          curl -LO ${BASE_URL}/${VNAME}_linux_amd64.gz
+          gunzip ${VNAME}_linux_amd64.gz
+          chmod +x ${VNAME}_linux_amd64
 
           # macOS Apple Silicon
-          curl -LO ${BASE_URL}/${COMPONENT}_darwin_arm64.gz
-          gunzip ${COMPONENT}_darwin_arm64.gz
-          chmod +x ${COMPONENT}_darwin_arm64
+          curl -LO ${BASE_URL}/${VNAME}_darwin_arm64.gz
+          gunzip ${VNAME}_darwin_arm64.gz
+          chmod +x ${VNAME}_darwin_arm64
           \`\`\`
 
           ---
@@ -124,7 +128,7 @@ jobs:
 
           ## Source Code
 
-          \`apis/dev/planton/provider/${PROVIDER}/${COMPONENT}/v1/iac/pulumi/\`
+          \`${{ inputs.path }}\`
           EOF
             
             # --latest=false: component point releases carry no infra-charts/version.txt
@@ -183,15 +187,16 @@ jobs:
           echo "========================================"
           
           # Handle Windows .exe extension
+          VNAME=$(basename "$(dirname "$(dirname "${COMPONENT_PATH}")")")
           if [ "$GOOS" = "windows" ]; then
             BINARY_NAME="${COMPONENT}.exe"
-            ARTIFACT_NAME="${COMPONENT}_${PLATFORM}.exe.gz"
+            ARTIFACT_NAME="${VNAME}_${PLATFORM}.exe.gz"
           else
             BINARY_NAME="${COMPONENT}"
-            ARTIFACT_NAME="${COMPONENT}_${PLATFORM}.gz"
+            ARTIFACT_NAME="${VNAME}_${PLATFORM}.gz"
           fi
           
-          R2_KEY="releases/${TAG}/modules/pulumi/${ARTIFACT_NAME}"
+          R2_KEY="releases/${TAG}/modules/pulumi/${COMPONENT}/${ARTIFACT_NAME}"
           
           # Build
           CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" go build \
@@ -222,7 +227,11 @@ jobs:
           TAG="${{ inputs.tag }}"
           COMPONENT="${{ inputs.component }}"
           PROVIDER="${{ inputs.provider }}"
-          BASE_URL="https://downloads.planton.dev/releases/${TAG}/modules/pulumi"
+          # The api-version segment is part of module identity
+          # (.../{component}/{version}/iac/pulumi) -- same layout the full
+          # release workflow writes.
+          VNAME=$(basename "$(dirname "$(dirname "${{ inputs.path }}")")")
+          BASE_URL="https://downloads.planton.dev/releases/${TAG}/modules/pulumi/${COMPONENT}"
           
           echo "## Pulumi Module Auto-Release Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -235,9 +244,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Download |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|----------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Linux x86-64 | [${COMPONENT}_linux_amd64.gz](${BASE_URL}/${COMPONENT}_linux_amd64.gz) |" >> $GITHUB_STEP_SUMMARY
-          echo "| macOS Apple Silicon | [${COMPONENT}_darwin_arm64.gz](${BASE_URL}/${COMPONENT}_darwin_arm64.gz) |" >> $GITHUB_STEP_SUMMARY
-          echo "| macOS Intel | [${COMPONENT}_darwin_amd64.gz](${BASE_URL}/${COMPONENT}_darwin_amd64.gz) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Windows x86-64 | [${COMPONENT}_windows_amd64.exe.gz](${BASE_URL}/${COMPONENT}_windows_amd64.exe.gz) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux x86-64 | [${VNAME}_linux_amd64.gz](${BASE_URL}/${VNAME}_linux_amd64.gz) |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS Apple Silicon | [${VNAME}_darwin_arm64.gz](${BASE_URL}/${VNAME}_darwin_arm64.gz) |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS Intel | [${VNAME}_darwin_amd64.gz](${BASE_URL}/${VNAME}_darwin_amd64.gz) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows x86-64 | [${VNAME}_windows_amd64.exe.gz](${BASE_URL}/${VNAME}_windows_amd64.exe.gz) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View Release](https://github.com/${{ github.repository }}/releases/tag/${TAG})" >> $GITHUB_STEP_SUMMARY

@@ -1111,7 +1111,7 @@ List every registered component and pick the next unaudited one:
 rg -n '= [0-9]+ \[\(kind_meta\)' apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto
 
 # Components that even HAVE both engines (parity is only meaningful when both exist):
-# (a tf/ dir AND a pulumi/module/ dir under the same v1/iac/)
+# (a tf/ dir AND a pulumi/module/ dir under the same version dir's iac/)
 fd -t d 'tf$' apis | sed 's:/tf$::' | while read d; do [ -d "$d/pulumi/module" ] && echo "$d"; done
 ```
 
