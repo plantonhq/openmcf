@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "certification",
+    srcs = ["certification.go"],
+    importpath = "github.com/plantonhq/planton/pkg/certification",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "certification_test",
+    srcs = ["manifest_lifecycle_test.go"],
+    embed = [":certification"],
+    deps = ["//internal/manifest"],
+)

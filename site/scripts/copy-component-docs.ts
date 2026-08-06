@@ -823,6 +823,12 @@ async function copyComponentDocs(): Promise<void> {
   }
 
   const providers = fs.readdirSync(apisRoot).filter(item => {
+    // The _test provider is permanent internal test infrastructure -- it
+    // carries the full per-kind file shape so pipelines can be exercised,
+    // but it must never appear on the public catalog site.
+    if (item === '_test') {
+      return false;
+    }
     const itemPath = path.join(apisRoot, item);
     return fs.statSync(itemPath).isDirectory();
   });

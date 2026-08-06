@@ -58,6 +58,17 @@ create_zip() {
   local count
   count=$(wc -l < "$tmp_list" | tr -d ' ')
 
+  # The _test provider is permanent internal test infrastructure ("never
+  # shipped to users"). Refusing it HERE -- not only in the selectors --
+  # means a future selector edit cannot quietly start shipping it.
+  if grep -q "/_test/" "$tmp_list"; then
+    echo "  ERROR: ${zip_name} selected _test provider content, which must"
+    echo "         never ship to users:"
+    grep "/_test/" "$tmp_list" | head -5 | sed 's/^/           /'
+    rm -f "$tmp_list"
+    exit 1
+  fi
+
   if [ "$count" -eq 0 ]; then
     # An empty selection means a selector pattern no longer matches the tree
     # (e.g. an api-version directory rename) -- shipping a release with a
@@ -86,7 +97,7 @@ create_zip() {
 # ─── 1. Presets ───────────────────────────────────────────────────────────────
 echo "1/5  Presets..."
 {
-  find "$PROVIDER_BASE" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \)
+  find "$PROVIDER_BASE" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \) ! -path '*/_test/*'
   echo "apis/dev/planton/shared/cloudresourcekind/cloud_resource_kind.proto"
 } | create_zip "presets.zip" "presets"
 
@@ -94,7 +105,7 @@ echo "1/5  Presets..."
 # Mirrors the ALLOWED_EXTENSIONS in iac-bundler.ts: .go, .tf, .md, .yaml
 # Excludes hidden dirs, vendor, and node_modules (same as iac-bundler.ts).
 echo "2/5  IaC source..."
-find "$PROVIDER_BASE" -path '*/v1alpha1/iac/*' \
+find "$PROVIDER_BASE" -path '*/v1alpha1/iac/*' ! -path '*/_test/*' \
     \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
     ! -path '*/vendor/*' \
     ! -path '*/node_modules/*' \
@@ -104,7 +115,7 @@ find "$PROVIDER_BASE" -path '*/v1alpha1/iac/*' \
 
 # ─── 3. Catalog Pages ────────────────────────────────────────────────────────
 echo "3/5  Catalog pages..."
-find "$PROVIDER_BASE" -path '*/v1alpha1/catalog-page.md' \
+find "$PROVIDER_BASE" -path '*/v1alpha1/catalog-page.md' ! -path '*/_test/*' \
   | create_zip "catalog-pages.zip" "catalog pages"
 
 # ─── 4. Proto Source ──────────────────────────────────────────────────────────
@@ -114,7 +125,7 @@ find "$PROVIDER_BASE" \( \
     -o -path '*/v1alpha1/api.proto' \
     -o -path '*/v1alpha1/stack_input.proto' \
     -o -path '*/v1alpha1/stack_outputs.proto' \
-  \) | create_zip "proto-source.zip" "proto source"
+  \) ! -path '*/_test/*' | create_zip "proto-source.zip" "proto source"
 
 # ─── 5. Reference Pack ────────────────────────────────────────────────────────
 # The pack is selected by file NAME, never by version-segment path: these
@@ -130,7 +141,7 @@ find "$PROVIDER_BASE" \( \
     -o -name 'reference-graph.yaml' \
     -o -name 'reference-commons.md' \
     -o -path "$PROVIDER_BASE/patterns/*.md" \
-  \) | create_zip "reference-pack.zip" "reference pack"
+  \) ! -path '*/_test/*' | create_zip "reference-pack.zip" "reference pack"
 
 echo ""
 echo "=== Done ==="

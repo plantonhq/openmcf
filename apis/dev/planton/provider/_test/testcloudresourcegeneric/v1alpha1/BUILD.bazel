@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "api.pb.go",
         "spec.pb.go",
+        "stack_input.pb.go",
         "stack_outputs.pb.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",

@@ -1,0 +1,3 @@
+name: test-cloud-resource-generic
+runtime: go
+description: Hermetic test resource -- exercises the full IaC pipeline with zero cloud dependencies

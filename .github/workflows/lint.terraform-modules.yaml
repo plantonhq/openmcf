@@ -142,7 +142,7 @@ jobs:
               rc=1
             fi
             echo "::endgroup::"
-          done < <(find apis -type d -path '*/v*/iac/tf' | sort)
+          done < <(find apis -type d -path '*/iac/tf' | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/tf$' | sort)
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::warning::${#failed[@]} module(s) failed validate:"
             printf '  - %s\n' "${failed[@]}"

@@ -46,7 +46,7 @@ if [[ -d "$provider_base" ]]; then
         misplaced_subdir+=("$subdir")
       fi
     done
-  done < <(find "$provider_base" -type d -path "*/v*/iac/pulumi" 2>/dev/null | sort)
+  done < <(find "$provider_base" -type d -path "*/iac/pulumi" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi$' | sort)
 fi
 
 status=0
