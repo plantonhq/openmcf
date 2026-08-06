@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/plantonhq/planton/internal/manifest"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
 // The manifest-lifecycle certification cases: the offline seams every real
@@ -42,7 +43,8 @@ func TestCertify_ValidManifestPassesOfflineValidation(t *testing.T) {
 // Case: a wrong apiVersion is rejected before anything reaches a server,
 // and the error names the exact fix (the plain-language error bar).
 func TestCertify_WrongEnvelopeRejectedWithExactFix(t *testing.T) {
-	corrupted := corruptedManifest(t, "_test.planton.dev/v1alpha1", "_test.planton.dev/v99")
+	served := servedAPIVersion(t)
+	corrupted := corruptedManifest(t, served, "_test.planton.dev/v99")
 
 	loaded, err := manifest.LoadManifestBytes(corrupted, "torture-wrong-envelope.yaml")
 	if err == nil {
@@ -51,10 +53,20 @@ func TestCertify_WrongEnvelopeRejectedWithExactFix(t *testing.T) {
 	if err == nil {
 		t.Fatal("a manifest with a wrong apiVersion must be rejected")
 	}
-	msg := err.Error()
-	if !strings.Contains(msg, "_test.planton.dev/v1alpha1") {
-		t.Errorf("the rejection must name the correct apiVersion so the fix is in the error; got: %v", err)
+	if !strings.Contains(err.Error(), served) {
+		t.Errorf("the rejection must name the correct apiVersion (%s) so the fix is in the error; got: %v", served, err)
 	}
+}
+
+// servedAPIVersion composes the torture kind's current apiVersion from the
+// registry (group domain + served version).
+func servedAPIVersion(t *testing.T) string {
+	t.Helper()
+	versionDir, err := crkreflect.ComponentVersionDir("testcloudresourcegeneric")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return "_test.planton.dev/" + versionDir
 }
 
 // Case: a field the schema does not know is rejected at load -- never

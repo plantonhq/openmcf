@@ -10,12 +10,12 @@ output "name" {
   value       = var.metadata.name
 }
 
-output "endpoint" {
-  description = "Deterministic endpoint derived from inputs"
-  value       = local.endpoint
+output "url" {
+  description = "Deterministic URL derived from inputs"
+  value       = local.url
 }
 
 output "tags" {
-  description = "Echo of spec.commands -- proves repeated fields round-trip"
-  value       = var.spec.commands
+  description = "Echo of spec.steps commands -- proves repeated message fields round-trip"
+  value       = [for s in var.spec.steps : s.command]
 }

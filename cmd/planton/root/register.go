@@ -54,6 +54,7 @@ func RegisterCommands(parent *cobra.Command, opts Options) {
 		SecretCoverage,
 		Terraform,
 		Tofu,
+		UpgradeManifest,
 		ValidateManifest,
 		ValidateOutputs,
 		ValidateRefs,

@@ -9,7 +9,7 @@
 package crkreflect
 
 import (
-	testcloudresourcegenericv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1"
+	testcloudresourcegenericv1alpha2 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha2"
 	testcloudresourcekubernetesv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1alpha1"
 	alicloudapplicationloadbalancerv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/alicloud/alicloudapplicationloadbalancer/v1alpha1"
 	alicloudcdndomainv1alpha1 "github.com/plantonhq/planton/apis/dev/planton/provider/alicloud/alicloudcdndomain/v1alpha1"
@@ -637,7 +637,7 @@ func merge(maps ...map[cloudresourcekind.CloudResourceKind]proto.Message) map[cl
 }
 
 var ProviderTestMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_TestCloudResourceGeneric:    &testcloudresourcegenericv1alpha1.TestCloudResourceGeneric{},
+	cloudresourcekind.CloudResourceKind_TestCloudResourceGeneric:    &testcloudresourcegenericv1alpha2.TestCloudResourceGeneric{},
 	cloudresourcekind.CloudResourceKind_TestCloudResourceKubernetes: &testcloudresourcekubernetesv1alpha1.TestCloudResourceKubernetes{},
 }
 

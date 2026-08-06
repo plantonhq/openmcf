@@ -23,6 +23,7 @@ go_library(
         "terraform.go",
         "tofu.go",
         "upgrade.go",
+        "upgrade_manifest.go",
         "validate_manifest.go",
         "validate_outputs.go",
         "validate_refs.go",
@@ -51,6 +52,8 @@ go_library(
         "//internal/cli/version",
         "//internal/cli/workspace",
         "//internal/manifest",
+        "//pkg/conversion",
+        "//pkg/conversion/embedded",
         "//pkg/crkreflect",
         "//pkg/explain",
         "//pkg/iac/localmodule",
@@ -70,16 +73,21 @@ go_library(
         "@com_github_pkg_errors//:errors",
         "@com_github_sirupsen_logrus//:logrus",
         "@com_github_spf13_cobra//:cobra",
+        "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//proto",
     ],
 )
 
 go_test(
     name = "root_test",
-    srcs = ["register_test.go"],
+    srcs = [
+        "register_test.go",
+        "upgrade_manifest_test.go",
+    ],
     embed = [":root"],
     deps = [
         "//internal/cli/version",
         "@com_github_spf13_cobra//:cobra",
+        "@io_k8s_sigs_yaml//:yaml",
     ],
 )

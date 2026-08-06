@@ -25,20 +25,40 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
-// TortureKindDir returns the torture kind's version directory, resolved from
-// this file's location so cases work from any test working directory.
-func TortureKindDir(t *testing.T) string {
+// TortureKindRoot returns the torture kind's directory (all versions),
+// resolved from this file's location so cases work from any test working
+// directory.
+func TortureKindRoot(t *testing.T) string {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot resolve caller location")
 	}
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
-	dir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "_test", "testcloudresourcegeneric", "v1alpha1")
+	dir := filepath.Join(repoRoot, "apis", "dev", "planton", "provider", "_test", "testcloudresourcegeneric")
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("torture kind directory missing: %v", err)
+	}
+	return dir
+}
+
+// TortureKindDir returns the torture kind's SERVED version directory. The
+// version segment comes from the registry -- the same derivation every path
+// builder in the repo uses, so certification moves with graduations
+// automatically.
+func TortureKindDir(t *testing.T) string {
+	t.Helper()
+	versionDir, err := crkreflect.ComponentVersionDir("testcloudresourcegeneric")
+	if err != nil {
+		t.Fatalf("resolving the torture kind's served version: %v", err)
+	}
+	dir := filepath.Join(TortureKindRoot(t), versionDir)
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatalf("torture kind served-version directory missing: %v", err)
 	}
 	return dir
 }

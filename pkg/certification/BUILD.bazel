@@ -5,11 +5,20 @@ go_library(
     srcs = ["certification.go"],
     importpath = "github.com/plantonhq/planton/pkg/certification",
     visibility = ["//visibility:public"],
+    deps = ["//pkg/crkreflect"],
 )
 
 go_test(
     name = "certification_test",
-    srcs = ["manifest_lifecycle_test.go"],
+    srcs = [
+        "conversion_test.go",
+        "manifest_lifecycle_test.go",
+    ],
     embed = [":certification"],
-    deps = ["//internal/manifest"],
+    deps = [
+        "//internal/manifest",
+        "//pkg/conversion",
+        "//pkg/crkreflect",
+        "@io_k8s_sigs_yaml//:yaml",
+    ],
 )

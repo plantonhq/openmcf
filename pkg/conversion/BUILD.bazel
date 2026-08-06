@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "conversion",
+    srcs = [
+        "catalog.go",
+        "engine.go",
+        "paths.go",
+        "spec.go",
+        "totality.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/conversion",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/crkreflect",
+        "@com_github_google_cel_go//cel:go_default_library",
+        "@io_k8s_sigs_yaml//:yaml",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)
+
+go_test(
+    name = "conversion_test",
+    srcs = [
+        "corpus_test.go",
+        "embedded_drift_test.go",
+        "totality_test.go",
+    ],
+    embed = [":conversion"],
+    deps = [
+        "//apis/dev/planton/provider/_test/testcloudresourcegeneric/v1alpha1",
+        "//apis/dev/planton/shared/cloudresourcekind",
+        "//pkg/conversion/embedded",
+        "//pkg/crkreflect",
+        "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
+        "@io_k8s_sigs_yaml//:yaml",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+    ],
+)

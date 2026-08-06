@@ -1,9 +1,9 @@
-apiVersion: _test.planton.dev/v1alpha1
+apiVersion: _test.planton.dev/v1alpha2
 kind: TestCloudResourceGeneric
 metadata:
   name: torture-default
 spec:
-  stringField: explicit-string
+  displayName: explicit-string
   int32Field: 7
   boolField: true
   nested:
@@ -17,7 +17,8 @@ spec:
       fieldPath: status.outputs.id
   labels:
     purpose: certification
-  commands:
-    - first
-    - second
+  steps:
+    - command: first
+    - command: second
+  replicas: 2
   sensitiveString: not-a-real-secret

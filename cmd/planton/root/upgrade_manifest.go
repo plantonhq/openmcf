@@ -1,0 +1,169 @@
+package root
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/plantonhq/planton/internal/cli/cliprint"
+	"github.com/plantonhq/planton/internal/cli/iacflags"
+	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
+	"github.com/plantonhq/planton/internal/manifest"
+	"github.com/plantonhq/planton/pkg/conversion"
+	"github.com/plantonhq/planton/pkg/conversion/embedded"
+	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
+)
+
+var UpgradeManifest = &cobra.Command{
+	Use:   "upgrade-manifest [manifest-path]",
+	Short: "convert a manifest to its kind's served api version, offline",
+	Long: `Converts a manifest written at an older api version to the version the
+kind currently serves, using the same declarative conversion specs the
+platform executes -- entirely offline. Declared losses (values the newer
+version cannot express) are reported explicitly; the converted manifest is
+validated before it is printed.`,
+	Example: `
+	# Upgrade a manifest file and print the converted YAML
+	planton upgrade-manifest manifest.yaml
+
+	# Write the converted manifest to a file
+	planton upgrade-manifest manifest.yaml -o upgraded.yaml
+	`,
+	Args: cobra.MaximumNArgs(1),
+	Run:  upgradeManifestHandler,
+}
+
+var upgradeManifestOutput string
+
+func init() {
+	iacflags.AddManifestSourceFlags(UpgradeManifest)
+	UpgradeManifest.Flags().StringVarP(&upgradeManifestOutput, "output", "o", "", "write the converted manifest to this file instead of stdout")
+}
+
+func upgradeManifestHandler(cmd *cobra.Command, args []string) {
+	var manifestPath string
+	var isTemp bool
+	var err error
+
+	if len(args) > 0 {
+		manifestPath = args[0]
+	} else {
+		manifestPath, isTemp, err = climanifest.ResolveManifestPath(cmd)
+		if err != nil {
+			if climanifest.HandleClipboardError(err) {
+				os.Exit(1)
+			}
+			cliprint.PrintError(fmt.Sprintf("failed to resolve manifest: %v", err))
+			os.Exit(1)
+		}
+		if isTemp {
+			defer os.Remove(manifestPath)
+		}
+	}
+
+	converted, losses, err := upgradeManifestFile(manifestPath)
+	if err != nil {
+		cliprint.PrintError(err.Error())
+		os.Exit(1)
+	}
+
+	for _, loss := range losses {
+		cliprint.PrintWarning(fmt.Sprintf("declared loss at %s: %s", loss.Path, loss.Reason))
+	}
+
+	if upgradeManifestOutput != "" {
+		if err := os.WriteFile(upgradeManifestOutput, converted, 0o644); err != nil {
+			cliprint.PrintError(fmt.Sprintf("writing %s: %v", upgradeManifestOutput, err))
+			os.Exit(1)
+		}
+		cliprint.PrintSuccessMessage(fmt.Sprintf("upgraded manifest written to %s", upgradeManifestOutput))
+		return
+	}
+	fmt.Print(string(converted))
+}
+
+// upgradeManifestFile converts the manifest at path to its kind's served
+// version and returns the converted YAML plus any declared losses. The
+// conversion operates on the raw document (an old-version manifest cannot
+// parse into current stubs -- that inability is the whole point), and the
+// RESULT is validated through the normal offline validator before returning.
+func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss, error) {
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading manifest: %w", err)
+	}
+	var doc map[string]any
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return nil, nil, fmt.Errorf("the manifest is not valid YAML: %w", err)
+	}
+
+	kindName, _ := doc["kind"].(string)
+	if kindName == "" {
+		return nil, nil, fmt.Errorf("the manifest has no kind field -- nothing to upgrade")
+	}
+	kind := crkreflect.KindFromString(kindName)
+	served, err := crkreflect.KindVersion(kind)
+	if err != nil {
+		return nil, nil, fmt.Errorf("kind %q is not a registered cloud-resource kind: %w", kindName, err)
+	}
+
+	apiVersion, _ := doc["apiVersion"].(string)
+	_, current, found := cutLastSlash(apiVersion)
+	if !found {
+		return nil, nil, fmt.Errorf("the manifest's apiVersion %q carries no version segment", apiVersion)
+	}
+	if current == served {
+		return nil, nil, fmt.Errorf("the manifest is already at %s -- the version this kind serves; nothing to upgrade", served)
+	}
+
+	specsFS, err := embedded.SpecsFS()
+	if err != nil {
+		return nil, nil, err
+	}
+	specs, err := conversion.SpecsForKind(specsFS, kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	steps, err := conversion.Path(specs, current, served)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var losses []conversion.DeclaredLoss
+	converted := doc
+	for _, step := range steps {
+		var stepLosses []conversion.DeclaredLoss
+		converted, stepLosses, err = conversion.Apply(step.Spec, step.Direction, converted)
+		if err != nil {
+			return nil, nil, err
+		}
+		losses = append(losses, stepLosses...)
+	}
+
+	out, err := yaml.Marshal(converted)
+	if err != nil {
+		return nil, nil, fmt.Errorf("serializing the converted manifest: %w", err)
+	}
+
+	// The conversion is only done when its OUTPUT passes the same offline
+	// validation apply runs -- an upgrade that produces an invalid manifest
+	// is an engine or spec defect, and it surfaces here, not at the server.
+	loaded, err := manifest.LoadManifestBytes(out, manifestPath+" (upgraded)")
+	if err != nil {
+		return nil, nil, fmt.Errorf("the upgraded manifest does not load against %s -- this is a conversion-spec defect, report it: %w", served, err)
+	}
+	if err := manifest.ValidateLoaded(loaded); err != nil {
+		return nil, nil, fmt.Errorf("the upgraded manifest does not validate against %s -- this is a conversion-spec defect, report it: %w", served, err)
+	}
+	return out, losses, nil
+}
+
+func cutLastSlash(s string) (before, after string, found bool) {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '/' {
+			return s[:i], s[i+1:], true
+		}
+	}
+	return s, "", false
+}

@@ -5,7 +5,7 @@ locals {
   # shapes look exactly like a real kind's.
   resource_id = "tcrg-${var.metadata.name}"
 
-  # A deterministic endpoint derived from inputs: proves output values flow
+  # A deterministic URL derived from inputs: proves output values flow
   # from resolved inputs through the engine into stack outputs.
-  endpoint = "test://${var.metadata.name}"
+  url = "test://${var.metadata.name}"
 }

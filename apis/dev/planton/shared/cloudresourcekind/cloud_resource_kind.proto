@@ -123,7 +123,7 @@ enum CloudResourceKind {
   // 1–49: Test/dev/custom
   TestCloudResourceGeneric = 1 [(kind_meta) = {
     provider: _test
-    version: "v1alpha1"
+    version: "v1alpha2"
     id_prefix: "tcrg"
   }];
   TestCloudResourceKubernetes = 2 [(kind_meta) = {

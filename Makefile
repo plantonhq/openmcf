@@ -93,6 +93,15 @@ bazel-test:
 # Generates kind_map_gen.go containing ToMessageMap.
 # The "-tags codegen" flag is REQUIRED to avoid chicken-and-egg compilation errors.
 # See pkg/crkreflect/new_instance.go and pkg/crkreflect/codegen/main.go for details.
+# Regenerates pkg/conversion/embedded/specs -- the byte-for-byte mirror of
+# the co-located conversion specs (apis/.../<kind>/conversions/*.yaml) that
+# ships inside standalone binaries. The mirror exists because Go embeds
+# cannot cross Bazel package boundaries; the drift test in pkg/conversion
+# fails whenever mirror and authored specs disagree.
+.PHONY: generate-conversion-registry
+generate-conversion-registry:
+	go run -tags codegen ./pkg/conversion/codegen
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go

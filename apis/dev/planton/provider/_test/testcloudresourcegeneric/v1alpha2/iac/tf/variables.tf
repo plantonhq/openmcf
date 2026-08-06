@@ -19,8 +19,7 @@ variable "metadata" {
 variable "spec" {
   description = "Specification for the test resource (every generic field class)"
   type = object({
-    string_field      = optional(string)
-    string_no_default = optional(string)
+    display_name = optional(string)
     int32_field       = optional(number)
     int64_field       = optional(number)
     uint32_field      = optional(number)
@@ -38,8 +37,11 @@ variable "spec" {
     optional_ref  = optional(string)
     annotated_ref = optional(string)
 
-    labels   = optional(map(string), {})
-    commands = optional(list(string), [])
+    labels = optional(map(string), {})
+    steps = optional(list(object({
+      command = string
+    })), [])
+    replicas = optional(number)
 
     sensitive_string = optional(string)
     sensitive_ref    = optional(string)
