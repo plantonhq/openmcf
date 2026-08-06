@@ -21,9 +21,21 @@
 # example manifest, a generator error): that is a REAL catalog bug, and this
 # run stays red so it is fixed at the source, never papered over.
 #
-# Loop safety: pushes made with the workflow token do not trigger workflow
-# runs, and the gate is re-proven green before anything is pushed. The
-# concurrency group serializes heals per ref.
+# Push credential: the heal push must clear the branch's required status
+# checks, which reject the default workflow token (proven empirically: GH013,
+# "Required status check ... is expected"; the Actions app cannot be a ruleset
+# bypass actor in this organization and deploy keys are disabled). The push
+# therefore authenticates with the AUTO_HEAL_PUSH_TOKEN repository secret --
+# a fine-grained token scoped to this repository with contents read/write,
+# owned by an actor the ruleset's bypass list admits. Without the secret the
+# workflow still detects drift and regenerates, but the push fails and the
+# run goes red with the exact fix in the log: degraded, never silent.
+#
+# Loop safety: pushes made with that token DO retrigger this workflow; the
+# loop terminates because regeneration is deterministic -- the healed tree is
+# gate-green, so the retriggered run no-ops. The gate is re-proven green
+# before anything is pushed, and the concurrency group serializes heals per
+# ref.
 #
 # The push is made to the ref the run executed on (never a hardcoded branch),
 # so a workflow_dispatch run against any branch exercises the full
@@ -63,6 +75,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Falls back to the default workflow token when the secret is
+          # absent; see the push-credential note in the header.
+          token: ${{ secrets.AUTO_HEAL_PUSH_TOKEN || github.token }}
 
       - uses: actions/setup-go@v5
         with:
