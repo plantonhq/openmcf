@@ -82,27 +82,30 @@ Kind names follow a consistent pattern: `{Provider}{Resource}`.
 
 This convention eliminates ambiguity. When you see `GcpCloudSql` in a manifest, you know immediately that this is a Google Cloud SQL resource managed through the GCP provider, not a generic SQL database abstraction.
 
-## Enum Range Allocation
+## Enum Band Allocation
 
-The enum entries are organized by provider range:
+Every cloud provider owns a 1,000-wide number band, giving each catalog room to grow to its provider's full surface without ever colliding with a neighbor:
 
-| Range | Provider |
+| Band | Provider |
 |-------|----------|
 | 1-49 | Test/development |
 | 50-199 | Third-party services (Confluent, Atlas, Snowflake) |
-| 200-399 | AWS |
-| 400-599 | Azure |
-| 600-799 | GCP |
-| 800-999 | Kubernetes |
-| 1200-1499 | DigitalOcean |
-| 1500-1799 | Civo |
-| 1800-2099 | Cloudflare |
-| 2100-2299 | Auth0 |
-| 2300-2499 | OpenFGA |
-| 2500-2799 | OpenStack |
-| 2800-2999 | Scaleway |
+| 1000-1999 | AWS |
+| 2000-2999 | Azure |
+| 3000-3999 | GCP |
+| 4000-4999 | Kubernetes |
+| 5000-5999 | DigitalOcean |
+| 6000-6999 | Civo |
+| 7000-7999 | Cloudflare |
+| 8000-8999 | Auth0 |
+| 9000-9999 | OpenFGA |
+| 10000-10999 | OpenStack |
+| 11000-11999 | Scaleway |
+| 12000-12999 | Alibaba Cloud |
+| 13000-13999 | OCI |
+| 14000-14999 | Hetzner Cloud |
 
-Each range has room for growth. New resources for an existing provider are added within its range. New providers receive a new range.
+New resources for an existing provider are added within its band. The next new provider takes the next free 1,000-wide band.
 
 ## From Kind to Deployment
 
@@ -115,7 +118,7 @@ planton pulumi up -f my-resource.yaml
 The CLI reads the `kind` field from your manifest and uses the `CloudResourceKind` enum to:
 
 1. **Resolve the provider** -- determines which `ProviderConfig` type to use for credentials
-2. **Locate the IaC module** -- maps to `apis/dev/planton/provider/{provider}/{kind}/v1/iac/pulumi/` or `iac/tf/`
+2. **Locate the IaC module** -- maps to `apis/dev/planton/provider/{provider}/{kind}/{version}/iac/pulumi/` or `iac/tf/`, where `{version}` is the kind's current API version from the registry (for example `v1alpha1`)
 3. **Load the protobuf schema** -- determines which message type to use for validation
 4. **Construct the stack input** -- wraps your manifest and provider config into the IaC input contract
 

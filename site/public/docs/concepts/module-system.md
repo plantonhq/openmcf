@@ -67,7 +67,7 @@ Each deployment operates on its own copy of the module, which means concurrent d
 Within the staging workspace, the CLI locates modules using a deterministic path:
 
 ```
-{workspace}/apis/dev/planton/provider/{provider}/{kind}/v1/iac/{engine}/
+{workspace}/apis/dev/planton/provider/{provider}/{kind}/{version}/iac/{engine}/
 ```
 
 For example, the Pulumi module for `KubernetesPostgres`:
@@ -77,7 +77,7 @@ For example, the Pulumi module for `KubernetesPostgres`:
   apis/dev/planton/provider/kubernetes/kubernetespostgres/v1alpha1/iac/pulumi/
 ```
 
-The provider name is derived from the `CloudResourceKind` enum metadata. The kind name is the lowercase version of the enum entry. The engine is either `pulumi` or `tf`.
+The provider name is derived from the `CloudResourceKind` enum metadata. The kind name is the lowercase version of the enum entry. The version segment is the kind's current API version, also read from the enum metadata (for example `v1alpha1`). The engine is either `pulumi` or `tf`.
 
 ## Version Management
 
