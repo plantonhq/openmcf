@@ -27,7 +27,7 @@ stored, alerted). Clusters routinely need both — the
 [observability-stack pattern](../../../patterns/observability-stack.md)
 covers the monitoring side.
 
-## Namespace
+## Namespace ownership — the infra exception
 
 A dedicated single-tenant namespace with `createNamespace: true` — the
 [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s

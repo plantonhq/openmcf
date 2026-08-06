@@ -46,7 +46,7 @@ controller ever claims them.
 Ingress renders between the controller's entry node and the workload's
 Service, with the `valueFrom` backend edge drawn. TLS-by-annotation adds
 no node — which is why the issuer chain must be checked deliberately in
-the shared layer.
+the shared-cluster layer.
 
 ## Pairs well with
 

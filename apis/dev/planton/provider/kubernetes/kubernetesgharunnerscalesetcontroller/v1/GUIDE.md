@@ -21,7 +21,7 @@ controller strands, not deletes, the declared fleets' objects (verified
 live per the reference page). Same family as the Percona operators;
 opposite of RabbitMQ's. Sequence teardown accordingly.
 
-## Namespace — the infra exception
+## Namespace ownership — the infra exception
 
 Dedicated single-tenant namespace, `createNamespace: true` — the
 [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s

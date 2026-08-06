@@ -5,7 +5,7 @@ PostgreSQL cluster on the cluster — and the coupling that actually bites
 is not installation but CONFIGURATION: a database's backup declaration is
 inert unless THIS operator was installed with the matching plugin.
 
-## Once per cluster, in the shared chart
+## Once per cluster, in the shared-cluster chart
 
 Install it once; application environments declare KubernetesPostgres
 clusters, never their own operator (the

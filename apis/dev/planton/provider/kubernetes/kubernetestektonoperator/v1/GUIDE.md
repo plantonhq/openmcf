@@ -27,7 +27,7 @@ exists — its teardown finalizers need a running operator, or deletion
 hangs. The destroy-order rule is stated from the config side too; honor it
 in any teardown proposal.
 
-## Namespace
+## Namespace ownership — the infra exception
 
 The fixed `tekton-operator` namespace is a dedicated sole-tenant one — the
 [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s

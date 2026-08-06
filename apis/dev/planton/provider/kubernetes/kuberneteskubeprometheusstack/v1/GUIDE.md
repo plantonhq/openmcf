@@ -21,7 +21,7 @@ the cluster — deploy it early, in the shared-cluster chart.
 The monitoring CRDs are cluster-scoped singletons; a second stack must
 skip CRDs and scope its discovery — an advanced posture the reference
 page describes, never the default. Treat the stack like the operators:
-one install, shared layer, its own namespace (`createNamespace: true` is
+one install, shared-cluster layer, its own namespace (`createNamespace: true` is
 the [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s
 sole-tenant case). Note the reference page's 26-character name budget —
 the chart silently truncates longer fullnames.
@@ -39,7 +39,9 @@ composition hub; run it INSTEAD of the bundled one, not beside it.
 The stack renders as a shared-layer node; a standalone Grafana draws a
 datasource edge into its `prometheus_endpoint`, and Loki's alert routing
 can draw an edge into its Alertmanager. The serviceMonitor dependency,
-like every prerequisite-shaped coupling, draws NOTHING — reviewers check
+like every prerequisite-shaped coupling
+([operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)),
+draws NOTHING — reviewers check
 for the stack node whenever any component's monitoring toggle is on.
 
 ## Pairs well with

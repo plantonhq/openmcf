@@ -12,7 +12,10 @@ SparkApplication (one batch/streaming job, run to completion) or
 SparkCluster (a long-lived standalone cluster) custom resources — via
 KubernetesManifest, in a namespace the operator watches. A proposal for
 "Spark on the cluster" names both halves: this engine AND the
-application/cluster CRs, or nothing runs.
+application/cluster CRs, or nothing runs. Diagram consequence: the Spark
+workloads themselves ride inside opaque manifest nodes — the actual jobs
+are invisible in the rendered architecture, so name them in the
+proposal's prose.
 
 ## Watch scope and CRD lifecycle
 
@@ -22,7 +25,7 @@ declared Spark objects (the reference page carries both). The
 invisible-edge mechanism:
 [operator-prerequisite pattern](../../../patterns/operator-prerequisite.md).
 
-## Namespace — the infra exception
+## Namespace ownership — the infra exception
 
 Dedicated single-tenant namespace, `createNamespace: true` — the
 [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s

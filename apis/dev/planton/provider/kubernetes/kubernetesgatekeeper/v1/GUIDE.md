@@ -35,7 +35,7 @@ enforces nothing.
 
 ## Once per cluster; the infra exception
 
-Admission engines are cluster singletons in practice; shared chart, own
+Admission engines are cluster singletons in practice; shared-cluster chart, own
 namespace ([namespace-ownership pattern](../../../patterns/namespace-ownership.md)
 sole-tenant case;
 [operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)

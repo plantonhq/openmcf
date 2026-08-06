@@ -10,6 +10,14 @@ where a kind's `GUIDE.md` teaches wisdom about that kind alone, a pattern
 teaches how kinds compose -- and what each composition looks like on the
 architecture diagram the platform renders.
 
+## The patterns
+
+| Pattern | The truth it owns |
+|---|---|
+| [namespace-ownership.md](namespace-ownership.md) | Who owns a namespace: a dedicated KubernetesNamespace component vs the `createNamespace` flag — including the sole-tenant infra case where the flag is the normal shape |
+| [operator-prerequisite.md](operator-prerequisite.md) | Custom-resource kinds need their controller watching their namespace; the dependency is registry metadata, draws no diagram edge, and operators disagree on default watch scope |
+| [observability-stack.md](observability-stack.md) | "Give me observability": the assembled stack (collector, Loki, Tempo, kube-prometheus-stack, Grafana) vs the all-in-one (Signoz + composed ClickHouse), with the fully wired example |
+
 ## Reading a pattern
 
 One file per pattern. Frontmatter declares the kinds the pattern composes,

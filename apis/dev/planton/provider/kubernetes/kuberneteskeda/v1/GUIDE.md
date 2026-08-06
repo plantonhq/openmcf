@@ -21,14 +21,17 @@ This component installs the operator. The scaling rules — ScaledObject,
 ScaledJob, TriggerAuthentication — are KEDA custom resources deployed
 per workload (via KubernetesManifest today), in the workload's namespace.
 Installing KEDA alone scales nothing; a complete proposal names the
-ScaledObjects too.
+ScaledObjects too. Diagram consequence: Manifest-carried ScaledObjects
+render as opaque manifest nodes, so the event-scaling topology (which
+queue drives which workload) is invisible in the rendered architecture —
+state it in the proposal's prose.
 
 ## Once per cluster — the external-metrics singleton
 
 KEDA registers the cluster-wide `external.metrics.k8s.io` APIService, and
 Kubernetes allows exactly ONE external-metrics provider — a second KEDA
 (or another adapter claiming that API) fights it. Release name fixed;
-one install, shared chart, own namespace
+one install, shared-cluster chart, own namespace
 ([operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)
 singleton posture; namespace the
 [namespace-ownership pattern](../../../patterns/namespace-ownership.md)'s

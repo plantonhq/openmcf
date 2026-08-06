@@ -20,7 +20,10 @@ a stated split is double-tooling.
 Nothing ClickHouse-related is bundled — the telemetry store is composed
 (the spec doc is explicit, and explains why: your telemetry outlives
 Signoz reinstalls, and upgrades roll independently). A complete Signoz
-proposal is three kinds deep:
+proposal is three kinds deep. The first link is a prerequisite that
+draws no diagram edge (the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md));
+the Signoz-to-ClickHouse link, by contrast, IS a drawn `valueFrom` edge:
 
 1. [KubernetesAltinityOperator](../../kubernetesaltinityoperator/v1/GUIDE.md)
    — watching the ClickHouse's namespace (its guide's own trap).

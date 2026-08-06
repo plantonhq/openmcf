@@ -32,7 +32,7 @@ kube-prometheus-stack's Alertmanager endpoint — wire it so log-driven
 alerts join the same routing, silencing, and paging as everything else,
 instead of growing a second alert system.
 
-## Namespace and placement
+## Namespace ownership
 
 Observability components conventionally share one namespace (the
 pattern's example uses `observability`) — wire `spec.namespace` through

@@ -13,8 +13,9 @@ namespace only, so a Kafka cluster in an application namespace needs the
 operator's watch scope to cover it. Placement judgment and watch-scope
 wiring: the
 [operator's guide](../../kubernetesstrimzikafkaoperator/v1/GUIDE.md).
-Note the coupling never appears as a reference edge in the manifests —
-reviewers must check the watch scope deliberately.
+Note the coupling never appears as a reference edge in the manifests
+([operator-prerequisite pattern](../../../patterns/operator-prerequisite.md))
+— reviewers must check the watch scope deliberately.
 
 ## Topics and users are architecture, and they are place-bound
 

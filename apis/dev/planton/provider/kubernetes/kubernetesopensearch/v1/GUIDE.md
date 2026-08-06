@@ -39,7 +39,7 @@ feeds it — the multi-tenant case where `createNamespace: true` is wrong;
 ## On the diagram
 
 Cluster (with Dashboards inside it) and operator render as separate
-nodes — the operator in the shared layer, the cluster in its
+nodes — the operator in the shared-cluster layer, the cluster in its
 application environment. Like every operator-backed kind, no edge
 connects them (the
 [operator-prerequisite pattern](../../../patterns/operator-prerequisite.md));

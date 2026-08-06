@@ -13,7 +13,9 @@ Co-located suits one team owning both operator and databases, keeping
 operator-upgrade blast radius inside their namespace. The shared-chart
 cluster-wide shape suits the platform posture — application
 environments declare KubernetesMysql clusters without touching the
-shared layer. The coupling is never a manifest edge; when a cluster
+shared-cluster layer. The coupling is never a manifest edge
+([operator-prerequisite pattern](../../../patterns/operator-prerequisite.md));
+when a cluster
 sits NotReady with nothing acting on it, check the watch scope first.
 
 ## Uninstall does not take the databases — but read before upgrading

@@ -27,7 +27,7 @@ traces back through a `tempo` datasource on the exported `http_endpoint`.
 The full wired composition:
 [observability-stack pattern](../../../patterns/observability-stack.md).
 
-## Namespace and placement
+## Namespace ownership
 
 Shares the observability namespace with its siblings — wire
 `spec.namespace` through that KubernetesNamespace

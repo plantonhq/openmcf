@@ -25,7 +25,7 @@ is blunt about this). For anything beyond a throwaway cluster, set a real
 password — the operator's account exists on every cluster it manages, so
 a default here is a cluster-wide exposure, not a per-instance one.
 
-## Once per cluster, shared chart; the infra-namespace exception
+## Once per cluster, shared-cluster chart; the infra-namespace exception
 
 One operator reconciles every ClickHouse cluster; declare it once in the
 shared-cluster chart. A dedicated single-tenant namespace with

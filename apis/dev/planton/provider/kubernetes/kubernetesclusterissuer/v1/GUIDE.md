@@ -12,16 +12,21 @@ When an architecture exposes anything over public HTTPS, it needs this
 chain, in this order — typically in the shared-cluster chart, not the
 application environment:
 
-1. **KubernetesCertManager** — the controller. Cluster-scoped, once per
-   cluster. Without it, a ClusterIssuer is a custom resource nothing reads.
+1. **[KubernetesCertManager](../../kubernetescertmanager/v1/GUIDE.md)** —
+   the controller. Cluster-scoped, once per cluster. Without it, a
+   ClusterIssuer is a custom resource nothing reads.
 2. **KubernetesClusterIssuer** (this component) — the certificate authority
    front-end, e.g. ACME/Let's Encrypt for public endpoints. Its
    `spec.certManagerNamespace` is a foreign key defaulting to the
    KubernetesCertManager resource's output — wire it with `valueFrom` so
    the dependency is explicit and ordered.
-3. The endpoint's certificate — a Certificate resource or the
-   `cert-manager.io/cluster-issuer` ingress annotation, selecting this
-   resource by name (the ClusterIssuer is named after `metadata.name`).
+3. The endpoint's certificate — a
+   [KubernetesCertificate](../../kubernetescertificate/v1/GUIDE.md) or the
+   `cert-manager.io/cluster-issuer` ingress annotation (the
+   [Ingress guide](../../kubernetesingress/v1/GUIDE.md) carries that lane;
+   [Gateway listeners](../../kubernetesgateway/v1/GUIDE.md) consume the
+   explicit kind's Secret), selecting this resource by name (the
+   ClusterIssuer is named after `metadata.name`).
 
 If the user asked for "a standard cluster my app's public endpoint runs
 on", steps 1 and 2 belong in the proposal even though the user never said

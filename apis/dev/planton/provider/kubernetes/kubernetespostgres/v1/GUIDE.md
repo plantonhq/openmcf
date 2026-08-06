@@ -8,19 +8,21 @@ PostgreSQL setting matters.
 ## The architecture must include the operator
 
 This component does not run PostgreSQL by itself: it renders a CloudNativePG
-`Cluster` custom resource, and **KubernetesCloudNativePgOperator must be on
-the cluster** to reconcile it (see the spec's own doc on
-[reference.md](reference.md)). When composing an architecture, include the
-operator component — proposing a database without it deploys a custom
-resource nothing acts on.
+`Cluster` custom resource, and
+**[KubernetesCloudNativePgOperator](../../kubernetescloudnativepgoperator/v1/GUIDE.md)
+must be on the cluster** to reconcile it — proposing a database without it
+deploys a custom resource nothing acts on, with no error anywhere (the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)
+is the general mechanism).
 
 Two couplings to get right:
 
 - **Backups couple to the operator's configuration.** Declaring
   `spec.backup` here requires the operator component installed with
-  `barman_cloud_plugin.enabled` — the backup objects this spec renders are
+  `barmanCloudPlugin.enabled` — the backup objects this spec renders are
   reconciled by that plugin. A backup declared on the database with a
-  plugin-less operator is silently inert infrastructure.
+  plugin-less operator is silently inert infrastructure (the operator's
+  guide carries the plugin side).
 - **One operator per cluster, many databases.** The operator is
   cluster-scoped; compose it once (typically in the shared-cluster chart),
   then any number of KubernetesPostgres resources in application

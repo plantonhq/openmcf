@@ -18,7 +18,7 @@ works.
   chart with `watch.clusterWide: true` (or a fenced `watch.namespaces`
   list), serving every application environment. Right for the
   platform shape where teams declare databases without touching the
-  shared layer.
+  shared-cluster layer.
 
 Either way the coupling is invisible in the manifests (the
 [operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)

@@ -17,7 +17,7 @@ their own operator.
 
 ## The chain this component roots
 
-1. **This operator** — once, shared chart.
+1. **This operator** — once, shared-cluster chart.
 2. **A store** — the backend connection:
    [KubernetesClusterSecretStore](../../kubernetesclustersecretstore/v1/GUIDE.md)
    for platform-wide backends, KubernetesSecretStore for one team's.

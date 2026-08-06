@@ -17,16 +17,21 @@ exports — `status.outputs.kube_endpoint` is the in-cluster handle, and
 HTTPS additionally needs the certificate chain; the composition checklist
 lives in the [KubernetesClusterIssuer guide](../../kubernetesclusterissuer/v1/GUIDE.md).
 
-## Two ways to autoscale — pick by metric surface
+## Three ways to autoscale — pick by scale signal
 
 - `spec.availability.horizontalPodAutoscaling` (inline) covers CPU and
   memory targets — right for the common case, zero extra nodes.
 - The standalone KubernetesHorizontalPodAutoscaler kind carries the full
   autoscaling/v2 surface (custom metrics, external metrics, scaling
   behavior policies) and references this kind's
-  `status.outputs.deployment_name`. Reach for it when scaling on anything
-  beyond CPU/memory — and never declare both for the same workload: two
-  controllers fighting over one replica count.
+  `status.outputs.deployment_name`.
+- KubernetesKeda is the event-driven lane (queue depth, stream lag,
+  cron — and scale-to-ZERO, which neither HPA lane can do).
+
+The full three-lane comparison lives in the
+[KubernetesHorizontalPodAutoscaler guide](../../kuberneteshorizontalpodautoscaler/v1/GUIDE.md)
+— and never declare more than one lane for the same workload: two
+controllers fighting over one replica count.
 
 ## Namespace ownership
 

@@ -9,7 +9,7 @@ only) is almost never what a platform installation wants.
 
 The platform shape is one operator in the shared-cluster chart with
 `watch.anyNamespace: true`, so every application environment can declare
-Kafka clusters without touching the shared layer again. Use
+Kafka clusters without touching the shared-cluster layer again. Use
 `watch.namespaces` (a fenced list) when team isolation genuinely requires
 it — accepting that every new Kafka-bearing namespace then needs a
 shared-chart change. Leaving the watch block empty confines the operator
@@ -17,7 +17,7 @@ to its own namespace: correct only when the Kafka clusters live there
 too. The scope vocabulary and multi-install rules are on
 [reference.md](reference.md).
 
-## Once per cluster, in the shared chart
+## Once per cluster, in the shared-cluster chart
 
 One operator reconciles any number of Kafka clusters. Declare it once in
 the shared-cluster chart; application environments declare

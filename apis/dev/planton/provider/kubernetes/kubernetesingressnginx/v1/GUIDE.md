@@ -36,7 +36,7 @@ sole-tenant case, not a violation of it.
 
 ## On the diagram
 
-The controller renders as the cluster's entry node in the shared layer;
+The controller renders as the cluster's entry node in the shared-cluster layer;
 each application's Ingress draws the edge from that entry into its
 workload. An architecture showing workloads with no entry node is
 promising reachability it cannot deliver.

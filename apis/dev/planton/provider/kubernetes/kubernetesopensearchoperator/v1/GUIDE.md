@@ -7,7 +7,7 @@ default — the friendly posture — and its fence, unusually, is SINGULAR:
 ## Watch posture: all namespaces, or exactly one
 
 The default (cluster-wide watch) is the platform shape: one operator in
-the shared chart, OpenSearch clusters declared anywhere. The fence is
+the shared-cluster chart, OpenSearch clusters declared anywhere. The fence is
 different from every other operator in the catalog: `watchNamespace`
 takes ONE namespace (pair it with `useRoleBindings` to drop cluster-wide
 RBAC — the reference page carries both). Fencing to one namespace means
