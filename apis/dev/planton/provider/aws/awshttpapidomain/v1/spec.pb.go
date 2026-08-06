@@ -304,7 +304,7 @@ const file_dev_planton_provider_aws_awshttpapidomain_v1_spec_proto_rawDesc = "" 
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12;\n" +
 	"\vdomain_name\x18\x02 \x01(\tB\x1a\xbaH\x17r\x15\x10\x01\x18\x80\x042\x0e^[a-z0-9*.-]+$R\n" +
 	"domainName\x12\x83\x01\n" +
-	"\x0fcertificate_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12&\n" +
+	"\x0fcertificate_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12&\n" +
 	"\x0fip_address_type\x18\x04 \x01(\tR\ripAddressType\x12f\n" +
 	"\n" +
 	"mutual_tls\x18\x05 \x01(\v2G.dev.planton.provider.aws.awshttpapidomain.v1.AwsHttpApiDomainMutualTlsR\tmutualTls\x12k\n" +
@@ -315,7 +315,7 @@ const file_dev_planton_provider_aws_awshttpapidomain_v1_spec_proto_rawDesc = "" 
 	"\x0etruststore_uri\x18\x01 \x01(\tB\x11\xbaH\x0er\f\x10\x012\b^s3://.+R\rtruststoreUri\x12-\n" +
 	"\x12truststore_version\x18\x02 \x01(\tR\x11truststoreVersion\"\xe4\x01\n" +
 	"\x1aAwsHttpApiDomainApiMapping\x12o\n" +
-	"\x06api_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\x01\x92\xd4a\x15status.outputs.api_idR\x05apiId\x12\x1d\n" +
+	"\x06api_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\b\x92\xd4a\x15status.outputs.api_idR\x05apiId\x12\x1d\n" +
 	"\x05stage\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05stage\x126\n" +
 	"\x0fapi_mapping_key\x18\x03 \x01(\tB\x0e\xbaH\vr\t2\a^[^/]*$R\rapiMappingKeyB\xf7\x02\n" +
 	"0com.dev.planton.provider.aws.awshttpapidomain.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapidomain/v1;awshttpapidomainv1\xa2\x02\x05DPPAA\xaa\x02,Dev.Planton.Provider.Aws.Awshttpapidomain.V1\xca\x02,Dev\\Planton\\Provider\\Aws\\Awshttpapidomain\\V1\xe2\x028Dev\\Planton\\Provider\\Aws\\Awshttpapidomain\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Aws::Awshttpapidomain::V1b\x06proto3"

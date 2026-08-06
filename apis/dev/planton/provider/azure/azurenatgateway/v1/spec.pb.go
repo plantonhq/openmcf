@@ -254,14 +254,14 @@ const file_dev_planton_provider_azure_azurenatgateway_v1_spec_proto_rawDesc = ""
 	"\x13AzureNatGatewaySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa8\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa8\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x93\x02\xbaH\x8f\x02\xba\x01\x82\x02\n" +
 	"\x17nat_gateway_name_format\x12\x9b\x01NAT gateway names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12`\n" +
 	"\bsku_name\x18\x04 \x01(\x0e2E.dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySkuNameR\askuName\x12J\n" +
 	"\x17idle_timeout_in_minutes\x18\x05 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18x(\x04\x8a\xa6\x1d\x014H\x00R\x14idleTimeoutInMinutes\x88\x01\x01\x12)\n" +
 	"\x05zones\x18\x06 \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12|\n" +
-	"\rpublic_ip_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\vpublicIpIds\x12\x90\x01\n" +
-	"\x14public_ip_prefix_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x11publicIpPrefixIds\x12`\n" +
+	"\rpublic_ip_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\vpublicIpIds\x12\x90\x01\n" +
+	"\x14public_ip_prefix_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe5\x0f\x92\xd4a\"status.outputs.public_ip_prefix_idR\x11publicIpPrefixIds\x12`\n" +
 	"\x04tags\x18\t \x03(\v2L.dev.planton.provider.azure.azurenatgateway.v1.AzureNatGatewaySpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

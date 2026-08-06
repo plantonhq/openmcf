@@ -364,10 +364,10 @@ const file_dev_planton_provider_digitalocean_digitaloceanloadbalancer_v1_spec_pr
 	"\x1cDigitalOceanLoadBalancerSpec\x12H\n" +
 	"\x12load_balancer_name\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12\x10\x01\x18@2\f^[a-z0-9-]+$R\x10loadBalancerName\x12U\n" +
 	"\x06region\x18\x02 \x01(\x0e25.dev.planton.provider.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12j\n" +
-	"\x03vpc\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\t\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x9d\x01\n" +
+	"\x03vpc\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x9d\x01\n" +
 	"\x10forwarding_rules\x18\x04 \x03(\v2e.dev.planton.provider.digitalocean.digitaloceanloadbalancer.v1.DigitalOceanLoadBalancerForwardingRuleB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0fforwardingRules\x12\x85\x01\n" +
 	"\fhealth_check\x18\x05 \x01(\v2b.dev.planton.provider.digitalocean.digitaloceanloadbalancer.v1.DigitalOceanLoadBalancerHealthCheckR\vhealthCheck\x12w\n" +
-	"\vdroplet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xb5\t\x92\xd4a\x19status.outputs.droplet_idR\n" +
+	"\vdroplet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8d'\x92\xd4a\x19status.outputs.droplet_idR\n" +
 	"dropletIds\x12.\n" +
 	"\vdroplet_tag\x18\a \x01(\tB\r\xbaH\n" +
 	"\xd8\x01\x01r\x05\x10\x01\x18\xff\x01R\n" +

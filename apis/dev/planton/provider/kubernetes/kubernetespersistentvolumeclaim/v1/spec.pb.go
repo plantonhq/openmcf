@@ -571,7 +571,7 @@ const file_dev_planton_provider_kubernetes_kubernetespersistentvolumeclaim_v1_sp
 	"\n" +
 	"Mdev/planton/provider/kubernetes/kubernetespersistentvolumeclaim/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbf\x13\n" +
 	"#KubernetesPersistentVolumeClaimSpec\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\x8b\x01\n" +
 	"\x06labels\x18\x03 \x03(\v2s.dev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1.KubernetesPersistentVolumeClaimSpec.LabelsEntryR\x06labels\x12\x9a\x01\n" +
@@ -581,7 +581,7 @@ const file_dev_planton_provider_kubernetes_kubernetespersistentvolumeclaim_v1_sp
 	"\x18storage_request.quantity\x12DStorage request must be a Kubernetes quantity (e.g. \"10Gi\", \"500Mi\")\x1aFthis.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')\xc8\x01\x01R\x0estorageRequest\x12\xe0\x01\n" +
 	"\rstorage_limit\x18\a \x01(\tB\xba\x01\xbaH\xb6\x01\xba\x01\xb2\x01\n" +
 	"\x16storage_limit.quantity\x12BStorage limit must be a Kubernetes quantity (e.g. \"20Gi\") or empty\x1aTthis == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')R\fstorageLimit\x12\x8c\x01\n" +
-	"\x12storage_class_name\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\x10storageClassName\x12@\n" +
+	"\x12storage_class_name\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\x10storageClassName\x12@\n" +
 	"\x1cdisable_dynamic_provisioning\x18\t \x01(\bR\x1adisableDynamicProvisioning\x12\xd0\x01\n" +
 	"\vvolume_mode\x18\n" +
 	" \x01(\x0e2\x91\x01.dev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1.KubernetesPersistentVolumeClaimSpec.KubernetesPersistentVolumeClaimVolumeModeB\x16\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\n" +

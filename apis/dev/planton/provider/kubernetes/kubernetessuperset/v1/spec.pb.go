@@ -1694,7 +1694,7 @@ const file_dev_planton_provider_kubernetes_kubernetessuperset_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kubernetessuperset/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetessuperset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x81\x1e\n" +
 	"\x16KubernetesSupersetSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12d\n" +
 	"\x05image\x18\x03 \x01(\v2N.dev.planton.provider.kubernetes.kubernetessuperset.v1.KubernetesSupersetImageR\x05image\x12\x7f\n" +
 	"\x12image_pull_secrets\x18\x04 \x03(\tBQ\xaa\xa6\x1dMSecret NAMES (references to existing image-pull Secrets), not secret materialR\x10imagePullSecrets\x12\x8e\x01\n" +
@@ -1747,7 +1747,7 @@ const file_dev_planton_provider_kubernetes_kubernetessuperset_v1_spec_proto_rawD
 	"\v_repositoryB\x06\n" +
 	"\x04_tag\"\xee\x04\n" +
 	"\"KubernetesSupersetMetadataDatabase\x12p\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12V\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB,\xbaH\x1dr\x1b2\x19^[a-zA-Z_][a-zA-Z0-9_$]*$\x8a\xa6\x1d\bsupersetH\x01R\fdatabaseName\x88\x01\x01\x12-\n" +
 	"\busername\x18\x04 \x01(\tB\f\x8a\xa6\x1d\bsupersetH\x02R\busername\x88\x01\x01\x12\x90\x01\n" +
@@ -1757,7 +1757,7 @@ const file_dev_planton_provider_kubernetes_kubernetessuperset_v1_spec_proto_rawD
 	"\x0e_database_nameB\v\n" +
 	"\t_username\"\xbe\x02\n" +
 	"(KubernetesSupersetPostgresPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
@@ -1767,7 +1767,7 @@ const file_dev_planton_provider_kubernetes_kubernetessuperset_v1_spec_proto_rawD
 	"\x04mode\x18\x02 \x01(\tB1\xbaH#r!R\arequireR\tverify-caR\vverify-full\x8a\xa6\x1d\arequireH\x00R\x04mode\x88\x01\x01B\a\n" +
 	"\x05_mode\"\xd6\x03\n" +
 	"\x17KubernetesSupersetCache\x12m\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x046379H\x00R\x04port\x88\x01\x01\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x85\x01\n" +
 	"\x0fpassword_secret\x18\x04 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetessuperset.v1.KubernetesSupersetCachePasswordSecretR\x0epasswordSecret\x12)\n" +
@@ -1778,7 +1778,7 @@ const file_dev_planton_provider_kubernetes_kubernetessuperset_v1_spec_proto_rawD
 	"\n" +
 	"_celery_db\"\xbb\x02\n" +
 	"%KubernetesSupersetCachePasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +

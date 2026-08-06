@@ -512,7 +512,7 @@ const file_dev_planton_provider_kubernetes_kubernetesbackendtlspolicy_v1_spec_pr
 	"\n" +
 	"Hdev/planton/provider/kubernetes/kubernetesbackendtlspolicy/v1/spec.proto\x12=dev.planton.provider.kubernetes.kubernetesbackendtlspolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbb\f\n" +
 	"\x1eKubernetesBackendTlsPolicySpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xca\a\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xca\a\n" +
 	"\vtarget_refs\x18\x02 \x03(\v2h.dev.planton.provider.kubernetes.kubernetesbackendtlspolicy.v1.KubernetesBackendTlsPolicyTargetReferenceB\xbe\x06\xbaH\xba\x06\xba\x01\xfc\x02\n" +
 	"&spec.target_refs.section_name_presence\x12\x80\x01section_name must be specified on every reference (or on none) when target_refs includes 2 or more references to the same target\x1a\xce\x01this.all(p1, this.all(p2, (p1.group == p2.group && p1.kind == p2.kind && p1.name == p2.name) ? ((!has(p1.section_name) || p1.section_name == '') == (!has(p2.section_name) || p2.section_name == '')) : true))\xba\x01\xaf\x03\n" +
 	"$spec.target_refs.section_name_unique\x12]section_name must be unique when target_refs includes 2 or more references to the same target\x1a\xa7\x02this.all(p1, this.exists_one(p2, p1.group == p2.group && p1.kind == p2.kind && p1.name == p2.name && (((!has(p1.section_name) || p1.section_name == '') && (!has(p2.section_name) || p2.section_name == '')) || (has(p1.section_name) && has(p2.section_name) && p1.section_name == p2.section_name))))\x92\x01\x04\b\x01\x10\x10R\n" +
@@ -527,7 +527,7 @@ const file_dev_planton_provider_kubernetes_kubernetesbackendtlspolicy_v1_spec_pr
 	")KubernetesBackendTlsPolicyTargetReference\x12l\n" +
 	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12r\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12u\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12u\n" +
 	"\fsection_name\x18\x04 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x01R\vsectionName\x88\x01\x01B\b\n" +
 	"\x06_groupB\x0f\n" +
 	"\r_section_name\"\xd6\n" +
@@ -543,7 +543,7 @@ const file_dev_planton_provider_kubernetes_kubernetesbackendtlspolicy_v1_spec_pr
 	"0KubernetesBackendTlsPolicyCaCertificateReference\x12l\n" +
 	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12t\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\x1dstatus.outputs.configmap_nameR\x04nameB\b\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x1f\x92\xd4a\x1dstatus.outputs.configmap_nameR\x04nameB\b\n" +
 	"\x06_group\"\xea\a\n" +
 	"(KubernetesBackendTlsPolicySubjectAltName\x12w\n" +
 	"\x04type\x18\x01 \x01(\tBc\xbaH`\xba\x01Z\n" +

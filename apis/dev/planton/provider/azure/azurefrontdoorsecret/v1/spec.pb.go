@@ -140,11 +140,11 @@ const file_dev_planton_provider_azure_azurefrontdoorsecret_v1_spec_proto_rawDesc
 	"=dev/planton/provider/azure/azurefrontdoorsecret/v1/spec.proto\x122dev.planton.provider.azure.azurefrontdoorsecret.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xba\x04\n" +
 	"\x18AzureFrontDoorSecretSpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x84\x02\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x84\x02\n" +
 	"\vsecret_name\x18\x02 \x01(\tB\xe2\x01\xbaH\xde\x01\xba\x01\xd7\x01\n" +
 	"\x1dfront_door_secret_name_format\x12ysecret_name must be 2-260 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a;this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,258}[a-zA-Z0-9]$')\xc8\x01\x01R\n" +
 	"secretName\x12\x99\x01\n" +
-	"\x18key_vault_certificate_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\x15keyVaultCertificateIdB\x9f\x03\n" +
+	"\x18key_vault_certificate_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\x15keyVaultCertificateIdB\x9f\x03\n" +
 	"6com.dev.planton.provider.azure.azurefrontdoorsecret.v1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorsecret/v1;azurefrontdoorsecretv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Azure.Azurefrontdoorsecret.V1\xca\x022Dev\\Planton\\Provider\\Azure\\Azurefrontdoorsecret\\V1\xe2\x02>Dev\\Planton\\Provider\\Azure\\Azurefrontdoorsecret\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Azure::Azurefrontdoorsecret::V1b\x06proto3"
 
 var (

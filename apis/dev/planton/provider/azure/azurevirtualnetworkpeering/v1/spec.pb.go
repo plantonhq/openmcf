@@ -219,8 +219,8 @@ const file_dev_planton_provider_azure_azurevirtualnetworkpeering_v1_spec_proto_r
 	"\x1eAzureVirtualNetworkPeeringSpec\x12\xa0\x02\n" +
 	"\x04name\x18\x01 \x01(\tB\x8b\x02\xbaH\x87\x02\xba\x01\xfa\x01\n" +
 	"\x13peering_name_format\x12\x97\x01Peering names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x92\x01\n" +
-	"\x12virtual_network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\xa3\x01\n" +
-	"\x19remote_virtual_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_id\x98\xd4a\x01R\x16remoteVirtualNetworkId\x12N\n" +
+	"\x12virtual_network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x0f\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\xa3\x01\n" +
+	"\x19remote_virtual_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x0f\x92\xd4a!status.outputs.virtual_network_id\x98\xd4a\x01R\x16remoteVirtualNetworkId\x12N\n" +
 	"\x1callow_virtual_network_access\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x19allowVirtualNetworkAccess\x88\x01\x01\x12F\n" +
 	"\x17allow_forwarded_traffic\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\x15allowForwardedTraffic\x88\x01\x01\x12B\n" +
 	"\x15allow_gateway_transit\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x13allowGatewayTransit\x88\x01\x01\x12>\n" +

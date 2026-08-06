@@ -911,9 +911,9 @@ const file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc = "" +
 	"\x12AwsRdsInstanceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
 	"\x14db_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11dbSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x16\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x16\n" +
 	"\x06engine\x18\x05 \x01(\tR\x06engine\x12%\n" +
 	"\x0eengine_version\x18\x06 \x01(\tR\rengineVersion\x125\n" +
 	"\x0einstance_class\x18\a \x01(\tB\x0e\xbaH\vr\t\x10\x012\x05^db\\.R\rinstanceClass\x129\n" +
@@ -926,11 +926,11 @@ const file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc = "" +
 	"\x14dedicated_log_volume\x18\r \x01(\bR\x12dedicatedLogVolume\x125\n" +
 	"\x11storage_encrypted\x18\x0e \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x17\n" +
+	"kms_key_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x17\n" +
 	"\adb_name\x18\x10 \x01(\tR\x06dbName\x12\x1a\n" +
 	"\busername\x18\x11 \x01(\tR\busername\x12G\n" +
 	"\x1bmanage_master_user_password\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18manageMasterUserPassword\x12\x94\x01\n" +
-	"\x1dmaster_user_secret_kms_key_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12 \n" +
+	"\x1dmaster_user_secret_kms_key_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12 \n" +
 	"\bpassword\x18\x14 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x12\x1f\n" +
 	"\x04port\x18\x15 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12\x19\n" +
 	"\bmulti_az\x18\x16 \x01(\bR\amultiAz\x12+\n" +
@@ -954,10 +954,10 @@ const file_dev_planton_provider_aws_awsrdsinstance_v1_spec_proto_rawDesc = "" +
 	"notify.logR\boemagentR\n" +
 	"postgresqlR\tslowqueryR\x05traceR\aupgradeR\x1cenabledCloudwatchLogsExports\x12@\n" +
 	"\x1cperformance_insights_enabled\x18( \x01(\bR\x1aperformanceInsightsEnabled\x12\x99\x01\n" +
-	"\x1fperformance_insights_kms_key_id\x18) \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
+	"\x1fperformance_insights_kms_key_id\x18) \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
 	"%performance_insights_retention_period\x18* \x01(\x05R\"performanceInsightsRetentionPeriod\x12/\n" +
 	"\x13monitoring_interval\x18+ \x01(\x05R\x12monitoringInterval\x12\x84\x01\n" +
-	"\x13monitoring_role_arn\x18, \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
+	"\x13monitoring_role_arn\x18, \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
 	"\x16database_insights_mode\x18- \x01(\tR\x14databaseInsightsMode\x120\n" +
 	"\x14parameter_group_name\x18. \x01(\tR\x12parameterGroupName\x12*\n" +
 	"\x11option_group_name\x18/ \x01(\tR\x0foptionGroupName\x12t\n" +

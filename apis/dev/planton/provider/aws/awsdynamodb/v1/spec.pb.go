@@ -1623,7 +1623,7 @@ const file_dev_planton_provider_aws_awsdynamodb_v1_spec_proto_rawDesc = "" +
 	" recovery_period_requires_enabled\x12Krecovery_period_in_days only applies when point-in-time recovery is enabled\x1a1this.enabled || this.recovery_period_in_days == 0\"\xbd\x02\n" +
 	"\x1fAwsDynamodbServerSideEncryption\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12s\n" +
-	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
+	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
 	"\x18kms_key_requires_enabled\x12?kms_key_arn only applies when server-side encryption is enabled\x1a&this.enabled || !has(this.kms_key_arn)\"\xf3\x02\n" +
 	"\x1eAwsDynamodbContributorInsights\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12I\n" +
@@ -1632,12 +1632,12 @@ const file_dev_planton_provider_aws_awsdynamodb_v1_spec_proto_rawDesc = "" +
 	"\x1finsights_fields_require_enabled\x12Hmode and gsi_index_names only apply when contributor insights is enabled\x1aEthis.enabled || (this.mode == '' && this.gsi_index_names.size() == 0)\"\xa1\x02\n" +
 	"&AwsDynamodbKinesisStreamingDestination\x12{\n" +
 	"\n" +
-	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x84\x02\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12z\n" +
+	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12z\n" +
 	"(approximate_creation_date_time_precision\x18\x02 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1aR\vMILLISECONDR\vMICROSECONDR$approximateCreationDateTimePrecision\"\x96\x03\n" +
 	"\x12AwsDynamodbReplica\x12(\n" +
 	"\vregion_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
 	"regionName\x12s\n" +
-	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x123\n" +
+	"\vkms_key_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x123\n" +
 	"\x16point_in_time_recovery\x18\x03 \x01(\bR\x13pointInTimeRecovery\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\x04 \x01(\bR\x19deletionProtectionEnabled\x12%\n" +
 	"\x0epropagate_tags\x18\x05 \x01(\bR\rpropagateTags\x12E\n" +
@@ -1646,7 +1646,7 @@ const file_dev_planton_provider_aws_awsdynamodb_v1_spec_proto_rawDesc = "" +
 	"\vregion_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
 	"regionName\"\xd4\x04\n" +
 	"\x16AwsDynamodbImportTable\x12x\n" +
-	"\ts3_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12&\n" +
+	"\ts3_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12&\n" +
 	"\x0fs3_bucket_owner\x18\x02 \x01(\tR\rs3BucketOwner\x12\"\n" +
 	"\rs3_key_prefix\x18\x03 \x01(\tR\vs3KeyPrefix\x12D\n" +
 	"\finput_format\x18\x04 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19R\x03CSVR\rDYNAMODB_JSONR\x03IONR\vinputFormat\x12P\n" +

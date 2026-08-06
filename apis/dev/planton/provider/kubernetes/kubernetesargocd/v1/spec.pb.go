@@ -1579,7 +1579,7 @@ const file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetesargocd/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesargocd.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x10\n" +
 	"\x14KubernetesArgocdSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x0610.2.1H\x00R\fchartVersion\x88\x01\x01\x122\n" +
@@ -1650,7 +1650,7 @@ const file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDes
 	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x03\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01B\v\n" +
 	"\t_replicas\"\xfd\x01\n" +
 	"\x1dKubernetesArgocdRedisExternal\x12m\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x046379H\x00R\x04port\x88\x01\x01\x126\n" +
 	"\x17credentials_secret_name\x18\x03 \x01(\tR\x15credentialsSecretNameB\a\n" +
 	"\x05_port\"\x93\x01\n" +

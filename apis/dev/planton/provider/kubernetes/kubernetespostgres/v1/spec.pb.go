@@ -2547,7 +2547,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kubernetespostgres/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetespostgres.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/workload_identity.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8f\x12\n" +
 	"\x16KubernetesPostgresSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12/\n" +
 	"\tinstances\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\tinstances\x88\x01\x01\x12\x1d\n" +
 	"\n" +
@@ -2585,7 +2585,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\x19KubernetesPostgresStorage\x12\xbf\x01\n" +
 	"\x04size\x18\x01 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\x9f\x01\n" +
 	"\x1aspec.storage.size_quantity\x129size must be a Kubernetes quantity like '10Gi' or '500Mi'\x1aFthis.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')\xc8\x01\x01R\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12@\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12@\n" +
 	"\x15resize_in_use_volumes\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12resizeInUseVolumes\x88\x01\x01B\x18\n" +
 	"\x16_resize_in_use_volumes\"\x87\x04\n" +
 	"\x1eKubernetesPostgresServerConfig\x12\x85\x01\n" +
@@ -2752,7 +2752,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\x14immediate_checkpoint\x18\x03 \x01(\bR\x13immediateCheckpointB\a\n" +
 	"\x05_jobs\"\x87\x05\n" +
 	"\x1eKubernetesPostgresCertificates\x12\xd6\x01\n" +
-	"\x11server_tls_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBv\xaa\xa6\x1dOName of an existing kubernetes.io/tls Secret (a reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x0fserverTlsSecret\x12\x8b\x01\n" +
+	"\x11server_tls_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBv\xaa\xa6\x1dOName of an existing kubernetes.io/tls Secret (a reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x0fserverTlsSecret\x12\x8b\x01\n" +
 	"\x10server_ca_secret\x18\x02 \x01(\tBa\xaa\xa6\x1d]Name of an existing Secret holding a PUBLIC CA certificate (a reference), not secret materialR\x0eserverCaSecret\x12/\n" +
 	"\x14server_alt_dns_names\x18\x03 \x03(\tR\x11serverAltDnsNames:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
 	"\x1espec.certificates.tls_needs_ca\x12fserver_tls_secret requires server_ca_secret — clients need the CA that signed the server certificate\x1a;!has(this.server_tls_secret) || this.server_ca_secret != ''\"w\n" +

@@ -366,7 +366,7 @@ const file_dev_planton_provider_cloudflare_cloudflarelistitem_v1_spec_proto_rawD
 	"\x16CloudflareListItemSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12r\n" +
-	"\alist_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x0e\x92\xd4a\x16status.outputs.list_idR\x06listId\x12\x19\n" +
+	"\alist_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xec6\x92\xd4a\x16status.outputs.list_idR\x06listId\x12\x19\n" +
 	"\x02ip\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x00R\x02ip\x12v\n" +
 	"\x03asn\x18\x04 \x01(\x03Bb\xbaH_\xba\x01\\\n" +
 	"\x0eitem.asn_valid\x12)asn must be a non-negative 32-bit integer\x1a\x1fthis >= 0 && this <= 4294967295H\x00R\x03asn\x12o\n" +

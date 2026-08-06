@@ -188,8 +188,8 @@ const file_dev_planton_provider_gcp_gcpfirestorebackupschedule_v1_spec_proto_raw
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\"\xb3\x05\n" +
 	"\x1eGcpFirestoreBackupScheduleSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
-	"\bdatabase\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x04\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x121\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"\bdatabase\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x17\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x121\n" +
 	"\tretention\x18\x03 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\tretention\x12\x14\n" +
 	"\x05daily\x18\x04 \x01(\bR\x05daily\x12\x8f\x01\n" +
 	"\x11weekly_recurrence\x18\x05 \x01(\v2b.dev.planton.provider.gcp.gcpfirestorebackupschedule.v1.GcpFirestoreBackupScheduleWeeklyRecurrenceR\x10weeklyRecurrence:\xc1\x01\xbaH\xbd\x01\x1a\xba\x01\n" +

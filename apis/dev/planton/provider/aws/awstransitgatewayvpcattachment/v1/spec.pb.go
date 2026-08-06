@@ -217,10 +217,10 @@ const file_dev_planton_provider_aws_awstransitgatewayvpcattachment_v1_spec_proto
 	"Edev/planton/provider/aws/awstransitgatewayvpcattachment/v1/spec.proto\x12:dev.planton.provider.aws.awstransitgatewayvpcattachment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbe\a\n" +
 	"\"AwsTransitGatewayVpcAttachmentSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x92\x01\n" +
-	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x9a\x02\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12o\n" +
-	"\x06vpc_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x7f\n" +
+	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\b\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12o\n" +
+	"\x06vpc_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x7f\n" +
 	"\n" +
-	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12.\n" +
+	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12.\n" +
 	"\vdns_support\x18\x05 \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\n" +
 	"dnsSupport\x88\x01\x01\x12!\n" +
 	"\fipv6_support\x18\x06 \x01(\bR\vipv6Support\x124\n" +

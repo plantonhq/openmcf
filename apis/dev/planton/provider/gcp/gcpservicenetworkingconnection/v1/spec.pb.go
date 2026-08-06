@@ -160,11 +160,11 @@ const file_dev_planton_provider_gcp_gcpservicenetworkingconnection_v1_spec_proto
 	"Edev/planton/provider/gcp/gcpservicenetworkingconnection/v1/spec.proto\x12:dev.planton.provider.gcp.gcpservicenetworkingconnection.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd1\x05\n" +
 	"\"GcpServiceNetworkingConnectionSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
-	"\anetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\xea\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
+	"\anetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\xea\x01\n" +
 	"\aservice\x18\x03 \x01(\tB\xcf\x01\xbaH\xa7\x01\xba\x01\xa3\x01\n" +
 	"\rvalid_service\x12Qservice must be a DNS-style service name such as servicenetworking.googleapis.com\x1a?this == '' || this.matches('^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)+$')\x8a\xa6\x1d servicenetworking.googleapis.comR\aservice\x12\x90\x01\n" +
-	"\x17reserved_peering_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xed\x04\x92\xd4a\x13status.outputs.nameR\x15reservedPeeringRanges\x125\n" +
+	"\x17reserved_peering_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xcd\x17\x92\xd4a\x13status.outputs.nameR\x15reservedPeeringRanges\x125\n" +
 	"\x17update_on_creation_fail\x18\x05 \x01(\bR\x14updateOnCreationFailB\xd9\x03\n" +
 	">com.dev.planton.provider.gcp.gcpservicenetworkingconnection.v1B\tSpecProtoP\x01Z}github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpservicenetworkingconnection/v1;gcpservicenetworkingconnectionv1\xa2\x02\x05DPPGG\xaa\x02:Dev.Planton.Provider.Gcp.Gcpservicenetworkingconnection.V1\xca\x02:Dev\\Planton\\Provider\\Gcp\\Gcpservicenetworkingconnection\\V1\xe2\x02FDev\\Planton\\Provider\\Gcp\\Gcpservicenetworkingconnection\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Gcp::Gcpservicenetworkingconnection::V1b\x06proto3"
 

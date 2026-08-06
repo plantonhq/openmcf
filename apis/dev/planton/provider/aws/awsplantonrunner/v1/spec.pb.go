@@ -261,8 +261,8 @@ const file_dev_planton_provider_aws_awsplantonrunner_v1_spec_proto_rawDesc = "" 
 	"7dev/planton/provider/aws/awsplantonrunner/v1/spec.proto\x12,dev.planton.provider.aws.awsplantonrunner.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbf\x16\n" +
 	"\x14AwsPlantonRunnerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12u\n" +
-	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
+	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
+	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
 	"\x10assign_public_ip\x18\x04 \x01(\bR\x0eassignPublicIp\x12\x1e\n" +
 	"\x03cpu\x18\x05 \x01(\x05B\a\x8a\xa6\x1d\x03512H\x00R\x03cpu\x88\x01\x01\x12%\n" +
 	"\x06memory\x18\x06 \x01(\x05B\b\x8a\xa6\x1d\x041024H\x01R\x06memory\x88\x01\x01\x126\n" +
@@ -273,7 +273,7 @@ const file_dev_planton_provider_aws_awsplantonrunner_v1_spec_proto_rawDesc = "" 
 	"\vcredentials\x18\n" +
 	" \x01(\tB\n" +
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\vcredentials\x12q\n" +
-	"\ttask_role\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\btaskRole\x129\n" +
+	"\ttask_role\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\btaskRole\x129\n" +
 	"\x12log_retention_days\x18\f \x01(\x05B\x06\x8a\xa6\x1d\x0230H\x05R\x10logRetentionDays\x88\x01\x01:\x8b\x0f\xbaH\x87\x0f\x1a\xcb\x01\n" +
 	"\tcpu_valid\x12ucpu must be one of the serverless compute sizes: 256, 512, 1024, 2048, 4096, 8192, or 16384 CPU units (1024 = 1 vCPU)\x1aG!has(this.cpu) || this.cpu in [256, 512, 1024, 2048, 4096, 8192, 16384]\x1a\xa9\b\n" +
 	"\x16cpu_memory_combination\x12\xee\x02cpu and memory must form a valid serverless compute pairing -- cpu 256 pairs with memory 512, 1024, or 2048; cpu 512 with 1024-4096 in steps of 1024; cpu 1024 with 2048-8192 in steps of 1024; cpu 2048 with 4096-16384 in steps of 1024; cpu 4096 with 8192-30720 in steps of 1024; cpu 8192 with 16384-61440 in steps of 4096; cpu 16384 with 32768-122880 in steps of 8192\x1a\x9d\x05!has(this.cpu) || !has(this.memory) || (this.cpu == 256 && this.memory in [512, 1024, 2048]) || (this.cpu == 512 && this.memory >= 1024 && this.memory <= 4096 && this.memory % 1024 == 0) || (this.cpu == 1024 && this.memory >= 2048 && this.memory <= 8192 && this.memory % 1024 == 0) || (this.cpu == 2048 && this.memory >= 4096 && this.memory <= 16384 && this.memory % 1024 == 0) || (this.cpu == 4096 && this.memory >= 8192 && this.memory <= 30720 && this.memory % 1024 == 0) || (this.cpu == 8192 && this.memory >= 16384 && this.memory <= 61440 && this.memory % 4096 == 0) || (this.cpu == 16384 && this.memory >= 32768 && this.memory <= 122880 && this.memory % 8192 == 0)\x1a\x8b\x02\n" +

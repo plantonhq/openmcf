@@ -2603,7 +2603,7 @@ const file_dev_planton_provider_kubernetes_cert_manager_issuer_proto_rawDesc = "
 	"\x11secret_access_key\x18\x02 \x01(\tB\n" +
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xc9\x01\n" +
 	"$CertManagerRoute53ServiceAccountAuth\x12\x82\x01\n" +
-	"\x14service_account_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x06\x92\xd4a\rmetadata.nameR\x12serviceAccountName\x12\x1c\n" +
+	"\x14service_account_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x1f\x92\xd4a\rmetadata.nameR\x12serviceAccountName\x12\x1c\n" +
 	"\taudiences\x18\x02 \x03(\tR\taudiences\"\xe1\n" +
 	"\n" +
 	"\x18CertManagerDns01AzureDns\x12/\n" +
@@ -2665,7 +2665,7 @@ const file_dev_planton_provider_kubernetes_cert_manager_issuer_proto_rawDesc = "
 	"\vconfig_yaml\x18\x03 \x01(\tR\n" +
 	"configYaml\"\xb0\x02\n" +
 	"\x13CertManagerCaConfig\x12\x83\x01\n" +
-	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\fcaSecretName\x126\n" +
+	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\fcaSecretName\x126\n" +
 	"\x17crl_distribution_points\x18\x02 \x03(\tR\x15crlDistributionPoints\x12!\n" +
 	"\focsp_servers\x18\x03 \x03(\tR\vocspServers\x128\n" +
 	"\x18issuing_certificate_urls\x18\x04 \x03(\tR\x16issuingCertificateUrls\"U\n" +
@@ -2697,7 +2697,7 @@ const file_dev_planton_provider_kubernetes_cert_manager_issuer_proto_rawDesc = "
 	"\n" +
 	"mount_path\x18\x02 \x01(\tB\x0e\x8a\xa6\x1d\n" +
 	"kubernetesH\x00R\tmountPath\x88\x01\x01\x12\x82\x01\n" +
-	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x06\x92\xd4a\rmetadata.nameR\x12serviceAccountName\x12\x1c\n" +
+	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x1f\x92\xd4a\rmetadata.nameR\x12serviceAccountName\x12\x1c\n" +
 	"\taudiences\x18\x04 \x03(\tR\taudiencesB\r\n" +
 	"\v_mount_pathB\xa0\x02\n" +
 	"#com.dev.planton.provider.kubernetesB\x16CertManagerIssuerProtoP\x01ZAgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes\xa2\x02\x04DPPK\xaa\x02\x1fDev.Planton.Provider.Kubernetes\xca\x02\x1fDev\\Planton\\Provider\\Kubernetes\xe2\x02+Dev\\Planton\\Provider\\Kubernetes\\GPBMetadata\xea\x02\"Dev::Planton::Provider::Kubernetesb\x06proto3"

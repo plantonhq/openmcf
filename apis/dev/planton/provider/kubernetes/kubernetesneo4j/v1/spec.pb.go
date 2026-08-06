@@ -873,7 +873,7 @@ const file_dev_planton_provider_kubernetes_kubernetesneo4j_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/kubernetes/kubernetesneo4j/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesneo4j.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x85\x12\n" +
 	"\x13KubernetesNeo4jSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x126\n" +
 	"\rchart_version\x18\x03 \x01(\tB\f\x8a\xa6\x1d\b2026.6.0H\x00R\fchartVersion\x88\x01\x01\x12\xa2\x01\n" +
 	"\aedition\x18\x04 \x01(\tB\x82\x01\xbaHr\xba\x01o\n" +
@@ -918,7 +918,7 @@ const file_dev_planton_provider_kubernetes_kubernetesneo4j_v1_spec_proto_rawDesc
 	"\x06source\"\xcd\x01\n" +
 	"\x19KubernetesNeo4jDataVolume\x12!\n" +
 	"\x04size\x18\x01 \x01(\tB\b\x8a\xa6\x1d\x0410GiH\x00R\x04size\x88\x01\x01\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
 	"\x05_size\"t\n" +
 	"\x15KubernetesNeo4jMemory\x12!\n" +
 	"\fheap_initial\x18\x01 \x01(\tR\vheapInitial\x12\x19\n" +
@@ -937,7 +937,7 @@ const file_dev_planton_provider_kubernetes_kubernetesneo4j_v1_spec_proto_rawDesc
 	"\x04bolt\x18\x01 \x01(\v2K.dev.planton.provider.kubernetes.kubernetesneo4j.v1.KubernetesNeo4jSslScopeR\x04bolt\x12a\n" +
 	"\x05https\x18\x02 \x01(\v2K.dev.planton.provider.kubernetes.kubernetesneo4j.v1.KubernetesNeo4jSslScopeR\x05https\"\xd5\x01\n" +
 	"\x17KubernetesNeo4jSslScope\x12\xb9\x01\n" +
-	"\x06secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x06secret\"\xbb\x03\n" +
+	"\x06secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x06secret\"\xbb\x03\n" +
 	"\x19KubernetesNeo4jScheduling\x12\x84\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2_.dev.planton.provider.kubernetes.kubernetesneo4j.v1.KubernetesNeo4jScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
 	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x129\n" +

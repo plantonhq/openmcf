@@ -2197,10 +2197,10 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\venvironment\x18\x05 \x01(\v2H.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildEnvironmentB\x06\xbaH\x03\xc8\x01\x01R\venvironment\x12l\n" +
 	"\tartifacts\x18\x06 \x01(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifactsB\x06\xbaH\x03\xc8\x01\x01R\tartifacts\x12\x81\x01\n" +
 	"\x13secondary_artifacts\x18\a \x03(\v2F.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildArtifactsB\b\xbaH\x05\x92\x01\x02\x10\fR\x12secondaryArtifacts\x12}\n" +
-	"\fservice_role\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12*\n" +
+	"\fservice_role\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12*\n" +
 	"\vdescription\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vdescription\x12\xcf\x01\n" +
 	"\x0eencryption_key\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBt\xaa\xa6\x1dQForeign-key reference to an AwsKmsKey (the KMS key ARN), not secret key material.\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\rencryptionKey\x12:\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBt\xaa\xa6\x1dQForeign-key reference to an AwsKmsKey (the KMS key ARN), not secret key material.\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\rencryptionKey\x12:\n" +
 	"\rbuild_timeout\x18\v \x01(\x05B\x10\xbaH\a\x1a\x05\x18\xf0\x10(\x05\x8a\xa6\x1d\x0260H\x00R\fbuildTimeout\x88\x01\x01\x12=\n" +
 	"\x0equeued_timeout\x18\f \x01(\x05B\x11\xbaH\a\x1a\x05\x18\xe0\x03(\x05\x8a\xa6\x1d\x03480H\x01R\rqueuedTimeout\x88\x01\x01\x12@\n" +
 	"\x16concurrent_build_limit\x18\r \x01(\x05B\n" +
@@ -2217,7 +2217,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x15file_system_locations\x18\x14 \x03(\v2O.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildFileSystemLocationR\x13fileSystemLocations\x12v\n" +
 	"\x12build_batch_config\x18\x15 \x01(\v2H.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildBatchConfigR\x10buildBatchConfig\x12Z\n" +
 	"\x12project_visibility\x18\x16 \x01(\tB&\xbaH\x18r\x16R\aPRIVATER\vPUBLIC_READ\x8a\xa6\x1d\aPRIVATEH\x02R\x11projectVisibility\x88\x01\x01\x12\x86\x01\n" +
-	"\x14resource_access_role\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x12resourceAccessRole\x12@\n" +
+	"\x14resource_access_role\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x12resourceAccessRole\x12@\n" +
 	"\x0fresource_policy\x18\x18 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy\x12^\n" +
 	"\awebhook\x18\x19 \x01(\v2D.dev.planton.provider.aws.awscodebuildproject.v1.AwsCodeBuildWebhookR\awebhook:\xd2\x1e\xbaH\xce\x1e\x1a\xd3\x01\n" +
 	"#codepipeline_source_artifacts_match\x12[when source.type is CODEPIPELINE, artifacts.type must also be CODEPIPELINE (and vice versa)\x1aO(this.source.type == 'CODEPIPELINE') == (this.artifacts.type == 'CODEPIPELINE')\x1a\xba\x01\n" +
@@ -2279,7 +2279,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x1c_image_pull_credentials_type\"\xd0\x02\n" +
 	"\x18AwsCodeBuildDockerServer\x12\x9d\x01\n" +
 	"\fcompute_type\x18\x01 \x01(\tBz\xbaHw\xc8\x01\x01rrR\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\vcomputeType\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xbe\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xbe\x01\n" +
 	"\x1fAwsCodeBuildEnvironmentVariable\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12X\n" +
@@ -2293,7 +2293,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x0fSECRETS_MANAGER\xaa\xa6\x1dbProvider-type selector (constant SECRETS_MANAGER), not a secret value; the secret is `credential`.R\x12credentialProvider\"\xeb\x04\n" +
 	"\x15AwsCodeBuildArtifacts\x12<\n" +
 	"\x04type\x18\x01 \x01(\tB(\xbaH%\xc8\x01\x01r R\fNO_ARTIFACTSR\x02S3R\fCODEPIPELINER\x04type\x12q\n" +
-	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x12\n" +
+	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x04 \x01(\tR\x04path\x121\n" +
 	"\tpackaging\x18\x05 \x01(\tB\x13\xbaH\x10\xd8\x01\x01r\vR\x04NONER\x03ZIPR\tpackaging\x12?\n" +
@@ -2305,7 +2305,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	" \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14\x18\x80\x012\x0f^[A-Za-z0-9_]+$R\x12artifactIdentifier\"\xdd\x02\n" +
 	"\x11AwsCodeBuildCache\x12?\n" +
 	"\x04type\x18\x01 \x01(\tB&\xbaH\x17r\x15R\bNO_CACHER\x02S3R\x05LOCAL\x8a\xa6\x1d\bNO_CACHEH\x00R\x04type\x88\x01\x01\x12q\n" +
-	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12b\n" +
+	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12b\n" +
 	"\x05modes\x18\x03 \x03(\tBL\xbaHI\x92\x01F\"DrBR\x12LOCAL_SOURCE_CACHER\x18LOCAL_DOCKER_LAYER_CACHER\x12LOCAL_CUSTOM_CACHER\x05modes\x12'\n" +
 	"\x0fcache_namespace\x18\x04 \x01(\tR\x0ecacheNamespaceB\a\n" +
 	"\x05_type\"\xec\x01\n" +
@@ -2315,23 +2315,23 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x1aAwsCodeBuildCloudWatchLogs\x12@\n" +
 	"\x06status\x18\x01 \x01(\tB#\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\aENABLEDH\x00R\x06status\x88\x01\x01\x12y\n" +
 	"\n" +
-	"group_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\tgroupName\x12\x1f\n" +
+	"group_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\tgroupName\x12\x1f\n" +
 	"\vstream_name\x18\x03 \x01(\tR\n" +
 	"streamNameB\t\n" +
 	"\a_status\"\xd7\x02\n" +
 	"\x12AwsCodeBuildS3Logs\x12A\n" +
 	"\x06status\x18\x01 \x01(\tB$\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\bDISABLEDH\x00R\x06status\x88\x01\x01\x12q\n" +
-	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12/\n" +
+	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12/\n" +
 	"\x13encryption_disabled\x18\x03 \x01(\bR\x12encryptionDisabled\x12O\n" +
 	"\x13bucket_owner_access\x18\x04 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04NONER\tREAD_ONLYR\x04FULLR\x11bucketOwnerAccessB\t\n" +
 	"\a_status\"\xa7\x03\n" +
 	"\x15AwsCodeBuildVpcConfig\x12o\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x81\x01\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x81\x01\n" +
 	"\n" +
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x10\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x98\x01\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x10\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x98\x01\n" +
 	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xef\x01\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xef\x01\n" +
 	"\x1eAwsCodeBuildFileSystemLocation\x12&\n" +
 	"\n" +
 	"identifier\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -2344,7 +2344,7 @@ const file_dev_planton_provider_aws_awscodebuildproject_v1_spec_proto_rawDesc = 
 	"\x03EFS\x8a\xa6\x1d\x03EFSH\x00R\x04type\x88\x01\x01B\a\n" +
 	"\x05_type\"\xf0\x02\n" +
 	"\x17AwsCodeBuildBatchConfig\x12}\n" +
-	"\fservice_role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12+\n" +
+	"\fservice_role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12+\n" +
 	"\x11combine_artifacts\x18\x02 \x01(\bR\x10combineArtifacts\x125\n" +
 	"\x0ftimeout_in_mins\x18\x03 \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\xf0\x10(\x05R\rtimeoutInMins\x12r\n" +

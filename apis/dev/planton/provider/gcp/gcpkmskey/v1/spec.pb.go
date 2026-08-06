@@ -337,7 +337,7 @@ const file_dev_planton_provider_gcp_gcpkmskey_v1_spec_proto_rawDesc = "" +
 	"\x10protection_level\x18\x02 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
 	"\x16valid_protection_level\x12Fprotection_level must be one of: SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC\x1aEthis == '' || this in ['SOFTWARE', 'HSM', 'EXTERNAL', 'EXTERNAL_VPC']R\x0fprotectionLevel\"\xb0\x10\n" +
 	"\rGcpKmsKeySpec\x12}\n" +
-	"\vkey_ring_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xb2\x05\x92\xd4a\x1astatus.outputs.key_ring_idR\tkeyRingId\x12:\n" +
+	"\vkey_ring_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\x18\x92\xd4a\x1astatus.outputs.key_ring_idR\tkeyRingId\x12:\n" +
 	"\bkey_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\akeyName\x12\x18\n" +
 	"\apurpose\x18\x03 \x01(\tR\apurpose\x12\xc3\x02\n" +
 	"\x0frotation_period\x18\x04 \x01(\tB\x99\x02\xbaH\x95\x02\xba\x01\x91\x02\n" +

@@ -266,7 +266,7 @@ const file_dev_planton_provider_azure_azurednszone_v1_spec_proto_rawDesc = "" +
 	"\x10AzureDnsZoneSpec\x12\xc6\x02\n" +
 	"\tzone_name\x18\x01 \x01(\tB\xa8\x02\xbaH\xa4\x02\xba\x01\x9d\x02\n" +
 	"\x1aazure_dns_zone_name_format\x12\x9a\x01Zone name must be a DNS domain name of at least two dot-separated labels, e.g. example.com -- lowercase letters, digits, and hyphens, with no trailing dot\x1abthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')\xc8\x01\x01R\bzoneName\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12`\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12`\n" +
 	"\n" +
 	"soa_record\x18\x03 \x01(\v2A.dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSoaRecordR\tsoaRecord\x12Z\n" +
 	"\x04tags\x18\x04 \x03(\v2F.dev.planton.provider.azure.azurednszone.v1.AzureDnsZoneSpec.TagsEntryR\x04tags\x1a7\n" +

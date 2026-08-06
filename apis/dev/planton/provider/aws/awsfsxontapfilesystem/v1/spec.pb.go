@@ -462,15 +462,15 @@ const file_dev_planton_provider_aws_awsfsxontapfilesystem_v1_spec_proto_rawDesc 
 	"\x1fthroughput_capacity_per_ha_pair\x18\x06 \x01(\x05H\x03R\x1bthroughputCapacityPerHaPair\x88\x01\x01\x12.\n" +
 	"\bha_pairs\x18\a \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\f(\x01\x8a\xa6\x1d\x011H\x04R\ahaPairs\x88\x01\x01\x12~\n" +
 	"\n" +
-	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\a\x92\x01\x04\b\x01\x10\x02\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x93\x01\n" +
+	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\a\x92\x01\x04\b\x01\x10\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x85\x01\n" +
+	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x93\x01\n" +
 	"\x12security_group_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xfa\x01\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xfa\x01\n" +
 	"\x19endpoint_ip_address_range\x18\v \x01(\tB\xbe\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
 	"\x1dendpoint_ip_range_cidr_format\x12Lendpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')\x1aGthis == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')R\x16endpointIpAddressRange\x12\x8e\x01\n" +
-	"\x0froute_table_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
+	"\x0froute_table_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xbc\b\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
+	"kms_key_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
 	"\x12fsx_admin_password\x18\x0e \x01(\tB\x04\xa0\xa6\x1d\x01R\x10fsxAdminPassword\x12\x95\x01\n" +
 	"\x17disk_iops_configuration\x18\x0f \x01(\v2].dev.planton.provider.aws.awsfsxontapfilesystem.v1.AwsFsxOntapFileSystemDiskIopsConfigurationR\x15diskIopsConfiguration\x12Z\n" +
 	"\x1fautomatic_backup_retention_days\x18\x10 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18Z(\x00\x8a\xa6\x1d\x010H\x05R\x1cautomaticBackupRetentionDays\x88\x01\x01\x12\xff\x01\n" +

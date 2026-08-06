@@ -1759,23 +1759,23 @@ const file_dev_planton_provider_cloudflare_cloudflareworker_v1_spec_proto_rawDes
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05value\"\xbb\x01\n" +
 	"\x19CloudflareWorkerKvBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x81\x01\n" +
-	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\x0e\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\"\xfc\x02\n" +
+	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd96\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\"\xfc\x02\n" +
 	"\x19CloudflareWorkerR2Binding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12~\n" +
-	"\vbucket_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x0e\x92\xd4a\x1astatus.outputs.bucket_nameR\n" +
+	"\vbucket_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xda6\x92\xd4a\x1astatus.outputs.bucket_nameR\n" +
 	"bucketName\x12\xc2\x01\n" +
 	"\fjurisdiction\x18\x03 \x01(\tB\x9d\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
 	"\x1dr2_binding_jurisdiction.valid\x12;jurisdiction must be one of \"eu\", \"fedramp\", \"fedramp-high\"\x1a7this == '' || this in ['eu', 'fedramp', 'fedramp-high']R\fjurisdiction\"\xb7\x01\n" +
 	"\x19CloudflareWorkerD1Binding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12~\n" +
-	"\vdatabase_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8d\x0e\x92\xd4a\x1astatus.outputs.database_idR\n" +
+	"\vdatabase_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd6\x92\xd4a\x1astatus.outputs.database_idR\n" +
 	"databaseId\"\xbd\x01\n" +
 	"!CloudflareWorkerHyperdriveBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12|\n" +
-	"\tconfig_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\x0e\x92\xd4a\x1cstatus.outputs.hyperdrive_idR\bconfigId\"\xf7\x01\n" +
+	"\tconfig_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xe26\x92\xd4a\x1cstatus.outputs.hyperdrive_idR\bconfigId\"\xf7\x01\n" +
 	"\x1eCloudflareWorkerServiceBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12w\n" +
-	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\x0e\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12 \n" +
+	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12 \n" +
 	"\venvironment\x18\x03 \x01(\tR\venvironment\x12\x1e\n" +
 	"\n" +
 	"entrypoint\x18\x04 \x01(\tR\n" +
@@ -1783,7 +1783,7 @@ const file_dev_planton_provider_cloudflare_cloudflareworker_v1_spec_proto_rawDes
 	"\x1cCloudflareWorkerQueueBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12{\n" +
 	"\n" +
-	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x0e\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xac\x01\n" +
+	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe76\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xac\x01\n" +
 	"$CloudflareWorkerDurableObjectBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
 	"\n" +
@@ -1807,9 +1807,9 @@ const file_dev_planton_provider_cloudflare_cloudflareworker_v1_spec_proto_rawDes
 	"\x10previews_enabled\x18\x02 \x01(\bR\x0fpreviewsEnabled\"\xb4\x01\n" +
 	"\x1cCloudflareWorkerCustomDomain\x12\"\n" +
 	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12p\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\"\xb1\x01\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\"\xb1\x01\n" +
 	"\x15CloudflareWorkerRoute\x12v\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
 	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xe2\x01\n" +
 	"\x1dCloudflareWorkerObservability\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xa6\x01\n" +

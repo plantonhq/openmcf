@@ -649,7 +649,7 @@ const file_dev_planton_provider_cloudflare_cloudflareloadbalancerpool_v1_spec_pr
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x122\n" +
 	"\x04name\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16\x10\x01\x18 2\x10^[A-Za-z0-9_-]+$R\x04name\x12\x83\x01\n" +
 	"\aorigins\x18\x03 \x03(\v2_.dev.planton.provider.cloudflare.cloudflareloadbalancerpool.v1.CloudflareLoadBalancerPoolOriginB\b\xbaH\x05\x92\x01\x02\b\x01R\aorigins\x12p\n" +
-	"\amonitor\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x94\x0e\x92\xd4a\x19status.outputs.monitor_idR\amonitor\x12\x98\x01\n" +
+	"\amonitor\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe46\x92\xd4a\x19status.outputs.monitor_idR\amonitor\x12\x98\x01\n" +
 	"\rcheck_regions\x18\x06 \x03(\x0e2d.dev.planton.provider.cloudflare.cloudflareloadbalancerpool.v1.CloudflareLoadBalancerPoolCheckRegionB\r\xbaH\n" +
 	"\x92\x01\a\"\x05\x82\x01\x02\x10\x01R\fcheckRegions\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12'\n" +

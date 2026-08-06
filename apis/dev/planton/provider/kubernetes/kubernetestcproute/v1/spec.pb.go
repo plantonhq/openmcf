@@ -185,7 +185,7 @@ const file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kubernetestcproute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestcproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe6\x02\n" +
 	"\x16KubernetesTcpRouteSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12o\n" +
 	"\x05rules\x18\x04 \x03(\v2M.dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteRuleB\n" +

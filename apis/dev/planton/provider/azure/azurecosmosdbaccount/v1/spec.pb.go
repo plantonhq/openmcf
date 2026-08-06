@@ -2090,7 +2090,7 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x18AzureCosmosdbAccountSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb9\x01\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb9\x01\n" +
 	"\faccount_name\x18\x03 \x01(\tB\x95\x01\xbaH\x91\x01\xba\x01\x84\x01\n" +
 	"\x1ccosmosdb_account_name_format\x12Aaccount_name must be 3-50 lowercase letters, numbers, and hyphens\x1a!this.matches('^[-a-z0-9]{3,50}$')\xc8\x01\x01r\x04\x10\x03\x182R\vaccountName\x12j\n" +
 	"\x04kind\x18\x04 \x01(\x0e2L.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountKindB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04kind\x12\x90\x01\n" +
@@ -2110,7 +2110,7 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x14mongo_server_version\x18\x10 \x01(\x0e2Z.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountMongoServerVersionB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12mongoServerVersion\x12l\n" +
 	"\bidentity\x18\x11 \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityR\bidentity\x12\x82\x01\n" +
 	"\x10default_identity\x18\x12 \x01(\v2W.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityR\x0fdefaultIdentity\x12\x83\x01\n" +
-	"\x10key_vault_key_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12L\n" +
+	"\x10key_vault_key_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12L\n" +
 	"\x1aanalytical_storage_enabled\x18\x14 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x05R\x18analyticalStorageEnabled\x88\x01\x01\x12\x88\x01\n" +
 	"\x12analytical_storage\x18\x15 \x01(\v2Y.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageR\x11analyticalStorage\x12l\n" +
 	"\bcapacity\x18\x16 \x01(\v2P.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountCapacityR\bcapacity\x12Y\n" +
@@ -2164,7 +2164,7 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x0ezone_redundant\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\rzoneRedundant\x88\x01\x01B\x11\n" +
 	"\x0f_zone_redundant\"\xaf\x02\n" +
 	"&AzureCosmosdbAccountVirtualNetworkRule\x12|\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12^\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12^\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R ignoreMissingVnetServiceEndpoint\x88\x01\x01B'\n" +
 	"%_ignore_missing_vnet_service_endpoint\"\xbf\a\n" +
 	"\x1aAzureCosmosdbAccountBackup\x12s\n" +
@@ -2181,11 +2181,11 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\x13_retention_in_hours\"\x8a\x04\n" +
 	"\x1cAzureCosmosdbAccountIdentity\x12p\n" +
 	"\x04type\x18\x01 \x01(\x0e2T.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
 	" cosmosdb_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xee\x03\n" +
 	"#AzureCosmosdbAccountDefaultIdentity\x12w\n" +
 	"\x04type\x18\x01 \x01(\x0e2[.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountDefaultIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x92\x01\n" +
-	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId:\xb8\x01\xbaH\xb4\x01\x1a\xb1\x01\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId:\xb8\x01\xbaH\xb4\x01\x1a\xb1\x01\n" +
 	"!cosmosdb_default_identity_pairing\x12Suser_assigned_identity_id is required for USER_ASSIGNED and must be unset otherwise\x1a7(this.type == 3) == has(this.user_assigned_identity_id)\"\xbb\x01\n" +
 	"%AzureCosmosdbAccountAnalyticalStorage\x12\x91\x01\n" +
 	"\vschema_type\x18\x01 \x01(\x0e2c.dev.planton.provider.azure.azurecosmosdbaccount.v1.AzureCosmosdbAccountAnalyticalStorageSchemaTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\n" +

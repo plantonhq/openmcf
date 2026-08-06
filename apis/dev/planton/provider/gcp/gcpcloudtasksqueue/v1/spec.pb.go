@@ -857,10 +857,10 @@ const file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc = "
 	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xc2\x01\n" +
 	"\x1cGcpCloudTasksQueueOAuthToken\x12\x8b\x01\n" +
-	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\x14\n" +
+	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\x14\n" +
 	"\x05scope\x18\x02 \x01(\tR\x05scope\"\xc7\x01\n" +
 	"\x1bGcpCloudTasksQueueOidcToken\x12\x8b\x01\n" +
-	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\x1a\n" +
+	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\x1a\n" +
 	"\baudience\x18\x02 \x01(\tR\baudience\"\x94\x03\n" +
 	"\x1dGcpCloudTasksQueueUriOverride\x12s\n" +
 	"\x06scheme\x18\x01 \x01(\tB[\xbaHX\xba\x01U\n" +
@@ -902,7 +902,7 @@ const file_dev_planton_provider_gcp_gcpcloudtasksqueue_v1_spec_proto_rawDesc = "
 	"\x14valid_sampling_ratio\x124sampling_ratio must be between 0.0 and 1.0 inclusive\x1a\x1athis >= 0.0 && this <= 1.0R\rsamplingRatio\"\xf5\x06\n" +
 	"\x16GcpCloudTasksQueueSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12D\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12D\n" +
 	"\n" +
 	"queue_name\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d\x10\x01\x18?2\x17^[a-zA-Z][a-zA-Z0-9-]*$R\tqueueName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12m\n" +

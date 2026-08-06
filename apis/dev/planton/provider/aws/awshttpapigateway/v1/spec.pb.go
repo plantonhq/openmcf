@@ -1257,7 +1257,7 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
 	"\f_auto_deploy\"\xce\x01\n" +
 	" AwsHttpApiGatewayAccessLogConfig\x12\x88\x01\n" +
-	"\x0fdestination_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x0edestinationArn\x12\x1f\n" +
+	"\x0fdestination_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x0edestinationArn\x12\x1f\n" +
 	"\x06format\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06format\"j\n" +
 	"\x1fAwsHttpApiGatewayThrottleConfig\x12(\n" +
 	"\vburst_limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
@@ -1278,14 +1278,14 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\x0eoperation_name\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18@R\roperationName\"\x95\t\n" +
 	"\x1cAwsHttpApiGatewayIntegration\x122\n" +
 	"\x10integration_type\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fintegrationType\x12\x81\x01\n" +
-	"\x0fintegration_uri\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x0eintegrationUri\x129\n" +
+	"\x0fintegration_uri\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x0eintegrationUri\x129\n" +
 	"\x13integration_subtype\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x12integrationSubtype\x124\n" +
 	"\x16payload_format_version\x18\x04 \x01(\tR\x14payloadFormatVersion\x12-\n" +
 	"\x12integration_method\x18\x05 \x01(\tR\x11integrationMethod\x121\n" +
 	"\x14timeout_milliseconds\x18\x06 \x01(\x05R\x13timeoutMilliseconds\x12'\n" +
 	"\x0fconnection_type\x18\a \x01(\tR\x0econnectionType\x12|\n" +
-	"\rconnection_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe4\x02\x92\xd4a\x1astatus.outputs.vpc_link_idR\fconnectionId\x12}\n" +
-	"\x0fcredentials_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0ecredentialsArn\x12\x91\x01\n" +
+	"\rconnection_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x84\t\x92\xd4a\x1astatus.outputs.vpc_link_idR\fconnectionId\x12}\n" +
+	"\x0fcredentials_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x0ecredentialsArn\x12\x91\x01\n" +
 	"\x12request_parameters\x18\n" +
 	" \x03(\v2b.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayIntegration.RequestParametersEntryR\x11requestParameters\x12\x83\x01\n" +
 	"\x13response_parameters\x18\v \x03(\v2R.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayResponseParametersR\x12responseParameters\x128\n" +
@@ -1306,15 +1306,15 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x04name\x120\n" +
 	"\x0fauthorizer_type\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0eauthorizerType\x12v\n" +
 	"\x11jwt_configuration\x18\x03 \x01(\v2I.dev.planton.provider.aws.awshttpapigateway.v1.AwsHttpApiGatewayJwtConfigR\x10jwtConfiguration\x12\x7f\n" +
-	"\x0eauthorizer_uri\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\rauthorizerUri\x12\x92\x01\n" +
-	"\x1aauthorizer_credentials_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x18authorizerCredentialsArn\x12)\n" +
+	"\x0eauthorizer_uri\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\rauthorizerUri\x12\x92\x01\n" +
+	"\x1aauthorizer_credentials_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x18authorizerCredentialsArn\x12)\n" +
 	"\x10identity_sources\x18\x06 \x03(\tR\x0fidentitySources\x12,\n" +
 	"\x12result_ttl_seconds\x18\a \x01(\x05R\x10resultTtlSeconds\x126\n" +
 	"\x17enable_simple_responses\x18\b \x01(\bR\x15enableSimpleResponses\x12I\n" +
 	"!authorizer_payload_format_version\x18\t \x01(\tR\x1eauthorizerPayloadFormatVersion\"\x87\x02\n" +
 	"\x1aAwsHttpApiGatewayJwtConfig\x12t\n" +
-	"\x06issuer\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x15status.outputs.issuer\x98\xd4a\x01R\x06issuer\x12s\n" +
-	"\taudiences\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\taudiencesB\xfe\x02\n" +
+	"\x06issuer\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x15status.outputs.issuer\x98\xd4a\x01R\x06issuer\x12s\n" +
+	"\taudiences\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x86\t\x92\xd4a\x18status.outputs.client_idR\taudiencesB\xfe\x02\n" +
 	"1com.dev.planton.provider.aws.awshttpapigateway.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapigateway/v1;awshttpapigatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awshttpapigateway.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awshttpapigateway::V1b\x06proto3"
 
 var (

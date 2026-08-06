@@ -353,13 +353,13 @@ const file_dev_planton_provider_aws_awsredshiftserverlessworkgroup_v1_spec_proto
 	"Edev/planton/provider/aws/awsredshiftserverlessworkgroup/v1/spec.proto\x12:dev.planton.provider.aws.awsredshiftserverlessworkgroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcf\x12\n" +
 	"\"AwsRedshiftServerlessWorkgroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x87\x01\n" +
-	"\x0enamespace_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\x01\x92\xd4a\x1dstatus.outputs.namespace_nameR\rnamespaceName\x12#\n" +
+	"\x0enamespace_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\b\x92\xd4a\x1dstatus.outputs.namespace_nameR\rnamespaceName\x12#\n" +
 	"\rbase_capacity\x18\x03 \x01(\x05R\fbaseCapacity\x12!\n" +
 	"\fmax_capacity\x18\x04 \x01(\x05R\vmaxCapacity\x12\xaa\x01\n" +
 	"\x18price_performance_target\x18\x05 \x01(\v2p.dev.planton.provider.aws.awsredshiftserverlessworkgroup.v1.AwsRedshiftServerlessWorkgroupPricePerformanceTargetR\x16pricePerformanceTarget\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x120\n" +
+	"subnet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x120\n" +
 	"\x14enhanced_vpc_routing\x18\b \x01(\bR\x12enhancedVpcRouting\x12/\n" +
 	"\x13publicly_accessible\x18\t \x01(\bR\x12publiclyAccessible\x12\x12\n" +
 	"\x04port\x18\n" +

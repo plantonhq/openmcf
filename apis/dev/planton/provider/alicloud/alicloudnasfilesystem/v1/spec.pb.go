@@ -432,10 +432,10 @@ const file_dev_planton_provider_alicloud_alicloudnasfilesystem_v1_spec_proto_raw
 	"encryption\x12\x1a\n" +
 	"\bcapacity\x18\a \x01(\x05R\bcapacity\x12\x17\n" +
 	"\azone_id\x18\b \x01(\tR\x06zoneId\x12o\n" +
-	"\x06vpc_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12{\n" +
+	"\x06vpc_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12{\n" +
 	"\n" +
 	"vswitch_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12p\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12p\n" +
 	"\faccess_rules\x18\v \x03(\v2M.dev.planton.provider.alicloud.alicloudnasfilesystem.v1.AliCloudNasAccessRuleR\vaccessRules\x12*\n" +
 	"\x11resource_group_id\x18\f \x01(\tR\x0fresourceGroupId\x12o\n" +
 	"\x04tags\x18\r \x03(\v2[.dev.planton.provider.alicloud.alicloudnasfilesystem.v1.AliCloudNasFileSystemSpec.TagsEntryR\x04tags\x1a7\n" +

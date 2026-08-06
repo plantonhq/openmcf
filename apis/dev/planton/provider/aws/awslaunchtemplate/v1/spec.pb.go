@@ -1621,8 +1621,8 @@ const file_dev_planton_provider_aws_awslaunchtemplate_v1_spec_proto_rawDesc = ""
 	"\x15instance_requirements\x18\x05 \x01(\v2T.dev.planton.provider.aws.awslaunchtemplate.v1.AwsLaunchTemplateInstanceRequirementsR\x14instanceRequirements\x12\x19\n" +
 	"\bkey_name\x18\x06 \x01(\tR\akeyName\x12&\n" +
 	"\tuser_data\x18\a \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x01R\buserData\x12\x8b\x01\n" +
-	"\x10instance_profile\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe7\x01\x92\xd4a#status.outputs.instance_profile_arnR\x0finstanceProfile\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12#\n" +
+	"\x10instance_profile\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x87\b\x92\xd4a#status.outputs.instance_profile_arnR\x0finstanceProfile\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12#\n" +
 	"\rebs_optimized\x18\n" +
 	" \x01(\bR\febsOptimized\x12\x86\x01\n" +
 	"\x15block_device_mappings\x18\v \x03(\v2R.dev.planton.provider.aws.awslaunchtemplate.v1.AwsLaunchTemplateBlockDeviceMappingR\x13blockDeviceMappings\x12\x7f\n" +
@@ -1707,7 +1707,7 @@ const file_dev_planton_provider_aws_awslaunchtemplate_v1_spec_proto_rawDesc = ""
 	"\x10throughput_mibps\x18\x04 \x01(\x05R\x0fthroughputMibps\x12\x1c\n" +
 	"\tencrypted\x18\x05 \x01(\bR\tencrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
+	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\a \x01(\tR\n" +
 	"snapshotId\x127\n" +
 	"\x15delete_on_termination\x18\b \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x84\x05\xbaH\x80\x05\x1a\xbd\x01\n" +
@@ -1724,8 +1724,8 @@ const file_dev_planton_provider_aws_awslaunchtemplate_v1_spec_proto_rawDesc = ""
 	"\x14network_interface_id\x18\x05 \x01(\tR\x12networkInterfaceId\x12B\n" +
 	"\x1bassociate_public_ip_address\x18\x06 \x01(\bH\x00R\x18associatePublicIpAddress\x88\x01\x01\x127\n" +
 	"\x15delete_on_termination\x18\a \x01(\bH\x01R\x13deleteOnTermination\x88\x01\x01\x12v\n" +
-	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12,\n" +
+	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12,\n" +
 	"\x12private_ip_address\x18\n" +
 	" \x01(\tR\x10privateIpAddress\x12,\n" +
 	"\x12ipv4_address_count\x18\v \x01(\x05R\x10ipv4AddressCount\x12%\n" +

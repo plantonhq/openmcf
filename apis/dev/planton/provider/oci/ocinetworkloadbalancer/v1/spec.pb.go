@@ -1093,14 +1093,14 @@ const file_dev_planton_provider_oci_ocinetworkloadbalancer_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/oci/ocinetworkloadbalancer/v1/spec.proto\x122dev.planton.provider.oci.ocinetworkloadbalancer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdb\x1d\n" +
 	"\x1aOciNetworkLoadBalancerSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12!\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12x\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
 	"\n" +
 	"is_private\x18\x04 \x01(\bR\tisPrivate\x12C\n" +
 	"\x1eis_preserve_source_destination\x18\x05 \x01(\bR\x1bisPreserveSourceDestination\x129\n" +
 	"\x19is_symmetric_hash_enabled\x18\x06 \x01(\bR\x16isSymmetricHashEnabled\x12\xa2\x01\n" +
-	"\x1anetwork_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x17networkSecurityGroupIds\x12$\n" +
+	"\x1anetwork_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xcae\x92\xd4a(status.outputs.network_security_group_idR\x17networkSecurityGroupIds\x12$\n" +
 	"\x0enlb_ip_version\x18\b \x01(\tR\fnlbIpVersion\x12|\n" +
 	"\freserved_ips\x18\t \x03(\v2Y.dev.planton.provider.oci.ocinetworkloadbalancer.v1.OciNetworkLoadBalancerSpec.ReservedIpR\vreservedIps\x12\x86\x01\n" +
 	"\fbackend_sets\x18\n" +

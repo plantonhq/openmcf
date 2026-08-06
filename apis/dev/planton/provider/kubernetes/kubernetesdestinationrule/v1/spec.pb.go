@@ -1919,8 +1919,8 @@ const file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/kubernetes/kubernetesdestinationrule/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesdestinationrule.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x05\n" +
 	"\x1dKubernetesDestinationRuleSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12s\n" +
-	"\x04host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04host\x12\x8b\x01\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12s\n" +
+	"\x04host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04host\x12\x8b\x01\n" +
 	"\x0etraffic_policy\x18\x04 \x01(\v2d.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicyR\rtrafficPolicy\x12w\n" +
 	"\asubsets\x18\x05 \x03(\v2].dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubsetR\asubsets\x12\x1b\n" +
 	"\texport_to\x18\x06 \x03(\tR\bexportTo\x12p\n" +

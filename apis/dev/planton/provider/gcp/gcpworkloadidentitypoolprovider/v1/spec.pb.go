@@ -637,11 +637,11 @@ const file_dev_planton_provider_gcp_gcpworkloadidentitypoolprovider_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/gcp/gcpworkloadidentitypoolprovider/v1/spec.proto\x12;dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc9\r\n" +
 	"#GcpWorkloadIdentityPoolProviderSpec\x12\xa6\x01\n" +
-	"\x19workload_identity_pool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\xbd\x05\x92\xd4a(status.outputs.workload_identity_pool_idR\x16workloadIdentityPoolId\x12\x80\x02\n" +
+	"\x19workload_identity_pool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x9d\x18\x92\xd4a(status.outputs.workload_identity_pool_idR\x16workloadIdentityPoolId\x12\x80\x02\n" +
 	"\"workload_identity_pool_provider_id\x18\x02 \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\x93\x01\n" +
 	"\x19provider_id_no_gcp_prefix\x12\\the prefix 'gcp-' is reserved by Google — choose a provider ID that does not start with it\x1a\x18!this.startsWith('gcp-')\xc8\x01\x01r\x132\x11^[a-z0-9-]{4,32}$R\x1eworkloadIdentityPoolProviderId\x12u\n" +
 	"\n" +
-	"project_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12*\n" +
+	"project_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12*\n" +
 	"\fdisplay_name\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18 R\vdisplayName\x12*\n" +
 	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12\x1a\n" +
 	"\bdisabled\x18\x06 \x01(\bR\bdisabled\x12\xa3\x01\n" +

@@ -170,7 +170,7 @@ const file_dev_planton_provider_gcp_gcpsslpolicy_v1_spec_proto_rawDesc = "" +
 	"3dev/planton/provider/gcp/gcpsslpolicy/v1/spec.proto\x12(dev.planton.provider.gcp.gcpsslpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd9\v\n" +
 	"\x10GcpSslPolicySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9a\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9a\x02\n" +
 	"\x0fssl_policy_name\x18\x02 \x01(\tB\xf1\x01\xbaH\xed\x01\xba\x01\xe9\x01\n" +
 	"\x15valid_ssl_policy_name\x12\x8e\x01ssl_policy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\rsslPolicyName\x12\xc9\x01\n" +
 	"\x06region\x18\x03 \x01(\tB\xb0\x01\xbaH\xac\x01\xba\x01\xa8\x01\n" +

@@ -2873,7 +2873,7 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrustaccessapplication_
 	"\n" +
 	"account_id\x18\x01 \x01(\tBw\xbaHt\xba\x01q\n" +
 	"\x10account_id.hex32\x12,account_id must be a 32-character hex string\x1a/this == '' || this.matches('^[0-9a-fA-F]{32}$')R\taccountId\x12l\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1b\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1b\n" +
 	"\x04name\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12\x8f\x01\n" +
 	"\x04type\x18\x04 \x01(\x0e2q.dev.planton.provider.cloudflare.cloudflarezerotrustaccessapplication.v1.CloudflareZeroTrustAccessApplicationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04type\x12\x16\n" +
 	"\x06domain\x18\x05 \x01(\tR\x06domain\x12\x92\x01\n" +
@@ -2920,7 +2920,7 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrustaccessapplication_
 	"\x15_app_launcher_visibleB\x1d\n" +
 	"\x1b_http_only_cookie_attribute\"\xc4\x01\n" +
 	"-CloudflareZeroTrustAccessApplicationPolicyRef\x12s\n" +
-	"\x06policy\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x0e\x92\xd4a\x18status.outputs.policy_idR\x06policy\x12\x1e\n" +
+	"\x06policy\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe56\x92\xd4a\x18status.outputs.policy_idR\x06policy\x12\x1e\n" +
 	"\n" +
 	"precedence\x18\x02 \x01(\rR\n" +
 	"precedence\"\xaa\x04\n" +

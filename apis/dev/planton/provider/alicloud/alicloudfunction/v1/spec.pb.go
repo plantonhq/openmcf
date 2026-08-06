@@ -1145,7 +1145,7 @@ const file_dev_planton_provider_alicloud_alicloudfunction_v1_spec_proto_rawDesc 
 	" \x01(\x05Bl\xbaHi\xba\x01f\n" +
 	"\x1ainstance_concurrency_range\x12.instance_concurrency must be between 1 and 200\x1a\x18this >= 1 && this <= 200H\x04R\x13instanceConcurrency\x88\x01\x01\x12[\n" +
 	"\x04code\x18\v \x01(\v2G.dev.planton.provider.alicloud.alicloudfunction.v1.AliCloudFunctionCodeR\x04code\x12c\n" +
-	"\x04role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1b\x88\xd4a\xc2\x17\x92\xd4a\x12status.outputs.arnR\x04role\x12,\n" +
+	"\x04role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1b\x88\xd4a\xea]\x92\xd4a\x12status.outputs.arnR\x04role\x12,\n" +
 	"\x0finternet_access\x18\r \x01(\bH\x05R\x0einternetAccess\x88\x01\x01\x12k\n" +
 	"\n" +
 	"vpc_config\x18\x0e \x01(\v2L.dev.planton.provider.alicloud.alicloudfunction.v1.AliCloudFunctionVpcConfigR\tvpcConfig\x12k\n" +
@@ -1182,12 +1182,12 @@ const file_dev_planton_provider_alicloud_alicloudfunction_v1_spec_proto_rawDesc 
 	"\bzip_file\x18\x03 \x01(\tR\azipFile\x12\x1a\n" +
 	"\bchecksum\x18\x04 \x01(\tR\bchecksum\"\xeb\x02\n" +
 	"\x19AliCloudFunctionVpcConfig\x12m\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12S\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12S\n" +
 	"\vvswitch_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\n" +
 	"vswitchIds\x12\x89\x01\n" +
-	"\x11security_group_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xce\x17\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\"\x9a\x04\n" +
+	"\x11security_group_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf6]\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\"\x9a\x04\n" +
 	"\x19AliCloudFunctionLogConfig\x12r\n" +
-	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xb8\x17\x92\xd4a\x1bstatus.outputs.project_nameR\aproject\x12\x1a\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe0]\x92\xd4a\x1bstatus.outputs.project_nameR\aproject\x12\x1a\n" +
 	"\blogstore\x18\x02 \x01(\tR\blogstore\x12\xaa\x01\n" +
 	"\x0elog_begin_rule\x18\x03 \x01(\tB\x7f\xbaH|\xba\x01y\n" +
 	"\x14log_begin_rule_valid\x121log_begin_rule must be one of: None, DefaultRegex\x1a.this == '' || this in ['None', 'DefaultRegex']H\x00R\flogBeginRule\x88\x01\x01\x12;\n" +

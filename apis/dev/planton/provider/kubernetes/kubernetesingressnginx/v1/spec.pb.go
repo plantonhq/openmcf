@@ -1315,7 +1315,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb5\x1c\n" +
 	"\x1aKubernetesIngressNginxSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x064.15.1H\x00R\fchartVersion\x88\x01\x01\x12\x82\x01\n" +
@@ -1413,7 +1413,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd0\x02\xbaH\xcc\x02\x1a\xc9\x02\n" +
 	"*spec.service.internal.annotations_required\x12\xed\x01The internal controller Service requires at least one annotation (the chart refuses to render it bare — the cloud's internal-LB annotation is what makes it internal, e.g. service.beta.kubernetes.io/azure-load-balancer-internal: \"true\")\x1a+!this.enabled || size(this.annotations) > 0\"\xcb\x01\n" +
 	"+KubernetesIngressNginxDefaultTlsCertificate\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\"\xe5\x01\n" +
 	"$KubernetesIngressNginxDefaultBackend\x12\x18\n" +

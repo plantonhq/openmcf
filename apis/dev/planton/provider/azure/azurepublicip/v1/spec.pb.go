@@ -579,7 +579,7 @@ const file_dev_planton_provider_azure_azurepublicip_v1_spec_proto_rawDesc = "" +
 	"\x11AzurePublicIpSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa4\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa4\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x8f\x02\xbaH\x8b\x02\xba\x01\xfe\x01\n" +
 	"\x15public_ip_name_format\x12\x99\x01Public IP names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12O\n" +
 	"\x03sku\x18\x04 \x01(\x0e2=.dev.planton.provider.azure.azurepublicip.v1.AzurePublicIpSkuR\x03sku\x12\\\n" +
@@ -587,7 +587,7 @@ const file_dev_planton_provider_azure_azurepublicip_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"ip_version\x18\x06 \x01(\x0e2C.dev.planton.provider.azure.azurepublicip.v1.AzurePublicIpIpVersionR\tipVersion\x12)\n" +
 	"\x05zones\x18\a \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12\x8e\x01\n" +
-	"\x13public_ip_prefix_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12\xad\x02\n" +
+	"\x13public_ip_prefix_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe5\x0f\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12\xad\x02\n" +
 	"\x11domain_name_label\x18\t \x01(\tB\x80\x02\xbaH\xfc\x01\xba\x01\xf8\x01\n" +
 	"\x18domain_name_label_format\x12\x9d\x01domain_name_label must start with a lowercase letter, end with a letter or digit, contain only lowercase letters, digits, and hyphens, and be 3-63 characters\x1a<this == '' || this.matches('^[a-z][a-z0-9-]{1,61}[a-z0-9]$')R\x0fdomainNameLabel\x12\x85\x01\n" +
 	"\x17domain_name_label_scope\x18\n" +

@@ -314,10 +314,10 @@ const file_dev_planton_provider_azure_azureroledefinition_v1_spec_proto_rawDesc 
 	"\x17AzureRoleDefinitionSpec\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12y\n" +
-	"\x05scope\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_idR\x05scope\x12 \n" +
+	"\x05scope\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a status.outputs.resource_group_idR\x05scope\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12r\n" +
 	"\vpermissions\x18\x04 \x03(\v2P.dev.planton.provider.azure.azureroledefinition.v1.AzureRoleDefinitionPermissionR\vpermissions\x12\x8a\x01\n" +
-	"\x11assignable_scopes\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_idR\x10assignableScopes\x129\n" +
+	"\x11assignable_scopes\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd0\x0f\x92\xd4a status.outputs.resource_group_idR\x10assignableScopes\x129\n" +
 	"\x12role_definition_id\x18\x06 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\x10roleDefinitionId\"\xa7\x01\n" +
 	"\x1dAzureRoleDefinitionPermission\x12\x18\n" +
 	"\aactions\x18\x01 \x03(\tR\aactions\x12\x1f\n" +

@@ -1878,7 +1878,7 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrustaccessgroup_v1_spe
 	"\n" +
 	"account_id\x18\x01 \x01(\tBw\xbaHt\xba\x01q\n" +
 	"\x10account_id.hex32\x12,account_id must be a 32-character hex string\x1a/this == '' || this.matches('^[0-9a-fA-F]{32}$')R\taccountId\x12l\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1b\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1b\n" +
 	"\x04name\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12{\n" +
 	"\ainclude\x18\x04 \x03(\v2W.dev.planton.provider.cloudflare.cloudflarezerotrustaccessgroup.v1.CloudflareAccessRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\ainclude\x12q\n" +
 	"\aexclude\x18\x05 \x03(\v2W.dev.planton.provider.cloudflare.cloudflarezerotrustaccessgroup.v1.CloudflareAccessRuleR\aexclude\x12q\n" +
@@ -1929,7 +1929,7 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrustaccessgroup_v1_spe
 	"\x11AccessRuleListRef\x12J\n" +
 	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x02id\"\x80\x01\n" +
 	"\x12AccessRuleGroupRef\x12j\n" +
-	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x0e\x92\xd4a\x17status.outputs.group_idR\x02id\"\x99\x01\n" +
+	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe66\x92\xd4a\x17status.outputs.group_idR\x02id\"\x99\x01\n" +
 	"\x11AccessRuleAzureAd\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12l\n" +
 	"\x14identity_provider_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x12identityProviderId\"\xbc\x01\n" +

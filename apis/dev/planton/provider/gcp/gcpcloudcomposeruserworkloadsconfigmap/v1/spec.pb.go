@@ -131,9 +131,9 @@ const file_dev_planton_provider_gcp_gcpcloudcomposeruserworkloadsconfigmap_v1_sp
 	"Mdev/planton/provider/gcp/gcpcloudcomposeruserworkloadsconfigmap/v1/spec.proto\x12Bdev.planton.provider.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x05\n" +
 	"*GcpCloudComposerUserWorkloadsConfigMapSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12\x84\x01\n" +
-	"\venvironment\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xa8\x05\x92\xd4a\x1fstatus.outputs.environment_nameR\venvironment\x12S\n" +
+	"\venvironment\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x18\x92\xd4a\x1fstatus.outputs.environment_nameR\venvironment\x12S\n" +
 	"\x0fconfig_map_name\x18\x04 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\rconfigMapName\x12\x96\x01\n" +
 	"\x04data\x18\x05 \x03(\v2x.dev.planton.provider.gcp.gcpcloudcomposeruserworkloadsconfigmap.v1.GcpCloudComposerUserWorkloadsConfigMapSpec.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +

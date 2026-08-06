@@ -1017,7 +1017,7 @@ const file_dev_planton_provider_gcp_gcphealthcheck_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/gcp/gcphealthcheck/v1/spec.proto\x12*dev.planton.provider.gcp.gcphealthcheck.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xaa\x19\n" +
 	"\x12GcpHealthCheckSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xa2\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xa2\x02\n" +
 	"\x11health_check_name\x18\x02 \x01(\tB\xf5\x01\xbaH\xf1\x01\xba\x01\xed\x01\n" +
 	"\x17valid_health_check_name\x12\x90\x01health_check_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x0fhealthCheckName\x12\xcb\x01\n" +
 	"\x06region\x18\x03 \x01(\tB\xb2\x01\xbaH\xae\x01\xba\x01\xaa\x01\n" +

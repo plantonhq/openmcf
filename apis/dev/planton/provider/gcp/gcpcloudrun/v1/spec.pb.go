@@ -2359,7 +2359,7 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"2dev/planton/provider/gcp/gcpcloudrun/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudrun.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd4\x17\n" +
 	"\x0fGcpCloudRunSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12K\n" +
 	"\fservice_name\x18\x03 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12-\n" +
 	"\vdescription\x18\x04 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\x80\x04R\vdescription\x12\\\n" +
@@ -2368,7 +2368,7 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"containers\x18\x06 \x03(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
 	"containers\x12T\n" +
 	"\avolumes\x18\a \x03(\v2:.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeR\avolumes\x12z\n" +
-	"\x0fservice_account\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12]\n" +
+	"\x0fservice_account\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12]\n" +
 	"\ascaling\x18\t \x01(\v2C.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunRevisionScalingR\ascaling\x12k\n" +
 	"\x0fservice_scaling\x18\n" +
 	" \x01(\v2B.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunServiceScalingR\x0eserviceScaling\x12X\n" +
@@ -2378,7 +2378,7 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\xbaH\a\x1a\x05\x18\x90\x1c(\x01H\x01R\x0etimeoutSeconds\x88\x01\x01\x12\x9d\x01\n" +
 	"\x15execution_environment\x18\r \x01(\x0e2H.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunExecutionEnvironmentB\x1e\x92\xa6\x1d\x1aEXECUTION_ENVIRONMENT_GEN2R\x14executionEnvironment\x12)\n" +
 	"\x10session_affinity\x18\x0e \x01(\bR\x0fsessionAffinity\x12\xbd\x01\n" +
-	"\x0eencryption_key\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBb\xaa\xa6\x1d@KMS crypto key resource ID/reference only — never key material\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\rencryptionKey\x12D\n" +
+	"\x0eencryption_key\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBb\xaa\xa6\x1d@KMS crypto key resource ID/reference only — never key material\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\rencryptionKey\x12D\n" +
 	"\brevision\x18\x10 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\brevision\x12\\\n" +
 	"\n" +
 	"vpc_access\x18\x11 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVpcAccessR\tvpcAccess\x12e\n" +
@@ -2480,7 +2480,7 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\x03nfs\x18\x06 \x01(\v2=.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunVolumeNfsH\x00R\x03nfsB\x0f\n" +
 	"\x06source\x12\x05\xbaH\x02\b\x01\"\xa3\x01\n" +
 	"\x19GcpCloudRunVolumeCloudSql\x12\x85\x01\n" +
-	"\tinstances\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xdc\x04\x92\xd4a\x1estatus.outputs.connection_name\x98\xd4a\x01R\tinstances\"\xc6\x02\n" +
+	"\tinstances\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\x17\x92\xd4a\x1estatus.outputs.connection_name\x98\xd4a\x01R\tinstances\"\xc6\x02\n" +
 	"\x17GcpCloudRunVolumeSecret\x12\x89\x01\n" +
 	"\x06secret\x18\x01 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x122\n" +
 	"\fdefault_mode\x18\x02 \x01(\x05B\n" +
@@ -2500,7 +2500,7 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"size_limit\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[0-9]+(Ki|Mi|Gi|Ti|K|M|G|T)$R\tsizeLimit\"\xa8\x01\n" +
 	"\x14GcpCloudRunVolumeGcs\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1b\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1b\n" +
 	"\tread_only\x18\x02 \x01(\bR\breadOnly\"|\n" +
 	"\x14GcpCloudRunVolumeNfs\x12\"\n" +
 	"\x06server\x18\x01 \x01(\tB\n" +
@@ -2534,14 +2534,14 @@ const file_dev_planton_provider_gcp_gcpcloudrun_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"\b_percent\"\xd8\x04\n" +
 	"\x14GcpCloudRunVpcAccess\x12s\n" +
-	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12s\n" +
+	"\tconnector\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb1\x18\x92\xd4a\x18status.outputs.self_linkR\tconnector\x12s\n" +
 	"\x12network_interfaces\x18\x02 \x03(\v2D.dev.planton.provider.gcp.gcpcloudrun.v1.GcpCloudRunNetworkInterfaceR\x11networkInterfaces\x12D\n" +
 	"\x06egress\x18\x03 \x01(\tB,\xbaH)\xd8\x01\x01r$R\x00R\vALL_TRAFFICR\x13PRIVATE_RANGES_ONLYR\x06egress:\x8f\x02\xbaH\x8b\x02\x1a\x88\x02\n" +
 	"#vpc_access.connector_xor_interfaces\x12Yuse direct VPC egress (network_interfaces) or a Serverless VPC Access connector, not both\x1a\x85\x01!(((has(this.connector.value) && this.connector.value != '') || has(this.connector.value_from)) && size(this.network_interfaces) > 0)\"\xd9\x02\n" +
 	"\x1bGcpCloudRunNetworkInterface\x12v\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\x7f\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xc2\x17\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\x7f\n" +
 	"\n" +
-	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe3\x04\x92\xd4a\x1estatus.outputs.subnetwork_name\x98\xd4a\x01R\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xc3\x17\x92\xd4a\x1estatus.outputs.subnetwork_name\x98\xd4a\x01R\n" +
 	"subnetwork\x12A\n" +
 	"\x04tags\x18\x03 \x03(\tB-\xbaH*\xd8\x01\x01\x92\x01$\x18\x01\" r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x04tags\"G\n" +
 	"\x17GcpCloudRunNodeSelector\x12,\n" +

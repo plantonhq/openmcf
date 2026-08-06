@@ -1075,13 +1075,13 @@ const file_dev_planton_provider_kubernetes_kubernetestempo_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/kubernetes/kubernetestempo/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetestempo.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\x10\n" +
 	"\x13KubernetesTempoSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
 	"\rchart_version\x18\x03 \x01(\tB\t\x8a\xa6\x1d\x052.2.3H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
 	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12d\n" +
 	"\astorage\x18\x05 \x01(\v2J.dev.planton.provider.kubernetes.kubernetestempo.v1.KubernetesTempoStorageR\astorage\x12`\n" +
 	"\tdisk_size\x18\x06 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x02R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
+	"\rstorage_class\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
 	"\tephemeral\x18\b \x01(\bR\tephemeral\x12>\n" +
 	"\tretention\x18\t \x01(\tB\x1b\xbaH\x11r\x0f2\r^[0-9]+(m|h)$\x8a\xa6\x1d\x0324hH\x03R\tretention\x88\x01\x01\x12H\n" +
 	"\x18jaeger_receivers_enabled\x18\n" +
@@ -1138,7 +1138,7 @@ const file_dev_planton_provider_kubernetes_kubernetestempo_v1_spec_proto_rawDesc
 	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\xba\x04\n" +
 	"\x1fKubernetesTempoMetricsGenerator\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x89\x01\n" +
-	"\x10remote_write_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe6\x06\x92\xd4a\"status.outputs.prometheus_endpointR\x0eremoteWriteUrl\x12\x8f\x01\n" +
+	"\x10remote_write_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe6\x1f\x92\xd4a\"status.outputs.prometheus_endpointR\x0eremoteWriteUrl\x12\x8f\x01\n" +
 	"\n" +
 	"processors\x18\x03 \x03(\x0e2\\.dev.planton.provider.kubernetes.kubernetestempo.v1.KubernetesTempoMetricsGeneratorProcessorB\x11\xbaH\x0e\x92\x01\v\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\n" +
 	"processors:\xde\x01\xbaH\xda\x01\x1a\xd7\x01\n" +

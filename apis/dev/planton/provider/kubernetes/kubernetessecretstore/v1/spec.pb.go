@@ -106,7 +106,7 @@ const file_dev_planton_provider_kubernetes_kubernetessecretstore_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetessecretstore/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetessecretstore.v1\x1a\x1bbuf/validate/validate.proto\x1a<dev/planton/provider/kubernetes/external_secrets_store.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x01\n" +
 	"\x19KubernetesSecretStoreSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12[\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12[\n" +
 	"\x06config\x18\x02 \x01(\v2;.dev.planton.provider.kubernetes.ExternalSecretsStoreConfigB\x06\xbaH\x03\xc8\x01\x01R\x06configB\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetessecretstore.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecretstore/v1;kubernetessecretstorev1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetessecretstore.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetessecretstore\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetessecretstore\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetessecretstore::V1b\x06proto3"
 

@@ -764,10 +764,10 @@ const file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDesc
 	"\x10drive_cache_type\x18\n" +
 	" \x01(\tR\x0edriveCacheType\x12\xa7\x01\n" +
 	"\x1ddata_read_cache_configuration\x18\v \x01(\v2d.dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemDataReadCacheConfigurationR\x1adataReadCacheConfiguration\x12x\n" +
-	"\tsubnet_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
+	"\tsubnet_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
 	"\tbackup_id\x18\x0f \x01(\tR\bbackupId\x12\xd7\x01\n" +
 	"\vimport_path\x18\x10 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xad\x01\n" +
 	"\x12import_path_format\x12Eimport_path must be an S3 URI beginning with s3:// (3-900 characters)\x1aPthis == '' || (this.startsWith('s3://') && size(this) >= 3 && size(this) <= 900)R\n" +
@@ -832,7 +832,7 @@ const file_dev_planton_provider_aws_awsfsxlustrefilesystem_v1_spec_proto_rawDesc
 	"\n" +
 	"nid_format\x12]each NID must be an IPv4 address or bracketed range followed by '@tcp' (e.g., '10.0.1.6@tcp')\x1a:this.matches('^([0-9\\\\[\\\\]-]*\\\\.){3}([0-9\\\\[\\\\]-]*)@tcp$')R\fnoSquashNids\"\x94\x03\n" +
 	"&AwsFsxLustreFileSystemLogConfiguration\x12{\n" +
-	"\vdestination\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\vdestination\x12)\n" +
+	"\vdestination\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\vdestination\x12)\n" +
 	"\x05level\x18\x02 \x01(\tB\x0e\x8a\xa6\x1d\n" +
 	"WARN_ERRORH\x00R\x05level\x88\x01\x01:\xb7\x01\xbaH\xb3\x01\x1a\xb0\x01\n" +
 	"\x0flog_level_valid\x12Dlevel must be 'DISABLED', 'WARN_ONLY', 'ERROR_ONLY', or 'WARN_ERROR'\x1aW!has(this.level) || this.level in ['DISABLED', 'WARN_ONLY', 'ERROR_ONLY', 'WARN_ERROR']B\b\n" +

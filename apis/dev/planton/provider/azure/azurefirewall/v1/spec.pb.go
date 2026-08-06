@@ -652,14 +652,14 @@ const file_dev_planton_provider_azure_azurefirewall_v1_spec_proto_rawDesc = "" +
 	"\x11AzureFirewallSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa2\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xa2\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x8d\x02\xbaH\x89\x02\xba\x01\xfc\x01\n" +
 	"\x14firewall_name_format\x12\x98\x01Firewall names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12f\n" +
 	"\bsku_name\x18\x04 \x01(\x0e2A.dev.planton.provider.azure.azurefirewall.v1.AzureFirewallSkuNameB\b\xbaH\x05\x82\x01\x02\x10\x01R\askuName\x12f\n" +
 	"\bsku_tier\x18\x05 \x01(\x0e2A.dev.planton.provider.azure.azurefirewall.v1.AzureFirewallSkuTierB\b\xbaH\x05\x82\x01\x02\x10\x01R\askuTier\x12v\n" +
 	"\x11ip_configurations\x18\x06 \x03(\v2I.dev.planton.provider.azure.azurefirewall.v1.AzureFirewallIpConfigurationR\x10ipConfigurations\x12\x93\x01\n" +
 	"\x1bmanagement_ip_configuration\x18\a \x01(\v2S.dev.planton.provider.azure.azurefirewall.v1.AzureFirewallManagementIpConfigurationR\x19managementIpConfiguration\x12\x8c\x01\n" +
-	"\x12firewall_policy_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x92\x04\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\x7f\n" +
+	"\x12firewall_policy_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xd2\x10\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\x7f\n" +
 	"\x11threat_intel_mode\x18\t \x01(\x0e2I.dev.planton.provider.azure.azurefirewall.v1.AzureFirewallThreatIntelModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0fthreatIntelMode\x12-\n" +
 	"\vdns_servers\x18\n" +
 	" \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\n" +
@@ -683,13 +683,13 @@ const file_dev_planton_provider_azure_azurefirewall_v1_spec_proto_rawDesc = "" +
 	"\x1cAzureFirewallIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12r\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x89\x01\n" +
-	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\"\xd4\x02\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x89\x01\n" +
+	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\"\xd4\x02\n" +
 	"&AzureFirewallManagementIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12x\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8f\x01\n" +
-	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\"\xca\x01\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8f\x01\n" +
+	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\"\xca\x01\n" +
 	"\x17AzureFirewallVirtualHub\x12`\n" +
 	"\x0evirtual_hub_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\fvirtualHubId\x129\n" +
 	"\x0fpublic_ip_count\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\rpublicIpCount\x88\x01\x01B\x12\n" +

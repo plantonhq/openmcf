@@ -377,11 +377,11 @@ const file_dev_planton_provider_aws_awsiamrole_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"oidc_trust\x18\n" +
 	" \x01(\v2;.dev.planton.provider.aws.awsiamrole.v1.AwsIamRoleOidcTrustH\x00R\toidcTrust\x12\x86\x01\n" +
-	"\x13managed_policy_arns\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe6\x01\x92\xd4a\x19status.outputs.policy_arnR\x11managedPolicyArns\x12\x82\x01\n" +
+	"\x13managed_policy_arns\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x86\b\x92\xd4a\x19status.outputs.policy_arnR\x11managedPolicyArns\x12\x82\x01\n" +
 	"\x0finline_policies\x18\x06 \x03(\v2J.dev.planton.provider.aws.awsiamrole.v1.AwsIamRoleSpec.InlinePoliciesEntryB\r\xbaH\n" +
 	"\x9a\x01\a\"\x05r\x03\x18\x80\x01R\x0einlinePolicies\x12:\n" +
 	"\x14max_session_duration\x18\a \x01(\x05B\b\x92\xa6\x1d\x043600R\x12maxSessionDuration\x12\x89\x01\n" +
-	"\x14permissions_boundary\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe6\x01\x92\xd4a\x19status.outputs.policy_arnR\x13permissionsBoundary\x122\n" +
+	"\x14permissions_boundary\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x86\b\x92\xd4a\x19status.outputs.policy_arnR\x13permissionsBoundary\x122\n" +
 	"\x15force_detach_policies\x18\t \x01(\bR\x13forceDetachPolicies\x1aZ\n" +
 	"\x13InlinePoliciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
@@ -391,8 +391,8 @@ const file_dev_planton_provider_aws_awsiamrole_v1_spec_proto_rawDesc = "" +
 	"\x1amax_session_duration_range\x12Fmax_session_duration must be between 3600 (1h) and 43200 (12h) seconds\x1akthis.max_session_duration == 0 || (this.max_session_duration >= 3600 && this.max_session_duration <= 43200)B\x0e\n" +
 	"\x05trust\x12\x05\xbaH\x02\b\x01\"\xc3\x05\n" +
 	"\x13AwsIamRoleOidcTrust\x12\x99\x01\n" +
-	"\fprovider_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBB\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x14trusts oidc provider\x88\xd4a\xe5\x01\x92\xd4a\x1bstatus.outputs.provider_arnR\vproviderArn\x12\x81\x01\n" +
-	"\fprovider_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x01\x92\xd4a\x1bstatus.outputs.provider_urlR\vproviderUrl\x12*\n" +
+	"\fprovider_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBB\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x14trusts oidc provider\x88\xd4a\x85\b\x92\xd4a\x1bstatus.outputs.provider_arnR\vproviderArn\x12\x81\x01\n" +
+	"\fprovider_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\b\x92\xd4a\x1bstatus.outputs.provider_urlR\vproviderUrl\x12*\n" +
 	"\bsubjects\x18\x03 \x03(\tB\x0e\xbaH\v\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\bsubjects\x12;\n" +
 	"\x11wildcard_subjects\x18\x04 \x03(\tB\x0e\xbaH\v\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\x10wildcardSubjects\x12,\n" +
 	"\taudiences\x18\x05 \x03(\tB\x0e\xbaH\v\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\taudiences:\xf4\x01\xbaH\xf0\x01\x1a\xed\x01\n" +

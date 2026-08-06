@@ -542,7 +542,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingress_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesingress/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesingress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd9\v\n" +
 	"\x15KubernetesIngressSpec\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12o\n" +
 	"\x06labels\x18\x03 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesingress.v1.KubernetesIngressSpec.LabelsEntryR\x06labels\x12~\n" +
@@ -578,7 +578,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingress_v1_spec_proto_rawDe
 	"\n" +
 	"_path_type\"\xc6\x06\n" +
 	"\x18KubernetesIngressBackend\x12\x81\x01\n" +
-	"\fservice_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\vserviceName\x12\x8f\x01\n" +
+	"\fservice_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1bstatus.outputs.service_nameR\vserviceName\x12\x8f\x01\n" +
 	"\vport_number\x18\x02 \x01(\x05Bn\xbaHk\xba\x01h\n" +
 	"\x11port_number.range\x12(port_number must be in the range 1-65535\x1a)this == 0 || (this >= 1 && this <= 65535)R\n" +
 	"portNumber\x12\xc9\x02\n" +
@@ -588,7 +588,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingress_v1_spec_proto_rawDe
 	"\x14KubernetesIngressTls\x12\xab\x02\n" +
 	"\x05hosts\x18\x01 \x03(\tB\x94\x02\xbaH\x90\x02\x92\x01\x8c\x02\"\x89\x02\xba\x01\x85\x02\n" +
 	"\x1ctls_host.precise_or_wildcard\x12\x87\x01each TLS host must be a lowercase DNS name, optionally with a single leading wildcard label (e.g. \"app.example.com\" or \"*.example.com\")\x1a[this.matches('^(\\\\*\\\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')R\x05hosts\x12x\n" +
-	"\vsecret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xa7\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xa7\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretNameB\xa8\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesingress.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingress/v1;kubernetesingressv1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesingress.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesingress\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesingress\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesingress::V1b\x06proto3"
 

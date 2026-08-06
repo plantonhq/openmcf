@@ -413,7 +413,7 @@ const file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc = "" +
 	" \x01(\tR\x13fifoThroughputLimit\x12r\n" +
 	"\x12dead_letter_config\x18\v \x01(\v2D.dev.planton.provider.aws.awssqsqueue.v1.AwsSqsQueueDeadLetterConfigR\x10deadLetterConfig\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
 	"!kms_data_key_reuse_period_seconds\x18\r \x01(\x05R\x1ckmsDataKeyReusePeriodSeconds\x125\n" +
 	"\x17sqs_managed_sse_enabled\x18\x0e \x01(\bR\x14sqsManagedSseEnabled\x12/\n" +
 	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy\x12x\n" +
@@ -428,13 +428,13 @@ const file_dev_planton_provider_aws_awssqsqueue_v1_spec_proto_rawDesc = "" +
 	"\x18kms_data_key_reuse_range\x12Gkms_data_key_reuse_period_seconds must be between 60 and 86400 when set\x1a\x90\x01this.kms_data_key_reuse_period_seconds == 0 || (this.kms_data_key_reuse_period_seconds >= 60 && this.kms_data_key_reuse_period_seconds <= 86400)\"\xd1\x01\n" +
 	"\x1bAwsSqsQueueDeadLetterConfig\x12z\n" +
 	"\n" +
-	"target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\ttargetArn\x126\n" +
+	"target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\ttargetArn\x126\n" +
 	"\x11max_receive_count\x18\x02 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xe8\a(\x01R\x0fmaxReceiveCount\"\x94\x05\n" +
 	"\x1dAwsSqsQueueRedriveAllowPolicy\x125\n" +
 	"\x12redrive_permission\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11redrivePermission\x12\x89\x01\n" +
 	"\x11source_queue_arns\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10\n" +
-	"\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x0fsourceQueueArns:\xaf\x03\xbaH\xab\x03\x1a\x99\x01\n" +
+	"\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x0fsourceQueueArns:\xaf\x03\xbaH\xab\x03\x1a\x99\x01\n" +
 	"\x18redrive_permission_valid\x12>redrive_permission must be 'allowAll', 'denyAll', or 'byQueue'\x1a=this.redrive_permission in ['allowAll', 'denyAll', 'byQueue']\x1a\x8c\x02\n" +
 	"\x1esource_queues_match_permission\x12|source_queue_arns is required (1-10 entries) with redrive_permission 'byQueue' and must be empty for 'allowAll' or 'denyAll'\x1althis.redrive_permission == 'byQueue' ? size(this.source_queue_arns) >= 1 : size(this.source_queue_arns) == 0B\xd4\x02\n" +
 	"+com.dev.planton.provider.aws.awssqsqueue.v1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssqsqueue/v1;awssqsqueuev1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awssqsqueue.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awssqsqueue\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awssqsqueue\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awssqsqueue::V1b\x06proto3"

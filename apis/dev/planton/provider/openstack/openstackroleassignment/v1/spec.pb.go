@@ -159,7 +159,7 @@ const file_dev_planton_provider_openstack_openstackroleassignment_v1_spec_proto_
 	"\x1bOpenStackRoleAssignmentSpec\x12 \n" +
 	"\arole_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06roleId\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xd0\x13\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x1b\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x9cN\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x1b\n" +
 	"\tdomain_id\x18\x03 \x01(\tR\bdomainId\x12\x17\n" +
 	"\auser_id\x18\x04 \x01(\tR\x06userId\x12\x19\n" +
 	"\bgroup_id\x18\x05 \x01(\tR\agroupId\x12\x16\n" +

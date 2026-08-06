@@ -377,11 +377,11 @@ const file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_prot
 	"\x12target_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x10targetResourceId\x12\x80\x01\n" +
 	"\fenabled_logs\x18\x03 \x03(\v2].dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogR\venabledLogs\x12\x89\x01\n" +
 	"\x0fenabled_metrics\x18\x04 \x03(\v2`.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingMetricR\x0eenabledMetrics\x12\x95\x01\n" +
-	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12\xc4\x01\n" +
+	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12\xc4\x01\n" +
 	"\x1elog_analytics_destination_type\x18\x06 \x01(\x0e2u.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogAnalyticsDestinationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1blogAnalyticsDestinationType\x12\x90\x01\n" +
-	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x10storageAccountId\x12\xa6\x01\n" +
-	"\x1eeventhub_authorization_rule_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xdf\x03\x92\xd4a$status.outputs.authorization_rule_idR\x1beventhubAuthorizationRuleId\x12\x83\x01\n" +
-	"\reventhub_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventhubName\x12.\n" +
+	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x10storageAccountId\x12\xa6\x01\n" +
+	"\x1eeventhub_authorization_rule_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x9f\x10\x92\xd4a$status.outputs.authorization_rule_idR\x1beventhubAuthorizationRuleId\x12\x83\x01\n" +
+	"\reventhub_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x9d\x10\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventhubName\x12.\n" +
 	"\x13partner_solution_id\x18\n" +
 	" \x01(\tR\x11partnerSolutionId:\xba\x06\xbaH\xb6\x06\x1a\xd8\x01\n" +
 	"(diagnostic_setting_at_least_one_category\x12kenable at least one log or metric category -- a diagnostic setting that routes nothing is rejected by Azure\x1a?this.enabled_logs.size() > 0 || this.enabled_metrics.size() > 0\x1a\xde\x02\n" +

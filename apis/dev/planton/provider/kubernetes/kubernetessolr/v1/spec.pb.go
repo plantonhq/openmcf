@@ -1784,7 +1784,7 @@ const file_dev_planton_provider_kubernetes_kubernetessolr_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/kubernetes/kubernetessolr/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetessolr.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x98\x10\n" +
 	"\x12KubernetesSolrSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12-\n" +
 	"\breplicas\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01\x12 \n" +
 	"\aversion\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x12)\n" +
@@ -1830,7 +1830,7 @@ const file_dev_planton_provider_kubernetes_kubernetessolr_v1_spec_proto_rawDesc 
 	"\a_chroot\"\xc6\x01\n" +
 	"*KubernetesSolrProvidedZookeeperPersistence\x12\x12\n" +
 	"\x04size\x18\x01 \x01(\tR\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"\xd5\x01\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"\xd5\x01\n" +
 	"\x1fKubernetesSolrExternalZookeeper\x12\x82\x01\n" +
 	"\x11connection_string\x18\x01 \x01(\tBU\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dKZooKeeper host:port connection string (service addresses), not a credentialR\x10connectionString\x12\"\n" +
 	"\x06chroot\x18\x02 \x01(\tB\x05\x8a\xa6\x1d\x01/H\x00R\x06chroot\x88\x01\x01B\t\n" +
@@ -1843,7 +1843,7 @@ const file_dev_planton_provider_kubernetes_kubernetessolr_v1_spec_proto_rawDesc 
 	"\x06source\"\x8d\x03\n" +
 	"\x1fKubernetesSolrPersistentStorage\x12\x1a\n" +
 	"\x04size\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12\xb4\x01\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12\xb4\x01\n" +
 	"\x0ereclaim_policy\x18\x03 \x01(\tB\x87\x01\xbaHz\xba\x01w\n" +
 	" spec.storage.reclaim_policy_enum\x12'reclaim policy must be Retain or Delete\x1a*this == '' || this in ['Retain', 'Delete']\x8a\xa6\x1d\x06RetainH\x00R\rreclaimPolicy\x88\x01\x01B\x11\n" +
 	"\x0f_reclaim_policy\"?\n" +
@@ -1853,7 +1853,7 @@ const file_dev_planton_provider_kubernetes_kubernetessolr_v1_spec_proto_rawDesc 
 	"\x16KubernetesSolrSecurity\x12\xa6\x01\n" +
 	"\x13authentication_type\x18\x01 \x01(\tBp\xbaHm\xba\x01j\n" +
 	"&spec.security.authentication_type_enum\x12!authentication_type must be basic\x1a\x1dthis == '' || this == 'basic'H\x00R\x12authenticationType\x88\x01\x01\x12\xc0\x01\n" +
-	"\x11basic_auth_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x0fbasicAuthSecret\x12.\n" +
+	"\x11basic_auth_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x0fbasicAuthSecret\x12.\n" +
 	"\x13probes_require_auth\x18\x03 \x01(\bR\x11probesRequireAuth\x12\x85\x01\n" +
 	"\x17bootstrap_security_json\x18\x04 \x01(\v2M.dev.planton.provider.kubernetes.kubernetessolr.v1.KubernetesSolrSecretKeyRefR\x15bootstrapSecurityJsonB\x16\n" +
 	"\x14_authentication_type\"R\n" +

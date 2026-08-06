@@ -2763,7 +2763,7 @@ const file_dev_planton_provider_azure_azurefrontdoorruleset_v1_spec_proto_rawDes
 	">dev/planton/provider/azure/azurefrontdoorruleset/v1/spec.proto\x123dev.planton.provider.azure.azurefrontdoorruleset.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe5\x05\n" +
 	"\x19AzureFrontDoorRuleSetSpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\xed\x01\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\xed\x01\n" +
 	"\rrule_set_name\x18\x02 \x01(\tB\xc8\x01\xbaH\xc4\x01\xba\x01\xbd\x01\n" +
 	"\x1ffront_door_rule_set_name_format\x12mrule_set_name must be 1-60 characters, begin with a letter, and contain only letters and numbers (no hyphens)\x1a+this.matches('^[a-zA-Z][0-9a-zA-Z]{0,59}$')\xc8\x01\x01R\vruleSetName\x12]\n" +
 	"\x05rules\x18\x03 \x03(\v2G.dev.planton.provider.azure.azurefrontdoorruleset.v1.AzureFrontDoorRuleR\x05rules:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
@@ -2976,7 +2976,7 @@ const file_dev_planton_provider_azure_azurefrontdoorruleset_v1_spec_proto_rawDes
 	"\x05value\x18\x03 \x01(\tR\x05value:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
 	"\x1efront_door_header_action_value\x12`value is required when header_action is APPEND or OVERWRITE, and must be empty when it is DELETE\x1a=this.header_action == 3 ? this.value == '' : this.value != ''\"\x9e\x15\n" +
 	"2AzureFrontDoorRuleRouteConfigurationOverrideAction\x12\x83\x01\n" +
-	"\x0forigin_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe2\x03\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12\x94\x01\n" +
+	"\x0forigin_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xa2\x10\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12\x94\x01\n" +
 	"\x13forwarding_protocol\x18\x02 \x01(\x0e2Y.dev.planton.provider.azure.azurefrontdoorruleset.v1.AzureFrontDoorRuleForwardingProtocolB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12forwardingProtocol\x12\x87\x01\n" +
 	"\x0ecache_behavior\x18\x03 \x01(\x0e2T.dev.planton.provider.azure.azurefrontdoorruleset.v1.AzureFrontDoorRuleCacheBehaviorB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\rcacheBehavior\x12\xbe\x02\n" +

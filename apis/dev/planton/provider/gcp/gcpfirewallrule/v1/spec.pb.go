@@ -362,8 +362,8 @@ const file_dev_planton_provider_gcp_gcpfirewallrule_v1_spec_proto_rawDesc = "" +
 	"\x19log_config_metadata_valid\x12=metadata must be EXCLUDE_ALL_METADATA or INCLUDE_ALL_METADATA\x1a8this in ['EXCLUDE_ALL_METADATA', 'INCLUDE_ALL_METADATA']\xc8\x01\x01R\bmetadata\"\x9b\x0e\n" +
 	"\x13GcpFirewallRuleSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
-	"\anetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12H\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
+	"\anetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12H\n" +
 	"\trule_name\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\bruleName\x12|\n" +
 	"\tdirection\x18\x04 \x01(\tB^\xbaH[\xba\x01U\n" +
 	"\x0fdirection_valid\x12#direction must be INGRESS or EGRESS\x1a\x1dthis in ['INGRESS', 'EGRESS']\xc8\x01\x01R\tdirection\x12h\n" +

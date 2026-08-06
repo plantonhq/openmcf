@@ -1288,12 +1288,12 @@ const file_dev_planton_provider_azure_azuremssqldatabase_v1_spec_proto_rawDesc =
 	"\n" +
 	";dev/planton/provider/azure/azuremssqldatabase/v1/spec.proto\x120dev.planton.provider.azure.azuremssqldatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xee8\n" +
 	"\x16AzureMssqlDatabaseSpec\x12x\n" +
-	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb1\x03\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\xdb\x01\n" +
+	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x0f\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\xdb\x01\n" +
 	"\rdatabase_name\x18\x02 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xa3\x01\n" +
 	"\x15mssql_db_name_charset\x12=database_name cannot contain <>*%&:\\/? or end with '.' or ' '\x1aK!this.matches('[<>*%&:\\\\/?]') && !this.endsWith('.') && !this.endsWith(' ')\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\fdatabaseName\x12\xb7\x03\n" +
 	"\bsku_name\x18\x03 \x01(\tB\x9b\x03\xbaH\x97\x03\xba\x01\x93\x03\n" +
 	"\x13mssql_db_sku_format\x12\xa6\x01sku_name must be a DTU tier (Basic, S0-S12, P1-P15), a vCore tier (GP_/BC_/HS_ with optional _S_ serverless, e.g. GP_Gen5_2, GP_S_Gen5_1), DW/DS, ElasticPool, or Free\x1a\xd2\x01this == '' || this in ['Basic', 'ElasticPool', 'Free'] || this.matches('^(S|P)[0-9]{1,2}$') || this.matches('^(GP|BC|HS)(_S)?_[A-Za-z0-9]+_[0-9]+$') || this.matches('^DW[0-9]+c?$') || this.matches('^DS[0-9]+$')R\askuName\x12\x83\x01\n" +
-	"\x0felastic_pool_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xb4\x03\x92\xd4a\x1estatus.outputs.elastic_pool_idR\relasticPoolId\x12<\n" +
+	"\x0felastic_pool_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xf4\x0f\x92\xd4a\x1estatus.outputs.elastic_pool_idR\relasticPoolId\x12<\n" +
 	"\vmax_size_gb\x18\x05 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xb0@)\x9a\x99\x99\x99\x99\x99\xb9?H\x00R\tmaxSizeGb\x88\x01\x01\x12J\n" +
 	"\tcollation\x18\x06 \x01(\tB'\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x1cSQL_Latin1_General_CP1_CI_ASH\x01R\tcollation\x88\x01\x01\x12r\n" +
 	"\flicense_type\x18\a \x01(\x0e2O.dev.planton.provider.azure.azuremssqldatabase.v1.AzureMssqlDatabaseLicenseTypeR\vlicenseType\x12\xd3\x01\n" +
@@ -1310,7 +1310,7 @@ const file_dev_planton_provider_azure_azuremssqldatabase_v1_spec_proto_rawDesc =
 	"\x1emaintenance_configuration_name\x18\x0f \x01(\tR\x1cmaintenanceConfigurationName\x12o\n" +
 	"\vcreate_mode\x18\x10 \x01(\x0e2N.dev.planton.provider.azure.azuremssqldatabase.v1.AzureMssqlDatabaseCreateModeR\n" +
 	"createMode\x12\x96\x01\n" +
-	"\x1bcreation_source_database_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xb3\x03\x92\xd4a\x1astatus.outputs.database_idR\x18creationSourceDatabaseId\x12x\n" +
+	"\x1bcreation_source_database_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf3\x0f\x92\xd4a\x1astatus.outputs.database_idR\x18creationSourceDatabaseId\x12x\n" +
 	"\x0esecondary_type\x18\x12 \x01(\x0e2Q.dev.planton.provider.azure.azuremssqldatabase.v1.AzureMssqlDatabaseSecondaryTypeR\rsecondaryType\x12\x99\x02\n" +
 	"\x15restore_point_in_time\x18\x13 \x01(\tB\xe5\x01\xbaH\xe1\x01\xba\x01\xdd\x01\n" +
 	"\x1dmssql_db_restore_time_rfc3339\x12Rrestore_point_in_time must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x12restorePointInTime\x12.\n" +
@@ -1323,9 +1323,9 @@ const file_dev_planton_provider_azure_azuremssqldatabase_v1_spec_proto_rawDesc =
 	"\vsample_name\x18\x1a \x01(\tB\x92\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +
 	"\x1amssql_db_sample_name_valid\x12Bsample_name must be AdventureWorksLT (the only sample Azure ships)\x1a(this == '' || this == 'AdventureWorksLT'R\n" +
 	"sampleName\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x1b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\\\n" +
+	"\x1auser_assigned_identity_ids\x18\x1b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\\\n" +
 	"#transparent_data_encryption_enabled\x18\x1c \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R transparentDataEncryptionEnabled\x88\x01\x01\x12\xb0\x01\n" +
-	",transparent_data_encryption_key_vault_key_id\x18\x1d \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xa9\x03\x92\xd4a\x15status.outputs.key_idR&transparentDataEncryptionKeyVaultKeyId\x12x\n" +
+	",transparent_data_encryption_key_vault_key_id\x18\x1d \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xe9\x0f\x92\xd4a\x15status.outputs.key_idR&transparentDataEncryptionKeyVaultKeyId\x12x\n" +
 	":transparent_data_encryption_key_automatic_rotation_enabled\x18\x1e \x01(\bR4transparentDataEncryptionKeyAutomaticRotationEnabled\x12b\n" +
 	"\x06import\x18\x1f \x01(\v2J.dev.planton.provider.azure.azuremssqldatabase.v1.AzureMssqlDatabaseImportR\x06import\x12\x9b\x01\n" +
 	"\x1bshort_term_retention_policy\x18  \x01(\v2\\.dev.planton.provider.azure.azuremssqldatabase.v1.AzureMssqlDatabaseShortTermRetentionPolicyR\x18shortTermRetentionPolicy\x12\x98\x01\n" +

@@ -385,7 +385,7 @@ const file_dev_planton_provider_azure_azurefrontdoororigin_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/azure/azurefrontdoororigin/v1/spec.proto\x122dev.planton.provider.azure.azurefrontdoororigin.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa8\v\n" +
 	"\x18AzureFrontDoorOriginSpec\x12\x89\x01\n" +
-	"\x0forigin_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x03\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12\x88\x02\n" +
+	"\x0forigin_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x10\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12\x88\x02\n" +
 	"\vorigin_name\x18\x02 \x01(\tB\xe6\x01\xbaH\xe2\x01\xba\x01\xd5\x01\n" +
 	"\x1dfront_door_origin_name_format\x12xorigin_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\n" +
 	"originName\x12W\n" +

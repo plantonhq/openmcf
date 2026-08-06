@@ -359,11 +359,11 @@ const file_dev_planton_provider_azure_azureapplicationinsights_v1_spec_proto_raw
 	"\x1cAzureApplicationInsightsSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12I\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12I\n" +
 	"\x19application_insights_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\x17applicationInsightsName\x12\x94\x01\n" +
 	"\x10application_type\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azureapplicationinsights.v1.AzureApplicationInsightsApplicationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0fapplicationType\x12\x81\x01\n" +
-	"\fworkspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\vworkspaceId\x12S\n" +
+	"\fworkspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\vworkspaceId\x12S\n" +
 	"\x11retention_in_days\x18\x06 \x01(\x05B\"\xbaH\x19\x1a\x170\x1e0<0Z0x0\xb4\x010\x8e\x020\xed\x020\xa6\x040\xda\x05\x8a\xa6\x1d\x0290H\x00R\x0fretentionInDays\x88\x01\x01\x12J\n" +
 	"\x14daily_data_cap_in_gb\x18\a \x01(\x01B\x15\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x03100H\x01R\x10dailyDataCapInGb\x88\x01\x01\x12]\n" +
 	"$daily_data_cap_notifications_enabled\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R dailyDataCapNotificationsEnabled\x88\x01\x01\x12T\n" +

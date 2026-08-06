@@ -234,7 +234,7 @@ const file_dev_planton_provider_azure_azurecosmosdbmongocollection_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/azure/azurecosmosdbmongocollection/v1/spec.proto\x12:dev.planton.provider.azure.azurecosmosdbmongocollection.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe3\v\n" +
 	" AzureCosmosdbMongoCollectionSpec\x12\x8f\x01\n" +
-	"\x11mongo_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x03\x92\xd4a status.outputs.mongo_database_idR\x0fmongoDatabaseId\x126\n" +
+	"\x11mongo_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x10\x92\xd4a status.outputs.mongo_database_idR\x0fmongoDatabaseId\x126\n" +
 	"\x0fcollection_name\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\x0ecollectionName\x12\x1b\n" +
 	"\tshard_key\x18\x03 \x01(\tR\bshardKey\x12\x9d\x01\n" +

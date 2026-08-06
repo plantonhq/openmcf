@@ -259,10 +259,10 @@ const file_dev_planton_provider_gcp_gcpserverlessvpcconnector_v1_spec_proto_rawD
 	"@dev/planton/provider/gcp/gcpserverlessvpcconnector/v1/spec.proto\x125dev.planton.provider.gcp.gcpserverlessvpcconnector.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\x0e\n" +
 	"\x1dGcpServerlessVpcConnectorSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12T\n" +
 	"\x0econnector_name\x18\x03 \x01(\tB-\xbaH*\xd8\x01\x01r%\x18\x192!^[a-z]([a-z0-9-]{0,23}[a-z0-9])?$R\rconnectorName\x12r\n" +
-	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12N\n" +
+	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x17\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12N\n" +
 	"\rip_cidr_range\x18\x05 \x01(\tB*\xbaH'\xd8\x01\x01r\"2 ^([0-9]{1,3}\\.){3}[0-9]{1,3}/28$R\vipCidrRange\x12n\n" +
 	"\x06subnet\x18\x06 \x01(\v2V.dev.planton.provider.gcp.gcpserverlessvpcconnector.v1.GcpServerlessVpcConnectorSubnetR\x06subnet\x12\\\n" +
 	"\fmachine_type\x18\a \x01(\tB9\xbaH*\xd8\x01\x01r%R\x00R\bf1-microR\be2-microR\re2-standard-4\x92\xa6\x1d\be2-microR\vmachineType\x123\n" +
@@ -276,7 +276,7 @@ const file_dev_planton_provider_gcp_gcpserverlessvpcconnector_v1_spec_proto_rawD
 	"\x0e_min_instancesB\x10\n" +
 	"\x0e_max_instances\"\xb7\x01\n" +
 	"\x1fGcpServerlessVpcConnectorSubnet\x12u\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe3\x04\x92\xd4a\x1estatus.outputs.subnetwork_nameR\x04name\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x17\x92\xd4a\x1estatus.outputs.subnetwork_nameR\x04name\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectIdB\xb6\x03\n" +
 	"9com.dev.planton.provider.gcp.gcpserverlessvpcconnector.v1B\tSpecProtoP\x01Zsgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpserverlessvpcconnector/v1;gcpserverlessvpcconnectorv1\xa2\x02\x05DPPGG\xaa\x025Dev.Planton.Provider.Gcp.Gcpserverlessvpcconnector.V1\xca\x025Dev\\Planton\\Provider\\Gcp\\Gcpserverlessvpcconnector\\V1\xe2\x02ADev\\Planton\\Provider\\Gcp\\Gcpserverlessvpcconnector\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Gcp::Gcpserverlessvpcconnector::V1b\x06proto3"

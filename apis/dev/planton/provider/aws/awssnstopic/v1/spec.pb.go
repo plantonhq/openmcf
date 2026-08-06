@@ -413,7 +413,7 @@ const file_dev_planton_provider_aws_awssnstopic_v1_spec_proto_rawDesc = "" +
 	"\x0earchive_policy\x18\x05 \x01(\v2\x17.google.protobuf.StructR\rarchivePolicy\x12!\n" +
 	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12/\n" +
+	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12/\n" +
 	"\x06policy\x18\b \x01(\v2\x17.google.protobuf.StructR\x06policy\x12M\n" +
 	"\x16data_protection_policy\x18\t \x01(\v2\x17.google.protobuf.StructR\x14dataProtectionPolicy\x12'\n" +
 	"\x0fdelivery_policy\x18\n" +
@@ -434,8 +434,8 @@ const file_dev_planton_provider_aws_awssnstopic_v1_spec_proto_rawDesc = "" +
 	"\x06lambda\x18\x04 \x01(\v2D.dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicProtocolFeedbackR\x06lambda\x12V\n" +
 	"\x03sqs\x18\x05 \x01(\v2D.dev.planton.provider.aws.awssnstopic.v1.AwsSnsTopicProtocolFeedbackR\x03sqs\"\xbe\x04\n" +
 	"\x1bAwsSnsTopicProtocolFeedback\x12\x88\x01\n" +
-	"\x15success_feedback_role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x13successFeedbackRole\x12\x88\x01\n" +
-	"\x15failure_feedback_role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x13failureFeedbackRole\x12J\n" +
+	"\x15success_feedback_role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x13successFeedbackRole\x12\x88\x01\n" +
+	"\x15failure_feedback_role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x13failureFeedbackRole\x12J\n" +
 	"\x1csuccess_feedback_sample_rate\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x19successFeedbackSampleRate:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
 	"!sample_rate_requires_success_role\x12Esuccess_feedback_sample_rate requires success_feedback_role to be set\x1aIthis.success_feedback_sample_rate == 0 || has(this.success_feedback_role)B\xd4\x02\n" +
 	"+com.dev.planton.provider.aws.awssnstopic.v1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnstopic/v1;awssnstopicv1\xa2\x02\x05DPPAA\xaa\x02'Dev.Planton.Provider.Aws.Awssnstopic.V1\xca\x02'Dev\\Planton\\Provider\\Aws\\Awssnstopic\\V1\xe2\x023Dev\\Planton\\Provider\\Aws\\Awssnstopic\\V1\\GPBMetadata\xea\x02,Dev::Planton::Provider::Aws::Awssnstopic::V1b\x06proto3"

@@ -778,7 +778,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnetworkpolicy_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/kubernetes/kubernetesnetworkpolicy/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesnetworkpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x10\n" +
 	"\x1bKubernetesNetworkPolicySpec\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12{\n" +
 	"\x06labels\x18\x03 \x03(\v2c.dev.planton.provider.kubernetes.kubernetesnetworkpolicy.v1.KubernetesNetworkPolicySpec.LabelsEntryR\x06labels\x12\x8a\x01\n" +

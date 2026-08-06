@@ -390,14 +390,14 @@ const file_dev_planton_provider_gcp_gcpvertexaiendpoint_v1_spec_proto_rawDesc = 
 	"\x18bigquery_destination_uri\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x16bigqueryDestinationUri\"\xb4\r\n" +
 	"\x17GcpVertexAiEndpointSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
 	"\blocation\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x120\n" +
 	"\fdisplay_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\vdisplayName\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12{\n" +
-	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\anetwork\x12t\n" +
-	"\fkms_key_name\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\anetwork\x12t\n" +
+	"\fkms_key_name\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12<\n" +
 	"\x1adedicated_endpoint_enabled\x18\a \x01(\bR\x18dedicatedEndpointEnabled\x12\xa4\x01\n" +
 	"\x1eprivate_service_connect_config\x18\b \x01(\v2_.dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointPrivateServiceConnectConfigR\x1bprivateServiceConnectConfig\x12\xb3\x01\n" +

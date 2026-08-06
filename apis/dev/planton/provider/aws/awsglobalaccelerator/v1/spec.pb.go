@@ -772,7 +772,7 @@ const file_dev_planton_provider_aws_awsglobalaccelerator_v1_spec_proto_rawDesc =
 	"\x10_ip_address_type\"\xc6\x02\n" +
 	"\x1cAwsGlobalAcceleratorFlowLogs\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12r\n" +
-	"\ts3_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12\x1b\n" +
+	"\ts3_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12\x1b\n" +
 	"\ts3_prefix\x18\x03 \x01(\tR\bs3Prefix:{\xbaHx\x1av\n" +
 	"\x1cflow_logs_s3_bucket_required\x120s3_bucket is required when flow logs are enabled\x1a$!this.enabled || has(this.s3_bucket)\"\xe7\x06\n" +
 	"\x1cAwsGlobalAcceleratorListener\x12\xcf\x01\n" +

@@ -134,9 +134,9 @@ const file_dev_planton_provider_openstack_openstackfloatingipassociate_v1_spec_p
 	"\n" +
 	"Idev/planton/provider/openstack/openstackfloatingipassociate/v1/spec.proto\x12>dev.planton.provider.openstack.openstackfloatingipassociate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc5\x02\n" +
 	" OpenStackFloatingIpAssociateSpec\x12z\n" +
-	"\vfloating_ip\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x13\x92\xd4a\x16status.outputs.addressR\n" +
+	"\vfloating_ip\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x96N\x92\xd4a\x16status.outputs.addressR\n" +
 	"floatingIp\x12r\n" +
-	"\aport_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xcb\x13\x92\xd4a\x16status.outputs.port_idR\x06portId\x12\x19\n" +
+	"\aport_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x97N\x92\xd4a\x16status.outputs.port_idR\x06portId\x12\x19\n" +
 	"\bfixed_ip\x18\x03 \x01(\tR\afixedIp\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06regionB\xef\x03\n" +
 	"Bcom.dev.planton.provider.openstack.openstackfloatingipassociate.v1B\tSpecProtoP\x01Z\x7fgithub.com/plantonhq/planton/apis/dev/planton/provider/openstack/openstackfloatingipassociate/v1;openstackfloatingipassociatev1\xa2\x02\x05DPPOO\xaa\x02>Dev.Planton.Provider.Openstack.Openstackfloatingipassociate.V1\xca\x02>Dev\\Planton\\Provider\\Openstack\\Openstackfloatingipassociate\\V1\xe2\x02JDev\\Planton\\Provider\\Openstack\\Openstackfloatingipassociate\\V1\\GPBMetadata\xea\x02CDev::Planton::Provider::Openstack::Openstackfloatingipassociate::V1b\x06proto3"

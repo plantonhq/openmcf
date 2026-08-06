@@ -1316,11 +1316,11 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\rAwsLambdaSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12u\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12F\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12F\n" +
 	"\x02s3\x18\x04 \x01(\v26.dev.planton.provider.aws.awslambda.v1.AwsLambdaS3CodeR\x02s3\x12\x1b\n" +
 	"\timage_uri\x18\x05 \x01(\tR\bimageUri\x12(\n" +
 	"\x10source_code_hash\x18\x06 \x01(\tR\x0esourceCodeHash\x12\x80\x01\n" +
-	"\x12source_kms_key_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x0fsourceKmsKeyArn\x12\x18\n" +
+	"\x12source_kms_key_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x0fsourceKmsKeyArn\x12\x18\n" +
 	"\aruntime\x18\b \x01(\tR\aruntime\x12\"\n" +
 	"\ahandler\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\ahandler\x12;\n" +
 	"\farchitecture\x18\n" +
@@ -1330,12 +1330,12 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\xd8\x01\x01\x1a\x05\x18\x84\a(\x01R\x0etimeoutSeconds\x12@\n" +
 	"\x14ephemeral_storage_mb\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80P(\x80\x04R\x12ephemeralStorageMb\x12g\n" +
 	"\venvironment\x18\x0e \x03(\v2E.dev.planton.provider.aws.awslambda.v1.AwsLambdaSpec.EnvironmentEntryR\venvironment\x12s\n" +
-	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12x\n" +
+	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12x\n" +
 	"\n" +
-	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x11 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12<\n" +
+	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x11 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12<\n" +
 	"\x1bipv6_allowed_for_dual_stack\x18\x12 \x01(\bR\x17ipv6AllowedForDualStack\x12\x8a\x01\n" +
-	"\x16dead_letter_target_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x13deadLetterTargetArn\x12@\n" +
+	"\x16dead_letter_target_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x13deadLetterTargetArn\x12@\n" +
 	"\ftracing_mode\x18\x14 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x15R\x06ActiveR\vPassThroughR\vtracingMode\x12n\n" +
 	"\x12file_system_config\x18\x15 \x01(\v2@.dev.planton.provider.aws.awslambda.v1.AwsLambdaFileSystemConfigR\x10fileSystemConfig\x12^\n" +
 	"\fimage_config\x18\x16 \x01(\v2;.dev.planton.provider.aws.awslambda.v1.AwsLambdaImageConfigR\vimageConfig\x12[\n" +
@@ -1370,7 +1370,7 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\x1fpermission_statement_ids_unique\x12[each invoke permission statement_id must be unique -- permissions materialize per statement\x1aothis.invoke_permissions.all(p, this.invoke_permissions.filter(q, q.statement_id == p.statement_id).size() == 1)B!\n" +
 	"\x1f_reserved_concurrent_executions\"\xc8\x01\n" +
 	"\x0fAwsLambdaS3Code\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x19\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x19\n" +
 	"\x03key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03key\x12%\n" +
 	"\x0eobject_version\x18\x03 \x01(\tR\robjectVersion\"~\n" +
 	"\x14AwsLambdaImageConfig\x12\x1f\n" +
@@ -1379,14 +1379,14 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\acommand\x18\x02 \x03(\tR\acommand\x12+\n" +
 	"\x11working_directory\x18\x03 \x01(\tR\x10workingDirectory\"\xf5\x01\n" +
 	"\x19AwsLambdaFileSystemConfig\x12\x8c\x01\n" +
-	"\x10access_point_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\x02\x92\xd4a\x1fstatus.outputs.access_point_arnR\x0eaccessPointArn\x12I\n" +
+	"\x10access_point_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\t\x92\xd4a\x1fstatus.outputs.access_point_arnR\x0eaccessPointArn\x12I\n" +
 	"\x10local_mount_path\x18\x02 \x01(\tB\x1f\xbaH\x1cr\x1a\x10\x012\x16^/mnt/[a-zA-Z0-9-_.]+$R\x0elocalMountPath\"\xf5\x04\n" +
 	"\x16AwsLambdaLoggingConfig\x123\n" +
 	"\n" +
 	"log_format\x18\x01 \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x04TextR\x04JSONR\tlogFormat\x12d\n" +
 	"\x15application_log_level\x18\x02 \x01(\tB0\xbaH-\xd8\x01\x01r(R\x05TRACER\x05DEBUGR\x04INFOR\x04WARNR\x05ERRORR\x05FATALR\x13applicationLogLevel\x12E\n" +
 	"\x10system_log_level\x18\x03 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\x05DEBUGR\x04INFOR\x04WARNR\x0esystemLogLevel\x12w\n" +
-	"\tlog_group\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup:\xff\x01\xbaH\xfb\x01\x1a\xf8\x01\n" +
+	"\tlog_group\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup:\xff\x01\xbaH\xfb\x01\x1a\xf8\x01\n" +
 	"\x1dlevel_filtering_requires_json\x12wapplication_log_level and system_log_level require log_format JSON -- plain-text logs carry no level field to filter on\x1a^(this.application_log_level == '' && this.system_log_level == '') || this.log_format == 'JSON'\"\xdb\v\n" +
 	"\x0eAwsLambdaAlias\x120\n" +
 	"\x04name\x18\x01 \x01(\tB\x1c\xbaH\x19r\x17\x10\x01\x18\x80\x012\x10^[a-zA-Z0-9-_]+$R\x04name\x12 \n" +
@@ -1427,8 +1427,8 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\x1aAwsLambdaAsyncInvokeConfig\x12D\n" +
 	"\x16maximum_retry_attempts\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x00H\x00R\x14maximumRetryAttempts\x88\x01\x01\x12I\n" +
 	"\x19maximum_event_age_seconds\x18\x02 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\xe0\xa8\x01(<R\x16maximumEventAgeSeconds\x12\x92\x01\n" +
-	"\x1aon_success_destination_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x17onSuccessDestinationArn\x12\x92\x01\n" +
-	"\x1aon_failure_destination_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArnB\x19\n" +
+	"\x1aon_success_destination_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onSuccessDestinationArn\x12\x92\x01\n" +
+	"\x1aon_failure_destination_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArnB\x19\n" +
 	"\x17_maximum_retry_attempts\"\x8e\x03\n" +
 	"\x1aAwsLambdaRuntimeManagement\x12R\n" +
 	"\x11update_runtime_on\x18\x01 \x01(\tB&\xbaH#\xc8\x01\x01r\x1eR\x04AutoR\x0eFunctionUpdateR\x06ManualR\x0fupdateRuntimeOn\x12.\n" +

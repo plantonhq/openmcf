@@ -181,7 +181,7 @@ const file_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto_rawDesc = "" 
 	"7dev/planton/provider/gcp/gcpglobaladdress/v1/spec.proto\x12,dev.planton.provider.gcp.gcpglobaladdress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb6\v\n" +
 	"\x14GcpGlobalAddressSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
 	"\faddress_name\x18\x02 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vaddressName\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x12\x9b\x01\n" +
 	"\faddress_type\x18\x04 \x01(\tBs\xbaHd\xba\x01a\n" +
@@ -190,7 +190,7 @@ const file_dev_planton_provider_gcp_gcpglobaladdress_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"ip_version\x18\x06 \x01(\tB[\xbaHP\xba\x01M\n" +
 	"\x10ip_version_valid\x12\x1fip_version must be IPV4 or IPV6\x1a\x18this in ['IPV4', 'IPV6']\x8a\xa6\x1d\x04IPV4H\x01R\tipVersion\x88\x01\x01\x12w\n" +
-	"\anetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x123\n" +
+	"\anetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x123\n" +
 	"\rprefix_length\x18\b \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x1d(\bH\x02R\fprefixLength\x88\x01\x01\x12\xaa\x01\n" +
 	"\apurpose\x18\t \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
 	"\rpurpose_valid\x12>purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT\x1a6this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']R\apurpose:\xee\x03\xbaH\xea\x03\x1a\x89\x01\n" +

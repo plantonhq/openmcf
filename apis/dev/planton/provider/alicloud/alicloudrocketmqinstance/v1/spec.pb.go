@@ -722,7 +722,7 @@ const file_dev_planton_provider_alicloud_alicloudrocketmqinstance_v1_spec_proto_
 	"seriesCode\x12\xc5\x01\n" +
 	"\x0fsub_series_code\x18\x03 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x91\x01\n" +
 	"\x15sub_series_code_valid\x12Csub_series_code must be one of: cluster_ha, single_node, serverless\x1a3this in ['cluster_ha', 'single_node', 'serverless']\xc8\x01\x01R\rsubSeriesCode\x12o\n" +
-	"\x06vpc_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\xb7\x01\n" +
+	"\x06vpc_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\xb7\x01\n" +
 	"\rinstance_name\x18\x05 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
 	"\x14instance_name_length\x12:instance_name must be between 2 and 64 characters when set\x1a5this == '' || (this.size() >= 2 && this.size() <= 64)R\finstanceName\x12\x16\n" +
 	"\x06remark\x18\x06 \x01(\tR\x06remark\x12\xc0\x01\n" +
@@ -740,7 +740,7 @@ const file_dev_planton_provider_alicloud_alicloudrocketmqinstance_v1_spec_proto_
 	"\x11auto_renew_period\x18\v \x01(\x05Bk\xbaHh\xba\x01e\n" +
 	"\x17auto_renew_period_valid\x120auto_renew_period must be one of: 1, 2, 3, 6, 12\x1a\x18this in [1, 2, 3, 6, 12]H\x04R\x0fautoRenewPeriod\x88\x01\x01\x12u\n" +
 	"\n" +
-	"vswitch_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12*\n" +
+	"vswitch_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12*\n" +
 	"\x11security_group_id\x18\r \x01(\tR\x0fsecurityGroupId\x12|\n" +
 	"\rinternet_info\x18\x0e \x01(\v2W.dev.planton.provider.alicloud.alicloudrocketmqinstance.v1.AliCloudRocketmqInternetInfoR\finternetInfo\x12(\n" +
 	"\x10msg_process_spec\x18\x0f \x01(\tR\x0emsgProcessSpec\x12y\n" +

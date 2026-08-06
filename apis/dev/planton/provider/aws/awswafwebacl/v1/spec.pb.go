@@ -5379,10 +5379,10 @@ const file_dev_planton_provider_aws_awswafwebacl_v1_spec_proto_rawDesc = "" +
 	"\rcountry_codes\x18\x01 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\fcountryCodes\x12w\n" +
 	"\x13forwarded_ip_config\x18\x02 \x01(\v2G.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclForwardedIpConfigR\x11forwardedIpConfig\"\x8e\x02\n" +
 	"#AwsWafWebAclIpSetReferenceStatement\x12n\n" +
-	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x02\x92\xd4a\x19status.outputs.ip_set_arnR\x03arn\x12w\n" +
+	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\t\x92\xd4a\x19status.outputs.ip_set_arnR\x03arn\x12w\n" +
 	"\x13forwarded_ip_config\x18\x02 \x01(\v2G.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclForwardedIpConfigR\x11forwardedIpConfig\"\xa4\x03\n" +
 	"-AwsWafWebAclRegexPatternSetReferenceStatement\x12y\n" +
-	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x02\x92\xd4a$status.outputs.regex_pattern_set_arnR\x03arn\x12p\n" +
+	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\t\x92\xd4a$status.outputs.regex_pattern_set_arnR\x03arn\x12p\n" +
 	"\x0efield_to_match\x18\x02 \x01(\v2B.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclFieldToMatchB\x06\xbaH\x03\xc8\x01\x01R\ffieldToMatch\x12\x85\x01\n" +
 	"\x14text_transformations\x18\x03 \x03(\v2H.dev.planton.provider.aws.awswafwebacl.v1.AwsWafWebAclTextTransformationB\b\xbaH\x05\x92\x01\x02\b\x01R\x13textTransformations\"\xc7\x03\n" +
 	"\x1eAwsWafWebAclByteMatchStatement\x122\n" +

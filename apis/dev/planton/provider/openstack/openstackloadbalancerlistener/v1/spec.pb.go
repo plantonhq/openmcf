@@ -196,7 +196,7 @@ const file_dev_planton_provider_openstack_openstackloadbalancerlistener_v1_spec_
 	"\n" +
 	"Jdev/planton/provider/openstack/openstackloadbalancerlistener/v1/spec.proto\x12?dev.planton.provider.openstack.openstackloadbalancerlistener.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf9\b\n" +
 	"!OpenStackLoadBalancerListenerSpec\x12\x8a\x01\n" +
-	"\x0floadbalancer_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x13\x92\xd4a\x1estatus.outputs.loadbalancer_idR\x0eloadbalancerId\x12M\n" +
+	"\x0floadbalancer_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0N\x92\xd4a\x1estatus.outputs.loadbalancer_idR\x0eloadbalancerId\x12M\n" +
 	"\bprotocol\x18\x02 \x01(\tB1\xbaH.\xc8\x01\x01r)R\x04HTTPR\x05HTTPSR\x03TCPR\x03UDPR\x10TERMINATED_HTTPSR\bprotocol\x12\x8a\x01\n" +
 	"\rprotocol_port\x18\x03 \x01(\x05Be\xbaHb\xba\x01\\\n" +
 	"\x13protocol_port_range\x12)protocol_port must be between 1 and 65535\x1a\x1athis >= 1 && this <= 65535\xc8\x01\x01R\fprotocolPort\x12 \n" +

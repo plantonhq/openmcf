@@ -717,11 +717,11 @@ const file_dev_planton_provider_oci_ocivaultsecret_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"5dev/planton/provider/oci/ocivaultsecret/v1/spec.proto\x12*dev.planton.provider.oci.ocivaultsecret.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x81\x1d\n" +
 	"\x12OciVaultSecretSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12(\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12(\n" +
 	"\vsecret_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
 	"secretName\x12u\n" +
-	"\bvault_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x1a\x92\xd4a\x17status.outputs.vault_idR\avaultId\x12o\n" +
-	"\x06key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x1a\x92\xd4a\x15status.outputs.key_idR\x05keyId\x12 \n" +
+	"\bvault_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xfae\x92\xd4a\x17status.outputs.vault_idR\avaultId\x12o\n" +
+	"\x06key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xfbe\x92\xd4a\x15status.outputs.key_idR\x05keyId\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12s\n" +
 	"\x0esecret_content\x18\x06 \x01(\v2L.dev.planton.provider.oci.ocivaultsecret.v1.OciVaultSecretSpec.SecretContentR\rsecretContent\x124\n" +
 	"\x16enable_auto_generation\x18\a \x01(\bR\x14enableAutoGeneration\x12\x92\x01\n" +
@@ -769,7 +769,7 @@ const file_dev_planton_provider_oci_ocivaultsecret_v1_spec_proto_rawDesc = "" +
 	"\x13TargetSystemDetails\x12\xac\x01\n" +
 	"\x12target_system_type\x18\x01 \x01(\x0e2r.dev.planton.provider.oci.ocivaultsecret.v1.OciVaultSecretSpec.RotationConfig.TargetSystemDetails.TargetSystemTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x10targetSystemType\x12y\n" +
-	"\x06adb_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x82\x1a\x92\xd4a%status.outputs.autonomous_database_idR\x05adbId\x12S\n" +
+	"\x06adb_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xe6e\x92\xd4a%status.outputs.autonomous_database_idR\x05adbId\x12S\n" +
 	"\vfunction_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\n" +
 	"functionId\":\n" +
 	"\x10TargetSystemType\x12\x0f\n" +

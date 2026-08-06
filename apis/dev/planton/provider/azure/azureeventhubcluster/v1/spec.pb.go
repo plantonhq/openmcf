@@ -151,7 +151,7 @@ const file_dev_planton_provider_azure_azureeventhubcluster_v1_spec_proto_rawDesc
 	"\x18AzureEventHubClusterSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc5\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc5\x02\n" +
 	"\fcluster_name\x18\x03 \x01(\tB\xa1\x02\xbaH\x9d\x02\xba\x01\x90\x02\n" +
 	"\x1devent_hub_cluster_name_format\x12\x8f\x01cluster_name must start and end with a letter or number and may contain letters, numbers, periods, hyphens, and underscores (max 50 characters)\x1a]this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x01\x182R\vclusterName\x123\n" +
 	"\x0ecapacity_units\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\rcapacityUnits\x88\x01\x01\x12j\n" +

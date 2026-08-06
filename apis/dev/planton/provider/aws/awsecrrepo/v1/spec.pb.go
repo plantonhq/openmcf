@@ -375,7 +375,7 @@ const file_dev_planton_provider_aws_awsecrrepo_v1_spec_proto_rawDesc = "" +
 	"&image_tag_mutability_exclusion_filters\x18\x04 \x03(\tB<\xbaH9\x92\x016\x10\x05\"2r0\x10\x01\x18\x80\x012)^[a-zA-Z0-9._-]*(\\*[a-zA-Z0-9._-]*){0,2}$R\"imageTagMutabilityExclusionFilters\x12T\n" +
 	"\x0fencryption_type\x18\x05 \x01(\tB&\xbaH\x19r\x17R\x06AES256R\x03KMSR\bKMS_DSSE\x8a\xa6\x1d\x06AES256H\x01R\x0eencryptionType\x88\x01\x01\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12/\n" +
+	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12/\n" +
 	"\fscan_on_push\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\n" +
 	"scanOnPush\x88\x01\x01\x12!\n" +
 	"\fforce_delete\x18\b \x01(\bR\vforceDelete\x12h\n" +

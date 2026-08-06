@@ -1137,7 +1137,7 @@ const file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/azure/azuremonitoractiongroup/v1/spec.proto\x125dev.planton.provider.azure.azuremonitoractiongroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf2\x0f\n" +
 	"\x1bAzureMonitorActionGroupSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12+\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12+\n" +
 	"\n" +
 	"short_name\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18\fR\tshortName\x12'\n" +
 	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12\x84\x01\n" +
@@ -1223,7 +1223,7 @@ const file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_rawD
 	",AzureMonitorActionGroupAzureFunctionReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x9a\x01\n" +
-	"\x18function_app_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xbb\x03\x92\xd4a\x1estatus.outputs.function_app_idR\x15functionAppResourceId\x12/\n" +
+	"\x18function_app_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\x0f\x92\xd4a\x1estatus.outputs.function_app_idR\x15functionAppResourceId\x12/\n" +
 	"\rfunction_name\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\ffunctionName\x12\xd5\x01\n" +
 	"\x10http_trigger_url\x18\x04 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\x9f\x01\n" +
@@ -1232,13 +1232,13 @@ const file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_rawD
 	"&AzureMonitorActionGroupArmRoleReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x7f\n" +
-	"\arole_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xce\x03\x92\xd4a#status.outputs.role_definition_guidR\x06roleId\x125\n" +
+	"\arole_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e\x10\x92\xd4a#status.outputs.role_definition_guidR\x06roleId\x125\n" +
 	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\"\x86\a\n" +
 	"'AzureMonitorActionGroupEventHubReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x8a\x01\n" +
-	"\x0eevent_hub_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventHubName\x12\x94\x01\n" +
-	"\x13event_hub_namespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1dstatus.outputs.namespace_name\x98\xd4a\x01R\x11eventHubNamespace\x12\xf3\x01\n" +
+	"\x0eevent_hub_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x9d\x10\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventHubName\x12\x94\x01\n" +
+	"\x13event_hub_namespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x10\x92\xd4a\x1dstatus.outputs.namespace_name\x98\xd4a\x01R\x11eventHubNamespace\x12\xf3\x01\n" +
 	"\ttenant_id\x18\x04 \x01(\tB\xd5\x01\xbaH\xd1\x01\xba\x01\xcd\x01\n" +
 	"\"action_group_event_hub_tenant_uuid\x12:tenant_id must be a UUID (the Entra tenant's directory ID)\x1akthis == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\btenantId\x12\xe9\x01\n" +
 	"\x0fsubscription_id\x18\x05 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +

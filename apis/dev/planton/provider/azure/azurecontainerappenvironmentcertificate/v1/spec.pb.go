@@ -236,7 +236,7 @@ const file_dev_planton_provider_azure_azurecontainerappenvironmentcertificate_v1
 	"+AzureContainerAppEnvironmentCertificateSpec\x12\xf5\x02\n" +
 	"\x10certificate_name\x18\x01 \x01(\tB\xc9\x02\xbaH\xc5\x02\xba\x01\xbe\x02\n" +
 	"7azure_container_app_environment_certificate_name_format\x12\xbb\x01Certificate name must use lowercase letters, digits, hyphens, and dots, start and end with a letter or digit, and avoid consecutive hyphens -- e.g. app.example.com or wildcard-example-com\x1aEthis.matches('^[a-z0-9][a-z0-9-.]*[a-z0-9]$') && !this.contains('--')\xc8\x01\x01R\x0fcertificateName\x12\xa1\x01\n" +
-	"\x1ccontainer_app_environment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12<\n" +
+	"\x1ccontainer_app_environment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x0f\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12<\n" +
 	"\x17certificate_blob_base64\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15certificateBlobBase64\x127\n" +
 	"\x14certificate_password\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x13certificatePassword\x12\xaa\x01\n" +
 	"\x15certificate_key_vault\x18\x05 \x01(\v2v.dev.planton.provider.azure.azurecontainerappenvironmentcertificate.v1.AzureContainerAppEnvironmentCertificateKeyVaultR\x13certificateKeyVault\x12\x90\x01\n" +
@@ -247,8 +247,8 @@ const file_dev_planton_provider_azure_azurecontainerappenvironmentcertificate_v1
 	"2azure_container_app_environment_certificate_source\x12\xb6\x01Provide the certificate exactly one way: either certificate_blob_base64 (with certificate_password) for an inline PFX upload, or certificate_key_vault to pull it from Azure Key Vault\x1a](this.certificate_blob_base64 != '' ? 1 : 0) + (has(this.certificate_key_vault) ? 1 : 0) == 1\x1a\xab\x02\n" +
 	"Bazure_container_app_environment_certificate_password_requires_blob\x12\x9d\x01certificate_password only applies to an inline PFX -- set it together with certificate_blob_base64, or remove it when sourcing the certificate from Key Vault\x1aEthis.certificate_password == '' || this.certificate_blob_base64 != ''\"\xbf\x02\n" +
 	"/AzureContainerAppEnvironmentCertificateKeyVault\x12\x96\x01\n" +
-	"\x13key_vault_secret_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x03\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12s\n" +
-	"\bidentity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\bidentityB\xa5\x04\n" +
+	"\x13key_vault_secret_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x0f\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12s\n" +
+	"\bidentity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\bidentityB\xa5\x04\n" +
 	"Icom.dev.planton.provider.azure.azurecontainerappenvironmentcertificate.v1B\tSpecProtoP\x01Z\x91\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecontainerappenvironmentcertificate/v1;azurecontainerappenvironmentcertificatev1\xa2\x02\x05DPPAA\xaa\x02EDev.Planton.Provider.Azure.Azurecontainerappenvironmentcertificate.V1\xca\x02EDev\\Planton\\Provider\\Azure\\Azurecontainerappenvironmentcertificate\\V1\xe2\x02QDev\\Planton\\Provider\\Azure\\Azurecontainerappenvironmentcertificate\\V1\\GPBMetadata\xea\x02JDev::Planton::Provider::Azure::Azurecontainerappenvironmentcertificate::V1b\x06proto3"
 
 var (

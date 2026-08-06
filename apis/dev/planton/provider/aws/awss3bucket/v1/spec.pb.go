@@ -2333,7 +2333,7 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\rsse_algorithm\x18\x01 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
 	"\x13sse_algorithm_valid\x12;sse_algorithm must be one of: AES256, aws:kms, aws:kms:dsse\x1aMthis == '' || this == 'AES256' || this == 'aws:kms' || this == 'aws:kms:dsse'R\fsseAlgorithm\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12,\n" +
+	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12,\n" +
 	"\x12bucket_key_enabled\x18\x03 \x01(\bR\x10bucketKeyEnabled:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
 	"\x1ekms_key_requires_kms_algorithm\x12Ekms_key_id is only used when sse_algorithm is aws:kms or aws:kms:dsse\x1ab!has(this.kms_key_id) || (this.sse_algorithm == 'aws:kms' || this.sse_algorithm == 'aws:kms:dsse')\"\xe0\x01\n" +
 	"\x1cAwsS3BucketPublicAccessBlock\x12*\n" +
@@ -2384,7 +2384,7 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\x0fnoncurrent_days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x0enoncurrentDays\x12C\n" +
 	"\x19newer_noncurrent_versions\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x17newerNoncurrentVersions\"\xf7\x01\n" +
 	"\x16AwsS3BucketReplication\x12u\n" +
-	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12f\n" +
+	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12f\n" +
 	"\x05rules\x18\x02 \x03(\v2C.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketReplicationRuleB\v\xbaH\b\x92\x01\x05\b\x01\x10\xe8\aR\x05rules\"\xdd\a\n" +
 	"\x1aAwsS3BucketReplicationRule\x12\x1a\n" +
 	"\x02id\x18\x01 \x01(\tB\n" +
@@ -2408,12 +2408,12 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"!AwsS3BucketReplicationDestination\x12{\n" +
 	"\n" +
-	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12\x18\n" +
+	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12\x18\n" +
 	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\xb5\x03\n" +
 	"\rstorage_class\x18\x03 \x01(\tB\x8f\x03\xbaH\x8b\x03\xba\x01\x87\x03\n" +
 	"\x1breplica_storage_class_valid\x12\x8b\x01storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY\x1a\xd9\x01this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY'R\fstorageClass\x12T\n" +
 	"'change_replica_ownership_to_destination\x18\x04 \x01(\bR#changeReplicaOwnershipToDestination\x12\x80\x01\n" +
-	"\x12replica_kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x0freplicaKmsKeyId\x12'\n" +
+	"\x12replica_kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x0freplicaKmsKeyId\x12'\n" +
 	"\x0fmetrics_enabled\x18\x06 \x01(\bR\x0emetricsEnabled\x12G\n" +
 	" replication_time_control_enabled\x18\a \x01(\bR\x1dreplicationTimeControlEnabled:\x8b\x03\xbaH\x87\x03\x1a\xbd\x01\n" +
 	"\x14rtc_requires_metrics\x12ereplication_time_control_enabled requires metrics_enabled (AWS requires replication metrics with RTC)\x1a>!this.replication_time_control_enabled || this.metrics_enabled\x1a\xc4\x01\n" +
@@ -2444,7 +2444,7 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\x17replace_key_prefix_with\x18\x04 \x01(\tR\x14replaceKeyPrefixWith\x12(\n" +
 	"\x10replace_key_with\x18\x05 \x01(\tR\x0ereplaceKeyWith\"\xb8\x03\n" +
 	"\x12AwsS3BucketLogging\x12\x80\x01\n" +
-	"\rtarget_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\ftargetBucket\x12#\n" +
+	"\rtarget_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\ftargetBucket\x12#\n" +
 	"\rtarget_prefix\x18\x02 \x01(\tR\ftargetPrefix\x12\xf9\x01\n" +
 	"\x1epartitioned_prefix_date_source\x18\x03 \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\xab\x01\n" +
 	"$partitioned_prefix_date_source_valid\x12Fpartitioned_prefix_date_source must be one of: EventTime, DeliveryTime\x1a;this == '' || this == 'EventTime' || this == 'DeliveryTime'R\x1bpartitionedPrefixDateSource\"\xd2\x03\n" +
@@ -2462,17 +2462,17 @@ const file_dev_planton_provider_aws_awss3bucket_v1_spec_proto_rawDesc = "" +
 	"\x06queues\x18\x03 \x03(\v2E.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketQueueNotificationR\x06queues\x12]\n" +
 	"\x06topics\x18\x04 \x03(\v2E.dev.planton.provider.aws.awss3bucket.v1.AwsS3BucketTopicNotificationR\x06topics\"\x9c\x02\n" +
 	"\x1dAwsS3BucketLambdaNotification\x12\x8e\x01\n" +
-	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\x12 \n" +
+	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\x12 \n" +
 	"\x06events\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06events\x12#\n" +
 	"\rfilter_prefix\x18\x03 \x01(\tR\ffilterPrefix\x12#\n" +
 	"\rfilter_suffix\x18\x04 \x01(\tR\ffilterSuffix\"\x84\x02\n" +
 	"\x1cAwsS3BucketQueueNotification\x12x\n" +
-	"\tqueue_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\bqueueArn\x12 \n" +
+	"\tqueue_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\bqueueArn\x12 \n" +
 	"\x06events\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06events\x12#\n" +
 	"\rfilter_prefix\x18\x03 \x01(\tR\ffilterPrefix\x12#\n" +
 	"\rfilter_suffix\x18\x04 \x01(\tR\ffilterSuffix\"\x84\x02\n" +
 	"\x1cAwsS3BucketTopicNotification\x12x\n" +
-	"\ttopic_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\btopicArn\x12 \n" +
+	"\ttopic_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\btopicArn\x12 \n" +
 	"\x06events\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06events\x12#\n" +
 	"\rfilter_prefix\x18\x03 \x01(\tR\ffilterPrefix\x12#\n" +
 	"\rfilter_suffix\x18\x04 \x01(\tR\ffilterSuffix\"\x8e\x03\n" +

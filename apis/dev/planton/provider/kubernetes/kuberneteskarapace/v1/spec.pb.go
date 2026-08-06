@@ -1032,7 +1032,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kuberneteskarapace/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskarapace.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc4\v\n" +
 	"\x16KubernetesKarapaceSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12-\n" +
 	"\breplicas\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12l\n" +
 	"\x05kafka\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapaceKafkaB\x06\xbaH\x03\xc8\x01\x01R\x05kafka\x12m\n" +
@@ -1058,7 +1058,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\n" +
 	"_log_level\"\xea\v\n" +
 	"\x17KubernetesKarapaceKafka\x12\xb5\x01\n" +
-	"\x11bootstrap_servers\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBT\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x13schema registry for\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x80\x02\n" +
+	"\x11bootstrap_servers\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBT\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x13schema registry for\x88\xd4a\x8c \x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x80\x02\n" +
 	"\x11security_protocol\x18\x02 \x01(\tB\xcd\x01\xbaH\xbc\x01\xba\x01\xb8\x01\n" +
 	"!spec.kafka.security_protocol_enum\x12Isecurity_protocol must be one of PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL\x1aHthis == '' || this in ['PLAINTEXT', 'SSL', 'SASL_PLAINTEXT', 'SASL_SSL']\x8a\xa6\x1d\tPLAINTEXTH\x00R\x10securityProtocol\x88\x01\x01\x12c\n" +
 	"\x03tls\x18\x03 \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapaceKafkaTlsR\x03tls\x12f\n" +
@@ -1068,10 +1068,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"'spec.kafka.sasl_only_with_sasl_protocol\x12\xbb\x01the sasl block requires security_protocol to be EXPLICITLY set to SASL_PLAINTEXT or SASL_SSL — the protocol defaults to PLAINTEXT when unset, which would silently ignore the credentials\x1al!has(this.sasl) || (has(this.security_protocol) && this.security_protocol in ['SASL_PLAINTEXT', 'SASL_SSL'])B\x14\n" +
 	"\x12_security_protocol\"\xb6\x04\n" +
 	"\x1aKubernetesKarapaceKafkaTls\x12\xa1\x01\n" +
-	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
+	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c \x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
 	"\x0eca_certificate\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06ca.crtH\x00R\rcaCertificate\x88\x01\x01\x12\x8e\x01\n" +
-	"\x17client_cert_secret_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\x14clientCertSecretName\x12@\n" +
+	"\x17client_cert_secret_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\x14clientCertSecretName\x12@\n" +
 	"\x12client_certificate\x18\x04 \x01(\tB\f\x8a\xa6\x1d\buser.crtH\x01R\x11clientCertificate\x88\x01\x01\x120\n" +
 	"\n" +
 	"client_key\x18\x05 \x01(\tB\f\x8a\xa6\x1d\buser.keyH\x02R\tclientKey\x88\x01\x01B\x11\n" +
@@ -1086,7 +1086,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword:\x8d\x02\xbaH\x89\x02\x1a\x86\x02\n" +
 	"$spec.kafka.sasl.password_exactly_one\x12\xa9\x01set exactly one of password_secret (a key in an existing Secret — reference a KubernetesKafkaUser) or password (a declared value the module materializes into a Secret)\x1a2has(this.password_secret) != (this.password != '')\"\xcf\x01\n" +
 	" KubernetesKarapacePasswordSecret\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12#\n" +
 	"\x03key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bpasswordH\x00R\x03key\x88\x01\x01B\x06\n" +
 	"\x04_key\"\xab\x06\n" +
@@ -1111,7 +1111,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\t_replicasB\a\n" +
 	"\x05_port\"\x8d\x02\n" +
 	"\x1bKubernetesKarapaceServerTls\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x122\n" +
 	"\vcertificate\x18\x02 \x01(\tB\v\x8a\xa6\x1d\atls.crtH\x00R\vcertificate\x88\x01\x01\x12\"\n" +
 	"\x03key\x18\x03 \x01(\tB\v\x8a\xa6\x1d\atls.keyH\x01R\x03key\x88\x01\x01B\x0e\n" +
@@ -1122,7 +1122,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\x04oidc\x18\x02 \x01(\v2M.dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapaceOidcR\x04oidc:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
 	"$spec.http_authentication.exactly_one\x12Wconfigure exactly one of basic (authfile-backed HTTP Basic) or oidc (JWT bearer tokens)\x1a!has(this.basic) != has(this.oidc)\"\xcf\x01\n" +
 	"\x1bKubernetesKarapaceBasicAuth\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12(\n" +
 	"\x03key\x18\x02 \x01(\tB\x11\x8a\xa6\x1d\rauthfile.jsonH\x00R\x03key\x88\x01\x01B\x06\n" +
 	"\x04_key\"\xc4\x02\n" +

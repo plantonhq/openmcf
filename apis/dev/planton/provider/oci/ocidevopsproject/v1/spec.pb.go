@@ -118,7 +118,7 @@ const file_dev_planton_provider_oci_ocidevopsproject_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"7dev/planton/provider/oci/ocidevopsproject/v1/spec.proto\x12,dev.planton.provider.oci.ocidevopsproject.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb2\x02\n" +
 	"\x14OciDevopsProjectSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12n\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12n\n" +
 	"\x15notification_topic_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x13notificationTopicId\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescriptionB\xf7\x02\n" +
 	"0com.dev.planton.provider.oci.ocidevopsproject.v1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/oci/ocidevopsproject/v1;ocidevopsprojectv1\xa2\x02\x05DPPOO\xaa\x02,Dev.Planton.Provider.Oci.Ocidevopsproject.V1\xca\x02,Dev\\Planton\\Provider\\Oci\\Ocidevopsproject\\V1\xe2\x028Dev\\Planton\\Provider\\Oci\\Ocidevopsproject\\V1\\GPBMetadata\xea\x021Dev::Planton::Provider::Oci::Ocidevopsproject::V1b\x06proto3"

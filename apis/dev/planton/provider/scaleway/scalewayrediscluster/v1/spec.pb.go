@@ -362,7 +362,7 @@ const file_dev_planton_provider_scaleway_scalewayrediscluster_v1_spec_proto_rawD
 	"\xbaH\a\xc8\x01\x01r\x02\x18?R\buserName\x12*\n" +
 	"\bpassword\x18\a \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\b\xa0\xa6\x1d\x01R\bpassword\x12h\n" +
 	"\tacl_rules\x18\b \x03(\v2K.dev.planton.provider.scaleway.scalewayrediscluster.v1.ScalewayRedisAclRuleR\baclRules\x12\x8c\x01\n" +
-	"\x12private_network_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12y\n" +
+	"\x12private_network_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12y\n" +
 	"\bsettings\x18\n" +
 	" \x03(\v2].dev.planton.provider.scaleway.scalewayrediscluster.v1.ScalewayRedisClusterSpec.SettingsEntryR\bsettings\x1a;\n" +
 	"\rSettingsEntry\x12\x10\n" +

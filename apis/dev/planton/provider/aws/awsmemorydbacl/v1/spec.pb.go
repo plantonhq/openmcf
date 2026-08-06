@@ -117,7 +117,7 @@ const file_dev_planton_provider_aws_awsmemorydbacl_v1_spec_proto_rawDesc = "" +
 	"\x12AwsMemorydbAclSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"user_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\x02\x92\xd4a\x18status.outputs.user_nameR\tuserNamesB\xe9\x02\n" +
+	"user_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x95\t\x92\xd4a\x18status.outputs.user_nameR\tuserNamesB\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awsmemorydbacl.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmemorydbacl/v1;awsmemorydbaclv1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsmemorydbacl.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsmemorydbacl\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsmemorydbacl\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsmemorydbacl::V1b\x06proto3"
 
 var (

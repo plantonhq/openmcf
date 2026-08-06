@@ -1276,7 +1276,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kuberneteskeycloak/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa6\x1b\n" +
 	"\x16KubernetesKeycloakSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x121\n" +
 	"\tinstances\x18\x03 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x14(\x01\x8a\xa6\x1d\x011H\x00R\tinstances\x88\x01\x01\x12\x14\n" +
 	"\x05image\x18\x04 \x01(\tR\x05image\x12'\n" +
@@ -1317,7 +1317,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"\x14KubernetesKeycloakDb\x12\xa0\x02\n" +
 	"\x06vendor\x18\x01 \x01(\tB\x87\x02\xbaH\x83\x02\xba\x01\xfc\x01\n" +
 	"\x0espec.db.vendor\x12\x8d\x01Database vendor must be one of: postgres, mysql, mariadb, tidb, mssql, oracle — or the never-production sandbox vendors dev-file / dev-mem.\x1aZthis in [\"postgres\", \"mysql\", \"mariadb\", \"tidb\", \"mssql\", \"oracle\", \"dev-file\", \"dev-mem\"]\xc8\x01\x01R\x06vendor\x12j\n" +
-	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12$\n" +
+	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12$\n" +
 	"\x04port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00H\x00R\x04port\x88\x01\x01\x12\x1a\n" +
 	"\bdatabase\x18\x04 \x01(\tR\bdatabase\x12\x80\x01\n" +
 	"\x0fusername_secret\x18\x05 \x01(\v2W.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakSecretSelectorR\x0eusernameSecret\x12\x80\x01\n" +
@@ -1332,10 +1332,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"\x0e_pool_min_sizeB\x10\n" +
 	"\x0e_pool_max_size\"\xb8\x01\n" +
 	" KubernetesKeycloakSecretSelector\x12z\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\x04name\x12\x18\n" +
 	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\xc9\x02\n" +
 	"\x16KubernetesKeycloakHttp\x12\x7f\n" +
-	"\x0ftls_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\rtlsSecretName\x12!\n" +
+	"\x0ftls_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\rtlsSecretName\x12!\n" +
 	"\fhttp_enabled\x18\x02 \x01(\bR\vhttpEnabled\x125\n" +
 	"\thttp_port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048080H\x00R\bhttpPort\x88\x01\x01\x127\n" +
 	"\n" +

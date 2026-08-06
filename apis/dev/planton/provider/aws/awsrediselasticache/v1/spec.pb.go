@@ -820,20 +820,20 @@ const file_dev_planton_provider_aws_awsrediselasticache_v1_spec_proto_rawDesc = 
 	"durability\x12=\n" +
 	"\x1bglobal_replication_group_id\x18\x0f \x01(\tR\x18globalReplicationGroupId\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
+	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
 	"\x11subnet_group_name\x18\x11 \x01(\tR\x0fsubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
+	"\x12security_group_ids\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
 	"\fnetwork_type\x18\x13 \x01(\tR\vnetworkType\x12!\n" +
 	"\fip_discovery\x18\x14 \x01(\tR\vipDiscovery\x12E\n" +
 	"\x1aat_rest_encryption_enabled\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17atRestEncryptionEnabled\x12F\n" +
 	"\x1atransit_encryption_enabled\x18\x16 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18transitEncryptionEnabled\x126\n" +
 	"\x17transit_encryption_mode\x18\x17 \x01(\tR\x15transitEncryptionMode\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12W\n" +
+	"kms_key_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12W\n" +
 	"\n" +
 	"auth_token\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\tauthToken\x12\x82\x01\n" +
 	"\x1aauth_token_update_strategy\x18\x1a \x01(\tBE\xaa\xa6\x1dArotation policy enum (ROTATE/SET/DELETE), not credential materialR\x17authTokenUpdateStrategy\x12\x7f\n" +
-	"\x0euser_group_ids\x18\x1b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf4\x01\x92\xd4a\x1cstatus.outputs.user_group_idR\fuserGroupIds\x12#\n" +
+	"\x0euser_group_ids\x18\x1b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x94\b\x92\xd4a\x1cstatus.outputs.user_group_idR\fuserGroupIds\x12#\n" +
 	"\rsnapshot_arns\x18\x1c \x03(\tR\fsnapshotArns\x12#\n" +
 	"\rsnapshot_name\x18\x1d \x01(\tR\fsnapshotName\x12\xb4\x01\n" +
 	"\x12maintenance_window\x18\x1e \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12C\n" +
@@ -847,7 +847,7 @@ const file_dev_planton_provider_aws_awsrediselasticache_v1_spec_proto_rawDesc = 
 	"parameters\x120\n" +
 	"\x14parameter_group_name\x18% \x01(\tR\x12parameterGroupName\x12\x95\x01\n" +
 	"\x1blog_delivery_configurations\x18& \x03(\v2U.dev.planton.provider.aws.awsrediselasticache.v1.AwsRedisElasticacheLogDeliveryConfigR\x19logDeliveryConfigurations\x12\x8b\x01\n" +
-	"\x16notification_topic_arn\x18' \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12;\n" +
+	"\x16notification_topic_arn\x18' \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12;\n" +
 	"\x1aauto_minor_version_upgrade\x18( \x01(\bR\x17autoMinorVersionUpgrade\x120\n" +
 	"\x14data_tiering_enabled\x18) \x01(\bR\x12dataTieringEnabled\x12!\n" +
 	"\fcluster_mode\x18* \x01(\tR\vclusterMode:\xc55\xbaH\xc15\x1a\xa5\x02\n" +

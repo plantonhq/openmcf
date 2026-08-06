@@ -852,11 +852,11 @@ const file_dev_planton_provider_alicloud_alicloudsaeapplication_v1_spec_proto_ra
 	"\tcpu_valid\x12=cpu must be one of: 500, 1000, 2000, 4000, 8000, 16000, 32000\x1a3this in [500, 1000, 2000, 4000, 8000, 16000, 32000]\xc8\x01\x01R\x03cpu\x12\xd9\x01\n" +
 	"\x06memory\x18\a \x01(\x05B\xc0\x01\xbaH\xbc\x01\xba\x01\xb5\x01\n" +
 	"\fmemory_valid\x12Xmemory must be one of: 1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768, 65536, 131072\x1aKthis in [1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768, 65536, 131072]\xc8\x01\x01R\x06memory\x12m\n" +
-	"\x06vpc_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12y\n" +
+	"\x06vpc_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12y\n" +
 	"\n" +
-	"vswitch_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_id\x98\xd4a\x01R\tvswitchId\x12\x89\x01\n" +
+	"vswitch_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_id\x98\xd4a\x01R\tvswitchId\x12\x89\x01\n" +
 	"\x11security_group_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xce\x17\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12!\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf6]\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12!\n" +
 	"\fnamespace_id\x18\v \x01(\tR\vnamespaceId\x12\x1b\n" +
 	"\timage_url\x18\f \x01(\tR\bimageUrl\x12\x1f\n" +
 	"\vpackage_url\x18\r \x01(\tR\n" +

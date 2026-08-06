@@ -198,7 +198,7 @@ const file_dev_planton_provider_aws_awscognitoresourceserver_v1_spec_proto_rawDe
 	"?dev/planton/provider/aws/awscognitoresourceserver/v1/spec.proto\x124dev.planton.provider.aws.awscognitoresourceserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x82\x04\n" +
 	"\x1cAwsCognitoResourceServerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
-	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
+	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
 	"userPoolId\x12*\n" +
 	"\n" +
 	"identifier\x18\x03 \x01(\tB\n" +

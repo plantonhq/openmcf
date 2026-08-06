@@ -245,7 +245,7 @@ const file_dev_planton_provider_kubernetes_kuberneteslistenerset_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kuberneteslistenerset/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteslistenerset.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x92\a\n" +
 	"\x19KubernetesListenerSetSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12r\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12r\n" +
 	"\n" +
 	"parent_ref\x18\x03 \x01(\v2K.dev.planton.provider.kubernetes.KubernetesGatewayApiParentGatewayReferenceB\x06\xbaH\x03\xc8\x01\x01R\tparentRef\x12\x81\x01\n" +
 	"\tlisteners\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kuberneteslistenerset.v1.KubernetesListenerSetListenerB\n" +

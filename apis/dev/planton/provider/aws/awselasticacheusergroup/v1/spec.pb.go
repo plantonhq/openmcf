@@ -127,7 +127,7 @@ const file_dev_planton_provider_aws_awselasticacheusergroup_v1_spec_proto_rawDes
 	"\x1bAwsElasticacheUserGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1e\n" +
 	"\x06engine\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06engine\x12v\n" +
-	"\buser_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf3\x01\x92\xd4a\x16status.outputs.user_idR\auserIds:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
+	"\buser_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x93\b\x92\xd4a\x16status.outputs.user_idR\auserIds:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
 	"\x13engine_valid_values\x12Hengine must be 'redis' or 'valkey' — Memcached has no RBAC user groups\x1a\"this.engine in ['redis', 'valkey']B\xa8\x03\n" +
 	"7com.dev.planton.provider.aws.awselasticacheusergroup.v1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticacheusergroup/v1;awselasticacheusergroupv1\xa2\x02\x05DPPAA\xaa\x023Dev.Planton.Provider.Aws.Awselasticacheusergroup.V1\xca\x023Dev\\Planton\\Provider\\Aws\\Awselasticacheusergroup\\V1\xe2\x02?Dev\\Planton\\Provider\\Aws\\Awselasticacheusergroup\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Aws::Awselasticacheusergroup::V1b\x06proto3"
 

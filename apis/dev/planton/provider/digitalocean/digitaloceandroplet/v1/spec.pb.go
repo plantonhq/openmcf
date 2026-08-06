@@ -229,14 +229,14 @@ const file_dev_planton_provider_digitalocean_digitaloceandroplet_v1_spec_proto_r
 	"\x06region\x18\x02 \x01(\x0e25.dev.planton.provider.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x126\n" +
 	"\x04size\x18\x03 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[a-z0-9]+(-[a-z0-9]+)+$R\x04size\x12?\n" +
 	"\x05image\x18\x04 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x05image\x12j\n" +
-	"\x03vpc\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\t\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
+	"\x03vpc\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
 	"\venable_ipv6\x18\a \x01(\bR\n" +
 	"enableIpv6\x12%\n" +
 	"\x0eenable_backups\x18\b \x01(\bR\renableBackups\x12-\n" +
 	"\x12disable_monitoring\x18\t \x01(\bR\x11disableMonitoring\x12t\n" +
 	"\n" +
 	"volume_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbb\t\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12\x1c\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x93'\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12\x1c\n" +
 	"\x04tags\x18\v \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tags\x12&\n" +
 	"\tuser_data\x18\f \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x02R\buserData\x12\x7f\n" +
 	"\btimezone\x18\r \x01(\x0e2U.dev.planton.provider.digitalocean.digitaloceandroplet.v1.DigitalOceanDropletTimezoneB\a\x8a\xa6\x1d\x03UTCH\x00R\btimezone\x88\x01\x01B\v\n" +

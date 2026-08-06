@@ -219,8 +219,8 @@ const file_dev_planton_provider_azure_azureprivatednszonevirtualnetworklink_v1_s
 	")AzurePrivateDnsZoneVirtualNetworkLinkSpec\x12\xfb\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xe6\x01\xbaH\xe2\x01\xba\x01\xd5\x01\n" +
 	"\x10link_name_format\x12\x82\x01Link names may contain alphanumerics, underscores, periods, and hyphens, and must start and end with an alphanumeric or underscore\x1a<this.matches('^[a-zA-Z0-9_]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x88\x01\n" +
-	"\x13private_dns_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12\x96\x01\n" +
-	"\x12virtual_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_id\x98\xd4a\x01R\x10virtualNetworkId\x12A\n" +
+	"\x13private_dns_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x0f\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12\x96\x01\n" +
+	"\x12virtual_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x0f\x92\xd4a!status.outputs.virtual_network_id\x98\xd4a\x01R\x10virtualNetworkId\x12A\n" +
 	"\x14registration_enabled\x18\x04 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x13registrationEnabled\x88\x01\x01\x12\xa7\x01\n" +
 	"\x11resolution_policy\x18\x05 \x01(\x0e2z.dev.planton.provider.azure.azureprivatednszonevirtualnetworklink.v1.AzurePrivateDnsZoneVirtualNetworkLinkResolutionPolicyR\x10resolutionPolicy\x12\x8c\x01\n" +
 	"\x04tags\x18\x06 \x03(\v2x.dev.planton.provider.azure.azureprivatednszonevirtualnetworklink.v1.AzurePrivateDnsZoneVirtualNetworkLinkSpec.TagsEntryR\x04tags\x1a7\n" +

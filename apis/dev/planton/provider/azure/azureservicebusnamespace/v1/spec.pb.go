@@ -725,7 +725,7 @@ const file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_raw
 	"\x1cAzureServiceBusNamespaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xec\x03\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xec\x03\n" +
 	"\x0enamespace_name\x18\x03 \x01(\tB\xc4\x03\xbaH\xc0\x03\xba\x01\xe1\x01\n" +
 	"!service_bus_namespace_name_format\x12\x82\x01namespace_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number\x1a7this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')\xba\x01\xce\x01\n" +
 	"*service_bus_namespace_name_reserved_suffix\x12nnamespace_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints\x1a0!this.endsWith('-sb') && !this.endsWith('-mgmt')\xc8\x01\x01r\x04\x10\x06\x182R\rnamespaceName\x12o\n" +
@@ -757,11 +757,11 @@ const file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_raw
 	" AzureServiceBusNamespaceIdentity\x12|\n" +
 	"\x04type\x18\x01 \x01(\x0e2\\.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
 	"#service_bus_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)\"\xca\x03\n" +
 	"*AzureServiceBusNamespaceCustomerManagedKey\x12\x89\x01\n" +
-	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\x98\x01\n" +
-	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\x12O\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\x98\x01\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\x12O\n" +
 	"!infrastructure_encryption_enabled\x18\x03 \x01(\bH\x00R\x1finfrastructureEncryptionEnabled\x88\x01\x01B$\n" +
 	"\"_infrastructure_encryption_enabled\"\xe5\x06\n" +
 	"&AzureServiceBusNamespaceNetworkRuleSet\x12\x8c\x01\n" +
@@ -774,7 +774,7 @@ const file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_raw
 	"\x1e_public_network_access_enabledB\x1b\n" +
 	"\x19_trusted_services_allowed\"\xa1\x02\n" +
 	"#AzureServiceBusNamespaceNetworkRule\x12|\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12S\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12S\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x02 \x01(\bH\x00R ignoreMissingVnetServiceEndpoint\x88\x01\x01B'\n" +
 	"%_ignore_missing_vnet_service_endpoint*t\n" +
 	"\x1bAzureServiceBusNamespaceSku\x12/\n" +

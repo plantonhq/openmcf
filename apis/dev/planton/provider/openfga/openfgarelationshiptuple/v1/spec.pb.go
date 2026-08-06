@@ -450,8 +450,8 @@ const file_dev_planton_provider_openfga_openfgarelationshiptuple_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/openfga/openfgarelationshiptuple/v1/spec.proto\x128dev.planton.provider.openfga.openfgarelationshiptuple.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa3\x05\n" +
 	"\x1cOpenFgaRelationshipTupleSpec\x12o\n" +
-	"\bstore_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x11\x92\xd4a\x11status.outputs.idR\astoreId\x12\x84\x01\n" +
-	"\x16authorization_model_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1a\x88\xd4a\xfd\x11\x92\xd4a\x11status.outputs.idR\x14authorizationModelId\x12r\n" +
+	"\bstore_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \xbaH\x03\xc8\x01\x01\x88\xd4a\xa8F\x92\xd4a\x11status.outputs.idR\astoreId\x12\x84\x01\n" +
+	"\x16authorization_model_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1a\x88\xd4a\xa9F\x92\xd4a\x11status.outputs.idR\x14authorizationModelId\x12r\n" +
 	"\x04user\x18\x03 \x01(\v2V.dev.planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleUserB\x06\xbaH\x03\xc8\x01\x01R\x04user\x12\"\n" +
 	"\brelation\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\brelation\x12x\n" +
 	"\x06object\x18\x05 \x01(\v2X.dev.planton.provider.openfga.openfgarelationshiptuple.v1.OpenFgaRelationshipTupleObjectB\x06\xbaH\x03\xc8\x01\x01R\x06object\x12y\n" +

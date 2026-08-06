@@ -1622,7 +1622,7 @@ const file_dev_planton_provider_cloudflare_cloudflarednsrecord_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/cloudflare/cloudflarednsrecord/v1/spec.proto\x126dev.planton.provider.cloudflare.cloudflarednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcb\x1f\n" +
 	"\x17CloudflareDnsRecordSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
 	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xdb\x01\n" +
 	"\x04type\x18\x03 \x01(\x0e2Z.dev.planton.provider.cloudflare.cloudflarednsrecord.v1.CloudflareDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
 	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x18\n" +

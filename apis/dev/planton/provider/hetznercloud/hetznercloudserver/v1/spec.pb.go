@@ -516,10 +516,10 @@ const file_dev_planton_provider_hetznercloud_hetznercloudserver_v1_spec_proto_ra
 	"serverType\x12\x1d\n" +
 	"\x05image\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05image\x12#\n" +
 	"\blocation\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\blocation\x12q\n" +
-	"\bssh_keys\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xac\x1b\x92\xd4a\x19status.outputs.ssh_key_idR\asshKeys\x12\x1b\n" +
+	"\bssh_keys\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xb0m\x92\xd4a\x19status.outputs.ssh_key_idR\asshKeys\x12\x1b\n" +
 	"\tuser_data\x18\x05 \x01(\tR\buserData\x12\x8c\x01\n" +
-	"\x12placement_group_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xad\x1b\x92\xd4a!status.outputs.placement_group_idR\x10placementGroupId\x12z\n" +
-	"\ffirewall_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xae\x1b\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12x\n" +
+	"\x12placement_group_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb1m\x92\xd4a!status.outputs.placement_group_idR\x10placementGroupId\x12z\n" +
+	"\ffirewall_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xb2m\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12x\n" +
 	"\n" +
 	"public_net\x18\b \x01(\v2Y.dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudServerSpec.PublicNetR\tpublicNet\x12}\n" +
 	"\bnetworks\x18\t \x03(\v2a.dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudServerSpec.NetworkAttachmentR\bnetworks\x12\x18\n" +
@@ -533,13 +533,13 @@ const file_dev_planton_provider_hetznercloud_hetznercloudserver_v1_spec_proto_ra
 	"\tPublicNet\x120\n" +
 	"\fipv4_enabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\vipv4Enabled\x88\x01\x01\x120\n" +
 	"\fipv6_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\vipv6Enabled\x88\x01\x01\x12m\n" +
-	"\x04ipv4\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb7\x1b\x92\xd4a\x1cstatus.outputs.primary_ip_idR\x04ipv4\x12m\n" +
-	"\x04ipv6\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb7\x1b\x92\xd4a\x1cstatus.outputs.primary_ip_idR\x04ipv6B\x0f\n" +
+	"\x04ipv4\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xbbm\x92\xd4a\x1cstatus.outputs.primary_ip_idR\x04ipv4\x12m\n" +
+	"\x04ipv6\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xbbm\x92\xd4a\x1cstatus.outputs.primary_ip_idR\x04ipv6B\x0f\n" +
 	"\r_ipv4_enabledB\x0f\n" +
 	"\r_ipv6_enabled\x1a\xbd\x01\n" +
 	"\x11NetworkAttachment\x12{\n" +
 	"\n" +
-	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x1b\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\x0e\n" +
+	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xbam\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x1b\n" +
 	"\talias_ips\x18\x03 \x03(\tR\baliasIpsB\xbb\x03\n" +
 	";com.dev.planton.provider.hetznercloud.hetznercloudserver.v1B\tSpecProtoP\x01Zngithub.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudserver/v1;hetznercloudserverv1\xa2\x02\x05DPPHH\xaa\x027Dev.Planton.Provider.Hetznercloud.Hetznercloudserver.V1\xca\x027Dev\\Planton\\Provider\\Hetznercloud\\Hetznercloudserver\\V1\xe2\x02CDev\\Planton\\Provider\\Hetznercloud\\Hetznercloudserver\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Hetznercloud::Hetznercloudserver::V1b\x06proto3"

@@ -197,14 +197,14 @@ const file_dev_planton_provider_openstack_openstacksecuritygrouprule_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/openstack/openstacksecuritygrouprule/v1/spec.proto\x12<dev.planton.provider.openstack.openstacksecuritygrouprule.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xde\b\n" +
 	"\x1eOpenStackSecurityGroupRuleSpec\x12\x8f\x01\n" +
-	"\x11security_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x13\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x124\n" +
+	"\x11security_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x95N\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x124\n" +
 	"\tdirection\x18\x02 \x01(\tB\x16\xbaH\x13r\x11R\aingressR\x06egressR\tdirection\x12/\n" +
 	"\tethertype\x18\x03 \x01(\tB\x11\xbaH\x0er\fR\x04IPv4R\x04IPv6R\tethertype\x12\x1a\n" +
 	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12)\n" +
 	"\x0eport_range_min\x18\x05 \x01(\x05H\x00R\fportRangeMin\x88\x01\x01\x12)\n" +
 	"\x0eport_range_max\x18\x06 \x01(\x05H\x01R\fportRangeMax\x88\x01\x01\x12(\n" +
 	"\x10remote_ip_prefix\x18\a \x01(\tR\x0eremoteIpPrefix\x12\x85\x01\n" +
-	"\x0fremote_group_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc9\x13\x92\xd4a status.outputs.security_group_idR\rremoteGroupId\x12 \n" +
+	"\x0fremote_group_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x95N\x92\xd4a status.outputs.security_group_idR\rremoteGroupId\x12 \n" +
 	"\vdescription\x18\t \x01(\tR\vdescription\x12\x16\n" +
 	"\x06region\x18\n" +
 	" \x01(\tR\x06region:\xbe\x03\xbaH\xba\x03\x1a\x94\x01\n" +

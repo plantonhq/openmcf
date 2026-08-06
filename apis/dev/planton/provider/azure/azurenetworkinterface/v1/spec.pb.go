@@ -662,7 +662,7 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"\x19AzureNetworkInterfaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb4\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb4\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x9f\x02\xbaH\x9b\x02\xba\x01\x8e\x02\n" +
 	"\x1dnetwork_interface_name_format\x12\xa1\x01Network interface names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x90\x01\n" +
 	"\x11ip_configurations\x18\x04 \x03(\v2Y.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceIpConfigurationB\b\xbaH\x05\x92\x01\x02\b\x01R\x10ipConfigurations\x12\x1f\n" +
@@ -675,8 +675,8 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"\rauxiliary_sku\x18\n" +
 	" \x01(\x0e2V.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceAuxiliarySkuR\fauxiliarySku\x12\x1b\n" +
 	"\tedge_zone\x18\v \x01(\tR\bedgeZone\x12\xa0\x01\n" +
-	"\x19network_security_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\xae\x01\n" +
-	"\x1eapplication_security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12l\n" +
+	"\x19network_security_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xdc\x0f\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\xae\x01\n" +
+	"\x1eapplication_security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xec\x0f\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12l\n" +
 	"\x04tags\x18\x0e \x03(\v2X.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfaceSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -687,17 +687,17 @@ const file_dev_planton_provider_azure_azurenetworkinterface_v1_spec_proto_rawDes
 	"$AzureNetworkInterfaceIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12r\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x91\x01\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x91\x01\n" +
 	"\x15private_ip_allocation\x18\x03 \x01(\x0e2].dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpAllocationR\x13privateIpAllocation\x12,\n" +
 	"\x12private_ip_address\x18\x04 \x01(\tR\x10privateIpAddress\x12\x88\x01\n" +
 	"\x12private_ip_version\x18\x05 \x01(\x0e2Z.dev.planton.provider.azure.azurenetworkinterface.v1.AzureNetworkInterfacePrivateIpVersionR\x10privateIpVersion\x12\x89\x01\n" +
-	"\x14public_ip_address_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12\x18\n" +
+	"\x14public_ip_address_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12\x18\n" +
 	"\aprimary\x18\a \x01(\bR\aprimary\x12h\n" +
 	"2gateway_load_balancer_frontend_ip_configuration_id\x18\b \x01(\tR,gatewayLoadBalancerFrontendIpConfigurationId\x12\xaf\x01\n" +
-	"&load_balancer_backend_address_pool_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa1\x03\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
+	"&load_balancer_backend_address_pool_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe1\x0f\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
 	"\"load_balancer_inbound_nat_rule_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
-	",application_gateway_backend_address_pool_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xa0\x03\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds:\x80\x03\xbaH\xfc\x02\x1a\xc1\x01\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe1\x0f\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
+	",application_gateway_backend_address_pool_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe0\x0f\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds:\x80\x03\xbaH\xfc\x02\x1a\xc1\x01\n" +
 	"&nic_static_allocation_requires_address\x12QSTATIC private_ip_allocation requires private_ip_address (and DYNAMIC forbids it)\x1aD(this.private_ip_allocation == 2) == (this.private_ip_address != '')\x1a\xb5\x01\n" +
 	"\x18nic_ipv4_requires_subnet\x12dan IPv4 ip_configuration requires subnet_id (IPv6 configurations inherit the NIC's subnet placement)\x1a3this.private_ip_version == 2 || has(this.subnet_id)*\x82\x01\n" +
 	"(AzureNetworkInterfacePrivateIpAllocation\x12=\n" +

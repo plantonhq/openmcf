@@ -1747,7 +1747,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/kubernetes/kubernetesopensearch/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesopensearch.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8a\x13\n" +
 	"\x18KubernetesOpenSearchSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12 \n" +
 	"\aversion\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x125\n" +
 	"\thttp_port\x18\x04 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x049200H\x00R\bhttpPort\x88\x01\x01\x12\xd6\x03\n" +
@@ -1807,7 +1807,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	"\tempty_dir\x18\x02 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchEmptyDirH\x00R\bemptyDirB\b\n" +
 	"\x06source\"\x9f\x01\n" +
 	"\x17KubernetesOpenSearchPvc\x12\x83\x01\n" +
-	"\rstorage_class\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"=\n" +
+	"\rstorage_class\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"=\n" +
 	"\x1cKubernetesOpenSearchEmptyDir\x12\x1d\n" +
 	"\n" +
 	"size_limit\x18\x01 \x01(\tR\tsizeLimit\"\x8c\x02\n" +
@@ -1830,20 +1830,20 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	" KubernetesOpenSearchTlsTransport\x12)\n" +
 	"\bgenerate\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\bgenerate\x88\x01\x01\x12(\n" +
 	"\bper_node\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\aperNode\x88\x01\x01\x12\xb9\x01\n" +
-	"\x06secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x06secret\x12\xb1\x01\n" +
-	"\tca_secret\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\bcaSecret\x12\x19\n" +
+	"\x06secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x06secret\x12\xb1\x01\n" +
+	"\tca_secret\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\bcaSecret\x12\x19\n" +
 	"\bnodes_dn\x18\x05 \x03(\tR\anodesDn\x12\x19\n" +
 	"\badmin_dn\x18\x06 \x03(\tR\aadminDnB\v\n" +
 	"\t_generateB\v\n" +
 	"\t_per_node\"\x91\x02\n" +
 	"\x1bKubernetesOpenSearchTlsHttp\x12)\n" +
 	"\bgenerate\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\bgenerate\x88\x01\x01\x12\xb9\x01\n" +
-	"\x06secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x06secretB\v\n" +
+	"\x06secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x06secretB\v\n" +
 	"\t_generate\"\xfc\x04\n" +
 	"\"KubernetesOpenSearchSecurityConfig\x12\xca\x01\n" +
-	"\x16security_config_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x14securityConfigSecret\x12\xb7\x01\n" +
-	"\fadmin_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\vadminSecret\x12\xce\x01\n" +
-	"\x18admin_credentials_secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x16adminCredentialsSecret\"\xc8\a\n" +
+	"\x16security_config_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x14securityConfigSecret\x12\xb7\x01\n" +
+	"\fadmin_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\vadminSecret\x12\xce\x01\n" +
+	"\x18admin_credentials_secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x16adminCredentialsSecret\"\xc8\a\n" +
 	"\x1eKubernetesOpenSearchDashboards\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12-\n" +
 	"\breplicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12\x18\n" +
@@ -1852,7 +1852,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	"\x03tls\x18\x05 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchDashboardsTlsR\x03tls\x12\x1b\n" +
 	"\tbase_path\x18\x06 \x01(\tR\bbasePath\x12\x9a\x01\n" +
 	"\x11additional_config\x18\a \x03(\v2m.dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchDashboards.AdditionalConfigEntryR\x10additionalConfig\x12\xd8\x01\n" +
-	"\x1dopensearch_credentials_secret\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x1bopensearchCredentialsSecret\x12x\n" +
+	"\x1dopensearch_credentials_secret\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x1bopensearchCredentialsSecret\x12x\n" +
 	"\aservice\x18\t \x01(\v2^.dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchDashboardsServiceR\aservice\x12!\n" +
 	"\fplugins_list\x18\n" +
 	" \x03(\tR\vpluginsList\x1aC\n" +
@@ -1863,7 +1863,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	"!KubernetesOpenSearchDashboardsTls\x12\x16\n" +
 	"\x06enable\x18\x01 \x01(\bR\x06enable\x12)\n" +
 	"\bgenerate\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\bgenerate\x88\x01\x01\x12\xb9\x01\n" +
-	"\x06secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x06secretB\v\n" +
+	"\x06secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBm\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x06secretB\v\n" +
 	"\t_generate\"\xc0\x02\n" +
 	"%KubernetesOpenSearchDashboardsService\x12\xce\x01\n" +
 	"\x04type\x18\x01 \x01(\tB\xb4\x01\xbaH\xa3\x01\xba\x01\x9f\x01\n" +
@@ -1873,11 +1873,11 @@ const file_dev_planton_provider_kubernetes_kubernetesopensearch_v1_spec_proto_ra
 	"\x1eKubernetesOpenSearchMonitoring\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12'\n" +
 	"\x0fscrape_interval\x18\x02 \x01(\tR\x0escrapeInterval\x12\xca\x01\n" +
-	"\x16monitoring_user_secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x14monitoringUserSecret\x12\x1d\n" +
+	"\x16monitoring_user_secret\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x14monitoringUserSecret\x12\x1d\n" +
 	"\n" +
 	"plugin_url\x18\x04 \x01(\tR\tpluginUrl\"\xa9\x03\n" +
 	"!KubernetesOpenSearchKeystoreValue\x12\xb2\x01\n" +
-	"\x06secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBf\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x06secret\x12\x8e\x01\n" +
+	"\x06secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBf\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x06secret\x12\x8e\x01\n" +
 	"\fkey_mappings\x18\x02 \x03(\v2k.dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchKeystoreValue.KeyMappingsEntryR\vkeyMappings\x1a>\n" +
 	"\x10KeyMappingsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

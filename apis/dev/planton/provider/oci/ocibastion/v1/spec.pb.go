@@ -149,8 +149,8 @@ const file_dev_planton_provider_oci_ocibastion_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"1dev/planton/provider/oci/ocibastion/v1/spec.proto\x12&dev.planton.provider.oci.ocibastion.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb8\x04\n" +
 	"\x0eOciBastionSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12\x89\x01\n" +
-	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12!\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12\x89\x01\n" +
+	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12>\n" +
 	"\x1cclient_cidr_block_allow_list\x18\x04 \x03(\tR\x18clientCidrBlockAllowList\x12?\n" +
 	"\x1amax_session_ttl_in_seconds\x18\x05 \x01(\x05H\x00R\x16maxSessionTtlInSeconds\x88\x01\x01\x124\n" +

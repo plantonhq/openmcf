@@ -194,7 +194,7 @@ const file_dev_planton_provider_openstack_openstackvolume_v1_spec_proto_rawDesc 
 	"\vsnapshot_id\x18\x05 \x01(\tR\n" +
 	"snapshotId\x12\"\n" +
 	"\rsource_vol_id\x18\x06 \x01(\tR\vsourceVolId\x12o\n" +
-	"\bimage_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd2\x13\x92\xd4a\x17status.outputs.image_idR\aimageId\x12p\n" +
+	"\bimage_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x9eN\x92\xd4a\x17status.outputs.image_idR\aimageId\x12p\n" +
 	"\bmetadata\x18\b \x03(\v2T.dev.planton.provider.openstack.openstackvolume.v1.OpenStackVolumeSpec.MetadataEntryR\bmetadata\x12\x16\n" +
 	"\x06region\x18\t \x01(\tR\x06region\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +

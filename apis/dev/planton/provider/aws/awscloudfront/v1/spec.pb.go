@@ -1732,7 +1732,7 @@ const file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_rawDesc = "" +
 	"\x0fis_ipv6_enabled\x18\a \x01(\bR\risIpv6Enabled\x12Y\n" +
 	"\vprice_class\x18\b \x01(\tB8\xbaH5\xd8\x01\x01r0R\x0ePriceClass_100R\x0ePriceClass_200R\x0ePriceClass_AllR\n" +
 	"priceClass\x12w\n" +
-	"\vweb_acl_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12b\n" +
+	"\vweb_acl_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcd\b\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12b\n" +
 	"\aorigins\x18\n" +
 	" \x03(\v2>.dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOriginB\b\xbaH\x05\x92\x01\x02\b\x01R\aorigins\x12h\n" +
 	"\rorigin_groups\x18\v \x03(\v2C.dev.planton.provider.aws.awscloudfront.v1.AwsCloudFrontOriginGroupR\foriginGroups\x12\x83\x01\n" +
@@ -1845,7 +1845,7 @@ const file_dev_planton_provider_aws_awscloudfront_v1_spec_proto_rawDesc = "" +
 	"lambda_arn\x18\x02 \x01(\tBN\xbaHK\xc8\x01\x01rF2D^arn:aws[a-zA-Z-]*:lambda:us-east-1:[0-9]{12}:function:[^:]+:[0-9]+$R\tlambdaArn\x12!\n" +
 	"\finclude_body\x18\x03 \x01(\bR\vincludeBody\"\xd4\x04\n" +
 	"\x1eAwsCloudFrontViewerCertificate\x12\x84\x01\n" +
-	"\x13acm_certificate_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x11acmCertificateArn\x12,\n" +
+	"\x13acm_certificate_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x11acmCertificateArn\x12,\n" +
 	"\x12iam_certificate_id\x18\x02 \x01(\tR\x10iamCertificateId\x12E\n" +
 	"\x12ssl_support_method\x18\x03 \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\bsni-onlyR\x03vipR\x10sslSupportMethod\x12\x8d\x01\n" +
 	"\x18minimum_protocol_version\x18\x04 \x01(\tBS\xbaHP\xd8\x01\x01rKR\x05TLSv1R\n" +

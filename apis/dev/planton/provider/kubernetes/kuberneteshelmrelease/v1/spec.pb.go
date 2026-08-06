@@ -427,7 +427,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kuberneteshelmrelease/v1/spec.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe1\x14\n" +
 	"\x19KubernetesHelmReleaseSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xab\x01\n" +
 	"\x04repo\x18\x03 \x01(\tB\x96\x01\xbaH\x92\x01\xba\x01\x8b\x01\n" +
 	"\vrepo.scheme\x12ZChart repository must be an http(s):// Helm repository URL or an oci:// registry reference\x1a this.matches('^(https?|oci)://')\xc8\x01\x01R\x04repo\x12\x1c\n" +

@@ -529,7 +529,7 @@ const file_dev_planton_provider_azure_azurekeyvaultkey_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/azure/azurekeyvaultkey/v1/spec.proto\x12.dev.planton.provider.azure.azurekeyvaultkey.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa0\r\n" +
 	"\x14AzureKeyVaultKeySpec\x123\n" +
 	"\x04name\x18\x01 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[0-9a-zA-Z-]{1,127}$R\x04name\x12\x80\x01\n" +
-	"\fkey_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
+	"\fkey_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x0f\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
 	"keyVaultId\x12k\n" +
 	"\bkey_type\x18\x03 \x01(\x0e2D.dev.planton.provider.azure.azurekeyvaultkey.v1.AzureKeyVaultKeyTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\akeyType\x12.\n" +

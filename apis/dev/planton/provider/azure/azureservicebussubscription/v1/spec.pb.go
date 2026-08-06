@@ -672,7 +672,7 @@ const file_dev_planton_provider_azure_azureservicebussubscription_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/azure/azureservicebussubscription/v1/spec.proto\x129dev.planton.provider.azure.azureservicebussubscription.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb9\x0e\n" +
 	"\x1fAzureServiceBusSubscriptionSpec\x12u\n" +
-	"\btopic_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x03\x92\xd4a\x17status.outputs.topic_idR\atopicId\x12\xe8\x02\n" +
+	"\btopic_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x10\x92\xd4a\x17status.outputs.topic_idR\atopicId\x12\xe8\x02\n" +
 	"\x11subscription_name\x18\x02 \x01(\tB\xba\x02\xbaH\xb6\x02\xba\x01\xa9\x02\n" +
 	"$service_bus_subscription_name_format\x12\x9e\x01subscription_name must be up to 50 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter, number, or underscore\x1a`this.matches('^[_a-zA-Z0-9]$') || this.matches('^[_a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[_a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x01\x182R\x10subscriptionName\x128\n" +
 	"\x12max_delivery_count\x18\x03 \x01(\x05B\n" +

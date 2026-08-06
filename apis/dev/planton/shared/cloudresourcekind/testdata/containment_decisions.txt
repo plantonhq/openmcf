@@ -409,6 +409,7 @@ contained dev.planton.provider.kubernetes.kubernetesissuer.v1.KubernetesIssuerSp
 contained dev.planton.provider.kubernetes.kubernetesistio.v1.KubernetesIstioSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesjenkins.v1.KubernetesJenkinsSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesjupyterhub.v1.KubernetesJupyterHubSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskafkaconnect.v1.KubernetesKafkaConnectSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskafkaconnector.v1.KubernetesKafkaConnectorSpec.connect_cluster -> KubernetesKafkaConnect
@@ -432,6 +433,7 @@ contained dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSp
 contained dev.planton.provider.kubernetes.kubernetesloki.v1.KubernetesLokiSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmetricsserver.v1.KubernetesMetricsServerSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmongodb.v1.KubernetesMongodbSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmysql.v1.KubernetesMysqlSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.namespace -> KubernetesNamespace
@@ -468,11 +470,13 @@ contained dev.planton.provider.kubernetes.kubernetessolroperator.v1.KubernetesSo
 contained dev.planton.provider.kubernetes.kubernetessparkoperator.v1.KubernetesSparkOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1.KubernetesStrimziKafkaOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetessuperset.v1.KubernetesSupersetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestempo.v1.KubernetesTempoSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetestrino.v1.KubernetesTrinoSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesudproute.v1.KubernetesUdpRouteSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesvalkey.v1.KubernetesValkeySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSpec.namespace -> KubernetesNamespace
@@ -661,6 +665,7 @@ exempt    dev.planton.provider.gcp.gcprouternat.v1.GcpRouterNatRuleAction.source
 exempt    dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1.GcpServiceConnectionPolicyPscConfig.subnetworks -> GcpSubnetwork
 exempt    dev.planton.provider.gcp.gcpvertexaiendpoint.v1.GcpVertexAiEndpointSpec.network -> GcpVpcNetwork
 exempt    dev.planton.provider.gcp.gcpvertexaiindexendpoint.v1.GcpVertexAiIndexEndpointSpec.network -> GcpVpcNetwork
+exempt    dev.planton.provider.kubernetes.ExternalSecretsStoreAzure.vault_url -> AzureKeyVault
 exempt    dev.planton.provider.kubernetes.ExternalSecretsStoreGcp.project_id -> GcpProject
 exempt    dev.planton.provider.kubernetes.StrimziKafkaClientTrustedCertificate.secret_name -> KubernetesKafka
 exempt    dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53.zone_id_filters -> AwsRoute53Zone

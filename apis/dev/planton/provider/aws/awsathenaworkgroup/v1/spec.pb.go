@@ -938,8 +938,8 @@ const file_dev_planton_provider_aws_awsathenaworkgroup_v1_spec_proto_rawDesc = "
 	"'enable_minimum_encryption_configuration\x18\n" +
 	" \x01(\bR$enableMinimumEncryptionConfiguration\x126\n" +
 	"\x17selected_engine_version\x18\v \x01(\tR\x15selectedEngineVersion\x12{\n" +
-	"\x0eexecution_role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12\xa1\x01\n" +
-	"#customer_content_encryption_kms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1fcustomerContentEncryptionKmsKey\x12\x7f\n" +
+	"\x0eexecution_role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12\xa1\x01\n" +
+	"#customer_content_encryption_kms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1fcustomerContentEncryptionKmsKey\x12\x7f\n" +
 	"\x0fidentity_center\x18\x0e \x01(\v2V.dev.planton.provider.aws.awsathenaworkgroup.v1.AwsAthenaWorkgroupIdentityCenterConfigR\x0eidentityCenter\x12\x80\x01\n" +
 	"\x10s3_access_grants\x18\x0f \x01(\v2V.dev.planton.provider.aws.awsathenaworkgroup.v1.AwsAthenaWorkgroupS3AccessGrantsConfigR\x0es3AccessGrants\x12r\n" +
 	"\n" +
@@ -956,11 +956,11 @@ const file_dev_planton_provider_aws_awsathenaworkgroup_v1_spec_proto_rawDesc = "
 	"\x1eAwsAthenaWorkgroupResultConfig\x12'\n" +
 	"\x0foutput_location\x18\x01 \x01(\tR\x0eoutputLocation\x12+\n" +
 	"\x11encryption_option\x18\x02 \x01(\tR\x10encryptionOption\x12s\n" +
-	"\vkms_key_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x122\n" +
+	"\vkms_key_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x122\n" +
 	"\x15expected_bucket_owner\x18\x04 \x01(\tR\x13expectedBucketOwner\x12\"\n" +
 	"\rs3_acl_option\x18\x05 \x01(\tR\vs3AclOption\"\x95\x01\n" +
 	"%AwsAthenaWorkgroupManagedQueryResults\x12l\n" +
-	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\"\xee\x02\n" +
+	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\"\xee\x02\n" +
 	"&AwsAthenaWorkgroupIdentityCenterConfig\x124\n" +
 	"\x16enable_identity_center\x18\x01 \x01(\bR\x14enableIdentityCenter\x12?\n" +
 	"\x1cidentity_center_instance_arn\x18\x02 \x01(\tR\x19identityCenterInstanceArn:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
@@ -982,10 +982,10 @@ const file_dev_planton_provider_aws_awsathenaworkgroup_v1_spec_proto_rawDesc = "
 	"\x03key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03key\x12 \n" +
 	"\x06values\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\"\x96\x01\n" +
 	"&AwsAthenaWorkgroupManagedLoggingConfig\x12l\n" +
-	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\"\xdf\x02\n" +
+	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\"\xdf\x02\n" +
 	"!AwsAthenaWorkgroupS3LoggingConfig\x12+\n" +
 	"\flog_location\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vlogLocation\x12l\n" +
-	"\akms_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
+	"\akms_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
 	"\x19s3_logging_location_shape\x128s3_logging.log_location must start with 's3://' when set\x1a@this.log_location == '' || this.log_location.startsWith('s3://')B\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awsathenaworkgroup.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsathenaworkgroup/v1;awsathenaworkgroupv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awsathenaworkgroup.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awsathenaworkgroup\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awsathenaworkgroup\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awsathenaworkgroup::V1b\x06proto3"
 

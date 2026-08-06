@@ -159,12 +159,12 @@ const file_dev_planton_provider_gcp_gcptargethttpproxy_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/gcp/gcptargethttpproxy/v1/spec.proto\x12.dev.planton.provider.gcp.gcptargethttpproxy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd5\x06\n" +
 	"\x16GcpTargetHttpProxySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
 	"\n" +
 	"proxy_name\x18\x02 \x01(\tB\xe7\x01\xbaH\xe3\x01\xba\x01\xdf\x01\n" +
 	"\x10valid_proxy_name\x12\x89\x01proxy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\tproxyName\x12*\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12t\n" +
-	"\aurl_map\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf3\x04\x92\xd4a\x18status.outputs.self_linkR\x06urlMap\x12\xf8\x01\n" +
+	"\aurl_map\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd3\x17\x92\xd4a\x18status.outputs.self_linkR\x06urlMap\x12\xf8\x01\n" +
 	"\x1bhttp_keep_alive_timeout_sec\x18\x05 \x01(\x05B\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
 	"!valid_http_keep_alive_timeout_sec\x12bhttp_keep_alive_timeout_sec must be between 5 and 1200 seconds (or 0 to let GCP apply its default)\x1a(this == 0 || (this >= 5 && this <= 1200)R\x17httpKeepAliveTimeoutSec\x12\x1d\n" +
 	"\n" +

@@ -677,14 +677,14 @@ const file_dev_planton_provider_azure_azureeventhubnamespace_v1_spec_proto_rawDe
 	"\x1aAzureEventHubNamespaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x98\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x98\x02\n" +
 	"\x0enamespace_name\x18\x03 \x01(\tB\xf0\x01\xbaH\xec\x01\xba\x01\xdf\x01\n" +
 	"\x1fevent_hub_namespace_name_format\x12\x82\x01namespace_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number\x1a7this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x06\x182R\rnamespaceName\x12k\n" +
 	"\x03sku\x18\x04 \x01(\x0e2O.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceSkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x12(\n" +
 	"\bcapacity\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\bcapacity\x88\x01\x01\x125\n" +
 	"\x14auto_inflate_enabled\x18\x06 \x01(\bH\x01R\x12autoInflateEnabled\x88\x01\x01\x12H\n" +
 	"\x18maximum_throughput_units\x18\a \x01(\x05B\t\xbaH\x06\x1a\x04\x18((\x00H\x02R\x16maximumThroughputUnits\x88\x01\x01\x12\x88\x01\n" +
-	"\x14dedicated_cluster_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8a\x04\x92\xd4a\x19status.outputs.cluster_idR\x12dedicatedClusterId\x12p\n" +
+	"\x14dedicated_cluster_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xca\x10\x92\xd4a\x19status.outputs.cluster_idR\x12dedicatedClusterId\x12p\n" +
 	"\bidentity\x18\t \x01(\v2T.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceIdentityR\bidentity\x12O\n" +
 	"\x1clocal_authentication_enabled\x18\n" +
 	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1alocalAuthenticationEnabled\x88\x01\x01\x12P\n" +
@@ -706,7 +706,7 @@ const file_dev_planton_provider_azure_azureeventhubnamespace_v1_spec_proto_rawDe
 	"\x1eAzureEventHubNamespaceIdentity\x12x\n" +
 	"\x04type\x18\x01 \x01(\x0e2X.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb2\x02\xbaH\xae\x02\x1a\xab\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb2\x02\xbaH\xae\x02\x1a\xab\x02\n" +
 	"!event_hub_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)\"\xf7\x06\n" +
 	"%AzureEventHubNamespaceNetworkRuleSets\x12\x91\x01\n" +
 	"\x0edefault_action\x18\x01 \x01(\x0e2^.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNetworkRuleSetDefaultActionB\n" +
@@ -719,7 +719,7 @@ const file_dev_planton_provider_azure_azureeventhubnamespace_v1_spec_proto_rawDe
 	"\x1e_public_network_access_enabledB!\n" +
 	"\x1f_trusted_service_access_enabled\"\xc6\x02\n" +
 	"(AzureEventHubNamespaceVirtualNetworkRule\x12|\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12h\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12h\n" +
 	"/ignore_missing_virtual_network_service_endpoint\x18\x02 \x01(\bH\x00R*ignoreMissingVirtualNetworkServiceEndpoint\x88\x01\x01B2\n" +
 	"0_ignore_missing_virtual_network_service_endpoint*p\n" +
 	"\x19AzureEventHubNamespaceSku\x12-\n" +

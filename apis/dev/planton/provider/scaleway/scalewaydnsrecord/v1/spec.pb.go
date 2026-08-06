@@ -348,7 +348,7 @@ const file_dev_planton_provider_scaleway_scalewaydnsrecord_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/scaleway/scalewaydnsrecord/v1/spec.proto\x122dev.planton.provider.scaleway.scalewaydnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdc\x05\n" +
 	"\x15ScalewayDnsRecordSpec\x12x\n" +
-	"\tzone_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x16\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\x12\n" +
+	"\tzone_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb4V\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\xd5\x01\n" +
 	"\x04type\x18\x03 \x01(\x0e2T.dev.planton.provider.scaleway.scalewaydnsrecord.v1.ScalewayDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
 	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12N\n" +

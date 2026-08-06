@@ -232,9 +232,9 @@ const file_dev_planton_provider_gcp_gcpkmskeyiammember_v1_spec_proto_rawDesc = "
 	"\n" +
 	"9dev/planton/provider/gcp/gcpkmskeyiammember/v1/spec.proto\x12.dev.planton.provider.gcp.gcpkmskeyiammember.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdf\x03\n" +
 	"\x16GcpKmsKeyIamMemberSpec\x12|\n" +
-	"\rcrypto_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\vcryptoKeyId\x12j\n" +
-	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x04\x92\xd4a\x13status.outputs.nameR\x04role\x12p\n" +
-	"\x06member\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12i\n" +
+	"\rcrypto_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\vcryptoKeyId\x12j\n" +
+	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x17\x92\xd4a\x13status.outputs.nameR\x04role\x12p\n" +
+	"\x06member\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x15status.outputs.memberR\x06member\x12i\n" +
 	"\tcondition\x18\x04 \x01(\v2K.dev.planton.provider.gcp.gcpkmskeyiammember.v1.GcpKmsKeyIamMemberConditionR\tcondition\"\x93\x01\n" +
 	"\x1bGcpKmsKeyIamMemberCondition\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +

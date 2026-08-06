@@ -1531,10 +1531,10 @@ const file_dev_planton_provider_aws_awsec2instance_v1_spec_proto_rawDesc = "" +
 	"\x03ami\x18\x02 \x01(\tR\x03ami\x12#\n" +
 	"\rinstance_type\x18\x03 \x01(\tR\finstanceType\x12q\n" +
 	"\x0flaunch_template\x18\x04 \x01(\v2H.dev.planton.provider.aws.awsec2instance.v1.AwsEc2InstanceLaunchTemplateR\x0elaunchTemplate\x12\x8c\x01\n" +
-	"\x10instance_profile\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe7\x01\x92\xd4a$status.outputs.instance_profile_nameR\x0finstanceProfile\x12\x19\n" +
+	"\x10instance_profile\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x87\b\x92\xd4a$status.outputs.instance_profile_nameR\x0finstanceProfile\x12\x19\n" +
 	"\bkey_name\x18\x06 \x01(\tR\akeyName\x12r\n" +
-	"\tsubnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12?\n" +
+	"\tsubnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12?\n" +
 	"\x1cprimary_network_interface_id\x18\t \x01(\tR\x19primaryNetworkInterfaceId\x12\x1d\n" +
 	"\n" +
 	"private_ip\x18\n" +
@@ -1586,7 +1586,7 @@ const file_dev_planton_provider_aws_awsec2instance_v1_spec_proto_rawDesc = "" +
 	"\x11_disable_api_stopB\x1a\n" +
 	"\x18_disable_api_termination\"\xb4\x02\n" +
 	"\x1cAwsEc2InstanceLaunchTemplate\x12n\n" +
-	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xea\x01\x92\xd4a!status.outputs.launch_template_idR\x02id\x12\x12\n" +
+	"\x02id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\tR\aversion:v\xbaHs\x1aq\n" +
 	"\x14template_id_xor_name\x127identify the launch template by id or by name, not both\x1a !has(this.id) || this.name == ''\"\x8e\x03\n" +
@@ -1598,7 +1598,7 @@ const file_dev_planton_provider_aws_awsec2instance_v1_spec_proto_rawDesc = "" +
 	"'AwsEc2InstanceSecondaryNetworkInterface\x125\n" +
 	"\x12network_card_index\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x10networkCardIndex\x12!\n" +
 	"\fdevice_index\x18\x02 \x01(\x05R\vdeviceIndex\x12x\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x127\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x127\n" +
 	"\x18private_ip_address_count\x18\x04 \x01(\x05R\x15privateIpAddressCount\x127\n" +
 	"\x15delete_on_termination\x18\x05 \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01B\x18\n" +
 	"\x16_delete_on_termination\"\x90\b\n" +
@@ -1610,7 +1610,7 @@ const file_dev_planton_provider_aws_awsec2instance_v1_spec_proto_rawDesc = "" +
 	"\x10throughput_mibps\x18\x04 \x01(\x05R\x0fthroughputMibps\x12\x1c\n" +
 	"\tencrypted\x18\x05 \x01(\bR\tencrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x127\n" +
+	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x127\n" +
 	"\x15delete_on_termination\x18\a \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x84\x05\xbaH\x80\x05\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xa9\x01\n" +
 	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
@@ -1627,7 +1627,7 @@ const file_dev_planton_provider_aws_awsec2instance_v1_spec_proto_rawDesc = "" +
 	"\x10throughput_mibps\x18\x05 \x01(\x05R\x0fthroughputMibps\x12\x1c\n" +
 	"\tencrypted\x18\x06 \x01(\bR\tencrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
+	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\b \x01(\tR\n" +
 	"snapshotId\x127\n" +
 	"\x15delete_on_termination\x18\t \x01(\bH\x00R\x13deleteOnTermination\x88\x01\x01:\x8c\x06\xbaH\x88\x06\x1a\xbd\x01\n" +

@@ -1410,7 +1410,7 @@ const file_dev_planton_provider_cloudflare_cloudflarer2bucket_v1_spec_proto_rawD
 	" \x01(\v2S.dev.planton.provider.cloudflare.cloudflarer2bucket.v1.CloudflareR2BucketLockConfigR\x04lock\x12\x95\x01\n" +
 	"\x13event_notifications\x18\v \x03(\v2Z.dev.planton.provider.cloudflare.cloudflarer2bucket.v1.CloudflareR2BucketEventNotificationB\b\xbaH\x05\x92\x01\x02\x10dR\x12eventNotifications\"\x97\x02\n" +
 	"#CloudflareR2BucketEventNotification\x12p\n" +
-	"\x05queue\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x0e\x92\xd4a\x17status.outputs.queue_idR\x05queue\x12~\n" +
+	"\x05queue\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe76\x92\xd4a\x17status.outputs.queue_idR\x05queue\x12~\n" +
 	"\x05rules\x18\x02 \x03(\v2^.dev.planton.provider.cloudflare.cloudflarer2bucket.v1.CloudflareR2BucketEventNotificationRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\x05rules\"\x9f\x01\n" +
 	"'CloudflareR2BucketEventNotificationRule\x12\"\n" +
 	"\aactions\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\aactions\x12 \n" +
@@ -1419,7 +1419,7 @@ const file_dev_planton_provider_cloudflare_cloudflarer2bucket_v1_spec_proto_rawD
 	"\x06suffix\x18\x04 \x01(\tR\x06suffix\"\x92\x05\n" +
 	"$CloudflareR2BucketCustomDomainConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12p\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
 	"\x06domain\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xfd\x01R\x06domain\x12\xa6\x01\n" +
 	"\amin_tls\x18\x04 \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
 	"\x1bcustom_domain_min_tls.valid\x121min_tls must be one of \"1.0\", \"1.1\", \"1.2\", \"1.3\"\x1a2this == '' || this in ['1.0', '1.1', '1.2', '1.3']R\x06minTls\x12\x18\n" +

@@ -927,7 +927,7 @@ const file_dev_planton_provider_scaleway_scalewayloadbalancer_v1_spec_proto_rawD
 	"\x18ScalewayLoadBalancerSpec\x12\x1a\n" +
 	"\x04zone\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04zone\x12\"\n" +
 	"\x04type\x18\x02 \x01(\tB\x0e\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x04LB-SR\x04type\x12\x8c\x01\n" +
-	"\x12private_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12 \n" +
+	"\x12private_network_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x126\n" +
 	"\x17ssl_compatibility_level\x18\x05 \x01(\tR\x15sslCompatibilityLevel\x12{\n" +
 	"\bbackends\x18\x06 \x03(\v2R.dev.planton.provider.scaleway.scalewayloadbalancer.v1.ScalewayLoadBalancerBackendB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\bbackends\x12~\n" +

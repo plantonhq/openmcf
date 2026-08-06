@@ -170,8 +170,8 @@ const file_dev_planton_provider_openstack_openstackfloatingip_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/openstack/openstackfloatingip/v1/spec.proto\x125dev.planton.provider.openstack.openstackfloatingip.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc1\x04\n" +
 	"\x17OpenStackFloatingIpSpec\x12\x8c\x01\n" +
-	"\x13floating_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x13\x92\xd4a\x19status.outputs.network_idR\x11floatingNetworkId\x12l\n" +
-	"\aport_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xcb\x13\x92\xd4a\x16status.outputs.port_idR\x06portId\x12\x19\n" +
+	"\x13floating_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x91N\x92\xd4a\x19status.outputs.network_idR\x11floatingNetworkId\x12l\n" +
+	"\aport_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x97N\x92\xd4a\x16status.outputs.port_idR\x06portId\x12\x19\n" +
 	"\bfixed_ip\x18\x03 \x01(\tR\afixedIp\x12\x1b\n" +
 	"\tsubnet_id\x18\x04 \x01(\tR\bsubnetId\x12\x18\n" +
 	"\aaddress\x18\x05 \x01(\tR\aaddress\x12 \n" +

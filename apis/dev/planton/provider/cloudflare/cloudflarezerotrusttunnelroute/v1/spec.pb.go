@@ -125,8 +125,8 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrusttunnelroute_v1_spe
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12\xe7\x01\n" +
 	"\anetwork\x18\x02 \x01(\tB\xcc\x01\xbaH\xc8\x01\xba\x01\xc1\x01\n" +
 	"\fnetwork.cidr\x12Hnetwork must be an IPv4 or IPv6 range in CIDR notation, e.g. 10.0.0.0/24\x1agthis.matches('^([0-9]{1,3}[.]){3}[0-9]{1,3}/[0-9]{1,2}$') || this.matches('^[0-9a-fA-F:]+/[0-9]{1,3}$')\xc8\x01\x01R\anetwork\x12x\n" +
-	"\ttunnel_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x0e\x92\xd4a\x18status.outputs.tunnel_idR\btunnelId\x12\x8c\x01\n" +
-	"\x12virtual_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x9a\x0e\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\"\n" +
+	"\ttunnel_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe96\x92\xd4a\x18status.outputs.tunnel_idR\btunnelId\x12\x8c\x01\n" +
+	"\x12virtual_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xea6\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\"\n" +
 	"\acomment\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\acommentB\x84\x04\n" +
 	"Ecom.dev.planton.provider.cloudflare.cloudflarezerotrusttunnelroute.v1B\tSpecProtoP\x01Z\x84\x01github.com/plantonhq/planton/apis/dev/planton/provider/cloudflare/cloudflarezerotrusttunnelroute/v1;cloudflarezerotrusttunnelroutev1\xa2\x02\x05DPPCC\xaa\x02ADev.Planton.Provider.Cloudflare.Cloudflarezerotrusttunnelroute.V1\xca\x02ADev\\Planton\\Provider\\Cloudflare\\Cloudflarezerotrusttunnelroute\\V1\xe2\x02MDev\\Planton\\Provider\\Cloudflare\\Cloudflarezerotrusttunnelroute\\V1\\GPBMetadata\xea\x02FDev::Planton::Provider::Cloudflare::Cloudflarezerotrusttunnelroute::V1b\x06proto3"
 

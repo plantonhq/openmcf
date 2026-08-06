@@ -982,7 +982,7 @@ const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x888\n" +
 	"\x15KubernetesServiceSpec\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x8b\x02\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\x8b\x02\n" +
 	"\x04name\x18\x02 \x01(\tB\xf6\x01\xbaH\xf2\x01\xba\x01\xe8\x01\n" +
 	"\x13name.dns_1035_label\x12\xa2\x01Service name must be a valid DNS-1035 label: lowercase alphanumeric and hyphens, starting with a letter and ending with an alphanumeric (e.g. \"my-service\", \"web\")\x1a,this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')r\x04\x10\x01\x18?R\x04name\x12o\n" +
 	"\x06labels\x18\x03 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntryR\x06labels\x12~\n" +

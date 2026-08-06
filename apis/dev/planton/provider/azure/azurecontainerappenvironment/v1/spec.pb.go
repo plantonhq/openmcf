@@ -882,13 +882,13 @@ const file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto
 	" AzureContainerAppEnvironmentSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9a\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9a\x02\n" +
 	"\x10environment_name\x18\x03 \x01(\tB\xee\x01\xbaH\xea\x01\xba\x01\xdd\x01\n" +
 	"\x17environment_name_format\x12nEnvironment name must contain only alphanumeric characters and hyphens, and may not start or end with a hyphen\x1aRthis.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{1,58}[a-zA-Z0-9]?$') && !this.endsWith('-')\xc8\x01\x01r\x04\x10\x02\x18<R\x0fenvironmentName\x12\x9c\x01\n" +
 	"\x10logs_destination\x18\x04 \x01(\x0e2g.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentLogsDestinationB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0flogsDestination\x12\x95\x01\n" +
-	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12b\n" +
+	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12b\n" +
 	"+dapr_application_insights_connection_string\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R'daprApplicationInsightsConnectionString\x12\x8f\x01\n" +
-	"\x18infrastructure_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16infrastructureSubnetId\x12K\n" +
+	"\x18infrastructure_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\x16infrastructureSubnetId\x12K\n" +
 	"\"infrastructure_resource_group_name\x18\b \x01(\tR\x1finfrastructureResourceGroupName\x12S\n" +
 	"\x1einternal_load_balancer_enabled\x18\t \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x1binternalLoadBalancerEnabled\x88\x01\x01\x12F\n" +
 	"\x17zone_redundancy_enabled\x18\n" +
@@ -930,7 +930,7 @@ const file_dev_planton_provider_azure_azurecontainerappenvironment_v1_spec_proto
 	"$AzureContainerAppEnvironmentIdentity\x12\x84\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2d.dev.planton.provider.azure.azurecontainerappenvironment.v1.AzureContainerAppEnvironmentIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
 	"#environment_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\x95\x01\n" +
 	"+AzureContainerAppEnvironmentLogsDestination\x12@\n" +
 	"<azure_container_app_environment_logs_destination_unspecified\x10\x00\x12\x11\n" +

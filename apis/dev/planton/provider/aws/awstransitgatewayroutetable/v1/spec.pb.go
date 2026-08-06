@@ -324,21 +324,21 @@ const file_dev_planton_provider_aws_awstransitgatewayroutetable_v1_spec_proto_ra
 	"Bdev/planton/provider/aws/awstransitgatewayroutetable/v1/spec.proto\x127dev.planton.provider.aws.awstransitgatewayroutetable.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x94\b\n" +
 	"\x1fAwsTransitGatewayRouteTableSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x92\x01\n" +
-	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x9a\x02\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12}\n" +
-	"\fassociations\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf3\x02\x92\xd4a\x1cstatus.outputs.attachment_idR\fassociations\x12}\n" +
-	"\fpropagations\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf3\x02\x92\xd4a\x1cstatus.outputs.attachment_idR\fpropagations\x12q\n" +
+	"\x12transit_gateway_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\b\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x12}\n" +
+	"\fassociations\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fassociations\x12}\n" +
+	"\fpropagations\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fpropagations\x12q\n" +
 	"\x06routes\x18\x05 \x03(\v2Y.dev.planton.provider.aws.awstransitgatewayroutetable.v1.AwsTransitGatewayRouteTableRouteR\x06routes\x12\x9d\x01\n" +
 	"\x16prefix_list_references\x18\x06 \x03(\v2g.dev.planton.provider.aws.awstransitgatewayroutetable.v1.AwsTransitGatewayRouteTablePrefixListReferenceR\x14prefixListReferences:\xa9\x02\xbaH\xa5\x02\x1a\x89\x01\n" +
 	"\x19route_destinations_unique\x125routes must have unique destination_cidr_block values\x1a5this.routes.map(r, r.destination_cidr_block).unique()\x1a\x96\x01\n" +
 	"\x16prefix_list_ids_unique\x12=prefix_list_references must have unique prefix_list_id values\x1a=this.prefix_list_references.map(p, p.prefix_list_id).unique()\"\x9f\x03\n" +
 	" AwsTransitGatewayRouteTableRoute\x12=\n" +
 	"\x16destination_cidr_block\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x14destinationCidrBlock\x12~\n" +
-	"\rattachment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf3\x02\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12\x1c\n" +
+	"\rattachment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12\x1c\n" +
 	"\tblackhole\x18\x03 \x01(\bR\tblackhole:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
 	"\x18route_target_exactly_one\x125exactly one of attachment_id or blackhole must be set\x1aCthis.blackhole ? !has(this.attachment_id) : has(this.attachment_id)\"\xa3\x03\n" +
 	".AwsTransitGatewayRouteTablePrefixListReference\x12-\n" +
 	"\x0eprefix_list_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fprefixListId\x12~\n" +
-	"\rattachment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf3\x02\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12\x1c\n" +
+	"\rattachment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x93\t\x92\xd4a\x1cstatus.outputs.attachment_idR\fattachmentId\x12\x1c\n" +
 	"\tblackhole\x18\x03 \x01(\bR\tblackhole:\xa3\x01\xbaH\x9f\x01\x1a\x9c\x01\n" +
 	"\x1eprefix_list_target_exactly_one\x125exactly one of attachment_id or blackhole must be set\x1aCthis.blackhole ? !has(this.attachment_id) : has(this.attachment_id)B\xc4\x03\n" +
 	";com.dev.planton.provider.aws.awstransitgatewayroutetable.v1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awstransitgatewayroutetable/v1;awstransitgatewayroutetablev1\xa2\x02\x05DPPAA\xaa\x027Dev.Planton.Provider.Aws.Awstransitgatewayroutetable.V1\xca\x027Dev\\Planton\\Provider\\Aws\\Awstransitgatewayroutetable\\V1\xe2\x02CDev\\Planton\\Provider\\Aws\\Awstransitgatewayroutetable\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Aws::Awstransitgatewayroutetable::V1b\x06proto3"

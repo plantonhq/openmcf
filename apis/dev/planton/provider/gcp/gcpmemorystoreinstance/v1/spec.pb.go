@@ -1112,9 +1112,9 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/gcp/gcpmemorystoreinstance/v1/spec.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9c\x02\n" +
 	"'GcpMemorystoreInstancePscAutoConnection\x12z\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12u\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xc8\x01\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xc8\x01\n" +
 	"\x1fGcpMemorystoreInstanceRdbConfig\x12n\n" +
 	"\x13rdb_snapshot_period\x18\x01 \x01(\tB>\xbaH;\xc8\x01\x01r6R\bONE_HOURR\tSIX_HOURSR\fTWELVE_HOURSR\x11TWENTY_FOUR_HOURSR\x11rdbSnapshotPeriod\x125\n" +
 	"\x17rdb_snapshot_start_time\x18\x02 \x01(\tR\x14rdbSnapshotStartTime\"h\n" +
@@ -1143,9 +1143,9 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"start_hour\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\x121\n" +
 	"\tretention\x18\x02 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\tretention\"\x9b\x01\n" +
 	"%GcpMemorystoreInstancePrimaryInstance\x12r\n" +
-	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x04\x92\xd4a\x13status.outputs.nameR\binstance\"\x9d\x01\n" +
+	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x17\x92\xd4a\x13status.outputs.nameR\binstance\"\x9d\x01\n" +
 	"'GcpMemorystoreInstanceSecondaryInstance\x12r\n" +
-	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x04\x92\xd4a\x13status.outputs.nameR\binstance\"\x9b\a\n" +
+	"\binstance\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x17\x92\xd4a\x13status.outputs.nameR\binstance\"\x9b\a\n" +
 	"4GcpMemorystoreInstanceCrossInstanceReplicationConfig\x12G\n" +
 	"\rinstance_role\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1aR\x04NONER\aPRIMARYR\tSECONDARYR\finstanceRole\x12\x84\x01\n" +
 	"\x10primary_instance\x18\x02 \x01(\v2Y.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePrimaryInstanceR\x0fprimaryInstance\x12\x8c\x01\n" +
@@ -1160,7 +1160,7 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"\x06backup\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06backup\"\xa8\x19\n" +
 	"\x1aGcpMemorystoreInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
 	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x04\x18?2\x1e^[a-z][a-z0-9-]{2,61}[a-z0-9]$R\finstanceName\x12;\n" +
 	"\blocation\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\blocation\x12+\n" +
 	"\vshard_count\x18\x04 \x01(\x05B\n" +
@@ -1179,7 +1179,7 @@ const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc
 	"\x1eauthorization_mode_valid_value\x124authorization_mode must be AUTH_DISABLED or IAM_AUTH\x1a3this == '' || this in ['AUTH_DISABLED', 'IAM_AUTH']R\x11authorizationMode\x12\x8c\x02\n" +
 	"\x17transit_encryption_mode\x18\f \x01(\tB\xd3\x01\xbaH\xcf\x01\xba\x01\xcb\x01\n" +
 	"#transit_encryption_mode_valid_value\x12Ttransit_encryption_mode must be TRANSIT_ENCRYPTION_DISABLED or SERVER_AUTHENTICATION\x1aNthis == '' || this in ['TRANSIT_ENCRYPTION_DISABLED', 'SERVER_AUTHENTICATION']R\x15transitEncryptionMode\x12k\n" +
-	"\akms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x12\x8a\x01\n" +
+	"\akms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x12\x8a\x01\n" +
 	"\x12persistence_config\x18\x0e \x01(\v2[.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstancePersistenceConfigR\x11persistenceConfig\x12\x9a\x01\n" +
 	"\x18zone_distribution_config\x18\x0f \x01(\v2`.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceZoneDistributionConfigR\x16zoneDistributionConfig\x12\x8a\x01\n" +
 	"\x12maintenance_policy\x18\x10 \x01(\v2[.dev.planton.provider.gcp.gcpmemorystoreinstance.v1.GcpMemorystoreInstanceMaintenancePolicyR\x11maintenancePolicy\x12\x97\x01\n" +

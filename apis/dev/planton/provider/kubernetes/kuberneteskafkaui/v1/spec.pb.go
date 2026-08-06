@@ -850,7 +850,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"?dev/planton/provider/kubernetes/kuberneteskafkaui/v1/spec.proto\x124dev.planton.provider.kubernetes.kuberneteskafkaui.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbf\n" +
 	"\n" +
 	"\x15KubernetesKafkaUiSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12#\n" +
 	"\rchart_version\x18\x03 \x01(\tR\fchartVersion\x12\xe2\x01\n" +
 	"\bclusters\x18\x04 \x03(\v2N.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiClusterBv\xbaHs\xba\x01k\n" +
@@ -876,7 +876,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"\x18KubernetesKafkaUiCluster\x12\x91\x01\n" +
 	"\x04name\x18\x01 \x01(\tB}\xbaHz\xba\x01t\n" +
 	"\x19spec.clusters.name.format\x124cluster name may use alphanumerics, '.', '_' and '-'\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xc8\x01\x01R\x04name\x12\xad\x01\n" +
-	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBL\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vconsole for\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x1b\n" +
+	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBL\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vconsole for\x88\xd4a\x8c \x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x1b\n" +
 	"\tread_only\x18\x03 \x01(\bR\breadOnly\x12c\n" +
 	"\x03tls\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiClusterTlsR\x03tls\x12f\n" +
 	"\x04sasl\x18\x05 \x01(\v2R.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiClusterSaslR\x04sasl\x12~\n" +
@@ -890,7 +890,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8c\x02\n" +
 	"\x1bKubernetesKafkaUiClusterTls\x12\xa1\x01\n" +
-	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
+	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c \x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
 	"\x0eca_certificate\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06ca.crtH\x00R\rcaCertificate\x88\x01\x01B\x11\n" +
 	"\x0f_ca_certificate\"\x8a\x03\n" +
@@ -900,17 +900,17 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"\busername\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x86\x01\n" +
 	"\x0fpassword_secret\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\"\xce\x01\n" +
 	"\x1fKubernetesKafkaUiPasswordSecret\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12#\n" +
 	"\x03key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bpasswordH\x00R\x03key\x88\x01\x01B\x06\n" +
 	"\x04_key\"\xab\x02\n" +
 	"\x1fKubernetesKafkaUiSchemaRegistry\x12l\n" +
-	"\x03url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\a\x92\xd4a\x17status.outputs.endpointR\x03url\x12\x1a\n" +
+	"\x03url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x92 \x92\xd4a\x17status.outputs.endpointR\x03url\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12~\n" +
 	"\x0fpassword_secret\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\xe8\x02\n" +
 	"\x1fKubernetesKafkaUiConnectCluster\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x8c\x01\n" +
-	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\amanages\x88\xd4a\x8f\a\x92\xd4a status.outputs.rest_api_endpoint\x98\xd4a\x01R\aaddress\x12\x1a\n" +
+	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\amanages\x88\xd4a\x8f \x92\xd4a status.outputs.rest_api_endpoint\x98\xd4a\x01R\aaddress\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12~\n" +
 	"\x0fpassword_secret\x18\x04 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\x93\x02\n" +
 	"\x15KubernetesKafkaUiAuth\x12\x90\x01\n" +

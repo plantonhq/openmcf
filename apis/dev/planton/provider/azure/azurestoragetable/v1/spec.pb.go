@@ -246,7 +246,7 @@ const file_dev_planton_provider_azure_azurestoragetable_v1_spec_proto_rawDesc = 
 	"\n" +
 	":dev/planton/provider/azure/azurestoragetable/v1/spec.proto\x12/dev.planton.provider.azure.azurestoragetable.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x04\n" +
 	"\x15AzureStorageTableSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xf6\x01\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xf6\x01\n" +
 	"\n" +
 	"table_name\x18\x02 \x01(\tB\xd6\x01\xbaH\xd2\x01\xba\x01\xcb\x01\n" +
 	"\x19storage_table_name_format\x12ntable_name must be 3-63 alphanumeric characters starting with a letter, and cannot be the literal word \"table\"\x1a>this.matches('^[A-Za-z][A-Za-z0-9]{2,62}$') && this != 'table'\xc8\x01\x01R\ttableName\x12c\n" +

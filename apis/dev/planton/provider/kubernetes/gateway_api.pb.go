@@ -1413,7 +1413,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x03 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12\x81\x01\n" +
-	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vattached to\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12u\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vattached to\x88\xd4a\xca\x1f\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12u\n" +
 	"\fsection_name\x18\x05 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x03R\vsectionName\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x04R\x04port\x88\x01\x01B\b\n" +
 	"\x06_groupB\a\n" +
@@ -1426,7 +1426,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12M\n" +
 	"\tnamespace\x18\x03 \x01(\tB*\xbaH'r%\x10\x01\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$H\x02R\tnamespace\x88\x01\x01\x12\x85\x01\n" +
-	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0fextends gateway\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04nameB\b\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0fextends gateway\x88\xd4a\xca\x1f\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04nameB\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kindB\f\n" +
 	"\n" +
@@ -1434,7 +1434,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"*KubernetesGatewayApiBackendObjectReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
 	",backend_object_ref.port_required_for_service\x12aport must be specified when referencing a core API Service (group is empty and kind is 'Service')\x1am(!has(this.group) || this.group == '') && (!has(this.kind) || this.kind == 'Service') ? has(this.port) : trueB\b\n" +
@@ -1446,7 +1446,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\x1eKubernetesGatewayApiBackendRef\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01\x12(\n" +
 	"\x06weight\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00H\x04R\x06weight\x88\x01\x01B\b\n" +
@@ -1465,7 +1465,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	")KubernetesGatewayApiSecretObjectReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12q\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x04name\x12!\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01B\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kindB\f\n" +
@@ -1474,7 +1474,7 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"#KubernetesGatewayApiObjectReference\x12l\n" +
 	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12t\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\x1dstatus.outputs.configmap_nameR\x04name\x12!\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x1f\x92\xd4a\x1dstatus.outputs.configmap_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x01R\tnamespace\x88\x01\x01B\b\n" +
 	"\x06_groupB\f\n" +
 	"\n" +

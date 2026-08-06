@@ -3468,7 +3468,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"msk_source\x18\x03 \x01(\v2K.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseMskSourceR\tmskSource\x12\x1f\n" +
 	"\vsse_enabled\x18\x04 \x01(\bR\n" +
 	"sseEnabled\x12z\n" +
-	"\x0fsse_kms_key_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\fsseKmsKeyArn\x12z\n" +
+	"\x0fsse_kms_key_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\fsseKmsKeyArn\x12z\n" +
 	"\vextended_s3\x18\x06 \x01(\v2W.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseExtendedS3DestinationH\x00R\n" +
 	"extendedS3\x12y\n" +
 	"\n" +
@@ -3487,14 +3487,14 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\x12destination_config\x12\x05\xbaH\x02\b\x01\"\x9b\x02\n" +
 	"%AwsKinesisFirehoseKinesisStreamSource\x12{\n" +
 	"\n" +
-	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x84\x02\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\x94\x04\n" +
+	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12u\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\x94\x04\n" +
 	"\x1bAwsKinesisFirehoseMskSource\x12\x85\x01\n" +
-	"\x0fmsk_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x02\x92\xd4a\x1astatus.outputs.cluster_arnR\rmskClusterArn\x12&\n" +
+	"\x0fmsk_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xfe\b\x92\xd4a\x1astatus.outputs.cluster_arnR\rmskClusterArn\x12&\n" +
 	"\n" +
 	"topic_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\ttopicName\x12+\n" +
 	"\fconnectivity\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fconnectivity\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12.\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12.\n" +
 	"\x13read_from_timestamp\x18\x05 \x01(\tR\x11readFromTimestamp:q\xbaHn\x1al\n" +
 	"\x12connectivity_valid\x12*connectivity must be 'PRIVATE' or 'PUBLIC'\x1a*this.connectivity in ['PRIVATE', 'PUBLIC']\"\xb5\x03\n" +
 	" AwsKinesisFirehoseBufferingHints\x12.\n" +
@@ -3505,12 +3505,12 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"size_range\x12.size_in_mbs must be between 1 and 128 when set\x1aKthis.size_in_mbs == 0 || (this.size_in_mbs >= 1 && this.size_in_mbs <= 128)\"\xd8\a\n" +
 	"\x1aAwsKinesisFirehoseS3Config\x12{\n" +
 	"\n" +
-	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x16\n" +
+	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12u\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix\x12.\n" +
 	"\x13error_output_prefix\x18\x04 \x01(\tR\x11errorOutputPrefix\x12-\n" +
 	"\x12compression_format\x18\x05 \x01(\tR\x11compressionFormat\x12s\n" +
-	"\vkms_key_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12n\n" +
+	"\vkms_key_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12n\n" +
 	"\tbuffering\x18\a \x01(\v2P.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseBufferingHintsR\tbuffering\x12m\n" +
 	"\alogging\x18\b \x01(\v2S.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseCloudwatchLoggingR\alogging:\xfa\x01\xbaH\xf6\x01\x1a\xf3\x01\n" +
 	"\x18compression_format_valid\x12_compression_format must be 'UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', or 'HADOOP_SNAPPY' when set\x1avthis.compression_format == '' || this.compression_format in ['UNCOMPRESSED', 'GZIP', 'ZIP', 'Snappy', 'HADOOP_SNAPPY']\"\xaa\x03\n" +
@@ -3531,7 +3531,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\x15exactly_one_processor\x12\x93\x01exactly one processor must be set: lambda, metadata_extraction, decompression, cloudwatch_log_processing, append_delimiter, or record_deaggregation\x1a\xc4\x01[has(this.lambda), has(this.metadata_extraction), has(this.decompression), has(this.cloudwatch_log_processing), has(this.append_delimiter), has(this.record_deaggregation)].filter(x, x).size() == 1\"\xe6\x06\n" +
 	"!AwsKinesisFirehoseLambdaProcessor\x12}\n" +
 	"\n" +
-	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12+\n" +
+	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12+\n" +
 	"\x12buffer_size_in_mbs\x18\x02 \x01(\x05R\x0fbufferSizeInMbs\x12;\n" +
 	"\x1abuffer_interval_in_seconds\x18\x03 \x01(\x05R\x17bufferIntervalInSeconds\x12*\n" +
 	"\x11number_of_retries\x18\x04 \x01(\x05R\x0fnumberOfRetries:\xab\x04\xbaH\xa7\x04\x1a\xa8\x01\n" +
@@ -3562,21 +3562,21 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	" log_stream_required_when_enabled\x123log_stream_name is required when logging is enabled\x1a+!this.enabled || this.log_stream_name != ''\"\x9c\x03\n" +
 	"\x1bAwsKinesisFirehoseVpcConfig\x12x\n" +
 	"\n" +
-	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12u\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xf4\x01\n" +
+	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12u\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xf4\x01\n" +
 	"&AwsKinesisFirehoseSecretsManagerConfig\x12Y\n" +
 	"\n" +
 	"secret_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\tsecretArn\x12o\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xf8\x0e\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xf8\x0e\n" +
 	"'AwsKinesisFirehoseExtendedS3Destination\x12{\n" +
 	"\n" +
-	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x16\n" +
+	"bucket_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\tbucketArn\x12u\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix\x12.\n" +
 	"\x13error_output_prefix\x18\x04 \x01(\tR\x11errorOutputPrefix\x12-\n" +
 	"\x12compression_format\x18\x05 \x01(\tR\x11compressionFormat\x12s\n" +
-	"\vkms_key_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12n\n" +
+	"\vkms_key_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12n\n" +
 	"\tbuffering\x18\a \x01(\v2P.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseBufferingHintsR\tbuffering\x12(\n" +
 	"\x10custom_time_zone\x18\b \x01(\tR\x0ecustomTimeZone\x12%\n" +
 	"\x0efile_extension\x18\t \x01(\tR\rfileExtension\x12$\n" +
@@ -3616,7 +3616,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\rdatabase_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fdatabaseName\x12&\n" +
 	"\n" +
 	"table_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\ttableName\x12u\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1d\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1d\n" +
 	"\n" +
 	"catalog_id\x18\x04 \x01(\tR\tcatalogId\x12\x16\n" +
 	"\x06region\x18\x05 \x01(\tR\x06region\x12\x1d\n" +
@@ -3624,11 +3624,11 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"version_id\x18\x06 \x01(\tR\tversionId\"\xe8\x14\n" +
 	"'AwsKinesisFirehoseOpenSearchDestination\x12u\n" +
 	"\n" +
-	"domain_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xfb\x01\x92\xd4a\x19status.outputs.domain_arnR\tdomainArn\x12)\n" +
+	"domain_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x9b\b\x92\xd4a\x19status.outputs.domain_arnR\tdomainArn\x12)\n" +
 	"\x10cluster_endpoint\x18\x02 \x01(\tR\x0fclusterEndpoint\x12&\n" +
 	"\n" +
 	"index_name\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tindexName\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x122\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x122\n" +
 	"\x15index_rotation_period\x18\x05 \x01(\tR\x13indexRotationPeriod\x12\x1b\n" +
 	"\ttype_name\x18\x06 \x01(\tR\btypeName\x12;\n" +
 	"\x1adefault_document_id_format\x18\a \x01(\tR\x17defaultDocumentIdFormat\x12n\n" +
@@ -3654,7 +3654,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\x13collection_endpoint\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12collectionEndpoint\x12&\n" +
 	"\n" +
 	"index_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tindexName\x12u\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12n\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12n\n" +
 	"\tbuffering\x18\x04 \x01(\v2P.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseBufferingHintsR\tbuffering\x129\n" +
 	"\x19retry_duration_in_seconds\x18\x05 \x01(\x05R\x16retryDurationInSeconds\x12$\n" +
 	"\x0es3_backup_mode\x18\x06 \x01(\tR\fs3BackupMode\x12o\n" +
@@ -3677,7 +3677,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\n" +
 	"access_key\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\taccessKey\x12\x7f\n" +
 	"\x0fsecrets_manager\x18\x04 \x01(\v2V.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseSecretsManagerConfigR\x0esecretsManager\x12o\n" +
-	"\brole_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12n\n" +
+	"\brole_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12n\n" +
 	"\tbuffering\x18\x06 \x01(\v2P.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseBufferingHintsR\tbuffering\x129\n" +
 	"\x19retry_duration_in_seconds\x18\a \x01(\x05R\x16retryDurationInSeconds\x12$\n" +
 	"\x0es3_backup_mode\x18\b \x01(\tR\fs3BackupMode\x12o\n" +
@@ -3703,7 +3703,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\x05value\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05value\"\xe5\x10\n" +
 	"%AwsKinesisFirehoseRedshiftDestination\x120\n" +
 	"\x0fcluster_jdbcurl\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0eclusterJdbcurl\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12/\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12/\n" +
 	"\x0fdata_table_name\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rdataTableName\x12,\n" +
 	"\x12data_table_columns\x18\x04 \x01(\tR\x10dataTableColumns\x12!\n" +
 	"\fcopy_options\x18\x05 \x01(\tR\vcopyOptions\x12\x1a\n" +
@@ -3754,7 +3754,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"\bdatabase\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bdatabase\x12\x1f\n" +
 	"\x06schema\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06schema\x12\x1d\n" +
 	"\x05table\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05table\x12u\n" +
-	"\brole_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x12\n" +
+	"\brole_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x12\n" +
 	"\x04user\x18\x06 \x01(\tR\x04user\x12%\n" +
 	"\vprivate_key\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\n" +
 	"privateKey\x12+\n" +
@@ -3787,7 +3787,7 @@ const file_dev_planton_provider_aws_awskinesisfirehose_v1_spec_proto_rawDesc = "
 	"$AwsKinesisFirehoseIcebergDestination\x12[\n" +
 	"\vcatalog_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"catalogArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x88\x01\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x88\x01\n" +
 	"\x12destination_tables\x18\x03 \x03(\v2Y.dev.planton.provider.aws.awskinesisfirehose.v1.AwsKinesisFirehoseIcebergDestinationTableR\x11destinationTables\x12\x1f\n" +
 	"\vappend_only\x18\x04 \x01(\bR\n" +
 	"appendOnly\x12n\n" +

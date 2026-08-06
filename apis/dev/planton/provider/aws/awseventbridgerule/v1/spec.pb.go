@@ -1257,12 +1257,12 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/aws/awseventbridgerule/v1/spec.proto\x12.dev.planton.provider.aws.awseventbridgerule.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x85\t\n" +
 	"\x16AwsEventBridgeRuleSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
-	"\x0eevent_bus_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe3\x01\x92\xd4a\x17status.outputs.bus_nameR\feventBusName\x12*\n" +
+	"\x0eevent_bus_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x83\b\x92\xd4a\x17status.outputs.bus_nameR\feventBusName\x12*\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\x12<\n" +
 	"\revent_pattern\x18\x04 \x01(\v2\x17.google.protobuf.StructR\feventPattern\x129\n" +
 	"\x13schedule_expression\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x12scheduleExpression\x12\x14\n" +
 	"\x05state\x18\x06 \x01(\tR\x05state\x12o\n" +
-	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12#\n" +
+	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12#\n" +
 	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x12^\n" +
 	"\atargets\x18\t \x03(\v2D.dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeTargetR\atargets:\x9c\x04\xbaH\x98\x04\x1a\xe2\x01\n" +
 	"\"event_pattern_or_schedule_required\x12?exactly one of event_pattern or schedule_expression must be set\x1a{(has(this.event_pattern) && this.schedule_expression == '') || (!has(this.event_pattern) && this.schedule_expression != '')\x1a\xe2\x01\n" +
@@ -1271,7 +1271,7 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\x14AwsEventBridgeTarget\x121\n" +
 	"\x04name\x18\x01 \x01(\tB\x1d\xbaH\x1a\xc8\x01\x01r\x15\x18@2\x11^[0-9A-Za-z_.-]+$R\x04name\x12L\n" +
 	"\x03arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x03arn\x12o\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1e\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1e\n" +
 	"\x05input\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80@R\x05input\x12'\n" +
 	"\n" +
 	"input_path\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\tinputPath\x12{\n" +
@@ -1297,7 +1297,7 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x95\x01\n" +
 	"$AwsEventBridgeTargetDeadLetterConfig\x12m\n" +
-	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xf6\x01\n" +
+	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xf6\x01\n" +
 	"\x1fAwsEventBridgeTargetRetryPolicy\x12P\n" +
 	"\x1cmaximum_event_age_in_seconds\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xa3\x05(<H\x00R\x18maximumEventAgeInSeconds\x88\x01\x01\x12E\n" +
 	"\x16maximum_retry_attempts\x18\x02 \x01(\x05B\n" +
@@ -1319,7 +1319,7 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb6\x02\n" +
 	"\x1fAwsEventBridgeTargetBatchConfig\x12\x8b\x01\n" +
-	"\x0ejob_definition\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xed\x02\x92\xd4a!status.outputs.job_definition_arnR\rjobDefinition\x12&\n" +
+	"\x0ejob_definition\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x8d\t\x92\xd4a!status.outputs.job_definition_arnR\rjobDefinition\x12&\n" +
 	"\bjob_name\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x01R\ajobName\x12,\n" +
 	"\n" +
 	"array_size\x18\x03 \x01(\x05B\r\xbaH\n" +
@@ -1327,7 +1327,7 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\fjob_attempts\x18\x04 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
 	"(\x01R\vjobAttempts\"\xee\r\n" +
 	"\x1dAwsEventBridgeTargetEcsConfig\x12\x95\x01\n" +
-	"\x13task_definition_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x01\x92\xd4a\"status.outputs.task_definition_arnR\x11taskDefinitionArn\x12+\n" +
+	"\x13task_definition_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\b\x92\xd4a\"status.outputs.task_definition_arnR\x11taskDefinitionArn\x12+\n" +
 	"\n" +
 	"task_count\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
 	"(\x01R\ttaskCount\x12\x1f\n" +
@@ -1354,8 +1354,8 @@ const file_dev_planton_provider_aws_awseventbridgerule_v1_spec_proto_rawDesc = "
 	"\x06weight\x18\x03 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\xd7\x02\n" +
 	"%AwsEventBridgeEcsNetworkConfiguration\x12{\n" +
-	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x86\x01\n" +
+	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
 	"\x10assign_public_ip\x18\x03 \x01(\bR\x0eassignPublicIp\"\xe4\x01\n" +
 	"\"AwsEventBridgeEcsPlacementStrategy\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x1e\n" +

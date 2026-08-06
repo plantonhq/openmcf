@@ -500,7 +500,7 @@ const file_dev_planton_provider_kubernetes_kubernetessolroperator_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/kubernetes/kubernetessolroperator/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetessolroperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x90\v\n" +
 	"\x1aKubernetesSolrOperatorSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
 	"\rchart_version\x18\x03 \x01(\tB\t\x8a\xa6\x1d\x050.9.1H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
 	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12)\n" +
@@ -530,8 +530,8 @@ const file_dev_planton_provider_kubernetes_kubernetessolroperator_v1_spec_proto_
 	"\n" +
 	"\b_install\"\xdf\x05\n" +
 	"\x1aKubernetesSolrOperatorMtls\x12\xc8\x01\n" +
-	"\x12client_cert_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBf\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x10clientCertSecret\x12\xba\x01\n" +
-	"\x0eca_cert_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\fcaCertSecret\x12w\n" +
+	"\x12client_cert_secret\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBf\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x10clientCertSecret\x12\xba\x01\n" +
+	"\x0eca_cert_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB`\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret material\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\fcaCertSecret\x12w\n" +
 	"\x12ca_cert_secret_key\x18\x03 \x01(\tBE\x8a\xa6\x1d\vca-cert.pem\xaa\xa6\x1d2Key NAME within the CA Secret, not secret materialH\x00R\x0fcaCertSecretKey\x88\x01\x01\x12?\n" +
 	"\x14insecure_skip_verify\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x12insecureSkipVerify\x88\x01\x01\x129\n" +
 	"\x11watch_for_updates\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x0fwatchForUpdates\x88\x01\x01B\x15\n" +

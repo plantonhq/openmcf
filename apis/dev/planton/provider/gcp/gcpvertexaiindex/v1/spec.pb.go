@@ -459,7 +459,7 @@ const file_dev_planton_provider_gcp_gcpvertexaiindex_v1_spec_proto_rawDesc = "" 
 	"\x12_feature_norm_type\"\x92\b\n" +
 	"\x14GcpVertexAiIndexSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
 	"\blocation\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x120\n" +
 	"\fdisplay_name\x18\x03 \x01(\tB\r\xbaH\n" +

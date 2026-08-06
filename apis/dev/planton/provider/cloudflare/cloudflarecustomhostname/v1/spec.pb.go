@@ -430,7 +430,7 @@ const file_dev_planton_provider_cloudflare_cloudflarecustomhostname_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/cloudflare/cloudflarecustomhostname/v1/spec.proto\x12;dev.planton.provider.cloudflare.cloudflarecustomhostname.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\x05\n" +
 	"\x1cCloudflareCustomHostnameSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12)\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12)\n" +
 	"\bhostname\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\bhostname\x12d\n" +
 	"\x14custom_origin_server\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x12customOriginServer\x12*\n" +

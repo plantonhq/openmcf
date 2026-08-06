@@ -852,7 +852,7 @@ const file_dev_planton_provider_aws_awscognitoidentityprovider_v1_spec_proto_raw
 	"\x19request_signing_algorithm\x18\x06 \x01(\tR\x17requestSigningAlgorithm\"\xb8\x15\n" +
 	"\x1eAwsCognitoIdentityProviderSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
-	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
+	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
 	"userPoolId\x12.\n" +
 	"\rprovider_name\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18 R\fproviderName\x12+\n" +
 	"\rprovider_type\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fproviderType\x12k\n" +

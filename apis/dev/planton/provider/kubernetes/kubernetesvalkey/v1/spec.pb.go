@@ -1233,7 +1233,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvalkey_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetesvalkey/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesvalkey.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfd\x0f\n" +
 	"\x14KubernetesValkeySpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x060.11.0H\x00R\fchartVersion\x88\x01\x01\x12`\n" +
@@ -1291,7 +1291,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvalkey_v1_spec_proto_rawDes
 	"\x1bKubernetesValkeyPersistence\x12\xc2\x01\n" +
 	"\x04size\x18\x01 \x01(\tB\xad\x01\xbaH\xa9\x01\xba\x01\xa2\x01\n" +
 	"\x1espec.persistence.size_quantity\x128size must be a Kubernetes quantity like '5Gi' or '500Mi'\x1aFthis.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')\xc8\x01\x01R\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12*\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\x12*\n" +
 	"\x11keep_on_uninstall\x18\x03 \x01(\bR\x0fkeepOnUninstall\"\x92\t\n" +
 	"\x16KubernetesValkeyConfig\x12\x1f\n" +
 	"\vappend_only\x18\x01 \x01(\bR\n" +
@@ -1318,7 +1318,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvalkey_v1_spec_proto_rawDes
 	"\f_permissions\"\x91\x05\n" +
 	"\x13KubernetesValkeyTls\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xd9\x01\n" +
-	"\x12certificate_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBv\xaa\xa6\x1dOName of an existing kubernetes.io/tls Secret (a reference), not secret material\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x11certificateSecret\x12<\n" +
+	"\x12certificate_secret\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBv\xaa\xa6\x1dOName of an existing kubernetes.io/tls Secret (a reference), not secret material\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x11certificateSecret\x12<\n" +
 	"\x1arequire_client_certificate\x18\x03 \x01(\bR\x18requireClientCertificate:\xc5\x02\xbaH\xc1\x02\x1a\xaf\x01\n" +
 	"\x1dspec.tls.enabled_needs_secret\x12_TLS requires certificate_secret — the kubernetes.io/tls Secret holding the server certificate\x1a-!this.enabled || has(this.certificate_secret)\x1a\x8c\x01\n" +
 	"\x1bspec.tls.mtls_needs_enabled\x12;require_client_certificate only applies when TLS is enabled\x1a0!this.require_client_certificate || this.enabled\"\xe0\x03\n" +

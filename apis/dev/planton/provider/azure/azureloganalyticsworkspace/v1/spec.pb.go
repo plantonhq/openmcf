@@ -481,7 +481,7 @@ const file_dev_planton_provider_azure_azureloganalyticsworkspace_v1_spec_proto_r
 	"\x1eAzureLogAnalyticsWorkspaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8b\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8b\x02\n" +
 	"\x0eworkspace_name\x18\x03 \x01(\tB\xe3\x01\xbaH\xdf\x01\xba\x01\xd2\x01\n" +
 	"#log_analytics_workspace_name_format\x12tworkspace name must be 4-63 characters of letters, digits, or hyphens, and must start and end with a letter or digit\x1a5this.matches('^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$')\xc8\x01\x01r\x04\x10\x04\x18?R\rworkspaceName\x12s\n" +
 	"\x03sku\x18\x04 \x01(\x0e2W.dev.planton.provider.azure.azureloganalyticsworkspace.v1.AzureLogAnalyticsWorkspaceSkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x12w\n" +
@@ -513,7 +513,7 @@ const file_dev_planton_provider_azure_azureloganalyticsworkspace_v1_spec_proto_r
 	"\"AzureLogAnalyticsWorkspaceIdentity\x12\x80\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2`.dev.planton.provider.azure.azureloganalyticsworkspace.v1.AzureLogAnalyticsWorkspaceIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\x9e\x02\xbaH\x9a\x02\x1a\x97\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\x9e\x02\xbaH\x9a\x02\x1a\x97\x02\n" +
 	"/log_analytics_workspace_identity_ids_match_type\x12`user_assigned_identity_ids is required with USER_ASSIGNED and must be empty with SYSTEM_ASSIGNED\x1a\x81\x01(this.type == 2 && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\x9b\x01\n" +
 	"\x1dAzureLogAnalyticsWorkspaceSku\x121\n" +
 	"-azure_log_analytics_workspace_sku_unspecified\x10\x00\x12\x0f\n" +

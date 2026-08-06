@@ -378,7 +378,7 @@ const file_dev_planton_provider_aws_awssesemailidentity_v1_spec_proto_rawDesc = 
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x124\n" +
 	"\x0eemail_identity\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\remailIdentity\x12\x8f\x01\n" +
-	"\x11configuration_set\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xee\x02\x92\xd4a%status.outputs.configuration_set_nameR\x10configurationSet\x12r\n" +
+	"\x11configuration_set\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x8e\t\x92\xd4a%status.outputs.configuration_set_nameR\x10configurationSet\x12r\n" +
 	"\fdkim_signing\x18\x04 \x01(\v2O.dev.planton.provider.aws.awssesemailidentity.v1.AwsSesEmailIdentityDkimSigningR\vdkimSigning\x12i\n" +
 	"\tmail_from\x18\x05 \x01(\v2L.dev.planton.provider.aws.awssesemailidentity.v1.AwsSesEmailIdentityMailFromR\bmailFrom\x12G\n" +
 	"\x18email_forwarding_enabled\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16emailForwardingEnabled\x88\x01\x01\x12f\n" +

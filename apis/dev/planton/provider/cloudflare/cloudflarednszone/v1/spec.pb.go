@@ -920,7 +920,7 @@ const file_dev_planton_provider_cloudflare_cloudflarednszone_v1_spec_proto_rawDe
 	"\x04type\x18\x02 \x01(\tB\xdd\x01\xbaH\xd9\x01\xba\x01\xd5\x01\n" +
 	"\x15nameserver_type.valid\x12[type must be one of \"cloudflare.standard\", \"custom.account\", \"custom.tenant\", \"custom.zone\"\x1a_this == '' || this in ['cloudflare.standard', 'custom.account', 'custom.tenant', 'custom.zone']R\x04type\"\xa4\x01\n" +
 	"\x1cCloudflareDnsZoneInternalDns\x12\x83\x01\n" +
-	"\x11reference_zone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x0freferenceZoneId\"\x91\x01\n" +
+	"\x11reference_zone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x0freferenceZoneId\"\x91\x01\n" +
 	"\x17CloudflareDnsZoneDnssec\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
 	"\fmulti_signer\x18\x02 \x01(\bR\vmultiSigner\x12\x1c\n" +

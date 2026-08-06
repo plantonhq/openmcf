@@ -2026,9 +2026,9 @@ const file_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/gcp/gcpgkenodepool/v1/spec.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb9\r\n" +
 	"\x12GcpGkeNodePoolSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x13status.outputs.nameR\vclusterName\x12z\n" +
-	"\blocation\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x17status.outputs.location\x98\xd4a\x01R\blocation\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x17\x92\xd4a\x13status.outputs.nameR\vclusterName\x12z\n" +
+	"\blocation\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x17\x92\xd4a\x17status.outputs.location\x98\xd4a\x01R\blocation\x12Q\n" +
 	"\x0enode_pool_name\x18\x04 \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$R\fnodePoolName\x12S\n" +
 	"\x0enode_locations\x18\x05 \x03(\tB,\xbaH)\xd8\x01\x01\x92\x01#\x18\x01\"\x1fr\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\rnodeLocations\x12\x18\n" +
 	"\aversion\x18\x06 \x01(\tR\aversion\x12:\n" +
@@ -2125,7 +2125,7 @@ const file_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"image_type\x18\x04 \x01(\tB\xca\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
 	"\x10image_type_valid\x12Pimage_type must be COS_CONTAINERD, UBUNTU_CONTAINERD, or WINDOWS_LTSC_CONTAINERD\x1aJthis in ['COS_CONTAINERD', 'UBUNTU_CONTAINERD', 'WINDOWS_LTSC_CONTAINERD']\x8a\xa6\x1d\x0eCOS_CONTAINERDH\x02R\timageType\x88\x01\x01\x12z\n" +
-	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12)\n" +
+	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12)\n" +
 	"\foauth_scopes\x18\x06 \x03(\tB\x06\xbaH\x03\xd8\x01\x01R\voauthScopes\x12h\n" +
 	"\x06labels\x18\a \x03(\v2P.dev.planton.provider.gcp.gcpgkenodepool.v1.GcpGkeNodePoolNodeConfig.LabelsEntryR\x06labels\x12\x81\x01\n" +
 	"\x0fresource_labels\x18\b \x03(\v2X.dev.planton.provider.gcp.gcpgkenodepool.v1.GcpGkeNodePoolNodeConfig.ResourceLabelsEntryR\x0eresourceLabels\x12\x1a\n" +
@@ -2145,7 +2145,7 @@ const file_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto_rawDesc = "" +
 	"\fgcfs_enabled\x18\x15 \x01(\bR\vgcfsEnabled\x12#\n" +
 	"\rgvnic_enabled\x18\x16 \x01(\bR\fgvnicEnabled\x12.\n" +
 	"\x13fast_socket_enabled\x18\x17 \x01(\bR\x11fastSocketEnabled\x12}\n" +
-	"\x11boot_disk_kms_key\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x0ebootDiskKmsKey\x12\xda\x01\n" +
+	"\x11boot_disk_kms_key\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x0ebootDiskKmsKey\x12\xda\x01\n" +
 	"\x16workload_metadata_mode\x18\x19 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
 	"\x1cworkload_metadata_mode_valid\x12Cworkload_metadata_mode must be empty, GCE_METADATA, or GKE_METADATA\x1a6this == '' || this in ['GCE_METADATA', 'GKE_METADATA']R\x14workloadMetadataMode\x12\x80\x01\n" +
 	"\x14reservation_affinity\x18\x1a \x01(\v2M.dev.planton.provider.gcp.gcpgkenodepool.v1.GcpGkeNodePoolReservationAffinityR\x13reservationAffinity\x12}\n" +

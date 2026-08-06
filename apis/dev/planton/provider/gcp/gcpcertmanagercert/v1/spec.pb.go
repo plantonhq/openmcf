@@ -310,7 +310,7 @@ const file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDesc = "
 	"\n" +
 	"\x16GcpCertManagerCertSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe7\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe7\x01\n" +
 	"\tcert_name\x18\x02 \x01(\tB\xc9\x01\xbaH\xc5\x01\xba\x01\xc1\x01\n" +
 	"\x0fcert_name.valid\x12qcert_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores\x1a;this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')R\bcertName\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
@@ -328,7 +328,7 @@ const file_dev_planton_provider_gcp_gcpcertmanagercert_v1_spec_proto_rawDesc = "
 	"\x19GcpCertManagerCertManaged\x12\xf5\x01\n" +
 	"\adomains\x18\x01 \x03(\tB\xda\x01\xbaH\xd6\x01\x92\x01\xd2\x01\b\x01\"\xcd\x01\xba\x01\xc9\x01\n" +
 	"\fdomain.valid\x12geach domain must be a bare or wildcard domain name (no trailing dot), e.g. example.com or *.example.com\x1aPthis.matches('^([*][.])?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,}$')R\adomains\x12\x8b\x01\n" +
-	"\x12dns_authorizations\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xcc\x05\x92\xd4a\x1fstatus.outputs.authorization_idR\x11dnsAuthorizations\x12'\n" +
+	"\x12dns_authorizations\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xac\x18\x92\xd4a\x1fstatus.outputs.authorization_idR\x11dnsAuthorizations\x12'\n" +
 	"\x0fissuance_config\x18\x03 \x01(\tR\x0eissuanceConfig:\xcc\x03\xbaH\xc8\x03\x1a\xcb\x01\n" +
 	"\x1bmanaged.auth_mode_exclusive\x12idns_authorizations and issuance_config are mutually exclusive (omit both for load-balancer authorization)\x1aAthis.dns_authorizations.size() == 0 || this.issuance_config == ''\x1a\xf7\x01\n" +
 	"\x1fmanaged.wildcards_need_dns_auth\x12cwildcard domains require dns_authorizations (load-balancer authorization cannot validate wildcards)\x1ao!this.domains.exists(d, d.startsWith('*.')) || this.dns_authorizations.size() > 0 || this.issuance_config != ''\"\xc8\x03\n" +

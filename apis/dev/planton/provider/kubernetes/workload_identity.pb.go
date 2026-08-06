@@ -330,11 +330,11 @@ const file_dev_planton_provider_kubernetes_workload_identity_proto_rawDesc = "" 
 	"\n" +
 	"\bprovider\"\xad\x01\n" +
 	"\x1dKubernetesWorkloadIdentityGke\x12\x8b\x01\n" +
-	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"\x9a\x01\n" +
+	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"\x9a\x01\n" +
 	"!KubernetesWorkloadIdentityEksIrsa\x12u\n" +
-	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xd3\x01\n" +
+	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xd3\x01\n" +
 	"\x1dKubernetesWorkloadIdentityAks\x12x\n" +
-	"\tclient_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\bclientId\x12*\n" +
+	"\tclient_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x18status.outputs.client_idR\bclientId\x12*\n" +
 	"\ttenant_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01B\f\n" +
 	"\n" +
 	"_tenant_idB\x9f\x02\n" +

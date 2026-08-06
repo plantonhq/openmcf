@@ -794,9 +794,9 @@ const file_dev_planton_provider_aws_awsdocumentdb_v1_spec_proto_rawDesc = "" +
 	"\x11AwsDocumentDbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
 	"\x14db_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11dbSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12-\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12-\n" +
 	"\x12availability_zones\x18\x05 \x03(\tR\x11availabilityZones\x12!\n" +
 	"\fnetwork_type\x18\x06 \x01(\tR\vnetworkType\x12\x12\n" +
 	"\x04port\x18\a \x01(\x05R\x04port\x12%\n" +
@@ -810,7 +810,7 @@ const file_dev_planton_provider_aws_awsdocumentdb_v1_spec_proto_rawDesc = "" +
 	"\x0fmaster_password\x18\x0e \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x125\n" +
 	"\x11storage_encrypted\x18\x0f \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12A\n" +
+	"kms_key_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12A\n" +
 	"\x17backup_retention_period\x18\x11 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
 	"\x17preferred_backup_window\x18\x12 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\x13 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12.\n" +
@@ -848,7 +848,7 @@ const file_dev_planton_provider_aws_awsdocumentdb_v1_spec_proto_rawDesc = "" +
 	"\x11availability_zone\x18\x04 \x01(\tR\x10availabilityZone\x12J\n" +
 	"\x1aauto_minor_version_upgrade\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17autoMinorVersionUpgrade\x88\x01\x01\x12@\n" +
 	"\x1cperformance_insights_enabled\x18\x06 \x01(\bR\x1aperformanceInsightsEnabled\x12\x99\x01\n" +
-	"\x1fperformance_insights_kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12\xc7\x01\n" +
+	"\x1fperformance_insights_kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\b \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12,\n" +
 	"\x12ca_cert_identifier\x18\t \x01(\tR\x10caCertIdentifier\x121\n" +
 	"\x15copy_tags_to_snapshot\x18\n" +

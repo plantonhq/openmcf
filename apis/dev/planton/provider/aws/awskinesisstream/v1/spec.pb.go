@@ -262,7 +262,7 @@ const file_dev_planton_provider_aws_awskinesisstream_v1_spec_proto_rawDesc = "" 
 	"shardCount\x124\n" +
 	"\x16retention_period_hours\x18\x04 \x01(\x05R\x14retentionPeriodHours\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
+	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
 	"\x16max_record_size_in_kib\x18\x06 \x01(\x05R\x12maxRecordSizeInKib\x12.\n" +
 	"\x13shard_level_metrics\x18\a \x03(\tR\x11shardLevelMetrics\x12:\n" +
 	"\x19enforce_consumer_deletion\x18\b \x01(\bR\x17enforceConsumerDeletion\x123\n" +

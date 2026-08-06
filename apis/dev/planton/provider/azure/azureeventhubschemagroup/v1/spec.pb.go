@@ -260,7 +260,7 @@ const file_dev_planton_provider_azure_azureeventhubschemagroup_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/azure/azureeventhubschemagroup/v1/spec.proto\x126dev.planton.provider.azure.azureeventhubschemagroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x98\x06\n" +
 	"\x1cAzureEventHubSchemaGroupSpec\x12\x81\x01\n" +
-	"\fnamespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12\xdb\x02\n" +
+	"\fnamespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12\xdb\x02\n" +
 	"\x11schema_group_name\x18\x02 \x01(\tB\xae\x02\xbaH\xaa\x02\xba\x01\x9c\x02\n" +
 	"\"event_hub_schema_group_name_format\x12\x95\x01schema_group_name must start and end with a letter or number and may contain letters, numbers, periods, hyphens, and underscores (max 256 characters)\x1a^this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,254}[a-zA-Z0-9]$')\xc8\x01\x01r\x05\x10\x01\x18\x80\x02R\x0fschemaGroupName\x12\x97\x01\n" +
 	"\x14schema_compatibility\x18\x03 \x01(\x0e2X.dev.planton.provider.azure.azureeventhubschemagroup.v1.AzureEventHubSchemaCompatibilityB\n" +

@@ -1454,8 +1454,8 @@ const file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDesc =
 	"\x06memory\x18\x05 \x01(\x05R\x06memory\x12-\n" +
 	"\fnetwork_mode\x18\x06 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06awsvpcR\vnetworkMode\x12{\n" +
-	"\x0eexecution_role\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12q\n" +
-	"\ttask_role\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\btaskRole\x12\x80\x01\n" +
+	"\x0eexecution_role\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12q\n" +
+	"\ttask_role\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\btaskRole\x12\x80\x01\n" +
 	"\x10runtime_platform\x18\t \x01(\v2U.dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionRuntimePlatformR\x0fruntimePlatform\x122\n" +
 	"\x15ephemeral_storage_gib\x18\n" +
 	" \x01(\x05R\x13ephemeralStorageGib\x12f\n" +
@@ -1542,9 +1542,9 @@ const file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDesc =
 	"\thost_path\x18\x03 \x01(\tR\bhostPath:y\xbaHv\x1at\n" +
 	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x86\x03\n" +
 	"\x1dAwsEcsTaskDefinitionEfsVolume\x12\x8a\x01\n" +
-	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12\x83\x01\n" +
-	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe8\x02\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
+	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x88\t\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
 	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\"\xdb\x04\n" +
 	"#AwsEcsTaskDefinitionRuntimePlatform\x12)\n" +
 	"\x10cpu_architecture\x18\x01 \x01(\tR\x0fcpuArchitecture\x126\n" +
@@ -1553,7 +1553,7 @@ const file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDesc =
 	"\x0fos_family_valid\x12Uoperating_system_family must be LINUX or a supported WINDOWS_SERVER_* family when set\x1a\xbf\x01this.operating_system_family == '' || this.operating_system_family in ['LINUX', 'WINDOWS_SERVER_2019_CORE', 'WINDOWS_SERVER_2019_FULL', 'WINDOWS_SERVER_2022_CORE', 'WINDOWS_SERVER_2022_FULL']\"\xf9\x01\n" +
 	"\x1bAwsEcsTaskDefinitionLogging\x12\x1a\n" +
 	"\bdisabled\x18\x01 \x01(\bR\bdisabled\x12w\n" +
-	"\tlog_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup\x122\n" +
+	"\tlog_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup\x122\n" +
 	"\x0eretention_days\x18\x03 \x01(\x05B\x06\x8a\xa6\x1d\x0230H\x00R\rretentionDays\x88\x01\x01B\x11\n" +
 	"\x0f_retention_days\"\xc7\x06\n" +
 	"$AwsEcsTaskDefinitionLogConfiguration\x12%\n" +

@@ -439,7 +439,7 @@ const file_dev_planton_provider_aws_awscertmanagercert_v1_spec_proto_rawDesc = "
 	"\x11validation_method\x18\x04 \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x03DNSR\x05EMAILR\x10validationMethod\x12\x81\x01\n" +
 	"\x12validation_options\x18\x05 \x03(\v2R.dev.planton.provider.aws.awscertmanagercert.v1.AwsCertManagerCertValidationOptionR\x11validationOptions\x12v\n" +
 	"\rkey_algorithm\x18\x06 \x01(\tBQ\xbaHN\xd8\x01\x01rIR\bRSA_2048R\bRSA_3072R\bRSA_4096R\rEC_prime256v1R\fEC_secp384r1R\fEC_secp521r1R\fkeyAlgorithm\x12\x8c\x01\n" +
-	"\x16route53_hosted_zone_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x13route53HostedZoneId\x12=\n" +
+	"\x16route53_hosted_zone_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x13route53HostedZoneId\x12=\n" +
 	"\x13wait_for_validation\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11waitForValidation\x88\x01\x01\x12c\n" +
 	"\aoptions\x18\t \x01(\v2I.dev.planton.provider.aws.awscertmanagercert.v1.AwsCertManagerCertOptionsR\aoptions\x12f\n" +
 	"\bimported\x18\n" +

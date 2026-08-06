@@ -258,7 +258,7 @@ const file_dev_planton_provider_hetznercloud_hetznercloudvolume_v1_spec_proto_ra
 	"R\x04size\x12#\n" +
 	"\blocation\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\blocation\x12x\n" +
 	"\x06format\x18\x03 \x01(\x0e2V.dev.planton.provider.hetznercloud.hetznercloudvolume.v1.HetznerCloudVolumeSpec.FormatB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06format\x12r\n" +
-	"\tserver_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc0\x1b\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\x1c\n" +
+	"\tserver_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc4m\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\x1c\n" +
 	"\tautomount\x18\x05 \x01(\bR\tautomount\x12+\n" +
 	"\x11delete_protection\x18\x06 \x01(\bR\x10deleteProtection\"3\n" +
 	"\x06Format\x12\x16\n" +

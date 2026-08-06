@@ -875,7 +875,7 @@ const file_dev_planton_provider_azure_azuremanageddisk_v1_spec_proto_rawDesc = "
 	"\x14AzureManagedDiskSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xaa\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xaa\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x95\x02\xbaH\x91\x02\xba\x01\x84\x02\n" +
 	"\x18managed_disk_name_format\x12\x9c\x01Managed disk names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x8c\x01\n" +
 	"\x14storage_account_type\x18\x04 \x01(\x0e2R.dev.planton.provider.azure.azuremanageddisk.v1.AzureManagedDiskStorageAccountTypeB\x06\xbaH\x03\xc8\x01\x01R\x12storageAccountType\x12y\n" +
@@ -903,8 +903,8 @@ const file_dev_planton_provider_azure_azuremanageddisk_v1_spec_proto_rawDesc = "
 	"(\x02H\x05R\tmaxShares\x88\x01\x01\x12;\n" +
 	"\x1aon_demand_bursting_enabled\x18\x16 \x01(\bR\x17onDemandBurstingEnabled\x12@\n" +
 	"\x13logical_sector_size\x18\x17 \x01(\x05B\v\xbaH\b\x1a\x060\x80\x040\x80 H\x06R\x11logicalSectorSize\x88\x01\x01\x12\x97\x01\n" +
-	"\x16disk_encryption_set_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
-	" secure_vm_disk_encryption_set_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12q\n" +
+	"\x16disk_encryption_set_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xed\x0f\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xed\x0f\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12q\n" +
 	"\rsecurity_type\x18\x1a \x01(\x0e2L.dev.planton.provider.azure.azuremanageddisk.v1.AzureManagedDiskSecurityTypeR\fsecurityType\x124\n" +
 	"\x16trusted_launch_enabled\x18\x1b \x01(\bR\x14trustedLaunchEnabled\x12\x87\x01\n" +
 	"\x15network_access_policy\x18\x1c \x01(\x0e2S.dev.planton.provider.azure.azuremanageddisk.v1.AzureManagedDiskNetworkAccessPolicyR\x13networkAccessPolicy\x12$\n" +

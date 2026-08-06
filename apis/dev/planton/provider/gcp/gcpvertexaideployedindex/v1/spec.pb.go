@@ -419,22 +419,22 @@ const file_dev_planton_provider_gcp_gcpvertexaideployedindex_v1_spec_proto_rawDe
 	"\x11max_replica_count\x18\x03 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x0fmaxReplicaCount\"\xbe\x01\n" +
 	"\"GcpVertexAiDeployedIndexAuthConfig\x12z\n" +
-	"\x0fallowed_issuers\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eallowedIssuers\x12\x1c\n" +
+	"\x0fallowed_issuers\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eallowedIssuers\x12\x1c\n" +
 	"\taudiences\x18\x02 \x03(\tR\taudiences\"\x87\f\n" +
 	"\x1cGcpVertexAiDeployedIndexSpec\x12&\n" +
 	"\blocation\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x12\xf6\x01\n" +
 	"\x11deployed_index_id\x18\x02 \x01(\tB\xc9\x01\xbaH\xc5\x01\xba\x01\xbe\x01\n" +
 	"\x17valid_deployed_index_id\x12tdeployed_index_id must start with a letter and contain only letters, numbers, and underscores (up to 128 characters)\x1a-this.matches('^[a-zA-Z][a-zA-Z0-9_]{0,127}$')\xc8\x01\x01R\x0fdeployedIndexId\x12p\n" +
-	"\x05index\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x05\x92\xd4a\x17status.outputs.index_idR\x05index\x12\x8a\x01\n" +
-	"\x0eindex_endpoint\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xa1\x05\x92\xd4a status.outputs.index_endpoint_idR\rindexEndpoint\x12+\n" +
+	"\x05index\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x80\x18\x92\xd4a\x17status.outputs.index_idR\x05index\x12\x8a\x01\n" +
+	"\x0eindex_endpoint\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\x18\x92\xd4a status.outputs.index_endpoint_idR\rindexEndpoint\x12+\n" +
 	"\fdisplay_name\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vdisplayName\x12\x91\x01\n" +
 	"\x13automatic_resources\x18\x06 \x01(\v2`.dev.planton.provider.gcp.gcpvertexaideployedindex.v1.GcpVertexAiDeployedIndexAutomaticResourcesR\x12automaticResources\x12\x91\x01\n" +
 	"\x13dedicated_resources\x18\a \x01(\v2`.dev.planton.provider.gcp.gcpvertexaideployedindex.v1.GcpVertexAiDeployedIndexDedicatedResourcesR\x12dedicatedResources\x12B\n" +
 	"\x10deployment_group\x18\b \x01(\tB\x12\xbaH\x04r\x02\x18@\x8a\xa6\x1d\adefaultH\x00R\x0fdeploymentGroup\x88\x01\x01\x122\n" +
 	"\x15enable_access_logging\x18\t \x01(\bR\x13enableAccessLogging\x12~\n" +
 	"\x12reserved_ip_ranges\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xed\x04\x92\xd4a\x13status.outputs.nameR\x10reservedIpRanges\x12y\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xcd\x17\x92\xd4a\x13status.outputs.nameR\x10reservedIpRanges\x12y\n" +
 	"\vauth_config\x18\v \x01(\v2X.dev.planton.provider.gcp.gcpvertexaideployedindex.v1.GcpVertexAiDeployedIndexAuthConfigR\n" +
 	"authConfig:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
 	"\x16at_most_one_sizing_arm\x12\x84\x01automatic_resources and dedicated_resources are mutually exclusive; let Vertex AI manage the compute or pin a machine type, not both\x1aA!(has(this.automatic_resources) && has(this.dedicated_resources))B\x13\n" +

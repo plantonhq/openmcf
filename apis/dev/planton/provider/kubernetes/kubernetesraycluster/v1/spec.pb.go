@@ -836,7 +836,7 @@ const file_dev_planton_provider_kubernetes_kubernetesraycluster_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/kubernetes/kubernetesraycluster/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesraycluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb1\b\n" +
 	"\x18KubernetesRayClusterSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12'\n" +
 	"\vray_version\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"rayVersion\x12\x14\n" +
@@ -891,12 +891,12 @@ const file_dev_planton_provider_kubernetes_kubernetesraycluster_v1_spec_proto_ra
 	"\x15_idle_timeout_seconds\"\xcf\x05\n" +
 	"%KubernetesRayClusterGcsFaultTolerance\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12~\n" +
-	"\rredis_address\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x86\a\x92\xd4a\x1cstatus.outputs.kube_endpointR\fredisAddress\x12\x8f\x01\n" +
+	"\rredis_address\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x86 \x92\xd4a\x1cstatus.outputs.kube_endpointR\fredisAddress\x12\x8f\x01\n" +
 	"\x15redis_password_secret\x18\x03 \x01(\v2[.dev.planton.provider.kubernetes.kubernetesraycluster.v1.KubernetesRayClusterSecretSelectorR\x13redisPasswordSecret\x12<\n" +
 	"\x1aexternal_storage_namespace\x18\x04 \x01(\tR\x18externalStorageNamespace:\xbb\x02\xbaH\xb7\x02\x1a\xb4\x02\n" +
 	"\x17gcs_ft.address_required\x12{GCS fault tolerance needs the external store's endpoint — set redis_address (host:port, or a KubernetesValkey reference).\x1a\x9b\x01!this.enabled || (has(this.redis_address) && ((has(this.redis_address.value) && size(this.redis_address.value) > 0) || has(this.redis_address.value_from)))\"\xba\x01\n" +
 	"\"KubernetesRayClusterSecretSelector\x12z\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a#status.outputs.password_secret.nameR\x04name\x12\x18\n" +
 	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\xde\x01\n" +
 	"\x18KubernetesRayClusterAuth\x12|\n" +
 	"\x04mode\x18\x01 \x01(\tBc\xbaHW\xba\x01T\n" +

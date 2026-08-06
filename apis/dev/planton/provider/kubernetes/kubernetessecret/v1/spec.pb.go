@@ -634,7 +634,7 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\x14KubernetesSecretSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12d\n" +
-	"\tnamespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12m\n" +
+	"\tnamespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12m\n" +
 	"\x06labels\x18\x04 \x03(\v2U.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntryR\x06labels\x12|\n" +
 	"\vannotations\x18\x05 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntryR\vannotations\x12\x1c\n" +
 	"\timmutable\x18\x06 \x01(\bR\timmutable\x12i\n" +
@@ -680,7 +680,7 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\x1bKubernetesSecretSshAuthData\x12/\n" +
 	"\x0fssh_private_key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rsshPrivateKey\"\xa9\x01\n" +
 	"'KubernetesSecretServiceAccountTokenData\x12~\n" +
-	"\x14service_account_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x06\x92\xd4a\tspec.nameR\x12serviceAccountNameB\xa1\x03\n" +
+	"\x14service_account_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x1f\x92\xd4a\tspec.nameR\x12serviceAccountNameB\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetessecret.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1;kubernetessecretv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetessecret.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetessecret\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetessecret\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetessecret::V1b\x06proto3"
 
 var (

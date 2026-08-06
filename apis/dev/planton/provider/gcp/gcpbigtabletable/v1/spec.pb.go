@@ -445,8 +445,8 @@ const file_dev_planton_provider_gcp_gcpbigtabletable_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"\x14GcpBigtableTableSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
-	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\x04\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12\xcb\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x17\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12\xcb\x01\n" +
 	"\n" +
 	"table_name\x18\x03 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa3\x01\n" +
 	"\x11table_name_format\x12Xtable_name must be 1-50 characters of letters, numbers, underscores, hyphens, or periods\x1a4this == '' || this.matches('^[a-zA-Z0-9_.-]{1,50}$')R\ttableName\x12s\n" +

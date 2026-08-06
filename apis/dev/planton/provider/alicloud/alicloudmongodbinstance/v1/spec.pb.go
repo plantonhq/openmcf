@@ -436,7 +436,7 @@ const file_dev_planton_provider_alicloud_alicloudmongodbinstance_v1_spec_proto_r
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\xba\x01\n" +
+	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\xba\x01\n" +
 	"\x0eengine_version\x18\x03 \x01(\tB\x92\x01\xbaH\x8e\x01\xba\x01\x87\x01\n" +
 	"\x14engine_version_valid\x12;engine_version must be one of: 4.0, 4.2, 4.4, 5.0, 6.0, 7.0\x1a2this in ['4.0', '4.2', '4.4', '5.0', '6.0', '7.0']\xc8\x01\x01R\rengineVersion\x126\n" +
 	"\x11db_instance_class\x18\x04 \x01(\tB\n" +

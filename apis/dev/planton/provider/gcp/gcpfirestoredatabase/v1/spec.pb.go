@@ -257,7 +257,7 @@ const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_spec_proto_rawDesc =
 	";dev/planton/provider/gcp/gcpfirestoredatabase/v1/spec.proto\x120dev.planton.provider.gcp.gcpfirestoredatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe4\x11\n" +
 	"\x18GcpFirestoreDatabaseSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12'\n" +
 	"\vlocation_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"locationId\x12\xaa\x02\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB\x84\x02\xbaH\x80\x02\xba\x01\xf9\x01\n" +
@@ -272,7 +272,7 @@ const file_dev_planton_provider_gcp_gcpfirestoredatabase_v1_spec_proto_rawDesc =
 	"#delete_protection_state_valid_value\x12Wdelete_protection_state must be DELETE_PROTECTION_ENABLED or DELETE_PROTECTION_DISABLED\x1aQthis == '' || this in ['DELETE_PROTECTION_ENABLED', 'DELETE_PROTECTION_DISABLED']\x8a\xa6\x1d\x1aDELETE_PROTECTION_DISABLEDH\x00R\x15deleteProtectionState\x88\x01\x01\x12\xb5\x01\n" +
 	"\x10database_edition\x18\b \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
 	"\x1cdatabase_edition_valid_value\x12/database_edition must be STANDARD or ENTERPRISE\x1a0this == '' || this in ['STANDARD', 'ENTERPRISE']R\x0fdatabaseEdition\x12t\n" +
-	"\fkms_key_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\xd9\x01\n" +
 	"\x1bapp_engine_integration_mode\x18\n" +
 	" \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +

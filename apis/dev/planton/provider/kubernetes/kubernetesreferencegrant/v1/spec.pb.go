@@ -304,7 +304,7 @@ const file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfa\x02\n" +
 	"\x1cKubernetesReferenceGrantSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
 	"\x04from\x18\x03 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFromB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x04from\x12s\n" +
 	"\x02to\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantToB\n" +

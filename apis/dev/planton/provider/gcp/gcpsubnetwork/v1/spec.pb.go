@@ -442,8 +442,8 @@ const file_dev_planton_provider_gcp_gcpsubnetwork_v1_spec_proto_rawDesc = "" +
 	"4dev/planton/provider/gcp/gcpsubnetwork/v1/spec.proto\x12)dev.planton.provider.gcp.gcpsubnetwork.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\x19\n" +
 	"\x11GcpSubnetworkSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x01\n" +
-	"\rvpc_self_link\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12T\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x01\n" +
+	"\rvpc_self_link\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12T\n" +
 	"\x0fsubnetwork_name\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\x0esubnetworkName\x12>\n" +
 	"\x06region\x18\x04 \x01(\tB&\xbaH#\xc8\x01\x01r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x06region\x12\xb8\x01\n" +
 	"\rip_cidr_range\x18\x05 \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +

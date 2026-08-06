@@ -296,7 +296,7 @@ const file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_rawDesc = ""
 	"\x15AwsEventBridgeBusSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\x12\x81\x01\n" +
-	"\x12kms_key_identifier\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x10kmsKeyIdentifier\x12*\n" +
+	"\x12kms_key_identifier\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x10kmsKeyIdentifier\x12*\n" +
 	"\x11event_source_name\x18\x04 \x01(\tR\x0feventSourceName\x12~\n" +
 	"\x12dead_letter_config\x18\x05 \x01(\v2P.dev.planton.provider.aws.awseventbridgebus.v1.AwsEventBridgeBusDeadLetterConfigR\x10deadLetterConfig\x12h\n" +
 	"\n" +
@@ -304,7 +304,7 @@ const file_dev_planton_provider_aws_awseventbridgebus_v1_spec_proto_rawDesc = ""
 	"\x0fresource_policy\x18\a \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
 	"\x19event_source_name_pattern\x12xevent_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)\x1aithis.event_source_name == '' || this.event_source_name.matches('^aws\\\\.partner(/[.\\\\-_A-Za-z0-9]+){2,}$')\"\x92\x01\n" +
 	"!AwsEventBridgeBusDeadLetterConfig\x12m\n" +
-	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xe7\x02\n" +
+	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xe7\x02\n" +
 	"\x1aAwsEventBridgeBusLogConfig\x12\x1c\n" +
 	"\x05level\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05level\x12%\n" +
 	"\x0einclude_detail\x18\x02 \x01(\tR\rincludeDetail:\x83\x02\xbaH\xff\x01\x1ar\n" +

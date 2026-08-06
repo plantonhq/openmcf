@@ -1177,12 +1177,12 @@ const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_raw
 	"\x1cAzureMysqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
 	"\vserver_name\x18\x03 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18?2\x1f^[a-z0-9]([a-z0-9-]*[a-z0-9])?$R\n" +
 	"serverName\x12{\n" +
 	"\vcreate_mode\x18\x04 \x01(\x0e2Z.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCreateModeR\n" +
 	"createMode\x12\x7f\n" +
-	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb2\x03\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xb7\x02\n" +
+	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf2\x0f\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xb7\x02\n" +
 	"!point_in_time_restore_time_in_utc\x18\x06 \x01(\tB\xee\x01\xbaH\xea\x01\xba\x01\xe6\x01\n" +
 	"\x1amysql_restore_time_rfc3339\x12^point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x1bpointInTimeRestoreTimeInUtc\x12\x8a\x01\n" +
 	"\x10replication_role\x18\a \x01(\x0e2_.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\x84\x03\n" +
@@ -1202,9 +1202,9 @@ const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_raw
 	"\x15backup_retention_days\x18\x10 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x01\x8a\xa6\x1d\x017H\x01R\x13backupRetentionDays\x88\x01\x01\x12?\n" +
 	"\x1cgeo_redundant_backup_enabled\x18\x11 \x01(\bR\x19geoRedundantBackupEnabled\x12\x97\x01\n" +
 	"\x15public_network_access\x18\x12 \x01(\x0e2c.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccessR\x13publicNetworkAccess\x12\x85\x01\n" +
-	"\x13delegated_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x86\x01\n" +
-	"\x13private_dns_zone_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x15 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\x94\x01\n" +
+	"\x13delegated_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x86\x01\n" +
+	"\x13private_dns_zone_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdf\x0f\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12\x94\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x15 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\x94\x01\n" +
 	"\x14customer_managed_key\x18\x16 \x01(\v2b.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKeyR\x12customerManagedKey\x12\x8d\x01\n" +
 	"\x11aad_administrator\x18\x17 \x01(\v2`.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministratorR\x10aadAdministrator\x12v\n" +
 	"\tdatabases\x18\x18 \x03(\v2X.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerDatabaseR\tdatabases\x12\x83\x01\n" +
@@ -1250,17 +1250,17 @@ const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_raw
 	"start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\tstartHour\x12,\n" +
 	"\fstart_minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\vstartMinute\"\xf1\x06\n" +
 	"*AzureMysqlFlexibleServerCustomerManagedKey\x12\x89\x01\n" +
-	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\xa1\x01\n" +
-	"!primary_user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\x97\x01\n" +
-	"\x1bgeo_backup_key_vault_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\x16geoBackupKeyVaultKeyId\x12\xa6\x01\n" +
-	"$geo_backup_user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1fgeoBackupUserAssignedIdentityId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\xa1\x01\n" +
+	"!primary_user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\x97\x01\n" +
+	"\x1bgeo_backup_key_vault_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\x16geoBackupKeyVaultKeyId\x12\xa6\x01\n" +
+	"$geo_backup_user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1fgeoBackupUserAssignedIdentityId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
 	"\x12mysql_cmk_geo_pair\x12Ygeo_backup_key_vault_key_id and geo_backup_user_assigned_identity_id must be set together\x1aWhas(this.geo_backup_key_vault_key_id) == has(this.geo_backup_user_assigned_identity_id)\"\x80\x03\n" +
 	"(AzureMysqlFlexibleServerAadAdministrator\x12~\n" +
-	"\videntity_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
+	"\videntity_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\n" +
 	"identityId\x12 \n" +
 	"\x05login\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05login\x12x\n" +
-	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\bobjectId\x12*\n" +
+	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x18status.outputs.client_idR\bobjectId\x12*\n" +
 	"\ttenant_id\x18\x04 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01B\f\n" +
 	"\n" +
 	"_tenant_id\"\xd3\x01\n" +

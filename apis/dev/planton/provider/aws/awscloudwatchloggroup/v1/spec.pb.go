@@ -581,7 +581,7 @@ const file_dev_planton_provider_aws_awscloudwatchloggroup_v1_spec_proto_rawDesc 
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x122\n" +
 	"\x11retention_in_days\x18\x02 \x01(\x05B\x06\x92\xa6\x1d\x0230R\x0fretentionInDays\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12&\n" +
+	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12&\n" +
 	"\x0flog_group_class\x18\x04 \x01(\tR\rlogGroupClass\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\x05 \x01(\bR\x19deletionProtectionEnabled\x12{\n" +
 	"\x0emetric_filters\x18\x06 \x03(\v2T.dev.planton.provider.aws.awscloudwatchloggroup.v1.AwsCloudwatchLogGroupMetricFilterR\rmetricFilters\x12\x8d\x01\n" +
@@ -624,7 +624,7 @@ const file_dev_planton_provider_aws_awscloudwatchloggroup_v1_spec_proto_rawDesc 
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x04R\x04name\x12c\n" +
 	"\x0fdestination_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x0edestinationArn\x12/\n" +
 	"\x0efilter_pattern\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\rfilterPattern\x12o\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\"\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\"\n" +
 	"\fdistribution\x18\x05 \x01(\tR\fdistribution\x12,\n" +
 	"\x12emit_system_fields\x18\x06 \x03(\tR\x10emitSystemFields\x129\n" +
 	"\x19apply_on_transformed_logs\x18\a \x01(\bR\x16applyOnTransformedLogs:\xd4\x02\xbaH\xd0\x02\x1a\x9f\x01\n" +

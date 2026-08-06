@@ -493,8 +493,8 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkauser_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/kubernetes/kuberneteskafkauser/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteskafkauser.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfa\x04\n" +
 	"\x17KubernetesKafkaUserSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x83\x01\n" +
-	"\rkafka_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a\x1bstatus.outputs.cluster_nameR\fkafkaCluster\x12\x81\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\x83\x01\n" +
+	"\rkafka_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c \x92\xd4a\x1bstatus.outputs.cluster_nameR\fkafkaCluster\x12\x81\x01\n" +
 	"\x0eauthentication\x18\x03 \x01(\v2Y.dev.planton.provider.kubernetes.kuberneteskafkauser.v1.KubernetesKafkaUserAuthenticationR\x0eauthentication\x12~\n" +
 	"\rauthorization\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kuberneteskafkauser.v1.KubernetesKafkaUserAuthorizationR\rauthorization\x12i\n" +
 	"\x06quotas\x18\x05 \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskafkauser.v1.KubernetesKafkaUserQuotasR\x06quotas\"\xd8\x01\n" +

@@ -227,7 +227,7 @@ const file_dev_planton_provider_openstack_openstackrouter_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/openstack/openstackrouter/v1/spec.proto\x121dev.planton.provider.openstack.openstackrouter.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\a\n" +
 	"\x13OpenStackRouterSpec\x12\x8a\x01\n" +
-	"\x13external_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xc5\x13\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\x11externalNetworkId\x123\n" +
+	"\x13external_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\x91N\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\x11externalNetworkId\x123\n" +
 	"\x0eadmin_state_up\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\fadminStateUp\x88\x01\x01\x12$\n" +
 	"\venable_snat\x18\x03 \x01(\bH\x01R\n" +
 	"enableSnat\x88\x01\x01\x12%\n" +

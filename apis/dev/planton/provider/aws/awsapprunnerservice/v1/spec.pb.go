@@ -711,17 +711,17 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = 
 	"\x03cpu\x18\b \x01(\tB\b\x8a\xa6\x1d\x041024H\x01R\x03cpu\x88\x01\x01\x12%\n" +
 	"\x06memory\x18\t \x01(\tB\b\x8a\xa6\x1d\x042048H\x02R\x06memory\x88\x01\x01\x12\x80\x01\n" +
 	"\x11instance_role_arn\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0finstanceRoleArn\x12r\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x0finstanceRoleArn\x12r\n" +
 	"\fhealth_check\x18\v \x01(\v2O.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceHealthCheckR\vhealthCheck\x12\xa2\x01\n" +
-	"\x1eauto_scaling_configuration_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf0\x02\x92\xd4a status.outputs.configuration_arnR\x1bautoScalingConfigurationArn\x12\x89\x01\n" +
-	"\x11vpc_connector_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf1\x02\x92\xd4a status.outputs.vpc_connector_arnR\x0fvpcConnectorArn\x12\xa5\x01\n" +
-	"\x1fobservability_configuration_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf2\x02\x92\xd4a status.outputs.configuration_arnR\x1dobservabilityConfigurationArn\x12C\n" +
+	"\x1eauto_scaling_configuration_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x90\t\x92\xd4a status.outputs.configuration_arnR\x1bautoScalingConfigurationArn\x12\x89\x01\n" +
+	"\x11vpc_connector_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x91\t\x92\xd4a status.outputs.vpc_connector_arnR\x0fvpcConnectorArn\x12\xa5\x01\n" +
+	"\x1fobservability_configuration_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x92\t\x92\xd4a status.outputs.configuration_arnR\x1dobservabilityConfigurationArn\x12C\n" +
 	"\x16is_publicly_accessible\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x14isPubliclyAccessible\x88\x01\x01\x125\n" +
 	"\x0fip_address_type\x18\x10 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x04R\ripAddressType\x88\x01\x01\x12s\n" +
-	"\vkms_key_arn\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x128\n" +
+	"\vkms_key_arn\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x128\n" +
 	"\x18auto_deployments_enabled\x18\x12 \x01(\bR\x16autoDeploymentsEnabled\x12w\n" +
 	"\x0ecustom_domains\x18\x13 \x03(\v2P.dev.planton.provider.aws.awsapprunnerservice.v1.AwsAppRunnerServiceCustomDomainR\rcustomDomains\x12w\n" +
-	"\vweb_acl_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x1aG\n" +
+	"\vweb_acl_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcd\b\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x1aG\n" +
 	"\x19EnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
@@ -743,7 +743,7 @@ const file_dev_planton_provider_aws_awsapprunnerservice_v1_spec_proto_rawDesc = 
 	"\x1eAwsAppRunnerServiceImageSource\x122\n" +
 	"\x10image_identifier\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fimageIdentifier\x12;\n" +
 	"\x15image_repository_type\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x13imageRepositoryType\x12|\n" +
-	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\x92\x03\xbaH\x8e\x03\x1a\xab\x01\n" +
+	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\x92\x03\xbaH\x8e\x03\x1a\xab\x01\n" +
 	"\x1bvalid_image_repository_type\x12Wimage_repository_type must be 'ECR' (private registry) or 'ECR_PUBLIC' (public gallery)\x1a3this.image_repository_type in ['ECR', 'ECR_PUBLIC']\x1a\xdd\x01\n" +
 	"\x18ecr_requires_access_role\x12\x7faccess_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry\x1a@this.image_repository_type != 'ECR' || has(this.access_role_arn)\"\xad\t\n" +
 	"\x1dAwsAppRunnerServiceCodeSource\x12.\n" +

@@ -208,7 +208,7 @@ const file_dev_planton_provider_aws_awsfsxdatarepositoryassociation_v1_spec_prot
 	"\n" +
 	"#AwsFsxDataRepositoryAssociationSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x86\x01\n" +
-	"\x0efile_system_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa3\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12\xd4\x01\n" +
+	"\x0efile_system_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\b\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12\xd4\x01\n" +
 	"\x10file_system_path\x18\x03 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\x9e\x01\n" +
 	"\x17file_system_path_format\x12Wfile_system_path must begin with '/' (e.g., '/datasets') and be at most 4096 characters\x1a*this.startsWith('/') && size(this) <= 4096\xc8\x01\x01R\x0efileSystemPath\x12\xed\x01\n" +
 	"\x14data_repository_path\x18\x04 \x01(\tB\xba\x01\xbaH\xb6\x01\xba\x01\xaf\x01\n" +

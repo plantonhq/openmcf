@@ -602,8 +602,8 @@ const file_dev_planton_provider_gcp_gcpalloydbinstance_v1_spec_proto_rawDesc = "
 	"\x15psc_interface_configs\x18\x03 \x03(\v2T.dev.planton.provider.gcp.gcpalloydbinstance.v1.GcpAlloydbInstancePscInterfaceConfigR\x13pscInterfaceConfigs\"\xad\x16\n" +
 	"\x16GcpAlloydbInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
-	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x04\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12M\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
+	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x17\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12M\n" +
 	"\vinstance_id\x18\x03 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x01\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\n" +
 	"instanceId\x12\xba\x01\n" +
 	"\rinstance_type\x18\x04 \x01(\tB\x8f\x01\xbaH\x7f\xba\x01|\n" +

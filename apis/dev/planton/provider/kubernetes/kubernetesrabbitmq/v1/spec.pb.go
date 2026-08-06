@@ -915,14 +915,14 @@ const file_dev_planton_provider_kubernetes_kubernetesrabbitmq_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kubernetesrabbitmq/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesrabbitmq.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe8\x10\n" +
 	"\x16KubernetesRabbitMqSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12-\n" +
 	"\breplicas\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12E\n" +
 	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12x\n" +
 	"\x12image_pull_secrets\x18\x05 \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x12j\n" +
 	"\aservice\x18\x06 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesrabbitmq.v1.KubernetesRabbitMqServiceR\aservice\x12`\n" +
 	"\tdisk_size\x18\a \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
+	"\rstorage_class\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
 	"\tephemeral\x18\t \x01(\bR\tephemeral\x12Q\n" +
 	"\tresources\x18\n" +
 	" \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12|\n" +
@@ -975,9 +975,9 @@ const file_dev_planton_provider_kubernetes_kubernetesrabbitmq_v1_spec_proto_rawD
 	"3spec.configuration.env_config.no_shell_substitution\x12eenv_config must not contain shell command substitution ('$(...)' or backticks) — the CRD rejects it\x1a+!this.contains('$(') && !this.contains('`')r\x04\x18\xa0\x8d\x06R\tenvConfig\x126\n" +
 	"\x12erlang_inet_config\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR\x10erlangInetConfig\"\xc4\x02\n" +
 	"\x15KubernetesRabbitMqTls\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12p\n" +
-	"\x0eca_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\fcaSecretName\x129\n" +
+	"\x0eca_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\fcaSecretName\x129\n" +
 	"\x19disable_non_tls_listeners\x18\x03 \x01(\bR\x16disableNonTlsListeners\"\xcf\x01\n" +
 	"\x1fKubernetesRabbitMqSecretBackend\x12m\n" +
 	"\x05vault\x18\x01 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesrabbitmq.v1.KubernetesRabbitMqVaultBackendH\x00R\x05vault\x122\n" +

@@ -1009,14 +1009,14 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\fdisk_size_gb\x18\x02 \x01(\x05B\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
 	"\x14valid_boot_disk_size\x12Idisk_size_gb must be between 10 and 64000 (or omitted for default 150 GB)\x1a*this == 0 || (this >= 10 && this <= 64000)R\n" +
 	"diskSizeGb\x12k\n" +
-	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\x9a\x04\n" +
+	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\x9a\x04\n" +
 	"\x1bGcpVertexAiNotebookDataDisk\x12\xd2\x01\n" +
 	"\tdisk_type\x18\x01 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xac\x01\n" +
 	"\x14valid_data_disk_type\x12Fdisk_type must be one of: PD_STANDARD, PD_SSD, PD_BALANCED, PD_EXTREME\x1aLthis == '' || this in ['PD_STANDARD', 'PD_SSD', 'PD_BALANCED', 'PD_EXTREME']R\bdiskType\x12\xb8\x01\n" +
 	"\fdisk_size_gb\x18\x02 \x01(\x05B\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
 	"\x14valid_data_disk_size\x12Idisk_size_gb must be between 10 and 64000 (or omitted for default 100 GB)\x1a*this == 0 || (this >= 10 && this <= 64000)R\n" +
 	"diskSizeGb\x12k\n" +
-	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xa5\x04\n" +
+	"\akms_key\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xa5\x04\n" +
 	"$GcpVertexAiNotebookAcceleratorConfig\x12\xf8\x02\n" +
 	"\x04type\x18\x01 \x01(\tB\xe3\x02\xbaH\xdf\x02\xba\x01\xdb\x02\n" +
 	"\x16valid_accelerator_type\x12[type must be a valid accelerator type (e.g., NVIDIA_TESLA_T4, NVIDIA_L4, NVIDIA_TESLA_A100)\x1a\xe3\x01this == '' || this in ['NVIDIA_TESLA_P100', 'NVIDIA_TESLA_V100', 'NVIDIA_TESLA_P4', 'NVIDIA_TESLA_T4', 'NVIDIA_TESLA_A100', 'NVIDIA_A100_80GB', 'NVIDIA_L4', 'NVIDIA_TESLA_T4_VWS', 'NVIDIA_TESLA_P100_VWS', 'NVIDIA_TESLA_P4_VWS']R\x04type\x12\x81\x01\n" +
@@ -1024,11 +1024,11 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"core_count\x18\x02 \x01(\x05Bb\xbaH_\xba\x01\\\n" +
 	"\x1cvalid_accelerator_core_count\x12%core_count must be a positive integer\x1a\x15this == 0 || this > 0R\tcoreCount\"\x9d\x04\n" +
 	"#GcpVertexAiNotebookNetworkInterface\x12w\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12x\n" +
-	"\x06subnet\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\x06subnet\x12\x8c\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12x\n" +
+	"\x06subnet\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\x06subnet\x12\x8c\x01\n" +
 	"\bnic_type\x18\x03 \x01(\tBq\xbaHn\xba\x01k\n" +
 	"\x0evalid_nic_type\x12*nic_type must be one of: VIRTIO_NET, GVNIC\x1a-this == '' || this in ['VIRTIO_NET', 'GVNIC']R\anicType\x12t\n" +
-	"\vexternal_ip\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\n" +
+	"\vexternal_ip\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xaa\x18\x92\xd4a\x16status.outputs.addressR\n" +
 	"externalIp\"\x8d\x02\n" +
 	"-GcpVertexAiNotebookConfidentialInstanceConfig\x12\xdb\x01\n" +
 	"\x1aconfidential_instance_type\x18\x01 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
@@ -1055,7 +1055,7 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\x1benable_integrity_monitoring\x18\x03 \x01(\bR\x19enableIntegrityMonitoring\"\xbd\x17\n" +
 	"\x17GcpVertexAiNotebookSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12A\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12A\n" +
 	"\blocation\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\blocation\x12-\n" +
 	"\fmachine_type\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vmachineType\x12\xf4\x01\n" +
@@ -1074,7 +1074,7 @@ const file_dev_planton_provider_gcp_gcpvertexainotebook_v1_spec_proto_rawDesc = 
 	"\x11network_interface\x18\r \x01(\v2T.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookNetworkInterfaceR\x10networkInterface\x12*\n" +
 	"\x11disable_public_ip\x18\x0e \x01(\bR\x0fdisablePublicIp\x120\n" +
 	"\x14enable_ip_forwarding\x18\x0f \x01(\bR\x12enableIpForwarding\x12z\n" +
-	"\x0fservice_account\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
+	"\x0fservice_account\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
 	"\x04tags\x18\x11 \x03(\tR\x04tags\x12f\n" +
 	"\bvm_image\x18\x12 \x01(\v2K.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookVmImageR\avmImage\x12{\n" +
 	"\x0fcontainer_image\x18\x13 \x01(\v2R.dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookContainerImageR\x0econtainerImage\x12\x94\x01\n" +

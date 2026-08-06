@@ -892,7 +892,7 @@ const file_dev_planton_provider_auth0_auth0connection_v1_spec_proto_rawDesc = ""
 	"\x13Auth0ConnectionSpec\x12\x96\x01\n" +
 	"\bstrategy\x18\x01 \x01(\tBz\xbaHw\xc8\x01\x01rrR\x05auth0R\rgoogle-oauth2R\bfacebookR\x06githubR\blinkedinR\atwitterR\x11microsoft-accountR\x05appleR\x05samlpR\x04oidcR\x04waadR\x02adR\x04adfsR\bstrategy\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12~\n" +
-	"\x0fenabled_clients\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb5\x10\x92\xd4a\x18status.outputs.client_idR\x0eenabledClients\x120\n" +
+	"\x0fenabled_clients\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc1>\x92\xd4a\x18status.outputs.client_idR\x0eenabledClients\x120\n" +
 	"\x14is_domain_connection\x18\x04 \x01(\bR\x12isDomainConnection\x12\x16\n" +
 	"\x06realms\x18\x05 \x03(\tR\x06realms\x12$\n" +
 	"\x0eshow_as_button\x18\x06 \x01(\bR\fshowAsButton\x12l\n" +

@@ -151,11 +151,11 @@ const file_dev_planton_provider_azure_azureeventhubnamespacecustomermanagedkey_v
 	"\n" +
 	"Qdev/planton/provider/azure/azureeventhubnamespacecustomermanagedkey/v1/spec.proto\x12Fdev.planton.provider.azure.azureeventhubnamespacecustomermanagedkey.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe1\x04\n" +
 	",AzureEventHubNamespaceCustomerManagedKeySpec\x12\x92\x01\n" +
-	"\x15eventhub_namespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\x13eventhubNamespaceId\x12\x8f\x01\n" +
+	"\x15eventhub_namespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\x13eventhubNamespaceId\x12\x8f\x01\n" +
 	"\x11key_vault_key_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\a\x92\x01\x04\b\x01\x10\n" +
-	"\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\x0ekeyVaultKeyIds\x12O\n" +
+	"\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\x0ekeyVaultKeyIds\x12O\n" +
 	"!infrastructure_encryption_enabled\x18\x03 \x01(\bH\x00R\x1finfrastructureEncryptionEnabled\x88\x01\x01\x12\x92\x01\n" +
-	"\x19user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityIdB$\n" +
+	"\x19user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityIdB$\n" +
 	"\"_infrastructure_encryption_enabledB\xac\x04\n" +
 	"Jcom.dev.planton.provider.azure.azureeventhubnamespacecustomermanagedkey.v1B\tSpecProtoP\x01Z\x93\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubnamespacecustomermanagedkey/v1;azureeventhubnamespacecustomermanagedkeyv1\xa2\x02\x05DPPAA\xaa\x02FDev.Planton.Provider.Azure.Azureeventhubnamespacecustomermanagedkey.V1\xca\x02FDev\\Planton\\Provider\\Azure\\Azureeventhubnamespacecustomermanagedkey\\V1\xe2\x02RDev\\Planton\\Provider\\Azure\\Azureeventhubnamespacecustomermanagedkey\\V1\\GPBMetadata\xea\x02KDev::Planton::Provider::Azure::Azureeventhubnamespacecustomermanagedkey::V1b\x06proto3"
 

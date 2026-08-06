@@ -182,10 +182,10 @@ const file_dev_planton_provider_kubernetes_kubernetesserviceaccount_v1_spec_prot
 	"\x1cKubernetesServiceAccountSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12d\n" +
-	"\tnamespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12}\n" +
+	"\tnamespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12}\n" +
 	"\x06labels\x18\x04 \x03(\v2e.dev.planton.provider.kubernetes.kubernetesserviceaccount.v1.KubernetesServiceAccountSpec.LabelsEntryR\x06labels\x12\x8c\x01\n" +
 	"\vannotations\x18\x05 \x03(\v2j.dev.planton.provider.kubernetes.kubernetesserviceaccount.v1.KubernetesServiceAccountSpec.AnnotationsEntryR\vannotations\x12\xc6\x01\n" +
-	"\x12image_pull_secrets\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x06\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12J\n" +
+	"\x12image_pull_secrets\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x1f\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12J\n" +
 	"\x1fautomount_service_account_token\x18\a \x01(\bH\x00R\x1cautomountServiceAccountToken\x88\x01\x01\x12h\n" +
 	"\x11workload_identity\x18\b \x01(\v2;.dev.planton.provider.kubernetes.KubernetesWorkloadIdentityR\x10workloadIdentity\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +

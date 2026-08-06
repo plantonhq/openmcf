@@ -1032,7 +1032,7 @@ const file_dev_planton_provider_azure_azurekeyvaultcertificate_v1_spec_proto_raw
 	"Adev/planton/provider/azure/azurekeyvaultcertificate/v1/spec.proto\x126dev.planton.provider.azure.azurekeyvaultcertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe5\t\n" +
 	"\x1cAzureKeyVaultCertificateSpec\x123\n" +
 	"\x04name\x18\x01 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[0-9a-zA-Z-]{1,127}$R\x04name\x12\x80\x01\n" +
-	"\fkey_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
+	"\fkey_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x0f\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
 	"keyVaultId\x12x\n" +
 	"\vcertificate\x18\x03 \x01(\v2V.dev.planton.provider.azure.azurekeyvaultcertificate.v1.AzureKeyVaultCertificateImportR\vcertificate\x12\x85\x01\n" +
 	"\x12certificate_policy\x18\x04 \x01(\v2V.dev.planton.provider.azure.azurekeyvaultcertificate.v1.AzureKeyVaultCertificatePolicyR\x11certificatePolicy\x12r\n" +

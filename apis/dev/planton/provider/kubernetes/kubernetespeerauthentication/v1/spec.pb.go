@@ -199,7 +199,7 @@ const file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_
 	"\n" +
 	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb1\a\n" +
 	" KubernetesPeerAuthenticationSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12z\n" +
 	"\x04mtls\x18\x04 \x01(\v2f.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTlsR\x04mtls\x12\xae\x01\n" +
 	"\x0fport_level_mtls\x18\x05 \x03(\v2t.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntryB\x10\xbaH\r\x9a\x01\n" +

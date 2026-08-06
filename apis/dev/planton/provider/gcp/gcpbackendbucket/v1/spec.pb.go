@@ -614,10 +614,10 @@ const file_dev_planton_provider_gcp_gcpbackendbucket_v1_spec_proto_rawDesc = "" 
 	"7dev/planton/provider/gcp/gcpbackendbucket/v1/spec.proto\x12,dev.planton.provider.gcp.gcpbackendbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb8\r\n" +
 	"\x14GcpBackendBucketSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xaa\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xaa\x02\n" +
 	"\x13backend_bucket_name\x18\x02 \x01(\tB\xf9\x01\xbaH\xf5\x01\xba\x01\xf1\x01\n" +
 	"\x19valid_backend_bucket_name\x12\x92\x01backend_bucket_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x11backendBucketName\x12|\n" +
-	"\vbucket_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\n" +
+	"\vbucket_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\n" +
 	"bucketName\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\x1d\n" +
 	"\n" +
@@ -628,7 +628,7 @@ const file_dev_planton_provider_gcp_gcpbackendbucket_v1_spec_proto_rawDesc = "" 
 	"\x16valid_compression_mode\x12.compression_mode must be AUTOMATIC or DISABLED\x1a/this == '' || this in ['AUTOMATIC', 'DISABLED']R\x0fcompressionMode\x12P\n" +
 	"\x17custom_response_headers\x18\b \x03(\tB\x18\xbaH\x15\x92\x01\x12\x10\x19\"\x0er\f2\n" +
 	"^[^:]+:.*$R\x15customResponseHeaders\x12\x8e\x01\n" +
-	"\x14edge_security_policy\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xee\x04\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x12edgeSecurityPolicy\x12\xdf\x01\n" +
+	"\x14edge_security_policy\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xce\x17\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x12edgeSecurityPolicy\x12\xdf\x01\n" +
 	"\x15load_balancing_scheme\x18\n" +
 	" \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\xa2\x01\n" +
 	"\x1bvalid_load_balancing_scheme\x12Yload_balancing_scheme must be INTERNAL_MANAGED, or left unset for external load balancers\x1a(this == '' || this == 'INTERNAL_MANAGED'R\x13loadBalancingScheme\x12|\n" +

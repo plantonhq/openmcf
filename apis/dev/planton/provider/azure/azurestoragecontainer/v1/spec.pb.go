@@ -210,11 +210,11 @@ const file_dev_planton_provider_azure_azurestoragecontainer_v1_spec_proto_rawDes
 	">dev/planton/provider/azure/azurestoragecontainer/v1/spec.proto\x123dev.planton.provider.azure.azurestoragecontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f\n" +
 	"\n" +
 	"\x19AzureStorageContainerSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x02\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x02\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\x87\x02\xbaH\x83\x02\xba\x01\xf6\x01\n" +
 	"\x1dstorage_container_name_format\x12\x8b\x01container_name must be 3-63 lowercase letters, digits, and hyphens, starting and ending with a letter or digit, with no consecutive hyphens\x1aGthis.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') && !this.contains('--')\xc8\x01\x01r\x04\x10\x03\x18?R\rcontainerName\x12\x88\x01\n" +
 	"\x15container_access_type\x18\x03 \x01(\x0e2T.dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerAccessTypeR\x13containerAccessType\x12\x9b\x01\n" +
-	"\x18default_encryption_scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xee\x03\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12N\n" +
+	"\x18default_encryption_scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xae\x10\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12N\n" +
 	"!encryption_scope_override_enabled\x18\x05 \x01(\bH\x00R\x1eencryptionScopeOverrideEnabled\x88\x01\x01\x12x\n" +
 	"\bmetadata\x18\x06 \x03(\v2\\.dev.planton.provider.azure.azurestoragecontainer.v1.AzureStorageContainerSpec.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +

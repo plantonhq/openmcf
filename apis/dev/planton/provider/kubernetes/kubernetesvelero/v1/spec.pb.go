@@ -1494,7 +1494,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	">dev/planton/provider/kubernetes/kubernetesvelero/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesvelero.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9c\n" +
 	"\n" +
 	"\x14KubernetesVeleroSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x0612.1.0H\x00R\fchartVersion\x88\x01\x01\x12]\n" +
@@ -1536,7 +1536,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"\n" +
 	"kms_key_id\x18\x05 \x01(\tR\bkmsKeyId\x12\x17\n" +
 	"\aca_cert\x18\x06 \x01(\tR\x06caCert\x12x\n" +
-	"\rirsa_role_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12r\n" +
+	"\rirsa_role_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12r\n" +
 	"\vaccess_keys\x18\b \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3AccessKeysR\n" +
 	"accessKeys:\x87\x03\xbaH\x83\x03\x1a\xc8\x01\n" +
 	"\x15spec.s3.irsa_xor_keys\x12zirsa_role_arn and access_keys are alternative credential postures — set at most one (neither = ambient node credentials)\x1a3!(has(this.irsa_role_arn) && has(this.access_keys))\x1a\xb5\x01\n" +
@@ -1547,7 +1547,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xc5\x04\n" +
 	"\x1aKubernetesVeleroGcsBackend\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\xa7\x01\n" +
-	"'workload_identity_service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR#workloadIdentityServiceAccountEmail\x12=\n" +
+	"'workload_identity_service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR#workloadIdentityServiceAccountEmail\x12=\n" +
 	"\x18service_account_key_json\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJson:\x9d\x02\xbaH\x99\x02\x1a\x96\x02\n" +
 	"\x13spec.gcs.wi_xor_key\x12\xa1\x01workload_identity_service_account_email and service_account_key_json are alternative credential postures — set at most one (neither = ambient node credentials)\x1a[!(has(this.workload_identity_service_account_email) && this.service_account_key_json != '')\"\xf4\x05\n" +
 	" KubernetesVeleroAzureBlobBackend\x12/\n" +
@@ -1555,7 +1555,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"\tcontainer\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12-\n" +
 	"\x0eresource_group\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rresourceGroup\x12/\n" +
 	"\x0fsubscription_id\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0esubscriptionId\x12\x94\x01\n" +
-	"\x1bworkload_identity_client_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\x18workloadIdentityClientId\x12\x87\x01\n" +
+	"\x1bworkload_identity_client_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x8c\x10\x92\xd4a\x18status.outputs.client_idR\x18workloadIdentityClientId\x12\x87\x01\n" +
 	"\x11service_principal\x18\x06 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureServicePrincipalR\x10servicePrincipal:\xf7\x01\xbaH\xf3\x01\x1a\xf0\x01\n" +
 	"\x14spec.azure.wi_xor_sp\x12\x8e\x01workload_identity_client_id and service_principal are alternative credential postures — set at most one (neither = ambient node credentials)\x1aG!(has(this.workload_identity_client_id) && has(this.service_principal))\"\xa2\x01\n" +
 	"%KubernetesVeleroAzureServicePrincipal\x12#\n" +

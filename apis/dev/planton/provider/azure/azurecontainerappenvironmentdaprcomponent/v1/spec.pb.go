@@ -336,7 +336,7 @@ const file_dev_planton_provider_azure_azurecontainerappenvironmentdaprcomponent_
 	"\n" +
 	"Rdev/planton/provider/azure/azurecontainerappenvironmentdaprcomponent/v1/spec.proto\x12Gdev.planton.provider.azure.azurecontainerappenvironmentdaprcomponent.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfc\t\n" +
 	"-AzureContainerAppEnvironmentDaprComponentSpec\x12\xa1\x01\n" +
-	"\x1ccontainer_app_environment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12\xdb\x02\n" +
+	"\x1ccontainer_app_environment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x0f\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12\xdb\x02\n" +
 	"\x0ecomponent_name\x18\x02 \x01(\tB\xb3\x02\xbaH\xaf\x02\xba\x01\xa2\x02\n" +
 	"\x1adapr_component_name_format\x12\xa0\x01component name must be lowercase alphanumeric characters or hyphens, start with a letter, end with an alphanumeric character, and contain no consecutive hyphens\x1aathis.matches('^[a-z][a-z0-9-]{0,58}[a-z0-9]$') && !this.contains('--') || this.matches('^[a-z]$')\xc8\x01\x01r\x04\x10\x01\x18<R\rcomponentName\x121\n" +
 	"\x0ecomponent_type\x18\x03 \x01(\tB\n" +

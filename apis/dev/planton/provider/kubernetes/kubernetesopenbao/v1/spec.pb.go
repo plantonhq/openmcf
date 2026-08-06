@@ -1595,7 +1595,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\t\n" +
 	"\x15KubernetesOpenBaoSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x060.28.6H\x00R\fchartVersion\x88\x01\x01\x12e\n" +
@@ -1646,7 +1646,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\t_replicas\"\xff\x01\n" +
 	"\x18KubernetesOpenBaoStorage\x12T\n" +
 	"\x04size\x18\x01 \x01(\tB;\xbaH0r.2,^\\d+(\\.\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x00R\x04size\x88\x01\x01\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
 	"\x05_size\"\xc0\x02\n" +
 	"\x1bKubernetesOpenBaoScheduling\x12\x88\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2c.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
@@ -1656,7 +1656,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9d\x04\n" +
 	"\x14KubernetesOpenBaoTls\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x81\x01\n" +
-	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName:\xe6\x02\xbaH\xe2\x02\x1a\xdf\x02\n" +
+	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName:\xe6\x02\xbaH\xe2\x02\x1a\xdf\x02\n" +
 	"\"spec.tls.cert_secret_name.required\x12\x8e\x01TLS needs certificate material: set cert_secret_name to a kubernetes.io/tls Secret (or reference a KubernetesCertificate) when TLS is enabled.\x1a\xa7\x01!this.enabled || (has(this.cert_secret_name) && ((has(this.cert_secret_name.value) && size(this.cert_secret_name.value) > 0) || has(this.cert_secret_name.value_from)))\"\xf6\x03\n" +
 	"\x1bKubernetesOpenBaoAutoUnseal\x12l\n" +
 	"\aaws_kms\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSealH\x00R\x06awsKms\x12l\n" +
@@ -1671,13 +1671,13 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\raccess_key_id\x18\x03 \x01(\tR\vaccessKeyId\x120\n" +
 	"\x11secret_access_key\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xf7\x04\n" +
 	"\x1bKubernetesOpenBaoGcpKmsSeal\x12z\n" +
-	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x1f\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x1f\n" +
 	"\x06region\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x91\x01\n" +
-	"\bkey_ring\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBB\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0funseal key ring\x88\xd4a\xb2\x05\x92\xd4a\x1cstatus.outputs.key_ring_name\x98\xd4a\x01R\akeyRing\x12\x87\x01\n" +
+	"\bkey_ring\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBB\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0funseal key ring\x88\xd4a\x92\x18\x92\xd4a\x1cstatus.outputs.key_ring_name\x98\xd4a\x01R\akeyRing\x12\x87\x01\n" +
 	"\n" +
 	"crypto_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\n" +
-	"unseal key\x88\xd4a\xb3\x05\x92\xd4a\x17status.outputs.key_nameR\tcryptoKey\x12\x9c\x01\n" +
-	"!workload_identity_service_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x1eworkloadIdentityServiceAccount\"\xde\x01\n" +
+	"unseal key\x88\xd4a\x93\x18\x92\xd4a\x17status.outputs.key_nameR\tcryptoKey\x12\x9c\x01\n" +
+	"!workload_identity_service_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x1eworkloadIdentityServiceAccount\"\xde\x01\n" +
 	"\"KubernetesOpenBaoAzureKeyVaultSeal\x12&\n" +
 	"\n" +
 	"vault_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tvaultName\x12\"\n" +
@@ -1707,7 +1707,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\x1eKubernetesOpenBaoSnapshotAgent\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x121\n" +
 	"\bschedule\x18\x02 \x01(\tB\x10\x8a\xa6\x1d\f*/15 * * * *H\x00R\bschedule\x88\x01\x01\x12v\n" +
-	"\as3_host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\x06s3Host\x12$\n" +
+	"\as3_host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a\x1astatus.outputs.s3_endpointR\x06s3Host\x12$\n" +
 	"\ts3_bucket\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bs3Bucket\x128\n" +
 	"\x0es3_expire_days\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0214H\x01R\fs3ExpireDays\x88\x01\x01\x12D\n" +
 	"\x1as3_credentials_secret_name\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x17s3CredentialsSecretName\x12,\n" +

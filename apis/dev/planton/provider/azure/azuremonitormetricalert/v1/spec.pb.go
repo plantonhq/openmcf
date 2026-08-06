@@ -960,7 +960,7 @@ const file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/azure/azuremonitormetricalert/v1/spec.proto\x125dev.planton.provider.azure.azuremonitormetricalert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xea\x0e\n" +
 	"\x1bAzureMonitorMetricAlertSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12,\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12,\n" +
 	"\n" +
 	"alert_name\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\talertName\x12T\n" +
@@ -1031,8 +1031,8 @@ const file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_rawD
 	"\x17_evaluation_total_countB\x1b\n" +
 	"\x19_evaluation_failure_count\"\xf3\x02\n" +
 	"&AzureMonitorMetricAlertWebTestCriteria\x12}\n" +
-	"\vweb_test_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x03\x92\xd4a\x1astatus.outputs.web_test_idR\twebTestId\x12\x8c\x01\n" +
-	"\fcomponent_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x03\x92\xd4a&status.outputs.application_insights_idR\vcomponentId\x12;\n" +
+	"\vweb_test_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\x10\x92\xd4a\x1astatus.outputs.web_test_idR\twebTestId\x12\x8c\x01\n" +
+	"\fcomponent_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\x83\x10\x92\xd4a&status.outputs.application_insights_idR\vcomponentId\x12;\n" +
 	"\x15failed_location_count\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x13failedLocationCount\"\xf4\x01\n" +
 	" AzureMonitorMetricAlertDimension\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
@@ -1041,7 +1041,7 @@ const file_dev_planton_provider_azure_azuremonitormetricalert_v1_spec_proto_rawD
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\boperator\x12&\n" +
 	"\x06values\x18\x03 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x06values\"\x8e\x03\n" +
 	"\x1dAzureMonitorMetricAlertAction\x12\x89\x01\n" +
-	"\x0faction_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x03\x92\xd4a\x1estatus.outputs.action_group_idR\ractionGroupId\x12\x9a\x01\n" +
+	"\x0faction_group_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\x10\x92\xd4a\x1estatus.outputs.action_group_idR\ractionGroupId\x12\x9a\x01\n" +
 	"\x12webhook_properties\x18\x02 \x03(\v2k.dev.planton.provider.azure.azuremonitormetricalert.v1.AzureMonitorMetricAlertAction.WebhookPropertiesEntryR\x11webhookProperties\x1aD\n" +
 	"\x16WebhookPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

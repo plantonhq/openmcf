@@ -148,7 +148,7 @@ const file_dev_planton_provider_openstack_openstackloadbalancer_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/openstack/openstackloadbalancer/v1/spec.proto\x127dev.planton.provider.openstack.openstackloadbalancer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfa\x02\n" +
 	"\x19OpenStackLoadBalancerSpec\x12\x7f\n" +
-	"\rvip_subnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x13\x92\xd4a\x18status.outputs.subnet_idR\vvipSubnetId\x12\x1f\n" +
+	"\rvip_subnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x92N\x92\xd4a\x18status.outputs.subnet_idR\vvipSubnetId\x12\x1f\n" +
 	"\vvip_address\x18\x02 \x01(\tR\n" +
 	"vipAddress\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x123\n" +

@@ -523,15 +523,15 @@ const file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/azure/azurefrontdoorroute/v1/spec.proto\x121dev.planton.provider.azure.azurefrontdoorroute.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xce\x13\n" +
 	"\x17AzureFrontDoorRouteSpec\x12~\n" +
-	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x03\x92\xd4a\x1astatus.outputs.endpoint_idR\n" +
+	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa1\x10\x92\xd4a\x1astatus.outputs.endpoint_idR\n" +
 	"endpointId\x12\x84\x02\n" +
 	"\n" +
 	"route_name\x18\x02 \x01(\tB\xe4\x01\xbaH\xe0\x01\xba\x01\xd3\x01\n" +
 	"\x1cfront_door_route_name_format\x12wroute_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\trouteName\x12\x89\x01\n" +
-	"\x0forigin_group_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x03\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12t\n" +
+	"\x0forigin_group_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x10\x92\xd4a\x1estatus.outputs.origin_group_idR\roriginGroupId\x12t\n" +
 	"\n" +
-	"origin_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe3\x03\x92\xd4a\x18status.outputs.origin_idR\toriginIds\x12y\n" +
-	"\frule_set_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe5\x03\x92\xd4a\x1astatus.outputs.rule_set_idR\n" +
+	"origin_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xa3\x10\x92\xd4a\x18status.outputs.origin_idR\toriginIds\x12y\n" +
+	"\frule_set_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xa5\x10\x92\xd4a\x1astatus.outputs.rule_set_idR\n" +
 	"ruleSetIds\x12\x92\x01\n" +
 	"\x11patterns_to_match\x18\x06 \x03(\tBf\xbaHc\x92\x01`\b\x01\"\\\xba\x01Y\n" +
 	"\x1ffront_door_route_pattern_format\x12 each pattern must start with '/'\x1a\x14this.startsWith('/')R\x0fpatternsToMatch\x12\x96\x01\n" +
@@ -539,7 +539,7 @@ const file_dev_planton_provider_azure_azurefrontdoorroute_v1_spec_proto_rawDesc 
 	"\x13forwarding_protocol\x18\b \x01(\x0e2X.dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteForwardingProtocolB\b\xbaH\x05\x82\x01\x02\x10\x01R\x12forwardingProtocol\x12C\n" +
 	"\x16https_redirect_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14httpsRedirectEnabled\x88\x01\x01\x12\x88\x01\n" +
 	"\x11custom_domain_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe6\x03\x92\xd4a\x1fstatus.outputs.custom_domain_idR\x0fcustomDomainIds\x12B\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa6\x10\x92\xd4a\x1fstatus.outputs.custom_domain_idR\x0fcustomDomainIds\x12B\n" +
 	"\x16link_to_default_domain\x18\v \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13linkToDefaultDomain\x88\x01\x01\x12'\n" +
 	"\aenabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\aenabled\x88\x01\x01\x12-\n" +
 	"\vorigin_path\x18\r \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x03R\n" +

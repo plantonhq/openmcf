@@ -1469,7 +1469,7 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdc!\n" +
 	"\x19KubernetesCertificateSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12'\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12'\n" +
 	"\vsecret_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"secretName\x12\x7f\n" +
 	"\n" +
@@ -1517,9 +1517,9 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"\x17issuer_ref.one_required\x12\xe5\x01An issuer reference is required — choose 'cluster_issuer' (cluster-scoped, serves any namespace), 'issuer' (namespace-scoped, same namespace as the certificate), or 'external' for a third-party issuer kind (e.g. AWS Private CA)\x1aY[has(this.cluster_issuer), has(this.issuer), has(this.external)].filter(x, x).size() == 1B\r\n" +
 	"\vissuer_type\"\xb0\x01\n" +
 	"%KubernetesCertificateClusterIssuerRef\x12\x86\x01\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xbf\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\xaa\x01\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xbf\x1f\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\xaa\x01\n" +
 	"(KubernetesCertificateNamespacedIssuerRef\x12~\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"~\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xc0\x1f\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"~\n" +
 	"&KubernetesCertificateExternalIssuerRef\x12\x1c\n" +
 	"\x05group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05group\x12\x1a\n" +
 	"\x04kind\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04kind\x12\x1a\n" +

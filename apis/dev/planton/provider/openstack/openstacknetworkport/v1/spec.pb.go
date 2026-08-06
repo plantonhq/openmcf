@@ -261,9 +261,9 @@ const file_dev_planton_provider_openstack_openstacknetworkport_v1_spec_proto_raw
 	"Adev/planton/provider/openstack/openstacknetworkport/v1/spec.proto\x126dev.planton.provider.openstack.openstacknetworkport.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8b\a\n" +
 	"\x18OpenStackNetworkPortSpec\x12{\n" +
 	"\n" +
-	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x13\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\\\n" +
+	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x91N\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\\\n" +
 	"\tfixed_ips\x18\x02 \x03(\v2?.dev.planton.provider.openstack.openstacknetworkport.v1.FixedIpR\bfixedIps\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc9\x13\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12,\n" +
+	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x95N\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12,\n" +
 	"\x12no_security_groups\x18\x04 \x01(\bR\x10noSecurityGroups\x123\n" +
 	"\x0eadmin_state_up\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\fadminStateUp\x88\x01\x01\x12\x1f\n" +
 	"\vmac_address\x18\x06 \x01(\tR\n" +
@@ -277,7 +277,7 @@ const file_dev_planton_provider_openstack_openstacknetworkport_v1_spec_proto_raw
 	"\x0f_admin_state_upB\x18\n" +
 	"\x16_port_security_enabled\"\x9c\x01\n" +
 	"\aFixedIp\x12r\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc6\x13\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x92N\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
 	"\n" +
 	"ip_address\x18\x02 \x01(\tR\tipAddressB\xb7\x03\n" +
 	":com.dev.planton.provider.openstack.openstacknetworkport.v1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/apis/dev/planton/provider/openstack/openstacknetworkport/v1;openstacknetworkportv1\xa2\x02\x05DPPOO\xaa\x026Dev.Planton.Provider.Openstack.Openstacknetworkport.V1\xca\x026Dev\\Planton\\Provider\\Openstack\\Openstacknetworkport\\V1\xe2\x02BDev\\Planton\\Provider\\Openstack\\Openstacknetworkport\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Openstack::Openstacknetworkport::V1b\x06proto3"

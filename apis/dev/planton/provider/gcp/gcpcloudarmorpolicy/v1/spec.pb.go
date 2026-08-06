@@ -1669,7 +1669,7 @@ const file_dev_planton_provider_gcp_gcpcloudarmorpolicy_v1_spec_proto_rawDesc = 
 	"\x11redirect_site_key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fredirectSiteKey\"\x9b\f\n" +
 	"\x17GcpCloudArmorPolicySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
 	"\vpolicy_name\x18\x02 \x01(\tB\xe9\x01\xbaH\xe5\x01\xba\x01\xe1\x01\n" +
 	"\x11valid_policy_name\x12\x8a\x01policy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')R\n" +
 	"policyName\x12*\n" +

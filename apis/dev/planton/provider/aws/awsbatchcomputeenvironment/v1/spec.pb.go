@@ -682,7 +682,7 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"\x1eAwsBatchComputeEnvironmentSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12>\n" +
 	"\x05state\x18\x02 \x01(\tB#\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\aENABLEDH\x00R\x05state\x88\x01\x01\x12w\n" +
-	"\fservice_role\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12\x85\x01\n" +
+	"\fservice_role\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\vserviceRole\x12\x85\x01\n" +
 	"\x11compute_resources\x18\x04 \x01(\v2P.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchComputeResourcesB\x06\xbaH\x03\xc8\x01\x01R\x10computeResources\x12}\n" +
 	"\x11eks_configuration\x18\x05 \x01(\v2P.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchEksConfigurationR\x10eksConfiguration\x12q\n" +
 	"\rupdate_policy\x18\x06 \x01(\v2L.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchUpdatePolicyR\fupdatePolicyB\b\n" +
@@ -694,16 +694,16 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"\tmin_vcpus\x18\x03 \x01(\x05B\x05\x8a\xa6\x1d\x010H\x00R\bminVcpus\x88\x01\x01\x12#\n" +
 	"\rdesired_vcpus\x18\x04 \x01(\x05R\fdesiredVcpus\x12\x7f\n" +
 	"\n" +
-	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12%\n" +
+	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12%\n" +
 	"\x0einstance_types\x18\a \x03(\tR\rinstanceTypes\x12\xd7\x01\n" +
 	"\x13allocation_strategy\x18\b \x01(\tB\xa5\x01\xbaH\xa1\x01\xd8\x01\x01r\x9b\x01R\bBEST_FITR\x14BEST_FIT_PROGRESSIVER\x1cBEST_FIT_PROGRESSIVE_ORDEREDR\x17SPOT_CAPACITY_OPTIMIZEDR\x1dSPOT_PRICE_CAPACITY_OPTIMIZEDR#SPOT_CAPACITY_OPTIMIZED_PRIORITIZEDR\x12allocationStrategy\x12\x85\x01\n" +
-	"\rinstance_role\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe7\x01\x92\xd4a#status.outputs.instance_profile_arnR\finstanceRole\x12 \n" +
+	"\rinstance_role\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x87\b\x92\xd4a#status.outputs.instance_profile_arnR\finstanceRole\x12 \n" +
 	"\fec2_key_pair\x18\n" +
 	" \x01(\tR\n" +
 	"ec2KeyPair\x125\n" +
 	"\x0ebid_percentage\x18\v \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x01R\rbidPercentage\x88\x01\x01\x12\x83\x01\n" +
-	"\x13spot_iam_fleet_role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x10spotIamFleetRole\x12w\n" +
+	"\x13spot_iam_fleet_role\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10spotIamFleetRole\x12w\n" +
 	"\x0flaunch_template\x18\r \x01(\v2N.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchLaunchTemplateR\x0elaunchTemplate\x12\x89\x01\n" +
 	"\x12ec2_configurations\x18\x0e \x03(\v2P.dev.planton.provider.aws.awsbatchcomputeenvironment.v1.AwsBatchEc2ConfigurationB\b\xbaH\x05\x92\x01\x02\x10\x02R\x11ec2Configurations\x12'\n" +
 	"\x0fplacement_group\x18\x0f \x01(\tR\x0eplacementGroup\x12\x87\x01\n" +
@@ -720,7 +720,7 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"_min_vcpusB\x11\n" +
 	"\x0f_bid_percentage\"\xc7\x01\n" +
 	"\x16AwsBatchLaunchTemplate\x12\x92\x01\n" +
-	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x01\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
+	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\"\xb3\x01\n" +
 	"\x18AwsBatchEc2Configuration\x12\x1d\n" +
 	"\n" +
@@ -728,7 +728,7 @@ const file_dev_planton_provider_aws_awsbatchcomputeenvironment_v1_spec_proto_raw
 	"\x11image_id_override\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x0fimageIdOverride\x12B\n" +
 	"\x18image_kubernetes_version\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x16imageKubernetesVersion\"\xdd\x01\n" +
 	"\x18AwsBatchEksConfiguration\x12\x85\x01\n" +
-	"\x0feks_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x01\x92\xd4a\x1astatus.outputs.cluster_arnR\reksClusterArn\x129\n" +
+	"\x0feks_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\a\x92\xd4a\x1astatus.outputs.cluster_arnR\reksClusterArn\x129\n" +
 	"\x14kubernetes_namespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13kubernetesNamespace\"\xc5\x01\n" +
 	"\x14AwsBatchUpdatePolicy\x127\n" +
 	"\x18terminate_jobs_on_update\x18\x01 \x01(\bR\x15terminateJobsOnUpdate\x12R\n" +

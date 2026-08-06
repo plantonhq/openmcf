@@ -2342,7 +2342,7 @@ const file_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto_rawDesc = "
 	"\n" +
 	"9dev/planton/provider/azure/azureaksnodepool/v1/spec.proto\x12.dev.planton.provider.azure.azureaksnodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe42\n" +
 	"\x14AzureAksNodePoolSpec\x12\x90\x01\n" +
-	"\x15kubernetes_cluster_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x91\x03\x92\xd4a\x19status.outputs.cluster_idR\x13kubernetesClusterId\x12\xc0\x01\n" +
+	"\x15kubernetes_cluster_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x0f\x92\xd4a\x19status.outputs.cluster_idR\x13kubernetesClusterId\x12\xc0\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa0\x01\n" +
 	"\x19aks_node_pool_name_format\x12NNode pool names are 1-12 lowercase letters and numbers and start with a letter\x1a3this == '' || this.matches('^[a-z][a-z0-9]{0,11}$')\xc8\x01\x01R\x04name\x122\n" +
 	"\avm_size\x18\x03 \x01(\tB\x19\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x0fStandard_D4s_v5R\x06vmSize\x12X\n" +
@@ -2367,8 +2367,8 @@ const file_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto_rawDesc = "
 	"\vnode_taints\x18\x10 \x03(\tBA\xbaH>\x92\x01;\"9r725^[^=]+=[^:]*:(NoSchedule|PreferNoSchedule|NoExecute)$R\n" +
 	"nodeTaints\x12)\n" +
 	"\x05zones\x18\x11 \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12{\n" +
-	"\x0evnet_subnet_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\fvnetSubnetId\x12y\n" +
-	"\rpod_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\vpodSubnetId\x121\n" +
+	"\x0evnet_subnet_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\fvnetSubnetId\x12y\n" +
+	"\rpod_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\vpodSubnetId\x121\n" +
 	"\x14orchestrator_version\x18\x14 \x01(\tR\x13orchestratorVersion\x12%\n" +
 	"\x0fos_disk_size_gb\x18\x15 \x01(\x05R\fosDiskSizeGb\x12l\n" +
 	"\fos_disk_type\x18\x16 \x01(\x0e2J.dev.planton.provider.azure.azureaksnodepool.v1.AzureAksNodePoolOsDiskTypeR\n" +
@@ -2377,7 +2377,7 @@ const file_dev_planton_provider_azure_azureaksnodepool_v1_spec_proto_rawDesc = "
 	"\ffips_enabled\x18\x18 \x01(\bR\vfipsEnabled\x126\n" +
 	"\x17host_encryption_enabled\x18\x19 \x01(\bR\x15hostEncryptionEnabled\x123\n" +
 	"\x16node_public_ip_enabled\x18\x1a \x01(\bR\x13nodePublicIpEnabled\x12\x97\x01\n" +
-	"\x18node_public_ip_prefix_id\x18\x1b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x14nodePublicIpPrefixId\x12n\n" +
+	"\x18node_public_ip_prefix_id\x18\x1b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe5\x0f\x92\xd4a\"status.outputs.public_ip_prefix_idR\x14nodePublicIpPrefixId\x12n\n" +
 	"\fgpu_instance\x18\x1c \x01(\x0e2K.dev.planton.provider.azure.azureaksnodepool.v1.AzureAksNodePoolGpuInstanceR\vgpuInstance\x12h\n" +
 	"\n" +
 	"gpu_driver\x18\x1d \x01(\x0e2I.dev.planton.provider.azure.azureaksnodepool.v1.AzureAksNodePoolGpuDriverR\tgpuDriver\x12?\n" +

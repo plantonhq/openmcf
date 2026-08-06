@@ -777,7 +777,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmetricsserver_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/kubernetes/kubernetesmetricsserver/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesmetricsserver.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa9\x0e\n" +
 	"\x1bKubernetesMetricsServerSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x063.13.1H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
@@ -818,7 +818,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmetricsserver_v1_spec_proto
 	"\x1aKubernetesMetricsServerTls\x12\x84\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2Z.dev.planton.provider.kubernetes.kubernetesmetricsserver.v1.KubernetesMetricsServerTlsTypeB\x0f\x8a\xa6\x1d\vself_signedH\x00R\x04type\x88\x01\x01\x12\x97\x01\n" +
 	"\x13cert_manager_issuer\x18\x02 \x01(\v2g.dev.planton.provider.kubernetes.kubernetesmetricsserver.v1.KubernetesMetricsServerTlsCertManagerIssuerR\x11certManagerIssuer\x12|\n" +
-	"\x14existing_secret_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa7\x06\x92\xd4a\rmetadata.nameR\x12existingSecretName:\xf2\x04\xbaH\xee\x04\x1a\xc1\x01\n" +
+	"\x14existing_secret_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa7\x1f\x92\xd4a\rmetadata.nameR\x12existingSecretName:\xf2\x04\xbaH\xee\x04\x1a\xc1\x01\n" +
 	"&spec.tls.existing_secret_requires_name\x12etls type existing_secret requires existing_secret_name — the Secret holding the serving certificate\x1a0this.type != 3 || has(this.existing_secret_name)\x1a\xc9\x01\n" +
 	"*spec.tls.issuer_requires_cert_manager_type\x12icert_manager_issuer is only used with tls type cert_manager — set type accordingly or remove the issuer\x1a0!has(this.cert_manager_issuer) || this.type == 2\x1a\xdb\x01\n" +
 	"-spec.tls.secret_requires_existing_secret_type\x12wexisting_secret_name is only used with tls type existing_secret — set type accordingly or remove the secret reference\x1a1!has(this.existing_secret_name) || this.type == 3B\a\n" +
@@ -826,7 +826,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmetricsserver_v1_spec_proto
 	"+KubernetesMetricsServerTlsCertManagerIssuer\x12\x82\x01\n" +
 	"\x04kind\x18\x01 \x01(\x0e2].dev.planton.provider.kubernetes.kubernetesmetricsserver.v1.KubernetesMetricsServerIssuerKindB\n" +
 	"\x8a\xa6\x1d\x06issuerH\x00R\x04kind\x88\x01\x01\x12q\n" +
-	"\x04name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04nameB\a\n" +
+	"\x04name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x1f\x92\xd4a\x1astatus.outputs.issuer_nameR\x04nameB\a\n" +
 	"\x05_kind\"\x99\x05\n" +
 	"!KubernetesMetricsServerPrometheus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12'\n" +

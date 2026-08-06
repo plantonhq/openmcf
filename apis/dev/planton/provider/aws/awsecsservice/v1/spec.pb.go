@@ -2194,9 +2194,9 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"4dev/planton/provider/aws/awsecsservice/v1/spec.proto\x12)dev.planton.provider.aws.awsecsservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xef&\n" +
 	"\x11AwsEcsServiceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12~\n" +
-	"\vcluster_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x01\x92\xd4a\x1astatus.outputs.cluster_arnR\n" +
+	"\vcluster_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xed\a\x92\xd4a\x1astatus.outputs.cluster_arnR\n" +
 	"clusterArn\x12\x8e\x01\n" +
-	"\x0ftask_definition\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x01\x92\xd4a\"status.outputs.task_definition_arnR\x0etaskDefinition\x126\n" +
+	"\x0ftask_definition\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\b\x92\xd4a\"status.outputs.task_definition_arnR\x0etaskDefinition\x126\n" +
 	"\rdesired_count\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x00R\fdesiredCount\x88\x01\x01\x12,\n" +
 	"\vlaunch_type\x18\x05 \x01(\tB\v\x92\xa6\x1d\aFARGATER\n" +
 	"launchType\x12\x8e\x01\n" +
@@ -2246,25 +2246,25 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x06weight\x18\x03 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\xc4\x02\n" +
 	"\x14AwsEcsServiceNetwork\x12y\n" +
-	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x86\x01\n" +
+	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
 	"\x10assign_public_ip\x18\x03 \x01(\bR\x0eassignPublicIp\"\xa0\x03\n" +
 	"\x19AwsEcsServiceLoadBalancer\x12\x8c\x01\n" +
-	"\x10target_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x01\x92\xd4a\x1fstatus.outputs.target_group_arnR\x0etargetGroupArn\x12-\n" +
+	"\x10target_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\a\x92\xd4a\x1fstatus.outputs.target_group_arnR\x0etargetGroupArn\x12-\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rcontainerName\x122\n" +
 	"\x0econtainer_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\rcontainerPort\x12\x90\x01\n" +
 	"\x16advanced_configuration\x18\x04 \x01(\v2Y.dev.planton.provider.aws.awsecsservice.v1.AwsEcsServiceLoadBalancerAdvancedConfigurationR\x15advancedConfiguration\"\xe5\x04\n" +
 	".AwsEcsServiceLoadBalancerAdvancedConfiguration\x12\x9f\x01\n" +
-	"\x1aalternate_target_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x01\x92\xd4a\x1fstatus.outputs.target_group_arnR\x17alternateTargetGroupArn\x12\x94\x01\n" +
-	"\x18production_listener_rule\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x01\x92\xd4a\x17status.outputs.rule_arnR\x16productionListenerRule\x12\x82\x01\n" +
-	"\x12test_listener_rule\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\x01\x92\xd4a\x17status.outputs.rule_arnR\x10testListenerRule\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xd0\x01\n" +
+	"\x1aalternate_target_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\a\x92\xd4a\x1fstatus.outputs.target_group_arnR\x17alternateTargetGroupArn\x12\x94\x01\n" +
+	"\x18production_listener_rule\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\b\x92\xd4a\x17status.outputs.rule_arnR\x16productionListenerRule\x12\x82\x01\n" +
+	"\x12test_listener_rule\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x89\b\x92\xd4a\x17status.outputs.rule_arnR\x10testListenerRule\x12u\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xd0\x01\n" +
 	"%AwsEcsServiceDeploymentCircuitBreaker\x12\x16\n" +
 	"\x06enable\x18\x01 \x01(\bR\x06enable\x12\x1a\n" +
 	"\brollback\x18\x02 \x01(\bR\brollback:s\xbaHp\x1an\n" +
 	"\x18rollback_requires_enable\x123rollback requires the circuit breaker to be enabled\x1a\x1d!this.rollback || this.enable\"\xd1\x02\n" +
 	"\x1dAwsEcsServiceDeploymentAlarms\x12}\n" +
-	"\valarm_names\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb7\x02\x92\xd4a\x19status.outputs.alarm_nameR\n" +
+	"\valarm_names\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\b\x92\xd4a\x19status.outputs.alarm_nameR\n" +
 	"alarmNames\x12\x16\n" +
 	"\x06enable\x18\x02 \x01(\bR\x06enable\x12\x1a\n" +
 	"\brollback\x18\x03 \x01(\bR\brollback:}\xbaHz\x1ax\n" +
@@ -2292,7 +2292,7 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x1a_step_bake_time_in_minutes\"\xc7\x03\n" +
 	"$AwsEcsServiceDeploymentLifecycleHook\x12.\n" +
 	"\x0fhook_target_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rhookTargetArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\xd4\x01\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\xd4\x01\n" +
 	"\x10lifecycle_stages\x18\x03 \x03(\tB\xa8\x01\xbaH\xa4\x01\x92\x01\xa0\x01\b\x01\x18\x01\"\x99\x01r\x96\x01R\x11RECONCILE_SERVICER\fPRE_SCALE_UPR\rPOST_SCALE_UPR\x12TEST_TRAFFIC_SHIFTR\x17POST_TEST_TRAFFIC_SHIFTR\x18PRODUCTION_TRAFFIC_SHIFTR\x1dPOST_PRODUCTION_TRAFFIC_SHIFTR\x0flifecycleStages\x12!\n" +
 	"\fhook_details\x18\x04 \x01(\tR\vhookDetails\"\xc8\x03\n" +
 	"\x1bAwsEcsServiceServiceConnect\x12\x18\n" +
@@ -2317,8 +2317,8 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x1bper_request_timeout_seconds\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x18perRequestTimeoutSeconds\"\xba\x02\n" +
 	"\x1eAwsEcsServiceServiceConnectTls\x129\n" +
 	"\x15aws_pca_authority_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12awsPcaAuthorityArn\x12l\n" +
-	"\akms_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\x12o\n" +
-	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xa4\x06\n" +
+	"\akms_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\x12o\n" +
+	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xa4\x06\n" +
 	"\x1dAwsEcsServiceLogConfiguration\x12%\n" +
 	"\n" +
 	"log_driver\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tlogDriver\x12o\n" +
@@ -2343,7 +2343,7 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x12managed_ebs_volume\x18\x02 \x01(\v2H.dev.planton.provider.aws.awsecsservice.v1.AwsEcsServiceManagedEbsVolumeB\x06\xbaH\x03\xc8\x01\x01R\x10managedEbsVolume\"\xc5\n" +
 	"\n" +
 	"\x1dAwsEcsServiceManagedEbsVolume\x12u\n" +
-	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1c\n" +
+	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1c\n" +
 	"\n" +
 	"size_in_gb\x18\x02 \x01(\x05R\bsizeInGb\x12\x1f\n" +
 	"\vvolume_type\x18\x03 \x01(\tR\n" +
@@ -2354,7 +2354,7 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"throughput\x12!\n" +
 	"\tencrypted\x18\x06 \x01(\bH\x00R\tencrypted\x88\x01\x01\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
+	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\b \x01(\tR\n" +
 	"snapshotId\x12(\n" +
 	"\x10file_system_type\x18\t \x01(\tR\x0efileSystemType:\xca\x06\xbaH\xc6\x06\x1a\x83\x01\n" +
@@ -2390,8 +2390,8 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x1b_scale_out_cooldown_seconds\"\xa1\x05\n" +
 	"*AwsEcsServiceAutoscalingRequestCountTarget\x12K\n" +
 	"\x1atarget_requests_per_target\x18\x01 \x01(\x01B\x0e\xbaH\v\x12\t!\x00\x00\x00\x00\x00\x00\x00\x00R\x17targetRequestsPerTarget\x12\x95\x01\n" +
-	"\x18load_balancer_arn_suffix\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a\x19status.outputs.arn_suffixR\x15loadBalancerArnSuffix\x12\x93\x01\n" +
-	"\x17target_group_arn_suffix\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x01\x92\xd4a\x19status.outputs.arn_suffixR\x14targetGroupArnSuffix\x12G\n" +
+	"\x18load_balancer_arn_suffix\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a\x19status.outputs.arn_suffixR\x15loadBalancerArnSuffix\x12\x93\x01\n" +
+	"\x17target_group_arn_suffix\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\a\x92\xd4a\x19status.outputs.arn_suffixR\x14targetGroupArnSuffix\x12G\n" +
 	"\x19scale_in_cooldown_seconds\x18\x04 \x01(\x05B\a\x8a\xa6\x1d\x03300H\x00R\x16scaleInCooldownSeconds\x88\x01\x01\x12H\n" +
 	"\x1ascale_out_cooldown_seconds\x18\x05 \x01(\x05B\x06\x8a\xa6\x1d\x0260H\x01R\x17scaleOutCooldownSeconds\x88\x01\x01\x12(\n" +
 	"\x10disable_scale_in\x18\x06 \x01(\bR\x0edisableScaleInB\x1c\n" +

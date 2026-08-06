@@ -152,7 +152,7 @@ const file_dev_planton_provider_gcp_gcppubsubschema_v1_spec_proto_rawDesc = "" +
 	"6dev/planton/provider/gcp/gcppubsubschema/v1/spec.proto\x12+dev.planton.provider.gcp.gcppubsubschema.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x94\x04\n" +
 	"\x13GcpPubSubSchemaSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe0\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xe0\x01\n" +
 	"\vschema_name\x18\x02 \x01(\tB\xbe\x01\xbaH\xba\x01\xba\x01\x8c\x01\n" +
 	"\x19schema_name_goog_reserved\x12Uschema names beginning with 'goog' are reserved by Google — choose a different name\x1a\x18!this.startsWith('goog')\xc8\x01\x01r%\x10\x03\x18\xff\x012\x1e^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$R\n" +
 	"schemaName\x12{\n" +

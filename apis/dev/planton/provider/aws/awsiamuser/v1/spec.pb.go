@@ -179,10 +179,10 @@ const file_dev_planton_provider_aws_awsiamuser_v1_spec_proto_rawDesc = "" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12A\n" +
 	"\tuser_name\x18\x02 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[a-zA-Z0-9+=,.@_-]{1,64}$R\buserName\x12\x19\n" +
 	"\x04path\x18\x03 \x01(\tB\x05\x92\xa6\x1d\x01/R\x04path\x12\x86\x01\n" +
-	"\x13managed_policy_arns\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe6\x01\x92\xd4a\x19status.outputs.policy_arnR\x11managedPolicyArns\x12\x82\x01\n" +
+	"\x13managed_policy_arns\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x86\b\x92\xd4a\x19status.outputs.policy_arnR\x11managedPolicyArns\x12\x82\x01\n" +
 	"\x0finline_policies\x18\x05 \x03(\v2J.dev.planton.provider.aws.awsiamuser.v1.AwsIamUserSpec.InlinePoliciesEntryB\r\xbaH\n" +
 	"\x9a\x01\a\"\x05r\x03\x18\x80\x01R\x0einlinePolicies\x12\x89\x01\n" +
-	"\x14permissions_boundary\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe6\x01\x92\xd4a\x19status.outputs.policy_arnR\x13permissionsBoundary\x12.\n" +
+	"\x14permissions_boundary\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x86\b\x92\xd4a\x19status.outputs.policy_arnR\x13permissionsBoundary\x12.\n" +
 	"\x13disable_access_keys\x18\a \x01(\bR\x11disableAccessKeys\x12#\n" +
 	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x1aZ\n" +
 	"\x13InlinePoliciesEntry\x12\x10\n" +

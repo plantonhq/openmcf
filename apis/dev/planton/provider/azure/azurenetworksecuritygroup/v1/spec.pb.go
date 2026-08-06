@@ -551,7 +551,7 @@ const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_ra
 	"\x1dAzureNetworkSecurityGroupSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x98\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x98\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x83\x02\xbaH\xff\x01\xba\x01\xf2\x01\n" +
 	"\x0fnsg_name_format\x12\x93\x01NSG names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12}\n" +
 	"\x0esecurity_rules\x18\x04 \x03(\v2V.dev.planton.provider.azure.azurenetworksecuritygroup.v1.AzureNetworkSecurityGroupRuleR\rsecurityRules\x12t\n" +
@@ -575,11 +575,11 @@ const file_dev_planton_provider_azure_azurenetworksecuritygroup_v1_spec_proto_ra
 	"\x15source_address_prefix\x18\v \x01(\tH\x02R\x13sourceAddressPrefix\x88\x01\x01\x126\n" +
 	"\x17source_address_prefixes\x18\f \x03(\tR\x15sourceAddressPrefixes\x12\xc3\x01\n" +
 	"%source_application_security_group_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\n" +
-	"\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR!sourceApplicationSecurityGroupIds\x12A\n" +
+	"\x88\xd4a\xec\x0f\x92\xd4a,status.outputs.application_security_group_idR!sourceApplicationSecurityGroupIds\x12A\n" +
 	"\x1adestination_address_prefix\x18\x0e \x01(\tH\x03R\x18destinationAddressPrefix\x88\x01\x01\x12@\n" +
 	"\x1cdestination_address_prefixes\x18\x0f \x03(\tR\x1adestinationAddressPrefixes\x12\xcd\x01\n" +
 	"*destination_application_security_group_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\n" +
-	"\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR&destinationApplicationSecurityGroupIds:\x80\t\xbaH\xfc\b\x1a\xc1\x01\n" +
+	"\x88\xd4a\xec\x0f\x92\xd4a,status.outputs.application_security_group_idR&destinationApplicationSecurityGroupIds:\x80\t\xbaH\xfc\b\x1a\xc1\x01\n" +
 	"\x19source_ports_single_style\x12^Set source ports as either source_port_range or source_port_ranges, not both (unset means any)\x1aD!(has(this.source_port_range) && this.source_port_ranges.size() > 0)\x1a\xcb\x01\n" +
 	"\x1ddestination_ports_exactly_one\x12[Set exactly one of destination_port_range or destination_port_ranges (use \"*\" for any port)\x1aMhas(this.destination_port_range) != (this.destination_port_ranges.size() > 0)\x1a\xde\x02\n" +
 	"\x1bsource_address_single_style\x12\x97\x01Set at most one source addressing style: source_address_prefix, source_address_prefixes, or source_application_security_group_ids (all unset means any)\x1a\xa4\x01(has(this.source_address_prefix) ? 1 : 0) + (this.source_address_prefixes.size() > 0 ? 1 : 0) + (this.source_application_security_group_ids.size() > 0 ? 1 : 0) <= 1\x1a\x86\x03\n" +

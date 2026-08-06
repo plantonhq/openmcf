@@ -876,7 +876,7 @@ const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\t\n" +
 	"\x15KubernetesCronJobSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x9c\x02\n" +
 	"\bschedule\x18\x03 \x01(\tB\xff\x01\xbaH\xfb\x01\xba\x01\xf4\x01\n" +
 	"\rspec.schedule\x12\xaa\x01Schedule must be a standard 5-field cron expression: minute hour day-of-month month day-of-week (e.g. \"0 3 * * *\" for daily at 03:00, \"*/15 * * * *\" for every 15 minutes)\x1a6this.matches('^\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+$')\xc8\x01\x01R\bschedule\x12 \n" +

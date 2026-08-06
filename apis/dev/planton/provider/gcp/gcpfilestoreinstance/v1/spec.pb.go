@@ -789,7 +789,7 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"R\x10nfsExportOptions\x12#\n" +
 	"\rsource_backup\x18\x04 \x01(\tR\fsourceBackup\"\x8a\x04\n" +
 	"!GcpFilestoreInstanceNetworkConfig\x12|\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\xfe\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\xfe\x01\n" +
 	"\fconnect_mode\x18\x02 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xd2\x01\n" +
 	"\x18connect_mode_valid_value\x12Wconnect_mode must be DIRECT_PEERING, PRIVATE_SERVICE_ACCESS, or PRIVATE_SERVICE_CONNECT\x1a]this == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS', 'PRIVATE_SERVICE_CONNECT']R\vconnectMode\x12*\n" +
 	"\x11reserved_ip_range\x18\x03 \x01(\tR\x0freservedIpRange\x12:\n" +
@@ -806,7 +806,7 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"#performance_config_mutual_exclusion\x12?fixed_iops and iops_per_tb are mutually exclusive; set only one\x1a/!has(this.fixed_iops) || !has(this.iops_per_tb)\"\xc0\x0e\n" +
 	"\x18GcpFilestoreInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x90\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x90\x02\n" +
 	"\rinstance_name\x18\x02 \x01(\tB\xea\x01\xbaH\xe6\x01\xba\x01\xe2\x01\n" +
 	"\x14instance_name_format\x12\x8b\x01instance_name must be 2-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and ending with a letter or number\x1a<this == '' || this.matches('^[a-z][a-z0-9-]{0,61}[a-z0-9]$')R\finstanceName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12r\n" +
@@ -815,7 +815,7 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x8b\x01\n" +
 	"\bprotocol\x18\x06 \x01(\tBo\xbaHl\xba\x01i\n" +
 	"\x14protocol_valid_value\x12#protocol must be NFS_V3 or NFS_V4_1\x1a,this == '' || this in ['NFS_V3', 'NFS_V4_1']R\bprotocol\x12t\n" +
-	"\fkms_key_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\b \x01(\bR\x19deletionProtectionEnabled\x12<\n" +
 	"\x1adeletion_protection_reason\x18\t \x01(\tR\x18deletionProtectionReason\x12v\n" +
@@ -836,7 +836,7 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"&GcpFilestoreInstanceInitialReplication\x12\x8b\x01\n" +
 	"\x04role\x18\x01 \x01(\tBw\xbaHt\xba\x01q\n" +
 	"\x16valid_replication_role\x12*replication role must be ACTIVE or STANDBY\x1a+this == '' || this in ['ACTIVE', 'STANDBY']R\x04role\x12\x86\x01\n" +
-	"\x0epeer_instances\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\x05\x92\xd4a\x1astatus.outputs.instance_idR\rpeerInstancesB\x93\x03\n" +
+	"\x0epeer_instances\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x18\x92\xd4a\x1astatus.outputs.instance_idR\rpeerInstancesB\x93\x03\n" +
 	"4com.dev.planton.provider.gcp.gcpfilestoreinstance.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpfilestoreinstance/v1;gcpfilestoreinstancev1\xa2\x02\x05DPPGG\xaa\x020Dev.Planton.Provider.Gcp.Gcpfilestoreinstance.V1\xca\x020Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\xe2\x02<Dev\\Planton\\Provider\\Gcp\\Gcpfilestoreinstance\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Gcp::Gcpfilestoreinstance::V1b\x06proto3"
 
 var (

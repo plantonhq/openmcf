@@ -846,7 +846,7 @@ const file_dev_planton_provider_azure_azurecosmosdbsqlcontainer_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/azure/azurecosmosdbsqlcontainer/v1/spec.proto\x127dev.planton.provider.azure.azurecosmosdbsqlcontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcb\x10\n" +
 	"\x1dAzureCosmosdbSqlContainerSpec\x12\x89\x01\n" +
-	"\x0fsql_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4\x03\x92\xd4a\x1estatus.outputs.sql_database_idR\rsqlDatabaseId\x124\n" +
+	"\x0fsql_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xb4\x10\x92\xd4a\x1estatus.outputs.sql_database_idR\rsqlDatabaseId\x124\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\rcontainerName\x12\xa5\x01\n" +
 	"\x13partition_key_paths\x18\x03 \x03(\tBu\xbaHr\x92\x01o\b\x01\x10\x03\"i\xba\x01f\n" +

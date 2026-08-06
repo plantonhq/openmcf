@@ -481,18 +481,18 @@ const file_dev_planton_provider_azure_azurefrontdoorcustomdomain_v1_spec_proto_r
 	"Cdev/planton/provider/azure/azurefrontdoorcustomdomain/v1/spec.proto\x128dev.planton.provider.azure.azurefrontdoorcustomdomain.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x90\f\n" +
 	"\x1eAzureFrontDoorCustomDomainSpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\xd2\x02\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\xd2\x02\n" +
 	"\vdomain_name\x18\x02 \x01(\tB\xb0\x02\xbaH\xac\x02\xba\x01\xa5\x02\n" +
 	"$front_door_custom_domain_name_format\x12\xbf\x01domain_name must be 2-260 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens (dots are not allowed -- this is the resource name, not the hostname)\x1a;this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,258}[a-zA-Z0-9]$')\xc8\x01\x01R\n" +
 	"domainName\x12\x9c\x03\n" +
 	"\thost_name\x18\x03 \x01(\tB\xfe\x02\xbaH\xfa\x02\xba\x01\xee\x02\n" +
 	")front_door_custom_domain_host_name_format\x12\xca\x01host_name must be a fully qualified domain name of dot-separated labels (each 1-63 characters, letters/digits/hyphens, not starting or ending with a hyphen); only the FIRST label may be the wildcard '*'\x1atthis.matches('^(\\\\*|[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(\\\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$')\xc8\x01\x01r\x03\x18\xfd\x01R\bhostName\x12w\n" +
-	"\vdns_zone_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\tdnsZoneId\x12q\n" +
+	"\vdns_zone_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x0f\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\tdnsZoneId\x12q\n" +
 	"\x03tls\x18\x05 \x01(\v2W.dev.planton.provider.azure.azurefrontdoorcustomdomain.v1.AzureFrontDoorCustomDomainTlsB\x06\xbaH\x03\xc8\x01\x01R\x03tls:\x90\x03\xbaH\x8c\x03\x1a\x89\x03\n" +
 	"/front_door_custom_domain_managed_cert_host_name\x12\xde\x01with an Azure-managed certificate the host_name cannot exceed 64 characters and cannot be a wildcard -- use a CUSTOMER_CERTIFICATE (an AzureFrontDoorSecret wrapping your own certificate) for wildcard or very long hostnames\x1au(has(this.tls) && this.tls.certificate_type == 2) || (this.host_name.size() <= 64 && !this.host_name.startsWith('*'))\"\xd7\x05\n" +
 	"\x1dAzureFrontDoorCustomDomainTls\x12\x98\x01\n" +
 	"\x10certificate_type\x18\x01 \x01(\x0e2c.dev.planton.provider.azure.azurefrontdoorcustomdomain.v1.AzureFrontDoorCustomDomainCertificateTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0fcertificateType\x12r\n" +
-	"\tsecret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe7\x03\x92\xd4a\x18status.outputs.secret_idR\bsecretId\x12\x82\x01\n" +
+	"\tsecret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xa7\x10\x92\xd4a\x18status.outputs.secret_idR\bsecretId\x12\x82\x01\n" +
 	"\fcipher_suite\x18\x03 \x01(\v2_.dev.planton.provider.azure.azurefrontdoorcustomdomain.v1.AzureFrontDoorCustomDomainCipherSuiteR\vcipherSuite:\xa1\x02\xbaH\x9d\x02\x1a\x9a\x02\n" +
 	"+front_door_custom_domain_tls_secret_pairing\x12\xa1\x01secret_id is required with CUSTOMER_CERTIFICATE (it names the certificate to serve) and must stay unset with MANAGED_CERTIFICATE (Azure provides the certificate)\x1aGthis.certificate_type == 2 ? has(this.secret_id) : !has(this.secret_id)\"\xd1\x04\n" +
 	"%AzureFrontDoorCustomDomainCipherSuite\x12\x86\x01\n" +

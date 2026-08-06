@@ -264,16 +264,16 @@ const file_dev_planton_provider_gcp_gcpspannerbackupschedule_v1_spec_proto_rawDe
 	"(GcpSpannerBackupScheduleEncryptionConfig\x12\x9f\x02\n" +
 	"\x0fencryption_type\x18\x01 \x01(\tB\xf5\x01\xbaH\xf1\x01\xba\x01\xea\x01\n" +
 	"\x1bencryption_type_valid_value\x12jencryption_type must be USE_DATABASE_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION, or CUSTOMER_MANAGED_ENCRYPTION\x1a_this in ['USE_DATABASE_ENCRYPTION', 'GOOGLE_DEFAULT_ENCRYPTION', 'CUSTOMER_MANAGED_ENCRYPTION']\xc8\x01\x01R\x0eencryptionType\x12t\n" +
-	"\fkms_key_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12v\n" +
-	"\rkms_key_names\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xd6\x03\xbaH\xd2\x03\x1a\xee\x01\n" +
+	"\rkms_key_names\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xd6\x03\xbaH\xd2\x03\x1a\xee\x01\n" +
 	"#cmek_requires_exactly_one_key_shape\x12QCUSTOMER_MANAGED_ENCRYPTION requires exactly one of kms_key_name or kms_key_names\x1atthis.encryption_type != 'CUSTOMER_MANAGED_ENCRYPTION' || (has(this.kms_key_name) != (this.kms_key_names.size() > 0))\x1a\xde\x01\n" +
 	"\x1anon_cmek_must_not_set_keys\x12Jkms_key_name/kms_key_names are only valid with CUSTOMER_MANAGED_ENCRYPTION\x1atthis.encryption_type == 'CUSTOMER_MANAGED_ENCRYPTION' || (!has(this.kms_key_name) && this.kms_key_names.size() == 0)\"\x82\a\n" +
 	"\x1cGcpSpannerBackupScheduleSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
-	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xf9\x04\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12{\n" +
-	"\bdatabase\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xfa\x04\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x12J\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x17\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12{\n" +
+	"\bdatabase\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xda\x17\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x12J\n" +
 	"\rschedule_name\x18\x04 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1d\x18?2\x19^[a-z][-a-z0-9]*[a-z0-9]$R\fscheduleName\x12\x1a\n" +
 	"\x04cron\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04cron\x12Q\n" +
 	"\x12retention_duration\x18\x06 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[0-9]+(\\.[0-9]{1,9})?s$R\x11retentionDuration\x12\x97\x01\n" +

@@ -808,10 +808,10 @@ const file_dev_planton_provider_aws_awscloudwatchalarm_v1_spec_proto_rawDesc = "
 	"dimensions\x12\x12\n" +
 	"\x04unit\x18\x0f \x01(\tR\x04unit\x12t\n" +
 	"\x0emetric_queries\x18\x10 \x03(\v2M.dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmMetricQueryR\rmetricQueries\x12z\n" +
-	"\ralarm_actions\x18\x11 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\falarmActions\x12t\n" +
+	"\ralarm_actions\x18\x11 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\falarmActions\x12t\n" +
 	"\n" +
-	"ok_actions\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\tokActions\x12\x91\x01\n" +
-	"\x19insufficient_data_actions\x18\x13 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x17insufficientDataActions\x125\n" +
+	"ok_actions\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\tokActions\x12\x91\x01\n" +
+	"\x19insufficient_data_actions\x18\x13 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x17insufficientDataActions\x125\n" +
 	"\x11alarm_description\x18\x14 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x10alarmDescription\x12P\n" +
 	"%evaluate_low_sample_count_percentiles\x18\x15 \x01(\tR!evaluateLowSampleCountPercentiles\x12\x85\x01\n" +
 	"\x13evaluation_criteria\x18\x16 \x01(\v2T.dev.planton.provider.aws.awscloudwatchalarm.v1.AwsCloudwatchAlarmEvaluationCriteriaR\x12evaluationCriteria\x12/\n" +

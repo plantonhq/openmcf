@@ -392,7 +392,7 @@ const file_dev_planton_provider_scaleway_scalewaypublicgateway_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/scaleway/scalewaypublicgateway/v1/spec.proto\x126dev.planton.provider.scaleway.scalewaypublicgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd0\x04\n" +
 	"\x19ScalewayPublicGatewaySpec\x12\x92\x01\n" +
-	"\x12private_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\x1a\n" +
+	"\x12private_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\x1a\n" +
 	"\x04zone\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04zone\x12&\n" +
 	"\x04type\x18\x03 \x01(\tB\x12\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\bVPC-GW-SR\x04type\x125\n" +
 	"\x11enable_masquerade\x18\x04 \x01(\bB\b\x92\xa6\x1d\x04trueR\x10enableMasquerade\x12n\n" +

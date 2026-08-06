@@ -261,7 +261,7 @@ const file_dev_planton_provider_azure_azureprivatednszone_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/azure/azureprivatednszone/v1/spec.proto\x121dev.planton.provider.azure.azureprivatednszone.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4\x05\n" +
 	"\x17AzurePrivateDnsZoneSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf6\x01\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf6\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd6\x01\n" +
 	"\tzone_name\x12eZone name must be a valid DNS domain (e.g., privatelink.postgres.database.azure.com or corp.internal)\x1abthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$')\xc8\x01\x01R\x04name\x12n\n" +
 	"\n" +

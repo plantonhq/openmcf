@@ -651,17 +651,17 @@ const file_dev_planton_provider_gcp_gcprouternat_v1_spec_proto_rawDesc = "" +
 	"3dev/planton/provider/gcp/gcprouternat/v1/spec.proto\x12(dev.planton.provider.gcp.gcprouternat.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xec\x06\n" +
 	"\x16GcpRouterNatSubnetwork\x12\x86\x01\n" +
 	"\n" +
-	"subnetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12~\n" +
 	"\x17source_ip_ranges_to_nat\x18\x02 \x03(\tBH\xbaHE\x92\x01B\"@r>R\rALL_IP_RANGESR\x10PRIMARY_IP_RANGER\x1bLIST_OF_SECONDARY_IP_RANGESR\x13sourceIpRangesToNat\x127\n" +
 	"\x18secondary_ip_range_names\x18\x03 \x03(\tR\x15secondaryIpRangeNames:\x8f\x04\xbaH\x8b\x04\x1a\xfe\x01\n" +
 	"&secondary_names_require_secondary_mode\x12fsecondary_ip_range_names is required when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1al!('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat) || this.secondary_ip_range_names.size() > 0\x1a\x87\x02\n" +
 	"(secondary_names_only_with_secondary_mode\x12msecondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1althis.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)\"\xea\x04\n" +
 	"\x16GcpRouterNatRuleAction\x12\x88\x01\n" +
-	"\x15source_nat_active_ips\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x12sourceNatActiveIps\x12\x86\x01\n" +
-	"\x14source_nat_drain_ips\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x11sourceNatDrainIps\x12\x9d\x01\n" +
-	"\x18source_nat_active_ranges\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x15sourceNatActiveRanges\x12\x9b\x01\n" +
-	"\x17source_nat_drain_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x14sourceNatDrainRanges\"\xd8\x01\n" +
+	"\x15source_nat_active_ips\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\x12sourceNatActiveIps\x12\x86\x01\n" +
+	"\x14source_nat_drain_ips\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\x11sourceNatDrainIps\x12\x9d\x01\n" +
+	"\x18source_nat_active_ranges\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x15sourceNatActiveRanges\x12\x9b\x01\n" +
+	"\x17source_nat_drain_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x14sourceNatDrainRanges\"\xd8\x01\n" +
 	"\x10GcpRouterNatRule\x12*\n" +
 	"\vrule_number\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xe8\xfb\x03R\n" +
 	"ruleNumber\x12\x1c\n" +
@@ -670,12 +670,12 @@ const file_dev_planton_provider_gcp_gcprouternat_v1_spec_proto_rawDesc = "" +
 	"\x06action\x18\x04 \x01(\v2@.dev.planton.provider.gcp.gcprouternat.v1.GcpRouterNatRuleActionR\x06action\"\xf2*\n" +
 	"\x10GcpRouterNatSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
 	"\vrouter_name\x18\x02 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\n" +
 	"routerName\x12F\n" +
 	"\bnat_name\x18\x03 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\anatName\x12\x1e\n" +
 	"\x06region\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\x87\x01\n" +
-	"\rvpc_self_link\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12\x1d\n" +
+	"\rvpc_self_link\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\vvpcSelfLink\x12\x1d\n" +
 	"\n" +
 	"router_asn\x18\x06 \x01(\rR\trouterAsn\x12\xcc\x01\n" +
 	"\x19router_keepalive_interval\x18\a \x01(\x05B\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
@@ -686,8 +686,8 @@ const file_dev_planton_provider_gcp_gcprouternat_v1_spec_proto_rawDesc = "" +
 	"'source_subnetwork_ip_ranges_valid_value\x12\x87\x01source_subnetwork_ip_ranges_to_nat must be ALL_SUBNETWORKS_ALL_IP_RANGES, ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES, or LIST_OF_SUBNETWORKS\x1awthis == '' || this in ['ALL_SUBNETWORKS_ALL_IP_RANGES', 'ALL_SUBNETWORKS_ALL_PRIMARY_IP_RANGES', 'LIST_OF_SUBNETWORKS']R\x1dsourceSubnetworkIpRangesToNat\x12b\n" +
 	"\vsubnetworks\x18\n" +
 	" \x03(\v2@.dev.planton.provider.gcp.gcprouternat.v1.GcpRouterNatSubnetworkR\vsubnetworks\x12n\n" +
-	"\anat_ips\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x06natIps\x12y\n" +
-	"\rdrain_nat_ips\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\vdrainNatIps\x12\xb1\x01\n" +
+	"\anat_ips\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\x06natIps\x12y\n" +
+	"\rdrain_nat_ips\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xaa\x18\x92\xd4a\x18status.outputs.self_linkR\vdrainNatIps\x12\xb1\x01\n" +
 	"\x11auto_network_tier\x18\r \x01(\tB\x84\x01\xbaH\x80\x01\xba\x01}\n" +
 	"\x1dauto_network_tier_valid_value\x12-auto_network_tier must be PREMIUM or STANDARD\x1a-this == '' || this in ['PREMIUM', 'STANDARD']R\x0fautoNetworkTier\x120\n" +
 	"\x10min_ports_per_vm\x18\x0e \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rminPortsPerVm\x120\n" +

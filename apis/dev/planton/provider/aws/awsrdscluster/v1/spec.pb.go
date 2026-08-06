@@ -1237,9 +1237,9 @@ const file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc = "" +
 	"\x11AwsRdsClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12c\n" +
 	"\x14db_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11dbSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12-\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12-\n" +
 	"\x12availability_zones\x18\x05 \x03(\tR\x11availabilityZones\x12!\n" +
 	"\fnetwork_type\x18\x06 \x01(\tR\vnetworkType\x12\x1f\n" +
 	"\x04port\x18\a \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12R\n" +
@@ -1259,11 +1259,11 @@ const file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc = "" +
 	"\rdatabase_name\x18\x13 \x01(\tR\fdatabaseName\x12'\n" +
 	"\x0fmaster_username\x18\x14 \x01(\tR\x0emasterUsername\x12G\n" +
 	"\x1bmanage_master_user_password\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18manageMasterUserPassword\x12\x94\x01\n" +
-	"\x1dmaster_user_secret_kms_key_id\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12-\n" +
+	"\x1dmaster_user_secret_kms_key_id\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x18masterUserSecretKmsKeyId\x12-\n" +
 	"\x0fmaster_password\x18\x17 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x125\n" +
 	"\x11storage_encrypted\x18\x18 \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12A\n" +
+	"kms_key_id\x18\x19 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12A\n" +
 	"\x17backup_retention_period\x18\x1a \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
 	"\x17preferred_backup_window\x18\x1b \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\x1c \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x121\n" +
@@ -1274,14 +1274,14 @@ const file_dev_planton_provider_aws_awsrdscluster_v1_spec_proto_rawDesc = "" +
 	"\x13deletion_protection\x18! \x01(\bR\x12deletionProtection\x12E\n" +
 	"\x18backtrack_window_seconds\x18\" \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xe9\x0f(\x00R\x16backtrackWindowSeconds\x12M\n" +
 	"#iam_database_authentication_enabled\x18# \x01(\bR iamDatabaseAuthenticationEnabled\x12q\n" +
-	"\tiam_roles\x18$ \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x120\n" +
+	"\tiam_roles\x18$ \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x120\n" +
 	"\x14enable_http_endpoint\x18% \x01(\bR\x12enableHttpEndpoint\x12O\n" +
 	"\x1fenabled_cloudwatch_logs_exports\x18& \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12@\n" +
 	"\x1cperformance_insights_enabled\x18' \x01(\bR\x1aperformanceInsightsEnabled\x12\x99\x01\n" +
-	"\x1fperformance_insights_kms_key_id\x18( \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
+	"\x1fperformance_insights_kms_key_id\x18( \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1bperformanceInsightsKmsKeyId\x12Q\n" +
 	"%performance_insights_retention_period\x18) \x01(\x05R\"performanceInsightsRetentionPeriod\x12/\n" +
 	"\x13monitoring_interval\x18* \x01(\x05R\x12monitoringInterval\x12\x84\x01\n" +
-	"\x13monitoring_role_arn\x18+ \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
+	"\x13monitoring_role_arn\x18+ \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11monitoringRoleArn\x124\n" +
 	"\x16database_insights_mode\x18, \x01(\tR\x14databaseInsightsMode\x12/\n" +
 	"\x13snapshot_identifier\x18- \x01(\tR\x12snapshotIdentifier\x12\x84\x01\n" +
 	"\x18restore_to_point_in_time\x18. \x01(\v2L.dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterRestoreToPointInTimeR\x14restoreToPointInTime\x12B\n" +

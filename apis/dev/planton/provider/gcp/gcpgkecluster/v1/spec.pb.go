@@ -2352,13 +2352,13 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"4dev/planton/provider/gcp/gcpgkecluster/v1/spec.proto\x12)dev.planton.provider.gcp.gcpgkecluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6=\n" +
 	"\x11GcpGkeClusterSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
 	"\fcluster_name\x18\x02 \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$R\vclusterName\x12D\n" +
 	"\blocation\x18\x03 \x01(\tB(\xbaH%\xc8\x01\x01r 2\x1e^[a-z]+-[a-z]+[0-9]+(-[a-z])?$R\blocation\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12}\n" +
-	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x86\x01\n" +
+	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x86\x01\n" +
 	"\n" +
-	"subnetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12S\n" +
 	"\x0enode_locations\x18\a \x03(\tB,\xbaH)\xd8\x01\x01\x92\x01#\x18\x01\"\x1fr\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\rnodeLocations\x12y\n" +
 	"\x0fresource_labels\x18\b \x03(\v2P.dev.planton.provider.gcp.gcpgkecluster.v1.GcpGkeClusterSpec.ResourceLabelsEntryR\x0eresourceLabels\x12>\n" +
@@ -2441,8 +2441,8 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\x16_enable_shielded_nodes\"\xa5\n" +
 	"\n" +
 	"\x19GcpGkeClusterIpAllocation\x12\xac\x01\n" +
-	"\x1ccluster_secondary_range_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\x88\xd4a\xe3\x04\x92\xd4a.status.outputs.secondary_ranges.[*].range_nameR\x19clusterSecondaryRangeName\x12\xae\x01\n" +
-	"\x1dservices_secondary_range_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\x88\xd4a\xe3\x04\x92\xd4a.status.outputs.secondary_ranges.[*].range_nameR\x1aservicesSecondaryRangeName\x125\n" +
+	"\x1ccluster_secondary_range_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\x88\xd4a\xc3\x17\x92\xd4a.status.outputs.secondary_ranges.[*].range_nameR\x19clusterSecondaryRangeName\x12\xae\x01\n" +
+	"\x1dservices_secondary_range_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\x88\xd4a\xc3\x17\x92\xd4a.status.outputs.secondary_ranges.[*].range_nameR\x1aservicesSecondaryRangeName\x125\n" +
 	"\x17cluster_ipv4_cidr_block\x18\x03 \x01(\tR\x14clusterIpv4CidrBlock\x127\n" +
 	"\x18services_ipv4_cidr_block\x18\x04 \x01(\tR\x15servicesIpv4CidrBlock\x12\x89\x01\n" +
 	"\n" +
@@ -2467,7 +2467,7 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\x14enable_private_nodes\x18\x01 \x01(\bR\x12enablePrivateNodes\x126\n" +
 	"\x17enable_private_endpoint\x18\x02 \x01(\bR\x15enablePrivateEndpoint\x12V\n" +
 	"\x16master_ipv4_cidr_block\x18\x03 \x01(\tB!\xbaH\x1e\xd8\x01\x01r\x192\x17^\\d+\\.\\d+\\.\\d+\\.\\d+/28$R\x13masterIpv4CidrBlock\x12\xa0\x01\n" +
-	"\x1bprivate_endpoint_subnetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\x19privateEndpointSubnetwork\x12=\n" +
+	"\x1bprivate_endpoint_subnetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\x19privateEndpointSubnetwork\x12=\n" +
 	"\x1benable_master_global_access\x18\x05 \x01(\bR\x18enableMasterGlobalAccess:\xf0\x03\xbaH\xec\x03\x1a\xdf\x01\n" +
 	"'private_endpoint_requires_private_nodes\x12xenable_private_endpoint requires enable_private_nodes — a public-node cluster cannot have a private-only control plane\x1a:!this.enable_private_endpoint || this.enable_private_nodes\x1a\x87\x02\n" +
 	"#master_cidr_xor_endpoint_subnetwork\x12\x90\x01set either master_ipv4_cidr_block (peering-based control-plane range) or private_endpoint_subnetwork (PSC-based endpoint placement) — not both\x1aM!(this.master_ipv4_cidr_block != '' && has(this.private_endpoint_subnetwork))\"\x8b\x03\n" +
@@ -2532,7 +2532,7 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\aminimum\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\aminimum\x12!\n" +
 	"\amaximum\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x01R\amaximum\"\xc2\a\n" +
 	"%GcpGkeClusterAutoProvisioningDefaults\x12z\n" +
-	"\x0fservice_account\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x124\n" +
+	"\x0fservice_account\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x124\n" +
 	"\foauth_scopes\x18\x02 \x03(\tB\x11\xbaH\x0e\xd8\x01\x01\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\voauthScopes\x122\n" +
 	"\fdisk_size_gb\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x04(\n" +
 	"H\x00R\n" +
@@ -2542,7 +2542,7 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"image_type\x18\x05 \x01(\tR\timageType\x12(\n" +
 	"\x10min_cpu_platform\x18\x06 \x01(\tR\x0eminCpuPlatform\x12}\n" +
-	"\x11boot_disk_kms_key\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x0ebootDiskKmsKey\x12,\n" +
+	"\x11boot_disk_kms_key\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x0ebootDiskKmsKey\x12,\n" +
 	"\x12enable_secure_boot\x18\b \x01(\bR\x10enableSecureBoot\x12M\n" +
 	"\x1benable_integrity_monitoring\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x19enableIntegrityMonitoring\x88\x01\x01\x120\n" +
 	"\fauto_upgrade\x18\n" +
@@ -2556,7 +2556,7 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\x1fGcpGkeClusterDatabaseEncryption\x12\x81\x01\n" +
 	"\x05state\x18\x01 \x01(\tBk\xbaHh\xba\x01b\n" +
 	"\x16encryption_state_valid\x12$state must be ENCRYPTED or DECRYPTED\x1a\"this in ['ENCRYPTED', 'DECRYPTED']\xc8\x01\x01R\x05state\x12m\n" +
-	"\bkey_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\akeyName:\xe8\x01\xbaH\xe4\x01\x1a\xe1\x01\n" +
+	"\bkey_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\akeyName:\xe8\x01\xbaH\xe4\x01\x1a\xe1\x01\n" +
 	"\x16encrypted_requires_key\x12Ustate ENCRYPTED requires key_name — the Cloud KMS key that wraps Kubernetes secrets\x1apthis.state != 'ENCRYPTED' || (has(this.key_name) && (has(this.key_name.value) || has(this.key_name.value_from)))\"\xe7\x03\n" +
 	"\x1cGcpGkeClusterSecurityPosture\x12\xa0\x01\n" +
 	"\x04mode\x18\x01 \x01(\tB\x8b\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +
@@ -2584,12 +2584,12 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\x1b_managed_prometheus_enabled\"\x81\x04\n" +
 	"\x1fGcpGkeClusterNotificationPubSub\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12j\n" +
-	"\x05topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x94\x05\x92\xd4a\x17status.outputs.topic_idR\x05topic\x12\x85\x01\n" +
+	"\x05topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf4\x17\x92\xd4a\x17status.outputs.topic_idR\x05topic\x12\x85\x01\n" +
 	"\vevent_types\x18\x03 \x03(\tBd\xbaHa\xd8\x01\x01\x92\x01[\x18\x01\"WrUR\rUPGRADE_EVENTR\x17UPGRADE_AVAILABLE_EVENTR\x17SECURITY_BULLETIN_EVENTR\x12UPGRADE_INFO_EVENTR\n" +
 	"eventTypes:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
 	"\x16enabled_requires_topic\x12Qnotification_pubsub.enabled requires topic — the Pub/Sub topic GKE publishes to\x1a[!this.enabled || (has(this.topic) && (has(this.topic.value) || has(this.topic.value_from)))\"\x83\x03\n" +
 	" GcpGkeClusterResourceUsageExport\x12\x90\x01\n" +
-	"\x13bigquery_dataset_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x05\x92\xd4a\x19status.outputs.dataset_id\x98\xd4a\x01R\x11bigqueryDatasetId\x12C\n" +
+	"\x13bigquery_dataset_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x17\x92\xd4a\x19status.outputs.dataset_id\x98\xd4a\x01R\x11bigqueryDatasetId\x12C\n" +
 	"\x1eenable_network_egress_metering\x18\x02 \x01(\bR\x1benableNetworkEgressMetering\x12^\n" +
 	"$enable_resource_consumption_metering\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R!enableResourceConsumptionMetering\x88\x01\x01B'\n" +
 	"%_enable_resource_consumption_metering\"\x9a\x06\n" +

@@ -644,8 +644,8 @@ const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"3dev/planton/provider/gcp/gcpdnsrecord/v1/spec.proto\x12(dev.planton.provider.gcp.gcpdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\b\n" +
 	"\x10GcpDnsRecordSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12~\n" +
-	"\fmanaged_zone\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x04\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone\x12.\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12~\n" +
+	"\fmanaged_zone\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbd\x17\x92\xd4a\x18status.outputs.zone_nameR\vmanagedZone\x12.\n" +
 	"\x04type\x18\x03 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x122\x10^[A-Z0-9]{1,10}$R\x04type\x12N\n" +
 	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12J\n" +
 	"\x06values\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x06values\x124\n" +
@@ -660,7 +660,7 @@ const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"\x03geo\x18\x02 \x03(\v2C.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordGeoPolicyItemR\x03geo\x12,\n" +
 	"\x12enable_geo_fencing\x18\x03 \x01(\bR\x10enableGeoFencing\x12p\n" +
 	"\x0eprimary_backup\x18\x04 \x01(\v2I.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordPrimaryBackupPolicyR\rprimaryBackup\x12x\n" +
-	"\fhealth_check\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xef\x04\x92\xd4a\x18status.outputs.self_linkR\vhealthCheck:\xf1\x02\xbaH\xed\x02\x1a\xc3\x01\n" +
+	"\fhealth_check\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xcf\x17\x92\xd4a\x18status.outputs.self_linkR\vhealthCheck:\xf1\x02\xbaH\xed\x02\x1a\xc3\x01\n" +
 	" routing_policy.exactly_one_style\x126exactly one of wrr, geo, or primary_backup must be set\x1ag(this.wrr.size() > 0 ? 1 : 0) + (this.geo.size() > 0 ? 1 : 0) + (has(this.primary_backup) ? 1 : 0) == 1\x1a\xa4\x01\n" +
 	"'routing_policy.geo_fencing_requires_geo\x12Henable_geo_fencing applies only to geolocation routing (set geo entries)\x1a/!this.enable_geo_fencing || this.geo.size() > 0\"\xf1\x01\n" +
 	"\x19GcpDnsRecordWrrPolicyItem\x12.\n" +
@@ -685,16 +685,16 @@ const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"#health_checked_targets.at_least_one\x12Iat least one of internal_load_balancers or external_endpoints must be set\x1aMthis.internal_load_balancers.size() > 0 || this.external_endpoints.size() > 0\"\xf8\x05\n" +
 	"&GcpDnsRecordInternalLoadBalancerTarget\x12x\n" +
 	"\n" +
-	"ip_address\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\tipAddress\x123\n" +
+	"ip_address\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x18\x92\xd4a\x16status.outputs.addressR\tipAddress\x123\n" +
 	"\vip_protocol\x18\x02 \x01(\tB\x12\xbaH\x0f\xc8\x01\x01r\n" +
 	"R\x03tcpR\x03udpR\n" +
 	"ipProtocol\x12\xe7\x01\n" +
 	"\x12load_balancer_type\x18\x03 \x01(\tB\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
 	"\x18load_balancer_type.valid\x12Kload_balancer_type must be one of regionalL4ilb, regionalL7ilb, globalL7ilb\x1aGthis == '' || this in ['regionalL4ilb', 'regionalL7ilb', 'globalL7ilb']R\x10loadBalancerType\x12\x88\x01\n" +
-	"\vnetwork_url\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\n" +
+	"\vnetwork_url\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\n" +
 	"networkUrl\x12\x1a\n" +
 	"\x04port\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04port\x12v\n" +
-	"\aproject\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x16\n" +
+	"\aproject\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x16\n" +
 	"\x06region\x18\a \x01(\tR\x06regionB\xdb\x02\n" +
 	",com.dev.planton.provider.gcp.gcpdnsrecord.v1B\tSpecProtoP\x01ZYgithub.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpdnsrecord/v1;gcpdnsrecordv1\xa2\x02\x05DPPGG\xaa\x02(Dev.Planton.Provider.Gcp.Gcpdnsrecord.V1\xca\x02(Dev\\Planton\\Provider\\Gcp\\Gcpdnsrecord\\V1\xe2\x024Dev\\Planton\\Provider\\Gcp\\Gcpdnsrecord\\V1\\GPBMetadata\xea\x02-Dev::Planton::Provider::Gcp::Gcpdnsrecord::V1b\x06proto3"
 

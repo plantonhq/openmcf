@@ -291,14 +291,14 @@ const file_dev_planton_provider_gcp_gcpspannerdatabase_v1_spec_proto_rawDesc = "
 	"\n" +
 	"9dev/planton/provider/gcp/gcpspannerdatabase/v1/spec.proto\x12.dev.planton.provider.gcp.gcpspannerdatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc5\x03\n" +
 	"\"GcpSpannerDatabaseEncryptionConfig\x12t\n" +
-	"\fkms_key_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12v\n" +
-	"\rkms_key_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
+	"\rkms_key_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
 	" encryption_exactly_one_key_shape\x12Jset exactly one of kms_key_name (regional) or kms_key_names (multi-region)\x1a9has(this.kms_key_name) != (this.kms_key_names.size() > 0)\"\xb1\a\n" +
 	"\x16GcpSpannerDatabaseSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
-	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xf9\x04\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x17\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x12N\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB)\xbaH&\xd8\x01\x01r!\x10\x02\x18\x1e2\x1b^[a-z][a-z0-9_\\-]*[a-z0-9]$R\fdatabaseName\x12\xcb\x01\n" +
 	"\x10database_dialect\x18\x04 \x01(\tB\x9f\x01\xbaH\x9b\x01\xba\x01\x97\x01\n" +
 	"\x1cdatabase_dialect_valid_value\x12:database_dialect must be GOOGLE_STANDARD_SQL or POSTGRESQL\x1a;this == '' || this in ['GOOGLE_STANDARD_SQL', 'POSTGRESQL']R\x0fdatabaseDialect\x128\n" +

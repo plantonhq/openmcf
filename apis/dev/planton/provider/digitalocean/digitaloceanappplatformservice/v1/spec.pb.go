@@ -504,7 +504,7 @@ const file_dev_planton_provider_digitalocean_digitaloceanappplatformservice_v1_s
 	"\x12max_instance_count\x18\n" +
 	" \x01(\rR\x10maxInstanceCount\x12\x82\x01\n" +
 	"\x03env\x18\v \x03(\v2p.dev.planton.provider.digitalocean.digitaloceanappplatformservice.v1.DigitalOceanAppPlatformServiceSpec.EnvEntryR\x03env\x12v\n" +
-	"\rcustom_domain\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xb4\t\x92\xd4a\x10spec.domain_name\x98\xd4a\x01R\fcustomDomain\x1a6\n" +
+	"\rcustom_domain\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\x8c'\x92\xd4a\x10spec.domain_name\x98\xd4a\x01R\fcustomDomain\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\b\n" +
@@ -516,7 +516,7 @@ const file_dev_planton_provider_digitalocean_digitaloceanappplatformservice_v1_s
 	"\vrun_command\x18\x04 \x01(\tR\n" +
 	"runCommand\"\xe3\x01\n" +
 	"%DigitalOceanAppPlatformRegistrySource\x12x\n" +
-	"\bregistry\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb2\t\x92\xd4a\x19status.outputs.server_urlR\bregistry\x12&\n" +
+	"\bregistry\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a'\x92\xd4a\x19status.outputs.server_urlR\bregistry\x12&\n" +
 	"\n" +
 	"repository\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"repository\x12\x18\n" +

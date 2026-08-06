@@ -240,7 +240,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloakoperator_v1_spec_pr
 	"\n" +
 	"Hdev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1/spec.proto\x12=dev.planton.provider.kubernetes.kuberneteskeycloakoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb5\x04\n" +
 	"\x1eKubernetesKeycloakOperatorSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12!\n" +
 	"\fcluster_wide\x18\x03 \x01(\bR\vclusterWide\x12%\n" +
 	"\x0eoperator_image\x18\x04 \x01(\tR\roperatorImage\x124\n" +

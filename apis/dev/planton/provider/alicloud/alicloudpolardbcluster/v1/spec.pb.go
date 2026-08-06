@@ -716,7 +716,7 @@ const file_dev_planton_provider_alicloud_alicloudpolardbcluster_v1_spec_proto_ra
 	"\rdb_node_class\x18\x04 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vdbNodeClass\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\x8a\x01\n" +
+	"vswitch_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\x8a\x01\n" +
 	"\rdb_node_count\x18\x06 \x01(\x05Ba\xbaHY\xba\x01V\n" +
 	"\x13db_node_count_range\x12&db_node_count must be between 1 and 16\x1a\x17this >= 1 && this <= 16\x8a\xa6\x1d\x012H\x00R\vdbNodeCount\x88\x01\x01\x12\xb2\x01\n" +
 	"\vdescription\x18\a \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +

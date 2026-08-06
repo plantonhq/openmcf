@@ -691,9 +691,9 @@ const file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDesc = ""
 	"\x15AwsNeptuneClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
 	"\x19neptune_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16neptuneSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x127\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x127\n" +
 	"\x12availability_zones\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x03R\x11availabilityZones\x12\x1f\n" +
 	"\x04port\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12%\n" +
 	"\x0eengine_version\x18\a \x01(\tR\rengineVersion\x12<\n" +
@@ -703,9 +703,9 @@ const file_dev_planton_provider_aws_awsneptunecluster_v1_spec_proto_rawDesc = ""
 	" \x01(\v2S.dev.planton.provider.aws.awsneptunecluster.v1.AwsNeptuneClusterServerlessV2ScalingR\x13serverlessV2Scaling\x125\n" +
 	"\x11storage_encrypted\x18\v \x01(\bB\b\x92\xa6\x1d\x04trueR\x10storageEncrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12M\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12M\n" +
 	"#iam_database_authentication_enabled\x18\r \x01(\bR iamDatabaseAuthenticationEnabled\x12q\n" +
-	"\tiam_roles\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12A\n" +
+	"\tiam_roles\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12A\n" +
 	"\x17backup_retention_period\x18\x0f \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
 	"\x17preferred_backup_window\x18\x10 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\x11 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x121\n" +

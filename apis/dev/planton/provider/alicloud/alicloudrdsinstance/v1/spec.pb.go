@@ -681,7 +681,7 @@ const file_dev_planton_provider_alicloud_alicloudrdsinstance_v1_spec_proto_rawDe
 	"\x10instance_storage\x18\x05 \x01(\x05B\n" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02 \x00R\x0finstanceStorage\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\xb9\x01\n" +
+	"vswitch_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\xb9\x01\n" +
 	"\rinstance_name\x18\a \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
 	"\x14instance_name_length\x12;instance_name must be between 2 and 256 characters when set\x1a6this == '' || (this.size() >= 2 && this.size() <= 256)R\finstanceName\x12\xcf\x01\n" +
 	"\x14instance_charge_type\x18\b \x01(\tB\x97\x01\xbaH\x87\x01\xba\x01\x83\x01\n" +

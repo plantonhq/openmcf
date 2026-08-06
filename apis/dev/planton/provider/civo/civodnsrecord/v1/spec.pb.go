@@ -216,7 +216,7 @@ const file_dev_planton_provider_civo_civodnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"5dev/planton/provider/civo/civodnsrecord/v1/spec.proto\x12*dev.planton.provider.civo.civodnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf9\x06\n" +
 	"\x11CivoDnsRecordSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\v\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4.\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1a\n" +
 	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xc9\x01\n" +
 	"\x04type\x18\x03 \x01(\x0e2H.dev.planton.provider.civo.civodnsrecord.v1.CivoDnsRecordSpec.RecordTypeBk\xbaHh\xba\x01]\n" +
 	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x1c\n" +

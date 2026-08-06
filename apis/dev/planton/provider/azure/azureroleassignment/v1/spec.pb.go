@@ -337,10 +337,10 @@ const file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/azure/azureroleassignment/v1/spec.proto\x121dev.planton.provider.azure.azureroleassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc6\v\n" +
 	"\x17AzureRoleAssignmentSpec\x12y\n" +
-	"\x05scope\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_idR\x05scope\x120\n" +
+	"\x05scope\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a status.outputs.resource_group_idR\x05scope\x120\n" +
 	"\x14role_definition_name\x18\x02 \x01(\tR\x12roleDefinitionName\x12\x8c\x01\n" +
-	"\x12role_definition_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xce\x03\x92\xd4a!status.outputs.role_definition_idR\x10roleDefinitionId\x12\x81\x01\n" +
-	"\fprincipal_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\vprincipalId\x12z\n" +
+	"\x12role_definition_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x8e\x10\x92\xd4a!status.outputs.role_definition_idR\x10roleDefinitionId\x12\x81\x01\n" +
+	"\fprincipal_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\vprincipalId\x12z\n" +
 	"\x0eprincipal_type\x18\x05 \x01(\x0e2S.dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentPrincipalTypeR\rprincipalType\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x1c\n" +
 	"\tcondition\x18\a \x01(\tR\tcondition\x12?\n" +

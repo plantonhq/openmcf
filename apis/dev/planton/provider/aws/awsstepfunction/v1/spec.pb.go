@@ -339,7 +339,7 @@ const file_dev_planton_provider_aws_awsstepfunction_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"definition\x18\x03 \x01(\v2\x17.google.protobuf.StructB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"definition\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x18\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x18\n" +
 	"\apublish\x18\x05 \x01(\bR\apublish\x12c\n" +
 	"\alogging\x18\x06 \x01(\v2I.dev.planton.provider.aws.awsstepfunction.v1.AwsStepFunctionLoggingConfigR\alogging\x12'\n" +
 	"\x0ftracing_enabled\x18\a \x01(\bR\x0etracingEnabled\x12l\n" +
@@ -351,11 +351,11 @@ const file_dev_planton_provider_aws_awsstepfunction_v1_spec_proto_rawDesc = "" +
 	"\x1cAwsStepFunctionLoggingConfig\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\tR\x05level\x124\n" +
 	"\x16include_execution_data\x18\x02 \x01(\bR\x14includeExecutionData\x12\x82\x01\n" +
-	"\x0flog_destination\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x0elogDestination:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
+	"\x0flog_destination\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x0elogDestination:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
 	"\x1alogging_level_valid_values\x12@logging.level must be 'ALL', 'ERROR', 'FATAL', or 'OFF' when set\x1aBthis.level == '' || this.level in ['ALL', 'ERROR', 'FATAL', 'OFF']\"\xdf\x03\n" +
 	"\x1fAwsStepFunctionEncryptionConfig\x12w\n" +
 	"\n" +
-	"kms_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
+	"kms_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12G\n" +
 	"!kms_data_key_reuse_period_seconds\x18\x02 \x01(\x05R\x1ckmsDataKeyReusePeriodSeconds:\xf9\x01\xbaH\xf5\x01\x1a\xf2\x01\n" +
 	"\x18kms_data_key_reuse_range\x12Ekms_data_key_reuse_period_seconds must be between 60 and 900 when set\x1a\x8e\x01this.kms_data_key_reuse_period_seconds == 0 || (this.kms_data_key_reuse_period_seconds >= 60 && this.kms_data_key_reuse_period_seconds <= 900)B\xf0\x02\n" +
 	"/com.dev.planton.provider.aws.awsstepfunction.v1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsstepfunction/v1;awsstepfunctionv1\xa2\x02\x05DPPAA\xaa\x02+Dev.Planton.Provider.Aws.Awsstepfunction.V1\xca\x02+Dev\\Planton\\Provider\\Aws\\Awsstepfunction\\V1\xe2\x027Dev\\Planton\\Provider\\Aws\\Awsstepfunction\\V1\\GPBMetadata\xea\x020Dev::Planton::Provider::Aws::Awsstepfunction::V1b\x06proto3"

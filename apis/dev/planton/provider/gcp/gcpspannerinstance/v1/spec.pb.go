@@ -612,7 +612,7 @@ const file_dev_planton_provider_gcp_gcpspannerinstance_v1_spec_proto_rawDesc = "
 	"\x1easymmetric_autoscaling_options\x18\x03 \x03(\v2].dev.planton.provider.gcp.gcpspannerinstance.v1.GcpSpannerInstanceAsymmetricAutoscalingOptionR\x1casymmetricAutoscalingOptions\"\xcf\x10\n" +
 	"\x16GcpSpannerInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
 	"\rinstance_name\x18\x02 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f\x10\x06\x18\x1e2\x19^[a-z][-a-z0-9]*[a-z0-9]$R\finstanceName\x12\x1e\n" +
 	"\x06config\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06config\x12/\n" +
 	"\fdisplay_name\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x04\x18\x1eR\vdisplayName\x12j\n" +

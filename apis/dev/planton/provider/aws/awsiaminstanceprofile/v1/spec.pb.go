@@ -119,7 +119,7 @@ const file_dev_planton_provider_aws_awsiaminstanceprofile_v1_spec_proto_rawDesc 
 	"<dev/planton/provider/aws/awsiaminstanceprofile/v1/spec.proto\x121dev.planton.provider.aws.awsiaminstanceprofile.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe0\x03\n" +
 	"\x19AwsIamInstanceProfileSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
-	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x18status.outputs.role_nameR\x04role\x12\x19\n" +
+	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x18status.outputs.role_nameR\x04role\x12\x19\n" +
 	"\x04path\x18\x03 \x01(\tB\x05\x92\xa6\x1d\x01/R\x04path:\x95\x02\xbaH\x91\x02\x1a\xc2\x01\n" +
 	"\vpath_format\x12Wpath must begin and end with '/' and contain no empty segments, e.g. '/' or '/compute/'\x1aZthis.path == '' || this.path == '/' || this.path.matches('^/([A-Za-z0-9\\\\.,\\\\+@=_-]+/)+$')\x1aJ\n" +
 	"\vpath_length\x12#path must be at most 512 characters\x1a\x16size(this.path) <= 512B\x9a\x03\n" +

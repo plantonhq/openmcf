@@ -270,16 +270,16 @@ const file_dev_planton_provider_aws_awsserverlesselasticache_v1_spec_proto_rawDe
 	"\becpu_max\x18\a \x01(\x05B\f\xbaH\t\x1a\a\x18\xc0Ó\a(\x00R\aecpuMax\x12'\n" +
 	"\becpu_min\x18\b \x01(\x05B\f\xbaH\t\x1a\a\x18\xc0Ó\a(\x00R\aecpuMin\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"subnet_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
 	"\fnetwork_type\x18\v \x01(\tR\vnetworkType\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12.\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12.\n" +
 	"\x13daily_snapshot_time\x18\r \x01(\tR\x11dailySnapshotTime\x12C\n" +
 	"\x18snapshot_retention_limit\x18\x0e \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x16snapshotRetentionLimit\x127\n" +
 	"\x18snapshot_arns_to_restore\x18\x0f \x03(\tR\x15snapshotArnsToRestore\x12}\n" +
-	"\ruser_group_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf4\x01\x92\xd4a\x1cstatus.outputs.user_group_idR\vuserGroupId:\xfd\x0e\xbaH\xf9\x0e\x1ax\n" +
+	"\ruser_group_id\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x94\b\x92\xd4a\x1cstatus.outputs.user_group_idR\vuserGroupId:\xfd\x0e\xbaH\xf9\x0e\x1ax\n" +
 	"\x13engine_valid_values\x120engine must be 'redis', 'valkey', or 'memcached'\x1a/this.engine in ['redis', 'valkey', 'memcached']\x1a\xd9\x01\n" +
 	"\x14data_storage_min_max\x12Idata_storage_min_gb must not exceed data_storage_max_gb when both are set\x1avthis.data_storage_min_gb == 0 || this.data_storage_max_gb == 0 || this.data_storage_min_gb <= this.data_storage_max_gb\x1a\x8f\x01\n" +
 	"\fecpu_min_max\x123ecpu_min must not exceed ecpu_max when both are set\x1aJthis.ecpu_min == 0 || this.ecpu_max == 0 || this.ecpu_min <= this.ecpu_max\x1a\xa1\x01\n" +

@@ -286,7 +286,7 @@ const file_dev_planton_provider_digitalocean_digitaloceankubernetescluster_v1_sp
 	"\fcluster_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vclusterName\x12U\n" +
 	"\x06region\x18\x02 \x01(\x0e25.dev.planton.provider.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x125\n" +
 	"\x12kubernetes_version\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11kubernetesVersion\x12j\n" +
-	"\x03vpc\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\t\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x124\n" +
+	"\x03vpc\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x124\n" +
 	"\x10highly_available\x18\x05 \x01(\bB\t\x92\xa6\x1d\x05falseR\x0fhighlyAvailable\x12!\n" +
 	"\fauto_upgrade\x18\x06 \x01(\bR\vautoUpgrade\x122\n" +
 	"\x15disable_surge_upgrade\x18\a \x01(\bR\x13disableSurgeUpgrade\x12-\n" +

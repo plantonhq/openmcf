@@ -179,7 +179,7 @@ const file_dev_planton_provider_openfga_openfgaauthorizationmodel_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/openfga/openfgaauthorizationmodel/v1/spec.proto\x129dev.planton.provider.openfga.openfgaauthorizationmodel.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcc\x01\n" +
 	"\x1dOpenFgaAuthorizationModelSpec\x12o\n" +
-	"\bstore_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x11\x92\xd4a\x11status.outputs.idR\astoreId\x12\x1b\n" +
+	"\bstore_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \xbaH\x03\xc8\x01\x01\x88\xd4a\xa8F\x92\xd4a\x11status.outputs.idR\astoreId\x12\x1b\n" +
 	"\tmodel_dsl\x18\x02 \x01(\tR\bmodelDsl\x12\x1d\n" +
 	"\n" +
 	"model_json\x18\x03 \x01(\tR\tmodelJsonB\xce\x03\n" +

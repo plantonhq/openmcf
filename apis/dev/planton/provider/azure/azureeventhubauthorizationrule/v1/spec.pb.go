@@ -163,8 +163,8 @@ const file_dev_planton_provider_azure_azureeventhubauthorizationrule_v1_spec_pro
 	"\trule_name\x18\x01 \x01(\tB\x9a\x04\xbaH\x96\x04\xba\x01\x8c\x02\n" +
 	"\x1fevent_hub_auth_rule_name_format\x12\x89\x01rule_name must be up to 60 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter or number\x1a]this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,58}[a-zA-Z0-9]$')\xba\x01\xf9\x01\n" +
 	"!event_hub_auth_rule_name_not_root\x12\xae\x01RootManageSharedAccessKey is the namespace's built-in root rule -- its keys already surface as AzureEventHubNamespace outputs; mint a differently-named rule for scoped access\x1a#this != 'RootManageSharedAccessKey'\xc8\x01\x01r\x04\x10\x01\x18<R\bruleName\x12{\n" +
-	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12z\n" +
-	"\fevent_hub_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x03\x92\xd4a\x1bstatus.outputs.event_hub_idR\n" +
+	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x97\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12z\n" +
+	"\fevent_hub_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x10\x92\xd4a\x1bstatus.outputs.event_hub_idR\n" +
 	"eventHubId\x12\x1b\n" +
 	"\x06listen\x18\x04 \x01(\bH\x00R\x06listen\x88\x01\x01\x12\x17\n" +
 	"\x04send\x18\x05 \x01(\bH\x01R\x04send\x88\x01\x01\x12\x1b\n" +

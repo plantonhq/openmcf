@@ -130,9 +130,9 @@ const file_dev_planton_provider_openstack_openstackvolumeattach_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/openstack/openstackvolumeattach/v1/spec.proto\x127dev.planton.provider.openstack.openstackvolumeattach.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc5\x02\n" +
 	"\x19OpenStackVolumeAttachSpec\x12~\n" +
-	"\vinstance_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x13\x92\xd4a\x1astatus.outputs.instance_idR\n" +
+	"\vinstance_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x98N\x92\xd4a\x1astatus.outputs.instance_idR\n" +
 	"instanceId\x12x\n" +
-	"\tvolume_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xce\x13\x92\xd4a\x18status.outputs.volume_idR\bvolumeId\x12\x16\n" +
+	"\tvolume_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9aN\x92\xd4a\x18status.outputs.volume_idR\bvolumeId\x12\x16\n" +
 	"\x06device\x18\x03 \x01(\tR\x06device\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06regionB\xbe\x03\n" +
 	";com.dev.planton.provider.openstack.openstackvolumeattach.v1B\tSpecProtoP\x01Zqgithub.com/plantonhq/planton/apis/dev/planton/provider/openstack/openstackvolumeattach/v1;openstackvolumeattachv1\xa2\x02\x05DPPOO\xaa\x027Dev.Planton.Provider.Openstack.Openstackvolumeattach.V1\xca\x027Dev\\Planton\\Provider\\Openstack\\Openstackvolumeattach\\V1\xe2\x02CDev\\Planton\\Provider\\Openstack\\Openstackvolumeattach\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Openstack::Openstackvolumeattach::V1b\x06proto3"

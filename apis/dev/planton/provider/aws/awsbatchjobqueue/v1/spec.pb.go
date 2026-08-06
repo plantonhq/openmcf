@@ -310,12 +310,12 @@ const file_dev_planton_provider_aws_awsbatchjobqueue_v1_spec_proto_rawDesc = "" 
 	"\bpriority\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\bpriority\x12\xa0\x01\n" +
 	"\x19compute_environment_order\x18\x04 \x03(\v2U.dev.planton.provider.aws.awsbatchjobqueue.v1.AwsBatchJobQueueComputeEnvironmentOrderB\r\xbaH\n" +
 	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x03R\x17computeEnvironmentOrder\x12\x8e\x01\n" +
-	"\x11scheduling_policy\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xec\x02\x92\xd4a$status.outputs.scheduling_policy_arnR\x10schedulingPolicy\x12\x8d\x01\n" +
+	"\x11scheduling_policy\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x8c\t\x92\xd4a$status.outputs.scheduling_policy_arnR\x10schedulingPolicy\x12\x8d\x01\n" +
 	"\x1cjob_state_time_limit_actions\x18\x06 \x03(\v2M.dev.planton.provider.aws.awsbatchjobqueue.v1.AwsBatchJobStateTimeLimitActionR\x18jobStateTimeLimitActionsB\b\n" +
 	"\x06_state\"\xe5\x01\n" +
 	"'AwsBatchJobQueueComputeEnvironmentOrder\x12\x1d\n" +
 	"\x05order\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x05order\x12\x9a\x01\n" +
-	"\x13compute_environment\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x02\x92\xd4a&status.outputs.compute_environment_arnR\x12computeEnvironment\"\xdd\x02\n" +
+	"\x13compute_environment\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\b\x92\xd4a&status.outputs.compute_environment_arnR\x12computeEnvironment\"\xdd\x02\n" +
 	"\x1fAwsBatchJobStateTimeLimitAction\x12(\n" +
 	"\x06action\x18\x01 \x01(\tB\x10\xbaH\r\xc8\x01\x01r\b\n" +
 	"\x06CANCELR\x06action\x129\n" +

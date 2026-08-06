@@ -337,7 +337,7 @@ const file_dev_planton_provider_aws_awsefsaccesspoint_v1_spec_proto_rawDesc = ""
 	"8dev/planton/provider/aws/awsefsaccesspoint/v1/spec.proto\x12-dev.planton.provider.aws.awsefsaccesspoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa1\x03\n" +
 	"\x15AwsEfsAccessPointSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x86\x01\n" +
-	"\x0efile_system_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12h\n" +
+	"\x0efile_system_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12h\n" +
 	"\n" +
 	"posix_user\x18\x03 \x01(\v2I.dev.planton.provider.aws.awsefsaccesspoint.v1.AwsEfsAccessPointPosixUserR\tposixUser\x12t\n" +
 	"\x0eroot_directory\x18\x04 \x01(\v2M.dev.planton.provider.aws.awsefsaccesspoint.v1.AwsEfsAccessPointRootDirectoryR\rrootDirectory\"\x9b\x01\n" +

@@ -305,7 +305,7 @@ const file_dev_planton_provider_aws_awssnssubscription_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/aws/awssnssubscription/v1/spec.proto\x12.dev.planton.provider.aws.awssnssubscription.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xbb\x10\n" +
 	"\x16AwsSnsSubscriptionSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12x\n" +
-	"\ttopic_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\btopicArn\x12\"\n" +
+	"\ttopic_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\btopicArn\x12\"\n" +
 	"\bprotocol\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12V\n" +
 	"\bendpoint\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\bendpoint\x12<\n" +
 	"\rfilter_policy\x18\x05 \x01(\v2\x17.google.protobuf.StructR\ffilterPolicy\x12.\n" +
@@ -315,7 +315,7 @@ const file_dev_planton_provider_aws_awssnssubscription_v1_spec_proto_rawDesc = "
 	"\x0fdelivery_policy\x18\t \x01(\tR\x0edeliveryPolicy\x12<\n" +
 	"\rreplay_policy\x18\n" +
 	" \x01(\v2\x17.google.protobuf.StructR\freplayPolicy\x12\x88\x01\n" +
-	"\x15subscription_role_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x13subscriptionRoleArn\x124\n" +
+	"\x15subscription_role_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x13subscriptionRoleArn\x124\n" +
 	"\x16endpoint_auto_confirms\x18\f \x01(\bR\x14endpointAutoConfirms\x12L\n" +
 	"\x1cconfirmation_timeout_minutes\x18\r \x01(\x05B\n" +
 	"\xbaH\a\xd8\x01\x01\x1a\x02(\x01R\x1aconfirmationTimeoutMinutes:\xf0\b\xbaH\xec\b\x1a\xe0\x01\n" +
@@ -326,7 +326,7 @@ const file_dev_planton_provider_aws_awssnssubscription_v1_spec_proto_rawDesc = "
 	"\x17auto_confirms_http_only\x12Iendpoint_auto_confirms is only meaningful for 'http' or 'https' protocols\x1aB!this.endpoint_auto_confirms || this.protocol in ['http', 'https']\x1a\xbf\x01\n" +
 	"\x1econfirmation_timeout_http_only\x12Oconfirmation_timeout_minutes is only meaningful for 'http' or 'https' protocols\x1aLthis.confirmation_timeout_minutes == 0 || this.protocol in ['http', 'https']\"\xb7\x01\n" +
 	"\"AwsSnsSubscriptionDeadLetterConfig\x12\x90\x01\n" +
-	"\x16dead_letter_target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x13deadLetterTargetArnB\x85\x03\n" +
+	"\x16dead_letter_target_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x13deadLetterTargetArnB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awssnssubscription.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssnssubscription/v1;awssnssubscriptionv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awssnssubscription.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awssnssubscription\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awssnssubscription\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awssnssubscription::V1b\x06proto3"
 
 var (

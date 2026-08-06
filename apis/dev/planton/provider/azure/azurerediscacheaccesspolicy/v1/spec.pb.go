@@ -125,7 +125,7 @@ const file_dev_planton_provider_azure_azurerediscacheaccesspolicy_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/azure/azurerediscacheaccesspolicy/v1/spec.proto\x129dev.planton.provider.azure.azurerediscacheaccesspolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x99\x04\n" +
 	"\x1fAzureRedisCacheAccessPolicySpec\x12\x86\x01\n" +
-	"\x0eredis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaf\x03\x92\xd4a\x1dstatus.outputs.redis_cache_idR\fredisCacheId\x12\xc2\x02\n" +
+	"\x0eredis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x0f\x92\xd4a\x1dstatus.outputs.redis_cache_idR\fredisCacheId\x12\xc2\x02\n" +
 	"\vpolicy_name\x18\x02 \x01(\tB\xa0\x02\xbaH\x9c\x02\xba\x01\x91\x02\n" +
 	"$redis_access_policy_name_not_builtin\x12\xaa\x01policy_name must not be one of the built-in policy names (Data Owner, Data Contributor, Data Reader) -- assignments reference built-ins directly without a policy resource\x1a<!(this in ['Data Owner', 'Data Contributor', 'Data Reader'])\xc8\x01\x01r\x02\x18?R\n" +
 	"policyName\x12(\n" +

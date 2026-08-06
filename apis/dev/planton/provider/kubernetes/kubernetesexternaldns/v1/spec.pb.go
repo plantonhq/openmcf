@@ -1267,7 +1267,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/workload_identity.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\x1e\n" +
 	"\x19KubernetesExternalDnsSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x061.21.1H\x01R\fchartVersion\x88\x01\x01\x12|\n" +
@@ -1334,9 +1334,9 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\v_log_format\"\xdc\x05\n" +
 	"\x1fKubernetesExternalDnsAwsRoute53\x12\x16\n" +
 	"\x06region\x18\x01 \x01(\tR\x06region\x12\x95\x01\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12:\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12:\n" +
 	"\tzone_type\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\bzoneType\x88\x01\x01\x12u\n" +
-	"\vassume_role\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\n" +
+	"\vassume_role\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\n" +
 	"assumeRole\x125\n" +
 	"\x17assume_role_external_id\x18\x05 \x01(\tR\x14assumeRoleExternalId\x12\"\n" +
 	"\raccess_key_id\x18\x06 \x01(\tR\vaccessKeyId\x120\n" +
@@ -1345,8 +1345,8 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\n" +
 	"_zone_type\"\xd4\x03\n" +
 	"#KubernetesExternalDnsGoogleCloudDns\x12z\n" +
-	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x95\x01\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xdd\x04\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12F\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x95\x01\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xbd\x17\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12F\n" +
 	"\x0fzone_visibility\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\x0ezoneVisibility\x88\x01\x01\x12=\n" +
 	"\x18service_account_key_json\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJsonB\x12\n" +
 	"\x10_zone_visibility\"\xcb\x06\n" +
@@ -1355,7 +1355,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\x0fsubscription_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0esubscriptionId\x12\x1b\n" +
 	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12#\n" +
 	"\rprivate_zones\x18\x04 \x01(\bR\fprivateZones\x12\x95\x01\n" +
-	"\x0fzone_id_filters\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12;\n" +
+	"\x0fzone_id_filters\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xd4\x0f\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12;\n" +
 	"\x1amanaged_identity_client_id\x18\x06 \x01(\tR\x17managedIdentityClientId\x12\x1b\n" +
 	"\tclient_id\x18\a \x01(\tR\bclientId\x12)\n" +
 	"\rclient_secret\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret:\xea\x02\xbaH\xe6\x02\x1a\xae\x01\n" +
@@ -1364,7 +1364,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\x1fKubernetesExternalDnsCloudflare\x12'\n" +
 	"\tapi_token\x18\x01 \x01(\tB\n" +
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bapiToken\x12\x95\x01\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12\x18\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12\x18\n" +
 	"\aproxied\x18\x03 \x01(\bR\aproxied\x12>\n" +
 	"\x14dns_records_per_page\x18\x04 \x01(\rB\b\xbaH\x05*\x03\x18\x88'H\x00R\x11dnsRecordsPerPage\x88\x01\x01B\x17\n" +
 	"\x15_dns_records_per_page\"\x80\x03\n" +

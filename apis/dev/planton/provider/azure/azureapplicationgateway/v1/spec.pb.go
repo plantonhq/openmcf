@@ -3740,9 +3740,9 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\x1bAzureApplicationGatewaySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12>\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12>\n" +
 	"\x04name\x18\x03 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x01\x18P2\x1c^[a-zA-Z0-9][a-zA-Z0-9._-]*$R\x04name\x12x\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12k\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12k\n" +
 	"\x03sku\x18\x05 \x01(\x0e2Q.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewaySkuB\x06\xbaH\x03\xc8\x01\x01R\x03sku\x12*\n" +
 	"\bcapacity\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18}(\x01H\x00R\bcapacity\x88\x01\x01\x12u\n" +
 	"\tautoscale\x18\a \x01(\v2W.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayAutoscaleR\tautoscale\x12+\n" +
@@ -3768,7 +3768,7 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\tlisteners\x18\x19 \x03(\v2\\.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayLayer4ListenerR\tlisteners\x12\x7f\n" +
 	"\bbackends\x18\x1a \x03(\v2c.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayLayer4BackendSettingsR\bbackends\x12\x84\x01\n" +
 	"\rrouting_rules\x18\x1b \x03(\v2_.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayLayer4RoutingRuleR\froutingRules\x12\x83\x01\n" +
-	"\x12firewall_policy_id\x18\x1c \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xab\x03\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId\x12I\n" +
+	"\x12firewall_policy_id\x18\x1c \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xeb\x0f\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId\x12I\n" +
 	"!force_firewall_policy_association\x18\x1d \x01(\bR\x1eforceFirewallPolicyAssociation\x12\xa6\x01\n" +
 	"\x1bcustom_error_configurations\x18\x1e \x03(\v2f.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayCustomErrorConfigurationR\x19customErrorConfigurations\x12\xa6\x01\n" +
 	"\x1bprivate_link_configurations\x18\x1f \x03(\v2f.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayPrivateLinkConfigurationR\x19privateLinkConfigurations\x123\n" +
@@ -3793,12 +3793,12 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\r_max_capacity\"\x90\x04\n" +
 	"\x1fAzureApplicationGatewayIdentity\x12v\n" +
 	"\x04type\x18\x01 \x01(\x0e2Z.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf8\x01\xbaH\xf4\x01\x1a\xf1\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf8\x01\xbaH\xf4\x01\x1a\xf1\x01\n" +
 	"\x1dappgw_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xdc\b\n" +
 	".AzureApplicationGatewayFrontendIpConfiguration\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x89\x01\n" +
-	"\x14public_ip_address_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12r\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12,\n" +
+	"\x14public_ip_address_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12r\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12,\n" +
 	"\x12private_ip_address\x18\x04 \x01(\tR\x10privateIpAddress\x12\x9d\x01\n" +
 	"\x1dprivate_ip_address_allocation\x18\x05 \x01(\x0e2Z.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayIpAllocationR\x1aprivateIpAddressAllocation\x12E\n" +
 	"\x1fprivate_link_configuration_name\x18\x06 \x01(\tR\x1cprivateLinkConfigurationName:\xf2\x03\xbaH\xee\x03\x1a\xb1\x01\n" +
@@ -3850,7 +3850,7 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\vrequire_sni\x18\a \x01(\bR\n" +
 	"requireSni\x12(\n" +
 	"\x10ssl_profile_name\x18\b \x01(\tR\x0esslProfileName\x12\x83\x01\n" +
-	"\x12firewall_policy_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xab\x03\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId\x12\xa6\x01\n" +
+	"\x12firewall_policy_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xeb\x0f\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId\x12\xa6\x01\n" +
 	"\x1bcustom_error_configurations\x18\n" +
 	" \x03(\v2f.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayCustomErrorConfigurationR\x19customErrorConfigurations:\xc6\x01\xbaH\xc2\x01\x1a\xbf\x01\n" +
 	")appgw_https_listener_requires_certificate\x12Wan HTTPS listener requires ssl_certificate_name (and an HTTP listener must not set one)\x1a9(this.protocol == 2) == (this.ssl_certificate_name != '')\"\xee\t\n" +
@@ -3882,7 +3882,7 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\x1abackend_http_settings_name\x18\x04 \x01(\tR\x17backendHttpSettingsName\x12>\n" +
 	"\x1bredirect_configuration_name\x18\x05 \x01(\tR\x19redirectConfigurationName\x121\n" +
 	"\x15rewrite_rule_set_name\x18\x06 \x01(\tR\x12rewriteRuleSetName\x12\x83\x01\n" +
-	"\x12firewall_policy_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xab\x03\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId:\xf8\x02\xbaH\xf4\x02\x1a\xf1\x02\n" +
+	"\x12firewall_policy_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xeb\x0f\x92\xd4a\x18status.outputs.policy_idR\x10firewallPolicyId:\xf8\x02\xbaH\xf4\x02\x1a\xf1\x02\n" +
 	"$appgw_path_rule_backend_xor_redirect\x12Pa path rule targets a backend (pool + settings) or a redirect -- set exactly one\x1a\xf6\x01(this.backend_address_pool_name != '' && this.backend_http_settings_name != '' && this.redirect_configuration_name == '') || (this.backend_address_pool_name == '' && this.backend_http_settings_name == '' && this.redirect_configuration_name != '')\"\xd6\v\n" +
 	"\x1cAzureApplicationGatewayProbe\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12z\n" +
@@ -3908,13 +3908,13 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"\x04body\x18\x02 \x01(\tR\x04body\"\xb1\x04\n" +
 	"%AzureApplicationGatewaySslCertificate\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x90\x01\n" +
-	"\x13key_vault_secret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xaa\x03\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x18\n" +
+	"\x13key_vault_secret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xea\x0f\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x18\n" +
 	"\x04data\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x04data\x12 \n" +
 	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword:\x96\x02\xbaH\x92\x02\x1a\x8f\x02\n" +
 	"\x1cappgw_ssl_certificate_source\x12\x8c\x01a certificate is sourced from Key Vault (key_vault_secret_id) or inline PFX (data) -- set exactly one; password only accompanies inline data\x1a`(has(this.key_vault_secret_id) != (this.data != '')) && (this.password == '' || this.data != '')\"\xd1\x03\n" +
 	"-AzureApplicationGatewayTrustedRootCertificate\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x90\x01\n" +
-	"\x13key_vault_secret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xaa\x03\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x18\n" +
+	"\x13key_vault_secret_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xea\x0f\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x18\n" +
 	"\x04data\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x04data:\xd0\x01\xbaH\xcc\x01\x1a\xc9\x01\n" +
 	"%appgw_trusted_root_certificate_source\x12la trusted root certificate is sourced from Key Vault (key_vault_secret_id) or inline data -- set exactly one\x1a2has(this.key_vault_secret_id) != (this.data != '')\"w\n" +
 	"/AzureApplicationGatewayTrustedClientCertificate\x12 \n" +
@@ -4025,7 +4025,7 @@ const file_dev_planton_provider_azure_azureapplicationgateway_v1_spec_proto_rawD
 	"1AzureApplicationGatewayPrivateLinkIpConfiguration\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12x\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12,\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12,\n" +
 	"\x12private_ip_address\x18\x03 \x01(\tR\x10privateIpAddress\x12\xa5\x01\n" +
 	"\x1dprivate_ip_address_allocation\x18\x04 \x01(\x0e2Z.dev.planton.provider.azure.azureapplicationgateway.v1.AzureApplicationGatewayIpAllocationB\x06\xbaH\x03\xc8\x01\x01R\x1aprivateIpAddressAllocation\x12\x18\n" +
 	"\aprimary\x18\x05 \x01(\bR\aprimary:\xdc\x01\xbaH\xd8\x01\x1a\xd5\x01\n" +

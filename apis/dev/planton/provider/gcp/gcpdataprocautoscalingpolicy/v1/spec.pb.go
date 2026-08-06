@@ -474,7 +474,7 @@ const file_dev_planton_provider_gcp_gcpdataprocautoscalingpolicy_v1_spec_proto_r
 	"yarnConfig\"\x81\x06\n" +
 	" GcpDataprocAutoscalingPolicySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Y\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Y\n" +
 	"\tpolicy_id\x18\x02 \x01(\tB<\xbaH9\xc8\x01\x01r4\x10\x03\x1822.^[a-zA-Z0-9]([a-zA-Z0-9_-]{1,48}[a-zA-Z0-9])?$R\bpolicyId\x12;\n" +
 	"\blocation\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\blocation\x12\x8f\x01\n" +
 	"\rworker_config\x18\x04 \x01(\v2b.dev.planton.provider.gcp.gcpdataprocautoscalingpolicy.v1.GcpDataprocAutoscalingPolicyWorkerConfigB\x06\xbaH\x03\xc8\x01\x01R\fworkerConfig\x12\xa3\x01\n" +

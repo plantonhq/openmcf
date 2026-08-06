@@ -114,7 +114,7 @@ const file_dev_planton_provider_azure_azurestoragequeue_v1_spec_proto_rawDesc = 
 	"\n" +
 	":dev/planton/provider/azure/azurestoragequeue/v1/spec.proto\x12/dev.planton.provider.azure.azurestoragequeue.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfd\x04\n" +
 	"\x15AzureStorageQueueSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\x9f\x02\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\x9f\x02\n" +
 	"\n" +
 	"queue_name\x18\x02 \x01(\tB\xff\x01\xbaH\xfb\x01\xba\x01\xee\x01\n" +
 	"\x19storage_queue_name_format\x12\x87\x01queue_name must be 3-63 lowercase letters, digits, and hyphens, starting and ending with a letter or digit, with no consecutive hyphens\x1aGthis.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$') && !this.contains('--')\xc8\x01\x01r\x04\x10\x03\x18?R\tqueueName\x12p\n" +

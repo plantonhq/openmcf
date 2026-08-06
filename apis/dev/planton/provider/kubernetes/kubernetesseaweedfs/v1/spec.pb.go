@@ -1030,7 +1030,7 @@ const file_dev_planton_provider_kubernetes_kubernetesseaweedfs_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/kubernetes/kubernetesseaweedfs/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesseaweedfs.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\b\n" +
 	"\x17KubernetesSeaweedFsSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x064.40.0H\x00R\fchartVersion\x88\x01\x01\x12i\n" +
@@ -1115,7 +1115,7 @@ const file_dev_planton_provider_kubernetes_kubernetesseaweedfs_v1_spec_proto_raw
 	"\x1dKubernetesSeaweedFsDataVolume\x12\xce\x01\n" +
 	"\x04size\x18\x01 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
 	"\x1espec.data_volume.size_quantity\x129size must be a Kubernetes quantity like '30Gi' or '500Mi'\x1aTthis == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')R\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"h\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"h\n" +
 	"\x18KubernetesSeaweedFsImage\x12\x1a\n" +
 	"\bregistry\x18\x01 \x01(\tR\bregistry\x12\x1e\n" +
 	"\n" +

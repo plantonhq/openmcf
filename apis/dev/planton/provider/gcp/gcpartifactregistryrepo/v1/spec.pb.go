@@ -1312,7 +1312,7 @@ const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDes
 	">dev/planton/provider/gcp/gcpartifactregistryrepo/v1/spec.proto\x123dev.planton.provider.gcp.gcpartifactregistryrepo.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdd\x16\n" +
 	"\x1bGcpArtifactRegistryRepoSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
 	"\rrepository_id\x18\x02 \x01(\tB\xd2\x01\xbaH\xce\x01\xba\x01\xca\x01\n" +
 	"\x13valid_repository_id\x12}repository_id must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 characters)\x1a4this == '' || this.matches('^[a-z][a-z0-9-]{0,62}$')R\frepositoryId\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12\x1e\n" +
@@ -1322,7 +1322,7 @@ const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDes
 	"valid_mode\x12Omode must be one of: STANDARD_REPOSITORY, REMOTE_REPOSITORY, VIRTUAL_REPOSITORY\x1aXthis == '' || this in ['STANDARD_REPOSITORY', 'REMOTE_REPOSITORY', 'VIRTUAL_REPOSITORY']R\x04mode\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12t\n" +
 	"\x06labels\x18\a \x03(\v2\\.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoSpec.LabelsEntryR\x06labels\x12t\n" +
-	"\fkms_key_name\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12}\n" +
 	"\rdocker_config\x18\t \x01(\v2X.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoDockerConfigR\fdockerConfig\x12z\n" +
 	"\fmaven_config\x18\n" +
@@ -1398,7 +1398,7 @@ const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDes
 	"\x19valid_yum_repository_base\x12^repository_base must be one of: CENTOS, CENTOS_DEBUG, CENTOS_VAULT, CENTOS_STREAM, ROCKY, EPEL\x1aTthis in ['CENTOS', 'CENTOS_DEBUG', 'CENTOS_VAULT', 'CENTOS_STREAM', 'ROCKY', 'EPEL']\xc8\x01\x01R\x0erepositoryBase\x12/\n" +
 	"\x0frepository_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0erepositoryPath\"\xa4\x01\n" +
 	"-GcpArtifactRegistryRepoRemoteCommonRepository\x12s\n" +
-	"\x03uri\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\x03uri\"\xc7\x01\n" +
+	"\x03uri\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x17\x92\xd4a\x1estatus.outputs.repository_pathR\x03uri\"\xc7\x01\n" +
 	"0GcpArtifactRegistryRepoRemoteUpstreamCredentials\x12\"\n" +
 	"\busername\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12o\n" +
 	"\x17password_secret_version\x18\x02 \x01(\tB7\xbaH4\xc8\x01\x01r/2-^projects/[^/]+/secrets/[^/]+/versions/[^/]+$R\x15passwordSecretVersion\"\xc1\x01\n" +
@@ -1407,12 +1407,12 @@ const file_dev_planton_provider_gcp_gcpartifactregistryrepo_v1_spec_proto_rawDes
 	",GcpArtifactRegistryRepoVirtualUpstreamPolicy\x12\x16\n" +
 	"\x02id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x02id\x12\x81\x01\n" +
 	"\n" +
-	"repository\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\n" +
+	"repository\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x17\x92\xd4a\x1estatus.outputs.repository_pathR\n" +
 	"repository\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\x05R\bpriority\"\xa8\x02\n" +
 	" GcpArtifactRegistryRepoIamMember\x12\x1a\n" +
 	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12p\n" +
-	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12v\n" +
+	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x15status.outputs.memberR\x06member\x12v\n" +
 	"\tcondition\x18\x03 \x01(\v2X.dev.planton.provider.gcp.gcpartifactregistryrepo.v1.GcpArtifactRegistryRepoIamConditionR\tcondition\"\x9b\x01\n" +
 	"#GcpArtifactRegistryRepoIamCondition\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +

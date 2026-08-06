@@ -833,7 +833,7 @@ const file_dev_planton_provider_oci_ocipostgresqldbsystem_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/oci/ocipostgresqldbsystem/v1/spec.proto\x121dev.planton.provider.oci.ocipostgresqldbsystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe3\x1c\n" +
 	"\x19OciPostgresqlDbSystemSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12!\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12&\n" +
 	"\n" +
 	"db_version\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tdbVersion\x12\x1d\n" +
@@ -850,8 +850,8 @@ const file_dev_planton_provider_oci_ocipostgresqldbsystem_v1_spec_proto_rawDesc 
 	"\vdescription\x18\r \x01(\tR\vdescription\x12\x89\x01\n" +
 	"\x11instances_details\x18\x0e \x03(\v2\\.dev.planton.provider.oci.ocipostgresqldbsystem.v1.OciPostgresqlDbSystemSpec.InstanceDetailsR\x10instancesDetails\x1a\xaf\x03\n" +
 	"\x0eNetworkDetails\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
-	"\ansg_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12@\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
+	"\ansg_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xcae\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12@\n" +
 	"\x1ais_reader_endpoint_enabled\x18\x03 \x01(\bH\x00R\x17isReaderEndpointEnabled\x88\x01\x01\x12B\n" +
 	"\x1eprimary_db_endpoint_private_ip\x18\x04 \x01(\tR\x1aprimaryDbEndpointPrivateIpB\x1d\n" +
 	"\x1b_is_reader_endpoint_enabled\x1a\x89\x01\n" +

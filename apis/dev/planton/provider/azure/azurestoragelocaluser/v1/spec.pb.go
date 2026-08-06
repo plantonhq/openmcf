@@ -391,7 +391,7 @@ const file_dev_planton_provider_azure_azurestoragelocaluser_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/azure/azurestoragelocaluser/v1/spec.proto\x123dev.planton.provider.azure.azurestoragelocaluser.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb6\t\n" +
 	"\x19AzureStorageLocalUserSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xc1\x01\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xc1\x01\n" +
 	"\tuser_name\x18\x02 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x98\x01\n" +
 	"\x1estorage_local_user_name_format\x12Tuser_name must be 3-64 lowercase letters and digits only (no hyphens or underscores)\x1a this.matches('^[a-z0-9]{3,64}$')\xc8\x01\x01R\buserName\x12&\n" +
 	"\x0fssh_key_enabled\x18\x03 \x01(\bR\rsshKeyEnabled\x120\n" +
@@ -408,7 +408,7 @@ const file_dev_planton_provider_azure_azurestoragelocaluser_v1_spec_proto_rawDes
 	"$AzureStorageLocalUserPermissionScope\x12\x81\x01\n" +
 	"\aservice\x18\x01 \x01(\x0e2[.dev.planton.provider.azure.azurestoragelocaluser.v1.AzureStorageLocalUserPermissionServiceB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\aservice\x12\x85\x01\n" +
-	"\rresource_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\fresourceName\x12\x12\n" +
+	"\rresource_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x10\x92\xd4a\x1dstatus.outputs.container_nameR\fresourceName\x12\x12\n" +
 	"\x04read\x18\x03 \x01(\bR\x04read\x12\x14\n" +
 	"\x05write\x18\x04 \x01(\bR\x05write\x12\x16\n" +
 	"\x06delete\x18\x05 \x01(\bR\x06delete\x12\x12\n" +

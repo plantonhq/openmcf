@@ -1058,7 +1058,7 @@ const file_dev_planton_provider_hetznercloud_hetznercloudloadbalancer_v1_spec_pr
 	"\vcookie_name\x18\x02 \x01(\tR\n" +
 	"cookieName\x12'\n" +
 	"\x0fcookie_lifetime\x18\x03 \x01(\x05R\x0ecookieLifetime\x12\x83\x01\n" +
-	"\x0fcertificate_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xca\x1b\x92\xd4a\x1dstatus.outputs.certificate_idR\x0ecertificateIds\x12#\n" +
+	"\x0fcertificate_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xcem\x92\xd4a\x1dstatus.outputs.certificate_idR\x0ecertificateIds\x12#\n" +
 	"\rredirect_http\x18\x05 \x01(\bR\fredirectHttp\x1a\xd5\x03\n" +
 	"\vHealthCheck\x12\x87\x01\n" +
 	"\bprotocol\x18\x01 \x01(\x0e2k.dev.planton.provider.hetznercloud.hetznercloudloadbalancer.v1.HetznerCloudLoadBalancerSpec.ServiceProtocolR\bprotocol\x12\x17\n" +
@@ -1080,7 +1080,7 @@ const file_dev_planton_provider_hetznercloud_hetznercloudloadbalancer_v1_spec_pr
 	"\x03tls\x18\x04 \x01(\bR\x03tls\x12!\n" +
 	"\fstatus_codes\x18\x05 \x03(\tR\vstatusCodes\x1a\xae\x01\n" +
 	"\fServerTarget\x12x\n" +
-	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x1b\x92\xd4a\x18status.outputs.server_idR\bserverId\x12$\n" +
+	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4m\x92\xd4a\x18status.outputs.server_idR\bserverId\x12$\n" +
 	"\x0euse_private_ip\x18\x02 \x01(\bR\fusePrivateIp\x1a`\n" +
 	"\x13LabelSelectorTarget\x12#\n" +
 	"\bselector\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bselector\x12$\n" +
@@ -1089,7 +1089,7 @@ const file_dev_planton_provider_hetznercloud_hetznercloudloadbalancer_v1_spec_pr
 	"\x02ip\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x02ip\x1a\x83\x02\n" +
 	"\x11NetworkAttachment\x12{\n" +
 	"\n" +
-	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x1b\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\x0e\n" +
+	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xbam\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12E\n" +
 	"\x17enable_public_interface\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x15enablePublicInterface\x88\x01\x01B\x1a\n" +
 	"\x18_enable_public_interface\"N\n" +

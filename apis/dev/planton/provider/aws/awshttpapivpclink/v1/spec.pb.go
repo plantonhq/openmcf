@@ -128,8 +128,8 @@ const file_dev_planton_provider_aws_awshttpapivpclink_v1_spec_proto_rawDesc = ""
 	"\x15AwsHttpApiVpcLinkSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIdsB\xfe\x02\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIdsB\xfe\x02\n" +
 	"1com.dev.planton.provider.aws.awshttpapivpclink.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapivpclink/v1;awshttpapivpclinkv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awshttpapivpclink.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awshttpapivpclink\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awshttpapivpclink\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awshttpapivpclink::V1b\x06proto3"
 
 var (

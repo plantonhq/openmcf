@@ -224,7 +224,7 @@ const file_dev_planton_provider_digitalocean_digitaloceandatabasecluster_v1_spec
 	"\tsize_slug\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsizeSlug\x12+\n" +
 	"\n" +
 	"node_count\x18\x06 \x01(\rB\f\xbaH\t\xc8\x01\x01*\x04\x18\x03(\x01R\tnodeCount\x12d\n" +
-	"\x03vpc\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xbc\t\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
+	"\x03vpc\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
 	"\vstorage_gib\x18\b \x01(\rR\n" +
 	"storageGib\x12<\n" +
 	"\x1aenable_public_connectivity\x18\t \x01(\bR\x18enablePublicConnectivity*v\n" +

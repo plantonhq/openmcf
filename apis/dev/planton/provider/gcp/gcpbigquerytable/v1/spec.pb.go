@@ -2322,7 +2322,7 @@ const file_dev_planton_provider_gcp_gcpbigquerytable_v1_spec_proto_rawDesc = "" 
 	"project_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tprojectId\x12%\n" +
 	"\n" +
 	"dataset_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tdatasetId\x12u\n" +
-	"\btable_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x8d\x05\x92\xd4a\x17status.outputs.table_idR\atableId\"\x98\x01\n" +
+	"\btable_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xed\x17\x92\xd4a\x17status.outputs.table_idR\atableId\"\x98\x01\n" +
 	"*GcpBigQueryTableForeignKeyColumnReferences\x125\n" +
 	"\x12referencing_column\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11referencingColumn\x123\n" +
 	"\x11referenced_column\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10referencedColumn\"\xcd\x02\n" +
@@ -2375,9 +2375,9 @@ const file_dev_planton_provider_gcp_gcpbigquerytable_v1_spec_proto_rawDesc = "" 
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc6\x19\n" +
 	"\x14GcpBigQueryTableSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
 	"\n" +
-	"dataset_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x05\x92\xd4a\x19status.outputs.dataset_idR\tdatasetId\x127\n" +
+	"dataset_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x17\x92\xd4a\x19status.outputs.dataset_idR\tdatasetId\x127\n" +
 	"\btable_id\x18\x03 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18\x80\b2\x0f^[0-9A-Za-z_]+$R\atableId\x12#\n" +
 	"\rfriendly_name\x18\x04 \x01(\tR\ffriendlyName\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12f\n" +
@@ -2393,7 +2393,7 @@ const file_dev_planton_provider_gcp_gcpbigquerytable_v1_spec_proto_rawDesc = "" 
 	"\x18require_partition_filter\x18\f \x01(\bR\x16requirePartitionFilter\x12'\n" +
 	"\x0fexpiration_time\x18\r \x01(\x03R\x0eexpirationTime\x12#\n" +
 	"\rmax_staleness\x18\x0e \x01(\tR\fmaxStaleness\x12t\n" +
-	"\fkms_key_name\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12V\n" +
 	"\x04view\x18\x10 \x01(\v2B.dev.planton.provider.gcp.gcpbigquerytable.v1.GcpBigQueryTableViewR\x04view\x12{\n" +
 	"\x11materialized_view\x18\x11 \x01(\v2N.dev.planton.provider.gcp.gcpbigquerytable.v1.GcpBigQueryTableMaterializedViewR\x10materializedView\x12\x97\x01\n" +

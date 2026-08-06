@@ -694,12 +694,12 @@ const file_dev_planton_provider_cloudflare_cloudflareloadbalancer_v1_spec_proto_
 	"Ddev/planton/provider/cloudflare/cloudflareloadbalancer/v1/spec.proto\x129dev.planton.provider.cloudflare.cloudflareloadbalancer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9c\x11\n" +
 	"\x1aCloudflareLoadBalancerSpec\x12\"\n" +
 	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12r\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12'\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12'\n" +
 	"\aproxied\x18\x04 \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\aproxied\x88\x01\x01\x12\x95\x01\n" +
 	"\x10session_affinity\x18\x06 \x01(\x0e2`.dev.planton.provider.cloudflare.cloudflareloadbalancer.v1.CloudflareLoadBalancerSessionAffinityB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0fsessionAffinity\x12\x92\x01\n" +
 	"\x0fsteering_policy\x18\a \x01(\x0e2_.dev.planton.provider.cloudflare.cloudflareloadbalancer.v1.CloudflareLoadBalancerSteeringPolicyB\b\xbaH\x05\x82\x01\x02\x10\x01R\x0esteeringPolicy\x12\x80\x01\n" +
-	"\rdefault_pools\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x93\x0e\x92\xd4a\x16status.outputs.pool_idR\fdefaultPools\x12~\n" +
-	"\rfallback_pool\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x0e\x92\xd4a\x16status.outputs.pool_idR\ffallbackPool\x12 \n" +
+	"\rdefault_pools\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\fdefaultPools\x12~\n" +
+	"\rfallback_pool\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\ffallbackPool\x12 \n" +
 	"\vdescription\x18\n" +
 	" \x01(\tR\vdescription\x12'\n" +
 	"\aenabled\x18\v \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\aenabled\x88\x01\x01\x12q\n" +
@@ -720,7 +720,7 @@ const file_dev_planton_provider_cloudflare_cloudflareloadbalancer_v1_spec_proto_
 	"\b_enabledJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x15\x10\x16R\aoriginsR\x11health_probe_pathR\x05rules\"\xb4\x01\n" +
 	"\x1eCloudflareLoadBalancerGeoPools\x12\x1a\n" +
 	"\x04code\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\x12v\n" +
-	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x93\x0e\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xa3\x06\n" +
+	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xa3\x06\n" +
 	"/CloudflareLoadBalancerSessionAffinityAttributes\x12\x93\x01\n" +
 	"\x0edrain_duration\x18\x01 \x01(\x01Bl\xbaHi\xba\x01f\n" +
 	"\x1fsaa.drain_duration_non_negative\x128drain_duration must be 0 or a positive number of seconds\x1a\tthis >= 0R\rdrainDuration\x12\x18\n" +

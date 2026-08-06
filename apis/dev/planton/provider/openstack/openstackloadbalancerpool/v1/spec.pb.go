@@ -227,7 +227,7 @@ const file_dev_planton_provider_openstack_openstackloadbalancerpool_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/openstack/openstackloadbalancerpool/v1/spec.proto\x12;dev.planton.provider.openstack.openstackloadbalancerpool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\x04\n" +
 	"\x1dOpenStackLoadBalancerPoolSpec\x12~\n" +
-	"\vlistener_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x13\x92\xd4a\x1astatus.outputs.listener_idR\n" +
+	"\vlistener_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa1N\x92\xd4a\x1astatus.outputs.listener_idR\n" +
 	"listenerId\x12B\n" +
 	"\bprotocol\x18\x02 \x01(\tB&\xbaH#\xc8\x01\x01r\x1eR\x04HTTPR\x05HTTPSR\x03TCPR\x03UDPR\x05PROXYR\bprotocol\x12`\n" +
 	"\tlb_method\x18\x03 \x01(\tBC\xbaH@\xc8\x01\x01r;R\vROUND_ROBINR\x11LEAST_CONNECTIONSR\tSOURCE_IPR\x0eSOURCE_IP_PORTR\blbMethod\x12q\n" +

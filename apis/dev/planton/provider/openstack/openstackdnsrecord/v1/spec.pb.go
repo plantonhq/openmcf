@@ -256,7 +256,7 @@ const file_dev_planton_provider_openstack_openstackdnsrecord_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/openstack/openstackdnsrecord/v1/spec.proto\x124dev.planton.provider.openstack.openstackdnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x92\a\n" +
 	"\x16OpenStackDnsRecordSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x13\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x89\x02\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xa5N\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x89\x02\n" +
 	"\vrecord_name\x18\x02 \x01(\tB\xe7\x01\xbaH\xe3\x01\xba\x01\xdc\x01\n" +
 	"\x16record_name.valid_fqdn\x12_record_name must be a valid DNS domain name ending with a trailing dot (e.g., www.example.com.)\x1aathis.endsWith('.') && this.matches('^(?:[*][.])?(?:[_a-z0-9](?:[_a-z0-9-]{0,61}[a-z0-9])?[.])+$')\xc8\x01\x01R\n" +
 	"recordName\x12\xd8\x01\n" +

@@ -424,7 +424,7 @@ const file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/azure/azurefrontdoorprofile/v1/spec.proto\x123dev.planton.provider.azure.azurefrontdoorprofile.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\b\n" +
 	"\x19AzureFrontDoorProfileSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8c\x02\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x8c\x02\n" +
 	"\fprofile_name\x18\x02 \x01(\tB\xe8\x01\xbaH\xe4\x01\xba\x01\xd7\x01\n" +
 	"\x1efront_door_profile_name_format\x12yprofile_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\vprofileName\x12i\n" +
 	"\x03sku\x18\x03 \x01(\x0e2M.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x12P\n" +
@@ -439,7 +439,7 @@ const file_dev_planton_provider_azure_azurefrontdoorprofile_v1_spec_proto_rawDes
 	"\x1dAzureFrontDoorProfileIdentity\x12v\n" +
 	"\x04type\x18\x01 \x01(\x0e2V.dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xbb\x02\xbaH\xb7\x02\x1a\xb4\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xbb\x02\xbaH\xb7\x02\x1a\xb4\x02\n" +
 	"*front_door_profile_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*c\n" +
 	"\x18AzureFrontDoorProfileSku\x12,\n" +
 	"(azure_front_door_profile_sku_unspecified\x10\x00\x12\f\n" +

@@ -714,7 +714,7 @@ const file_dev_planton_provider_scaleway_scalewayrdbinstance_v1_spec_proto_rawDe
 	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12=\n" +
 	"\x06engine\x18\x02 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^(PostgreSQL|MySQL)-[0-9]+$R\x06engine\x12#\n" +
 	"\tnode_type\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x12\x8c\x01\n" +
-	"\x12private_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\"\n" +
+	"\x12private_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\"\n" +
 	"\ris_ha_cluster\x18\x05 \x01(\bR\visHaCluster\x12)\n" +
 	"\vvolume_type\x18\x06 \x01(\tB\b\x92\xa6\x1d\x04lssdR\n" +
 	"volumeType\x12)\n" +

@@ -1519,7 +1519,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesopenfga/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenfga.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa8\x0e\n" +
 	"\x15KubernetesOpenFgaSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x060.3.10H\x00R\fchartVersion\x88\x01\x01\x12/\n" +
@@ -1565,7 +1565,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\x13_conn_max_idle_timeB\x14\n" +
 	"\x12_conn_max_lifetime\"\xfa\x04\n" +
 	"\x19KubernetesOpenFgaPostgres\x12p\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12\"\n" +
 	"\bdatabase\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12\"\n" +
 	"\busername\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x86\x01\n" +
@@ -1575,7 +1575,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\x05_portB\v\n" +
 	"\t_ssl_mode\"\x97\x03\n" +
 	"\x16KubernetesOpenFgaMysql\x12u\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x043306H\x00R\x04port\x88\x01\x01\x12\"\n" +
 	"\bdatabase\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12\"\n" +
 	"\busername\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x86\x01\n" +
@@ -1583,7 +1583,7 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\x05_port\"\x19\n" +
 	"\x17KubernetesOpenFgaMemory\"\xb5\x02\n" +
 	"\x1fKubernetesOpenFgaPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +

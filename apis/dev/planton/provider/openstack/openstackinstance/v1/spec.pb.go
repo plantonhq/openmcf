@@ -479,15 +479,15 @@ const file_dev_planton_provider_openstack_openstackinstance_v1_spec_proto_rawDes
 	"\n" +
 	"image_name\x18\x03 \x01(\tR\timageName\x12\x19\n" +
 	"\bimage_id\x18\x04 \x01(\tR\aimageId\x12k\n" +
-	"\bkey_pair\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xc4\x13\x92\xd4a\x13status.outputs.nameR\akeyPair\x12`\n" +
+	"\bkey_pair\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\x90N\x92\xd4a\x13status.outputs.nameR\akeyPair\x12`\n" +
 	"\bnetworks\x18\x06 \x03(\v2D.dev.planton.provider.openstack.openstackinstance.v1.InstanceNetworkR\bnetworks\x12y\n" +
-	"\x0fsecurity_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xc9\x13\x92\xd4a\x13status.outputs.nameR\x0esecurityGroups\x12c\n" +
+	"\x0fsecurity_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\x95N\x92\xd4a\x13status.outputs.nameR\x0esecurityGroups\x12c\n" +
 	"\fblock_device\x18\b \x03(\v2@.dev.planton.provider.openstack.openstackinstance.v1.BlockDeviceR\vblockDevice\x12\x1b\n" +
 	"\tuser_data\x18\t \x01(\tR\buserData\x12t\n" +
 	"\bmetadata\x18\n" +
 	" \x03(\v2X.dev.planton.provider.openstack.openstackinstance.v1.OpenStackInstanceSpec.MetadataEntryR\bmetadata\x12&\n" +
 	"\fconfig_drive\x18\v \x01(\bH\x00R\vconfigDrive\x88\x01\x01\x12\x83\x01\n" +
-	"\x0fserver_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xcd\x13\x92\xd4a\x1estatus.outputs.server_group_idR\rserverGroupId\x12+\n" +
+	"\x0fserver_group_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x99N\x92\xd4a\x1estatus.outputs.server_group_idR\rserverGroupId\x12+\n" +
 	"\x11availability_zone\x18\r \x01(\tR\x10availabilityZone\x12\x1c\n" +
 	"\x04tags\x18\x0e \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tags\x12\x16\n" +
 	"\x06region\x18\x0f \x01(\tR\x06region\x1a;\n" +
@@ -498,8 +498,8 @@ const file_dev_planton_provider_openstack_openstackinstance_v1_spec_proto_rawDes
 	"\x11networks.required\x12&at least one network must be specified\x1a\x18this.networks.size() > 0B\x0f\n" +
 	"\r_config_drive\"\x95\x03\n" +
 	"\x0fInstanceNetwork\x12j\n" +
-	"\x04uuid\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc5\x13\x92\xd4a\x19status.outputs.network_idR\x04uuid\x12g\n" +
-	"\x04port\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xcb\x13\x92\xd4a\x16status.outputs.port_idR\x04port\x12\x1e\n" +
+	"\x04uuid\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x91N\x92\xd4a\x19status.outputs.network_idR\x04uuid\x12g\n" +
+	"\x04port\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x97N\x92\xd4a\x16status.outputs.port_idR\x04port\x12\x1e\n" +
 	"\vfixed_ip_v4\x18\x03 \x01(\tR\tfixedIpV4\x12%\n" +
 	"\x0eaccess_network\x18\x04 \x01(\bR\raccessNetwork:f\xbaHc\x1aa\n" +
 	"\x14network.uuid_or_port\x12'exactly one of uuid or port must be set\x1a has(this.uuid) != has(this.port)\"\xab\x02\n" +

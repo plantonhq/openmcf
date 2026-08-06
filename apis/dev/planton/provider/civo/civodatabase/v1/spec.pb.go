@@ -223,8 +223,8 @@ const file_dev_planton_provider_civo_civodatabase_v1_spec_proto_rawDesc = "" +
 	"\tsize_slug\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsizeSlug\x12#\n" +
 	"\breplicas\x18\x06 \x01(\rB\a\xbaH\x04*\x02\x18\x04R\breplicas\x12{\n" +
 	"\n" +
-	"network_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\v\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12z\n" +
-	"\ffirewall_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe1\v\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12\x1f\n" +
+	"network_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xfa.\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12z\n" +
+	"\ffirewall_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf5.\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12\x1f\n" +
 	"\vstorage_gib\x18\t \x01(\rR\n" +
 	"storageGib\x12\x12\n" +
 	"\x04tags\x18\n" +

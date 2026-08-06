@@ -740,9 +740,9 @@ const file_dev_planton_provider_aws_awssesconfigurationset_v1_spec_proto_rawDesc
 	"\x14matching_event_types\x18\x03 \x03(\tBw\xbaHt\x92\x01q\b\x01\x18\x01\"kriR\x04SENDR\x06REJECTR\x06BOUNCER\tCOMPLAINTR\bDELIVERYR\x04OPENR\x05CLICKR\x11RENDERING_FAILURER\x0eDELIVERY_DELAYR\fSUBSCRIPTIONR\x12matchingEventTypes\x12\x85\x01\n" +
 	"\vcloud_watch\x18\x04 \x01(\v2d.dev.planton.provider.aws.awssesconfigurationset.v1.AwsSesConfigurationSetEventDestinationCloudWatchR\n" +
 	"cloudWatch\x12t\n" +
-	"\tevent_bus\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe3\x01\x92\xd4a\x16status.outputs.bus_arn\x98\xd4a\x01R\beventBus\x12~\n" +
+	"\tevent_bus\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x83\b\x92\xd4a\x16status.outputs.bus_arn\x98\xd4a\x01R\beventBus\x12~\n" +
 	"\bfirehose\x18\x06 \x01(\v2b.dev.planton.provider.aws.awssesconfigurationset.v1.AwsSesConfigurationSetEventDestinationFirehoseR\bfirehose\x12r\n" +
-	"\tsns_topic\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\bsnsTopic\x128\n" +
+	"\tsns_topic\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\bsnsTopic\x128\n" +
 	"\x18pinpoint_application_arn\x18\b \x01(\tR\x16pinpointApplicationArn:\xa5\x02\xbaH\xa1\x02\x1a\x9e\x02\n" +
 	"\x17exactly_one_destination\x12mexactly one destination must be set: cloud_watch, event_bus, firehose, sns_topic, or pinpoint_application_arn\x1a\x93\x01[has(this.cloud_watch), has(this.event_bus), has(this.firehose), has(this.sns_topic), this.pinpoint_application_arn != ''].filter(x, x).size() == 1B\n" +
 	"\n" +
@@ -758,8 +758,8 @@ const file_dev_planton_provider_aws_awssesconfigurationset_v1_spec_proto_rawDesc
 	"\rdefault_value\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x02R\fdefaultValue\"\xb8\x02\n" +
 	".AwsSesConfigurationSetEventDestinationFirehose\x12\x8e\x01\n" +
-	"\x0fdelivery_stream\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\x02\x92\xd4a\"status.outputs.delivery_stream_arnR\x0edeliveryStream\x12u\n" +
-	"\biam_role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aiamRoleB\xa1\x03\n" +
+	"\x0fdelivery_stream\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xa5\b\x92\xd4a\"status.outputs.delivery_stream_arnR\x0edeliveryStream\x12u\n" +
+	"\biam_role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aiamRoleB\xa1\x03\n" +
 	"6com.dev.planton.provider.aws.awssesconfigurationset.v1B\tSpecProtoP\x01Zmgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awssesconfigurationset/v1;awssesconfigurationsetv1\xa2\x02\x05DPPAA\xaa\x022Dev.Planton.Provider.Aws.Awssesconfigurationset.V1\xca\x022Dev\\Planton\\Provider\\Aws\\Awssesconfigurationset\\V1\xe2\x02>Dev\\Planton\\Provider\\Aws\\Awssesconfigurationset\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Aws::Awssesconfigurationset::V1b\x06proto3"
 
 var (

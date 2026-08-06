@@ -564,8 +564,8 @@ const file_dev_planton_provider_scaleway_scalewayinstance_v1_spec_proto_rawDesc 
 	"\x04type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x1c\n" +
 	"\x05image\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12h\n" +
 	"\tpublic_ip\x18\x04 \x01(\v2K.dev.planton.provider.scaleway.scalewayinstance.v1.ScalewayInstancePublicIpR\bpublicIp\x12\x89\x01\n" +
-	"\x11security_group_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf4\x15\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12\x8c\x01\n" +
-	"\x12private_network_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12n\n" +
+	"\x11security_group_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xfcU\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12\x8c\x01\n" +
+	"\x12private_network_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12n\n" +
 	"\vroot_volume\x18\a \x01(\v2M.dev.planton.provider.scaleway.scalewayinstance.v1.ScalewayInstanceRootVolumeR\n" +
 	"rootVolume\x12\x82\x01\n" +
 	"\x12additional_volumes\x18\b \x03(\v2S.dev.planton.provider.scaleway.scalewayinstance.v1.ScalewayInstanceAdditionalVolumeR\x11additionalVolumes\x12\x1d\n" +

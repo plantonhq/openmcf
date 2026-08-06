@@ -2626,7 +2626,7 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xad\x1b\n" +
 	"\x14KubernetesHarborSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x061.19.1H\x00R\fchartVersion\x88\x01\x01\x12\xc8\x01\n" +
@@ -2689,7 +2689,7 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"\x11_load_balancer_ip\"\xb9\x01\n" +
 	"\x19KubernetesHarborExposeTls\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x81\x01\n" +
-	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName\"\x92\x01\n" +
+	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName\"\x92\x01\n" +
 	"\x19KubernetesHarborNodePorts\x12/\n" +
 	"\x04http\x18\x01 \x01(\x05B\x16\xbaH\n" +
 	"\x1a\b\x18\xff\xff\x01(\xb0\xea\x01\x8a\xa6\x1d\x0530002H\x00R\x04http\x88\x01\x01\x121\n" +
@@ -2721,10 +2721,10 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"\x0e_storage_classB\x11\n" +
 	"\x0f_shm_size_limit\"\xb9\x05\n" +
 	" KubernetesHarborExternalDatabase\x12p\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12\"\n" +
 	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x98\x01\n" +
-	"\x14password_secret_name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x12passwordSecretName\x126\n" +
+	"\x14password_secret_name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\x12passwordSecretName\x126\n" +
 	"\rcore_database\x18\x05 \x01(\tB\f\x8a\xa6\x1d\bregistryH\x01R\fcoreDatabase\x88\x01\x01\x12\xd5\x01\n" +
 	"\bssl_mode\x18\x06 \x01(\tB\xb4\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
 	"\x1fspec.database.external.ssl_mode\x12Bssl_mode must be one of: disable, require, verify-ca, verify-full.\x1a:this in [\"disable\", \"require\", \"verify-ca\", \"verify-full\"]\x8a\xa6\x1d\adisableH\x02R\asslMode\x88\x01\x01B\a\n" +
@@ -2748,7 +2748,7 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"_disk_sizeB\x10\n" +
 	"\x0e_storage_class\"\xb8\x05\n" +
 	"\x1dKubernetesHarborExternalRedis\x12s\n" +
-	"\x04addr\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04addr\x123\n" +
+	"\x04addr\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a\x1cstatus.outputs.kube_endpointR\x04addr\x123\n" +
 	"\x13sentinel_master_set\x18\x02 \x01(\tH\x00R\x11sentinelMasterSet\x88\x01\x01\x12\x1f\n" +
 	"\busername\x18\x03 \x01(\tH\x01R\busername\x88\x01\x01\x12%\n" +
 	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01H\x02R\bpassword\x88\x01\x01\x125\n" +
@@ -2783,7 +2783,7 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"\x19KubernetesHarborS3Storage\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x1e\n" +
 	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12s\n" +
-	"\bendpoint\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12t\n" +
+	"\bendpoint\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b \x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12t\n" +
 	"\vcredentials\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3CredentialsR\vcredentials\x12)\n" +
 	"\x10disable_redirect\x18\x05 \x01(\bR\x0fdisableRedirect\x12\x18\n" +
 	"\aencrypt\x18\x06 \x01(\bR\aencrypt\x12%\n" +

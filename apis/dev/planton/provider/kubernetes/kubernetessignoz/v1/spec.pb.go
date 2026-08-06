@@ -1018,7 +1018,7 @@ const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa5\a\n" +
 	"\x14KubernetesSignozSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x125\n" +
 	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\a0.133.0H\x00R\fchartVersion\x88\x01\x01\x12w\n" +
 	"\n" +
@@ -1037,8 +1037,8 @@ const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDes
 	"helmValuesB\x10\n" +
 	"\x0e_chart_version\"\xb2\x06\n" +
 	"\x1aKubernetesSignozClickHouse\x12r\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\a\x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12{\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x97\a\x92\xd4a\x1bstatus.outputs.cluster_nameR\vclusterName\x123\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x97 \x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12{\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x97 \x92\xd4a\x1bstatus.outputs.cluster_nameR\vclusterName\x123\n" +
 	"\btcp_port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x049000H\x00R\atcpPort\x88\x01\x01\x125\n" +
 	"\thttp_port\x18\x04 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048123H\x01R\bhttpPort\x88\x01\x01\x12\"\n" +
 	"\busername\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x88\x01\n" +
@@ -1050,13 +1050,13 @@ const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDes
 	"\n" +
 	"_http_port\"\x9a\x02\n" +
 	"\"KubernetesSignozClickHousePassword\x12\x83\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\a\x92\xd4a\x1fstatus.outputs.auth_secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x97 \x92\xd4a\x1fstatus.outputs.auth_secret_nameR\n" +
 	"secretName\x12n\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBO\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialR\tsecretKey\"\xed\x04\n" +
 	"\x16KubernetesSignozServer\x12_\n" +
 	"\tdisk_size\x18\x01 \x01(\tB=\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x031GiH\x00R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
 	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12!\n" +
 	"\fexternal_url\x18\x04 \x01(\tR\vexternalUrl\x12]\n" +
 	"\x04smtp\x18\x05 \x01(\v2I.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSmtpR\x04smtp\x12f\n" +

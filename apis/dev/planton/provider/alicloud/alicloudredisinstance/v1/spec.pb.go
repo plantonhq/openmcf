@@ -401,7 +401,7 @@ const file_dev_planton_provider_alicloud_alicloudredisinstance_v1_spec_proto_raw
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x121\n" +
+	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x121\n" +
 	"\x0einstance_class\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\rinstanceClass\x12,\n" +
 	"\bpassword\x18\x04 \x01(\tB\x10\xbaH\t\xc8\x01\x01r\x04\x10\b\x18 \xa0\xa6\x1d\x01R\bpassword\x12\xc5\x01\n" +

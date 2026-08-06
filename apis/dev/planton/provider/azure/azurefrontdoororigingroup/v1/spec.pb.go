@@ -433,7 +433,7 @@ const file_dev_planton_provider_azure_azurefrontdoororigingroup_v1_spec_proto_ra
 	"Bdev/planton/provider/azure/azurefrontdoororigingroup/v1/spec.proto\x127dev.planton.provider.azure.azurefrontdoororigingroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfa\a\n" +
 	"\x1dAzureFrontDoorOriginGroupSpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x9f\x02\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x9f\x02\n" +
 	"\x11origin_group_name\x18\x02 \x01(\tB\xf2\x01\xbaH\xee\x01\xba\x01\xe1\x01\n" +
 	"#front_door_origin_group_name_format\x12~origin_group_name must be 2-90 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,88}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18ZR\x0foriginGroupName\x12\x86\x01\n" +
 	"\x0eload_balancing\x18\x03 \x01(\v2_.dev.planton.provider.azure.azurefrontdoororigingroup.v1.AzureFrontDoorOriginGroupLoadBalancingR\rloadBalancing\x12\x80\x01\n" +

@@ -1001,7 +1001,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskeda_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/kubernetes/kuberneteskeda/v1/spec.proto\x121dev.planton.provider.kubernetes.kuberneteskeda.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc3\v\n" +
 	"\x12KubernetesKedaSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x062.20.1H\x00R\fchartVersion\x88\x01\x01\x12Y\n" +
@@ -1076,7 +1076,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskeda_v1_spec_proto_rawDesc 
 	"\x1fKubernetesKedaCertManagerIssuer\x12p\n" +
 	"\x04kind\x18\x01 \x01(\x0e2K.dev.planton.provider.kubernetes.kuberneteskeda.v1.KubernetesKedaIssuerKindB\n" +
 	"\x8a\xa6\x1d\x06issuerH\x00R\x04kind\x88\x01\x01\x12q\n" +
-	"\x04name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04nameB\a\n" +
+	"\x04name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x1f\x92\xd4a\x1astatus.outputs.issuer_nameR\x04nameB\a\n" +
 	"\x05_kind\"\xb3\x02\n" +
 	"\x18KubernetesKedaPrometheus\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12'\n" +

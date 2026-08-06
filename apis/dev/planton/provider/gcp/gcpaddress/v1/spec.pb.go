@@ -226,7 +226,7 @@ const file_dev_planton_provider_gcp_gcpaddress_v1_spec_proto_rawDesc = "" +
 	"1dev/planton/provider/gcp/gcpaddress/v1/spec.proto\x12&dev.planton.provider.gcp.gcpaddress.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xeb\x14\n" +
 	"\x0eGcpAddressSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
 	"\faddress_name\x18\x02 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vaddressName\x12\x9a\x01\n" +
 	"\x06region\x18\x03 \x01(\tB\x81\x01\xbaH~\xba\x01x\n" +
 	"\fvalid_region\x12:region must be a valid GCP region name such as us-central1\x1a,this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x06region\x12\x18\n" +
@@ -237,9 +237,9 @@ const file_dev_planton_provider_gcp_gcpaddress_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"ip_version\x18\a \x01(\tB[\xbaHP\xba\x01M\n" +
 	"\x10ip_version_valid\x12\x1fip_version must be IPV4 or IPV6\x1a\x18this in ['IPV4', 'IPV6']\x8a\xa6\x1d\x04IPV4H\x01R\tipVersion\x88\x01\x01\x12w\n" +
-	"\anetwork\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
+	"\anetwork\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
-	"subnetwork\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12\x9e\x01\n" +
 	"\fnetwork_tier\x18\n" +
 	" \x01(\tB{\xbaHx\xba\x01u\n" +

@@ -450,7 +450,7 @@ const file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc = "" +
 	"AwsNlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12m\n" +
 	"\x0fsubnet_mappings\x18\x02 \x03(\v27.dev.planton.provider.aws.awsnlb.v1.AwsNlbSubnetMappingB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0esubnetMappings\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
+	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
 	"\binternal\x18\x04 \x01(\bR\binternal\x12:\n" +
 	"\x19delete_protection_enabled\x18\x05 \x01(\bR\x17deleteProtectionEnabled\x12H\n" +
 	"!cross_zone_load_balancing_enabled\x18\x06 \x01(\bR\x1dcrossZoneLoadBalancingEnabled\x120\n" +
@@ -466,15 +466,15 @@ const file_dev_planton_provider_aws_awsnlb_v1_spec_proto_rawDesc = "" +
 	"&dns_record_client_routing_policy_valid\x12\x90\x01dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity' when set\x1a\xb5\x01this.dns_record_client_routing_policy == '' || this.dns_record_client_routing_policy in ['any_availability_zone', 'availability_zone_affinity', 'partial_availability_zone_affinity']\x1a\x9d\x02\n" +
 	"\x1eprivate_link_enforcement_valid\x12[enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set\x1a\x9d\x01this.enforce_security_group_inbound_rules_on_private_link_traffic == '' || this.enforce_security_group_inbound_rules_on_private_link_traffic in ['on', 'off']\"\xc1\x02\n" +
 	"\x13AwsNlbSubnetMapping\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
-	"\rallocation_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x120\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
+	"\rallocation_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb9\b\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x120\n" +
 	"\x14private_ipv4_address\x18\x03 \x01(\tR\x12privateIpv4Address\"\x9f\x01\n" +
 	"\x10AwsNlbAccessLogs\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xce\x01\n" +
 	"\tAwsNlbDns\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x7f\n" +
-	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rroute53ZoneId\x12&\n" +
+	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rroute53ZoneId\x12&\n" +
 	"\thostnames\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\thostnamesB\xb1\x02\n" +
 	"&com.dev.planton.provider.aws.awsnlb.v1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsnlb/v1;awsnlbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsnlb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsnlb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsnlb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsnlb::V1b\x06proto3"
 

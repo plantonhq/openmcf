@@ -166,7 +166,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_spec_proto_rawD
 	"\n" +
 	"@dev/planton/provider/kubernetes/kubernetesmanifest/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x85\x03\n" +
 	"\x16KubernetesManifestSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xb4\x01\n" +
 	"\rmanifest_yaml\x18\x03 \x01(\tB\x8e\x01\xbaH\x8a\x01\xba\x01\x83\x01\n" +
 	"\x17manifest_yaml.not_blank\x12SManifest YAML must contain at least one Kubernetes document (a non-empty YAML body)\x1a\x13this.matches('\\\\S')\xc8\x01\x01R\fmanifestYaml\x12\x1d\n" +

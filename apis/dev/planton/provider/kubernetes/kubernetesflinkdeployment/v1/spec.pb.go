@@ -970,7 +970,7 @@ const file_dev_planton_provider_kubernetes_kubernetesflinkdeployment_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/kubernetes/kubernetesflinkdeployment/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa6\x18\n" +
 	"\x1dKubernetesFlinkDeploymentSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x82\x02\n" +
 	"\rflink_version\x18\x03 \x01(\tB\xdc\x01\xbaH\xd8\x01\xba\x01\xd1\x01\n" +
 	"\x12spec.flink_version\x12Qflink_version must be one of the CR enum values: v1_13…v1_20, v2_0, v2_1, v2_2.\x1ahthis in [\"v1_13\", \"v1_14\", \"v1_15\", \"v1_16\", \"v1_17\", \"v1_18\", \"v1_19\", \"v1_20\", \"v2_0\", \"v2_1\", \"v2_2\"]\xc8\x01\x01R\fflinkVersion\x12\x14\n" +
@@ -1043,14 +1043,14 @@ const file_dev_planton_provider_kubernetes_kubernetesflinkdeployment_v1_spec_pro
 	"\vstorage_dir\x18\x02 \x01(\tR\n" +
 	"storageDir\"\xcf\x04\n" +
 	"\x1bKubernetesFlinkDeploymentS3\x12y\n" +
-	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x129\n" +
+	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x129\n" +
 	"\x11path_style_access\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x0fpathStyleAccess\x88\x01\x01\x12\x99\x01\n" +
 	"\x11access_key_secret\x18\x03 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1.KubernetesFlinkDeploymentSecretSelectorB\x06\xbaH\x03\xc8\x01\x01R\x0faccessKeySecret\x12\x99\x01\n" +
 	"\x11secret_key_secret\x18\x04 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1.KubernetesFlinkDeploymentSecretSelectorB\x06\xbaH\x03\xc8\x01\x01R\x0fsecretKeySecret\x12,\n" +
 	"\x12builtin_plugin_jar\x18\x05 \x01(\tR\x10builtinPluginJarB\x14\n" +
 	"\x12_path_style_access\"\xc6\x01\n" +
 	"'KubernetesFlinkDeploymentSecretSelector\x12\x80\x01\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a)status.outputs.s3_credentials_secret_nameR\x04name\x12\x18\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a)status.outputs.s3_credentials_secret_nameR\x04name\x12\x18\n" +
 	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\x88\x03\n" +
 	"#KubernetesFlinkDeploymentScheduling\x12\x98\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2s.dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1.KubernetesFlinkDeploymentScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +

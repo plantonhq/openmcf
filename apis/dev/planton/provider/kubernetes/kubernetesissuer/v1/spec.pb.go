@@ -109,7 +109,7 @@ const file_dev_planton_provider_kubernetes_kubernetesissuer_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetesissuer/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a9dev/planton/provider/kubernetes/cert_manager_issuer.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc\x01\n" +
 	"\x14KubernetesIssuerSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12X\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12X\n" +
 	"\x06config\x18\x02 \x01(\v28.dev.planton.provider.kubernetes.CertManagerIssuerConfigB\x06\xbaH\x03\xc8\x01\x01R\x06configB\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesissuer.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesissuer/v1;kubernetesissuerv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesissuer.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesissuer\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesissuer\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesissuer::V1b\x06proto3"
 

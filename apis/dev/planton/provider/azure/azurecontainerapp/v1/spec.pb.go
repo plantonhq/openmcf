@@ -2720,10 +2720,10 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\n" +
 	":dev/planton/provider/azure/azurecontainerapp/v1/spec.proto\x12/dev.planton.provider.azure.azurecontainerapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xde\x17\n" +
 	"\x15AzureContainerAppSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xe7\x02\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xe7\x02\n" +
 	"\x12container_app_name\x18\x02 \x01(\tB\xb8\x02\xbaH\xb4\x02\xba\x01\xa7\x02\n" +
 	"\x19container_app_name_format\x12\xa0\x01Container App name must be lowercase alphanumeric characters, hyphens, or dots, start and end with an alphanumeric character, and contain no consecutive hyphens\x1ag(this.matches('^[a-z]$') || this.matches('^[a-z0-9][a-z0-9.-]{0,30}[a-z0-9]$')) && !this.contains('--')\xc8\x01\x01r\x04\x10\x01\x18 R\x10containerAppName\x12\xa1\x01\n" +
-	"\x1ccontainer_app_environment_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12}\n" +
+	"\x1ccontainer_app_environment_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x0f\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12}\n" +
 	"\rrevision_mode\x18\x04 \x01(\x0e2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppRevisionModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\frevisionMode\x122\n" +
 	"\x15workload_profile_name\x18\x05 \x01(\tR\x13workloadProfileName\x12D\n" +
 	"\x16max_inactive_revisions\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x00R\x14maxInactiveRevisions\x88\x01\x01\x12u\n" +
@@ -2832,7 +2832,7 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x80\x01\n" +
 	"\fstorage_type\x18\x02 \x01(\x0e2S.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppVolumeStorageTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\vstorageType\x12{\n" +
-	"\fstorage_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xbe\x03\x92\xd4a\x1bstatus.outputs.storage_nameR\vstorageName\x12#\n" +
+	"\fstorage_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xfe\x0f\x92\xd4a\x1bstatus.outputs.storage_nameR\vstorageName\x12#\n" +
 	"\rmount_options\x18\x04 \x01(\tR\fmountOptions:\x86\x02\xbaH\x82\x02\x1a\xff\x01\n" +
 	"'volume_file_share_requires_storage_name\x12\x9a\x01AZURE_FILE and NFS_AZURE_FILE volumes require storage_name (the environment storage resource backing the share); EMPTY_DIR and SECRET volumes must omit it\x1a7(this.storage_type in [2, 3]) == has(this.storage_name)\"\x81\x06\n" +
 	"\x17AzureContainerAppSecret\x12\xc4\x01\n" +
@@ -2919,7 +2919,7 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x1bcustom_rule_type_vocabulary\x12\xad\x01custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. kafka, prometheus, redis, cron, cpu, memory, azure-servicebus, rabbitmq (see keda.sh/docs/scalers)\x1a\x91\athis in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']\xc8\x01\x01R\x0ecustomRuleType\x12\x85\x01\n" +
 	"\bmetadata\x18\x03 \x03(\v2_.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppCustomScaleRule.MetadataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmetadata\x12w\n" +
 	"\x0eauthentication\x18\x04 \x03(\v2O.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppScaleRuleAuthR\x0eauthentication\x12x\n" +
-	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
+	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\n" +
 	"identityId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -2939,7 +2939,7 @@ const file_dev_planton_provider_azure_azurecontainerapp_v1_spec_proto_rawDesc = 
 	"\x19AzureContainerAppIdentity\x12n\n" +
 	"\x04type\x18\x01 \x01(\x0e2N.dev.planton.provider.azure.azurecontainerapp.v1.AzureContainerAppIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb6\x02\xbaH\xb2\x02\x1a\xaf\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb6\x02\xbaH\xb2\x02\x1a\xaf\x02\n" +
 	"%container_app_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*l\n" +
 	"\x1dAzureContainerAppRevisionMode\x121\n" +
 	"-azure_container_app_revision_mode_unspecified\x10\x00\x12\n" +

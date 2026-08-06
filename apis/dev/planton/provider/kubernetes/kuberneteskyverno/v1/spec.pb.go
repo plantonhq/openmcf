@@ -1201,7 +1201,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskyverno_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kuberneteskyverno/v1/spec.proto\x124dev.planton.provider.kubernetes.kuberneteskyverno.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf6\f\n" +
 	"\x15KubernetesKyvernoSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
 	"\rchart_version\x18\x03 \x01(\tB\t\x8a\xa6\x1d\x053.8.2H\x00R\fchartVersion\x88\x01\x01\x12_\n" +
 	"\x04crds\x18\x04 \x01(\v2K.dev.planton.provider.kubernetes.kuberneteskyverno.v1.KubernetesKyvernoCrdsR\x04crds\x12e\n" +
@@ -1296,7 +1296,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskyverno_v1_spec_proto_rawDe
 	"\x1dKubernetesKyvernoCertificates\x12\x81\x01\n" +
 	"\fcert_manager\x18\x01 \x01(\v2^.dev.planton.provider.kubernetes.kuberneteskyverno.v1.KubernetesKyvernoCertManagerCertificatesR\vcertManager\"\xed\x01\n" +
 	"(KubernetesKyvernoCertManagerCertificates\x12k\n" +
-	"\vissuer_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xbf\x06\x92\xd4a\rmetadata.nameR\n" +
+	"\vissuer_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xbf\x1f\x92\xd4a\rmetadata.nameR\n" +
 	"issuerName\x12D\n" +
 	"\vissuer_kind\x18\x02 \x01(\tB\x1e\xbaH\x1br\x19R\x00R\rClusterIssuerR\x06IssuerH\x00R\n" +
 	"issuerKind\x88\x01\x01B\x0e\n" +

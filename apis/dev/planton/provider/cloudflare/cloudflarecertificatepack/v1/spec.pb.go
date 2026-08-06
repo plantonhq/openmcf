@@ -146,7 +146,7 @@ const file_dev_planton_provider_cloudflare_cloudflarecertificatepack_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/cloudflare/cloudflarecertificatepack/v1/spec.proto\x12<dev.planton.provider.cloudflare.cloudflarecertificatepack.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb8\a\n" +
 	"\x1dCloudflareCertificatePackSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\xe2\x01\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\xe2\x01\n" +
 	"\x15certificate_authority\x18\x02 \x01(\tB\xac\x01\xbaH\xa8\x01\xba\x01\xa1\x01\n" +
 	",certificate_pack.certificate_authority_valid\x12Bcertificate_authority must be one of google, lets_encrypt, ssl_com\x1a-this in ['google', 'lets_encrypt', 'ssl_com']\xc8\x01\x01R\x14certificateAuthority\x12\x81\x01\n" +
 	"\x04type\x18\x03 \x01(\tBh\xbaHY\xba\x01V\n" +

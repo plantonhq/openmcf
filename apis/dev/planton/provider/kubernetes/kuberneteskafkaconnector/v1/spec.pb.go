@@ -389,8 +389,8 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaconnector_v1_spec_prot
 	"Fdev/planton/provider/kubernetes/kuberneteskafkaconnector/v1/spec.proto\x12;dev.planton.provider.kubernetes.kuberneteskafkaconnector.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xff\n" +
 	"\n" +
 	"\x1cKubernetesKafkaConnectorSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x87\x01\n" +
-	"\x0fconnect_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\a\x92\xd4a\x1bstatus.outputs.connect_nameR\x0econnectCluster\x12/\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\x87\x01\n" +
+	"\x0fconnect_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f \x92\xd4a\x1bstatus.outputs.connect_nameR\x0econnectCluster\x12/\n" +
 	"\x0fconnector_class\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0econnectorClass\x12)\n" +
 	"\ttasks_max\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\btasksMax\x88\x01\x01\x12\x18\n" +
 	"\aversion\x18\x05 \x01(\tR\aversion\x12\xe6\x02\n" +
@@ -413,9 +413,9 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaconnector_v1_spec_prot
 	"\fmax_restarts\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\vmaxRestarts\x88\x01\x01B\x0f\n" +
 	"\r_max_restarts\"\xac\x01\n" +
 	"#KubernetesKafkaConnectorListOffsets\x12\x84\x01\n" +
-	"\rto_config_map\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\x1dstatus.outputs.configmap_nameR\vtoConfigMap\"\xb1\x01\n" +
+	"\rto_config_map\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x1f\x92\xd4a\x1dstatus.outputs.configmap_nameR\vtoConfigMap\"\xb1\x01\n" +
 	"$KubernetesKafkaConnectorAlterOffsets\x12\x88\x01\n" +
-	"\x0ffrom_config_map\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\x1dstatus.outputs.configmap_nameR\rfromConfigMapB\xd9\x03\n" +
+	"\x0ffrom_config_map\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x1f\x92\xd4a\x1dstatus.outputs.configmap_nameR\rfromConfigMapB\xd9\x03\n" +
 	"?com.dev.planton.provider.kubernetes.kuberneteskafkaconnector.v1B\tSpecProtoP\x01Zxgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafkaconnector/v1;kuberneteskafkaconnectorv1\xa2\x02\x05DPPKK\xaa\x02;Dev.Planton.Provider.Kubernetes.Kuberneteskafkaconnector.V1\xca\x02;Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskafkaconnector\\V1\xe2\x02GDev\\Planton\\Provider\\Kubernetes\\Kuberneteskafkaconnector\\V1\\GPBMetadata\xea\x02@Dev::Planton::Provider::Kubernetes::Kuberneteskafkaconnector::V1b\x06proto3"
 
 var (

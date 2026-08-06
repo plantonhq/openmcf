@@ -297,7 +297,7 @@ const file_dev_planton_provider_aws_awssecuritygroup_v1_spec_proto_rawDesc = "" 
 	"7dev/planton/provider/aws/awssecuritygroup/v1/spec.proto\x12,dev.planton.provider.aws.awssecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x98\x04\n" +
 	"\x14AwsSecurityGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x84\x01\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x84\x01\n" +
 	"\vdescription\x18\x03 \x01(\tBb\xbaH_\xba\x01Y\n" +
 	"\x18description_length_check\x12*Description must not exceed 255 characters\x1a\x11size(this) <= 255\xc8\x01\x01R\vdescription\x12Y\n" +
 	"\aingress\x18\x04 \x03(\v2?.dev.planton.provider.aws.awssecuritygroup.v1.SecurityGroupRuleR\aingress\x12W\n" +
@@ -311,8 +311,8 @@ const file_dev_planton_provider_aws_awssecuritygroup_v1_spec_proto_rawDesc = "" 
 	"ipv4_cidrs\x18\x04 \x03(\tR\tipv4Cidrs\x12\x1d\n" +
 	"\n" +
 	"ipv6_cidrs\x18\x05 \x03(\tR\tipv6Cidrs\x12\x98\x01\n" +
-	"\x19source_security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x16sourceSecurityGroupIds\x12\xa2\x01\n" +
-	"\x1edestination_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x1bdestinationSecurityGroupIds\x12D\n" +
+	"\x19source_security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x16sourceSecurityGroupIds\x12\xa2\x01\n" +
+	"\x1edestination_security_group_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x1bdestinationSecurityGroupIds\x12D\n" +
 	"\x0fprefix_list_ids\x18\b \x03(\tB\x1c\xbaH\x19\x92\x01\x16\x18\x01\"\x12r\x102\x0e^pl-[0-9a-f]+$R\rprefixListIds\x12%\n" +
 	"\x0eself_reference\x18\t \x01(\bR\rselfReference\x12\x8b\x01\n" +
 	"\vdescription\x18\n" +

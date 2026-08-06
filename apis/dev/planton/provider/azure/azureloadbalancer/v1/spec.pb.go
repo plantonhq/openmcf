@@ -1709,7 +1709,7 @@ const file_dev_planton_provider_azure_azureloadbalancer_v1_spec_proto_rawDesc = 
 	"\x15AzureLoadBalancerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
 	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12W\n" +
 	"\x03sku\x18\x04 \x01(\x0e2E.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerSkuR\x03sku\x12d\n" +
 	"\bsku_tier\x18\x05 \x01(\x0e2I.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerSkuTierR\askuTier\x12\x1b\n" +
@@ -1738,9 +1738,9 @@ const file_dev_planton_provider_azure_azureloadbalancer_v1_spec_proto_rawDesc = 
 	"#lb_outbound_rule_frontends_declared\x12@every outbound rule frontend name must match a declared frontend\x1a|this.outbound_rules.all(r, r.frontend_ip_configuration_names.all(n, this.frontend_ip_configurations.exists(f, f.name == n)))\"\xb3\v\n" +
 	"(AzureLoadBalancerFrontendIpConfiguration\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12r\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x89\x01\n" +
-	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x9d\x03\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12\x8e\x01\n" +
-	"\x13public_ip_prefix_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12,\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x89\x01\n" +
+	"\x14public_ip_address_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdd\x0f\x92\xd4a\x1bstatus.outputs.public_ip_idR\x11publicIpAddressId\x12\x8e\x01\n" +
+	"\x13public_ip_prefix_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe5\x0f\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12,\n" +
 	"\x12private_ip_address\x18\x05 \x01(\tR\x10privateIpAddress\x12\x8f\x01\n" +
 	"\x1aprivate_ip_address_version\x18\x06 \x01(\x0e2R.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerPrivateIpVersionR\x17privateIpAddressVersion\x12\x14\n" +
 	"\x05zones\x18\a \x03(\tR\x05zones\x12h\n" +
@@ -1750,7 +1750,7 @@ const file_dev_planton_provider_azure_azureloadbalancer_v1_spec_proto_rawDesc = 
 	"#lb_frontend_zones_are_internal_only\x12nzones apply to internal (subnet) frontends; a public frontend's zone posture comes from its public IP resource\x1a-this.zones.size() == 0 || has(this.subnet_id)\"\xd6\b\n" +
 	"\x1cAzureLoadBalancerBackendPool\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x8c\x01\n" +
-	"\x12virtual_network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\x80\x01\n" +
+	"\x12virtual_network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xd6\x0f\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\x80\x01\n" +
 	"\x10synchronous_mode\x18\x03 \x01(\x0e2U.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerBackendPoolSyncModeR\x0fsynchronousMode\x12\x89\x01\n" +
 	"\x11tunnel_interfaces\x18\x04 \x03(\v2\\.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerBackendPoolTunnelInterfaceR\x10tunnelInterfaces\x12r\n" +
 	"\taddresses\x18\x05 \x03(\v2T.dev.planton.provider.azure.azureloadbalancer.v1.AzureLoadBalancerBackendPoolAddressR\taddresses:\x81\x04\xbaH\xfd\x03\x1a\xc2\x01\n" +

@@ -1104,7 +1104,7 @@ const file_dev_planton_provider_azure_azuremssqlserver_v1_spec_proto_rawDesc = "
 	"\x14AzureMssqlServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
 	"\vserver_name\x18\x03 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x01\x18?2\x1f^[0-9a-z]([-0-9a-z]*[0-9a-z])?$R\n" +
 	"serverName\x12~\n" +
 	"\aversion\x18\x04 \x01(\tB_\xbaHT\xba\x01Q\n" +
@@ -1114,9 +1114,9 @@ const file_dev_planton_provider_azure_azuremssqlserver_v1_spec_proto_rawDesc = "
 	"\x16administrator_password\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x15administratorPassword\x12\x89\x01\n" +
 	"\x15azuread_administrator\x18\a \x01(\v2T.dev.planton.provider.azure.azuremssqlserver.v1.AzureMssqlServerAzureadAdministratorR\x14azureadAdministrator\x12d\n" +
 	"\bidentity\x18\b \x01(\v2H.dev.planton.provider.azure.azuremssqlserver.v1.AzureMssqlServerIdentityR\bidentity\x12\xa1\x01\n" +
-	"!primary_user_assigned_identity_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\xb0\x01\n" +
+	"!primary_user_assigned_identity_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\xb0\x01\n" +
 	",transparent_data_encryption_key_vault_key_id\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xa9\x03\x92\xd4a\x15status.outputs.key_idR&transparentDataEncryptionKeyVaultKeyId\x12}\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xe9\x0f\x92\xd4a\x15status.outputs.key_idR&transparentDataEncryptionKeyVaultKeyId\x12}\n" +
 	"\x11connection_policy\x18\v \x01(\x0e2P.dev.planton.provider.azure.azuremssqlserver.v1.AzureMssqlServerConnectionPolicyR\x10connectionPolicy\x12\xb6\x01\n" +
 	"\x13minimum_tls_version\x18\f \x01(\tB\x80\x01\xbaHv\xba\x01s\n" +
 	"\x17mssql_tls_version_valid\x12Gminimum_tls_version must be 1.2 (older TLS floors are retired by Azure)\x1a\x0fthis in ['1.2']\x8a\xa6\x1d\x031.2H\x01R\x11minimumTlsVersion\x88\x01\x01\x12P\n" +
@@ -1147,14 +1147,14 @@ const file_dev_planton_provider_azure_azuremssqlserver_v1_spec_proto_rawDesc = "
 	"$AzureMssqlServerAzureadAdministrator\x121\n" +
 	"\x0elogin_username\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\rloginUsername\x12{\n" +
-	"\tobject_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12*\n" +
+	"\tobject_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12*\n" +
 	"\ttenant_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01\x12>\n" +
 	"\x1bazuread_authentication_only\x18\x04 \x01(\bR\x19azureadAuthenticationOnlyB\f\n" +
 	"\n" +
 	"_tenant_id\"\xcb\x03\n" +
 	"\x18AzureMssqlServerIdentity\x12h\n" +
 	"\x04type\x18\x01 \x01(\x0e2L.dev.planton.provider.azure.azuremssqlserver.v1.AzureMssqlServerIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
 	"\x1dmssql_identity_ids_match_type\x12lidentity_ids are required for USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1a2(this.type >= 2) == (this.identity_ids.size() > 0)\"\xa9\x01\n" +
 	"\x1cAzureMssqlServerFirewallRule\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
@@ -1166,7 +1166,7 @@ const file_dev_planton_provider_azure_azuremssqlserver_v1_spec_proto_rawDesc = "
 	"\"AzureMssqlServerVirtualNetworkRule\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04name\x12|\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12N\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12N\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x03 \x01(\bR ignoreMissingVnetServiceEndpoint\"\xeb\a\n" +
 	" AzureMssqlServerExtendedAuditing\x12\xaa\x01\n" +
 	"\x10storage_endpoint\x18\x01 \x01(\tB\x7f\xbaH|\xba\x01y\n" +

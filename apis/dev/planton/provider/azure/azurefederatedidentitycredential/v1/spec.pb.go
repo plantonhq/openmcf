@@ -174,8 +174,8 @@ const file_dev_planton_provider_azure_azurefederatedidentitycredential_v1_spec_p
 	"Idev/planton/provider/azure/azurefederatedidentitycredential/v1/spec.proto\x12>dev.planton.provider.azure.azurefederatedidentitycredential.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\x03\n" +
 	"$AzureFederatedIdentityCredentialSpec\x12 \n" +
 	"\x04name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x03\x18xR\x04name\x12\x93\x01\n" +
-	"\x16user_assigned_identity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x14userAssignedIdentity\x12}\n" +
-	"\x06issuer\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x91\x03\x92\xd4a\x1estatus.outputs.oidc_issuer_url\x98\xd4a\x01R\x06issuer\x12$\n" +
+	"\x16user_assigned_identity\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x14userAssignedIdentity\x12}\n" +
+	"\x06issuer\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x0f\x92\xd4a\x1estatus.outputs.oidc_issuer_url\x98\xd4a\x01R\x06issuer\x12$\n" +
 	"\asubject\x18\x04 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\asubject\x12F\n" +
 	"\baudience\x18\x05 \x01(\tB%\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\x1aapi://AzureADTokenExchangeH\x00R\baudience\x88\x01\x01B\v\n" +

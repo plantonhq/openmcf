@@ -810,7 +810,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternalsecret_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/kubernetes/kubernetesexternalsecret/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesexternalsecret.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf6\a\n" +
 	"\x1cKubernetesExternalSecretSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x82\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\x82\x01\n" +
 	"\tstore_ref\x18\x02 \x01(\v2].dev.planton.provider.kubernetes.kubernetesexternalsecret.v1.KubernetesExternalSecretStoreRefB\x06\xbaH\x03\xc8\x01\x01R\bstoreRef\x12g\n" +
 	"\x10refresh_interval\x18\x03 \x01(\tB7\xbaH.r,2*^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$\x8a\xa6\x1d\x021hH\x00R\x0frefreshInterval\x88\x01\x01\x12T\n" +
 	"\x0erefresh_policy\x18\x04 \x01(\tB(\xbaH%r#R\x00R\vCreatedOnceR\bPeriodicR\bOnChangeH\x01R\rrefreshPolicy\x88\x01\x01\x12s\n" +
@@ -822,7 +822,7 @@ const file_dev_planton_provider_kubernetes_kubernetesexternalsecret_v1_spec_prot
 	"\x0f_refresh_policy\"\xfb\x01\n" +
 	" KubernetesExternalSecretStoreRef\x12~\n" +
 	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\n" +
-	"reads from\x88\xd4a\xc5\x06\x92\xd4a\x19status.outputs.store_nameR\x04name\x12N\n" +
+	"reads from\x88\xd4a\xc5\x1f\x92\xd4a\x19status.outputs.store_nameR\x04name\x12N\n" +
 	"\x04kind\x18\x02 \x01(\tB5\xbaH#r!R\vSecretStoreR\x12ClusterSecretStore\x8a\xa6\x1d\vSecretStoreH\x00R\x04kind\x88\x01\x01B\a\n" +
 	"\x05_kind\"\xa5\x03\n" +
 	"\x1eKubernetesExternalSecretTarget\x12\x12\n" +

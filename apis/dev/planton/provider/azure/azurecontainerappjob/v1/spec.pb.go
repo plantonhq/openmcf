@@ -1824,10 +1824,10 @@ const file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_rawDesc
 	"\x18AzureContainerAppJobSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb6\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb6\x02\n" +
 	"\bjob_name\x18\x03 \x01(\tB\x9a\x02\xbaH\x96\x02\xba\x01\x89\x02\n" +
 	"\x0fjob_name_format\x12\x8f\x01Job name must be lowercase alphanumeric characters or hyphens, start and end with an alphanumeric character, and contain no consecutive hyphens\x1ad(this.matches('^[a-z0-9]$') || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')) && !this.contains('--')\xc8\x01\x01r\x04\x10\x01\x18 R\ajobName\x12\xa1\x01\n" +
-	"\x1ccontainer_app_environment_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12G\n" +
+	"\x1ccontainer_app_environment_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x0f\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12G\n" +
 	"\x1areplica_timeout_in_seconds\x18\x05 \x01(\x05B\n" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\x17replicaTimeoutInSeconds\x12<\n" +
 	"\x13replica_retry_limit\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x11replicaRetryLimit\x88\x01\x01\x122\n" +
@@ -1885,7 +1885,7 @@ const file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_rawDesc
 	"\x1ejob_scale_rule_type_vocabulary\x12\x94\x01custom_rule_type must be a KEDA scaler Azure Container Apps supports, e.g. azure-queue, azure-servicebus, kafka, rabbitmq (see keda.sh/docs/scalers)\x1a\x91\athis in ['activemq', 'artemis-queue', 'kafka', 'pulsar', 'aws-cloudwatch', 'aws-dynamodb', 'aws-dynamodb-streams', 'aws-kinesis-stream', 'aws-sqs-queue', 'azure-app-insights', 'azure-blob', 'azure-data-explorer', 'azure-eventhub', 'azure-log-analytics', 'azure-monitor', 'azure-pipelines', 'azure-servicebus', 'azure-queue', 'cassandra', 'cpu', 'cron', 'datadog', 'elasticsearch', 'external', 'external-push', 'gcp-stackdriver', 'gcp-storage', 'gcp-pubsub', 'graphite', 'http', 'huawei-cloudeye', 'ibmmq', 'influxdb', 'kubernetes-workload', 'liiklus', 'memory', 'metrics-api', 'mongodb', 'mssql', 'mysql', 'nats-jetstream', 'stan', 'tcp', 'new-relic', 'openstack-metric', 'openstack-swift', 'postgresql', 'predictkube', 'prometheus', 'rabbitmq', 'redis', 'redis-cluster', 'redis-sentinel', 'redis-streams', 'redis-cluster-streams', 'redis-sentinel-streams', 'selenium-grid', 'solace-event-queue', 'github-runner']\xc8\x01\x01R\x0ecustomRuleType\x12\x8a\x01\n" +
 	"\bmetadata\x18\x03 \x03(\v2d.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobEventScaleRule.MetadataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmetadata\x12}\n" +
 	"\x0eauthentication\x18\x04 \x03(\v2U.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobScaleRuleAuthR\x0eauthentication\x12x\n" +
-	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\n" +
+	"\videntity_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\n" +
 	"identityId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -1968,7 +1968,7 @@ const file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_rawDesc
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x86\x01\n" +
 	"\fstorage_type\x18\x02 \x01(\x0e2Y.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobVolumeStorageTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\vstorageType\x12{\n" +
-	"\fstorage_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xbe\x03\x92\xd4a\x1bstatus.outputs.storage_nameR\vstorageName\x12#\n" +
+	"\fstorage_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xfe\x0f\x92\xd4a\x1bstatus.outputs.storage_nameR\vstorageName\x12#\n" +
 	"\rmount_options\x18\x04 \x01(\tR\fmountOptions:\x8a\x02\xbaH\x86\x02\x1a\x83\x02\n" +
 	"+job_volume_file_share_requires_storage_name\x12\x9a\x01AZURE_FILE and NFS_AZURE_FILE volumes require storage_name (the environment storage resource backing the share); EMPTY_DIR and SECRET volumes must omit it\x1a7(this.storage_type in [2, 3]) == has(this.storage_name)\"\x90\x06\n" +
 	"\x1aAzureContainerAppJobSecret\x12\xc8\x01\n" +
@@ -1989,7 +1989,7 @@ const file_dev_planton_provider_azure_azurecontainerappjob_v1_spec_proto_rawDesc
 	"\x1cAzureContainerAppJobIdentity\x12t\n" +
 	"\x04type\x18\x01 \x01(\x0e2T.dev.planton.provider.azure.azurecontainerappjob.v1.AzureContainerAppJobIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xac\x02\xbaH\xa8\x02\x1a\xa5\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xac\x02\xbaH\xa8\x02\x1a\xa5\x02\n" +
 	"\x1bjob_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\x8a\x01\n" +
 	"\"AzureContainerAppJobProbeTransport\x127\n" +
 	"3azure_container_app_job_probe_transport_unspecified\x10\x00\x12\x0e\n" +

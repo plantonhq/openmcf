@@ -2060,7 +2060,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesmongodb/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesmongodb.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf3\x15\n" +
 	"\x15KubernetesMongodbSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x1d\n" +
 	"\n" +
 	"image_name\x18\x03 \x01(\tR\timageName\x12\x82\x02\n" +
@@ -2100,7 +2100,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_spec_proto_rawDe
 	"\x18KubernetesMongodbStorage\x12\xbf\x01\n" +
 	"\x04size\x18\x01 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\x9f\x01\n" +
 	"\x1aspec.storage.size_quantity\x129size must be a Kubernetes quantity like '10Gi' or '500Mi'\x1aFthis.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')\xc8\x01\x01R\x04size\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"d\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClass\"d\n" +
 	"\x18KubernetesMongodbArbiter\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12%\n" +
 	"\x04size\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\x04size\x88\x01\x01B\a\n" +
@@ -2134,7 +2134,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_spec_proto_rawDe
 	"\x14KubernetesMongodbTls\x12\xcd\x01\n" +
 	"\x04mode\x18\x01 \x01(\tB\xb3\x01\xbaH\xa2\x01\xba\x01\x9e\x01\n" +
 	"\x12spec.tls.mode_enum\x12=tls mode must be disabled, allowTLS, preferTLS, or requireTLS\x1aIthis == '' || this in ['disabled', 'allowTLS', 'preferTLS', 'requireTLS']\x8a\xa6\x1d\tpreferTLSH\x00R\x04mode\x88\x01\x01\x12b\n" +
-	"\x06issuer\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xbf\x06\x92\xd4a\rmetadata.nameR\x06issuer\x12\xb9\x01\n" +
+	"\x06issuer\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xbf\x1f\x92\xd4a\rmetadata.nameR\x06issuer\x12\xb9\x01\n" +
 	"\vissuer_kind\x18\x03 \x01(\tB\x92\x01\xbaH~\xba\x01{\n" +
 	"\x19spec.tls.issuer_kind_enum\x12+issuer_kind must be ClusterIssuer or Issuer\x1a1this == '' || this in ['ClusterIssuer', 'Issuer']\x8a\xa6\x1d\rClusterIssuerH\x01R\n" +
 	"issuerKind\x88\x01\x01\x124\n" +

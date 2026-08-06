@@ -2106,7 +2106,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/kubernetes/kubernetesmlflow/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesmlflow.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9b\x12\n" +
 	"\x14KubernetesMlflowSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12c\n" +
 	"\x06server\x18\x03 \x01(\v2K.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowServerR\x06server\x12v\n" +
 	"\rbackend_store\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowBackendStoreR\fbackendStore\x12y\n" +
@@ -2157,7 +2157,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\rstorage_class\x18\x02 \x01(\tR\fstorageClassB\x0f\n" +
 	"\r_storage_size\"\xec\x03\n" +
 	"\x18KubernetesMlflowPostgres\x12p\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12T\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB*\xbaH\x1dr\x1b2\x19^[a-zA-Z_][a-zA-Z0-9_$]*$\x8a\xa6\x1d\x06mlflowH\x01R\fdatabaseName\x88\x01\x01\x12+\n" +
 	"\busername\x18\x04 \x01(\tB\n" +
@@ -2167,7 +2167,7 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\x0e_database_nameB\v\n" +
 	"\t_username\"\xf3\x03\n" +
 	"\x15KubernetesMlflowMysql\x12u\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x043306H\x00R\x04port\x88\x01\x01\x12T\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB*\xbaH\x1dr\x1b2\x19^[a-zA-Z_][a-zA-Z0-9_$]*$\x8a\xa6\x1d\x06mlflowH\x01R\fdatabaseName\x88\x01\x01\x12+\n" +
 	"\busername\x18\x04 \x01(\tB\n" +
@@ -2177,13 +2177,13 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\x0e_database_nameB\v\n" +
 	"\t_username\"\xb4\x02\n" +
 	"\x1eKubernetesMlflowPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
 	"\v_secret_key\"\xbe\x02\n" +
 	"#KubernetesMlflowMysqlPasswordSecret\x12\x8c\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a(status.outputs.root_password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a(status.outputs.root_password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
@@ -2201,12 +2201,12 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\rstorage_class\x18\x02 \x01(\tR\fstorageClassB\x0f\n" +
 	"\r_storage_size\"\xec\x02\n" +
 	"%KubernetesMlflowS3CompatibleArtifacts\x12y\n" +
-	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x1e\n" +
+	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x1e\n" +
 	"\x06bucket\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix\x12\x8f\x01\n" +
 	"\x12credentials_secret\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesmlflow.v1.KubernetesMlflowS3CredentialsSecretB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\"\xcd\x03\n" +
 	"#KubernetesMlflowS3CredentialsSecret\x12\x8d\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
 	"secretName\x12G\n" +
 	"\x11access_key_id_key\x18\x02 \x01(\tB\x17\x8a\xa6\x1d\x13admin_access_key_idH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x9c\x01\n" +
 	"\x15secret_access_key_key\x18\x03 \x01(\tBd\x8a\xa6\x1d\x17admin_secret_access_key\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x12secretAccessKeyKey\x88\x01\x01B\x14\n" +

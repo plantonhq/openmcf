@@ -546,7 +546,7 @@ const file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"4dev/planton/provider/azure/azuresubnet/v1/spec.proto\x12)dev.planton.provider.azure.azuresubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xaa\x12\n" +
 	"\x0fAzureSubnetSpec\x12\x92\x01\n" +
-	"\x12virtual_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x03\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\x9e\x02\n" +
+	"\x12virtual_network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x0f\x92\xd4a!status.outputs.virtual_network_idR\x10virtualNetworkId\x12\x9e\x02\n" +
 	"\x04name\x18\x02 \x01(\tB\x89\x02\xbaH\x85\x02\xba\x01\xf8\x01\n" +
 	"\x12subnet_name_format\x12\x96\x01Subnet names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12)\n" +
 	"\x10address_prefixes\x18\x03 \x03(\tR\x0faddressPrefixes\x12k\n" +
@@ -559,9 +559,9 @@ const file_dev_planton_provider_azure_azuresubnet_v1_spec_proto_rawDesc = "" +
 	"\x1fdefault_outbound_access_enabled\x18\n" +
 	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1cdefaultOutboundAccessEnabled\x88\x01\x01\x12g\n" +
 	"\rsharing_scope\x18\v \x01(\x0e2B.dev.planton.provider.azure.azuresubnet.v1.AzureSubnetSharingScopeR\fsharingScope\x12\x80\x01\n" +
-	"\x0eroute_table_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa2\x03\x92\xd4a\x1dstatus.outputs.route_table_idR\frouteTableId\x12\xa0\x01\n" +
-	"\x19network_security_group_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\x80\x01\n" +
-	"\x0enat_gateway_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\x97\x03\x92\xd4a\x1dstatus.outputs.nat_gateway_idR\fnatGatewayId:\xa8\x04\xbaH\xa4\x04\x1a\xed\x01\n" +
+	"\x0eroute_table_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe2\x0f\x92\xd4a\x1dstatus.outputs.route_table_idR\frouteTableId\x12\xa0\x01\n" +
+	"\x19network_security_group_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xdc\x0f\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\x80\x01\n" +
+	"\x0enat_gateway_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd7\x0f\x92\xd4a\x1dstatus.outputs.nat_gateway_idR\fnatGatewayId:\xa8\x04\xbaH\xa4\x04\x1a\xed\x01\n" +
 	"\x1aaddress_source_exactly_one\x12\x8d\x01Set exactly one address source: either address_prefixes (self-managed CIDR blocks) or ip_address_pool (Azure Network Manager IPAM allocation)\x1a?(this.address_prefixes.size() > 0) != has(this.ip_address_pool)\x1a\xb1\x02\n" +
 	"*sharing_scope_requires_no_default_outbound\x12\x89\x01sharing_scope requires default_outbound_access_enabled to be explicitly false (ARM rejects a shared subnet with implicit outbound access)\x1awthis.sharing_scope == 0 || (has(this.default_outbound_access_enabled) && this.default_outbound_access_enabled == false)B0\n" +
 	"._private_link_service_network_policies_enabledB\"\n" +

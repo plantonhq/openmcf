@@ -849,7 +849,7 @@ const file_dev_planton_provider_aws_awsfsxontapvolume_v1_spec_proto_rawDesc = ""
 	"8dev/planton/provider/aws/awsfsxontapvolume/v1/spec.proto\x12-dev.planton.provider.aws.awsfsxontapvolume.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xec\x16\n" +
 	"\x15AwsFsxOntapVolumeSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x95\x01\n" +
-	"\x1astorage_virtual_machine_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x02\x92\xd4a\x15status.outputs.svm_idR\x17storageVirtualMachineId\x12\x1e\n" +
+	"\x1astorage_virtual_machine_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc7\b\x92\xd4a\x15status.outputs.svm_idR\x17storageVirtualMachineId\x12\x1e\n" +
 	"\x04name\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xcb\x01R\x04name\x128\n" +
 	"\x11size_in_megabytes\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x14H\x00R\x0fsizeInMegabytes\x88\x01\x01\x12<\n" +

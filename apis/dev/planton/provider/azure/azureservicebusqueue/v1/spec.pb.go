@@ -394,7 +394,7 @@ const file_dev_planton_provider_azure_azureservicebusqueue_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/azure/azureservicebusqueue/v1/spec.proto\x122dev.planton.provider.azure.azureservicebusqueue.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfe\x13\n" +
 	"\x18AzureServiceBusQueueSpec\x12\x81\x01\n" +
-	"\fnamespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12\xdd\x02\n" +
+	"\fnamespace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12\xdd\x02\n" +
 	"\n" +
 	"queue_name\x18\x02 \x01(\tB\xbd\x02\xbaH\xb9\x02\xba\x01\xab\x02\n" +
 	"\x1dservice_bus_queue_name_format\x12\xa7\x01queue_name must start and end with a letter or number and may contain letters, numbers, periods, hyphens, underscores, tildes, and forward slashes (max 260 characters)\x1a`this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][a-zA-Z0-9_./~-]{0,258}[a-zA-Z0-9]$')\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\tqueueName\x12[\n" +

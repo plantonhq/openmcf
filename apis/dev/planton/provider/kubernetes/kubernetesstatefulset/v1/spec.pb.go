@@ -737,7 +737,7 @@ const file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetesstatefulset/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesstatefulset.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf5\t\n" +
 	"\x19KubernetesStatefulSetSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12~\n" +
 	"\tcontainer\x18\x03 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12>\n" +
 	"\x03pod\x18\x04 \x01(\v2,.dev.planton.provider.kubernetes.WorkloadPodR\x03pod\x12\x7f\n" +

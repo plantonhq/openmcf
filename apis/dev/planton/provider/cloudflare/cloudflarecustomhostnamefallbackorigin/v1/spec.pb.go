@@ -90,7 +90,7 @@ const file_dev_planton_provider_cloudflare_cloudflarecustomhostnamefallbackorigi
 	"\n" +
 	"Tdev/planton/provider/cloudflare/cloudflarecustomhostnamefallbackorigin/v1/spec.proto\x12Idev.planton.provider.cloudflare.cloudflarecustomhostnamefallbackorigin.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf4\x01\n" +
 	"*CloudflareCustomHostnameFallbackOriginSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12R\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12R\n" +
 	"\x06origin\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x06originB\xbc\x04\n" +
 	"Mcom.dev.planton.provider.cloudflare.cloudflarecustomhostnamefallbackorigin.v1B\tSpecProtoP\x01Z\x94\x01github.com/plantonhq/planton/apis/dev/planton/provider/cloudflare/cloudflarecustomhostnamefallbackorigin/v1;cloudflarecustomhostnamefallbackoriginv1\xa2\x02\x05DPPCC\xaa\x02IDev.Planton.Provider.Cloudflare.Cloudflarecustomhostnamefallbackorigin.V1\xca\x02IDev\\Planton\\Provider\\Cloudflare\\Cloudflarecustomhostnamefallbackorigin\\V1\xe2\x02UDev\\Planton\\Provider\\Cloudflare\\Cloudflarecustomhostnamefallbackorigin\\V1\\GPBMetadata\xea\x02NDev::Planton::Provider::Cloudflare::Cloudflarecustomhostnamefallbackorigin::V1b\x06proto3"
 

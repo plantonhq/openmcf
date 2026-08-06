@@ -877,7 +877,7 @@ const file_dev_planton_provider_azure_azurecontainerregistry_v1_spec_proto_rawDe
 	"\x1aAzureContainerRegistrySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12?\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12?\n" +
 	"\rregistry_name\x18\x03 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x122\x10^[a-z0-9]{5,50}$R\fregistryName\x12a\n" +
 	"\x03sku\x18\x04 \x01(\x0e2O.dev.planton.provider.azure.azurecontainerregistry.v1.AzureContainerRegistrySkuR\x03sku\x12,\n" +
 	"\x12admin_user_enabled\x18\x05 \x01(\bR\x10adminUserEnabled\x12P\n" +
@@ -934,11 +934,11 @@ const file_dev_planton_provider_azure_azurecontainerregistry_v1_spec_proto_rawDe
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\aipRange\"\x8b\x04\n" +
 	"\x1eAzureContainerRegistryIdentity\x12t\n" +
 	"\x04type\x18\x01 \x01(\x0e2X.dev.planton.provider.azure.azurecontainerregistry.v1.AzureContainerRegistryIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +
 	"\x1bacr_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xba\x02\n" +
 	" AzureContainerRegistryEncryption\x12\x89\x01\n" +
-	"\x12identity_client_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x18status.outputs.client_idR\x10identityClientId\x12\x89\x01\n" +
-	"\x10key_vault_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId*o\n" +
+	"\x12identity_client_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x18status.outputs.client_idR\x10identityClientId\x12\x89\x01\n" +
+	"\x10key_vault_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId*o\n" +
 	"\x19AzureContainerRegistrySku\x12,\n" +
 	"(azure_container_registry_sku_unspecified\x10\x00\x12\t\n" +
 	"\x05BASIC\x10\x01\x12\f\n" +

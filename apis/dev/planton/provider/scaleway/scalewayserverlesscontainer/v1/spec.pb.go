@@ -1082,7 +1082,7 @@ const file_dev_planton_provider_scaleway_scalewayserverlesscontainer_v1_spec_pro
 	"\bcommands\x18\x0e \x03(\tR\bcommands\x12\x12\n" +
 	"\x04args\x18\x0f \x03(\tR\x04args\x12n\n" +
 	"\x03env\x18\x10 \x01(\v2\\.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerEnvR\x03env\x12\x90\x01\n" +
-	"\x12private_network_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_id\x98\xd4a\x01R\x10privateNetworkId\x12\x18\n" +
+	"\x12private_network_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_id\x98\xd4a\x01R\x10privateNetworkId\x12\x18\n" +
 	"\asandbox\x18\x12 \x01(\tR\asandbox\x12\x87\x01\n" +
 	"\fhealth_check\x18\x13 \x01(\v2d.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerHealthCheckR\vhealthCheck\x12\x8d\x01\n" +
 	"\x0escaling_option\x18\x14 \x01(\v2f.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerScalingOptionR\rscalingOption\x123\n" +
@@ -1090,7 +1090,7 @@ const file_dev_planton_provider_scaleway_scalewayserverlesscontainer_v1_spec_pro
 	"\x06deploy\x18\x16 \x01(\bB\b\x92\xa6\x1d\x04trueR\x06deploy\x12\x89\x01\n" +
 	"\rcron_triggers\x18\x17 \x03(\v2d.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerCronTriggerR\fcronTriggers\"\xe4\x01\n" +
 	" ScalewayServerlessContainerImage\x12\x87\x01\n" +
-	"\x11registry_endpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x16\x92\xd4a\x17status.outputs.endpointR\x10registryEndpoint\x12\x1b\n" +
+	"\x11registry_endpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xaaV\x92\xd4a\x17status.outputs.endpointR\x10registryEndpoint\x12\x1b\n" +
 	"\x04name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12\x19\n" +
 	"\x03tag\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03tag\"\x9a\x02\n" +
 	"\x1eScalewayServerlessContainerEnv\x12}\n" +

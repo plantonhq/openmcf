@@ -143,11 +143,11 @@ const file_dev_planton_provider_azure_azurerediscacheaccesspolicyassignment_v1_s
 	"\n" +
 	"Ndev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1/spec.proto\x12Cdev.planton.provider.azure.azurerediscacheaccesspolicyassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaf\x04\n" +
 	")AzureRedisCacheAccessPolicyAssignmentSpec\x12\x86\x01\n" +
-	"\x0eredis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaf\x03\x92\xd4a\x1dstatus.outputs.redis_cache_idR\fredisCacheId\x123\n" +
+	"\x0eredis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x0f\x92\xd4a\x1dstatus.outputs.redis_cache_idR\fredisCacheId\x123\n" +
 	"\x0fassignment_name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x18?R\x0eassignmentName\x12\x92\x01\n" +
-	"\x12access_policy_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x03\x92\xd4a!status.outputs.access_policy_nameR\x10accessPolicyName\x12{\n" +
-	"\tobject_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x122\n" +
+	"\x12access_policy_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x0f\x92\xd4a!status.outputs.access_policy_nameR\x10accessPolicyName\x12{\n" +
+	"\tobject_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x122\n" +
 	"\x0fobject_id_alias\x18\x05 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\robjectIdAliasB\x97\x04\n" +
 	"Gcom.dev.planton.provider.azure.azurerediscacheaccesspolicyassignment.v1B\tSpecProtoP\x01Z\x8d\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurerediscacheaccesspolicyassignment/v1;azurerediscacheaccesspolicyassignmentv1\xa2\x02\x05DPPAA\xaa\x02CDev.Planton.Provider.Azure.Azurerediscacheaccesspolicyassignment.V1\xca\x02CDev\\Planton\\Provider\\Azure\\Azurerediscacheaccesspolicyassignment\\V1\xe2\x02ODev\\Planton\\Provider\\Azure\\Azurerediscacheaccesspolicyassignment\\V1\\GPBMetadata\xea\x02HDev::Planton::Provider::Azure::Azurerediscacheaccesspolicyassignment::V1b\x06proto3"

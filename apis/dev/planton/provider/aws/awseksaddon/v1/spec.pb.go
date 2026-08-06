@@ -335,14 +335,14 @@ const file_dev_planton_provider_aws_awseksaddon_v1_spec_proto_rawDesc = "" +
 	"2dev/planton/provider/aws/awseksaddon/v1/spec.proto\x12'dev.planton.provider.aws.awseksaddon.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbc\f\n" +
 	"\x0fAwsEksAddonSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12y\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x01\x92\xd4a\x13status.outputs.nameR\vclusterName\x12+\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\a\x92\xd4a\x13status.outputs.nameR\vclusterName\x12+\n" +
 	"\n" +
 	"addon_name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18dR\taddonName\x12#\n" +
 	"\raddon_version\x18\x04 \x01(\tR\faddonVersion\x12=\n" +
 	"\x1bresolve_conflicts_on_create\x18\x05 \x01(\tR\x18resolveConflictsOnCreate\x12=\n" +
 	"\x1bresolve_conflicts_on_update\x18\x06 \x01(\tR\x18resolveConflictsOnUpdate\x121\n" +
 	"\x14configuration_values\x18\a \x01(\tR\x13configurationValues\x12\x8d\x01\n" +
-	"\x18service_account_role_arn\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x15serviceAccountRoleArn\x12\x86\x01\n" +
+	"\x18service_account_role_arn\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x15serviceAccountRoleArn\x12\x86\x01\n" +
 	"\x19pod_identity_associations\x18\t \x03(\v2J.dev.planton.provider.aws.awseksaddon.v1.AwsEksAddonPodIdentityAssociationR\x17podIdentityAssociations\x12\x1a\n" +
 	"\bpreserve\x18\n" +
 	" \x01(\bR\bpreserve\x12n\n" +
@@ -351,7 +351,7 @@ const file_dev_planton_provider_aws_awseksaddon_v1_spec_proto_rawDesc = "" +
 	"!resolve_conflicts_on_create_valid\x12cresolve_conflicts_on_create must be 'NONE' or 'OVERWRITE' when set (PRESERVE is update-only in AWS)\x1acthis.resolve_conflicts_on_create == '' || this.resolve_conflicts_on_create in ['NONE', 'OVERWRITE']\x1a\xe5\x01\n" +
 	"!resolve_conflicts_on_update_valid\x12Oresolve_conflicts_on_update must be 'NONE', 'OVERWRITE', or 'PRESERVE' when set\x1aothis.resolve_conflicts_on_update == '' || this.resolve_conflicts_on_update in ['NONE', 'OVERWRITE', 'PRESERVE']\"\xd2\x01\n" +
 	"!AwsEksAddonPodIdentityAssociation\x12u\n" +
-	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x126\n" +
+	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x126\n" +
 	"\x0fservice_account\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x0eserviceAccount\"j\n" +
 	"\x1aAwsEksAddonNamespaceConfig\x12L\n" +

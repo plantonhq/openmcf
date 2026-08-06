@@ -117,8 +117,8 @@ const file_dev_planton_provider_azure_azuremanagedredisgeoreplication_v1_spec_pr
 	"\n" +
 	"Hdev/planton/provider/azure/azuremanagedredisgeoreplication/v1/spec.proto\x12=dev.planton.provider.azure.azuremanagedredisgeoreplication.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd6\x02\n" +
 	"#AzureManagedRedisGeoReplicationSpec\x12\x8c\x01\n" +
-	"\x10managed_redis_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xfe\x03\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x0emanagedRedisId\x12\x9f\x01\n" +
-	"\x18linked_managed_redis_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\a\x92\x01\x04\b\x01\x10\x04\x88\xd4a\xfe\x03\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x15linkedManagedRedisIdsB\xed\x03\n" +
+	"\x10managed_redis_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x10\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x0emanagedRedisId\x12\x9f\x01\n" +
+	"\x18linked_managed_redis_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\a\x92\x01\x04\b\x01\x10\x04\x88\xd4a\xbe\x10\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x15linkedManagedRedisIdsB\xed\x03\n" +
 	"Acom.dev.planton.provider.azure.azuremanagedredisgeoreplication.v1B\tSpecProtoP\x01Z\x81\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisgeoreplication/v1;azuremanagedredisgeoreplicationv1\xa2\x02\x05DPPAA\xaa\x02=Dev.Planton.Provider.Azure.Azuremanagedredisgeoreplication.V1\xca\x02=Dev\\Planton\\Provider\\Azure\\Azuremanagedredisgeoreplication\\V1\xe2\x02IDev\\Planton\\Provider\\Azure\\Azuremanagedredisgeoreplication\\V1\\GPBMetadata\xea\x02BDev::Planton::Provider::Azure::Azuremanagedredisgeoreplication::V1b\x06proto3"
 
 var (

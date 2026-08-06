@@ -421,7 +421,7 @@ const file_dev_planton_provider_kubernetes_strimzi_kafka_client_proto_rawDesc = 
 	"\x15StrimziKafkaClientTls\x12\x82\x01\n" +
 	"\x14trusted_certificates\x18\x01 \x03(\v2E.dev.planton.provider.kubernetes.StrimziKafkaClientTrustedCertificateB\b\xbaH\x05\x92\x01\x02\b\x01R\x13trustedCertificates\"\xff\x03\n" +
 	"$StrimziKafkaClientTrustedCertificate\x12\x9c\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c \x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\n" +
 	"secretName\x12 \n" +
 	"\vcertificate\x18\x02 \x01(\tR\vcertificate\x12\x18\n" +
 	"\apattern\x18\x03 \x01(\tR\apattern:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
@@ -441,14 +441,14 @@ const file_dev_planton_provider_kubernetes_strimzi_kafka_client_proto_rawDesc = 
 	"-strimzi.client.auth.sasl_requires_credentials\x12\xbb\x01scram-sha-512, scram-sha-256 and plain authentication require username and password_secret (reference a KubernetesKafkaUser with scram-sha-512 authentication for Strimzi-managed clusters)\x1aq!(this.type in ['scram-sha-512', 'scram-sha-256', 'plain']) || (this.username != '' && has(this.password_secret))\x1a\x97\x01\n" +
 	"%strimzi.client.auth.cert_only_for_tls\x128certificate_and_key is only used with tls authentication\x1a4this.type == 'tls' || !has(this.certificate_and_key)\"\xac\x02\n" +
 	"#StrimziKafkaClientCertificateAndKey\x12\x92\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10authenticates as\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10authenticates as\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x123\n" +
 	"\vcertificate\x18\x02 \x01(\tB\f\x8a\xa6\x1d\buser.crtH\x00R\vcertificate\x88\x01\x01\x12#\n" +
 	"\x03key\x18\x03 \x01(\tB\f\x8a\xa6\x1d\buser.keyH\x01R\x03key\x88\x01\x01B\x0e\n" +
 	"\f_certificateB\x06\n" +
 	"\x04_key\"\xc0\x02\n" +
 	" StrimziKafkaClientPasswordSecret\x12\x92\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10authenticates as\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10authenticates as\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12z\n" +
 	"\bpassword\x18\x02 \x01(\tBY\x8a\xa6\x1d\bpassword\xaa\xa6\x1dIThe KEY NAME within an existing Secret (a reference), not secret materialH\x00R\bpassword\x88\x01\x01B\v\n" +
 	"\t_passwordB\xa1\x02\n" +

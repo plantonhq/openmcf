@@ -573,7 +573,7 @@ const file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/kubernetes/kubernetesdeployment/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesdeployment.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9e\x06\n" +
 	"\x18KubernetesDeploymentSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xa1\x02\n" +
 	"\aversion\x18\x03 \x01(\tB\x81\x02\xbaH\xf5\x01\xba\x01\xed\x01\n" +
 	"\x13spec.version.format\x12|Version must contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen (e.g. \"main\", \"review-42\")\x1aXthis == '' || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')r\x02\x18\x1e\x8a\xa6\x1d\x04mainH\x00R\aversion\x88\x01\x01\x12|\n" +

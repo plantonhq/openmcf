@@ -680,7 +680,7 @@ const file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc = "" +
 	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\"\xdf\b\n" +
 	" AwsEcsClusterEc2CapacityProvider\x124\n" +
 	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x9c\x01\n" +
-	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xeb\x01\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12o\n" +
+	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\b\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12o\n" +
 	"\x0fmanaged_scaling\x18\x03 \x01(\v2F.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterManagedScalingR\x0emanagedScaling\x12D\n" +
 	"\x1emanaged_termination_protection\x18\x04 \x01(\tR\x1cmanagedTerminationProtection\x12)\n" +
 	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\x83\x05\xbaH\xff\x04\x1a\xf6\x01\n" +
@@ -708,7 +708,7 @@ const file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc = "" +
 	"\alogging\x18\x01 \x01(\tR\alogging\x12\x83\x01\n" +
 	"\x11log_configuration\x18\x02 \x01(\v2V.dev.planton.provider.aws.awsecscluster.v1.AwsEcsClusterExecuteCommandLogConfigurationR\x10logConfiguration\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xe7\x03\xbaH\xe3\x03\x1a\x91\x01\n" +
+	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xe7\x03\xbaH\xe3\x03\x1a\x91\x01\n" +
 	"\rlogging_valid\x129logging must be 'DEFAULT', 'OVERRIDE', or 'NONE' when set\x1aEthis.logging == '' || this.logging in ['DEFAULT', 'OVERRIDE', 'NONE']\x1a\xad\x01\n" +
 	"#override_requires_log_configuration\x12Klogging 'OVERRIDE' requires log_configuration with at least one destination\x1a9this.logging != 'OVERRIDE' || has(this.log_configuration)\x1a\x9c\x01\n" +
 	"#log_configuration_requires_override\x129log_configuration only applies when logging is 'OVERRIDE'\x1a:!has(this.log_configuration) || this.logging == 'OVERRIDE'\"\xdb\x03\n" +
@@ -720,9 +720,9 @@ const file_dev_planton_provider_aws_awsecscluster_v1_spec_proto_rawDesc = "" +
 	"\x1cs3_bucket_encryption_enabled\x18\x05 \x01(\bR\x19s3BucketEncryptionEnabled:\x9f\x01\xbaH\x9b\x01\x1a\x98\x01\n" +
 	"\x18at_least_one_destination\x128provide cloud_watch_log_group_name and/or s3_bucket_name\x1aBthis.cloud_watch_log_group_name != '' || this.s3_bucket_name != ''\"\xc2\x02\n" +
 	"(AwsEcsClusterManagedStorageConfiguration\x12\xa2\x01\n" +
-	"$fargate_ephemeral_storage_kms_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1ffargateEphemeralStorageKmsKeyId\x12q\n" +
+	"$fargate_ephemeral_storage_kms_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1ffargateEphemeralStorageKmsKeyId\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyIdB\xe2\x02\n" +
+	"kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyIdB\xe2\x02\n" +
 	"-com.dev.planton.provider.aws.awsecscluster.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsecscluster/v1;awsecsclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsecscluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsecscluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsecscluster::V1b\x06proto3"
 
 var (

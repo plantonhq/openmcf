@@ -1687,7 +1687,7 @@ const file_dev_planton_provider_kubernetes_kubernetesloki_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/kubernetes/kubernetesloki/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesloki.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8c\x16\n" +
 	"\x12KubernetesLokiSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x0618.5.4H\x01R\fchartVersion\x88\x01\x01\x12m\n" +
@@ -1725,7 +1725,7 @@ const file_dev_planton_provider_kubernetes_kubernetesloki_v1_spec_proto_rawDesc 
 	"\x18KubernetesLokiMonolithic\x12-\n" +
 	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12`\n" +
 	"\tdisk_size\x18\x02 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
+	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
 	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
 	"\t_replicasB\f\n" +
 	"\n" +
@@ -1735,7 +1735,7 @@ const file_dev_planton_provider_kubernetes_kubernetesloki_v1_spec_proto_rawDesc 
 	"\rread_replicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x013H\x01R\freadReplicas\x88\x01\x01\x12<\n" +
 	"\x10backend_replicas\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x013H\x02R\x0fbackendReplicas\x88\x01\x01\x12`\n" +
 	"\tdisk_size\x18\x04 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x03R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
+	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
 	"\tresources\x18\x06 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\x11\n" +
 	"\x0f_write_replicasB\x10\n" +
 	"\x0e_read_replicasB\x13\n" +
@@ -1811,7 +1811,7 @@ const file_dev_planton_provider_kubernetes_kubernetesloki_v1_spec_proto_rawDesc 
 	"\x18_results_cache_memory_mb\"\xbe\x01\n" +
 	"\x13KubernetesLokiRuler\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x8c\x01\n" +
-	"\x10alertmanager_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe6\x06\x92\xd4a$status.outputs.alertmanager_endpointR\x0falertmanagerUrl\"\xe7\x02\n" +
+	"\x10alertmanager_url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe6\x1f\x92\xd4a$status.outputs.alertmanager_endpointR\x0falertmanagerUrl\"\xe7\x02\n" +
 	"\x18KubernetesLokiScheduling\x12\x82\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2].dev.planton.provider.kubernetes.kubernetesloki.v1.KubernetesLokiScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
 	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +

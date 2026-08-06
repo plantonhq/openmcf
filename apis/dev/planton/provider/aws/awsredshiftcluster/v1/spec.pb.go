@@ -787,14 +787,14 @@ const file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc = "
 	"\x16AwsRedshiftClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12m\n" +
 	"\x19cluster_subnet_group_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16clusterSubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12+\n" +
+	"\x12security_group_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12+\n" +
 	"\x11availability_zone\x18\x05 \x01(\tR\x10availabilityZone\x12O\n" +
 	"$availability_zone_relocation_enabled\x18\x06 \x01(\bR!availabilityZoneRelocationEnabled\x12/\n" +
 	"\x13publicly_accessible\x18\a \x01(\bR\x12publiclyAccessible\x12t\n" +
 	"\n" +
-	"elastic_ip\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x99\x02\x92\xd4a\x18status.outputs.public_ipR\telasticIp\x120\n" +
+	"elastic_ip\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb9\b\x92\xd4a\x18status.outputs.public_ipR\telasticIp\x120\n" +
 	"\x14enhanced_vpc_routing\x18\t \x01(\bR\x12enhancedVpcRouting\x12\x12\n" +
 	"\x04port\x18\n" +
 	" \x01(\x05R\x04port\x12#\n" +
@@ -805,13 +805,13 @@ const file_dev_planton_provider_aws_awsredshiftcluster_v1_spec_proto_rawDesc = "
 	"\x0fmaster_username\x18\x0f \x01(\tR\x0emasterUsername\x12>\n" +
 	"\x16manage_master_password\x18\x10 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14manageMasterPassword\x12-\n" +
 	"\x0fmaster_password\x18\x11 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x12\x9c\x01\n" +
-	"!master_password_secret_kms_key_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1cmasterPasswordSecretKmsKeyId\x12+\n" +
+	"!master_password_secret_kms_key_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1cmasterPasswordSecretKmsKeyId\x12+\n" +
 	"\tencrypted\x18\x13 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\tencrypted\x88\x01\x01\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x19\n" +
+	"kms_key_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x19\n" +
 	"\bmulti_az\x18\x15 \x01(\bR\amultiAz\x12q\n" +
-	"\tiam_roles\x18\x16 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
-	"\x14default_iam_role_arn\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12b\n" +
+	"\tiam_roles\x18\x16 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
+	"\x14default_iam_role_arn\x18\x17 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12b\n" +
 	"#automated_snapshot_retention_period\x18\x18 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x00\x8a\xa6\x1d\x011H\x01R automatedSnapshotRetentionPeriod\x88\x01\x01\x12G\n" +
 	" manual_snapshot_retention_period\x18\x19 \x01(\x05R\x1dmanualSnapshotRetentionPeriod\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\x1a \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x124\n" +

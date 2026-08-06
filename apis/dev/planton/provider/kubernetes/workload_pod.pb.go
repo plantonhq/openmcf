@@ -1350,9 +1350,9 @@ const file_dev_planton_provider_kubernetes_workload_pod_proto_rawDesc = "" +
 	"\n" +
 	"2dev/planton/provider/kubernetes/workload_pod.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb\r\n" +
 	"\vWorkloadPod\x12\x89\x01\n" +
-	"\x0fservice_account\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x0eserviceAccount\x12J\n" +
+	"\x0fservice_account\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x0eserviceAccount\x12J\n" +
 	"\x1fautomount_service_account_token\x18\x02 \x01(\bH\x00R\x1cautomountServiceAccountToken\x88\x01\x01\x12\xc6\x01\n" +
-	"\x12image_pull_secrets\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x06\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12[\n" +
+	"\x12image_pull_secrets\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x1f\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12[\n" +
 	"\x0finit_containers\x18\x04 \x03(\v22.dev.planton.provider.kubernetes.WorkloadContainerR\x0einitContainers\x12P\n" +
 	"\x06labels\x18\x05 \x03(\v28.dev.planton.provider.kubernetes.WorkloadPod.LabelsEntryR\x06labels\x12_\n" +
 	"\vannotations\x18\x06 \x03(\v2=.dev.planton.provider.kubernetes.WorkloadPod.AnnotationsEntryR\vannotations\x12S\n" +

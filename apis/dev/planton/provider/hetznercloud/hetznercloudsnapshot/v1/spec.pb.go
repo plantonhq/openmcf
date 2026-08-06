@@ -124,7 +124,7 @@ const file_dev_planton_provider_hetznercloud_hetznercloudsnapshot_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/hetznercloud/hetznercloudsnapshot/v1/spec.proto\x129dev.planton.provider.hetznercloud.hetznercloudsnapshot.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb6\x01\n" +
 	"\x18HetznerCloudSnapshotSpec\x12x\n" +
-	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x1b\x92\xd4a\x18status.outputs.server_idR\bserverId\x12 \n" +
+	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4m\x92\xd4a\x18status.outputs.server_idR\bserverId\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescriptionB\xc9\x03\n" +
 	"=com.dev.planton.provider.hetznercloud.hetznercloudsnapshot.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudsnapshot/v1;hetznercloudsnapshotv1\xa2\x02\x05DPPHH\xaa\x029Dev.Planton.Provider.Hetznercloud.Hetznercloudsnapshot.V1\xca\x029Dev\\Planton\\Provider\\Hetznercloud\\Hetznercloudsnapshot\\V1\xe2\x02EDev\\Planton\\Provider\\Hetznercloud\\Hetznercloudsnapshot\\V1\\GPBMetadata\xea\x02>Dev::Planton::Provider::Hetznercloud::Hetznercloudsnapshot::V1b\x06proto3"
 

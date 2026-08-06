@@ -1085,7 +1085,7 @@ const file_dev_planton_provider_azure_azurefirewallpolicyrulecollectiongroup_v1_
 	"\n" +
 	"Odev/planton/provider/azure/azurefirewallpolicyrulecollectiongroup/v1/spec.proto\x12Ddev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbd\b\n" +
 	"*AzureFirewallPolicyRuleCollectionGroupSpec\x12\x92\x01\n" +
-	"\x12firewall_policy_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\x04\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\xcc\x02\n" +
+	"\x12firewall_policy_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd2\x10\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\xcc\x02\n" +
 	"\x04name\x18\x02 \x01(\tB\xb7\x02\xbaH\xb3\x02\xba\x01\xa8\x02\n" +
 	"!rule_collection_group_name_format\x12\xba\x01Rule collection group names are 2-80 characters, start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aFthis == '' || this.matches('^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9_]$')\xc8\x01\x01r\x02\x18PR\x04name\x12*\n" +
 	"\bpriority\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xe8\xfb\x03(dR\bpriority\x12\xb4\x01\n" +
@@ -1105,7 +1105,7 @@ const file_dev_planton_provider_azure_azurefirewallpolicyrulecollectiongroup_v1_
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x8a\x01\n" +
 	"\tprotocols\x18\x03 \x03(\v2l.dev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1.AzureFirewallPolicyApplicationProtocolR\tprotocols\x127\n" +
 	"\x10source_addresses\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fsourceAddresses\x12\x81\x01\n" +
-	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
+	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
 	"\x15destination_addresses\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x14destinationAddresses\x129\n" +
 	"\x11destination_fqdns\x18\a \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x10destinationFqdns\x127\n" +
 	"\x10destination_urls\x18\b \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fdestinationUrls\x12@\n" +
@@ -1136,9 +1136,9 @@ const file_dev_planton_provider_azure_azurefirewallpolicyrulecollectiongroup_v1_
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x96\x01\n" +
 	"\tprotocols\x18\x03 \x03(\x0e2e.dev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1.AzureFirewallPolicyRuleProtocolB\x11\xbaH\x0e\x92\x01\v\b\x01\"\a\x82\x01\x04\x10\x01 \x00R\tprotocols\x127\n" +
 	"\x10source_addresses\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fsourceAddresses\x12\x81\x01\n" +
-	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
+	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
 	"\x15destination_addresses\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x14destinationAddresses\x12\x8b\x01\n" +
-	"\x15destination_ip_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x13destinationIpGroups\x129\n" +
+	"\x15destination_ip_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x13destinationIpGroups\x129\n" +
 	"\x11destination_fqdns\x18\b \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x10destinationFqdns\x12;\n" +
 	"\x11destination_ports\x18\t \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x10destinationPorts\"\xf5\x01\n" +
 	"$AzureFirewallPolicyNatRuleCollection\x12\x1e\n" +
@@ -1152,7 +1152,7 @@ const file_dev_planton_provider_azure_azurefirewallpolicyrulecollectiongroup_v1_
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x96\x01\n" +
 	"\tprotocols\x18\x03 \x03(\x0e2e.dev.planton.provider.azure.azurefirewallpolicyrulecollectiongroup.v1.AzureFirewallPolicyRuleProtocolB\x11\xbaH\x0e\x92\x01\v\b\x01\"\a\x82\x01\x04\x10\x01 \x00R\tprotocols\x127\n" +
 	"\x10source_addresses\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fsourceAddresses\x12\x81\x01\n" +
-	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12/\n" +
+	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12/\n" +
 	"\x13destination_address\x18\x06 \x01(\tR\x12destinationAddress\x12;\n" +
 	"\x11destination_ports\x18\a \x03(\tB\x0e\xbaH\v\x92\x01\b\x10\x01\"\x04r\x02\x10\x01R\x10destinationPorts\x12-\n" +
 	"\x12translated_address\x18\b \x01(\tR\x11translatedAddress\x12'\n" +

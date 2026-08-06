@@ -316,7 +316,7 @@ const file_dev_planton_provider_gcp_gcpcomputedisk_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/gcp/gcpcomputedisk/v1/spec.proto\x12*dev.planton.provider.gcp.gcpcomputedisk.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9a\x17\n" +
 	"\x12GcpComputeDiskSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xf8\x01\n" +
 	"\tdisk_name\x18\x02 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xd2\x01\n" +
 	"\x10disk_name_format\x12\x81\x01disk_name must be 1-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen\x1a:this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')R\bdiskName\x129\n" +
 	"\x04zone\x18\x03 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\x04zone\x12 \n" +
@@ -325,10 +325,10 @@ const file_dev_planton_provider_gcp_gcpcomputedisk_v1_spec_proto_rawDesc = "" +
 	"\asize_gb\x18\x06 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\x80\x04(\x01R\x06sizeGb\x12\x14\n" +
 	"\x05image\x18\a \x01(\tR\x05image\x12'\n" +
 	"\x0fsource_snapshot\x18\b \x01(\tR\x0esourceSnapshot\x12v\n" +
-	"\vsource_disk\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xda\x05\x92\xd4a\x18status.outputs.self_linkR\n" +
+	"\vsource_disk\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\n" +
 	"sourceDisk\x12k\n" +
 	"\akms_key\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x127\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x127\n" +
 	"\x10provisioned_iops\x18\v \x01(\x03B\a\xbaH\x04\"\x02 \x00H\x00R\x0fprovisionedIops\x88\x01\x01\x12C\n" +
 	"\x16provisioned_throughput\x18\f \x01(\x03B\a\xbaH\x04\"\x02 \x00H\x01R\x15provisionedThroughput\x88\x01\x01\x12\xda\x01\n" +
 	"\vaccess_mode\x18\r \x01(\tB\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +

@@ -1823,7 +1823,7 @@ const file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc = "
 	"\x11user_verification\x18\x02 \x01(\tR\x10userVerification:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
 	"!web_authn_user_verification_valid\x12Fweb_authn user_verification must be 'required' or 'preferred' when set\x1aSthis.user_verification == '' || this.user_verification in ['required', 'preferred']\"\xe9\x01\n" +
 	"\x1bAwsCognitoUserPoolSmsConfig\x12\x80\x01\n" +
-	"\x0esns_caller_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\fsnsCallerArn\x12(\n" +
+	"\x0esns_caller_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\fsnsCallerArn\x12(\n" +
 	"\vexternal_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
 	"externalId\x12\x1d\n" +
 	"\n" +
@@ -1874,32 +1874,32 @@ const file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc = "
 	"\x10number_max_value\x18\t \x01(\tR\x0enumberMaxValue:\xb5\x01\xbaH\xb1\x01\x1a\xae\x01\n" +
 	"\x19attribute_data_type_valid\x12Hattribute_data_type must be 'String', 'Number', 'DateTime', or 'Boolean'\x1aGthis.attribute_data_type in ['String', 'Number', 'DateTime', 'Boolean']\"\xe7\x13\n" +
 	"\x1eAwsCognitoUserPoolLambdaConfig\x12x\n" +
-	"\vpre_sign_up\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tpreSignUp\x12\x87\x01\n" +
-	"\x12pre_authentication\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11preAuthentication\x12\x89\x01\n" +
-	"\x13post_authentication\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x12postAuthentication\x12\x85\x01\n" +
-	"\x11post_confirmation\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x10postConfirmation\x12\xfc\x01\n" +
-	"\x14pre_token_generation\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x95\x01\xaa\xa6\x1dmForeign-key reference to an AwsLambda trigger function (heuristic matched the word token), not a token value.\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x12preTokenGeneration\x12\x99\x01\n" +
+	"\vpre_sign_up\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tpreSignUp\x12\x87\x01\n" +
+	"\x12pre_authentication\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x11preAuthentication\x12\x89\x01\n" +
+	"\x13post_authentication\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x12postAuthentication\x12\x85\x01\n" +
+	"\x11post_confirmation\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x10postConfirmation\x12\xfc\x01\n" +
+	"\x14pre_token_generation\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x95\x01\xaa\xa6\x1dmForeign-key reference to an AwsLambda trigger function (heuristic matched the word token), not a token value.\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x12preTokenGeneration\x12\x99\x01\n" +
 	"\x1bpre_token_generation_config\x18\x06 \x01(\v2Z.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolPreTokenGenerationConfigR\x18preTokenGenerationConfig\x12\x7f\n" +
-	"\x0ecustom_message\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\rcustomMessage\x12\x7f\n" +
-	"\x0euser_migration\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\ruserMigration\x12\x8c\x01\n" +
-	"\x15define_auth_challenge\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13defineAuthChallenge\x12\x8c\x01\n" +
+	"\x0ecustom_message\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\rcustomMessage\x12\x7f\n" +
+	"\x0euser_migration\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\ruserMigration\x12\x8c\x01\n" +
+	"\x15define_auth_challenge\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x13defineAuthChallenge\x12\x8c\x01\n" +
 	"\x15create_auth_challenge\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x13createAuthChallenge\x12\x9d\x01\n" +
-	"\x1everify_auth_challenge_response\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x1bverifyAuthChallengeResponse\x12\x84\x01\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x13createAuthChallenge\x12\x9d\x01\n" +
+	"\x1everify_auth_challenge_response\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x1bverifyAuthChallengeResponse\x12\x84\x01\n" +
 	"\x13custom_email_sender\x18\f \x01(\v2T.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfigR\x11customEmailSender\x12\x80\x01\n" +
 	"\x11custom_sms_sender\x18\r \x01(\v2T.dev.planton.provider.aws.awscognitouserpool.v1.AwsCognitoUserPoolCustomSenderConfigR\x0fcustomSmsSender\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xd4\x03\xbaH\xd0\x03\x1a\xd4\x01\n" +
+	"kms_key_id\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId:\xd4\x03\xbaH\xd0\x03\x1a\xd4\x01\n" +
 	"\x1epre_token_generation_exclusive\x12gset either pre_token_generation (V1_0 event) or pre_token_generation_config (versioned event), not both\x1aI!has(this.pre_token_generation) || !has(this.pre_token_generation_config)\x1a\xf6\x01\n" +
 	"\x1ecustom_sender_requires_kms_key\x12zkms_key_id is required when custom_email_sender or custom_sms_sender is set -- Cognito encrypts the delivered code with it\x1aX(!has(this.custom_email_sender) && !has(this.custom_sms_sender)) || has(this.kms_key_id)\"\xeb\x02\n" +
 	"*AwsCognitoUserPoolPreTokenGenerationConfig\x12}\n" +
 	"\n" +
-	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
+	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
 	"\x0elambda_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rlambdaVersion:\x8e\x01\xbaH\x8a\x01\x1a\x87\x01\n" +
 	"\"pre_token_generation_version_valid\x120lambda_version must be 'V1_0', 'V2_0', or 'V3_0'\x1a/this.lambda_version in ['V1_0', 'V2_0', 'V3_0']\"\xb8\x02\n" +
 	"$AwsCognitoUserPoolCustomSenderConfig\x12}\n" +
 	"\n" +
-	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
+	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12-\n" +
 	"\x0elambda_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rlambdaVersion:b\xbaH_\x1a]\n" +
 	"\x1bcustom_sender_version_valid\x12\x1dlambda_version must be 'V1_0'\x1a\x1fthis.lambda_version in ['V1_0']\"\x9b\x05\n" +
 	"\x18AwsCognitoUserPoolAddOns\x12<\n" +
@@ -1911,15 +1911,15 @@ const file_dev_planton_provider_aws_awscognitouserpool_v1_spec_proto_rawDesc = "
 	"\"AwsCognitoUserPoolLogConfiguration\x12)\n" +
 	"\fevent_source\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventSource\x12#\n" +
 	"\tlog_level\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blogLevel\x12\x92\x01\n" +
-	"\x18cloudwatch_log_group_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12\x8f\x01\n" +
-	"\x13firehose_stream_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\x85\x02\x92\xd4a\"status.outputs.delivery_stream_arnR\x11firehoseStreamArn\x12z\n" +
-	"\rs3_bucket_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\vs3BucketArn:\x8b\x04\xbaH\x87\x04\x1a\x92\x01\n" +
+	"\x18cloudwatch_log_group_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12\x8f\x01\n" +
+	"\x13firehose_stream_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\b\x92\xd4a\"status.outputs.delivery_stream_arnR\x11firehoseStreamArn\x12z\n" +
+	"\rs3_bucket_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\vs3BucketArn:\x8b\x04\xbaH\x87\x04\x1a\x92\x01\n" +
 	"\x16log_event_source_valid\x12;event_source must be 'userNotification' or 'userAuthEvents'\x1a;this.event_source in ['userNotification', 'userAuthEvents']\x1a[\n" +
 	"\x0flog_level_valid\x12#log_level must be 'ERROR' or 'INFO'\x1a#this.log_level in ['ERROR', 'INFO']\x1a\x92\x02\n" +
 	"\x1blog_destination_exactly_one\x12rset exactly one destination per log configuration: cloudwatch_log_group_arn, firehose_stream_arn, or s3_bucket_arn\x1a\x7f(has(this.cloudwatch_log_group_arn) ? 1 : 0) + (has(this.firehose_stream_arn) ? 1 : 0) + (has(this.s3_bucket_arn) ? 1 : 0) == 1\"\x9e\x02\n" +
 	"\x1eAwsCognitoUserPoolDomainConfig\x12\x1f\n" +
 	"\x06domain\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06domain\x12}\n" +
-	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12B\n" +
+	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12B\n" +
 	"\x15managed_login_version\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x01H\x00R\x13managedLoginVersion\x88\x01\x01B\x18\n" +
 	"\x16_managed_login_versionB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awscognitouserpool.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awscognitouserpool/v1;awscognitouserpoolv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awscognitouserpool.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awscognitouserpool\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awscognitouserpool\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awscognitouserpool::V1b\x06proto3"

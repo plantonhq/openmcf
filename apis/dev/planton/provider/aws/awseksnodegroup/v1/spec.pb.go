@@ -855,10 +855,10 @@ const file_dev_planton_provider_aws_awseksnodegroup_v1_spec_proto_rawDesc = "" +
 	"6dev/planton/provider/aws/awseksnodegroup/v1/spec.proto\x12+dev.planton.provider.aws.awseksnodegroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\x19\n" +
 	"\x13AwsEksNodeGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x8a\x01\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\rjoins cluster\x88\xd4a\xcf\x01\x92\xd4a\x13status.outputs.nameR\vclusterName\x12\x93\x01\n" +
-	"\rnode_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB;\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x11assumes node role\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\vnodeRoleArn\x12\x90\x01\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\rjoins cluster\x88\xd4a\xef\a\x92\xd4a\x13status.outputs.nameR\vclusterName\x12\x93\x01\n" +
+	"\rnode_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB;\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x11assumes node role\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\vnodeRoleArn\x12\x90\x01\n" +
 	"\n" +
-	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\xb2\xa6\x1d\rspans subnets\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12s\n" +
+	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\xb2\xa6\x1d\rspans subnets\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12s\n" +
 	"\x0flaunch_template\x18\x05 \x01(\v2J.dev.planton.provider.aws.awseksnodegroup.v1.AwsEksNodeGroupLaunchTemplateR\x0elaunchTemplate\x12%\n" +
 	"\x0einstance_types\x18\x06 \x03(\tR\rinstanceTypes\x12\x19\n" +
 	"\bami_type\x18\a \x01(\tR\aamiType\x12|\n" +
@@ -884,7 +884,7 @@ const file_dev_planton_provider_aws_awseksnodegroup_v1_spec_proto_rawDesc = "" +
 	"\x0eversion_format\x12Hversion must be a Kubernetes minor version of 1.24 or later, e.g. '1.31'\x1aGthis.version == '' || this.version.matches('^1\\\\.(2[4-9]|[3-9][0-9])$')\x1a\xe4\x05\n" +
 	"\x0eami_type_valid\x12cami_type must be a supported EKS AMI family (AL2023_*, BOTTLEROCKET_*, WINDOWS_*, AL2_*, or CUSTOM)\x1a\xec\x04this.ami_type == '' || this.ami_type in ['AL2023_x86_64_STANDARD', 'AL2023_ARM_64_STANDARD', 'AL2023_x86_64_NEURON', 'AL2023_x86_64_NVIDIA', 'AL2023_ARM_64_NVIDIA', 'BOTTLEROCKET_ARM_64', 'BOTTLEROCKET_x86_64', 'BOTTLEROCKET_ARM_64_FIPS', 'BOTTLEROCKET_x86_64_FIPS', 'BOTTLEROCKET_ARM_64_NVIDIA', 'BOTTLEROCKET_x86_64_NVIDIA', 'BOTTLEROCKET_ARM_64_NVIDIA_FIPS', 'BOTTLEROCKET_x86_64_NVIDIA_FIPS', 'WINDOWS_CORE_2019_x86_64', 'WINDOWS_FULL_2019_x86_64', 'WINDOWS_CORE_2022_x86_64', 'WINDOWS_FULL_2022_x86_64', 'WINDOWS_CORE_2025_x86_64', 'WINDOWS_FULL_2025_x86_64', 'AL2_x86_64', 'AL2_x86_64_GPU', 'AL2_ARM_64', 'CUSTOM']\"\xe8\x01\n" +
 	"\x1dAwsEksNodeGroupLaunchTemplate\x12\xac\x01\n" +
-	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBJ\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x16launched from template\x88\xd4a\xea\x01\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
+	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBJ\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x16launched from template\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\"\x94\x03\n" +
 	"\x1cAwsEksNodeGroupScalingConfig\x12\"\n" +
 	"\bmin_size\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\aminSize\x12\"\n" +
@@ -894,7 +894,7 @@ const file_dev_planton_provider_aws_awseksnodegroup_v1_spec_proto_rawDesc = "" +
 	"\x15desired_within_bounds\x122desired_size must be between min_size and max_size\x1aHthis.desired_size >= this.min_size && this.desired_size <= this.max_size\"\xe2\x01\n" +
 	"\x1bAwsEksNodeGroupRemoteAccess\x12(\n" +
 	"\vec2_ssh_key\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\tec2SshKey\x12\x98\x01\n" +
-	"\x19source_security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x16sourceSecurityGroupIds\"\x94\x02\n" +
+	"\x19source_security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x16sourceSecurityGroupIds\"\x94\x02\n" +
 	"\x14AwsEksNodeGroupTaint\x12\x1c\n" +
 	"\x03key\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x18?R\x03key\x12\x1d\n" +

@@ -1541,7 +1541,7 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"ebsOptions\x12?\n" +
 	"\x17encrypt_at_rest_enabled\x18\x05 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14encryptAtRestEnabled\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12N\n" +
+	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12N\n" +
 	"\x1fnode_to_node_encryption_enabled\x18\a \x01(\bB\b\x92\xa6\x1d\x04trueR\x1bnodeToNodeEncryptionEnabled\x12o\n" +
 	"\vvpc_options\x18\b \x01(\v2N.dev.planton.provider.aws.awsopensearchdomain.v1.AwsOpenSearchDomainVpcOptionsR\n" +
 	"vpcOptions\x12\x8b\x01\n" +
@@ -1617,14 +1617,14 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"\x12throughput_minimum\x12.throughput must be at least 125 MiB/s when set\x1a.this.throughput == 0 || this.throughput >= 125\"\xa3\x02\n" +
 	"\x1dAwsOpenSearchDomainVpcOptions\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xf8\x05\n" +
+	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xf8\x05\n" +
 	"\"AwsOpenSearchDomainEndpointOptions\x122\n" +
 	"\renforce_https\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\fenforceHttps\x88\x01\x01\x12.\n" +
 	"\x13tls_security_policy\x18\x02 \x01(\tR\x11tlsSecurityPolicy\x126\n" +
 	"\x17custom_endpoint_enabled\x18\x03 \x01(\bR\x15customEndpointEnabled\x12'\n" +
 	"\x0fcustom_endpoint\x18\x04 \x01(\tR\x0ecustomEndpoint\x12\x9b\x01\n" +
-	"\x1fcustom_endpoint_certificate_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x1ccustomEndpointCertificateArn:\xdc\x02\xbaH\xd8\x02\x1a\x9b\x01\n" +
+	"\x1fcustom_endpoint_certificate_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x1ccustomEndpointCertificateArn:\xdc\x02\xbaH\xd8\x02\x1a\x9b\x01\n" +
 	" custom_endpoint_requires_enabled\x12;custom_endpoint requires custom_endpoint_enabled to be true\x1a:this.custom_endpoint == '' || this.custom_endpoint_enabled\x1a\xb7\x01\n" +
 	"\x1ccert_requires_custom_enabled\x12Kcustom_endpoint_certificate_arn requires custom_endpoint_enabled to be true\x1aJ!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_enabledB\x10\n" +
 	"\x0e_enforce_https\"\x9f\x0e\n" +
@@ -1632,7 +1632,7 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12C\n" +
 	"\x1einternal_user_database_enabled\x18\x02 \x01(\bR\x1binternalUserDatabaseEnabled\x124\n" +
 	"\x16anonymous_auth_enabled\x18\x03 \x01(\bR\x14anonymousAuthEnabled\x12|\n" +
-	"\x0fmaster_user_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\rmasterUserArn\x12(\n" +
+	"\x0fmaster_user_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rmasterUserArn\x12(\n" +
 	"\x10master_user_name\x18\x05 \x01(\tR\x0emasterUserName\x12j\n" +
 	"\x14master_user_password\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x12masterUserPassword\x12o\n" +
 	"\vjwt_options\x18\a \x01(\v2N.dev.planton.provider.aws.awsopensearchdomain.v1.AwsOpenSearchDomainJwtOptionsR\n" +
@@ -1655,10 +1655,10 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"\x1ejwt_validation_source_required\x12Aprovide jwks_url or public_key when JWT authentication is enabled\x1a=!this.enabled || this.jwks_url != '' || this.public_key != ''\"\xca\x04\n" +
 	"!AwsOpenSearchDomainCognitoOptions\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12~\n" +
-	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_id\x98\xd4a\x01R\n" +
+	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_id\x98\xd4a\x01R\n" +
 	"userPoolId\x12(\n" +
 	"\x10identity_pool_id\x18\x03 \x01(\tR\x0eidentityPoolId\x12o\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +
 	"$cognito_inputs_required_when_enabled\x12`user_pool_id, identity_pool_id, and role_arn are required when Cognito authentication is enabled\x1a^!this.enabled || (has(this.user_pool_id) && this.identity_pool_id != '' && has(this.role_arn))\"\xc9\x04\n" +
 	"\"AwsOpenSearchDomainAutoTuneOptions\x12@\n" +
 	"\rdesired_state\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x13R\aENABLEDR\bDISABLEDR\fdesiredState\x12\x94\x01\n" +
@@ -1690,7 +1690,7 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"\"instance_arn_required_when_enabled\x12Hidentity_center_instance_arn is required when enabled_api_access is true\x1aC!this.enabled_api_access || this.identity_center_instance_arn != ''\"\xf4\x03\n" +
 	"&AwsOpenSearchDomainLogPublishingOption\x12!\n" +
 	"\blog_type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\alogType\x12\x98\x01\n" +
-	"\x18cloudwatch_log_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12'\n" +
+	"\x18cloudwatch_log_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12'\n" +
 	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01:\xd6\x01\xbaH\xd2\x01\x1a\xcf\x01\n" +
 	"\x0elog_type_valid\x12^log_type must be 'INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', or 'AUDIT_LOGS'\x1a]this.log_type in ['INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', 'AUDIT_LOGS']B\n" +
 	"\n" +

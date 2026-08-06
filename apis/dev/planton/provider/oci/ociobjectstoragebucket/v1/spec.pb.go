@@ -885,7 +885,7 @@ const file_dev_planton_provider_oci_ociobjectstoragebucket_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/oci/ociobjectstoragebucket/v1/spec.proto\x122dev.planton.provider.oci.ociobjectstoragebucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb2\x1d\n" +
 	"\x1aOciObjectStorageBucketSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12%\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12%\n" +
 	"\tnamespace\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tnamespace\x12\x1b\n" +
 	"\x04name\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12z\n" +
 	"\vaccess_type\x18\x04 \x01(\x0e2Y.dev.planton.provider.oci.ociobjectstoragebucket.v1.OciObjectStorageBucketSpec.AccessTypeR\n" +

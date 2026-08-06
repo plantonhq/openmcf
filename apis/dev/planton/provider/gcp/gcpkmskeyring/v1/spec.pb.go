@@ -130,7 +130,7 @@ const file_dev_planton_provider_gcp_gcpkmskeyring_v1_spec_proto_rawDesc = "" +
 	"4dev/planton/provider/gcp/gcpkmskeyring/v1/spec.proto\x12)dev.planton.provider.gcp.gcpkmskeyring.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf3\x01\n" +
 	"\x11GcpKmsKeyRingSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12C\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12C\n" +
 	"\rkey_ring_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\vkeyRingName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocationB\xe2\x02\n" +
 	"-com.dev.planton.provider.gcp.gcpkmskeyring.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/gcp/gcpkmskeyring/v1;gcpkmskeyringv1\xa2\x02\x05DPPGG\xaa\x02)Dev.Planton.Provider.Gcp.Gcpkmskeyring.V1\xca\x02)Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\xe2\x025Dev\\Planton\\Provider\\Gcp\\Gcpkmskeyring\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Gcp::Gcpkmskeyring::V1b\x06proto3"

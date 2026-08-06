@@ -2887,7 +2887,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesairflow/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesairflow.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x91\x18\n" +
 	"\x15KubernetesAirflowSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x061.22.0H\x00R\fchartVersion\x88\x01\x01\x127\n" +
@@ -2928,7 +2928,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\x05mysql\x18\x02 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesairflow.v1.KubernetesAirflowMysqlH\x00R\x05mysqlB\x10\n" +
 	"\abackend\x12\x05\xbaH\x02\b\x01\"\xe9\x04\n" +
 	"\x19KubernetesAirflowPostgres\x12p\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12U\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB+\xbaH\x1dr\x1b2\x19^[a-zA-Z_][a-zA-Z0-9_$]*$\x8a\xa6\x1d\aairflowH\x01R\fdatabaseName\x88\x01\x01\x12,\n" +
 	"\busername\x18\x04 \x01(\tB\v\x8a\xa6\x1d\aairflowH\x02R\busername\x88\x01\x01\x12\x86\x01\n" +
@@ -2939,7 +2939,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\t_usernameB\v\n" +
 	"\t_ssl_mode\"\xf8\x03\n" +
 	"\x16KubernetesAirflowMysql\x12u\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x043306H\x00R\x04port\x88\x01\x01\x12U\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB+\xbaH\x1dr\x1b2\x19^[a-zA-Z_][a-zA-Z0-9_$]*$\x8a\xa6\x1d\aairflowH\x01R\fdatabaseName\x88\x01\x01\x12,\n" +
 	"\busername\x18\x04 \x01(\tB\v\x8a\xa6\x1d\aairflowH\x02R\busername\x88\x01\x01\x12\x8b\x01\n" +
@@ -2948,13 +2948,13 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\x0e_database_nameB\v\n" +
 	"\t_username\"\xbf\x02\n" +
 	"$KubernetesAirflowMysqlPasswordSecret\x12\x8c\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a(status.outputs.root_password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a(status.outputs.root_password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
 	"\v_secret_key\"\xb5\x02\n" +
 	"\x1fKubernetesAirflowPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
@@ -2970,7 +2970,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\x13\n" +
 	"\x11_persistence_size\"\xba\x03\n" +
 	"\x1dKubernetesAirflowValkeyBroker\x12m\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x046379H\x00R\x04port\x88\x01\x01\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x84\x01\n" +
 	"\x0fpassword_secret\x18\x04 \x01(\v2[.dev.planton.provider.kubernetes.kubernetesairflow.v1.KubernetesAirflowBrokerPasswordSecretR\x0epasswordSecret\x12<\n" +
@@ -2978,7 +2978,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\x05_portB\x12\n" +
 	"\x10_database_number\"\xbb\x02\n" +
 	"%KubernetesAirflowBrokerPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x86 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
@@ -3082,7 +3082,7 @@ const file_dev_planton_provider_kubernetes_kubernetesairflow_v1_spec_proto_rawDe
 	"\rstorage_class\x18\x03 \x01(\tR\fstorageClassB\a\n" +
 	"\x05_size\"\xb5\x05\n" +
 	"!KubernetesAirflowLogSearchBackend\x12r\n" +
-	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\a\x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12,\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95 \x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x049200H\x00R\x04port\x88\x01\x01\x127\n" +
 	"\x06scheme\x18\x03 \x01(\tB\x1a\xbaH\x0fr\rR\x04httpR\x05https\x8a\xa6\x1d\x04httpH\x01R\x06scheme\x88\x01\x01\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x12~\n" +

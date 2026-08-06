@@ -235,12 +235,12 @@ const file_dev_planton_provider_cloudflare_cloudflareemailroutingzone_v1_spec_pr
 	"\x04type\x18\x02 \x01(\x0e2g.dev.planton.provider.cloudflare.cloudflareemailroutingzone.v1.CloudflareEmailRoutingCatchAllActionTypeBk\xbaHh\xba\x01`\n" +
 	"\x1ecatch_all.type_not_unspecified\x123catch-all type must be one of drop, forward, worker\x1a\tthis != 0\x82\x01\x02\x10\x01R\x04type\x12p\n" +
 	"\n" +
-	"forward_to\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xa1\x0e\x92\xd4a\x14status.outputs.emailR\tforwardTo\x12o\n" +
-	"\x06worker\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8b\x0e\x92\xd4a\x1astatus.outputs.script_nameR\x06worker:\x8c\x02\xbaH\x88\x02\x1a\x8b\x01\n" +
+	"forward_to\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xf16\x92\xd4a\x14status.outputs.emailR\tforwardTo\x12o\n" +
+	"\x06worker\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\x06worker:\x8c\x02\xbaH\x88\x02\x1a\x8b\x01\n" +
 	"%catch_all.forward_requires_forward_to\x125forward_to is required when catch-all type is forward\x1a+this.type != 2 || size(this.forward_to) > 0\x1ax\n" +
 	" catch_all.worker_requires_worker\x120worker is required when catch-all type is worker\x1a\"this.type != 3 || has(this.worker)\"\xbe\x02\n" +
 	"\x1eCloudflareEmailRoutingZoneSpec\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12~\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12~\n" +
 	"\tcatch_all\x18\x02 \x01(\v2a.dev.planton.provider.cloudflare.cloudflareemailroutingzone.v1.CloudflareEmailRoutingZoneCatchAllR\bcatchAll\x12(\n" +
 	"\x10lock_dns_records\x18\x03 \x01(\bR\x0elockDnsRecords*t\n" +
 	"(CloudflareEmailRoutingCatchAllActionType\x12%\n" +

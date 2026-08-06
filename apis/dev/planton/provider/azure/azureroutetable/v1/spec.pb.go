@@ -318,7 +318,7 @@ const file_dev_planton_provider_azure_azureroutetable_v1_spec_proto_rawDesc = ""
 	"\x13AzureRouteTableSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9a\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9a\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x85\x02\xbaH\x81\x02\xba\x01\xf4\x01\n" +
 	"\x17route_table_name_format\x12\x9b\x01Route table names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1a;this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12[\n" +
 	"\x06routes\x18\x04 \x03(\v2C.dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableRouteR\x06routes\x12P\n" +
@@ -333,7 +333,7 @@ const file_dev_planton_provider_azure_azureroutetable_v1_spec_proto_rawDesc = ""
 	"\x0eaddress_prefix\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\raddressPrefix\x12z\n" +
 	"\rnext_hop_type\x18\x03 \x01(\x0e2I.dev.planton.provider.azure.azureroutetable.v1.AzureRouteTableNextHopTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\vnextHopType\x12\x92\x01\n" +
-	"\x16next_hop_in_ip_address\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x94\x04\x92\xd4a!status.outputs.private_ip_addressR\x12nextHopInIpAddress:\xde\x01\xbaH\xda\x01\x1a\xd7\x01\n" +
+	"\x16next_hop_in_ip_address\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xd4\x10\x92\xd4a!status.outputs.private_ip_addressR\x12nextHopInIpAddress:\xde\x01\xbaH\xda\x01\x1a\xd7\x01\n" +
 	"\x18next_hop_ip_matches_type\x12|next_hop_in_ip_address is required when next_hop_type is VIRTUAL_APPLIANCE and must be omitted for every other next hop type\x1a=(this.next_hop_type == 4) == has(this.next_hop_in_ip_address)*\xa9\x01\n" +
 	"\x1aAzureRouteTableNextHopType\x12/\n" +
 	"+azure_route_table_next_hop_type_unspecified\x10\x00\x12\x1b\n" +

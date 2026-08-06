@@ -679,8 +679,8 @@ const file_dev_planton_provider_oci_ocisecuritygroup_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"7dev/planton/provider/oci/ocisecuritygroup/v1/spec.proto\x12,dev.planton.provider.oci.ocisecuritygroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdc\x17\n" +
 	"\x14OciSecurityGroupSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12o\n" +
-	"\x06vcn_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe4\x19\x92\xd4a\x15status.outputs.vcn_idR\x05vcnId\x12!\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12o\n" +
+	"\x06vcn_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8e\x92\xd4a\x15status.outputs.vcn_idR\x05vcnId\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12s\n" +
 	"\ringress_rules\x18\x04 \x03(\v2N.dev.planton.provider.oci.ocisecuritygroup.v1.OciSecurityGroupSpec.IngressRuleR\fingressRules\x12p\n" +
 	"\fegress_rules\x18\x05 \x03(\v2M.dev.planton.provider.oci.ocisecuritygroup.v1.OciSecurityGroupSpec.EgressRuleR\vegressRules\x1a\xa2\x05\n" +

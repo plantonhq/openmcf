@@ -1034,7 +1034,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x89\x19\n" +
 	"\x18KubernetesClickHouseSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12 \n" +
 	"\aversion\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x12E\n" +
 	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12[\n" +
@@ -1044,7 +1044,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_ra
 	"\tresources\x18\b \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12V\n" +
 	"\tdisk_size\x18\t \x01(\tB9\xbaH6\xc8\x01\x01r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$R\bdiskSize\x12o\n" +
 	"\rstorage_class\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\xdb\x01\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12\xdb\x01\n" +
 	"\rlog_disk_size\x18\v \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xae\x01\n" +
 	"\x19spec.log_disk_size.format\x12>log_disk_size must be a Kubernetes quantity like 10Gi or 512Mi\x1aQthis == '' || this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')R\vlogDiskSize\x127\n" +
 	"\x18retain_volumes_on_delete\x18\f \x01(\bR\x15retainVolumesOnDelete\x12}\n" +
@@ -1096,7 +1096,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_ra
 	"\breplicas\x18\x01 \x01(\x05B\x10\xbaH\b\x1a\x060\x010\x030\x05\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12`\n" +
 	"\tdisk_size\x18\x03 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClassB\v\n" +
+	"\rstorage_class\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClassB\v\n" +
 	"\t_replicasB\f\n" +
 	"\n" +
 	"_disk_size\"\xd5\x01\n" +

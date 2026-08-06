@@ -292,8 +292,8 @@ const file_dev_planton_provider_aws_awseksaccessentry_v1_spec_proto_rawDesc = ""
 	"8dev/planton/provider/aws/awseksaccessentry/v1/spec.proto\x12-dev.planton.provider.aws.awseksaccessentry.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xca\t\n" +
 	"\x15AwsEksAccessEntrySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12y\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x01\x92\xd4a\x13status.outputs.nameR\vclusterName\x12\x7f\n" +
-	"\rprincipal_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\fprincipalArn\x12\x12\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\a\x92\xd4a\x13status.outputs.nameR\vclusterName\x12\x7f\n" +
+	"\rprincipal_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\fprincipalArn\x12\x12\n" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12@\n" +
 	"\x11kubernetes_groups\x18\x05 \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\t\x10\x01\x18\xfd\x01\xba\x01\x01 R\x10kubernetesGroups\x12\x1b\n" +
 	"\tuser_name\x18\x06 \x01(\tR\buserName\x12\x82\x01\n" +

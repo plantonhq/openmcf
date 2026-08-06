@@ -1021,7 +1021,7 @@ const file_dev_planton_provider_azure_azurerediscache_v1_spec_proto_rawDesc = ""
 	"\x13AzureRedisCacheSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf9\x01\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xf9\x01\n" +
 	"\n" +
 	"cache_name\x18\x03 \x01(\tB\xd9\x01\xbaH\xd5\x01\xba\x01\xca\x01\n" +
 	"\x17redis_cache_name_format\x12ucache_name must be 1-63 letters, digits, and hyphens, start and end with a letter or digit, and never repeat a hyphen\x1a8this.matches('^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$')\xc8\x01\x01r\x02\x18?R\tcacheName\x12f\n" +
@@ -1030,7 +1030,7 @@ const file_dev_planton_provider_azure_azurerediscache_v1_spec_proto_rawDesc = ""
 	"\rredis_version\x18\x06 \x01(\tBX\xbaHP\xba\x01M\n" +
 	"\x13redis_version_valid\x12\"redis_version must be one of: 4, 6\x1a\x12this in ['4', '6']\x8a\xa6\x1d\x016H\x00R\fredisVersion\x88\x01\x01\x12)\n" +
 	"\x05zones\x18\a \x03(\tB\x13\xbaH\x10\x92\x01\r\"\vr\tR\x011R\x012R\x013R\x05zones\x12r\n" +
-	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12G\n" +
+	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12G\n" +
 	"\x19private_static_ip_address\x18\t \x01(\tB\a\xbaH\x04r\x02x\x01H\x01R\x16privateStaticIpAddress\x88\x01\x01\x12/\n" +
 	"\vshard_count\x18\n" +
 	" \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
@@ -1102,7 +1102,7 @@ const file_dev_planton_provider_azure_azurerediscache_v1_spec_proto_rawDesc = ""
 	"\x17AzureRedisCacheIdentity\x12j\n" +
 	"\x04type\x18\x01 \x01(\x0e2J.dev.planton.provider.azure.azurerediscache.v1.AzureRedisCacheIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb4\x02\xbaH\xb0\x02\x1a\xad\x02\n" +
 	"#redis_cache_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)\"\xe9\x03\n" +
 	"\x1cAzureRedisCachePatchSchedule\x12z\n" +
 	"\vday_of_week\x18\x01 \x01(\x0e2N.dev.planton.provider.azure.azurerediscache.v1.AzureRedisCachePatchScheduleDayB\n" +

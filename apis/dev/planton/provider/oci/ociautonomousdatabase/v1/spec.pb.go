@@ -762,7 +762,7 @@ const file_dev_planton_provider_oci_ociautonomousdatabase_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/oci/ociautonomousdatabase/v1/spec.proto\x121dev.planton.provider.oci.ociautonomousdatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe1\x1d\n" +
 	"\x19OciAutonomousDatabaseSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12:\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12:\n" +
 	"\adb_name\x18\x02 \x01(\tB!\xbaH\x1er\x1c\x10\x01\x18\x1e2\x16^[a-zA-Z][a-zA-Z0-9]*$R\x06dbName\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12x\n" +
 	"\vdb_workload\x18\x04 \x01(\x0e2W.dev.planton.provider.oci.ociautonomousdatabase.v1.OciAutonomousDatabaseSpec.DbWorkloadR\n" +
@@ -783,8 +783,8 @@ const file_dev_planton_provider_oci_ociautonomousdatabase_v1_spec_proto_rawDesc 
 	"\x0eadmin_password\x18\x10 \x01(\tB\x04\xa0\xa6\x1d\x01R\radminPassword\x12O\n" +
 	"\tsecret_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\bsecretId\x122\n" +
 	"\x15secret_version_number\x18\x12 \x01(\x05R\x13secretVersionNumber\x12r\n" +
-	"\tsubnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x86\x01\n" +
-	"\ansg_ids\x18\x14 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x124\n" +
+	"\tsubnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x86\x01\n" +
+	"\ansg_ids\x18\x14 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xcae\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x124\n" +
 	"\x16private_endpoint_label\x18\x15 \x01(\tR\x14privateEndpointLabel\x12.\n" +
 	"\x13private_endpoint_ip\x18\x16 \x01(\tR\x11privateEndpointIp\x12'\n" +
 	"\x0fwhitelisted_ips\x18\x17 \x03(\tR\x0ewhitelistedIps\x12B\n" +

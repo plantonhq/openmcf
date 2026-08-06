@@ -136,7 +136,7 @@ const file_dev_planton_provider_azure_azureapplicationsecuritygroup_v1_spec_prot
 	"!AzureApplicationSecurityGroupSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xaf\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xaf\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x9a\x02\xbaH\x96\x02\xba\x01\x89\x02\n" +
 	"\x0fasg_name_format\x12\xaa\x01Application security group names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12|\n" +
 	"\x04tags\x18\x04 \x03(\v2h.dev.planton.provider.azure.azureapplicationsecuritygroup.v1.AzureApplicationSecurityGroupSpec.TagsEntryR\x04tags\x1a7\n" +

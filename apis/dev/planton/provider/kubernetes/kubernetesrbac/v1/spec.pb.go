@@ -938,7 +938,7 @@ const file_dev_planton_provider_kubernetes_kubernetesrbac_v1_spec_proto_rawDesc 
 	"\x05scopeB\x06\n" +
 	"\x04role\"\x84\x01\n" +
 	"\x1cKubernetesRbacNamespaceScope\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\"\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\"\x1c\n" +
 	"\x1aKubernetesRbacClusterScope\"\x98\x05\n" +
 	"\x1cKubernetesRbacRoleDefinition\x12\xfb\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd4\x01\n" +
@@ -980,8 +980,8 @@ const file_dev_planton_provider_kubernetes_kubernetesrbac_v1_spec_proto_rawDesc 
 	"\x10subject_required\x12AExactly one subject must be set (service_account, user, or group)\x1aihas(this.service_account) || (has(this.user) && this.user != '') || (has(this.group) && this.group != '')B\t\n" +
 	"\asubject\"\xfe\x01\n" +
 	"#KubernetesRbacServiceAccountSubject\x12m\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tgrants to\x88\xd4a\xab\x06\x92\xd4a\tspec.nameR\x04name\x12h\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x06\x92\xd4a\tspec.name\x98\xd4a\x01R\tnamespaceB\x93\x03\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tgrants to\x88\xd4a\xab\x1f\x92\xd4a\tspec.nameR\x04name\x12h\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x1f\x92\xd4a\tspec.name\x98\xd4a\x01R\tnamespaceB\x93\x03\n" +
 	"5com.dev.planton.provider.kubernetes.kubernetesrbac.v1B\tSpecProtoP\x01Zdgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1;kubernetesrbacv1\xa2\x02\x05DPPKK\xaa\x021Dev.Planton.Provider.Kubernetes.Kubernetesrbac.V1\xca\x021Dev\\Planton\\Provider\\Kubernetes\\Kubernetesrbac\\V1\xe2\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetesrbac\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Kubernetes::Kubernetesrbac::V1b\x06proto3"
 
 var (

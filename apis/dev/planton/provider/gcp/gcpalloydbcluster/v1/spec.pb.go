@@ -1010,13 +1010,13 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\x1btime_based_retention_period\x18\x05 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
 	"\"time_based_retention_period_format\x12Ltime_based_retention_period must be a duration in seconds (e.g., '1209600s')\x1a'this == '' || this.matches('^[0-9]+s$')R\x18timeBasedRetentionPeriod\x12w\n" +
 	"\x0fweekly_schedule\x18\x06 \x01(\v2N.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterBackupScheduleR\x0eweeklySchedule\x12\x89\x01\n" +
-	"\x17encryption_kms_key_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName:\xcd\x01\xbaH\xc9\x01\x1a\xc6\x01\n" +
+	"\x17encryption_kms_key_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName:\xcd\x01\xbaH\xc9\x01\x1a\xc6\x01\n" +
 	"\x1aretention_mutual_exclusion\x12Tonly one of quantity_based_retention_count or time_based_retention_period may be set\x1aRthis.quantity_based_retention_count == 0 || this.time_based_retention_period == ''\"\xfd\x02\n" +
 	"'GcpAlloydbClusterContinuousBackupConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xab\x01\n" +
 	"\x14recovery_window_days\x18\x02 \x01(\x05By\xbaHv\xba\x01s\n" +
 	"\x1arecovery_window_days_range\x12-recovery_window_days must be between 1 and 35\x1a&this == 0 || (this >= 1 && this <= 35)R\x12recoveryWindowDays\x12\x89\x01\n" +
-	"\x17encryption_kms_key_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName\"\xaa\x01\n" +
+	"\x17encryption_kms_key_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName\"\xaa\x01\n" +
 	"\"GcpAlloydbClusterMaintenanceWindow\x12Z\n" +
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\x12(\n" +
 	"\n" +
@@ -1051,10 +1051,10 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\"\x8c\x17\n" +
 	"\x15GcpAlloydbClusterSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12O\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12O\n" +
 	"\fcluster_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\vclusterName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12t\n" +
-	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12h\n" +
+	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xc2\x17\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12h\n" +
 	"\n" +
 	"psc_config\x18\x0e \x01(\v2I.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPscConfigR\tpscConfig\x12\xa9\x01\n" +
 	"\fcluster_type\x18\x0f \x01(\tB\x80\x01\xbaHr\xba\x01o\n" +
@@ -1068,7 +1068,7 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\x17automated_backup_policy\x18\t \x01(\v2U.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterAutomatedBackupPolicyR\x15automatedBackupPolicy\x12\x90\x01\n" +
 	"\x18continuous_backup_config\x18\n" +
 	" \x01(\v2V.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterContinuousBackupConfigR\x16continuousBackupConfig\x12t\n" +
-	"\fkms_key_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\x80\x01\n" +
 	"\x12maintenance_window\x18\f \x01(\v2Q.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterMaintenanceWindowR\x11maintenanceWindow\x12\x82\x01\n" +
 	"\x10primary_instance\x18\r \x01(\v2O.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPrimaryInstanceB\x06\xbaH\x03\xc8\x01\x01R\x0fprimaryInstance\x12w\n" +

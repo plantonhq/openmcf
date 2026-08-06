@@ -408,7 +408,7 @@ const file_dev_planton_provider_azure_azuremssqlelasticpool_v1_spec_proto_rawDes
 	"\n" +
 	">dev/planton/provider/azure/azuremssqlelasticpool/v1/spec.proto\x123dev.planton.provider.azure.azuremssqlelasticpool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd0\x10\n" +
 	"\x19AzureMssqlElasticPoolSpec\x12x\n" +
-	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb1\x03\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\"\n" +
+	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x0f\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\"\n" +
 	"\x06region\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12*\n" +
 	"\tpool_name\x18\x03 \x01(\tB\r\xbaH\n" +

@@ -1367,7 +1367,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshorizontalpodautoscaler_v1_
 	"\n" +
 	"Odev/planton/provider/kubernetes/kuberneteshorizontalpodautoscaler/v1/spec.proto\x12Ddev.planton.provider.kubernetes.kuberneteshorizontalpodautoscaler.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf3\v\n" +
 	"%KubernetesHorizontalPodAutoscalerSpec\x12d\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\x8f\x01\n" +
 	"\x06labels\x18\x03 \x03(\v2w.dev.planton.provider.kubernetes.kuberneteshorizontalpodautoscaler.v1.KubernetesHorizontalPodAutoscalerSpec.LabelsEntryR\x06labels\x12\x9e\x01\n" +
@@ -1391,7 +1391,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshorizontalpodautoscaler_v1_
 	"\x04kind\x18\x02 \x01(\tB\x8e\x01\xbaH}\xba\x01z\n" +
 	"\x12kind.not_daemonset\x12OA DaemonSet cannot be a scale target — it runs one pod per node by definition\x1a\x13this != 'DaemonSet'\x8a\xa6\x1d\n" +
 	"DeploymentH\x01R\x04kind\x88\x01\x01\x12u\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xa1\x06\x92\xd4a\x1estatus.outputs.deployment_nameR\x04nameB\x0e\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xa1\x1f\x92\xd4a\x1estatus.outputs.deployment_nameR\x04nameB\x0e\n" +
 	"\f_api_versionB\a\n" +
 	"\x05_kind\"\xb6\x0e\n" +
 	"'KubernetesHorizontalPodAutoscalerMetric\x12\x91\x01\n" +

@@ -300,8 +300,8 @@ const file_dev_planton_provider_gcp_gcpfirestoreindex_v1_spec_proto_rawDesc = ""
 	"\x16exactly_one_field_role\x12Heach field declares exactly one of order, array_config, or vector_config\x1ag(this.order != '' ? 1 : 0) + (this.array_config != '' ? 1 : 0) + (has(this.vector_config) ? 1 : 0) == 1\"\x8e\b\n" +
 	"\x15GcpFirestoreIndexSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12u\n" +
-	"\bdatabase\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xf8\x04\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x12&\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12u\n" +
+	"\bdatabase\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd8\x17\x92\xd4a\x1cstatus.outputs.database_nameR\bdatabase\x12&\n" +
 	"\n" +
 	"collection\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"collection\x12\xf3\x01\n" +

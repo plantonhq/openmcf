@@ -874,7 +874,7 @@ const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x90\x01\n" +
 	"\x16authentication_options\x18\x03 \x03(\v2J.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthenticationOptionB\r\xbaH\n" +
 	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x02R\x15authenticationOptions\x12\x90\x01\n" +
-	"\x16server_certificate_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12m\n" +
+	"\x16server_certificate_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x14serverCertificateArn\x12m\n" +
 	"\x11client_cidr_block\x18\x05 \x01(\tBA\xbaH>\xd8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x0fclientCidrBlock\x12!\n" +
 	"\fsplit_tunnel\x18\x06 \x01(\bR\vsplitTunnel\x12H\n" +
 	"\x12transport_protocol\x18\a \x01(\tB\x19\xbaH\x0f\xd8\x01\x01r\n" +
@@ -885,10 +885,10 @@ const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\x17traffic_ip_address_type\x18\n" +
 	" \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x04ipv4R\x04ipv6R\n" +
 	"dual-stackR\x14trafficIpAddressType\x12i\n" +
-	"\x06vpc_id\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12t\n" +
+	"\x06vpc_id\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x95\x01\n" +
+	"subnet_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x95\x01\n" +
 	"\x1dtransit_gateway_configuration\x18\x0e \x01(\v2Q.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnTransitGatewayConfigurationR\x1btransitGatewayConfiguration\x12x\n" +
 	"\x13authorization_rules\x18\x0f \x03(\v2G.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnAuthorizationRuleR\x12authorizationRules\x12S\n" +
 	"\x06routes\x18\x10 \x03(\v2;.dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRouteR\x06routes\x12L\n" +
@@ -916,7 +916,7 @@ const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\x16_session_timeout_hours\"\xcb\x0e\n" +
 	" AwsClientVpnAuthenticationOption\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x91\x01\n" +
-	"\x1aroot_certificate_chain_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xc9\x01\x92\xd4a\x17status.outputs.cert_arnR\x17rootCertificateChainArn\x12.\n" +
+	"\x1aroot_certificate_chain_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x17rootCertificateChainArn\x12.\n" +
 	"\x13active_directory_id\x18\x03 \x01(\tR\x11activeDirectoryId\x12*\n" +
 	"\x11saml_provider_arn\x18\x04 \x01(\tR\x0fsamlProviderArn\x12B\n" +
 	"\x1eself_service_saml_provider_arn\x18\x05 \x01(\tR\x1aselfServiceSamlProviderArn:\xd6\v\xbaH\xd2\v\x1a\x82\x02\n" +
@@ -935,19 +935,19 @@ const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\xba\x02\n" +
 	"\x11AwsClientVpnRoute\x12w\n" +
 	"\x16destination_cidr_block\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x89\x01\n" +
-	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12 \n" +
+	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xb3\x01\n" +
 	" AwsClientVpnClientConnectOptions\x12\x8e\x01\n" +
-	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\"G\n" +
+	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\"G\n" +
 	"\x17AwsClientVpnLoginBanner\x12,\n" +
 	"\vbanner_text\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xf8\n" +
 	"R\n" +
 	"bannerText\"\xe4\x01\n" +
 	"\x19AwsClientVpnConnectionLog\x12\x92\x01\n" +
-	"\x14cloudwatch_log_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\x12cloudwatchLogGroup\x122\n" +
+	"\x14cloudwatch_log_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\x12cloudwatchLogGroup\x122\n" +
 	"\x15cloudwatch_log_stream\x18\x02 \x01(\tR\x13cloudwatchLogStream\"\x8c\x04\n" +
 	"'AwsClientVpnTransitGatewayConfiguration\x12\x92\x01\n" +
-	"\x12transit_gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x9a\x02\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x127\n" +
+	"\x12transit_gateway_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\b\x92\xd4a!status.outputs.transit_gateway_idR\x10transitGatewayId\x127\n" +
 	"\x12availability_zones\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x11availabilityZones\x12<\n" +
 	"\x15availability_zone_ids\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x13availabilityZoneIds:\xd4\x01\xbaH\xd0\x01\x1a\xcd\x01\n" +
 	"\vone_az_form\x12navailability_zones (names) and availability_zone_ids (IDs) are mutually exclusive — pick one addressing form\x1aN!(this.availability_zones.size() > 0 && this.availability_zone_ids.size() > 0)B\xdb\x02\n" +

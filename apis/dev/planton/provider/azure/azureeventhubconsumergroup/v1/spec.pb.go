@@ -129,7 +129,7 @@ const file_dev_planton_provider_azure_azureeventhubconsumergroup_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/azure/azureeventhubconsumergroup/v1/spec.proto\x128dev.planton.provider.azure.azureeventhubconsumergroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xcc\x06\n" +
 	"\x1eAzureEventHubConsumerGroupSpec\x12\x80\x01\n" +
-	"\fevent_hub_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x03\x92\xd4a\x1bstatus.outputs.event_hub_idR\n" +
+	"\fevent_hub_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x9d\x10\x92\xd4a\x1bstatus.outputs.event_hub_idR\n" +
 	"eventHubId\x12\xe0\x04\n" +
 	"\x13consumer_group_name\x18\x02 \x01(\tB\xaf\x04\xbaH\xab\x04\xba\x01\x9e\x02\n" +
 	"$event_hub_consumer_group_name_format\x12\x96\x01consumer_group_name must start and end with a letter or number and may contain letters, numbers, periods, hyphens, and underscores (max 50 characters)\x1a]this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[a-zA-Z0-9]$')\xba\x01\xfc\x01\n" +

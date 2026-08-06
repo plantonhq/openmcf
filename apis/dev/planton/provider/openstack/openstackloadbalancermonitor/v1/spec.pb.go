@@ -200,7 +200,7 @@ const file_dev_planton_provider_openstack_openstackloadbalancermonitor_v1_spec_p
 	"\n" +
 	"Idev/planton/provider/openstack/openstackloadbalancermonitor/v1/spec.proto\x12>dev.planton.provider.openstack.openstackloadbalancermonitor.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\b\n" +
 	" OpenStackLoadBalancerMonitorSpec\x12r\n" +
-	"\apool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x13\x92\xd4a\x16status.outputs.pool_idR\x06poolId\x12L\n" +
+	"\apool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2N\x92\xd4a\x16status.outputs.pool_idR\x06poolId\x12L\n" +
 	"\x04type\x18\x02 \x01(\tB8\xbaH5\xc8\x01\x01r0R\x04HTTPR\x05HTTPSR\x04PINGR\x03TCPR\tTLS-HELLOR\vUDP-CONNECTR\x04type\x12\x1c\n" +
 	"\x05delay\x18\x03 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\x05delay\x12 \n" +
 	"\atimeout\x18\x04 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\atimeout\x12|\n" +

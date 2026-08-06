@@ -557,7 +557,7 @@ const file_dev_planton_provider_oci_ocifilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"4dev/planton/provider/oci/ocifilesystem/v1/spec.proto\x12)dev.planton.provider.oci.ocifilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x90\x10\n" +
 	"\x11OciFileSystemSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x128\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x128\n" +
 	"\x13availability_domain\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12availabilityDomain\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12P\n" +
 	"\n" +
@@ -566,12 +566,12 @@ const file_dev_planton_provider_oci_ocifilesystem_v1_spec_proto_rawDesc = "" +
 	"\fmount_target\x18\x06 \x01(\v2H.dev.planton.provider.oci.ocifilesystem.v1.OciFileSystemSpec.MountTargetB\x06\xbaH\x03\xc8\x01\x01R\vmountTarget\x12g\n" +
 	"\aexports\x18\a \x03(\v2C.dev.planton.provider.oci.ocifilesystem.v1.OciFileSystemSpec.ExportB\b\xbaH\x05\x92\x01\x02\b\x01R\aexports\x1a\xf9\x03\n" +
 	"\vMountTarget\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12!\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12%\n" +
 	"\x0ehostname_label\x18\x03 \x01(\tR\rhostnameLabel\x12\x1d\n" +
 	"\n" +
 	"ip_address\x18\x04 \x01(\tR\tipAddress\x12~\n" +
-	"\ansg_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x121\n" +
+	"\ansg_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xcae\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x121\n" +
 	"\x14requested_throughput\x18\x06 \x01(\x03R\x13requestedThroughput\x12)\n" +
 	"\x11max_fs_stat_bytes\x18\a \x01(\x03R\x0emaxFsStatBytes\x12)\n" +
 	"\x11max_fs_stat_files\x18\b \x01(\x03R\x0emaxFsStatFiles\x1a\xf9\x01\n" +

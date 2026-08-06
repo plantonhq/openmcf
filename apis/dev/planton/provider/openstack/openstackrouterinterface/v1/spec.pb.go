@@ -117,8 +117,8 @@ const file_dev_planton_provider_openstack_openstackrouterinterface_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/openstack/openstackrouterinterface/v1/spec.proto\x12:dev.planton.provider.openstack.openstackrouterinterface.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaa\x02\n" +
 	"\x1cOpenStackRouterInterfaceSpec\x12x\n" +
-	"\trouter_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc7\x13\x92\xd4a\x18status.outputs.router_idR\brouterId\x12x\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x13\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x16\n" +
+	"\trouter_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x93N\x92\xd4a\x18status.outputs.router_idR\brouterId\x12x\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x92N\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x16\n" +
 	"\x06region\x18\x03 \x01(\tR\x06regionB\xd3\x03\n" +
 	">com.dev.planton.provider.openstack.openstackrouterinterface.v1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/apis/dev/planton/provider/openstack/openstackrouterinterface/v1;openstackrouterinterfacev1\xa2\x02\x05DPPOO\xaa\x02:Dev.Planton.Provider.Openstack.Openstackrouterinterface.V1\xca\x02:Dev\\Planton\\Provider\\Openstack\\Openstackrouterinterface\\V1\xe2\x02FDev\\Planton\\Provider\\Openstack\\Openstackrouterinterface\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Openstack::Openstackrouterinterface::V1b\x06proto3"
 

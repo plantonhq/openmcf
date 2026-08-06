@@ -1153,7 +1153,7 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\x1ballowed_persistence_regions\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x19allowedPersistenceRegions\x12,\n" +
 	"\x12enforce_in_transit\x18\x02 \x01(\bR\x10enforceInTransit\"\x92\x02\n" +
 	"\x1cGcpPubSubTopicSchemaSettings\x12s\n" +
-	"\x06schema\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x98\x05\x92\xd4a\x18status.outputs.schema_idR\x06schema\x12}\n" +
+	"\x06schema\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x17\x92\xd4a\x18status.outputs.schema_idR\x06schema\x12}\n" +
 	"\bencoding\x18\x02 \x01(\tBa\xbaH^\xba\x01[\n" +
 	"\x0evalid_encoding\x12\x1fencoding must be JSON or BINARY\x1a(this == '' || this in ['JSON', 'BINARY']R\bencoding\"\xa9\x02\n" +
 	"!GcpPubSubTopicIngestionAwsKinesis\x12%\n" +
@@ -1162,14 +1162,14 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\fconsumer_arn\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vconsumerArn\x12(\n" +
 	"\faws_role_arn\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"awsRoleArn\x12\x87\x01\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\x9a\x02\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\x9a\x02\n" +
 	"\x1dGcpPubSubTopicIngestionAwsMsk\x12'\n" +
 	"\vcluster_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"clusterArn\x12\x1c\n" +
 	"\x05topic\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05topic\x12(\n" +
 	"\faws_role_arn\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"awsRoleArn\x12\x87\x01\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\xf0\x02\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"\xf0\x02\n" +
 	"%GcpPubSubTopicIngestionAzureEventHubs\x12%\n" +
 	"\x0eresource_group\x18\x01 \x01(\tR\rresourceGroup\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1b\n" +
@@ -1177,13 +1177,13 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\tclient_id\x18\x04 \x01(\tR\bclientId\x12\x1b\n" +
 	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12'\n" +
 	"\x0fsubscription_id\x18\x06 \x01(\tR\x0esubscriptionId\x12\x81\x01\n" +
-	"\x13gcp_service_account\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"M\n" +
+	"\x13gcp_service_account\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\"M\n" +
 	"-GcpPubSubTopicIngestionCloudStorageTextFormat\x12\x1c\n" +
 	"\tdelimiter\x18\x01 \x01(\tR\tdelimiter\"/\n" +
 	"-GcpPubSubTopicIngestionCloudStorageAvroFormat\"5\n" +
 	"3GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat\"\x81\a\n" +
 	"#GcpPubSubTopicIngestionCloudStorage\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1d\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x1d\n" +
 	"\n" +
 	"match_glob\x18\x02 \x01(\tR\tmatchGlob\x12;\n" +
 	"\x1aminimum_object_create_time\x18\x03 \x01(\tR\x17minimumObjectCreateTime\x12z\n" +
@@ -1197,7 +1197,7 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\x10bootstrap_server\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fbootstrapServer\x12\x1c\n" +
 	"\x05topic\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05topic\x120\n" +
 	"\x10identity_pool_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0eidentityPoolId\x12\x87\x01\n" +
-	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\x12\x1d\n" +
+	"\x13gcp_service_account\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x11gcpServiceAccount\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x05 \x01(\tR\tclusterId\"\xee\x01\n" +
 	"+GcpPubSubTopicIngestionPlatformLogsSettings\x12\xbe\x01\n" +
@@ -1219,11 +1219,11 @@ const file_dev_planton_provider_gcp_gcppubsubtopic_v1_spec_proto_rawDesc = "" +
 	"\bdisabled\x18\x02 \x01(\bR\bdisabled\"\xcf\t\n" +
 	"\x12GcpPubSubTopicSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xdc\x01\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xdc\x01\n" +
 	"\n" +
 	"topic_name\x18\x02 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\x8a\x01\n" +
 	"\x18topic_name_goog_reserved\x12Ttopic names beginning with 'goog' are reserved by Google — choose a different name\x1a\x18!this.startsWith('goog')\xc8\x01\x01r%\x10\x03\x18\xff\x012\x1e^[a-zA-Z][a-zA-Z0-9\\-_\\.~+%]*$R\ttopicName\x12t\n" +
-	"\fkms_key_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12<\n" +
 	"\x1amessage_retention_duration\x18\x04 \x01(\tR\x18messageRetentionDuration\x12\x84\x01\n" +
 	"\x16message_storage_policy\x18\x05 \x01(\v2N.dev.planton.provider.gcp.gcppubsubtopic.v1.GcpPubSubTopicMessageStoragePolicyR\x14messageStoragePolicy\x12q\n" +

@@ -916,7 +916,7 @@ const file_dev_planton_provider_gcp_gcpbigquerydataset_v1_spec_proto_rawDesc = "
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xea\x0f\n" +
 	"\x16GcpBigQueryDatasetSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12;\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12;\n" +
 	"\n" +
 	"dataset_id\x18\x02 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18\x80\b2\x0f^[0-9A-Za-z_]+$R\tdatasetId\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12#\n" +
@@ -935,7 +935,7 @@ const file_dev_planton_provider_gcp_gcpbigquerydataset_v1_spec_proto_rawDesc = "
 	"\x15storage_billing_model\x18\r \x01(\tB\x86\x01\xbaH\x82\x01\xba\x01\x7f\n" +
 	"\x1bvalid_storage_billing_model\x121storage_billing_model must be LOGICAL or PHYSICAL\x1a-this == '' || this in ['LOGICAL', 'PHYSICAL']R\x13storageBillingModel\x12;\n" +
 	"\x1adelete_contents_on_destroy\x18\x0e \x01(\bR\x17deleteContentsOnDestroy\x12t\n" +
-	"\fkms_key_name\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12e\n" +
 	"\x06access\x18\x10 \x03(\v2M.dev.planton.provider.gcp.gcpbigquerydataset.v1.GcpBigQueryDatasetAccessEntryR\x06access\x12\x98\x01\n" +
 	"\x1aexternal_dataset_reference\x18\x11 \x01(\v2Z.dev.planton.provider.gcp.gcpbigquerydataset.v1.GcpBigQueryDatasetExternalDatasetReferenceR\x18externalDatasetReference\x12\x92\x01\n" +

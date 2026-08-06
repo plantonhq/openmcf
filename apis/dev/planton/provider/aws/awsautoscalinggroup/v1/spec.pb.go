@@ -2694,7 +2694,7 @@ const file_dev_planton_provider_aws_awsautoscalinggroup_v1_spec_proto_rawDesc = 
 	":dev/planton/provider/aws/awsautoscalinggroup/v1/spec.proto\x12/dev.planton.provider.aws.awsautoscalinggroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa0!\n" +
 	"\x17AwsAutoScalingGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
-	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12~\n" +
+	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12~\n" +
 	"\x0flaunch_template\x18\x03 \x01(\v2U.dev.planton.provider.aws.awsautoscalinggroup.v1.AwsAutoScalingGroupLaunchTemplateRefR\x0elaunchTemplate\x12\x8e\x01\n" +
 	"\x16mixed_instances_policy\x18\x04 \x01(\v2X.dev.planton.provider.aws.awsautoscalinggroup.v1.AwsAutoScalingGroupMixedInstancesPolicyR\x14mixedInstancesPolicy\x12\"\n" +
 	"\bmin_size\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\aminSize\x12\"\n" +
@@ -2707,7 +2707,7 @@ const file_dev_planton_provider_aws_awsautoscalinggroup_v1_spec_proto_rawDesc = 
 	"\x1fdefault_instance_warmup_seconds\x18\v \x01(\x05R\x1cdefaultInstanceWarmupSeconds\x12*\n" +
 	"\x11health_check_type\x18\f \x01(\tR\x0fhealthCheckType\x12H\n" +
 	"!health_check_grace_period_seconds\x18\r \x01(\x05R\x1dhealthCheckGracePeriodSeconds\x12\x81\x01\n" +
-	"\rtarget_groups\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xd6\x01\x92\xd4a\x1fstatus.outputs.target_group_arnR\ftargetGroups\x121\n" +
+	"\rtarget_groups\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xf6\a\x92\xd4a\x1fstatus.outputs.target_group_arnR\ftargetGroups\x121\n" +
 	"\x14termination_policies\x18\x0f \x03(\tR\x13terminationPolicies\x12A\n" +
 	"\x1dmax_instance_lifetime_seconds\x18\x10 \x01(\x05R\x1amaxInstanceLifetimeSeconds\x121\n" +
 	"\x15protect_from_scale_in\x18\x11 \x01(\bR\x12protectFromScaleIn\x12'\n" +
@@ -2734,7 +2734,7 @@ const file_dev_planton_provider_aws_awsautoscalinggroup_v1_spec_proto_rawDesc = 
 	"$capacity_distribution_strategy_valid\x12Ycapacity_distribution_strategy must be 'balanced-only' or 'balanced-best-effort' when set\x1a}this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort']\x1a\x8e\x03\n" +
 	"\x19suspended_processes_valid\x12\xad\x01each suspended process must be one of: Launch, Terminate, AddToLoadBalancer, AlarmNotification, AZRebalance, HealthCheck, InstanceRefresh, ReplaceUnhealthy, ScheduledActions\x1a\xc0\x01this.suspended_processes.all(p, p in ['Launch', 'Terminate', 'AddToLoadBalancer', 'AlarmNotification', 'AZRebalance', 'HealthCheck', 'InstanceRefresh', 'ReplaceUnhealthy', 'ScheduledActions'])\"\xd5\x01\n" +
 	"$AwsAutoScalingGroupLaunchTemplateRef\x12\x92\x01\n" +
-	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x01\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
+	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\"\xbf\x03\n" +
 	"'AwsAutoScalingGroupMixedInstancesPolicy\x12\x86\x01\n" +
 	"\x0flaunch_template\x18\x01 \x01(\v2U.dev.planton.provider.aws.awsautoscalinggroup.v1.AwsAutoScalingGroupLaunchTemplateRefB\x06\xbaH\x03\xc8\x01\x01R\x0elaunchTemplate\x12x\n" +
@@ -2813,7 +2813,7 @@ const file_dev_planton_provider_aws_awsautoscalinggroup_v1_spec_proto_rawDesc = 
 	"\x16checkpoint_percentages\x18\x04 \x03(\x05R\x15checkpointPercentages\x128\n" +
 	"\x18checkpoint_delay_seconds\x18\x05 \x01(\x05R\x16checkpointDelaySeconds\x12#\n" +
 	"\rauto_rollback\x18\x06 \x01(\bR\fautoRollback\x12n\n" +
-	"\x06alarms\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xb7\x02\x92\xd4a\x19status.outputs.alarm_nameR\x06alarms\x12?\n" +
+	"\x06alarms\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xd7\b\x92\xd4a\x19status.outputs.alarm_nameR\x06alarms\x12?\n" +
 	"\x1cscale_in_protected_instances\x18\b \x01(\tR\x19scaleInProtectedInstances\x12+\n" +
 	"\x11standby_instances\x18\t \x01(\tR\x10standbyInstances\x12#\n" +
 	"\rskip_matching\x18\n" +
@@ -2956,14 +2956,14 @@ const file_dev_planton_provider_aws_awsautoscalinggroup_v1_spec_proto_rawDesc = 
 	"\x14lifecycle_transition\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13lifecycleTransition\x12%\n" +
 	"\x0edefault_result\x18\x03 \x01(\tR\rdefaultResult\x12:\n" +
 	"\x19heartbeat_timeout_seconds\x18\x04 \x01(\x05R\x17heartbeatTimeoutSeconds\x12\x8d\x01\n" +
-	"\x17notification_target_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x15notificationTargetArn\x12o\n" +
-	"\brole_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x123\n" +
+	"\x17notification_target_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x15notificationTargetArn\x12o\n" +
+	"\brole_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x123\n" +
 	"\x15notification_metadata\x18\a \x01(\tR\x14notificationMetadata:\xf1\x04\xbaH\xed\x04\x1a\xf6\x01\n" +
 	"\x1alifecycle_transition_valid\x12klifecycle_transition must be 'autoscaling:EC2_INSTANCE_LAUNCHING' or 'autoscaling:EC2_INSTANCE_TERMINATING'\x1akthis.lifecycle_transition in ['autoscaling:EC2_INSTANCE_LAUNCHING', 'autoscaling:EC2_INSTANCE_TERMINATING']\x1a\x9c\x01\n" +
 	"\x14default_result_valid\x127default_result must be 'ABANDON' or 'CONTINUE' when set\x1aKthis.default_result == '' || this.default_result in ['ABANDON', 'CONTINUE']\x1a\xd2\x01\n" +
 	"\x17heartbeat_timeout_range\x12>heartbeat_timeout_seconds must be between 30 and 7200 when set\x1awthis.heartbeat_timeout_seconds == 0 || (this.heartbeat_timeout_seconds >= 30 && this.heartbeat_timeout_seconds <= 7200)\"\xd6\x04\n" +
 	" AwsAutoScalingGroupNotifications\x12q\n" +
-	"\x05topic\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x05topic\x12,\n" +
+	"\x05topic\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x05topic\x12,\n" +
 	"\vevent_types\x18\x02 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\n" +
 	"eventTypes:\x90\x03\xbaH\x8c\x03\x1a\x89\x03\n" +
 	"\x11event_types_valid\x12\xb4\x01each event type must be one of: autoscaling:EC2_INSTANCE_LAUNCH, autoscaling:EC2_INSTANCE_LAUNCH_ERROR, autoscaling:EC2_INSTANCE_TERMINATE, autoscaling:EC2_INSTANCE_TERMINATE_ERROR\x1a\xbc\x01this.event_types.all(t, t in ['autoscaling:EC2_INSTANCE_LAUNCH', 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR', 'autoscaling:EC2_INSTANCE_TERMINATE', 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'])B\x8c\x03\n" +

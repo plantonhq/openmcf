@@ -402,13 +402,13 @@ const file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDesc = "" +
 	"\x19query_logging_public_only\x12hquery_logging cannot be set for private zones (Route 53 query logging supports public hosted zones only)\x1a,!this.is_private || !has(this.query_logging)\x1a\x96\x01\n" +
 	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)\"\xb2\x01\n" +
 	"\x1cAwsRoute53ZoneVpcAssociation\x12s\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12\x1d\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12\x1d\n" +
 	"\n" +
 	"vpc_region\x18\x02 \x01(\tR\tvpcRegion\"\xb7\x01\n" +
 	"\x1aAwsRoute53ZoneQueryLogging\x12\x98\x01\n" +
-	"\x18cloudwatch_log_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\"\xe5\x01\n" +
+	"\x18cloudwatch_log_group_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\"\xe5\x01\n" +
 	"\x14AwsRoute53ZoneDnssec\x12y\n" +
-	"\vkms_key_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12R\n" +
+	"\vkms_key_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12R\n" +
 	"\x14key_signing_key_name\x18\x02 \x01(\tB!\xbaH\x1er\x1c2\x1a^$|^[0-9A-Za-z._-]{3,128}$R\x11keySigningKeyNameB\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awsroute53zone.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsroute53zone/v1;awsroute53zonev1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsroute53zone.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsroute53zone\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsroute53zone::V1b\x06proto3"
 

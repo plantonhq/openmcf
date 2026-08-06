@@ -126,7 +126,7 @@ const file_dev_planton_provider_azure_azurecosmosdbmongodatabase_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/azure/azurecosmosdbmongodatabase/v1/spec.proto\x128dev.planton.provider.azure.azurecosmosdbmongodatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaa\x06\n" +
 	"\x1eAzureCosmosdbMongoDatabaseSpec\x12\x95\x01\n" +
-	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x03\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x122\n" +
+	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\x0f\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x122\n" +
 	"\rdatabase_name\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\fdatabaseName\x12\x9b\x01\n" +
 	"\n" +

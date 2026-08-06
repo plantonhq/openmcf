@@ -322,9 +322,9 @@ const file_dev_planton_provider_azure_azuremssqlfailovergroup_v1_spec_proto_rawD
 	"\x1bAzureMssqlFailoverGroupSpec\x12\xef\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xc9\x01\n" +
 	"\x1afailover_group_name_format\x12lFailover group names are 1-63 lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen\x1a=this == '' || this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01r\x04\x10\x01\x18?R\x04name\x12x\n" +
-	"\tserver_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb1\x03\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\x8e\x01\n" +
+	"\tserver_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x0f\x92\xd4a\x18status.outputs.server_idR\bserverId\x12\x8e\x01\n" +
 	"\x0fpartner_servers\x18\x03 \x03(\v2[.dev.planton.provider.azure.azuremssqlfailovergroup.v1.AzureMssqlFailoverGroupPartnerServerB\b\xbaH\x05\x92\x01\x02\b\x01R\x0epartnerServers\x12z\n" +
-	"\fdatabase_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xb3\x03\x92\xd4a\x1astatus.outputs.database_idR\vdatabaseIds\x12\xb3\x01\n" +
+	"\fdatabase_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf3\x0f\x92\xd4a\x1astatus.outputs.database_idR\vdatabaseIds\x12\xb3\x01\n" +
 	"#read_write_endpoint_failover_policy\x18\x05 \x01(\v2].dev.planton.provider.azure.azuremssqlfailovergroup.v1.AzureMssqlFailoverGroupReadWritePolicyB\x06\xbaH\x03\xc8\x01\x01R\x1freadWriteEndpointFailoverPolicy\x12]\n" +
 	")readonly_endpoint_failover_policy_enabled\x18\x06 \x01(\bH\x00R%readonlyEndpointFailoverPolicyEnabled\x88\x01\x01\x12p\n" +
 	"\x04tags\x18\a \x03(\v2\\.dev.planton.provider.azure.azuremssqlfailovergroup.v1.AzureMssqlFailoverGroupSpec.TagsEntryR\x04tags\x1a7\n" +
@@ -333,7 +333,7 @@ const file_dev_planton_provider_azure_azuremssqlfailovergroup_v1_spec_proto_rawD
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B,\n" +
 	"*_readonly_endpoint_failover_policy_enabled\"\xa0\x01\n" +
 	"$AzureMssqlFailoverGroupPartnerServer\x12x\n" +
-	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb1\x03\x92\xd4a\x18status.outputs.server_idR\bserverId\"\xa0\x03\n" +
+	"\tserver_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x0f\x92\xd4a\x18status.outputs.server_idR\bserverId\"\xa0\x03\n" +
 	"&AzureMssqlFailoverGroupReadWritePolicy\x12v\n" +
 	"\x04mode\x18\x01 \x01(\x0e2Z.dev.planton.provider.azure.azuremssqlfailovergroup.v1.AzureMssqlFailoverGroupFailoverModeB\x06\xbaH\x03\xc8\x01\x01R\x04mode\x12,\n" +
 	"\rgrace_minutes\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\fgraceMinutes:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +

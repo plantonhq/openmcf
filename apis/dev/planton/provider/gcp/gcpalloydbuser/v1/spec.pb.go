@@ -130,8 +130,8 @@ const file_dev_planton_provider_gcp_gcpalloydbuser_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/gcp/gcpalloydbuser/v1/spec.proto\x12*dev.planton.provider.gcp.gcpalloydbuser.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfc\x05\n" +
 	"\x12GcpAlloydbUserSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
-	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x04\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12&\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12v\n" +
+	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x17\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12&\n" +
 	"\auser_id\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x06userId\x12\xb8\x01\n" +
 	"\tuser_type\x18\x04 \x01(\tB\x95\x01\xbaH~\xba\x01{\n" +

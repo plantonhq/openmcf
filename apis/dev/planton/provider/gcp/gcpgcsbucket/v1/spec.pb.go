@@ -1426,7 +1426,7 @@ const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"3dev/planton/provider/gcp/gcpgcsbucket/v1/spec.proto\x12(dev.planton.provider.gcp.gcpgcsbucket.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xda\x14\n" +
 	"\x10GcpGcsBucketSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12P\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12P\n" +
 	"\vbucket_name\x18\x02 \x01(\tB/\xbaH,\xc8\x01\x01r'\x10\x03\x18?2!^[a-z0-9]([a-z0-9-._]*[a-z0-9])?$R\n" +
 	"bucketName\x12\"\n" +
 	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12#\n" +
@@ -1441,7 +1441,7 @@ const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	" \x03(\v2C.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketLifecycleRuleB\b\xbaH\x05\x92\x01\x02\x10dR\x0elifecycleRules\x12p\n" +
 	"\x10retention_policy\x18\v \x01(\v2E.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketRetentionPolicyR\x0fretentionPolicy\x12t\n" +
 	"\x12soft_delete_policy\x18\f \x01(\v2F.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketSoftDeletePolicyR\x10softDeletePolicy\x12t\n" +
-	"\fkms_key_name\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12%\n" +
 	"\x0erequester_pays\x18\x0e \x01(\bR\rrequesterPays\x127\n" +
 	"\x18default_event_based_hold\x18\x0f \x01(\bR\x15defaultEventBasedHold\x126\n" +
@@ -1511,7 +1511,7 @@ const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"\x0fmax_age_seconds\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rmaxAgeSeconds\"\xbd\x01\n" +
 	"\x13GcpGcsBucketLogging\x12z\n" +
 	"\n" +
-	"log_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\tlogBucket\x12*\n" +
+	"log_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\tlogBucket\x12*\n" +
 	"\x11log_object_prefix\x18\x02 \x01(\tR\x0flogObjectPrefix\"V\n" +
 	"!GcpGcsBucketCustomPlacementConfig\x121\n" +
 	"\x0edata_locations\x18\x01 \x03(\tB\n" +
@@ -1527,11 +1527,11 @@ const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"'GcpGcsBucketIpFilterPublicNetworkSource\x12=\n" +
 	"\x16allowed_ip_cidr_ranges\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\xe1\x01\n" +
 	"$GcpGcsBucketIpFilterVpcNetworkSource\x12z\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12=\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12=\n" +
 	"\x16allowed_ip_cidr_ranges\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\x87\x02\n" +
 	"\x15GcpGcsBucketIamMember\x12\x1a\n" +
 	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12p\n" +
-	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12`\n" +
+	"\x06member\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x15status.outputs.memberR\x06member\x12`\n" +
 	"\tcondition\x18\x03 \x01(\v2B.dev.planton.provider.gcp.gcpgcsbucket.v1.GcpGcsBucketIamConditionR\tcondition\"\x90\x01\n" +
 	"\x18GcpGcsBucketIamCondition\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +

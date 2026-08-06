@@ -1058,7 +1058,7 @@ const file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc = "" +
 	"\x11AzureKeyVaultSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc8\x01\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc8\x01\n" +
 	"\n" +
 	"vault_name\x18\x03 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01s\n" +
 	"%key_vault_name_no_consecutive_hyphens\x124vault_name cannot contain consecutive hyphens (\"--\")\x1a\x14!this.contains('--')\xc8\x01\x01r)2'^[a-zA-Z][a-zA-Z0-9-]{1,22}[a-zA-Z0-9]$R\tvaultName\x12O\n" +
@@ -1081,7 +1081,7 @@ const file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc = "" +
 	"\x1e_public_network_access_enabledB\x1d\n" +
 	"\x1b_soft_delete_retention_days\"\xd8\x06\n" +
 	"\x19AzureKeyVaultAccessPolicy\x12{\n" +
-	"\tobject_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12*\n" +
+	"\tobject_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12*\n" +
 	"\ttenant_id\x18\x02 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x00R\btenantId\x88\x01\x01\x124\n" +
 	"\x0eapplication_id\x18\x03 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01H\x01R\rapplicationId\x88\x01\x01\x12\x81\x01\n" +
 	"\x0fkey_permissions\x18\x04 \x03(\x0e2G.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultKeyPermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x0ekeyPermissions\x12\x8a\x01\n" +
@@ -1095,7 +1095,7 @@ const file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc = "" +
 	"\x0edefault_action\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12c\n" +
 	"\x06bypass\x18\x02 \x01(\x0e2K.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypassR\x06bypass\x12$\n" +
 	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12\x9e\x01\n" +
-	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10d\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x17virtualNetworkSubnetIds*R\n" +
+	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10d\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x17virtualNetworkSubnetIds*R\n" +
 	"\x10AzureKeyVaultSku\x12#\n" +
 	"\x1fazure_key_vault_sku_unspecified\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\v\n" +

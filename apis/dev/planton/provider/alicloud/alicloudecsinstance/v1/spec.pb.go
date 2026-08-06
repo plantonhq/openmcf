@@ -543,8 +543,8 @@ const file_dev_planton_provider_alicloud_alicloudecsinstance_v1_spec_proto_rawDe
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xce\x17\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x83\x01\n" +
+	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf6]\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x83\x01\n" +
 	"\rinstance_type\x18\x04 \x01(\tB^\xbaH[\xba\x01U\n" +
 	"\x14instance_type_prefix\x12$instance_type must start with 'ecs.'\x1a\x17this.startsWith('ecs.')\xc8\x01\x01R\finstanceType\x12%\n" +
 	"\bimage_id\x18\x05 \x01(\tB\n" +

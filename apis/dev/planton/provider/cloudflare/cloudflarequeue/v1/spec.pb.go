@@ -420,9 +420,9 @@ const file_dev_planton_provider_cloudflare_cloudflarequeue_v1_spec_proto_rawDesc
 	"\x17CloudflareQueueConsumer\x12\xd6\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2X.dev.planton.provider.cloudflare.cloudflarequeue.v1.CloudflareQueueConsumer.ConsumerTypeBh\xbaHe\xba\x01Z\n" +
 	"\x1dconsumer_type.not_unspecified\x12.consumer type must be one of worker, http_pull\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12x\n" +
-	"\vscript_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8b\x0e\x92\xd4a\x1astatus.outputs.script_nameR\n" +
+	"\vscript_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\n" +
 	"scriptName\x12\x82\x01\n" +
-	"\x11dead_letter_queue\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x97\x0e\x92\xd4a\x19status.outputs.queue_nameR\x0fdeadLetterQueue\x12o\n" +
+	"\x11dead_letter_queue\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe76\x92\xd4a\x19status.outputs.queue_nameR\x0fdeadLetterQueue\x12o\n" +
 	"\bsettings\x18\x04 \x01(\v2S.dev.planton.provider.cloudflare.cloudflarequeue.v1.CloudflareQueueConsumerSettingsR\bsettings\"H\n" +
 	"\fConsumerType\x12\x1d\n" +
 	"\x19consumer_type_unspecified\x10\x00\x12\n" +

@@ -1658,27 +1658,27 @@ const file_dev_planton_provider_cloudflare_cloudflarepagesproject_v1_spec_proto_
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05value\"\xba\x01\n" +
 	"\x18CloudflarePagesKvBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x81\x01\n" +
-	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\x0e\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\"\xb6\x01\n" +
+	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd96\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\"\xb6\x01\n" +
 	"\x18CloudflarePagesD1Binding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12~\n" +
-	"\vdatabase_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8d\x0e\x92\xd4a\x1astatus.outputs.database_idR\n" +
+	"\vdatabase_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd6\x92\xd4a\x1astatus.outputs.database_idR\n" +
 	"databaseId\"\xfb\x02\n" +
 	"\x18CloudflarePagesR2Binding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12~\n" +
-	"\vbucket_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x0e\x92\xd4a\x1astatus.outputs.bucket_nameR\n" +
+	"\vbucket_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xda6\x92\xd4a\x1astatus.outputs.bucket_nameR\n" +
 	"bucketName\x12\xc2\x01\n" +
 	"\fjurisdiction\x18\x03 \x01(\tB\x9d\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
 	"\x1dr2_binding_jurisdiction.valid\x12;jurisdiction must be one of \"eu\", \"fedramp\", \"fedramp-high\"\x1a7this == '' || this in ['eu', 'fedramp', 'fedramp-high']R\fjurisdiction\"\xbe\x01\n" +
 	"#CloudflarePagesQueueProducerBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12{\n" +
 	"\n" +
-	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\x0e\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xbc\x01\n" +
+	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe76\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xbc\x01\n" +
 	" CloudflarePagesHyperdriveBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12|\n" +
-	"\tconfig_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\x0e\x92\xd4a\x1cstatus.outputs.hyperdrive_idR\bconfigId\"\xf6\x01\n" +
+	"\tconfig_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xe26\x92\xd4a\x1cstatus.outputs.hyperdrive_idR\bconfigId\"\xf6\x01\n" +
 	"\x1dCloudflarePagesServiceBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12w\n" +
-	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\x0e\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12\x1e\n" +
+	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12\x1e\n" +
 	"\n" +
 	"entrypoint\x18\x03 \x01(\tR\n" +
 	"entrypoint\x12 \n" +

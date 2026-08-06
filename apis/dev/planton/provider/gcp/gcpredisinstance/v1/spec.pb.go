@@ -505,7 +505,7 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xb3\x17\n" +
 	"\x14GcpRedisInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
 	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18(2\x1e^[a-z][a-z0-9-]{0,38}[a-z0-9]$R\finstanceName\x12\x1e\n" +
 	"\x06region\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x120\n" +
 	"\x04tier\x18\x04 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\x05BASICR\vSTANDARD_HAR\x04tier\x120\n" +
@@ -517,7 +517,7 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	"locationId\x126\n" +
 	"\x17alternative_location_id\x18\t \x01(\tR\x15alternativeLocationId\x12\x90\x01\n" +
 	"\x12authorized_network\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\x11authorizedNetwork\x12\xc9\x01\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\x11authorizedNetwork\x12\xc9\x01\n" +
 	"\fconnect_mode\x18\v \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
 	"\x18connect_mode_valid_value\x12=connect_mode must be DIRECT_PEERING or PRIVATE_SERVICE_ACCESS\x1aBthis == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS']R\vconnectMode\x12*\n" +
 	"\x11reserved_ip_range\x18\f \x01(\tR\x0freservedIpRange\x12,\n" +
@@ -532,7 +532,7 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	"\x1eread_replicas_mode_valid_value\x12Jread_replicas_mode must be READ_REPLICAS_DISABLED or READ_REPLICAS_ENABLED\x1aIthis == '' || this in ['READ_REPLICAS_DISABLED', 'READ_REPLICAS_ENABLED']R\x10readReplicasMode\x12#\n" +
 	"\rreplica_count\x18\x14 \x01(\x05R\freplicaCount\x12~\n" +
 	"\x12persistence_config\x18\x15 \x01(\v2O.dev.planton.provider.gcp.gcpredisinstance.v1.GcpRedisInstancePersistenceConfigR\x11persistenceConfig\x12\x84\x01\n" +
-	"\x14customer_managed_key\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x1a?\n" +
+	"\x14customer_managed_key\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x1a?\n" +
 	"\x11RedisConfigsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdc\x06\xbaH\xd8\x06\x1a\xb5\x01\n" +

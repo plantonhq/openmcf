@@ -387,10 +387,10 @@ const file_dev_planton_provider_aws_awsmemcachedelasticache_v1_spec_proto_rawDes
 	"\x04port\x18\x06 \x01(\x05B\x14\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0511211H\x00R\x04port\x88\x01\x01\x12<\n" +
 	"\x1atransit_encryption_enabled\x18\a \x01(\bR\x18transitEncryptionEnabled\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
+	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
 	"\x11subnet_group_name\x18\t \x01(\tR\x0fsubnetGroupName\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
 	"\fnetwork_type\x18\v \x01(\tR\vnetworkType\x12!\n" +
 	"\fip_discovery\x18\f \x01(\tR\vipDiscovery\x124\n" +
 	"\x16parameter_group_family\x18\r \x01(\tR\x14parameterGroupFamily\x12u\n" +
@@ -401,7 +401,7 @@ const file_dev_planton_provider_aws_awsmemcachedelasticache_v1_spec_proto_rawDes
 	"\x12maintenance_window\x18\x10 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12+\n" +
 	"\x11apply_immediately\x18\x11 \x01(\bR\x10applyImmediately\x12E\n" +
 	"\x1aauto_minor_version_upgrade\x18\x12 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17autoMinorVersionUpgrade\x12\x8b\x01\n" +
-	"\x16notification_topic_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
+	"\x16notification_topic_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
 	"\x1cpreferred_availability_zones\x18\x14 \x03(\tR\x1apreferredAvailabilityZones:\x8c\v\xbaH\x88\v\x1a\x8b\x01\n" +
 	"\x14az_mode_valid_values\x122az_mode must be 'single-az' or 'cross-az' when set\x1a?this.az_mode == '' || this.az_mode in ['single-az', 'cross-az']\x1a\x87\x01\n" +
 	"\x1ccross_az_requires_multi_node\x12/az_mode 'cross-az' requires num_cache_nodes > 1\x1a6this.az_mode != 'cross-az' || this.num_cache_nodes > 1\x1a\xdd\x01\n" +

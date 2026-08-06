@@ -452,8 +452,8 @@ const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"AwsAlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
-	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
-	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
+	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
+	"\x0fsecurity_groups\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12\x1a\n" +
 	"\binternal\x18\x04 \x01(\bR\binternal\x12&\n" +
 	"\x0fip_address_type\x18\x05 \x01(\tR\ripAddressType\x12:\n" +
 	"\x19delete_protection_enabled\x18\x06 \x01(\bR\x17deleteProtectionEnabled\x128\n" +
@@ -462,7 +462,7 @@ const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\rhttp2_enabled\x18\t \x01(\bH\x00R\fhttp2Enabled\x88\x01\x01\x121\n" +
 	"\x15waf_fail_open_enabled\x18\n" +
 	" \x01(\bR\x12wafFailOpenEnabled\x12w\n" +
-	"\vweb_acl_arn\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xad\x02\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12.\n" +
+	"\vweb_acl_arn\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcd\b\x92\xd4a\x1astatus.outputs.web_acl_arnR\twebAclArn\x12.\n" +
 	"\x13zonal_shift_enabled\x18\v \x01(\bR\x11zonalShiftEnabled\x12;\n" +
 	"\x1adrop_invalid_header_fields\x18\f \x01(\bR\x17dropInvalidHeaderFields\x120\n" +
 	"\x14preserve_host_header\x18\r \x01(\bR\x12preserveHostHeader\x125\n" +
@@ -482,11 +482,11 @@ const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\x1cdesync_mitigation_mode_valid\x12Ndesync_mitigation_mode must be 'monitor', 'defensive', or 'strictest' when set\x1aithis.desync_mitigation_mode == '' || this.desync_mitigation_mode in ['monitor', 'defensive', 'strictest']B\x10\n" +
 	"\x0e_http2_enabled\"\xa0\x01\n" +
 	"\x11AwsAlbLogDelivery\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xce\x01\n" +
 	"\tAwsAlbDns\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x7f\n" +
-	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rroute53ZoneId\x12&\n" +
+	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rroute53ZoneId\x12&\n" +
 	"\thostnames\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\thostnamesB\xb1\x02\n" +
 	"&com.dev.planton.provider.aws.awsalb.v1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1;awsalbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsalb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsalb::V1b\x06proto3"
 

@@ -571,7 +571,7 @@ const file_dev_planton_provider_aws_awscognitouserpoolclient_v1_spec_proto_rawDe
 	"?dev/planton/provider/aws/awscognitouserpoolclient/v1/spec.proto\x124dev.planton.provider.aws.awscognitouserpoolclient.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x84>\n" +
 	"\x1cAwsCognitoUserPoolClientSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
-	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
+	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
 	"userPoolId\x12'\n" +
 	"\x0fgenerate_secret\x18\x03 \x01(\bR\x0egenerateSecret\x12M\n" +
 	"$allowed_oauth_flows_user_pool_client\x18\x04 \x01(\bR\x1fallowedOauthFlowsUserPoolClient\x128\n" +
@@ -582,7 +582,7 @@ const file_dev_planton_provider_aws_awscognitouserpoolclient_v1_spec_proto_rawDe
 	"logoutUrls\x12:\n" +
 	"\x14default_redirect_uri\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x12defaultRedirectUri\x12\x9b\x01\n" +
 	"\x1csupported_identity_providers\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xae\x02\x92\xd4a\x1cstatus.outputs.provider_nameR\x1asupportedIdentityProviders\x12.\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xce\b\x92\xd4a\x1cstatus.outputs.provider_nameR\x1asupportedIdentityProviders\x12.\n" +
 	"\x13explicit_auth_flows\x18\v \x03(\tR\x11explicitAuthFlows\x12B\n" +
 	"\x15auth_session_validity\x18\f \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x0f(\x03H\x00R\x13authSessionValidity\x88\x01\x01\x127\n" +
 	"\x15access_token_validity\x18\r \x01(\x05H\x01R\x13accessTokenValidity\x88\x01\x01\x12/\n" +
@@ -627,7 +627,7 @@ const file_dev_planton_provider_aws_awscognitouserpoolclient_v1_spec_proto_rawDe
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x1f\n" +
 	"\vexternal_id\x18\x03 \x01(\tR\n" +
 	"externalId\x12o\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12(\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12(\n" +
 	"\x10user_data_shared\x18\x05 \x01(\bR\x0euserDataShared:\xb4\x03\xbaH\xb0\x03\x1a\xd1\x01\n" +
 	"!analytics_application_exactly_one\x124set exactly one of application_arn or application_id\x1av(this.application_arn != '' && this.application_id == '') || (this.application_arn == '' && this.application_id != '')\x1a\xd9\x01\n" +
 	"&analytics_application_id_requires_role\x12bapplication_id requires both external_id and role_arn (application_arn derives them automatically)\x1aKthis.application_id == '' || (this.external_id != '' && has(this.role_arn))B\xaf\x03\n" +

@@ -1796,7 +1796,7 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/gcp/gcpcomputeinstance/v1/spec.proto\x12.dev.planton.provider.gcp.gcpcomputeinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdf)\n" +
 	"\x16GcpComputeInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x88\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x88\x02\n" +
 	"\rinstance_name\x18\x02 \x01(\tB\xe2\x01\xbaH\xde\x01\xba\x01\xda\x01\n" +
 	"\x14instance_name_format\x12\x85\x01instance_name must be 1-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen\x1a:this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')R\finstanceName\x129\n" +
 	"\x04zone\x18\x03 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\x04zone\x12-\n" +
@@ -1855,7 +1855,7 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"\x1aGcpComputeInstanceBootDisk\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12'\n" +
 	"\x0fsource_snapshot\x18\x02 \x01(\tR\x0esourceSnapshot\x12v\n" +
-	"\vsource_disk\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xda\x05\x92\xd4a\x18status.outputs.self_linkR\n" +
+	"\vsource_disk\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\n" +
 	"sourceDisk\x12'\n" +
 	"\asize_gb\x18\x04 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\x80\x04(\n" +
 	"R\x06sizeGb\x12\x12\n" +
@@ -1864,7 +1864,7 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"autoDelete\x88\x01\x01\x12\x1f\n" +
 	"\vdevice_name\x18\a \x01(\tR\n" +
 	"deviceName\x12k\n" +
-	"\akms_key\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x12{\n" +
+	"\akms_key\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x12{\n" +
 	"\vdisk_labels\x18\t \x03(\v2Z.dev.planton.provider.gcp.gcpcomputeinstance.v1.GcpComputeInstanceBootDisk.DiskLabelsEntryR\n" +
 	"diskLabels\x127\n" +
 	"\x10provisioned_iops\x18\n" +
@@ -1883,12 +1883,12 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"\x11_provisioned_iopsB\x19\n" +
 	"\x17_provisioned_throughput\"\xb3\x03\n" +
 	"\x1eGcpComputeInstanceAttachedDisk\x12s\n" +
-	"\x06source\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xda\x05\x92\xd4a\x18status.outputs.self_linkR\x06source\x12\x1f\n" +
+	"\x06source\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\x06source\x12\x1f\n" +
 	"\vdevice_name\x18\x02 \x01(\tR\n" +
 	"deviceName\x12\x8d\x01\n" +
 	"\x04mode\x18\x03 \x01(\tBy\xbaHv\xba\x01s\n" +
 	"\x18valid_attached_disk_mode\x12$mode must be READ_WRITE or READ_ONLY\x1a1this == '' || this in ['READ_WRITE', 'READ_ONLY']R\x04mode\x12k\n" +
-	"\akms_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xac\x02\n" +
+	"\akms_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xac\x02\n" +
 	"\x1dGcpComputeInstanceScratchDisk\x122\n" +
 	"\tinterface\x18\x01 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x04NVMER\x04SCSIR\tinterface\x12\xb5\x01\n" +
 	"\asize_gb\x18\x02 \x01(\x05B\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
@@ -1896,13 +1896,13 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"\vdevice_name\x18\x03 \x01(\tR\n" +
 	"deviceName\"\xd9\f\n" +
 	"\"GcpComputeInstanceNetworkInterface\x12w\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
-	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12-\n" +
 	"\x12subnetwork_project\x18\x03 \x01(\tR\x11subnetworkProject\x12r\n" +
 	"\n" +
-	"network_ip\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\tnetworkIp\x12\x7f\n" +
+	"network_ip\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xaa\x18\x92\xd4a\x16status.outputs.addressR\tnetworkIp\x12\x7f\n" +
 	"\x0eaccess_configs\x18\x05 \x03(\v2N.dev.planton.provider.gcp.gcpcomputeinstance.v1.GcpComputeInstanceAccessConfigB\b\xbaH\x05\x92\x01\x02\x10\x01R\raccessConfigs\x12\x8c\x01\n" +
 	"\x13ipv6_access_configs\x18\x06 \x03(\v2R.dev.planton.provider.gcp.gcpcomputeinstance.v1.GcpComputeInstanceIpv6AccessConfigB\b\xbaH\x05\x92\x01\x02\x10\x01R\x11ipv6AccessConfigs\x12\xb0\x01\n" +
 	"\n" +
@@ -1917,7 +1917,7 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"0network_interface_network_or_subnetwork_required\x12meach network interface needs a network (auto-mode VPC) or a subnetwork (custom-mode VPC) — set at least one\x1a\xad\x01(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from)))B\x0e\n" +
 	"\f_queue_count\"\x81\x02\n" +
 	"\x1eGcpComputeInstanceAccessConfig\x12j\n" +
-	"\x06nat_ip\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\x05natIp\x12>\n" +
+	"\x06nat_ip\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xaa\x18\x92\xd4a\x16status.outputs.addressR\x05natIp\x12>\n" +
 	"\fnetwork_tier\x18\x02 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aPREMIUMR\bSTANDARDR\vnetworkTier\x123\n" +
 	"\x16public_ptr_domain_name\x18\x03 \x01(\tR\x13publicPtrDomainName\"\x8f\x01\n" +
 	"\"GcpComputeInstanceIpv6AccessConfig\x124\n" +
@@ -1927,7 +1927,7 @@ const file_dev_planton_provider_gcp_gcpcomputeinstance_v1_spec_proto_rawDesc = "
 	"\rip_cidr_range\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vipCidrRange\x122\n" +
 	"\x15subnetwork_range_name\x18\x02 \x01(\tR\x13subnetworkRangeName\"\xad\x01\n" +
 	" GcpComputeInstanceServiceAccount\x12g\n" +
-	"\x05email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x05email\x12 \n" +
+	"\x05email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x05email\x12 \n" +
 	"\x06scopes\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06scopes\"\xd0\b\n" +
 	"\x1cGcpComputeInstanceScheduling\x12\xa8\x01\n" +
 	"\x12provisioning_model\x18\x01 \x01(\tBy\xbaHv\xba\x01s\n" +

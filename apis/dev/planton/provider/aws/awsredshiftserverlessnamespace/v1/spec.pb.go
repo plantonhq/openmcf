@@ -210,11 +210,11 @@ const file_dev_planton_provider_aws_awsredshiftserverlessnamespace_v1_spec_proto
 	"\x0eadmin_username\x18\x03 \x01(\tR\radminUsername\x12<\n" +
 	"\x15manage_admin_password\x18\x04 \x01(\bB\b\x92\xa6\x1d\x04trueR\x13manageAdminPassword\x124\n" +
 	"\x13admin_user_password\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\x11adminUserPassword\x12\x9a\x01\n" +
-	" admin_password_secret_kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x1badminPasswordSecretKmsKeyId\x12q\n" +
+	" admin_password_secret_kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1badminPasswordSecretKmsKeyId\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12q\n" +
-	"\tiam_roles\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
-	"\x14default_iam_role_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12V\n" +
+	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12q\n" +
+	"\tiam_roles\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\biamRoles\x12\x85\x01\n" +
+	"\x14default_iam_role_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11defaultIamRoleArn\x12V\n" +
 	"\vlog_exports\x18\n" +
 	" \x03(\tB5\xbaH2\x92\x01/\x18\x01\"+r)R\rconnectionlogR\x0fuseractivitylogR\auserlogR\n" +
 	"logExports:\xca\x03\xbaH\xc6\x03\x1a\xbe\x01\n" +

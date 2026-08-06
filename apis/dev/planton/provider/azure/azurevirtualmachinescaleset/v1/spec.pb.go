@@ -4587,7 +4587,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x1fAzureVirtualMachineScaleSetSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
 	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x04name\x12\x96\x01\n" +
 	"\x12orchestration_mode\x18\x04 \x01(\x0e2g.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetOrchestrationModeR\x11orchestrationMode\x12%\n" +
 	"\bsku_name\x18\x05 \x01(\tB\n" +
@@ -4742,8 +4742,8 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\xbaH\a\x1a\x05\x18\xff\x1f(\x01H\x00R\n" +
 	"diskSizeGb\x88\x01\x01\x12\x94\x01\n" +
 	"\x12diff_disk_settings\x18\x04 \x01(\v2f.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDiffDiskSettingsR\x10diffDiskSettings\x12\x97\x01\n" +
-	"\x16disk_encryption_set_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
-	" secure_vm_disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12\xa6\x01\n" +
+	"\x16disk_encryption_set_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xed\x0f\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12\xa9\x01\n" +
+	" secure_vm_disk_encryption_set_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xed\x0f\x92\xd4a%status.outputs.disk_encryption_set_idR\x1bsecureVmDiskEncryptionSetId\x12\xa6\x01\n" +
 	"\x18security_encryption_type\x18\a \x01(\x0e2l.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecurityEncryptionTypeR\x16securityEncryptionType\x12:\n" +
 	"\x19write_accelerator_enabled\x18\b \x01(\bR\x17writeAcceleratorEnabled:\xcb\x04\xbaH\xc7\x04\x1a\xce\x01\n" +
 	"%vmss_os_disk_encryption_sets_conflict\x12Rdisk_encryption_set_id and secure_vm_disk_encryption_set_id are mutually exclusive\x1aQ!(has(this.disk_encryption_set_id) && has(this.secure_vm_disk_encryption_set_id))\x1a\xc6\x01\n" +
@@ -4763,7 +4763,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\rcreate_option\x18\x05 \x01(\x0e2j.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetDataDiskCreateOptionR\fcreateOption\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12:\n" +
 	"\x19write_accelerator_enabled\x18\a \x01(\bR\x17writeAcceleratorEnabled\x12\x97\x01\n" +
-	"\x16disk_encryption_set_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xad\x03\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12O\n" +
+	"\x16disk_encryption_set_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xed\x0f\x92\xd4a%status.outputs.disk_encryption_set_idR\x13diskEncryptionSetId\x12O\n" +
 	"\x1eultra_ssd_disk_iops_read_write\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x01R\x19ultraSsdDiskIopsReadWrite\x88\x01\x01\x12O\n" +
 	"\x1eultra_ssd_disk_mbps_read_write\x18\n" +
 	" \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x02R\x19ultraSsdDiskMbpsReadWrite\x88\x01\x01:\xb5\x02\xbaH\xb1\x02\x1a\xae\x02\n" +
@@ -4785,7 +4785,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"dnsServers\x12D\n" +
 	"\x1eaccelerated_networking_enabled\x18\x05 \x01(\bR\x1cacceleratedNetworkingEnabled\x122\n" +
 	"\x15ip_forwarding_enabled\x18\x06 \x01(\bR\x13ipForwardingEnabled\x12\xa0\x01\n" +
-	"\x19network_security_group_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\x9c\x03\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\x8a\x01\n" +
+	"\x19network_security_group_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xdc\x0f\x92\xd4a(status.outputs.network_security_group_idR\x16networkSecurityGroupId\x12\x8a\x01\n" +
 	"\x0eauxiliary_mode\x18\b \x01(\x0e2c.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliaryModeR\rauxiliaryMode\x12\x87\x01\n" +
 	"\rauxiliary_sku\x18\t \x01(\x0e2b.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAuxiliarySkuR\fauxiliarySku:\x86\x03\xbaH\x82\x03\x1a\xa6\x01\n" +
 	"\"vmss_nic_auxiliary_mode_sku_paired\x12Gauxiliary_mode and auxiliary_sku must be set together (both or neither)\x1a7(this.auxiliary_mode == 0) == (this.auxiliary_sku == 0)\x1a\xd6\x01\n" +
@@ -4794,19 +4794,19 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x18\n" +
 	"\aprimary\x18\x02 \x01(\bR\aprimary\x12r\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12y\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12y\n" +
 	"\aversion\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersionR\aversion\x12\xaf\x01\n" +
-	"&load_balancer_backend_address_pool_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xa1\x03\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
-	"\"load_balancer_inbound_nat_rule_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xa1\x03\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
-	",application_gateway_backend_address_pool_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xa0\x03\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds\x12\xb6\x01\n" +
-	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\x14\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12\x91\x01\n" +
+	"&load_balancer_backend_address_pool_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe1\x0f\x92\xd4a\x1fstatus.outputs.backend_pool_idsR!loadBalancerBackendAddressPoolIds\x12\xa3\x01\n" +
+	"\"load_balancer_inbound_nat_rule_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe1\x0f\x92\xd4a\x1bstatus.outputs.nat_rule_idsR\x1dloadBalancerInboundNatRuleIds\x12\xc3\x01\n" +
+	",application_gateway_backend_address_pool_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe0\x0f\x92\xd4a'status.outputs.backend_address_pool_idsR'applicationGatewayBackendAddressPoolIds\x12\xb6\x01\n" +
+	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x05\x92\x01\x02\x10\x14\x88\xd4a\xec\x0f\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12\x91\x01\n" +
 	"\x11public_ip_address\x18\t \x01(\v2e.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetPublicIpAddressR\x0fpublicIpAddress\"\xd9\x04\n" +
 	"*AzureVirtualMachineScaleSetPublicIpAddress\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12*\n" +
 	"\x11domain_name_label\x18\x02 \x01(\tR\x0fdomainNameLabel\x12E\n" +
 	"\x17idle_timeout_in_minutes\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18 (\x04H\x00R\x14idleTimeoutInMinutes\x88\x01\x01\x12y\n" +
 	"\aversion\x18\x04 \x01(\x0e2_.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpVersionR\aversion\x12\x8e\x01\n" +
-	"\x13public_ip_prefix_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xa5\x03\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12t\n" +
+	"\x13public_ip_prefix_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xe5\x0f\x92\xd4a\"status.outputs.public_ip_prefix_idR\x10publicIpPrefixId\x12t\n" +
 	"\aip_tags\x18\x06 \x03(\v2[.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIpTagR\x06ipTagsB\x1a\n" +
 	"\x18_idle_timeout_in_minutes\"X\n" +
 	" AzureVirtualMachineScaleSetIpTag\x12\x1a\n" +
@@ -4816,7 +4816,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x04mode\x18\x01 \x01(\x0e2a.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetUpgradeModeR\x04mode\x12\x84\x01\n" +
 	"\arolling\x18\x02 \x01(\v2j.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetRollingUpgradePolicyR\arolling\x12\x9a\x01\n" +
 	"\x14automatic_os_upgrade\x18\x03 \x01(\v2h.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetAutomaticOsUpgradeR\x12automaticOsUpgrade\x12}\n" +
-	"\x0fhealth_probe_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xa1\x03\x92\xd4a\x18status.outputs.probe_idsR\rhealthProbeId\"\xd3\x04\n" +
+	"\x0fhealth_probe_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x0f\x92\xd4a\x18status.outputs.probe_idsR\rhealthProbeId\"\xd3\x04\n" +
 	"/AzureVirtualMachineScaleSetRollingUpgradePolicy\x12I\n" +
 	"\x1amax_batch_instance_percent\x18\x01 \x01(\x05B\f\xbaH\t\xc8\x01\x01\x1a\x04\x18d(\x05R\x17maxBatchInstancePercent\x12Q\n" +
 	"\x1emax_unhealthy_instance_percent\x18\x02 \x01(\x05B\f\xbaH\t\xc8\x01\x01\x1a\x04\x18d(\x05R\x1bmaxUnhealthyInstancePercent\x12b\n" +
@@ -4844,7 +4844,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x1e_regular_percentage_above_base\"\x9b\x04\n" +
 	"#AzureVirtualMachineScaleSetIdentity\x12~\n" +
 	"\x04type\x18\x01 \x01(\x0e2b.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf7\x01\xbaH\xf3\x01\x1a\xf0\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf7\x01\xbaH\xf3\x01\x1a\xf0\x01\n" +
 	"\x1cvmss_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xb5\x01\n" +
 	"#AzureVirtualMachineScaleSetSecurity\x12.\n" +
 	"\x13secure_boot_enabled\x18\x01 \x01(\bR\x11secureBootEnabled\x12!\n" +
@@ -4875,7 +4875,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"AAzureVirtualMachineScaleSetExtensionProtectedSettingsFromKeyVault\x12%\n" +
 	"\n" +
 	"secret_url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tsecretUrl\x12\x8a\x01\n" +
-	"\x0fsource_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_id\x98\xd4a\x01R\rsourceVaultId\"\\\n" +
+	"\x0fsource_vault_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x0f\x92\xd4a\x1bstatus.outputs.key_vault_id\x98\xd4a\x01R\rsourceVaultId\"\\\n" +
 	"*AzureVirtualMachineScaleSetBootDiagnostics\x12.\n" +
 	"\x13storage_account_uri\x18\x01 \x01(\tR\x11storageAccountUri\"\xf7\x05\n" +
 	"$AzureVirtualMachineScaleSetPlacement\x12?\n" +
@@ -4890,7 +4890,7 @@ const file_dev_planton_provider_azure_azurevirtualmachinescaleset_v1_spec_proto_
 	"\x04rule\x18\x01 \x01(\x0e2a.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetScaleInRuleR\x04rule\x124\n" +
 	"\x16force_deletion_enabled\x18\x02 \x01(\bR\x14forceDeletionEnabled\"\xc2\x02\n" +
 	"!AzureVirtualMachineScaleSetSecret\x12\x84\x01\n" +
-	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_id\x98\xd4a\x01R\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x0f\x92\xd4a\x1bstatus.outputs.key_vault_id\x98\xd4a\x01R\n" +
 	"keyVaultId\x12\x95\x01\n" +
 	"\fcertificates\x18\x02 \x03(\v2g.dev.planton.provider.azure.azurevirtualmachinescaleset.v1.AzureVirtualMachineScaleSetSecretCertificateB\b\xbaH\x05\x92\x01\x02\b\x01R\fcertificates\"^\n" +
 	",AzureVirtualMachineScaleSetSecretCertificate\x12\x18\n" +

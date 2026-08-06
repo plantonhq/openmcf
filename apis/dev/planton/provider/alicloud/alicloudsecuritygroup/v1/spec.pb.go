@@ -311,7 +311,7 @@ const file_dev_planton_provider_alicloud_alicloudsecuritygroup_v1_spec_proto_raw
 	"\x19AliCloudSecurityGroupSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12=\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12=\n" +
 	"\x13security_group_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x02\x18\x80\x01R\x11securityGroupName\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\xbd\x01\n" +

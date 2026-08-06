@@ -499,7 +499,7 @@ const file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/aws/awss3objectset/v1/spec.proto\x12*dev.planton.provider.aws.awss3objectset.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9e\x03\n" +
 	"\x12AwsS3ObjectSetSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12s\n" +
-	"\x06bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12[\n" +
+	"\x06bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12[\n" +
 	"\aobjects\x18\x03 \x03(\v27.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectB\b\xbaH\x05\x92\x01\x02\b\x01R\aobjects\x12\\\n" +
 	"\x04tags\x18\x04 \x03(\v2H.dev.planton.provider.aws.awss3objectset.v1.AwsS3ObjectSetSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
@@ -521,7 +521,7 @@ const file_dev_planton_provider_aws_awss3objectset_v1_spec_proto_rawDesc = "" +
 	"\x14object.storage_class\x12\xc3\x01storage_class must be one of STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER, GLACIER_IR, DEEP_ARCHIVE, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_OPENZFS, FSX_ONTAP\x1a\xd8\x01this == '' || this in ['STANDARD', 'REDUCED_REDUNDANCY', 'STANDARD_IA', 'ONEZONE_IA', 'INTELLIGENT_TIERING', 'GLACIER', 'GLACIER_IR', 'DEEP_ARCHIVE', 'EXPRESS_ONEZONE', 'OUTPOSTS', 'SNOW', 'FSX_OPENZFS', 'FSX_ONTAP']R\fstorageClass\x12\xf4\x01\n" +
 	"\x16server_side_encryption\x18\f \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
 	"\x1dobject.server_side_encryption\x12Lserver_side_encryption must be one of AES256, aws:kms, aws:kms:dsse, aws:fsx\x1aFthis == '' || this in ['AES256', 'aws:kms', 'aws:kms:dsse', 'aws:fsx']R\x14serverSideEncryption\x12l\n" +
-	"\akms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\x121\n" +
+	"\akms_key\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey\x121\n" +
 	"\x12bucket_key_enabled\x18\x0e \x01(\bH\x02R\x10bucketKeyEnabled\x88\x01\x01\x12\xe7\x01\n" +
 	"\x12checksum_algorithm\x18\x0f \x01(\tB\xb7\x01\xbaH\xb3\x01\xba\x01\xaf\x01\n" +
 	"\x19object.checksum_algorithm\x12Hchecksum_algorithm must be one of CRC32, CRC32C, CRC64NVME, SHA1, SHA256\x1aHthis == '' || this in ['CRC32', 'CRC32C', 'CRC64NVME', 'SHA1', 'SHA256']R\x11checksumAlgorithm\x12\xb3\x01\n" +

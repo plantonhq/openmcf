@@ -202,7 +202,7 @@ const file_dev_planton_provider_oci_ocidnsrecord_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"3dev/planton/provider/oci/ocidnsrecord/v1/spec.proto\x12(dev.planton.provider.oci.ocidnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd1\x03\n" +
 	"\x10OciDnsRecordSpec\x12\x80\x01\n" +
-	"\x0fzone_name_or_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x1a\x92\xd4a\x16status.outputs.zone_idR\fzoneNameOrId\x12\x1f\n" +
+	"\x0fzone_name_or_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2f\x92\xd4a\x16status.outputs.zone_idR\fzoneNameOrId\x12\x1f\n" +
 	"\x06domain\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06domain\x12\x1d\n" +
 	"\x05rtype\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05rtype\x12K\n" +
 	"\aview_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x06viewId\x12e\n" +

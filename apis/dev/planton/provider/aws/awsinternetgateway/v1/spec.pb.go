@@ -110,7 +110,7 @@ const file_dev_planton_provider_aws_awsinternetgateway_v1_spec_proto_rawDesc = "
 	"9dev/planton/provider/aws/awsinternetgateway/v1/spec.proto\x12.dev.planton.provider.aws.awsinternetgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbe\x01\n" +
 	"\x16AwsInternetGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x82\x01\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0fattached to vpc\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcIdB\x85\x03\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0fattached to vpc\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcIdB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awsinternetgateway.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsinternetgateway/v1;awsinternetgatewayv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awsinternetgateway.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awsinternetgateway\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awsinternetgateway\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awsinternetgateway::V1b\x06proto3"
 
 var (

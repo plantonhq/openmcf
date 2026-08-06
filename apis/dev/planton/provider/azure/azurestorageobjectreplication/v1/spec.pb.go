@@ -207,12 +207,12 @@ const file_dev_planton_provider_azure_azurestorageobjectreplication_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/azure/azurestorageobjectreplication/v1/spec.proto\x12;dev.planton.provider.azure.azurestorageobjectreplication.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfd\x03\n" +
 	"!AzureStorageObjectReplicationSpec\x12\xa3\x01\n" +
-	"\x19source_storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x16sourceStorageAccountId\x12\xad\x01\n" +
-	"\x1edestination_storage_account_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x1bdestinationStorageAccountId\x12\x81\x01\n" +
+	"\x19source_storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x16sourceStorageAccountId\x12\xad\x01\n" +
+	"\x1edestination_storage_account_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x1bdestinationStorageAccountId\x12\x81\x01\n" +
 	"\x05rules\x18\x03 \x03(\v2^.dev.planton.provider.azure.azurestorageobjectreplication.v1.AzureStorageObjectReplicationRuleB\v\xbaH\b\x92\x01\x05\b\x01\x10\xe8\aR\x05rules\"\xc9\x06\n" +
 	"!AzureStorageObjectReplicationRule\x12\x94\x01\n" +
-	"\x15source_container_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\x13sourceContainerName\x12\x9e\x01\n" +
-	"\x1adestination_container_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\x18destinationContainerName\x12\x9d\x03\n" +
+	"\x15source_container_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x10\x92\xd4a\x1dstatus.outputs.container_nameR\x13sourceContainerName\x12\x9e\x01\n" +
+	"\x1adestination_container_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x10\x92\xd4a\x1dstatus.outputs.container_nameR\x18destinationContainerName\x12\x9d\x03\n" +
 	"\x18copy_blobs_created_after\x18\x03 \x01(\tB\xde\x02\xbaH\xc8\x02\xba\x01\xc4\x02\n" +
 	",storage_object_replication_copy_after_format\x12qcopy_blobs_created_after must be OnlyNewObjects, Everything, or an RFC 3339 UTC instant like 2026-01-01T00:00:00Z\x1a\xa0\x01this == 'OnlyNewObjects' || this == 'Everything' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')\x8a\xa6\x1d\x0eOnlyNewObjectsH\x00R\x15copyBlobsCreatedAfter\x88\x01\x01\x12/\n" +
 	"\fprefix_match\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\vprefixMatchB\x1b\n" +

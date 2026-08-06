@@ -134,9 +134,9 @@ const file_dev_planton_provider_gcp_gcpcloudcomposeruserworkloadssecret_v1_spec_
 	"Jdev/planton/provider/gcp/gcpcloudcomposeruserworkloadssecret/v1/spec.proto\x12?dev.planton.provider.gcp.gcpcloudcomposeruserworkloadssecret.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8b\x06\n" +
 	"'GcpCloudComposerUserWorkloadsSecretSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12\x84\x01\n" +
-	"\venvironment\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xa8\x05\x92\xd4a\x1fstatus.outputs.environment_nameR\venvironment\x12L\n" +
+	"\venvironment\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x18\x92\xd4a\x1fstatus.outputs.environment_nameR\venvironment\x12L\n" +
 	"\vsecret_name\x18\x04 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\n" +
 	"secretName\x12\xa1\x02\n" +
 	"\x04data\x18\x05 \x03(\v2r.dev.planton.provider.gcp.gcpcloudcomposeruserworkloadssecret.v1.GcpCloudComposerUserWorkloadsSecretSpec.DataEntryB\x98\x01\xbaH\x90\x01\x9a\x01\x8c\x01\b\x01*\x87\x01\xba\x01\x83\x01\n" +

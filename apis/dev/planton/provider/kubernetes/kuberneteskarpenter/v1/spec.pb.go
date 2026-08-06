@@ -1009,7 +1009,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_raw
 	"Adev/planton/provider/kubernetes/kuberneteskarpenter/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteskarpenter.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\n" +
 	"\n" +
 	"\x17KubernetesKarpenterSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x061.14.0H\x01R\fchartVersion\x88\x01\x01\x12c\n" +
@@ -1047,7 +1047,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarpenter_v1_spec_proto_raw
 	"\x11eks_control_plane\x18\x03 \x01(\bR\x0feksControlPlane\x12\x1b\n" +
 	"\tca_bundle\x18\x04 \x01(\tR\bcaBundle\"\x89\x05\n" +
 	"\x16KubernetesKarpenterAws\x12x\n" +
-	"\rirsa_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12-\n" +
+	"\rirsa_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12-\n" +
 	"\x12interruption_queue\x18\x02 \x01(\tR\x11interruptionQueue\x12!\n" +
 	"\fisolated_vpc\x18\x03 \x01(\bR\visolatedVpc\x126\n" +
 	"\rreserved_enis\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x010H\x00R\freservedEnis\x88\x01\x01\x12,\n" +

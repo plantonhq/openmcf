@@ -1310,7 +1310,7 @@ const file_dev_planton_provider_aws_awscodepipeline_v1_spec_proto_rawDesc = "" +
 	"\x0eexecution_mode\x18\x03 \x01(\tB1\xbaH r\x1eR\n" +
 	"SUPERSEDEDR\x06QUEUEDR\bPARALLEL\x8a\xa6\x1d\n" +
 	"SUPERSEDEDH\x01R\rexecutionMode\x88\x01\x01\x12u\n" +
-	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x7f\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x7f\n" +
 	"\x0fartifact_stores\x18\x05 \x03(\v2I.dev.planton.provider.aws.awscodepipeline.v1.AwsCodePipelineArtifactStoreB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0eartifactStores\x12f\n" +
 	"\x06stages\x18\x06 \x03(\v2A.dev.planton.provider.aws.awscodepipeline.v1.AwsCodePipelineStageB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02R\x06stages\x12i\n" +
 	"\btriggers\x18\a \x03(\v2C.dev.planton.provider.aws.awscodepipeline.v1.AwsCodePipelineTriggerB\b\xbaH\x05\x92\x01\x02\x102R\btriggers\x12b\n" +
@@ -1323,9 +1323,9 @@ const file_dev_planton_provider_aws_awscodepipeline_v1_spec_proto_rawDesc = "" +
 	"\x0e_pipeline_typeB\x11\n" +
 	"\x0f_execution_mode\"\xb0\x02\n" +
 	"\x1cAwsCodePipelineArtifactStore\x12w\n" +
-	"\blocation\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x16\n" +
+	"\blocation\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12\x7f\n" +
-	"\x11encryption_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x0fencryptionKeyId\"\xfe\x03\n" +
+	"\x11encryption_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x0fencryptionKeyId\"\xfe\x03\n" +
 	"\x14AwsCodePipelineStage\x125\n" +
 	"\x04name\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19\x10\x01\x18d2\x13^[0-9A-Za-z_.@\\-]+$R\x04name\x12i\n" +
 	"\aactions\x18\x02 \x03(\v2B.dev.planton.provider.aws.awscodepipeline.v1.AwsCodePipelineActionB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\aactions\x12m\n" +
@@ -1354,7 +1354,7 @@ const file_dev_planton_provider_aws_awscodepipeline_v1_spec_proto_rawDesc = "" +
 	"\bcommands\x18\x04 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x102\"\ar\x05\x10\x01\x18\xe8\aR\bcommands\x12'\n" +
 	"\x0finput_artifacts\x18\x05 \x03(\tR\x0einputArtifacts\x12\x16\n" +
 	"\x06region\x18\x06 \x01(\tR\x06region\x12o\n" +
-	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12<\n" +
+	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12<\n" +
 	"\x12timeout_in_minutes\x18\b \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x05R\x10timeoutInMinutes\x1a@\n" +
 	"\x12ConfigurationEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -1381,7 +1381,7 @@ const file_dev_planton_provider_aws_awscodepipeline_v1_spec_proto_rawDesc = "" +
 	"\tnamespace\x18\t \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x16\x18d2\x12^[0-9A-Za-z_@\\-]+$R\tnamespace\x12\x16\n" +
 	"\x06region\x18\n" +
 	" \x01(\tR\x06region\x12o\n" +
-	"\brole_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12*\n" +
+	"\brole_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12*\n" +
 	"\trun_order\x18\f \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\xe7\a(\x01R\brunOrder\x12<\n" +
 	"\x12timeout_in_minutes\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x05R\x10timeoutInMinutes\x1a@\n" +

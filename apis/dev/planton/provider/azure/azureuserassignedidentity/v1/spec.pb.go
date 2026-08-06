@@ -201,7 +201,7 @@ const file_dev_planton_provider_azure_azureuserassignedidentity_v1_spec_proto_ra
 	"\x1dAzureUserAssignedIdentitySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12!\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12!\n" +
 	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x03\x18\x80\x01R\x04name\x12\x89\x01\n" +
 	"\x0fisolation_scope\x18\x04 \x01(\x0e2`.dev.planton.provider.azure.azureuserassignedidentity.v1.AzureUserAssignedIdentityIsolationScopeR\x0eisolationScope\x12t\n" +

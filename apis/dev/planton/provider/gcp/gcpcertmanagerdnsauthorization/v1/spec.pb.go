@@ -163,7 +163,7 @@ const file_dev_planton_provider_gcp_gcpcertmanagerdnsauthorization_v1_spec_proto
 	"Edev/planton/provider/gcp/gcpcertmanagerdnsauthorization/v1/spec.proto\x12:dev.planton.provider.gcp.gcpcertmanagerdnsauthorization.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x99\b\n" +
 	"\"GcpCertManagerDnsAuthorizationSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x8b\x02\n" +
 	"\x12authorization_name\x18\x02 \x01(\tB\xdb\x01\xbaH\xd7\x01\xba\x01\xd3\x01\n" +
 	"\x18authorization_name.valid\x12zauthorization_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores\x1a;this == '' || this.matches('^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')R\x11authorizationName\x12\xd6\x01\n" +
 	"\x06domain\x18\x03 \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb2\x01\n" +

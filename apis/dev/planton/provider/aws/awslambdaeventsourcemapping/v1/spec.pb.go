@@ -763,8 +763,8 @@ const file_dev_planton_provider_aws_awslambdaeventsourcemapping_v1_spec_proto_ra
 	"Bdev/planton/provider/aws/awslambdaeventsourcemapping/v1/spec.proto\x127dev.planton.provider.aws.awslambdaeventsourcemapping.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb3\x1f\n" +
 	"\x1fAwsLambdaEventSourceMappingSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x81\x01\n" +
-	"\ffunction_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\vfunctionArn\x12\x7f\n" +
-	"\x10event_source_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x0eeventSourceArn\x12\x92\x01\n" +
+	"\ffunction_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\vfunctionArn\x12\x7f\n" +
+	"\x10event_source_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x0eeventSourceArn\x12\x92\x01\n" +
 	"\x12self_managed_kafka\x18\x04 \x01(\v2d.dev.planton.provider.aws.awslambdaeventsourcemapping.v1.AwsLambdaEventSourceMappingSelfManagedKafkaR\x10selfManagedKafka\x12\x1a\n" +
 	"\bdisabled\x18\x05 \x01(\bR\bdisabled\x12)\n" +
 	"\n" +
@@ -774,7 +774,7 @@ const file_dev_planton_provider_aws_awslambdaeventsourcemapping_v1_spec_proto_ra
 	"\xd8\x01\x01\x1a\x05\x18\xac\x02(\x01R\x1cmaximumBatchingWindowSeconds\x12~\n" +
 	"\afilters\x18\b \x03(\v2Z.dev.planton.provider.aws.awslambdaeventsourcemapping.v1.AwsLambdaEventSourceMappingFilterB\b\xbaH\x05\x92\x01\x02\x10\n" +
 	"R\afilters\x12s\n" +
-	"\vkms_key_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12]\n" +
+	"\vkms_key_arn\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12]\n" +
 	"\x17function_response_types\x18\n" +
 	" \x03(\tB%\xbaH\"\x92\x01\x1f\x18\x01\"\x1br\x19R\x17ReportBatchItemFailuresR\x15functionResponseTypes\x12E\n" +
 	"\x17scaling_max_concurrency\x18\v \x01(\x05B\r\xbaH\n" +
@@ -790,7 +790,7 @@ const file_dev_planton_provider_aws_awslambdaeventsourcemapping_v1_spec_proto_ra
 	"\x1ebisect_batch_on_function_error\x18\x12 \x01(\bR\x1abisectBatchOnFunctionError\x12E\n" +
 	"\x17tumbling_window_seconds\x18\x13 \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\x84\a(\x01R\x15tumblingWindowSeconds\x12\x92\x01\n" +
-	"\x1aon_failure_destination_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArn\x12)\n" +
+	"\x1aon_failure_destination_arn\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArn\x12)\n" +
 	"\x06topics\x18\x15 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x18\x01\"\ar\x05\x10\x01\x18\xf9\x01R\x06topics\x12?\n" +
 	"\x17kafka_consumer_group_id\x18\x16 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x14kafkaConsumerGroupId\x12\xac\x01\n" +
 	"\x1csource_access_configurations\x18\x17 \x03(\v2`.dev.planton.provider.aws.awslambdaeventsourcemapping.v1.AwsLambdaEventSourceMappingSourceAccessB\b\xbaH\x05\x92\x01\x02\x10\x16R\x1asourceAccessConfigurations\x12\x8b\x01\n" +

@@ -1323,11 +1323,11 @@ const file_dev_planton_provider_azure_azurefirewallpolicy_v1_spec_proto_rawDesc 
 	"\x17AzureFirewallPolicySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc0\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xc0\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\xab\x02\xbaH\xa7\x02\xba\x01\x9c\x02\n" +
 	"\x1bfirewall_policy_name_format\x12\xb4\x01Firewall policy names are 2-80 characters, start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aFthis == '' || this.matches('^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9_]$')\xc8\x01\x01r\x02\x18PR\x04name\x12e\n" +
 	"\x03sku\x18\x04 \x01(\x0e2I.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicySkuB\b\xbaH\x05\x82\x01\x02\x10\x01R\x03sku\x12\x84\x01\n" +
-	"\x0ebase_policy_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x92\x04\x92\xd4a!status.outputs.firewall_policy_idR\fbasePolicyId\x12\xa0\x01\n" +
+	"\x0ebase_policy_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xd2\x10\x92\xd4a!status.outputs.firewall_policy_idR\fbasePolicyId\x12\xa0\x01\n" +
 	"\x18threat_intelligence_mode\x18\x06 \x01(\x0e2\\.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyThreatIntelligenceModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x16threatIntelligenceMode\x12\xa5\x01\n" +
 	"\x1dthreat_intelligence_allowlist\x18\a \x01(\v2a.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyThreatIntelligenceAllowlistR\x1bthreatIntelligenceAllowlist\x12[\n" +
 	"\x03dns\x18\b \x01(\v2I.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyDnsR\x03dns\x12\x89\x01\n" +
@@ -1368,30 +1368,30 @@ const file_dev_planton_provider_azure_azurefirewallpolicy_v1_spec_proto_rawDesc 
 	"\bprotocol\x18\x03 \x01(\x0e2X.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyIdpsBypassProtocolB\r\xbaH\n" +
 	"\xc8\x01\x01\x82\x01\x04\x10\x01 \x00R\bprotocol\x127\n" +
 	"\x10source_addresses\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fsourceAddresses\x12\x81\x01\n" +
-	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
+	"\x10source_ip_groups\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x0esourceIpGroups\x12A\n" +
 	"\x15destination_addresses\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x14destinationAddresses\x12\x8b\x01\n" +
-	"\x15destination_ip_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x95\x04\x92\xd4a\x1astatus.outputs.ip_group_idR\x13destinationIpGroups\x129\n" +
+	"\x15destination_ip_groups\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd5\x10\x92\xd4a\x1astatus.outputs.ip_group_idR\x13destinationIpGroups\x129\n" +
 	"\x11destination_ports\x18\b \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x10destinationPorts\"\xfe\x05\n" +
 	"\x1bAzureFirewallPolicyIdentity\x12r\n" +
 	"\x04type\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xd3\x03\xbaH\xcf\x03\x1a\xd3\x01\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xd3\x03\xbaH\xcf\x03\x1a\xd3\x01\n" +
 	"#user_assigned_requires_identity_ids\x12YList at least one user-assigned identity id when the identity type includes USER_ASSIGNED\x1aQ!(this.type == 2 || this.type == 3) || this.user_assigned_identity_ids.size() > 0\x1a\xf6\x01\n" +
 	"'identity_ids_require_user_assigned_type\x12zuser_assigned_identity_ids is only used when the identity type includes USER_ASSIGNED -- change the type or remove the ids\x1aOthis.user_assigned_identity_ids.size() == 0 || this.type == 2 || this.type == 3\"\xdc\x01\n" +
 	"!AzureFirewallPolicyTlsCertificate\x12\x96\x01\n" +
-	"\x13key_vault_secret_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x03\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x1e\n" +
+	"\x13key_vault_secret_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x0f\x92\xd4a$status.outputs.versionless_secret_idR\x10keyVaultSecretId\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\"\xe1\x03\n" +
 	"\x1bAzureFirewallPolicyInsights\x12%\n" +
 	"\aenabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01H\x00R\aenabled\x88\x01\x01\x12\xaa\x01\n" +
-	"\"default_log_analytics_workspace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x1edefaultLogAnalyticsWorkspaceId\x128\n" +
+	"\"default_log_analytics_workspace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\x1edefaultLogAnalyticsWorkspaceId\x128\n" +
 	"\x11retention_in_days\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x0fretentionInDays\x88\x01\x01\x12\x91\x01\n" +
 	"\x18log_analytics_workspaces\x18\x04 \x03(\v2W.dev.planton.provider.azure.azurefirewallpolicy.v1.AzureFirewallPolicyInsightsWorkspaceR\x16logAnalyticsWorkspacesB\n" +
 	"\n" +
 	"\b_enabledB\x14\n" +
 	"\x12_retention_in_days\"\xe3\x01\n" +
 	"$AzureFirewallPolicyInsightsWorkspace\x12\x81\x01\n" +
-	"\fworkspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\vworkspaceId\x127\n" +
+	"\fworkspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\vworkspaceId\x127\n" +
 	"\x11firewall_location\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x10firewallLocation\"\xc4\x02\n" +
 	" AzureFirewallPolicyExplicitProxy\x12\x18\n" +

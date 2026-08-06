@@ -1010,7 +1010,7 @@ const file_dev_planton_provider_azure_azuremanagedredis_v1_spec_proto_rawDesc = 
 	"\x15AzureManagedRedisSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x83\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x83\x02\n" +
 	"\fcluster_name\x18\x03 \x01(\tB\xdf\x01\xbaH\xdb\x01\xba\x01\xce\x01\n" +
 	"\x19managed_redis_name_format\x12wcluster_name must be 3-63 letters, digits, and hyphens, start and end with a letter or digit, and never repeat a hyphen\x1a8this.matches('^[a-zA-Z0-9]([a-zA-Z0-9]|-[a-zA-Z0-9])*$')\xc8\x01\x01r\x04\x10\x03\x18?R\vclusterName\x12l\n" +
 	"\bsku_name\x18\x04 \x01(\x0e2E.dev.planton.provider.azure.azuremanagedredis.v1.AzureManagedRedisSkuB\n" +
@@ -1055,12 +1055,12 @@ const file_dev_planton_provider_azure_azuremanagedredis_v1_spec_proto_rawDesc = 
 	"\x1fmanaged_redis_module_name_valid\x12Nmodule name must be one of: RediSearch, RedisJSON, RedisBloom, RedisTimeSeries\x1aDthis in ['RediSearch', 'RedisJSON', 'RedisBloom', 'RedisTimeSeries']\xc8\x01\x01R\x04name\x12\x12\n" +
 	"\x04args\x18\x02 \x01(\tR\x04args\"\xc4\x02\n" +
 	"#AzureManagedRedisCustomerManagedKey\x12\x81\x01\n" +
-	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x15status.outputs.key_idR\rkeyVaultKeyId\x12\x98\x01\n" +
-	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xdb\x04\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x15status.outputs.key_idR\rkeyVaultKeyId\x12\x98\x01\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xdb\x04\n" +
 	"\x19AzureManagedRedisIdentity\x12n\n" +
 	"\x04type\x18\x01 \x01(\x0e2N.dev.planton.provider.azure.azuremanagedredis.v1.AzureManagedRedisIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb6\x02\xbaH\xb2\x02\x1a\xaf\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\xb6\x02\xbaH\xb2\x02\x1a\xaf\x02\n" +
 	"%managed_redis_identity_ids_match_type\x12}user_assigned_identity_ids is required with USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED, and must be empty with SYSTEM_ASSIGNED\x1a\x86\x01(this.type in [2, 3] && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\xea\b\n" +
 	"\x14AzureManagedRedisSku\x12'\n" +
 	"#azure_managed_redis_sku_unspecified\x10\x00\x12\x0f\n" +

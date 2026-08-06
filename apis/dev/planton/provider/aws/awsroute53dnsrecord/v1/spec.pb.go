@@ -955,7 +955,7 @@ const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = 
 	":dev/planton/provider/aws/awsroute53dnsrecord/v1/spec.proto\x12/dev.planton.provider.aws.awsroute53dnsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x88\x10\n" +
 	"\x17AwsRoute53DnsRecordSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12r\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12k\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4\a\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12k\n" +
 	"\x04name\x18\x03 \x01(\tBW\xbaHT\xc8\x01\x01rO2M^(?:\\*\\.[A-Za-z0-9_\\-\\.]+|[A-Za-z0-9_\\-\\.]+\\.[A-Za-z]{2,}|[A-Za-z0-9_\\-\\.]+)$R\x04name\x12w\n" +
 	"\x04type\x18\x04 \x01(\tBc\xbaH`\xc8\x01\x01r[R\x01AR\x04AAAAR\x03CAAR\x05CNAMER\x02DSR\x05HTTPSR\x02MXR\x05NAPTRR\x02NSR\x03PTRR\x03SOAR\x03SPFR\x03SRVR\x05SSHFPR\x04SVCBR\x04TLSAR\x03TXTR\x04type\x12\x93\x01\n" +
 	"\x03ttl\x18\x05 \x01(\x05B\x80\x01\xbaH}\xba\x01z\n" +
@@ -963,7 +963,7 @@ const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = 
 	"\x06values\x18\x06 \x03(\tR\x06values\x12i\n" +
 	"\falias_target\x18\a \x01(\v2F.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53AliasTargetR\valiasTarget\x12o\n" +
 	"\x0erouting_policy\x18\b \x01(\v2H.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53RoutingPolicyR\rroutingPolicy\x12\x83\x01\n" +
-	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xf8\x02\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
+	"\x0fhealth_check_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x98\t\x92\xd4a\x1estatus.outputs.health_check_idR\rhealthCheckId\x12/\n" +
 	"\x0eset_identifier\x18\n" +
 	" \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\rsetIdentifier\x12'\n" +
 	"\x0fallow_overwrite\x18\v \x01(\bR\x0eallowOverwrite:\x87\b\xbaH\x83\b\x1a\xbc\x01\n" +
@@ -974,8 +974,8 @@ const file_dev_planton_provider_aws_awsroute53dnsrecord_v1_spec_proto_rawDesc = 
 	"!set_identifier_for_routing_policy\x12oset_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)\x1a6!has(this.routing_policy) || this.set_identifier != ''\x1a\xcd\x01\n" +
 	"\x18multivalue_forbids_alias\x12Lmultivalue answer routing cannot be used with alias records (AWS limitation)\x1ac!(has(this.routing_policy) && has(this.routing_policy.multivalue_answer) && has(this.alias_target))\"\xdd\x02\n" +
 	"\x15AwsRoute53AliasTarget\x12\x83\x01\n" +
-	"\bdns_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a%status.outputs.load_balancer_dns_nameR\adnsName\x12\x87\x01\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xc8\x01\x92\xd4a+status.outputs.load_balancer_hosted_zone_idR\x06zoneId\x124\n" +
+	"\bdns_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a%status.outputs.load_balancer_dns_nameR\adnsName\x12\x87\x01\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a+status.outputs.load_balancer_hosted_zone_idR\x06zoneId\x124\n" +
 	"\x16evaluate_target_health\x18\x03 \x01(\bR\x14evaluateTargetHealth\"\xa2\x06\n" +
 	"\x17AwsRoute53RoutingPolicy\x12g\n" +
 	"\bweighted\x18\x01 \x01(\v2I.dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53WeightedPolicyH\x00R\bweighted\x12d\n" +

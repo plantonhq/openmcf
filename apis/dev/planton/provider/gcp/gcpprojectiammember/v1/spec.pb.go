@@ -205,9 +205,9 @@ const file_dev_planton_provider_gcp_gcpprojectiammember_v1_spec_proto_rawDesc = 
 	":dev/planton/provider/gcp/gcpprojectiammember/v1/spec.proto\x12/dev.planton.provider.gcp.gcpprojectiammember.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdb\x03\n" +
 	"\x17GcpProjectIamMemberSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12j\n" +
-	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x04\x92\xd4a\x13status.outputs.nameR\x04role\x12p\n" +
-	"\x06member\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x04\x92\xd4a\x15status.outputs.memberR\x06member\x12k\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12j\n" +
+	"\x04role\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x17\x92\xd4a\x13status.outputs.nameR\x04role\x12p\n" +
+	"\x06member\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc6\x17\x92\xd4a\x15status.outputs.memberR\x06member\x12k\n" +
 	"\tcondition\x18\x04 \x01(\v2M.dev.planton.provider.gcp.gcpprojectiammember.v1.GcpProjectIamMemberConditionR\tcondition\"\x94\x01\n" +
 	"\x1cGcpProjectIamMemberCondition\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +

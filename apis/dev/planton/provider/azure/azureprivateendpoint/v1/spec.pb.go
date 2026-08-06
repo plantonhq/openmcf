@@ -386,14 +386,14 @@ const file_dev_planton_provider_azure_azureprivateendpoint_v1_spec_proto_rawDesc
 	"\x18AzurePrivateEndpointSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb2\x02\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xb2\x02\n" +
 	"\x04name\x18\x03 \x01(\tB\x9d\x02\xbaH\x99\x02\xba\x01\x8c\x02\n" +
 	"\x1cprivate_endpoint_name_format\x12\xa0\x01Private endpoint names start with a letter or number, end with a letter, number, or underscore, and may contain alphanumerics, underscores, periods, and hyphens\x1aIthis == '' || this.matches('^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9_])?$')\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12x\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x9f\x01\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x9f\x01\n" +
 	"\x1aprivate_service_connection\x18\x05 \x01(\v2Y.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointServiceConnectionB\x06\xbaH\x03\xc8\x01\x01R\x18privateServiceConnection\x12\x88\x01\n" +
-	"\x14private_dns_zone_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x11privateDnsZoneIds\x12\x84\x01\n" +
+	"\x14private_dns_zone_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdf\x0f\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x11privateDnsZoneIds\x12\x84\x01\n" +
 	"\x11ip_configurations\x18\a \x03(\v2W.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointIpConfigurationR\x10ipConfigurations\x12\xae\x01\n" +
-	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xac\x03\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12A\n" +
+	"\x1eapplication_security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\x88\xd4a\xec\x0f\x92\xd4a,status.outputs.application_security_group_idR\x1bapplicationSecurityGroupIds\x12A\n" +
 	"\x1dcustom_network_interface_name\x18\t \x01(\tR\x1acustomNetworkInterfaceName\x12j\n" +
 	"\x04tags\x18\n" +
 	" \x03(\v2V.dev.planton.provider.azure.azureprivateendpoint.v1.AzurePrivateEndpointSpec.TagsEntryR\x04tags\x1a7\n" +

@@ -175,9 +175,9 @@ const file_dev_planton_provider_azure_azureservicebusauthorizationrule_v1_spec_p
 	"\trule_name\x18\x01 \x01(\tB\xa0\x04\xbaH\x9c\x04\xba\x01\x8e\x02\n" +
 	"!service_bus_auth_rule_name_format\x12\x89\x01rule_name must be up to 50 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter or number\x1a]this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,48}[a-zA-Z0-9]$')\xba\x01\xfd\x01\n" +
 	"#service_bus_auth_rule_name_not_root\x12\xb0\x01RootManageSharedAccessKey is the namespace's built-in root rule -- its keys already surface as AzureServiceBusNamespace outputs; mint a differently-named rule for scoped access\x1a#this != 'RootManageSharedAccessKey'\xc8\x01\x01r\x04\x10\x01\x182R\bruleName\x12{\n" +
-	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xd6\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12o\n" +
-	"\bqueue_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd8\x03\x92\xd4a\x17status.outputs.queue_idR\aqueueId\x12o\n" +
-	"\btopic_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd9\x03\x92\xd4a\x17status.outputs.topic_idR\atopicId\x12\x1b\n" +
+	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12o\n" +
+	"\bqueue_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x98\x10\x92\xd4a\x17status.outputs.queue_idR\aqueueId\x12o\n" +
+	"\btopic_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x99\x10\x92\xd4a\x17status.outputs.topic_idR\atopicId\x12\x1b\n" +
 	"\x06listen\x18\x05 \x01(\bH\x00R\x06listen\x88\x01\x01\x12\x17\n" +
 	"\x04send\x18\x06 \x01(\bH\x01R\x04send\x88\x01\x01\x12\x1b\n" +
 	"\x06manage\x18\a \x01(\bH\x02R\x06manage\x88\x01\x01:\x89\x05\xbaH\x85\x05\x1a\x82\x02\n" +

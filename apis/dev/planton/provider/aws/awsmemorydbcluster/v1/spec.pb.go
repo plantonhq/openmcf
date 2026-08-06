@@ -497,18 +497,18 @@ const file_dev_planton_provider_aws_awsmemorydbcluster_v1_spec_proto_rawDesc = "
 	"\n" +
 	"num_shards\x18\a \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\tnumShards\x88\x01\x01\x12H\n" +
 	"\x16num_replicas_per_shard\x18\b \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x00\x8a\xa6\x1d\x011H\x02R\x13numReplicasPerShard\x88\x01\x01\x12u\n" +
-	"\bacl_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf6\x02\x92\xd4a\x17status.outputs.acl_nameR\aaclName\x12t\n" +
+	"\bacl_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\t\x92\xd4a\x17status.outputs.acl_nameR\aaclName\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12*\n" +
 	"\x11subnet_group_name\x18\v \x01(\tR\x0fsubnetGroupName\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12C\n" +
+	"\x12security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12C\n" +
 	"\fnetwork_type\x18\r \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x04ipv4R\x04ipv6R\n" +
 	"dual_stackR\vnetworkType\x127\n" +
 	"\fip_discovery\x18\x0e \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x04ipv4R\x04ipv6R\vipDiscovery\x12.\n" +
 	"\vtls_enabled\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\n" +
 	"tlsEnabled\x88\x01\x01\x12s\n" +
-	"\vkms_key_arn\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12\xb4\x01\n" +
+	"\vkms_key_arn\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12\xb4\x01\n" +
 	"\x12maintenance_window\x18\x11 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12C\n" +
 	"\x18snapshot_retention_limit\x18\x12 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x16snapshotRetentionLimit\x12p\n" +
 	"\x0fsnapshot_window\x18\x13 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x0esnapshotWindow\x12.\n" +
@@ -521,7 +521,7 @@ const file_dev_planton_provider_aws_awsmemorydbcluster_v1_spec_proto_rawDesc = "
 	"parameters\x120\n" +
 	"\x14parameter_group_name\x18\x19 \x01(\tR\x12parameterGroupName\x129\n" +
 	"\x19multi_region_cluster_name\x18\x1a \x01(\tR\x16multiRegionClusterName\x12y\n" +
-	"\rsns_topic_arn\x18\x1b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\vsnsTopicArn\x12J\n" +
+	"\rsns_topic_arn\x18\x1b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\vsnsTopicArn\x12J\n" +
 	"\x1aauto_minor_version_upgrade\x18\x1c \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x17autoMinorVersionUpgrade\x88\x01\x01\x12!\n" +
 	"\fdata_tiering\x18\x1d \x01(\bR\vdataTiering:\x8e\b\xbaH\x8a\b\x1a]\n" +
 	"\x13engine_valid_values\x12\"engine must be 'redis' or 'valkey'\x1a\"this.engine in ['redis', 'valkey']\x1a\xc6\x01\n" +

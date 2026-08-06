@@ -1337,8 +1337,8 @@ const file_dev_planton_provider_aws_awsbatchjobdefinition_v1_spec_proto_rawDesc 
 	"\n" +
 	"memory_mib\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x04R\tmemoryMib\x12\x1b\n" +
 	"\x04gpus\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04gpus\x12o\n" +
-	"\bjob_role\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\ajobRole\x12{\n" +
-	"\x0eexecution_role\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12\x84\x01\n" +
+	"\bjob_role\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\ajobRole\x12{\n" +
+	"\x0eexecution_role\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rexecutionRole\x12\x84\x01\n" +
 	"\venvironment\x18\b \x03(\v2b.dev.planton.provider.aws.awsbatchjobdefinition.v1.AwsBatchJobDefinitionContainer.EnvironmentEntryR\venvironment\x12\xed\x01\n" +
 	"\asecrets\x18\t \x03(\v2^.dev.planton.provider.aws.awsbatchjobdefinition.v1.AwsBatchJobDefinitionContainer.SecretsEntryBs\xaa\xa6\x1dovalues are Secrets Manager / SSM Parameter Store ARNs resolved by the agent at job start, never secret materialR\asecrets\x12\x85\x01\n" +
 	"\x11log_configuration\x18\n" +
@@ -1387,9 +1387,9 @@ const file_dev_planton_provider_aws_awsbatchjobdefinition_v1_spec_proto_rawDesc 
 	"\thost_path\x18\x03 \x01(\tR\bhostPath:y\xbaHv\x1at\n" +
 	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x87\x03\n" +
 	"\x1eAwsBatchJobDefinitionEfsVolume\x12\x8a\x01\n" +
-	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12\x83\x01\n" +
-	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe8\x02\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
+	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x88\t\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
 	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\"w\n" +
 	"\x1bAwsBatchJobDefinitionUlimit\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1d\n" +

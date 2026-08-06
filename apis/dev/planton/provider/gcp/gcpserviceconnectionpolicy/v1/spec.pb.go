@@ -287,7 +287,7 @@ const file_dev_planton_provider_gcp_gcpserviceconnectionpolicy_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/gcp/gcpserviceconnectionpolicy/v1/spec.proto\x126dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xee\v\n" +
 	"#GcpServiceConnectionPolicyPscConfig\x12\x8e\x01\n" +
-	"\vsubnetworks\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\vsubnetworks\x12\x1d\n" +
+	"\vsubnetworks\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\vsubnetworks\x12\x1d\n" +
 	"\x05limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x05limit\x12\xc4\x02\n" +
 	"\x1aproducer_instance_location\x18\x03 \x01(\tB\x85\x02\xbaH\x81\x02\xba\x01\xfd\x01\n" +
 	"&producer_instance_location_valid_value\x12mproducer_instance_location must be PRODUCER_INSTANCE_LOCATION_UNSPECIFIED or CUSTOM_RESOURCE_HIERARCHY_LEVELS\x1adthis == '' || this in ['PRODUCER_INSTANCE_LOCATION_UNSPECIFIED', 'CUSTOM_RESOURCE_HIERARCHY_LEVELS']R\x18producerInstanceLocation\x12\xc9\x02\n" +
@@ -297,12 +297,12 @@ const file_dev_planton_provider_gcp_gcpserviceconnectionpolicy_v1_spec_proto_raw
 	" allowlist_requires_custom_levels\x12\x88\x01allowed_google_producers_resource_hierarchy_levels only takes effect when producer_instance_location is CUSTOM_RESOURCE_HIERARCHY_LEVELS\x1a\x8b\x01size(this.allowed_google_producers_resource_hierarchy_levels) == 0 || this.producer_instance_location == 'CUSTOM_RESOURCE_HIERARCHY_LEVELS'\"\x8a\b\n" +
 	"\x1eGcpServiceConnectionPolicySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x97\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x97\x02\n" +
 	"\vpolicy_name\x18\x02 \x01(\tB\xf5\x01\xbaH\xf1\x01\xba\x01\xed\x01\n" +
 	"\x12policy_name_format\x12\x95\x01policy_name must start with a lowercase letter, use only lowercase letters, numbers, and hyphens, and end with a letter or number (max 63 characters)\x1a?this == '' || this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')R\n" +
 	"policyName\x12;\n" +
 	"\blocation\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\blocation\x12v\n" +
-	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12C\n" +
+	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a\x19status.outputs.network_idR\anetwork\x12C\n" +
 	"\rservice_class\x18\x05 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16\x18\xff\x012\x11^[a-z][a-z0-9-]*$R\fserviceClass\x12*\n" +
 	"\vdescription\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12z\n" +
 	"\x06labels\x18\a \x03(\v2b.dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1.GcpServiceConnectionPolicySpec.LabelsEntryR\x06labels\x12z\n" +

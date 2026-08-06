@@ -914,10 +914,10 @@ const file_dev_planton_provider_alicloud_alicloudkubernetesnodepool_v1_spec_prot
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"cluster_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x19status.outputs.cluster_idR\tclusterId\x12 \n" +
+	"cluster_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xbb^\x92\xd4a\x19status.outputs.cluster_idR\tclusterId\x12 \n" +
 	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18?R\x04name\x12\x84\x01\n" +
 	"\vvswitch_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\n" +
 	"vswitchIds\x122\n" +
 	"\x0einstance_types\x18\x05 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\rinstanceTypes\x122\n" +
 	"\fdesired_size\x18\x06 \x01(\x05B\n" +
@@ -930,7 +930,7 @@ const file_dev_planton_provider_alicloud_alicloudkubernetesnodepool_v1_spec_prot
 	"systemDisk\x12~\n" +
 	"\n" +
 	"data_disks\x18\f \x03(\v2_.dev.planton.provider.alicloud.alicloudkubernetesnodepool.v1.AliCloudKubernetesNodePoolDataDiskR\tdataDisks\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x14 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xce\x17\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12K\n" +
+	"\x12security_group_ids\x18\x14 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf6]\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12K\n" +
 	"\x1ainternet_max_bandwidth_out\x18\x15 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00H\x02R\x17internetMaxBandwidthOut\x88\x01\x01\x12\xd9\x01\n" +
 	"\x14internet_charge_type\x18\x16 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x99\x01\n" +
 	"\x1ainternet_charge_type_valid\x12Ainternet_charge_type must be one of: PayByBandwidth, PayByTraffic\x1a8this == '' || this in ['PayByBandwidth', 'PayByTraffic']H\x03R\x12internetChargeType\x88\x01\x01\x12\x19\n" +

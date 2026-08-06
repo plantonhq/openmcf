@@ -256,7 +256,7 @@ const file_dev_planton_provider_openstack_openstacksubnet_v1_spec_proto_rawDesc 
 	"<dev/planton/provider/openstack/openstacksubnet/v1/spec.proto\x121dev.planton.provider.openstack.openstacksubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe7\a\n" +
 	"\x13OpenStackSubnetSpec\x12{\n" +
 	"\n" +
-	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x13\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\xae\x01\n" +
+	"network_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x91N\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12\xae\x01\n" +
 	"\x04cidr\x18\x02 \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x8e\x01\n" +
 	"\x11cidr.valid_format\x12Lcidr must be valid CIDR notation (e.g., '192.168.1.0/24' or '2001:db8::/64')\x1a+this.matches('^[0-9a-fA-F.:]+/[0-9]{1,3}$')\xc8\x01\x01R\x04cidr\x12\x82\x01\n" +
 	"\n" +

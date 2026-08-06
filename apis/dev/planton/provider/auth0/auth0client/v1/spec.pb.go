@@ -1093,7 +1093,7 @@ const file_dev_planton_provider_auth0_auth0client_v1_spec_proto_rawDesc = "" +
 	"\x0eclient_aliases\x18\x19 \x03(\tR\rclientAliases\x12K\n" +
 	"#is_token_endpoint_ip_header_trusted\x18\x1a \x01(\bR\x1eisTokenEndpointIpHeaderTrusted\x12}\n" +
 	"\x17oidc_backchannel_logout\x18\x1b \x01(\v2E.dev.planton.provider.auth0.auth0client.v1.Auth0OidcBackchannelLogoutR\x15oidcBackchannelLogout\x12\x81\x01\n" +
-	"\x13enabled_connections\x18\x1c \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xb4\x10\x92\xd4a\x13status.outputs.nameR\x12enabledConnections\x12]\n" +
+	"\x13enabled_connections\x18\x1c \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xc0>\x92\xd4a\x13status.outputs.nameR\x12enabledConnections\x12]\n" +
 	"\n" +
 	"api_grants\x18\x1d \x03(\v2>.dev.planton.provider.auth0.auth0client.v1.Auth0ClientApiGrantR\tapiGrants\x1aA\n" +
 	"\x13ClientMetadataEntry\x12\x10\n" +
@@ -1132,7 +1132,7 @@ const file_dev_planton_provider_auth0_auth0client_v1_spec_proto_rawDesc = "" +
 	"\x1aAuth0OidcBackchannelLogout\x126\n" +
 	"\x17backchannel_logout_urls\x18\x01 \x03(\tR\x15backchannelLogoutUrls\"\xab\x02\n" +
 	"\x13Auth0ClientApiGrant\x12x\n" +
-	"\baudience\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb7\x10\x92\xd4a\x19status.outputs.identifierR\baudience\x12\x16\n" +
+	"\baudience\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3>\x92\xd4a\x19status.outputs.identifierR\baudience\x12\x16\n" +
 	"\x06scopes\x18\x02 \x03(\tR\x06scopes\x124\n" +
 	"\x16allow_any_organization\x18\x03 \x01(\bR\x14allowAnyOrganization\x12L\n" +
 	"\x12organization_usage\x18\x04 \x01(\tB\x1d\xbaH\x1ar\x18R\x00R\x04denyR\x05allowR\arequireR\x11organizationUsageB\xe0\x02\n" +

@@ -34,546 +34,546 @@ const (
 	CloudResourceKind_ConfluentKafka    CloudResourceKind = 50
 	CloudResourceKind_AtlasMongodb      CloudResourceKind = 51
 	CloudResourceKind_SnowflakeDatabase CloudResourceKind = 52
-	// 200–399: AWS resources
+	// 1000–1999: AWS resources
 	// AwsSubnet is a prerequisite because an ALB requires at least two subnets
 	// in different availability zones -- the spec's subnet references must
 	// resolve before the load balancer can be created.
-	CloudResourceKind_AwsAlb             CloudResourceKind = 200
-	CloudResourceKind_AwsCertManagerCert CloudResourceKind = 201
-	CloudResourceKind_AwsCloudFront      CloudResourceKind = 202
-	CloudResourceKind_AwsDynamodb        CloudResourceKind = 203
-	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 204
-	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 205
+	CloudResourceKind_AwsAlb             CloudResourceKind = 1000
+	CloudResourceKind_AwsCertManagerCert CloudResourceKind = 1001
+	CloudResourceKind_AwsCloudFront      CloudResourceKind = 1002
+	CloudResourceKind_AwsDynamodb        CloudResourceKind = 1003
+	CloudResourceKind_AwsEcrRepo         CloudResourceKind = 1004
+	CloudResourceKind_AwsEcsCluster      CloudResourceKind = 1005
 	// AwsEcsCluster, AwsEcsTaskDefinition, and AwsSubnet are prerequisites
 	// because a service schedules a referenced task-definition revision into
 	// a referenced live cluster and places task network interfaces into
 	// referenced subnets -- all three references must resolve first.
-	CloudResourceKind_AwsEcsService CloudResourceKind = 206
+	CloudResourceKind_AwsEcsService CloudResourceKind = 1006
 	// AwsSubnet and AwsIamRole are prerequisites because the control plane
 	// attaches its network interfaces into referenced subnets and assumes a
 	// referenced cluster role that must already carry AmazonEKSClusterPolicy.
-	CloudResourceKind_AwsEksCluster  CloudResourceKind = 207
-	CloudResourceKind_AwsIamRole     CloudResourceKind = 208
-	CloudResourceKind_AwsLambda      CloudResourceKind = 209
-	CloudResourceKind_AwsRdsCluster  CloudResourceKind = 210
-	CloudResourceKind_AwsRdsInstance CloudResourceKind = 211
-	CloudResourceKind_AwsRoute53Zone CloudResourceKind = 212
-	CloudResourceKind_AwsS3Bucket    CloudResourceKind = 213
+	CloudResourceKind_AwsEksCluster  CloudResourceKind = 1007
+	CloudResourceKind_AwsIamRole     CloudResourceKind = 1008
+	CloudResourceKind_AwsLambda      CloudResourceKind = 1009
+	CloudResourceKind_AwsRdsCluster  CloudResourceKind = 1010
+	CloudResourceKind_AwsRdsInstance CloudResourceKind = 1011
+	CloudResourceKind_AwsRoute53Zone CloudResourceKind = 1012
+	CloudResourceKind_AwsS3Bucket    CloudResourceKind = 1013
 	// AwsVpc is a prerequisite because a target group's health checks and
 	// target registrations live inside one VPC -- the spec's vpc_id reference
 	// must resolve before the group can be created.
-	CloudResourceKind_AwsLbTargetGroup CloudResourceKind = 214
+	CloudResourceKind_AwsLbTargetGroup CloudResourceKind = 1014
 	// AwsVpc is a prerequisite because every security group is created in a
 	// VPC; the E2E install profile resolves vpc_id against the VPC prerequisite.
-	CloudResourceKind_AwsSecurityGroup CloudResourceKind = 215
-	CloudResourceKind_AwsVpc           CloudResourceKind = 216
+	CloudResourceKind_AwsSecurityGroup CloudResourceKind = 1015
+	CloudResourceKind_AwsVpc           CloudResourceKind = 1016
 	// AwsEksCluster is a prerequisite because nodes register with a live
 	// control plane; AwsIamRole and AwsSubnet back the node role and worker
 	// subnet references.
-	CloudResourceKind_AwsEksNodeGroup CloudResourceKind = 217
-	CloudResourceKind_AwsIamUser      CloudResourceKind = 218
-	CloudResourceKind_AwsKmsKey       CloudResourceKind = 219
-	CloudResourceKind_AwsEc2Instance  CloudResourceKind = 220
+	CloudResourceKind_AwsEksNodeGroup CloudResourceKind = 1017
+	CloudResourceKind_AwsIamUser      CloudResourceKind = 1018
+	CloudResourceKind_AwsKmsKey       CloudResourceKind = 1019
+	CloudResourceKind_AwsEc2Instance  CloudResourceKind = 1020
 	// Every Client VPN endpoint requires an ACM server certificate at create
 	// time; the imported self-signed fixture satisfies it. Subnets/VPC are
 	// optional composition (a zero-association endpoint is valid) -- composed
 	// scenarios declare them via the e2e-prerequisites annotation.
-	CloudResourceKind_AwsClientVpn  CloudResourceKind = 221
-	CloudResourceKind_AwsDocumentDb CloudResourceKind = 222
+	CloudResourceKind_AwsClientVpn  CloudResourceKind = 1021
+	CloudResourceKind_AwsDocumentDb CloudResourceKind = 1022
 	// AwsRoute53Zone is a prerequisite because every record lives inside a
 	// hosted zone -- the spec's zone_id reference must resolve before the
 	// record can be created.
-	CloudResourceKind_AwsRoute53DnsRecord CloudResourceKind = 223
+	CloudResourceKind_AwsRoute53DnsRecord CloudResourceKind = 1023
 	// AwsS3Bucket is a prerequisite because the object set's bucket reference
 	// is required -- objects cannot exist without the bucket that holds them.
-	CloudResourceKind_AwsS3ObjectSet     CloudResourceKind = 224
-	CloudResourceKind_AwsSqsQueue        CloudResourceKind = 225
-	CloudResourceKind_AwsSnsTopic        CloudResourceKind = 226
-	CloudResourceKind_AwsEventBridgeBus  CloudResourceKind = 227
-	CloudResourceKind_AwsEventBridgeRule CloudResourceKind = 228
-	CloudResourceKind_AwsIamOidcProvider CloudResourceKind = 229
-	CloudResourceKind_AwsIamPolicy       CloudResourceKind = 230
+	CloudResourceKind_AwsS3ObjectSet     CloudResourceKind = 1024
+	CloudResourceKind_AwsSqsQueue        CloudResourceKind = 1025
+	CloudResourceKind_AwsSnsTopic        CloudResourceKind = 1026
+	CloudResourceKind_AwsEventBridgeBus  CloudResourceKind = 1027
+	CloudResourceKind_AwsEventBridgeRule CloudResourceKind = 1028
+	CloudResourceKind_AwsIamOidcProvider CloudResourceKind = 1029
+	CloudResourceKind_AwsIamPolicy       CloudResourceKind = 1030
 	// AwsIamRole is a prerequisite because an instance profile is a wrapper that
 	// must contain a role to be useful -- the profile's spec requires a role
 	// reference, so the role must be deployed first.
-	CloudResourceKind_AwsIamInstanceProfile CloudResourceKind = 231
+	CloudResourceKind_AwsIamInstanceProfile CloudResourceKind = 1031
 	// AwsAlb and AwsLbTargetGroup are prerequisites because a listener is an
 	// attachment point on a load balancer and its default action almost always
 	// forwards to a target group -- both references must resolve before the
 	// listener can be created.
-	CloudResourceKind_AwsLbListener CloudResourceKind = 232
+	CloudResourceKind_AwsLbListener CloudResourceKind = 1032
 	// AwsLbListener is a prerequisite because a rule only exists as an
 	// attachment on a listener -- the listener_arn reference must resolve
 	// before the rule can be created.
-	CloudResourceKind_AwsLbListenerRule CloudResourceKind = 233
-	CloudResourceKind_AwsLaunchTemplate CloudResourceKind = 234
+	CloudResourceKind_AwsLbListenerRule CloudResourceKind = 1033
+	CloudResourceKind_AwsLaunchTemplate CloudResourceKind = 1034
 	// AwsSubnet and AwsLaunchTemplate are prerequisites because a group
 	// cannot exist without subnets to place capacity in and a launch
 	// template to launch from -- the spec's subnets and launch_template
 	// references must resolve before the group can be created.
-	CloudResourceKind_AwsAutoScalingGroup CloudResourceKind = 235
+	CloudResourceKind_AwsAutoScalingGroup CloudResourceKind = 1035
 	// AwsEksCluster is a prerequisite because an add-on installs onto a live
 	// control plane -- the spec's cluster_name reference must resolve before
 	// the add-on can be created.
-	CloudResourceKind_AwsEksAddon CloudResourceKind = 236
+	CloudResourceKind_AwsEksAddon CloudResourceKind = 1036
 	// AwsEksCluster, AwsIamRole, and AwsSubnet are prerequisites because a
 	// Fargate profile attaches to a live control plane, runs pods as a
 	// referenced pod-execution role, and launches them into referenced
 	// private subnets -- all three references must resolve first.
-	CloudResourceKind_AwsEksFargateProfile CloudResourceKind = 237
+	CloudResourceKind_AwsEksFargateProfile CloudResourceKind = 1037
 	// AwsEksCluster and AwsIamRole are prerequisites because an access entry
 	// grants a referenced IAM principal access to a live control plane --
 	// both references must resolve before the entry can be created.
-	CloudResourceKind_AwsEksAccessEntry CloudResourceKind = 238
+	CloudResourceKind_AwsEksAccessEntry CloudResourceKind = 1038
 	// AwsIamRole is a prerequisite because the kind's default posture --
 	// Fargate with the awslogs logging default -- is rejected by AWS at
 	// registration time without an execution role the agent can assume.
-	CloudResourceKind_AwsEcsTaskDefinition CloudResourceKind = 239
-	CloudResourceKind_AwsHttpApiGateway    CloudResourceKind = 240
+	CloudResourceKind_AwsEcsTaskDefinition CloudResourceKind = 1039
+	CloudResourceKind_AwsHttpApiGateway    CloudResourceKind = 1040
 	// AwsIamRole is a prerequisite because a state machine cannot be created
 	// without an execution role it can assume -- the spec's role_arn reference
 	// must resolve before the CreateStateMachine call.
-	CloudResourceKind_AwsStepFunction CloudResourceKind = 241
+	CloudResourceKind_AwsStepFunction CloudResourceKind = 1041
 	// AwsSubnet is a prerequisite because a VPC link is a set of managed ENIs
 	// provisioned into referenced subnets -- the subnet references must resolve
 	// before the link can be created. Security groups are optional on the link,
 	// so they compose per-scenario rather than as a registry prerequisite.
-	CloudResourceKind_AwsHttpApiVpcLink CloudResourceKind = 356
+	CloudResourceKind_AwsHttpApiVpcLink CloudResourceKind = 1156
 	// AwsCertManagerCert is a prerequisite because a custom domain cannot be
 	// created without a TLS certificate in the same region covering the domain
 	// -- the spec's certificate_arn reference must resolve first.
-	CloudResourceKind_AwsHttpApiDomain CloudResourceKind = 357
+	CloudResourceKind_AwsHttpApiDomain CloudResourceKind = 1157
 	// AwsVpcEndpoint's composed E2E scenarios reference the AwsVpc
 	// prerequisite's outputs (vpc_id + default_route_table_id for gateway
 	// endpoints) and the AwsSubnet pair's subnet_id outputs (interface
 	// endpoints), so both are genuine deploy-order prerequisites.
-	CloudResourceKind_AwsVpcEndpoint     CloudResourceKind = 242
-	CloudResourceKind_AwsElasticacheUser CloudResourceKind = 243
+	CloudResourceKind_AwsVpcEndpoint     CloudResourceKind = 1042
+	CloudResourceKind_AwsElasticacheUser CloudResourceKind = 1043
 	// AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
 	// user group that does not contain a user named "default", so a group's
 	// composed E2E scenario must resolve a deployed user's outputs.
-	CloudResourceKind_AwsElasticacheUserGroup        CloudResourceKind = 244
-	CloudResourceKind_AwsRedshiftServerlessNamespace CloudResourceKind = 245
+	CloudResourceKind_AwsElasticacheUserGroup        CloudResourceKind = 1044
+	CloudResourceKind_AwsRedshiftServerlessNamespace CloudResourceKind = 1045
 	// The namespace is a genuine prerequisite: a workgroup attaches to
 	// exactly one namespace by name at create time, so its composed E2E
 	// scenario must resolve a deployed namespace's outputs. AwsSubnet is a
 	// prerequisite because Redshift Serverless requires the workgroup's
 	// subnets to span three availability zones.
-	CloudResourceKind_AwsRedshiftServerlessWorkgroup CloudResourceKind = 246
+	CloudResourceKind_AwsRedshiftServerlessWorkgroup CloudResourceKind = 1046
 	// AwsSubnet is a prerequisite because the module builds an ElastiCache
 	// subnet group from referenced subnets -- the spec's subnet references
 	// must resolve before the replication group can deploy.
-	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 250
-	CloudResourceKind_AwsOpenSearchDomain      CloudResourceKind = 251
-	CloudResourceKind_AwsMemcachedElasticache  CloudResourceKind = 252
-	CloudResourceKind_AwsServerlessElasticache CloudResourceKind = 253
+	CloudResourceKind_AwsRedisElasticache      CloudResourceKind = 1050
+	CloudResourceKind_AwsOpenSearchDomain      CloudResourceKind = 1051
+	CloudResourceKind_AwsMemcachedElasticache  CloudResourceKind = 1052
+	CloudResourceKind_AwsServerlessElasticache CloudResourceKind = 1053
 	// AwsSubnet is a prerequisite because an NLB requires at least one subnet
 	// mapping -- the spec's subnet references must resolve before the load
 	// balancer can be created.
-	CloudResourceKind_AwsNlb               CloudResourceKind = 280
-	CloudResourceKind_AwsElasticIp         CloudResourceKind = 281
-	CloudResourceKind_AwsTransitGateway    CloudResourceKind = 282
-	CloudResourceKind_AwsGlobalAccelerator CloudResourceKind = 283
-	CloudResourceKind_AwsSubnet            CloudResourceKind = 284
-	CloudResourceKind_AwsInternetGateway   CloudResourceKind = 285
+	CloudResourceKind_AwsNlb               CloudResourceKind = 1080
+	CloudResourceKind_AwsElasticIp         CloudResourceKind = 1081
+	CloudResourceKind_AwsTransitGateway    CloudResourceKind = 1082
+	CloudResourceKind_AwsGlobalAccelerator CloudResourceKind = 1083
+	CloudResourceKind_AwsSubnet            CloudResourceKind = 1084
+	CloudResourceKind_AwsInternetGateway   CloudResourceKind = 1085
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
-	CloudResourceKind_AwsNatGateway                CloudResourceKind = 286
-	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 287
+	CloudResourceKind_AwsNatGateway                CloudResourceKind = 1086
+	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 1087
 	// AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
 	// (required, min 1) place the file system's NFS endpoints into subnets and
 	// attach security groups -- both references must resolve before the
 	// CreateMountTarget calls.
-	CloudResourceKind_AwsElasticFileSystem CloudResourceKind = 290
+	CloudResourceKind_AwsElasticFileSystem CloudResourceKind = 1090
 	// AwsElasticFileSystem is a prerequisite because an access point is created
 	// INTO a file system -- the spec's required file_system_id reference must
 	// resolve before the CreateAccessPoint call.
-	CloudResourceKind_AwsEfsAccessPoint       CloudResourceKind = 360
-	CloudResourceKind_AwsFsxLustreFileSystem  CloudResourceKind = 291
-	CloudResourceKind_AwsFsxOpenzfsFileSystem CloudResourceKind = 292
+	CloudResourceKind_AwsEfsAccessPoint       CloudResourceKind = 1160
+	CloudResourceKind_AwsFsxLustreFileSystem  CloudResourceKind = 1091
+	CloudResourceKind_AwsFsxOpenzfsFileSystem CloudResourceKind = 1092
 	// Every Windows file system must join an Active Directory domain; the
 	// directory itself is external infrastructure (AWS Managed Microsoft AD or
 	// a self-managed domain), so only the network dependency is a declarable
 	// prerequisite.
-	CloudResourceKind_AwsFsxWindowsFileSystem          CloudResourceKind = 293
-	CloudResourceKind_AwsFsxOntapFileSystem            CloudResourceKind = 294
-	CloudResourceKind_AwsFsxOntapStorageVirtualMachine CloudResourceKind = 295
-	CloudResourceKind_AwsFsxOntapVolume                CloudResourceKind = 296
-	CloudResourceKind_AwsFsxDataRepositoryAssociation  CloudResourceKind = 375
-	CloudResourceKind_AwsCognitoUserPool               CloudResourceKind = 300
+	CloudResourceKind_AwsFsxWindowsFileSystem          CloudResourceKind = 1093
+	CloudResourceKind_AwsFsxOntapFileSystem            CloudResourceKind = 1094
+	CloudResourceKind_AwsFsxOntapStorageVirtualMachine CloudResourceKind = 1095
+	CloudResourceKind_AwsFsxOntapVolume                CloudResourceKind = 1096
+	CloudResourceKind_AwsFsxDataRepositoryAssociation  CloudResourceKind = 1175
+	CloudResourceKind_AwsCognitoUserPool               CloudResourceKind = 1100
 	// AwsCognitoUserPool is a prerequisite because an identity provider is
 	// created INTO a pool -- the spec's required user_pool_id reference must
 	// resolve before the CreateIdentityProvider call.
-	CloudResourceKind_AwsCognitoIdentityProvider CloudResourceKind = 302
+	CloudResourceKind_AwsCognitoIdentityProvider CloudResourceKind = 1102
 	// AwsCognitoUserPool is a prerequisite because an app client is created
 	// INTO a pool -- the spec's required user_pool_id reference must resolve
 	// before the CreateUserPoolClient call.
-	CloudResourceKind_AwsCognitoUserPoolClient CloudResourceKind = 358
+	CloudResourceKind_AwsCognitoUserPoolClient CloudResourceKind = 1158
 	// AwsCognitoUserPool is a prerequisite because a resource server is created
 	// INTO a pool -- the spec's required user_pool_id reference must resolve
 	// before the CreateResourceServer call.
-	CloudResourceKind_AwsCognitoResourceServer    CloudResourceKind = 359
-	CloudResourceKind_AwsWafWebAcl                CloudResourceKind = 301
-	CloudResourceKind_AwsWafIpSet                 CloudResourceKind = 361
-	CloudResourceKind_AwsWafRegexPatternSet       CloudResourceKind = 362
-	CloudResourceKind_AwsCloudwatchLogGroup       CloudResourceKind = 310
-	CloudResourceKind_AwsCloudwatchAlarm          CloudResourceKind = 311
-	CloudResourceKind_AwsCloudwatchCompositeAlarm CloudResourceKind = 355
-	CloudResourceKind_AwsKinesisStream            CloudResourceKind = 260
+	CloudResourceKind_AwsCognitoResourceServer    CloudResourceKind = 1159
+	CloudResourceKind_AwsWafWebAcl                CloudResourceKind = 1101
+	CloudResourceKind_AwsWafIpSet                 CloudResourceKind = 1161
+	CloudResourceKind_AwsWafRegexPatternSet       CloudResourceKind = 1162
+	CloudResourceKind_AwsCloudwatchLogGroup       CloudResourceKind = 1110
+	CloudResourceKind_AwsCloudwatchAlarm          CloudResourceKind = 1111
+	CloudResourceKind_AwsCloudwatchCompositeAlarm CloudResourceKind = 1155
+	CloudResourceKind_AwsKinesisStream            CloudResourceKind = 1060
 	// Every Firehose destination requires an S3 configuration (the primary
 	// target for extended_s3; the failed/all-document backup for the rest)
 	// and an IAM role Firehose assumes to write to it, so both are hard
 	// deploy prerequisites.
-	CloudResourceKind_AwsKinesisFirehose CloudResourceKind = 261
+	CloudResourceKind_AwsKinesisFirehose CloudResourceKind = 1061
 	// A consumer registers against exactly one stream and cannot exist
 	// without it.
-	CloudResourceKind_AwsKinesisStreamConsumer CloudResourceKind = 262
-	CloudResourceKind_AwsAthenaWorkgroup       CloudResourceKind = 263
-	CloudResourceKind_AwsGlueCatalogDatabase   CloudResourceKind = 264
-	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 265
+	CloudResourceKind_AwsKinesisStreamConsumer CloudResourceKind = 1062
+	CloudResourceKind_AwsAthenaWorkgroup       CloudResourceKind = 1063
+	CloudResourceKind_AwsGlueCatalogDatabase   CloudResourceKind = 1064
+	CloudResourceKind_AwsRedshiftCluster       CloudResourceKind = 1065
 	// AI/ML
 	// A domain cannot exist without VPC subnets and a SageMaker execution role
 	// (default_user_settings.execution_role_arn is required), so both are hard
 	// deploy prerequisites.
-	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 270
+	CloudResourceKind_AwsSagemakerDomain CloudResourceKind = 1070
 	// A service can run entirely on companion defaults, so the App Runner
 	// family's kinds are dependency-free leaves except the VPC connector
 	// (which cannot exist without subnets and security groups). A service's
 	// companion references (auto scaling / VPC connector / observability /
 	// WAF) are optional composition -- scenarios declare them via the
 	// e2e-prerequisites annotation.
-	CloudResourceKind_AwsAppRunnerService                    CloudResourceKind = 320
-	CloudResourceKind_AwsAppRunnerAutoScalingConfiguration   CloudResourceKind = 368
-	CloudResourceKind_AwsAppRunnerVpcConnector               CloudResourceKind = 369
-	CloudResourceKind_AwsAppRunnerObservabilityConfiguration CloudResourceKind = 370
+	CloudResourceKind_AwsAppRunnerService                    CloudResourceKind = 1120
+	CloudResourceKind_AwsAppRunnerAutoScalingConfiguration   CloudResourceKind = 1168
+	CloudResourceKind_AwsAppRunnerVpcConnector               CloudResourceKind = 1169
+	CloudResourceKind_AwsAppRunnerObservabilityConfiguration CloudResourceKind = 1170
 	// AwsTransitGateway is a prerequisite because an attachment cannot exist
 	// without the gateway it attaches to; AwsSubnet because the attachment
 	// provisions an ENI into at least one subnet (the VPC arrives transitively
 	// through the subnet's own prerequisites).
-	CloudResourceKind_AwsTransitGatewayVpcAttachment CloudResourceKind = 371
+	CloudResourceKind_AwsTransitGatewayVpcAttachment CloudResourceKind = 1171
 	// Only the gateway is a hard prerequisite: a route table can exist empty.
 	// Associations, propagations, and routes referencing attachments are
 	// optional composition -- scenarios declare them via the e2e-prerequisites
 	// annotation.
-	CloudResourceKind_AwsTransitGatewayRouteTable CloudResourceKind = 372
+	CloudResourceKind_AwsTransitGatewayRouteTable CloudResourceKind = 1172
 	// A MANAGED compute environment always launches into VPC subnets, so the
 	// subnet is a hard deploy prerequisite (security groups are required only
 	// for the Fargate types -- scenario-declared, not a registry edge).
-	CloudResourceKind_AwsBatchComputeEnvironment CloudResourceKind = 321
+	CloudResourceKind_AwsBatchComputeEnvironment CloudResourceKind = 1121
 	// A job queue cannot exist without at least one VALID compute environment
 	// to map onto.
-	CloudResourceKind_AwsBatchJobQueue         CloudResourceKind = 363
-	CloudResourceKind_AwsBatchSchedulingPolicy CloudResourceKind = 364
-	CloudResourceKind_AwsBatchJobDefinition    CloudResourceKind = 365
+	CloudResourceKind_AwsBatchJobQueue         CloudResourceKind = 1163
+	CloudResourceKind_AwsBatchSchedulingPolicy CloudResourceKind = 1164
+	CloudResourceKind_AwsBatchJobDefinition    CloudResourceKind = 1165
 	// CI/CD
-	CloudResourceKind_AwsCodeBuildProject CloudResourceKind = 330
-	CloudResourceKind_AwsCodePipeline     CloudResourceKind = 331
+	CloudResourceKind_AwsCodeBuildProject CloudResourceKind = 1130
+	CloudResourceKind_AwsCodePipeline     CloudResourceKind = 1131
 	// Workflow / Orchestration
 	// AwsSubnet and AwsSecurityGroup are prerequisites because the environment's
 	// network interfaces are placed in referenced private subnets and AWS
 	// requires at least one attached security group at creation.
-	CloudResourceKind_AwsMwaaEnvironment CloudResourceKind = 340
+	CloudResourceKind_AwsMwaaEnvironment CloudResourceKind = 1140
 	// Graph Database
-	CloudResourceKind_AwsNeptuneCluster CloudResourceKind = 341
+	CloudResourceKind_AwsNeptuneCluster CloudResourceKind = 1141
 	// A cluster always launches into a subnet group; the subnets are the hard
 	// deploy prerequisite. The ACL it attaches is optional composition (the
 	// built-in "open-access" ACL needs no resource) -- scenarios declare the
 	// ACL/user chain via the e2e-prerequisites annotation.
-	CloudResourceKind_AwsMemorydbCluster CloudResourceKind = 342
-	CloudResourceKind_AwsMemorydbUser    CloudResourceKind = 373
+	CloudResourceKind_AwsMemorydbCluster CloudResourceKind = 1142
+	CloudResourceKind_AwsMemorydbUser    CloudResourceKind = 1173
 	// An empty ACL is valid (MemoryDB has no mandatory "default" member), so
 	// the user is optional composition -- the composed scenario declares it via
 	// the e2e-prerequisites annotation, never a registry edge.
-	CloudResourceKind_AwsMemorydbAcl CloudResourceKind = 374
+	CloudResourceKind_AwsMemorydbAcl CloudResourceKind = 1174
 	// Streaming
 	// AwsSubnet and AwsSecurityGroup are prerequisites because brokers are
 	// placed in referenced subnets and AWS requires at least one attached
 	// security group at creation.
-	CloudResourceKind_AwsMskCluster CloudResourceKind = 350
+	CloudResourceKind_AwsMskCluster CloudResourceKind = 1150
 	// AwsSubnet is a prerequisite because the serverless cluster's network
 	// interfaces are placed in referenced subnets (security groups are optional
 	// -- AWS attaches the VPC default group when none are referenced).
-	CloudResourceKind_AwsMskServerlessCluster CloudResourceKind = 351
+	CloudResourceKind_AwsMskServerlessCluster CloudResourceKind = 1151
 	// AwsLambda is a prerequisite because a mapping cannot exist without the
 	// function it invokes (a required reference). Event sources (SQS, Kinesis,
 	// DynamoDB, MSK) are optional composition -- scenarios declare them via the
 	// e2e-prerequisites annotation rather than taxing every consumer's chain.
-	CloudResourceKind_AwsLambdaEventSourceMapping CloudResourceKind = 352
+	CloudResourceKind_AwsLambdaEventSourceMapping CloudResourceKind = 1152
 	// AwsSnsTopic is a prerequisite because a subscription cannot exist without
 	// the topic it subscribes to (a required reference). Endpoints (SQS queues,
 	// Lambda functions, Firehose streams) are optional composition -- scenarios
 	// declare them via the e2e-prerequisites annotation rather than taxing
 	// every consumer's chain.
-	CloudResourceKind_AwsSnsSubscription CloudResourceKind = 353
+	CloudResourceKind_AwsSnsSubscription CloudResourceKind = 1153
 	// AwsSubnet is a prerequisite because the runner appliance places its
 	// network interfaces into referenced subnets -- the placement reference
 	// must resolve before the appliance can deploy.
-	CloudResourceKind_AwsPlantonRunner      CloudResourceKind = 354
-	CloudResourceKind_AwsRoute53HealthCheck CloudResourceKind = 376
+	CloudResourceKind_AwsPlantonRunner      CloudResourceKind = 1154
+	CloudResourceKind_AwsRoute53HealthCheck CloudResourceKind = 1176
 	// Both SES kinds are dependency-free leaves: an identity's configuration
 	// set is optional composition (scenarios declare it via the
 	// e2e-prerequisites annotation), and a configuration set's event
 	// destinations reference other kinds only optionally.
-	CloudResourceKind_AwsSesConfigurationSet CloudResourceKind = 366
-	CloudResourceKind_AwsSesEmailIdentity    CloudResourceKind = 367
-	// 400–599: Azure resources
-	CloudResourceKind_AzureResourceGroup CloudResourceKind = 400
+	CloudResourceKind_AwsSesConfigurationSet CloudResourceKind = 1166
+	CloudResourceKind_AwsSesEmailIdentity    CloudResourceKind = 1167
+	// 2000–2999: Azure resources
+	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
 	// inside a referenced resource group. Subnet is optional on the default
 	// node pool (AKS provisions managed networking when unset).
-	CloudResourceKind_AzureAksCluster CloudResourceKind = 401
+	CloudResourceKind_AzureAksCluster CloudResourceKind = 2001
 	// AzureAksCluster is a prerequisite because a node pool attaches to an
 	// existing cluster by ARM ID; the resource group chains transitively.
-	CloudResourceKind_AzureAksNodePool CloudResourceKind = 402
+	CloudResourceKind_AzureAksNodePool CloudResourceKind = 2002
 	// AzureResourceGroup is a prerequisite because a container registry is
 	// created inside a resource group.
-	CloudResourceKind_AzureContainerRegistry CloudResourceKind = 403
+	CloudResourceKind_AzureContainerRegistry CloudResourceKind = 2003
 	// AzureResourceGroup is a prerequisite because the DNS zone is created
 	// inside a referenced resource group that must already exist.
-	CloudResourceKind_AzureDnsZone CloudResourceKind = 404
+	CloudResourceKind_AzureDnsZone CloudResourceKind = 2004
 	// AzureResourceGroup is a prerequisite because a key vault is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureKeyVault CloudResourceKind = 405
+	CloudResourceKind_AzureKeyVault CloudResourceKind = 2005
 	// AzureResourceGroup is a prerequisite because a virtual network is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureVirtualNetwork CloudResourceKind = 406
+	CloudResourceKind_AzureVirtualNetwork CloudResourceKind = 2006
 	// AzureResourceGroup is a prerequisite because a NAT gateway is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureNatGateway CloudResourceKind = 407
+	CloudResourceKind_AzureNatGateway CloudResourceKind = 2007
 	// AzureNetworkInterface is a prerequisite because a virtual machine
 	// attaches at least one NIC (the subnet, network, and resource group
 	// chain transitively through the NIC's own prerequisites).
-	CloudResourceKind_AzureVirtualMachine CloudResourceKind = 408
+	CloudResourceKind_AzureVirtualMachine CloudResourceKind = 2008
 	// AzureResourceGroup is a prerequisite because a storage account is
 	// created inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureStorageAccount CloudResourceKind = 409
+	CloudResourceKind_AzureStorageAccount CloudResourceKind = 2009
 	// AzureDnsZone is a prerequisite because a record set is created inside
 	// a referenced zone (the resource group chains transitively through the
 	// zone). Public DNS zone names are not globally unique, so a shared
 	// zone fixture is safe to recreate across scenarios.
-	CloudResourceKind_AzureDnsRecord CloudResourceKind = 410
+	CloudResourceKind_AzureDnsRecord CloudResourceKind = 2010
 	// AzureVirtualNetwork is a prerequisite because a subnet is an ARM child
 	// of a referenced network -- the network must exist before the subnet can
 	// be written. (The resource group arrives transitively through the
 	// network's own prerequisite declaration.)
-	CloudResourceKind_AzureSubnet CloudResourceKind = 411
+	CloudResourceKind_AzureSubnet CloudResourceKind = 2011
 	// AzureResourceGroup is a prerequisite because a network security group is
 	// created inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureNetworkSecurityGroup CloudResourceKind = 412
+	CloudResourceKind_AzureNetworkSecurityGroup CloudResourceKind = 2012
 	// AzureResourceGroup is a prerequisite because a public IP is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzurePublicIp CloudResourceKind = 413
+	CloudResourceKind_AzurePublicIp CloudResourceKind = 2013
 	// AzureSubnet is a prerequisite because a private endpoint draws its
 	// private IP from a referenced subnet (the virtual network and resource
 	// group chain transitively through the subnet's own prerequisite). The
 	// connection target is polymorphic and the DNS zones / ASGs are optional,
 	// so none of those are prerequisites.
-	CloudResourceKind_AzurePrivateEndpoint CloudResourceKind = 414
+	CloudResourceKind_AzurePrivateEndpoint CloudResourceKind = 2014
 	// AzureResourceGroup is a prerequisite because a private DNS zone is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzurePrivateDnsZone CloudResourceKind = 415
+	CloudResourceKind_AzurePrivateDnsZone CloudResourceKind = 2015
 	// AzureSubnet is a prerequisite because a gateway cannot exist without
 	// its dedicated gateway_ip_configuration subnet (the network and
 	// resource group chain transitively through the subnet's own
 	// prerequisites); public frontends additionally reference a public IP,
 	// but private-only gateways are legal, so it is not a registry
 	// prerequisite.
-	CloudResourceKind_AzureApplicationGateway CloudResourceKind = 416
+	CloudResourceKind_AzureApplicationGateway CloudResourceKind = 2016
 	// AzureResourceGroup is a prerequisite because a load balancer is
 	// created inside a referenced resource group (frontends additionally
 	// reference subnets or public IPs, but neither is universally
 	// required, so they are not registry prerequisites).
-	CloudResourceKind_AzureLoadBalancer CloudResourceKind = 417
+	CloudResourceKind_AzureLoadBalancer CloudResourceKind = 2017
 	// AzureResourceGroup is a prerequisite because a route table is created
 	// inside a referenced resource group in composed environments.
-	CloudResourceKind_AzureRouteTable CloudResourceKind = 418
+	CloudResourceKind_AzureRouteTable CloudResourceKind = 2018
 	// AzurePrivateDnsZone and AzureVirtualNetwork are prerequisites because a
 	// virtual network link is a child resource of a referenced zone and binds
 	// it to a referenced network -- both must exist before the link can be
 	// written. (The resource group arrives transitively through the zone's and
 	// network's own prerequisite declarations.)
-	CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink CloudResourceKind = 419
+	CloudResourceKind_AzurePrivateDnsZoneVirtualNetworkLink CloudResourceKind = 2019
 	// AzureVirtualNetwork is a prerequisite because a peering is an ARM child
 	// of its local network and binds it to a remote network -- the local
 	// network must exist before the peering can be written. (The resource
 	// group arrives transitively through the network's own prerequisite
 	// declaration.)
-	CloudResourceKind_AzureVirtualNetworkPeering CloudResourceKind = 420
+	CloudResourceKind_AzureVirtualNetworkPeering CloudResourceKind = 2020
 	// AzureResourceGroup is a prerequisite because a public IP prefix is
 	// created inside a referenced resource group in composed environments.
-	CloudResourceKind_AzurePublicIpPrefix CloudResourceKind = 421
+	CloudResourceKind_AzurePublicIpPrefix CloudResourceKind = 2021
 	// AzureSubnet is a prerequisite because a network interface's IP
 	// configurations deploy into a subnet (the virtual network and resource
 	// group chain transitively through the subnet's own prerequisite).
-	CloudResourceKind_AzureNetworkInterface CloudResourceKind = 422
+	CloudResourceKind_AzureNetworkInterface CloudResourceKind = 2022
 	// AzureResourceGroup is a prerequisite because a managed disk is created
 	// inside a resource group.
-	CloudResourceKind_AzureManagedDisk CloudResourceKind = 423
+	CloudResourceKind_AzureManagedDisk CloudResourceKind = 2023
 	// AzureSubnet is a prerequisite because every scale-set instance's
 	// network interface deploys into a subnet (the virtual network and
 	// resource group chain transitively through the subnet's own
 	// prerequisite).
-	CloudResourceKind_AzureVirtualMachineScaleSet CloudResourceKind = 424
+	CloudResourceKind_AzureVirtualMachineScaleSet CloudResourceKind = 2024
 	// AzureKeyVault is a prerequisite because a key is a data-plane object
 	// inside a referenced vault -- the vault must exist before the key can be
 	// written (the resource group chains transitively through the vault's own
 	// prerequisite).
-	CloudResourceKind_AzureKeyVaultKey CloudResourceKind = 425
+	CloudResourceKind_AzureKeyVaultKey CloudResourceKind = 2025
 	// AzureKeyVault is a prerequisite because a certificate is a data-plane
 	// object inside a referenced vault -- the vault must exist before the
 	// certificate can be enrolled or imported (the resource group chains
 	// transitively through the vault's own prerequisite).
-	CloudResourceKind_AzureKeyVaultCertificate CloudResourceKind = 426
+	CloudResourceKind_AzureKeyVaultCertificate CloudResourceKind = 2026
 	// AzureResourceGroup is a prerequisite because a WAF policy is created
 	// inside a referenced resource group; the Application Gateways that
 	// attach the policy reference it, never the reverse.
-	CloudResourceKind_AzureWebApplicationFirewallPolicy CloudResourceKind = 427
+	CloudResourceKind_AzureWebApplicationFirewallPolicy CloudResourceKind = 2027
 	// AzureResourceGroup is a prerequisite because an application security
 	// group is created inside a referenced resource group; network
 	// interfaces, scale-set IP configurations, and NSG security rules
 	// reference the group, never the reverse.
-	CloudResourceKind_AzureApplicationSecurityGroup CloudResourceKind = 428
+	CloudResourceKind_AzureApplicationSecurityGroup CloudResourceKind = 2028
 	// AzureKeyVaultKey is a prerequisite because a disk encryption set wraps
 	// customer data with a referenced key -- the key (and its vault, which
 	// chains transitively) must exist before the set can resolve the key URL
 	// at create time.
-	CloudResourceKind_AzureDiskEncryptionSet CloudResourceKind = 429
+	CloudResourceKind_AzureDiskEncryptionSet CloudResourceKind = 2029
 	// AzureResourceGroup is a prerequisite because a server is created inside
 	// a referenced resource group (VNet injection additionally references a
 	// delegated subnet and a private DNS zone, but neither is universally
 	// required, so they are not registry prerequisites).
-	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 430
+	CloudResourceKind_AzurePostgresqlFlexibleServer CloudResourceKind = 2030
 	// AzureResourceGroup is a prerequisite because the cache is created inside
 	// a referenced resource group (VNet injection additionally references a
 	// dedicated subnet, but only the Premium tier supports it, so it is not a
 	// registry prerequisite).
-	CloudResourceKind_AzureRedisCache CloudResourceKind = 431
+	CloudResourceKind_AzureRedisCache CloudResourceKind = 2031
 	// AzureResourceGroup is a prerequisite because the account is created
 	// inside a referenced resource group.
-	CloudResourceKind_AzureCosmosdbAccount CloudResourceKind = 432
+	CloudResourceKind_AzureCosmosdbAccount CloudResourceKind = 2032
 	// AzureResourceGroup is a prerequisite because the logical server is
 	// created inside a referenced resource group.
-	CloudResourceKind_AzureMssqlServer CloudResourceKind = 433
+	CloudResourceKind_AzureMssqlServer CloudResourceKind = 2033
 	// AzureResourceGroup is a prerequisite because a server is created inside
 	// a referenced resource group (VNet injection additionally references a
 	// delegated subnet and a private DNS zone, but neither is universally
 	// required, so they are not registry prerequisites).
-	CloudResourceKind_AzureMysqlFlexibleServer CloudResourceKind = 434
+	CloudResourceKind_AzureMysqlFlexibleServer CloudResourceKind = 2034
 	// The parent logical server is referenced via server_id, not auto-deployed:
 	// E2E scenarios declare their own server fixture (minimal-server.yaml or
 	// the pool-attach chain through AzureMssqlElasticPool) so sequential
 	// subtests never destroy and recreate the same globally unique server_name.
-	CloudResourceKind_AzureMssqlDatabase CloudResourceKind = 435
+	CloudResourceKind_AzureMssqlDatabase CloudResourceKind = 2035
 	// AzureMssqlServer is a prerequisite because every elastic pool lives on
 	// a referenced logical server (the server's resource group is transitive).
-	CloudResourceKind_AzureMssqlElasticPool CloudResourceKind = 436
+	CloudResourceKind_AzureMssqlElasticPool CloudResourceKind = 2036
 	// The target and linked caches are referenced via ARM ids, not
 	// auto-deployed: caches are the slowest-provisioning resources in the
 	// Azure catalog and their names are globally unique, so E2E scenarios
 	// declare their own cache fixtures instead of a registry prerequisite
 	// recreating a shared one per run.
-	CloudResourceKind_AzureRedisLinkedServer CloudResourceKind = 437
+	CloudResourceKind_AzureRedisLinkedServer CloudResourceKind = 2037
 	// The parent cache is referenced via redis_cache_id, not auto-deployed:
 	// caches are the slowest-provisioning resources in the Azure catalog and
 	// their names are globally unique, so E2E scenarios declare their own
 	// cache fixtures instead of a registry prerequisite recreating a shared
 	// one per run.
-	CloudResourceKind_AzureRedisCacheAccessPolicy CloudResourceKind = 438
+	CloudResourceKind_AzureRedisCacheAccessPolicy CloudResourceKind = 2038
 	// The parent cache is referenced via redis_cache_id, not auto-deployed:
 	// caches are the slowest-provisioning resources in the Azure catalog and
 	// their names are globally unique, so E2E scenarios declare their own
 	// cache fixtures instead of a registry prerequisite recreating a shared
 	// one per run.
-	CloudResourceKind_AzureRedisCacheAccessPolicyAssignment CloudResourceKind = 439
+	CloudResourceKind_AzureRedisCacheAccessPolicyAssignment CloudResourceKind = 2039
 	// AzureResourceGroup is a prerequisite because the environment is created
 	// inside a referenced resource group that must already exist.
-	CloudResourceKind_AzureContainerAppEnvironment CloudResourceKind = 440
+	CloudResourceKind_AzureContainerAppEnvironment CloudResourceKind = 2040
 	// AzureContainerAppEnvironment is a prerequisite because every app runs
 	// inside a referenced environment (the resource group arrives
 	// transitively through it).
-	CloudResourceKind_AzureContainerApp CloudResourceKind = 441
+	CloudResourceKind_AzureContainerApp CloudResourceKind = 2041
 	// AzureResourceGroup is a prerequisite because the plan is created inside
 	// a referenced resource group that must already exist.
-	CloudResourceKind_AzureServicePlan CloudResourceKind = 442
+	CloudResourceKind_AzureServicePlan CloudResourceKind = 2042
 	// AzureServicePlan is a prerequisite because a function app runs on a
 	// referenced plan (the resource group arrives transitively through the
 	// plan). The required storage account is deliberately NOT a registry
 	// prerequisite: storage-account names are globally unique, so scenarios
 	// bring their own scenario-local account fixtures.
-	CloudResourceKind_AzureFunctionApp CloudResourceKind = 443
+	CloudResourceKind_AzureFunctionApp CloudResourceKind = 2043
 	// AzureServicePlan is a prerequisite because a web app runs on a
 	// referenced plan (the resource group arrives transitively through the
 	// plan).
-	CloudResourceKind_AzureLinuxWebApp CloudResourceKind = 444
+	CloudResourceKind_AzureLinuxWebApp CloudResourceKind = 2044
 	// AzureContainerAppEnvironment is a prerequisite because a job runs
 	// inside a referenced environment (the resource group arrives
 	// transitively through it).
-	CloudResourceKind_AzureContainerAppJob CloudResourceKind = 445
+	CloudResourceKind_AzureContainerAppJob CloudResourceKind = 2045
 	// AzureContainerAppEnvironment is a prerequisite because the storage
 	// registration lives on a referenced environment. The Azure Files
 	// share and storage account are deliberately NOT registry
 	// prerequisites: storage-account names are globally unique, so
 	// scenarios bring their own scenario-local account + share fixtures.
-	CloudResourceKind_AzureContainerAppEnvironmentStorage CloudResourceKind = 446
+	CloudResourceKind_AzureContainerAppEnvironmentStorage CloudResourceKind = 2046
 	// AzureContainerAppEnvironment is a prerequisite because the Dapr
 	// component is registered on a referenced environment.
-	CloudResourceKind_AzureContainerAppEnvironmentDaprComponent CloudResourceKind = 447
+	CloudResourceKind_AzureContainerAppEnvironmentDaprComponent CloudResourceKind = 2047
 	// AzureContainerAppEnvironment is a prerequisite because the
 	// certificate is stored on a referenced environment.
-	CloudResourceKind_AzureContainerAppEnvironmentCertificate CloudResourceKind = 448
+	CloudResourceKind_AzureContainerAppEnvironmentCertificate CloudResourceKind = 2048
 	// AzureContainerAppEnvironment is a prerequisite because the managed
 	// certificate is provisioned on a referenced environment.
-	CloudResourceKind_AzureContainerAppEnvironmentManagedCertificate CloudResourceKind = 449
+	CloudResourceKind_AzureContainerAppEnvironmentManagedCertificate CloudResourceKind = 2049
 	// AzureResourceGroup is a prerequisite because the workspace is created
 	// inside a referenced resource group that must already exist.
-	CloudResourceKind_AzureLogAnalyticsWorkspace CloudResourceKind = 450
+	CloudResourceKind_AzureLogAnalyticsWorkspace CloudResourceKind = 2050
 	// AzureLogAnalyticsWorkspace is a prerequisite because workspace-based
 	// Application Insights stores its telemetry in a referenced workspace
 	// (the resource group chains transitively through the workspace).
-	CloudResourceKind_AzureApplicationInsights CloudResourceKind = 451
+	CloudResourceKind_AzureApplicationInsights CloudResourceKind = 2051
 	// AzureLogAnalyticsWorkspace is a prerequisite because the setting's
 	// scenarios route a fixture workspace's telemetry (the workspace doubles
 	// as target and destination); the target itself is polymorphic.
-	CloudResourceKind_AzureMonitorDiagnosticSetting CloudResourceKind = 452
+	CloudResourceKind_AzureMonitorDiagnosticSetting CloudResourceKind = 2052
 	// AzureResourceGroup is a prerequisite because the action group is
 	// created inside a referenced resource group that must already exist.
-	CloudResourceKind_AzureMonitorActionGroup CloudResourceKind = 453
+	CloudResourceKind_AzureMonitorActionGroup CloudResourceKind = 2053
 	// AzureMonitorActionGroup is a prerequisite because a metric alert's
 	// actions fire into a referenced action group (the resource group chains
 	// transitively); alert scopes are polymorphic.
-	CloudResourceKind_AzureMonitorMetricAlert CloudResourceKind = 454
+	CloudResourceKind_AzureMonitorMetricAlert CloudResourceKind = 2054
 	// AzureLogAnalyticsWorkspace is a prerequisite because the rule queries a
 	// referenced workspace scope; AzureMonitorActionGroup because its action
 	// fires into a referenced action group.
-	CloudResourceKind_AzureMonitorScheduledQueryAlert CloudResourceKind = 455
+	CloudResourceKind_AzureMonitorScheduledQueryAlert CloudResourceKind = 2055
 	// AzureMonitorActionGroup is a prerequisite because an activity log
 	// alert's actions fire into a referenced action group (the resource
 	// group chains transitively). The alert itself is subscription-global
 	// and its scopes are polymorphic.
-	CloudResourceKind_AzureMonitorActivityLogAlert CloudResourceKind = 456
+	CloudResourceKind_AzureMonitorActivityLogAlert CloudResourceKind = 2056
 	// AzureApplicationInsights is a prerequisite because a standard web test
 	// binds to a referenced Application Insights component (the resource
 	// group chains transitively through the component).
-	CloudResourceKind_AzureApplicationInsightsStandardWebTest CloudResourceKind = 457
+	CloudResourceKind_AzureApplicationInsightsStandardWebTest CloudResourceKind = 2057
 	// AzureResourceGroup is a prerequisite because the identity is created
 	// inside a referenced resource group that must already exist.
-	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 460
+	CloudResourceKind_AzureUserAssignedIdentity CloudResourceKind = 2060
 	// AzureResourceGroup and AzureUserAssignedIdentity are prerequisites because
 	// an assignment grants a role at a referenced scope (most commonly a resource
 	// group) to a referenced principal (most commonly a managed identity) -- both
 	// must exist before the grant can be written.
-	CloudResourceKind_AzureRoleAssignment CloudResourceKind = 461
+	CloudResourceKind_AzureRoleAssignment CloudResourceKind = 2061
 	// AzureResourceGroup is a prerequisite because a custom role definition is
 	// created at a referenced scope, most commonly a resource group in composed
 	// environments -- the scope must exist before the definition can be written.
-	CloudResourceKind_AzureRoleDefinition CloudResourceKind = 462
+	CloudResourceKind_AzureRoleDefinition CloudResourceKind = 2062
 	// AzureUserAssignedIdentity is the prerequisite because a federated identity
 	// credential is a child resource of a referenced managed identity -- the
 	// identity must exist before the credential can be written on it. (The
 	// resource group arrives transitively through the identity's own
 	// prerequisite declaration.)
-	CloudResourceKind_AzureFederatedIdentityCredential CloudResourceKind = 463
+	CloudResourceKind_AzureFederatedIdentityCredential CloudResourceKind = 2063
 	// AzureResourceGroup is a prerequisite because a Service Bus namespace is
 	// created inside a referenced resource group in composed environments.
 	// The namespace is the container every Service Bus messaging entity
@@ -582,7 +582,7 @@ const (
 	// prerequisite: namespace names are globally unique with a post-delete
 	// name hold, so E2E composes them with scenario-local namespace
 	// fixtures instead of a shared recreate-per-scenario prerequisite.
-	CloudResourceKind_AzureServiceBusNamespace CloudResourceKind = 470
+	CloudResourceKind_AzureServiceBusNamespace CloudResourceKind = 2070
 	// AzureResourceGroup is a prerequisite because an Event Hub namespace is
 	// created inside a referenced resource group in composed environments.
 	// The namespace is the container every Event Hubs entity (event hub,
@@ -592,63 +592,63 @@ const (
 	// with a post-delete name hold, so E2E composes them with scenario-local
 	// namespace fixtures instead of a shared recreate-per-scenario
 	// prerequisite.
-	CloudResourceKind_AzureEventHubNamespace                CloudResourceKind = 471
-	CloudResourceKind_AzureServiceBusQueue                  CloudResourceKind = 472
-	CloudResourceKind_AzureServiceBusTopic                  CloudResourceKind = 473
-	CloudResourceKind_AzureServiceBusSubscription           CloudResourceKind = 474
-	CloudResourceKind_AzureServiceBusAuthorizationRule      CloudResourceKind = 475
-	CloudResourceKind_AzureServiceBusDisasterRecoveryConfig CloudResourceKind = 476
-	CloudResourceKind_AzureEventHub                         CloudResourceKind = 477
-	CloudResourceKind_AzureEventHubConsumerGroup            CloudResourceKind = 478
-	CloudResourceKind_AzureEventHubAuthorizationRule        CloudResourceKind = 479
+	CloudResourceKind_AzureEventHubNamespace                CloudResourceKind = 2071
+	CloudResourceKind_AzureServiceBusQueue                  CloudResourceKind = 2072
+	CloudResourceKind_AzureServiceBusTopic                  CloudResourceKind = 2073
+	CloudResourceKind_AzureServiceBusSubscription           CloudResourceKind = 2074
+	CloudResourceKind_AzureServiceBusAuthorizationRule      CloudResourceKind = 2075
+	CloudResourceKind_AzureServiceBusDisasterRecoveryConfig CloudResourceKind = 2076
+	CloudResourceKind_AzureEventHub                         CloudResourceKind = 2077
+	CloudResourceKind_AzureEventHubConsumerGroup            CloudResourceKind = 2078
+	CloudResourceKind_AzureEventHubAuthorizationRule        CloudResourceKind = 2079
 	// AzureResourceGroup is a prerequisite because a Front Door profile is
 	// created inside a referenced resource group in composed environments.
 	// The profile is the container every Front Door delivery resource
 	// (endpoint, origin group, origin, route) nests under.
-	CloudResourceKind_AzureFrontDoorProfile CloudResourceKind = 480
+	CloudResourceKind_AzureFrontDoorProfile CloudResourceKind = 2080
 	// AzureFrontDoorProfile is a prerequisite because an endpoint is an ARM
 	// child of a referenced profile -- the profile must exist before the
 	// endpoint can be written. (The resource group arrives transitively
 	// through the profile's own prerequisite declaration.)
-	CloudResourceKind_AzureFrontDoorEndpoint CloudResourceKind = 481
+	CloudResourceKind_AzureFrontDoorEndpoint CloudResourceKind = 2081
 	// AzureFrontDoorProfile is a prerequisite because an origin group is an
 	// ARM child of a referenced profile.
-	CloudResourceKind_AzureFrontDoorOriginGroup CloudResourceKind = 482
+	CloudResourceKind_AzureFrontDoorOriginGroup CloudResourceKind = 2082
 	// AzureFrontDoorOriginGroup is a prerequisite because an origin is an
 	// ARM child of a referenced origin group (the profile and resource
 	// group chain transitively).
-	CloudResourceKind_AzureFrontDoorOrigin CloudResourceKind = 483
+	CloudResourceKind_AzureFrontDoorOrigin CloudResourceKind = 2083
 	// A route attaches to an endpoint (its ARM parent) and forwards to an
 	// origin group whose origins must exist before ARM accepts the route --
 	// so both the endpoint and the origin chain are genuine deploy-order
 	// prerequisites.
-	CloudResourceKind_AzureFrontDoorRoute CloudResourceKind = 484
+	CloudResourceKind_AzureFrontDoorRoute CloudResourceKind = 2084
 	// AzureFrontDoorProfile is a prerequisite because a rule set is an ARM
 	// child of a referenced profile. The rules live inside the set (they
 	// form one ordered policy document); routes attach the set by ARM ID.
-	CloudResourceKind_AzureFrontDoorRuleSet CloudResourceKind = 485
+	CloudResourceKind_AzureFrontDoorRuleSet CloudResourceKind = 2085
 	// AzureFrontDoorProfile is a prerequisite because a custom domain is an
 	// ARM child of a referenced profile. The DNS zone and (for
 	// bring-your-own certificates) the Front Door secret are optional
 	// references, not deploy-order prerequisites.
-	CloudResourceKind_AzureFrontDoorCustomDomain CloudResourceKind = 486
+	CloudResourceKind_AzureFrontDoorCustomDomain CloudResourceKind = 2086
 	// AzureFrontDoorSecret is a prerequisite-light kind: only the profile
 	// (its ARM parent) must exist. The Key Vault certificate it wraps is a
 	// reference resolved before the module runs; its vault chain is
 	// exercised through scenario-local fixtures in E2E.
-	CloudResourceKind_AzureFrontDoorSecret CloudResourceKind = 487
+	CloudResourceKind_AzureFrontDoorSecret CloudResourceKind = 2087
 	// AzureResourceGroup is a prerequisite because the Front Door WAF
 	// policy is created inside a referenced resource group -- it is a
 	// GLOBAL resource, not a profile child (a different ARM type than the
 	// regional Application Gateway WAF policy). Security policies attach
 	// it to profiles; the policy itself depends on nothing else.
-	CloudResourceKind_AzureFrontDoorFirewallPolicy CloudResourceKind = 488
+	CloudResourceKind_AzureFrontDoorFirewallPolicy CloudResourceKind = 2088
 	// A security policy is an ARM child of a profile that associates a
 	// referenced WAF policy with referenced domains -- so the endpoint
 	// (the default-domain association target; the profile arrives
 	// transitively through it) and the WAF policy are genuine
 	// deploy-order prerequisites.
-	CloudResourceKind_AzureFrontDoorSecurityPolicy CloudResourceKind = 489 // --- Storage data services ---
+	CloudResourceKind_AzureFrontDoorSecurityPolicy CloudResourceKind = 2089 // --- Storage data services ---
 	// None of the storage data-service kinds declares a registry
 	// prerequisite on AzureStorageAccount: account names are GLOBALLY
 	// unique and Azure holds a just-deleted name, so a
@@ -656,14 +656,14 @@ const (
 	// declare scenario-local account fixtures instead. Deploy ordering in
 	// composed environments still flows from the storage_account_id
 	// reference itself.
-	CloudResourceKind_AzureStorageContainer              CloudResourceKind = 490
-	CloudResourceKind_AzureStorageShare                  CloudResourceKind = 491
-	CloudResourceKind_AzureStorageQueue                  CloudResourceKind = 492
-	CloudResourceKind_AzureStorageTable                  CloudResourceKind = 493
-	CloudResourceKind_AzureStorageEncryptionScope        CloudResourceKind = 494
-	CloudResourceKind_AzureStorageDataLakeGen2Filesystem CloudResourceKind = 495
-	CloudResourceKind_AzureStorageLocalUser              CloudResourceKind = 496
-	CloudResourceKind_AzureStorageObjectReplication      CloudResourceKind = 497
+	CloudResourceKind_AzureStorageContainer              CloudResourceKind = 2090
+	CloudResourceKind_AzureStorageShare                  CloudResourceKind = 2091
+	CloudResourceKind_AzureStorageQueue                  CloudResourceKind = 2092
+	CloudResourceKind_AzureStorageTable                  CloudResourceKind = 2093
+	CloudResourceKind_AzureStorageEncryptionScope        CloudResourceKind = 2094
+	CloudResourceKind_AzureStorageDataLakeGen2Filesystem CloudResourceKind = 2095
+	CloudResourceKind_AzureStorageLocalUser              CloudResourceKind = 2096
+	CloudResourceKind_AzureStorageObjectReplication      CloudResourceKind = 2097
 	// None of the Cosmos DB data-service kinds declares a registry
 	// prerequisite on AzureCosmosdbAccount: account names are GLOBALLY
 	// unique DNS labels, so a recreate-per-scenario fixture would risk
@@ -671,12 +671,12 @@ const (
 	// account fixtures instead. Deploy ordering in composed environments
 	// still flows from the cosmosdb_account_id / parent-database
 	// references themselves.
-	CloudResourceKind_AzureCosmosdbSqlDatabase       CloudResourceKind = 500
-	CloudResourceKind_AzureCosmosdbSqlContainer      CloudResourceKind = 501
-	CloudResourceKind_AzureCosmosdbMongoDatabase     CloudResourceKind = 502
-	CloudResourceKind_AzureCosmosdbMongoCollection   CloudResourceKind = 503
-	CloudResourceKind_AzureCosmosdbSqlRoleDefinition CloudResourceKind = 504
-	CloudResourceKind_AzureCosmosdbSqlRoleAssignment CloudResourceKind = 505
+	CloudResourceKind_AzureCosmosdbSqlDatabase       CloudResourceKind = 2100
+	CloudResourceKind_AzureCosmosdbSqlContainer      CloudResourceKind = 2101
+	CloudResourceKind_AzureCosmosdbMongoDatabase     CloudResourceKind = 2102
+	CloudResourceKind_AzureCosmosdbMongoCollection   CloudResourceKind = 2103
+	CloudResourceKind_AzureCosmosdbSqlRoleDefinition CloudResourceKind = 2104
+	CloudResourceKind_AzureCosmosdbSqlRoleAssignment CloudResourceKind = 2105
 	// AzureResourceGroup is the cluster's only registry prerequisite: the
 	// cluster is created inside a referenced resource group. The
 	// geo-replication and access-policy-assignment children declare NO
@@ -685,1160 +685,1160 @@ const (
 	// scenario-local cluster fixtures instead of recreating a shared one
 	// per scenario. Deploy ordering in composed environments still flows
 	// from the managed_redis_id references themselves.
-	CloudResourceKind_AzureManagedRedis                       CloudResourceKind = 510
-	CloudResourceKind_AzureManagedRedisGeoReplication         CloudResourceKind = 511
-	CloudResourceKind_AzureManagedRedisAccessPolicyAssignment CloudResourceKind = 512
-	CloudResourceKind_AzureEventHubDisasterRecoveryConfig     CloudResourceKind = 520
-	CloudResourceKind_AzureEventHubSchemaGroup                CloudResourceKind = 521
+	CloudResourceKind_AzureManagedRedis                       CloudResourceKind = 2110
+	CloudResourceKind_AzureManagedRedisGeoReplication         CloudResourceKind = 2111
+	CloudResourceKind_AzureManagedRedisAccessPolicyAssignment CloudResourceKind = 2112
+	CloudResourceKind_AzureEventHubDisasterRecoveryConfig     CloudResourceKind = 2120
+	CloudResourceKind_AzureEventHubSchemaGroup                CloudResourceKind = 2121
 	// AzureResourceGroup is a prerequisite because a dedicated Event Hubs
 	// cluster is created inside a referenced resource group in composed
 	// environments. Note: clusters cannot be deleted for 4 hours after
 	// creation (Azure's moratorium), so E2E treats this kind as
 	// offline-gated.
-	CloudResourceKind_AzureEventHubCluster                     CloudResourceKind = 522
-	CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey CloudResourceKind = 523
+	CloudResourceKind_AzureEventHubCluster                     CloudResourceKind = 2122
+	CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey CloudResourceKind = 2123
 	// AzureMssqlServer is a prerequisite because a failover group is created
 	// on a referenced primary logical server and points at a partner server;
 	// the primary (and its resource group, which chains transitively) must
 	// exist before the group can be written.
-	CloudResourceKind_AzureMssqlFailoverGroup CloudResourceKind = 524
+	CloudResourceKind_AzureMssqlFailoverGroup CloudResourceKind = 2124
 	// AzureContainerApp is a prerequisite because the domain binding lives
 	// in a referenced app's ingress configuration (the environment and
 	// resource group chain transitively through the app).
-	CloudResourceKind_AzureContainerAppCustomDomain CloudResourceKind = 525
-	CloudResourceKind_AzureFirewallPolicy           CloudResourceKind = 530
+	CloudResourceKind_AzureContainerAppCustomDomain CloudResourceKind = 2125
+	CloudResourceKind_AzureFirewallPolicy           CloudResourceKind = 2130
 	// AzureFirewallPolicy is a prerequisite because a rule collection group
 	// is a child document of a referenced policy (the resource group chains
 	// transitively through the policy).
-	CloudResourceKind_AzureFirewallPolicyRuleCollectionGroup CloudResourceKind = 531
+	CloudResourceKind_AzureFirewallPolicyRuleCollectionGroup CloudResourceKind = 2131
 	// AzureSubnet is a prerequisite because a VNet-deployed firewall's data
 	// path lives in a dedicated subnet that must be named exactly
 	// "AzureFirewallSubnet" (the virtual network and resource group chain
 	// transitively through the subnet). The E2E install profile publishes a
 	// fixture subnet with that exact name and a /26 prefix.
-	CloudResourceKind_AzureFirewall CloudResourceKind = 532
-	CloudResourceKind_AzureIpGroup  CloudResourceKind = 533
-	// 600–799: GCP resources
-	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 600
-	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 601
-	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 602
-	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 603
-	CloudResourceKind_GcpCloudSql                   CloudResourceKind = 604
-	CloudResourceKind_GcpDnsZone                    CloudResourceKind = 605
-	CloudResourceKind_GcpGcsBucket                  CloudResourceKind = 606
-	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 607
-	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 608
-	CloudResourceKind_GcpProject                    CloudResourceKind = 609
-	CloudResourceKind_GcpVpcNetwork                 CloudResourceKind = 610
-	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 611
-	CloudResourceKind_GcpRouterNat                  CloudResourceKind = 612
-	CloudResourceKind_GcpGkeNodePool                CloudResourceKind = 613
-	CloudResourceKind_GcpServiceAccount             CloudResourceKind = 614
-	CloudResourceKind_GcpGkeWorkloadIdentityBinding CloudResourceKind = 615
-	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 616
-	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 617
-	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 618
-	CloudResourceKind_GcpProjectIamMember           CloudResourceKind = 619
-	CloudResourceKind_GcpFirewallRule               CloudResourceKind = 620
-	CloudResourceKind_GcpGlobalAddress              CloudResourceKind = 621
-	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 622
-	CloudResourceKind_GcpHealthCheck                CloudResourceKind = 623
-	CloudResourceKind_GcpBackendBucket              CloudResourceKind = 624
-	CloudResourceKind_GcpBackendService             CloudResourceKind = 625
-	CloudResourceKind_GcpRegionNetworkEndpointGroup CloudResourceKind = 626
-	CloudResourceKind_GcpUrlMap                     CloudResourceKind = 627
-	CloudResourceKind_GcpManagedSslCertificate      CloudResourceKind = 628
-	CloudResourceKind_GcpTargetHttpProxy            CloudResourceKind = 629
-	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 630
-	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 631
-	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 632
-	CloudResourceKind_GcpSpannerInstance            CloudResourceKind = 633
-	CloudResourceKind_GcpSpannerDatabase            CloudResourceKind = 634
-	CloudResourceKind_GcpBigtableInstance           CloudResourceKind = 635
-	CloudResourceKind_GcpMemorystoreInstance        CloudResourceKind = 636
-	CloudResourceKind_GcpCloudSqlDatabase           CloudResourceKind = 637
-	CloudResourceKind_GcpCloudSqlUser               CloudResourceKind = 638
-	CloudResourceKind_GcpAlloydbInstance            CloudResourceKind = 639
-	CloudResourceKind_GcpAlloydbUser                CloudResourceKind = 640
-	CloudResourceKind_GcpSpannerBackupSchedule      CloudResourceKind = 641
-	CloudResourceKind_GcpBigtableTable              CloudResourceKind = 642
-	CloudResourceKind_GcpFirestoreBackupSchedule    CloudResourceKind = 643
-	CloudResourceKind_GcpFirestoreIndex             CloudResourceKind = 644
-	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 650
-	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 651
-	CloudResourceKind_GcpDataprocAutoscalingPolicy  CloudResourceKind = 652
-	CloudResourceKind_GcpBigQueryTable              CloudResourceKind = 653
-	CloudResourceKind_GcpPubSubTopic                CloudResourceKind = 660
-	CloudResourceKind_GcpPubSubSubscription         CloudResourceKind = 661
-	CloudResourceKind_GcpCloudTasksQueue            CloudResourceKind = 662
-	CloudResourceKind_GcpCloudSchedulerJob          CloudResourceKind = 663
-	CloudResourceKind_GcpPubSubSchema               CloudResourceKind = 664
-	CloudResourceKind_GcpVertexAiNotebook           CloudResourceKind = 670
-	CloudResourceKind_GcpVertexAiEndpoint           CloudResourceKind = 671
-	CloudResourceKind_GcpVertexAiIndex              CloudResourceKind = 672
+	CloudResourceKind_AzureFirewall CloudResourceKind = 2132
+	CloudResourceKind_AzureIpGroup  CloudResourceKind = 2133
+	// 3000–3999: GCP resources
+	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
+	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
+	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 3002
+	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 3003
+	CloudResourceKind_GcpCloudSql                   CloudResourceKind = 3004
+	CloudResourceKind_GcpDnsZone                    CloudResourceKind = 3005
+	CloudResourceKind_GcpGcsBucket                  CloudResourceKind = 3006
+	CloudResourceKind_GcpGkeCluster                 CloudResourceKind = 3007
+	CloudResourceKind_GcpIamCustomRole              CloudResourceKind = 3008
+	CloudResourceKind_GcpProject                    CloudResourceKind = 3009
+	CloudResourceKind_GcpVpcNetwork                 CloudResourceKind = 3010
+	CloudResourceKind_GcpSubnetwork                 CloudResourceKind = 3011
+	CloudResourceKind_GcpRouterNat                  CloudResourceKind = 3012
+	CloudResourceKind_GcpGkeNodePool                CloudResourceKind = 3013
+	CloudResourceKind_GcpServiceAccount             CloudResourceKind = 3014
+	CloudResourceKind_GcpGkeWorkloadIdentityBinding CloudResourceKind = 3015
+	CloudResourceKind_GcpCertManagerCert            CloudResourceKind = 3016
+	CloudResourceKind_GcpComputeInstance            CloudResourceKind = 3017
+	CloudResourceKind_GcpDnsRecord                  CloudResourceKind = 3018
+	CloudResourceKind_GcpProjectIamMember           CloudResourceKind = 3019
+	CloudResourceKind_GcpFirewallRule               CloudResourceKind = 3020
+	CloudResourceKind_GcpGlobalAddress              CloudResourceKind = 3021
+	CloudResourceKind_GcpCloudArmorPolicy           CloudResourceKind = 3022
+	CloudResourceKind_GcpHealthCheck                CloudResourceKind = 3023
+	CloudResourceKind_GcpBackendBucket              CloudResourceKind = 3024
+	CloudResourceKind_GcpBackendService             CloudResourceKind = 3025
+	CloudResourceKind_GcpRegionNetworkEndpointGroup CloudResourceKind = 3026
+	CloudResourceKind_GcpUrlMap                     CloudResourceKind = 3027
+	CloudResourceKind_GcpManagedSslCertificate      CloudResourceKind = 3028
+	CloudResourceKind_GcpTargetHttpProxy            CloudResourceKind = 3029
+	CloudResourceKind_GcpAlloydbCluster             CloudResourceKind = 3030
+	CloudResourceKind_GcpRedisInstance              CloudResourceKind = 3031
+	CloudResourceKind_GcpFirestoreDatabase          CloudResourceKind = 3032
+	CloudResourceKind_GcpSpannerInstance            CloudResourceKind = 3033
+	CloudResourceKind_GcpSpannerDatabase            CloudResourceKind = 3034
+	CloudResourceKind_GcpBigtableInstance           CloudResourceKind = 3035
+	CloudResourceKind_GcpMemorystoreInstance        CloudResourceKind = 3036
+	CloudResourceKind_GcpCloudSqlDatabase           CloudResourceKind = 3037
+	CloudResourceKind_GcpCloudSqlUser               CloudResourceKind = 3038
+	CloudResourceKind_GcpAlloydbInstance            CloudResourceKind = 3039
+	CloudResourceKind_GcpAlloydbUser                CloudResourceKind = 3040
+	CloudResourceKind_GcpSpannerBackupSchedule      CloudResourceKind = 3041
+	CloudResourceKind_GcpBigtableTable              CloudResourceKind = 3042
+	CloudResourceKind_GcpFirestoreBackupSchedule    CloudResourceKind = 3043
+	CloudResourceKind_GcpFirestoreIndex             CloudResourceKind = 3044
+	CloudResourceKind_GcpBigQueryDataset            CloudResourceKind = 3050
+	CloudResourceKind_GcpDataprocCluster            CloudResourceKind = 3051
+	CloudResourceKind_GcpDataprocAutoscalingPolicy  CloudResourceKind = 3052
+	CloudResourceKind_GcpBigQueryTable              CloudResourceKind = 3053
+	CloudResourceKind_GcpPubSubTopic                CloudResourceKind = 3060
+	CloudResourceKind_GcpPubSubSubscription         CloudResourceKind = 3061
+	CloudResourceKind_GcpCloudTasksQueue            CloudResourceKind = 3062
+	CloudResourceKind_GcpCloudSchedulerJob          CloudResourceKind = 3063
+	CloudResourceKind_GcpPubSubSchema               CloudResourceKind = 3064
+	CloudResourceKind_GcpVertexAiNotebook           CloudResourceKind = 3070
+	CloudResourceKind_GcpVertexAiEndpoint           CloudResourceKind = 3071
+	CloudResourceKind_GcpVertexAiIndex              CloudResourceKind = 3072
 	// Vector Search IndexEndpoint — distinct from the online-prediction
 	// GcpVertexAiEndpoint (671); different GCP resources, different kinds.
-	CloudResourceKind_GcpVertexAiIndexEndpoint               CloudResourceKind = 673
-	CloudResourceKind_GcpVertexAiDeployedIndex               CloudResourceKind = 674
-	CloudResourceKind_GcpCloudComposerEnvironment            CloudResourceKind = 680
-	CloudResourceKind_GcpCloudComposerUserWorkloadsSecret    CloudResourceKind = 681
-	CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap CloudResourceKind = 682
-	CloudResourceKind_GcpKmsKeyRing                          CloudResourceKind = 690
-	CloudResourceKind_GcpKmsKey                              CloudResourceKind = 691
-	CloudResourceKind_GcpKmsKeyIamMember                     CloudResourceKind = 692
-	CloudResourceKind_GcpFilestoreInstance                   CloudResourceKind = 700
-	// 701–709: IAM/identity family (overflow block; the 600–622
+	CloudResourceKind_GcpVertexAiIndexEndpoint               CloudResourceKind = 3073
+	CloudResourceKind_GcpVertexAiDeployedIndex               CloudResourceKind = 3074
+	CloudResourceKind_GcpCloudComposerEnvironment            CloudResourceKind = 3080
+	CloudResourceKind_GcpCloudComposerUserWorkloadsSecret    CloudResourceKind = 3081
+	CloudResourceKind_GcpCloudComposerUserWorkloadsConfigMap CloudResourceKind = 3082
+	CloudResourceKind_GcpKmsKeyRing                          CloudResourceKind = 3090
+	CloudResourceKind_GcpKmsKey                              CloudResourceKind = 3091
+	CloudResourceKind_GcpKmsKeyIamMember                     CloudResourceKind = 3092
+	CloudResourceKind_GcpFilestoreInstance                   CloudResourceKind = 3100
+	// 3101–3109: IAM/identity family (overflow block; the 3000–3022
 	// foundation/security sub-band is fully allocated)
-	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 701
-	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 702
-	CloudResourceKind_GcpServiceAccountIamMember      CloudResourceKind = 703
-	// 710–719: networking/load-balancer family (overflow block; the 623–629
+	CloudResourceKind_GcpWorkloadIdentityPool         CloudResourceKind = 3101
+	CloudResourceKind_GcpWorkloadIdentityPoolProvider CloudResourceKind = 3102
+	CloudResourceKind_GcpServiceAccountIamMember      CloudResourceKind = 3103
+	// 3110–3119: networking/load-balancer family (overflow block; the 3023–3029
 	// LB sub-band is fully allocated)
-	CloudResourceKind_GcpGlobalForwardingRule        CloudResourceKind = 710
-	CloudResourceKind_GcpSslPolicy                   CloudResourceKind = 711
-	CloudResourceKind_GcpSslCertificate              CloudResourceKind = 712
-	CloudResourceKind_GcpServiceNetworkingConnection CloudResourceKind = 713
-	CloudResourceKind_GcpAddress                     CloudResourceKind = 714
-	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 715
-	CloudResourceKind_GcpCertManagerDnsAuthorization CloudResourceKind = 716
-	// 720–729: GCP serverless overflow
-	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 720
-	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 721
-	// 730–739: GCP compute overflow (the 600–622 foundation sub-band that
+	CloudResourceKind_GcpGlobalForwardingRule        CloudResourceKind = 3110
+	CloudResourceKind_GcpSslPolicy                   CloudResourceKind = 3111
+	CloudResourceKind_GcpSslCertificate              CloudResourceKind = 3112
+	CloudResourceKind_GcpServiceNetworkingConnection CloudResourceKind = 3113
+	CloudResourceKind_GcpAddress                     CloudResourceKind = 3114
+	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 3115
+	CloudResourceKind_GcpCertManagerDnsAuthorization CloudResourceKind = 3116
+	// 3120–3129: GCP serverless overflow
+	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 3120
+	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 3121
+	// 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that
 	// holds GcpComputeInstance is fully allocated)
-	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
-	// 800–999: Kubernetes resources, organized in family sub-bands
-	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 hosts
-	// analytics & ML; 990–999 reserved for growth)
-	// 800–829: Kubernetes building blocks (core API primitives)
-	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 800
-	CloudResourceKind_KubernetesDeployment     CloudResourceKind = 801
-	CloudResourceKind_KubernetesStatefulSet    CloudResourceKind = 802
-	CloudResourceKind_KubernetesDaemonSet      CloudResourceKind = 803
-	CloudResourceKind_KubernetesJob            CloudResourceKind = 804
-	CloudResourceKind_KubernetesCronJob        CloudResourceKind = 805
-	CloudResourceKind_KubernetesService        CloudResourceKind = 806
-	CloudResourceKind_KubernetesSecret         CloudResourceKind = 807
-	CloudResourceKind_KubernetesManifest       CloudResourceKind = 808
-	CloudResourceKind_KubernetesHelmRelease    CloudResourceKind = 809
-	CloudResourceKind_KubernetesConfigMap      CloudResourceKind = 810
-	CloudResourceKind_KubernetesServiceAccount CloudResourceKind = 811
+	CloudResourceKind_GcpComputeDisk CloudResourceKind = 3130
+	// 4000–4999: Kubernetes resources, organized in family sub-bands
+	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
+	// analytics & ML; 4190–4199 reserved for growth)
+	// 4000–4029: Kubernetes building blocks (core API primitives)
+	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 4000
+	CloudResourceKind_KubernetesDeployment     CloudResourceKind = 4001
+	CloudResourceKind_KubernetesStatefulSet    CloudResourceKind = 4002
+	CloudResourceKind_KubernetesDaemonSet      CloudResourceKind = 4003
+	CloudResourceKind_KubernetesJob            CloudResourceKind = 4004
+	CloudResourceKind_KubernetesCronJob        CloudResourceKind = 4005
+	CloudResourceKind_KubernetesService        CloudResourceKind = 4006
+	CloudResourceKind_KubernetesSecret         CloudResourceKind = 4007
+	CloudResourceKind_KubernetesManifest       CloudResourceKind = 4008
+	CloudResourceKind_KubernetesHelmRelease    CloudResourceKind = 4009
+	CloudResourceKind_KubernetesConfigMap      CloudResourceKind = 4010
+	CloudResourceKind_KubernetesServiceAccount CloudResourceKind = 4011
 	// Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
 	// component: "grant these permissions to these subjects in this scope".
-	CloudResourceKind_KubernetesRbac                  CloudResourceKind = 812
-	CloudResourceKind_KubernetesIngress               CloudResourceKind = 813
-	CloudResourceKind_KubernetesNetworkPolicy         CloudResourceKind = 814
-	CloudResourceKind_KubernetesPersistentVolumeClaim CloudResourceKind = 815
-	CloudResourceKind_KubernetesStorageClass          CloudResourceKind = 816
+	CloudResourceKind_KubernetesRbac                  CloudResourceKind = 4012
+	CloudResourceKind_KubernetesIngress               CloudResourceKind = 4013
+	CloudResourceKind_KubernetesNetworkPolicy         CloudResourceKind = 4014
+	CloudResourceKind_KubernetesPersistentVolumeClaim CloudResourceKind = 4015
+	CloudResourceKind_KubernetesStorageClass          CloudResourceKind = 4016
 	// Manages the namespace-governance pair: the ResourceQuota plus an
 	// optional companion LimitRange (per-object defaults/bounds) — two API
 	// objects, one governance story.
-	CloudResourceKind_KubernetesResourceQuota           CloudResourceKind = 817
-	CloudResourceKind_KubernetesPriorityClass           CloudResourceKind = 818
-	CloudResourceKind_KubernetesPodDisruptionBudget     CloudResourceKind = 819
-	CloudResourceKind_KubernetesHorizontalPodAutoscaler CloudResourceKind = 820
-	// 830–869: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
-	CloudResourceKind_KubernetesCertManager CloudResourceKind = 830
+	CloudResourceKind_KubernetesResourceQuota           CloudResourceKind = 4017
+	CloudResourceKind_KubernetesPriorityClass           CloudResourceKind = 4018
+	CloudResourceKind_KubernetesPodDisruptionBudget     CloudResourceKind = 4019
+	CloudResourceKind_KubernetesHorizontalPodAutoscaler CloudResourceKind = 4020
+	// 4030–4069: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
+	CloudResourceKind_KubernetesCertManager CloudResourceKind = 4030
 	// KubernetesCertManager is a prerequisite for the three cert-manager CR
 	// kinds below: ClusterIssuer/Issuer/Certificate are cert-manager custom
 	// resources — without the controller and its CRDs they cannot be applied.
-	CloudResourceKind_KubernetesClusterIssuer           CloudResourceKind = 831
-	CloudResourceKind_KubernetesIssuer                  CloudResourceKind = 832
-	CloudResourceKind_KubernetesCertificate             CloudResourceKind = 833
-	CloudResourceKind_KubernetesExternalDns             CloudResourceKind = 834
-	CloudResourceKind_KubernetesExternalSecretsOperator CloudResourceKind = 835
+	CloudResourceKind_KubernetesClusterIssuer           CloudResourceKind = 4031
+	CloudResourceKind_KubernetesIssuer                  CloudResourceKind = 4032
+	CloudResourceKind_KubernetesCertificate             CloudResourceKind = 4033
+	CloudResourceKind_KubernetesExternalDns             CloudResourceKind = 4034
+	CloudResourceKind_KubernetesExternalSecretsOperator CloudResourceKind = 4035
 	// KubernetesExternalSecretsOperator is a prerequisite for the three
 	// external-secrets CR kinds below: ClusterSecretStore/SecretStore/
 	// ExternalSecret are external-secrets custom resources — without the
 	// operator and its CRDs they cannot be applied.
-	CloudResourceKind_KubernetesClusterSecretStore CloudResourceKind = 836
-	CloudResourceKind_KubernetesSecretStore        CloudResourceKind = 837
-	CloudResourceKind_KubernetesExternalSecret     CloudResourceKind = 838
-	CloudResourceKind_KubernetesIngressNginx       CloudResourceKind = 839
-	CloudResourceKind_KubernetesGatewayApiCrds     CloudResourceKind = 840
-	CloudResourceKind_KubernetesGatewayClass       CloudResourceKind = 841
-	CloudResourceKind_KubernetesGateway            CloudResourceKind = 842
-	CloudResourceKind_KubernetesListenerSet        CloudResourceKind = 843
-	CloudResourceKind_KubernetesHttpRoute          CloudResourceKind = 844
-	CloudResourceKind_KubernetesGrpcRoute          CloudResourceKind = 845
-	CloudResourceKind_KubernetesTcpRoute           CloudResourceKind = 846
-	CloudResourceKind_KubernetesUdpRoute           CloudResourceKind = 847
-	CloudResourceKind_KubernetesTlsRoute           CloudResourceKind = 848
-	CloudResourceKind_KubernetesReferenceGrant     CloudResourceKind = 849
-	CloudResourceKind_KubernetesBackendTlsPolicy   CloudResourceKind = 850
-	CloudResourceKind_KubernetesIstioBaseCrds      CloudResourceKind = 851
-	CloudResourceKind_KubernetesIstio              CloudResourceKind = 852
+	CloudResourceKind_KubernetesClusterSecretStore CloudResourceKind = 4036
+	CloudResourceKind_KubernetesSecretStore        CloudResourceKind = 4037
+	CloudResourceKind_KubernetesExternalSecret     CloudResourceKind = 4038
+	CloudResourceKind_KubernetesIngressNginx       CloudResourceKind = 4039
+	CloudResourceKind_KubernetesGatewayApiCrds     CloudResourceKind = 4040
+	CloudResourceKind_KubernetesGatewayClass       CloudResourceKind = 4041
+	CloudResourceKind_KubernetesGateway            CloudResourceKind = 4042
+	CloudResourceKind_KubernetesListenerSet        CloudResourceKind = 4043
+	CloudResourceKind_KubernetesHttpRoute          CloudResourceKind = 4044
+	CloudResourceKind_KubernetesGrpcRoute          CloudResourceKind = 4045
+	CloudResourceKind_KubernetesTcpRoute           CloudResourceKind = 4046
+	CloudResourceKind_KubernetesUdpRoute           CloudResourceKind = 4047
+	CloudResourceKind_KubernetesTlsRoute           CloudResourceKind = 4048
+	CloudResourceKind_KubernetesReferenceGrant     CloudResourceKind = 4049
+	CloudResourceKind_KubernetesBackendTlsPolicy   CloudResourceKind = 4050
+	CloudResourceKind_KubernetesIstioBaseCrds      CloudResourceKind = 4051
+	CloudResourceKind_KubernetesIstio              CloudResourceKind = 4052
 	// Istio API components (mesh traffic policy, security, telemetry). The seven typed
-	// resources below (853–859) require the Istio CRDs on the cluster, provided by the
+	// resources below (4053–4059) require the Istio CRDs on the cluster, provided by the
 	// lightweight CRDs-only KubernetesIstioBaseCrds (851) — NOT the full mesh
 	// KubernetesIstio (852).
-	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 853
-	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 854
-	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 855
-	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 856
-	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 857
-	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 858
-	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 859
-	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 860
-	CloudResourceKind_KubernetesCilium                CloudResourceKind = 861
-	CloudResourceKind_KubernetesKeda                  CloudResourceKind = 862
-	CloudResourceKind_KubernetesKarpenter             CloudResourceKind = 863
-	CloudResourceKind_KubernetesKarpenterNodePool     CloudResourceKind = 864
-	CloudResourceKind_KubernetesKarpenterEc2NodeClass CloudResourceKind = 865
-	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 866
-	CloudResourceKind_KubernetesVelero                CloudResourceKind = 867
-	// 870–889: Kubernetes observability
-	CloudResourceKind_KubernetesKubePrometheusStack CloudResourceKind = 870
-	CloudResourceKind_KubernetesGrafana             CloudResourceKind = 871
+	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 4053
+	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 4054
+	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 4055
+	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 4056
+	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 4057
+	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 4058
+	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 4059
+	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 4060
+	CloudResourceKind_KubernetesCilium                CloudResourceKind = 4061
+	CloudResourceKind_KubernetesKeda                  CloudResourceKind = 4062
+	CloudResourceKind_KubernetesKarpenter             CloudResourceKind = 4063
+	CloudResourceKind_KubernetesKarpenterNodePool     CloudResourceKind = 4064
+	CloudResourceKind_KubernetesKarpenterEc2NodeClass CloudResourceKind = 4065
+	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 4066
+	CloudResourceKind_KubernetesVelero                CloudResourceKind = 4067
+	// 4070–4089: Kubernetes observability
+	CloudResourceKind_KubernetesKubePrometheusStack CloudResourceKind = 4070
+	CloudResourceKind_KubernetesGrafana             CloudResourceKind = 4071
 	// KubernetesClickHouse is a prerequisite because SigNoz stores every
 	// trace, metric and log in ClickHouse and deploys none of its own —
 	// the telemetry store is composed, never bundled.
-	CloudResourceKind_KubernetesSignoz CloudResourceKind = 872
-	CloudResourceKind_KubernetesLoki   CloudResourceKind = 873
-	CloudResourceKind_KubernetesTempo  CloudResourceKind = 874
+	CloudResourceKind_KubernetesSignoz CloudResourceKind = 4072
+	CloudResourceKind_KubernetesLoki   CloudResourceKind = 4073
+	CloudResourceKind_KubernetesTempo  CloudResourceKind = 4074
 	// The operator's admission webhooks (failurePolicy Fail) are served
 	// with a cert-manager Certificate in the default posture —
 	// cert-manager must be running before the operator installs.
-	CloudResourceKind_KubernetesOtelOperator  CloudResourceKind = 875
-	CloudResourceKind_KubernetesOtelCollector CloudResourceKind = 876
-	// 880–899: Kubernetes security, policy, and identity
-	CloudResourceKind_KubernetesKyverno    CloudResourceKind = 880
-	CloudResourceKind_KubernetesGatekeeper CloudResourceKind = 881
+	CloudResourceKind_KubernetesOtelOperator  CloudResourceKind = 4075
+	CloudResourceKind_KubernetesOtelCollector CloudResourceKind = 4076
+	// 4080–4099: Kubernetes security, policy, and identity
+	CloudResourceKind_KubernetesKyverno    CloudResourceKind = 4080
+	CloudResourceKind_KubernetesGatekeeper CloudResourceKind = 4081
 	// Keycloak declarations compose the official Keycloak Operator (which
 	// reconciles the Keycloak CR this kind renders) and, on the recommended
 	// postgres vendor, a KubernetesPostgres database — both must resolve
 	// before the CR can converge.
-	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
-	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
+	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 4090
+	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 4091
 	// OpenFGA requires a datastore; the recommended arm composes a
 	// KubernetesPostgres database (the sandbox memory arm needs nothing,
 	// but the registry declares the shape real deployments require).
-	CloudResourceKind_KubernetesOpenFga          CloudResourceKind = 892
-	CloudResourceKind_KubernetesKeycloakOperator CloudResourceKind = 893
-	// 900–929: Kubernetes data platforms
-	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
-	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
-	CloudResourceKind_KubernetesValkey                CloudResourceKind = 902
-	CloudResourceKind_KubernetesPerconaMysqlOperator  CloudResourceKind = 903
-	CloudResourceKind_KubernetesMysql                 CloudResourceKind = 904
-	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 905
-	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
-	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
+	CloudResourceKind_KubernetesOpenFga          CloudResourceKind = 4092
+	CloudResourceKind_KubernetesKeycloakOperator CloudResourceKind = 4093
+	// 4100–4129: Kubernetes data platforms
+	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 4100
+	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 4101
+	CloudResourceKind_KubernetesValkey                CloudResourceKind = 4102
+	CloudResourceKind_KubernetesPerconaMysqlOperator  CloudResourceKind = 4103
+	CloudResourceKind_KubernetesMysql                 CloudResourceKind = 4104
+	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 4105
+	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 4106
+	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 4107
 	// container_kind: a Strimzi Kafka cluster is a place in the provider's
 	// own model — KafkaTopic and KafkaUser declarations BELONG to one cluster
 	// (the strimzi.io/cluster label) and are drawn inside its box. Clients
 	// that merely talk to the cluster (Connect, MirrorMaker2, UI, Karapace)
 	// carry containment_exempt on their bootstrap/trust references.
-	CloudResourceKind_KubernetesKafka      CloudResourceKind = 908
-	CloudResourceKind_KubernetesKafkaTopic CloudResourceKind = 909
-	CloudResourceKind_KubernetesKafkaUser  CloudResourceKind = 910
+	CloudResourceKind_KubernetesKafka      CloudResourceKind = 4108
+	CloudResourceKind_KubernetesKafkaTopic CloudResourceKind = 4109
+	CloudResourceKind_KubernetesKafkaUser  CloudResourceKind = 4110
 	// container_kind: a Connect cluster hosts the connectors deployed INTO
 	// it (KafkaConnector's strimzi.io/cluster label names its Connect
 	// cluster) — the same room shape as KubernetesKafka above.
-	CloudResourceKind_KubernetesKafkaConnect       CloudResourceKind = 911
-	CloudResourceKind_KubernetesKafkaConnector     CloudResourceKind = 912
-	CloudResourceKind_KubernetesKafkaMirrorMaker2  CloudResourceKind = 913
-	CloudResourceKind_KubernetesKarapace           CloudResourceKind = 914
-	CloudResourceKind_KubernetesKafkaUi            CloudResourceKind = 915
-	CloudResourceKind_KubernetesOpenSearchOperator CloudResourceKind = 916
-	CloudResourceKind_KubernetesOpenSearch         CloudResourceKind = 917
-	CloudResourceKind_KubernetesAltinityOperator   CloudResourceKind = 918
-	CloudResourceKind_KubernetesClickHouse         CloudResourceKind = 919
-	CloudResourceKind_KubernetesSolrOperator       CloudResourceKind = 920
-	CloudResourceKind_KubernetesSolr               CloudResourceKind = 921
-	CloudResourceKind_KubernetesNeo4j              CloudResourceKind = 922
-	CloudResourceKind_KubernetesSeaweedFs          CloudResourceKind = 923
-	CloudResourceKind_KubernetesQdrant             CloudResourceKind = 924
+	CloudResourceKind_KubernetesKafkaConnect       CloudResourceKind = 4111
+	CloudResourceKind_KubernetesKafkaConnector     CloudResourceKind = 4112
+	CloudResourceKind_KubernetesKafkaMirrorMaker2  CloudResourceKind = 4113
+	CloudResourceKind_KubernetesKarapace           CloudResourceKind = 4114
+	CloudResourceKind_KubernetesKafkaUi            CloudResourceKind = 4115
+	CloudResourceKind_KubernetesOpenSearchOperator CloudResourceKind = 4116
+	CloudResourceKind_KubernetesOpenSearch         CloudResourceKind = 4117
+	CloudResourceKind_KubernetesAltinityOperator   CloudResourceKind = 4118
+	CloudResourceKind_KubernetesClickHouse         CloudResourceKind = 4119
+	CloudResourceKind_KubernetesSolrOperator       CloudResourceKind = 4120
+	CloudResourceKind_KubernetesSolr               CloudResourceKind = 4121
+	CloudResourceKind_KubernetesNeo4j              CloudResourceKind = 4122
+	CloudResourceKind_KubernetesSeaweedFs          CloudResourceKind = 4123
+	CloudResourceKind_KubernetesQdrant             CloudResourceKind = 4124
 	// The RabbitMQ Cluster Operator's release manifest ships admission
 	// webhooks whose serving certificate is a cert-manager Certificate —
 	// cert-manager must be running before the operator installs.
-	CloudResourceKind_KubernetesRabbitMqOperator CloudResourceKind = 925
-	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 926
-	// 930–949: Kubernetes analytics and ML
+	CloudResourceKind_KubernetesRabbitMqOperator CloudResourceKind = 4125
+	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 4126
+	// 4130–4149: Kubernetes analytics and ML
 	// KubernetesPostgres is a prerequisite because Airflow's metadata
 	// database composes a KubernetesPostgres by default (the spec's FK
 	// defaults resolve onto its outputs) and the migration Job needs the
 	// database reachable before the server components start.
-	CloudResourceKind_KubernetesAirflow         CloudResourceKind = 930
-	CloudResourceKind_KubernetesSparkOperator   CloudResourceKind = 931
-	CloudResourceKind_KubernetesKubeRayOperator CloudResourceKind = 932
+	CloudResourceKind_KubernetesAirflow         CloudResourceKind = 4130
+	CloudResourceKind_KubernetesSparkOperator   CloudResourceKind = 4131
+	CloudResourceKind_KubernetesKubeRayOperator CloudResourceKind = 4132
 	// KubernetesKubeRayOperator is a prerequisite because this kind declares
 	// the RayCluster custom resource that only the operator's CRDs admit and
 	// only the operator reconciles into head and worker pods.
-	CloudResourceKind_KubernetesRayCluster CloudResourceKind = 933
+	CloudResourceKind_KubernetesRayCluster CloudResourceKind = 4133
 	// KubernetesCertManager is a prerequisite because the Flink operator's
 	// chart, with its default-on admission webhook, renders cert-manager
 	// Issuer/Certificate resources and trusts the API server through
 	// cert-manager's CA injection — there is no self-signed fallback at the
 	// pinned chart, and the webhooks are fail-closed.
-	CloudResourceKind_KubernetesFlinkOperator CloudResourceKind = 934
+	CloudResourceKind_KubernetesFlinkOperator CloudResourceKind = 4134
 	// KubernetesFlinkOperator is a prerequisite because this kind declares
 	// the FlinkDeployment custom resource that only the operator's CRDs
 	// admit and only the operator reconciles into a running Flink cluster.
-	CloudResourceKind_KubernetesFlinkDeployment CloudResourceKind = 935
+	CloudResourceKind_KubernetesFlinkDeployment CloudResourceKind = 4135
 	// KubernetesPostgres is a prerequisite because JupyterHub's hub database
 	// composes a KubernetesPostgres in its external-database arm (the spec's
 	// FK defaults resolve onto its outputs) and the hub pod mounts that
 	// database's credential Secret before it can start.
-	CloudResourceKind_KubernetesJupyterHub CloudResourceKind = 936
+	CloudResourceKind_KubernetesJupyterHub CloudResourceKind = 4136
 	// KubernetesPostgres is a prerequisite because MLflow's backend store
 	// composes a KubernetesPostgres in its production arm (FK defaults onto
 	// its outputs; the module composes the connection URI from its credential
 	// Secret), and KubernetesSeaweedFs because the artifact store's
 	// S3-compatible arm FK-defaults onto the SeaweedFS endpoint and
 	// credential Secret.
-	CloudResourceKind_KubernetesMlflow CloudResourceKind = 937
+	CloudResourceKind_KubernetesMlflow CloudResourceKind = 4137
 	// KubernetesPostgres is a prerequisite because Trino's postgres
 	// catalogs compose a KubernetesPostgres (the catalog host and
 	// credential FK-default onto its outputs), and the pods read that
 	// database's credential Secret to resolve catalog passwords from
 	// environment.
-	CloudResourceKind_KubernetesTrino CloudResourceKind = 938
+	CloudResourceKind_KubernetesTrino CloudResourceKind = 4138
 	// KubernetesPostgres is a prerequisite because Superset's REQUIRED
 	// metadata database composes a KubernetesPostgres (FK defaults onto
 	// its outputs; the module composes the environment Secret from its
 	// credential Secret), and KubernetesValkey because the cache/broker
 	// arm FK-defaults onto a KubernetesValkey's service and password
 	// Secret.
-	CloudResourceKind_KubernetesSuperset CloudResourceKind = 939
-	// 950–969: Kubernetes GitOps and CI/CD
-	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
-	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
-	CloudResourceKind_KubernetesTektonOperator CloudResourceKind = 952
+	CloudResourceKind_KubernetesSuperset CloudResourceKind = 4139
+	// 4150–4169: Kubernetes GitOps and CI/CD
+	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 4150
+	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 4151
+	CloudResourceKind_KubernetesTektonOperator CloudResourceKind = 4152
 	// KubernetesTektonOperator is a prerequisite because this kind declares
 	// the TektonConfig custom resource that only the operator's CRDs admit
 	// and only the operator reconciles into running components.
-	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 953
-	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 954
+	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 4153
+	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 4154
 	// KubernetesGhaRunnerScaleSetController is a prerequisite because this
 	// kind renders an AutoscalingRunnerSet custom resource that only the
 	// controller's CRDs admit and only the controller reconciles into
 	// listener and runner pods.
-	CloudResourceKind_KubernetesGhaRunnerScaleSet CloudResourceKind = 955
-	CloudResourceKind_KubernetesHarbor            CloudResourceKind = 956
-	CloudResourceKind_KubernetesJenkins           CloudResourceKind = 957
-	// 970–989: Kubernetes app platforms
+	CloudResourceKind_KubernetesGhaRunnerScaleSet CloudResourceKind = 4155
+	CloudResourceKind_KubernetesHarbor            CloudResourceKind = 4156
+	CloudResourceKind_KubernetesJenkins           CloudResourceKind = 4157
+	// 4170–4189: Kubernetes app platforms
 	// KubernetesPostgres is a prerequisite because the recommended (and
 	// E2E-proven) database composition backs Temporal's default and
 	// visibility stores with a CloudNativePG cluster.
-	CloudResourceKind_KubernetesTemporal CloudResourceKind = 970
-	CloudResourceKind_KubernetesNats     CloudResourceKind = 971
-	CloudResourceKind_KubernetesLocust   CloudResourceKind = 972
-	// 1200–1499: DigitalOcean resources
-	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 1200
-	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 1201
-	CloudResourceKind_DigitalOceanContainerRegistry  CloudResourceKind = 1202
-	CloudResourceKind_DigitalOceanDatabaseCluster    CloudResourceKind = 1203
-	CloudResourceKind_DigitalOceanDnsZone            CloudResourceKind = 1204
-	CloudResourceKind_DigitalOceanDroplet            CloudResourceKind = 1205
-	CloudResourceKind_DigitalOceanFirewall           CloudResourceKind = 1206
-	CloudResourceKind_DigitalOceanFunction           CloudResourceKind = 1207
-	CloudResourceKind_DigitalOceanKubernetesCluster  CloudResourceKind = 1208
-	CloudResourceKind_DigitalOceanKubernetesNodePool CloudResourceKind = 1209
-	CloudResourceKind_DigitalOceanLoadBalancer       CloudResourceKind = 1210
-	CloudResourceKind_DigitalOceanVolume             CloudResourceKind = 1211
-	CloudResourceKind_DigitalOceanVpc                CloudResourceKind = 1212
-	CloudResourceKind_DigitalOceanCertificate        CloudResourceKind = 1213
-	CloudResourceKind_DigitalOceanDnsRecord          CloudResourceKind = 1214
-	// 1500–1799: Civo resources
-	CloudResourceKind_CivoBucket             CloudResourceKind = 1500
-	CloudResourceKind_CivoCertificate        CloudResourceKind = 1501
-	CloudResourceKind_CivoComputeInstance    CloudResourceKind = 1502
-	CloudResourceKind_CivoDatabase           CloudResourceKind = 1503
-	CloudResourceKind_CivoDnsZone            CloudResourceKind = 1504
-	CloudResourceKind_CivoFirewall           CloudResourceKind = 1505
-	CloudResourceKind_CivoIpAddress          CloudResourceKind = 1506
-	CloudResourceKind_CivoKubernetesCluster  CloudResourceKind = 1507
-	CloudResourceKind_CivoKubernetesNodePool CloudResourceKind = 1508
-	CloudResourceKind_CivoVolume             CloudResourceKind = 1509
-	CloudResourceKind_CivoVpc                CloudResourceKind = 1510
-	CloudResourceKind_CivoDnsRecord          CloudResourceKind = 1511
-	// 1800–2099: Cloudflare resources
-	CloudResourceKind_CloudflareDnsZone                       CloudResourceKind = 1800
-	CloudResourceKind_CloudflareKvNamespace                   CloudResourceKind = 1801
-	CloudResourceKind_CloudflareR2Bucket                      CloudResourceKind = 1802
-	CloudResourceKind_CloudflareWorker                        CloudResourceKind = 1803
-	CloudResourceKind_CloudflareLoadBalancer                  CloudResourceKind = 1804
-	CloudResourceKind_CloudflareD1Database                    CloudResourceKind = 1805
-	CloudResourceKind_CloudflareZeroTrustAccessApplication    CloudResourceKind = 1806
-	CloudResourceKind_CloudflareDnsRecord                     CloudResourceKind = 1807
-	CloudResourceKind_CloudflareRuleset                       CloudResourceKind = 1808
-	CloudResourceKind_CloudflareWorkersKvPair                 CloudResourceKind = 1809
-	CloudResourceKind_CloudflareHyperdriveConfig              CloudResourceKind = 1810
-	CloudResourceKind_CloudflareLoadBalancerPool              CloudResourceKind = 1811
-	CloudResourceKind_CloudflareLoadBalancerMonitor           CloudResourceKind = 1812
-	CloudResourceKind_CloudflareZeroTrustAccessPolicy         CloudResourceKind = 1813
-	CloudResourceKind_CloudflareZeroTrustAccessGroup          CloudResourceKind = 1814
-	CloudResourceKind_CloudflareQueue                         CloudResourceKind = 1815
-	CloudResourceKind_CloudflarePagesProject                  CloudResourceKind = 1816
-	CloudResourceKind_CloudflareZeroTrustTunnel               CloudResourceKind = 1817
-	CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork CloudResourceKind = 1818
-	CloudResourceKind_CloudflareZeroTrustTunnelRoute          CloudResourceKind = 1819
-	CloudResourceKind_CloudflareList                          CloudResourceKind = 1820
-	CloudResourceKind_CloudflareListItem                      CloudResourceKind = 1821
-	CloudResourceKind_CloudflareTurnstileWidget               CloudResourceKind = 1822
-	CloudResourceKind_CloudflareEmailRoutingZone              CloudResourceKind = 1823
-	CloudResourceKind_CloudflareEmailRoutingRule              CloudResourceKind = 1824
-	CloudResourceKind_CloudflareEmailRoutingAddress           CloudResourceKind = 1825
-	CloudResourceKind_CloudflareOriginCaCertificate           CloudResourceKind = 1826
-	CloudResourceKind_CloudflareCertificatePack               CloudResourceKind = 1827
-	CloudResourceKind_CloudflareCustomHostname                CloudResourceKind = 1828
-	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin  CloudResourceKind = 1829
-	// 2100–2299: Auth0 resources
-	CloudResourceKind_Auth0Connection     CloudResourceKind = 2100
-	CloudResourceKind_Auth0Client         CloudResourceKind = 2101
-	CloudResourceKind_Auth0EventStream    CloudResourceKind = 2102
-	CloudResourceKind_Auth0ResourceServer CloudResourceKind = 2103
-	CloudResourceKind_Auth0Action         CloudResourceKind = 2104
-	CloudResourceKind_Auth0Role           CloudResourceKind = 2105
-	// 2300–2499: OpenFGA resources
+	CloudResourceKind_KubernetesTemporal CloudResourceKind = 4170
+	CloudResourceKind_KubernetesNats     CloudResourceKind = 4171
+	CloudResourceKind_KubernetesLocust   CloudResourceKind = 4172
+	// 5000–5999: DigitalOcean resources
+	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 5000
+	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 5001
+	CloudResourceKind_DigitalOceanContainerRegistry  CloudResourceKind = 5002
+	CloudResourceKind_DigitalOceanDatabaseCluster    CloudResourceKind = 5003
+	CloudResourceKind_DigitalOceanDnsZone            CloudResourceKind = 5004
+	CloudResourceKind_DigitalOceanDroplet            CloudResourceKind = 5005
+	CloudResourceKind_DigitalOceanFirewall           CloudResourceKind = 5006
+	CloudResourceKind_DigitalOceanFunction           CloudResourceKind = 5007
+	CloudResourceKind_DigitalOceanKubernetesCluster  CloudResourceKind = 5008
+	CloudResourceKind_DigitalOceanKubernetesNodePool CloudResourceKind = 5009
+	CloudResourceKind_DigitalOceanLoadBalancer       CloudResourceKind = 5010
+	CloudResourceKind_DigitalOceanVolume             CloudResourceKind = 5011
+	CloudResourceKind_DigitalOceanVpc                CloudResourceKind = 5012
+	CloudResourceKind_DigitalOceanCertificate        CloudResourceKind = 5013
+	CloudResourceKind_DigitalOceanDnsRecord          CloudResourceKind = 5014
+	// 6000–6999: Civo resources
+	CloudResourceKind_CivoBucket             CloudResourceKind = 6000
+	CloudResourceKind_CivoCertificate        CloudResourceKind = 6001
+	CloudResourceKind_CivoComputeInstance    CloudResourceKind = 6002
+	CloudResourceKind_CivoDatabase           CloudResourceKind = 6003
+	CloudResourceKind_CivoDnsZone            CloudResourceKind = 6004
+	CloudResourceKind_CivoFirewall           CloudResourceKind = 6005
+	CloudResourceKind_CivoIpAddress          CloudResourceKind = 6006
+	CloudResourceKind_CivoKubernetesCluster  CloudResourceKind = 6007
+	CloudResourceKind_CivoKubernetesNodePool CloudResourceKind = 6008
+	CloudResourceKind_CivoVolume             CloudResourceKind = 6009
+	CloudResourceKind_CivoVpc                CloudResourceKind = 6010
+	CloudResourceKind_CivoDnsRecord          CloudResourceKind = 6011
+	// 7000–7999: Cloudflare resources
+	CloudResourceKind_CloudflareDnsZone                       CloudResourceKind = 7000
+	CloudResourceKind_CloudflareKvNamespace                   CloudResourceKind = 7001
+	CloudResourceKind_CloudflareR2Bucket                      CloudResourceKind = 7002
+	CloudResourceKind_CloudflareWorker                        CloudResourceKind = 7003
+	CloudResourceKind_CloudflareLoadBalancer                  CloudResourceKind = 7004
+	CloudResourceKind_CloudflareD1Database                    CloudResourceKind = 7005
+	CloudResourceKind_CloudflareZeroTrustAccessApplication    CloudResourceKind = 7006
+	CloudResourceKind_CloudflareDnsRecord                     CloudResourceKind = 7007
+	CloudResourceKind_CloudflareRuleset                       CloudResourceKind = 7008
+	CloudResourceKind_CloudflareWorkersKvPair                 CloudResourceKind = 7009
+	CloudResourceKind_CloudflareHyperdriveConfig              CloudResourceKind = 7010
+	CloudResourceKind_CloudflareLoadBalancerPool              CloudResourceKind = 7011
+	CloudResourceKind_CloudflareLoadBalancerMonitor           CloudResourceKind = 7012
+	CloudResourceKind_CloudflareZeroTrustAccessPolicy         CloudResourceKind = 7013
+	CloudResourceKind_CloudflareZeroTrustAccessGroup          CloudResourceKind = 7014
+	CloudResourceKind_CloudflareQueue                         CloudResourceKind = 7015
+	CloudResourceKind_CloudflarePagesProject                  CloudResourceKind = 7016
+	CloudResourceKind_CloudflareZeroTrustTunnel               CloudResourceKind = 7017
+	CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork CloudResourceKind = 7018
+	CloudResourceKind_CloudflareZeroTrustTunnelRoute          CloudResourceKind = 7019
+	CloudResourceKind_CloudflareList                          CloudResourceKind = 7020
+	CloudResourceKind_CloudflareListItem                      CloudResourceKind = 7021
+	CloudResourceKind_CloudflareTurnstileWidget               CloudResourceKind = 7022
+	CloudResourceKind_CloudflareEmailRoutingZone              CloudResourceKind = 7023
+	CloudResourceKind_CloudflareEmailRoutingRule              CloudResourceKind = 7024
+	CloudResourceKind_CloudflareEmailRoutingAddress           CloudResourceKind = 7025
+	CloudResourceKind_CloudflareOriginCaCertificate           CloudResourceKind = 7026
+	CloudResourceKind_CloudflareCertificatePack               CloudResourceKind = 7027
+	CloudResourceKind_CloudflareCustomHostname                CloudResourceKind = 7028
+	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin  CloudResourceKind = 7029
+	// 8000–8999: Auth0 resources
+	CloudResourceKind_Auth0Connection     CloudResourceKind = 8000
+	CloudResourceKind_Auth0Client         CloudResourceKind = 8001
+	CloudResourceKind_Auth0EventStream    CloudResourceKind = 8002
+	CloudResourceKind_Auth0ResourceServer CloudResourceKind = 8003
+	CloudResourceKind_Auth0Action         CloudResourceKind = 8004
+	CloudResourceKind_Auth0Role           CloudResourceKind = 8005
+	// 9000–9999: OpenFGA resources
 	// Note: OpenFGA is Terraform-only - there is no Pulumi provider available.
 	// Pulumi modules for OpenFGA resources are pass-through placeholders.
-	CloudResourceKind_OpenFgaStore              CloudResourceKind = 2300
-	CloudResourceKind_OpenFgaAuthorizationModel CloudResourceKind = 2301
-	CloudResourceKind_OpenFgaRelationshipTuple  CloudResourceKind = 2302
-	// 2500–2799: OpenStack resources
-	CloudResourceKind_OpenStackKeypair                CloudResourceKind = 2500
-	CloudResourceKind_OpenStackNetwork                CloudResourceKind = 2501
-	CloudResourceKind_OpenStackSubnet                 CloudResourceKind = 2502
-	CloudResourceKind_OpenStackRouter                 CloudResourceKind = 2503
-	CloudResourceKind_OpenStackRouterInterface        CloudResourceKind = 2504
-	CloudResourceKind_OpenStackSecurityGroup          CloudResourceKind = 2505
-	CloudResourceKind_OpenStackFloatingIp             CloudResourceKind = 2506
-	CloudResourceKind_OpenStackNetworkPort            CloudResourceKind = 2507
-	CloudResourceKind_OpenStackSecurityGroupRule      CloudResourceKind = 2525
-	CloudResourceKind_OpenStackFloatingIpAssociate    CloudResourceKind = 2526
-	CloudResourceKind_OpenStackInstance               CloudResourceKind = 2508
-	CloudResourceKind_OpenStackServerGroup            CloudResourceKind = 2509
-	CloudResourceKind_OpenStackVolume                 CloudResourceKind = 2510
-	CloudResourceKind_OpenStackVolumeAttach           CloudResourceKind = 2511
-	CloudResourceKind_OpenStackProject                CloudResourceKind = 2512
-	CloudResourceKind_OpenStackApplicationCredential  CloudResourceKind = 2513
-	CloudResourceKind_OpenStackImage                  CloudResourceKind = 2514
-	CloudResourceKind_OpenStackRoleAssignment         CloudResourceKind = 2515
-	CloudResourceKind_OpenStackLoadBalancer           CloudResourceKind = 2516
-	CloudResourceKind_OpenStackLoadBalancerListener   CloudResourceKind = 2517
-	CloudResourceKind_OpenStackLoadBalancerPool       CloudResourceKind = 2518
-	CloudResourceKind_OpenStackLoadBalancerMember     CloudResourceKind = 2519
-	CloudResourceKind_OpenStackLoadBalancerMonitor    CloudResourceKind = 2520
-	CloudResourceKind_OpenStackDnsZone                CloudResourceKind = 2521
-	CloudResourceKind_OpenStackDnsRecord              CloudResourceKind = 2522
-	CloudResourceKind_ScalewayVpc                     CloudResourceKind = 2800
-	CloudResourceKind_ScalewayPrivateNetwork          CloudResourceKind = 2801
-	CloudResourceKind_ScalewayPublicGateway           CloudResourceKind = 2802
-	CloudResourceKind_ScalewayLoadBalancer            CloudResourceKind = 2803
-	CloudResourceKind_ScalewayInstanceSecurityGroup   CloudResourceKind = 2804
-	CloudResourceKind_ScalewayInstance                CloudResourceKind = 2810
-	CloudResourceKind_ScalewayKapsuleCluster          CloudResourceKind = 2820
-	CloudResourceKind_ScalewayKapsulePool             CloudResourceKind = 2821
-	CloudResourceKind_ScalewayRdbInstance             CloudResourceKind = 2830
-	CloudResourceKind_ScalewayRedisCluster            CloudResourceKind = 2831
-	CloudResourceKind_ScalewayMongodbInstance         CloudResourceKind = 2832
-	CloudResourceKind_ScalewayObjectBucket            CloudResourceKind = 2840
-	CloudResourceKind_ScalewayBlockVolume             CloudResourceKind = 2841
-	CloudResourceKind_ScalewayContainerRegistry       CloudResourceKind = 2850
-	CloudResourceKind_ScalewayDnsZone                 CloudResourceKind = 2860
-	CloudResourceKind_ScalewayDnsRecord               CloudResourceKind = 2861
-	CloudResourceKind_ScalewayServerlessFunction      CloudResourceKind = 2870
-	CloudResourceKind_ScalewayServerlessContainer     CloudResourceKind = 2871
-	CloudResourceKind_AliCloudLogProject              CloudResourceKind = 3000
-	CloudResourceKind_AliCloudRamRole                 CloudResourceKind = 3010
-	CloudResourceKind_AliCloudRamPolicy               CloudResourceKind = 3011
-	CloudResourceKind_AliCloudVpc                     CloudResourceKind = 3020
-	CloudResourceKind_AliCloudVswitch                 CloudResourceKind = 3021
-	CloudResourceKind_AliCloudSecurityGroup           CloudResourceKind = 3022
-	CloudResourceKind_AliCloudEipAddress              CloudResourceKind = 3023
-	CloudResourceKind_AliCloudNatGateway              CloudResourceKind = 3024
-	CloudResourceKind_AliCloudApplicationLoadBalancer CloudResourceKind = 3025
-	CloudResourceKind_AliCloudNetworkLoadBalancer     CloudResourceKind = 3026
-	CloudResourceKind_AliCloudVpnGateway              CloudResourceKind = 3027
-	CloudResourceKind_AliCloudDnsZone                 CloudResourceKind = 3040
-	CloudResourceKind_AliCloudDnsRecord               CloudResourceKind = 3041
-	CloudResourceKind_AliCloudPrivateDnsZone          CloudResourceKind = 3042
-	CloudResourceKind_AliCloudStorageBucket           CloudResourceKind = 3050
-	CloudResourceKind_AliCloudNasFileSystem           CloudResourceKind = 3051
-	CloudResourceKind_AliCloudKmsKey                  CloudResourceKind = 3060
-	CloudResourceKind_AliCloudRdsInstance             CloudResourceKind = 3070
-	CloudResourceKind_AliCloudPolardbCluster          CloudResourceKind = 3071
-	CloudResourceKind_AliCloudRedisInstance           CloudResourceKind = 3072
-	CloudResourceKind_AliCloudMongodbInstance         CloudResourceKind = 3073
-	CloudResourceKind_AliCloudEcsInstance             CloudResourceKind = 3080
-	CloudResourceKind_AliCloudContainerRegistry       CloudResourceKind = 3090
-	CloudResourceKind_AliCloudKubernetesCluster       CloudResourceKind = 3091
-	CloudResourceKind_AliCloudKubernetesNodePool      CloudResourceKind = 3092
-	CloudResourceKind_AliCloudCdnDomain               CloudResourceKind = 3100
-	CloudResourceKind_AliCloudFunction                CloudResourceKind = 3110
-	CloudResourceKind_AliCloudSaeApplication          CloudResourceKind = 3111
-	CloudResourceKind_AliCloudRocketmqInstance        CloudResourceKind = 3120
-	CloudResourceKind_AliCloudCenInstance             CloudResourceKind = 3130
-	CloudResourceKind_OciVcn                          CloudResourceKind = 3300
-	CloudResourceKind_OciSubnet                       CloudResourceKind = 3301
-	CloudResourceKind_OciSecurityGroup                CloudResourceKind = 3302
-	CloudResourceKind_OciCompartment                  CloudResourceKind = 3303
-	CloudResourceKind_OciIdentityPolicy               CloudResourceKind = 3304
-	CloudResourceKind_OciDynamicGroup                 CloudResourceKind = 3305
-	CloudResourceKind_OciComputeInstance              CloudResourceKind = 3310
-	CloudResourceKind_OciContainerEngineCluster       CloudResourceKind = 3311
-	CloudResourceKind_OciContainerEngineNodePool      CloudResourceKind = 3312
-	CloudResourceKind_OciContainerInstance            CloudResourceKind = 3313
-	CloudResourceKind_OciApplicationLoadBalancer      CloudResourceKind = 3320
-	CloudResourceKind_OciNetworkLoadBalancer          CloudResourceKind = 3321
-	CloudResourceKind_OciDynamicRoutingGateway        CloudResourceKind = 3322
-	CloudResourceKind_OciPublicIp                     CloudResourceKind = 3323
-	CloudResourceKind_OciAutonomousDatabase           CloudResourceKind = 3330
-	CloudResourceKind_OciDbSystem                     CloudResourceKind = 3331
-	CloudResourceKind_OciMysqlDbSystem                CloudResourceKind = 3332
-	CloudResourceKind_OciPostgresqlDbSystem           CloudResourceKind = 3333
-	CloudResourceKind_OciRedisCluster                 CloudResourceKind = 3334
-	CloudResourceKind_OciNosqlTable                   CloudResourceKind = 3335
-	CloudResourceKind_OciObjectStorageBucket          CloudResourceKind = 3340
-	CloudResourceKind_OciFileSystem                   CloudResourceKind = 3341
-	CloudResourceKind_OciBlockVolume                  CloudResourceKind = 3342
-	CloudResourceKind_OciKmsVault                     CloudResourceKind = 3350
-	CloudResourceKind_OciKmsKey                       CloudResourceKind = 3351
-	CloudResourceKind_OciVaultSecret                  CloudResourceKind = 3352
-	CloudResourceKind_OciBastion                      CloudResourceKind = 3353
-	CloudResourceKind_OciFunctionsApplication         CloudResourceKind = 3360
-	CloudResourceKind_OciApiGateway                   CloudResourceKind = 3361
-	CloudResourceKind_OciStreamPool                   CloudResourceKind = 3370
-	CloudResourceKind_OciQueue                        CloudResourceKind = 3371
-	CloudResourceKind_OciAlarm                        CloudResourceKind = 3380
-	CloudResourceKind_OciLogGroup                     CloudResourceKind = 3381
-	CloudResourceKind_OciDnsZone                      CloudResourceKind = 3390
-	CloudResourceKind_OciDnsRecord                    CloudResourceKind = 3391
-	CloudResourceKind_OciNetworkFirewall              CloudResourceKind = 3395
-	CloudResourceKind_OciDevopsProject                CloudResourceKind = 3396
-	CloudResourceKind_HetznerCloudSshKey              CloudResourceKind = 3500
-	CloudResourceKind_HetznerCloudPlacementGroup      CloudResourceKind = 3501
-	CloudResourceKind_HetznerCloudFirewall            CloudResourceKind = 3502
-	CloudResourceKind_HetznerCloudNetwork             CloudResourceKind = 3510
-	CloudResourceKind_HetznerCloudPrimaryIp           CloudResourceKind = 3511
-	CloudResourceKind_HetznerCloudFloatingIp          CloudResourceKind = 3512
-	CloudResourceKind_HetznerCloudServer              CloudResourceKind = 3520
-	CloudResourceKind_HetznerCloudVolume              CloudResourceKind = 3521
-	CloudResourceKind_HetznerCloudSnapshot            CloudResourceKind = 3522
-	CloudResourceKind_HetznerCloudCertificate         CloudResourceKind = 3530
-	CloudResourceKind_HetznerCloudLoadBalancer        CloudResourceKind = 3531
-	CloudResourceKind_HetznerCloudDnsZone             CloudResourceKind = 3540
+	CloudResourceKind_OpenFgaStore              CloudResourceKind = 9000
+	CloudResourceKind_OpenFgaAuthorizationModel CloudResourceKind = 9001
+	CloudResourceKind_OpenFgaRelationshipTuple  CloudResourceKind = 9002
+	// 10000–10999: OpenStack resources
+	CloudResourceKind_OpenStackKeypair                CloudResourceKind = 10000
+	CloudResourceKind_OpenStackNetwork                CloudResourceKind = 10001
+	CloudResourceKind_OpenStackSubnet                 CloudResourceKind = 10002
+	CloudResourceKind_OpenStackRouter                 CloudResourceKind = 10003
+	CloudResourceKind_OpenStackRouterInterface        CloudResourceKind = 10004
+	CloudResourceKind_OpenStackSecurityGroup          CloudResourceKind = 10005
+	CloudResourceKind_OpenStackFloatingIp             CloudResourceKind = 10006
+	CloudResourceKind_OpenStackNetworkPort            CloudResourceKind = 10007
+	CloudResourceKind_OpenStackSecurityGroupRule      CloudResourceKind = 10025
+	CloudResourceKind_OpenStackFloatingIpAssociate    CloudResourceKind = 10026
+	CloudResourceKind_OpenStackInstance               CloudResourceKind = 10008
+	CloudResourceKind_OpenStackServerGroup            CloudResourceKind = 10009
+	CloudResourceKind_OpenStackVolume                 CloudResourceKind = 10010
+	CloudResourceKind_OpenStackVolumeAttach           CloudResourceKind = 10011
+	CloudResourceKind_OpenStackProject                CloudResourceKind = 10012
+	CloudResourceKind_OpenStackApplicationCredential  CloudResourceKind = 10013
+	CloudResourceKind_OpenStackImage                  CloudResourceKind = 10014
+	CloudResourceKind_OpenStackRoleAssignment         CloudResourceKind = 10015
+	CloudResourceKind_OpenStackLoadBalancer           CloudResourceKind = 10016
+	CloudResourceKind_OpenStackLoadBalancerListener   CloudResourceKind = 10017
+	CloudResourceKind_OpenStackLoadBalancerPool       CloudResourceKind = 10018
+	CloudResourceKind_OpenStackLoadBalancerMember     CloudResourceKind = 10019
+	CloudResourceKind_OpenStackLoadBalancerMonitor    CloudResourceKind = 10020
+	CloudResourceKind_OpenStackDnsZone                CloudResourceKind = 10021
+	CloudResourceKind_OpenStackDnsRecord              CloudResourceKind = 10022
+	CloudResourceKind_ScalewayVpc                     CloudResourceKind = 11000
+	CloudResourceKind_ScalewayPrivateNetwork          CloudResourceKind = 11001
+	CloudResourceKind_ScalewayPublicGateway           CloudResourceKind = 11002
+	CloudResourceKind_ScalewayLoadBalancer            CloudResourceKind = 11003
+	CloudResourceKind_ScalewayInstanceSecurityGroup   CloudResourceKind = 11004
+	CloudResourceKind_ScalewayInstance                CloudResourceKind = 11010
+	CloudResourceKind_ScalewayKapsuleCluster          CloudResourceKind = 11020
+	CloudResourceKind_ScalewayKapsulePool             CloudResourceKind = 11021
+	CloudResourceKind_ScalewayRdbInstance             CloudResourceKind = 11030
+	CloudResourceKind_ScalewayRedisCluster            CloudResourceKind = 11031
+	CloudResourceKind_ScalewayMongodbInstance         CloudResourceKind = 11032
+	CloudResourceKind_ScalewayObjectBucket            CloudResourceKind = 11040
+	CloudResourceKind_ScalewayBlockVolume             CloudResourceKind = 11041
+	CloudResourceKind_ScalewayContainerRegistry       CloudResourceKind = 11050
+	CloudResourceKind_ScalewayDnsZone                 CloudResourceKind = 11060
+	CloudResourceKind_ScalewayDnsRecord               CloudResourceKind = 11061
+	CloudResourceKind_ScalewayServerlessFunction      CloudResourceKind = 11070
+	CloudResourceKind_ScalewayServerlessContainer     CloudResourceKind = 11071
+	CloudResourceKind_AliCloudLogProject              CloudResourceKind = 12000
+	CloudResourceKind_AliCloudRamRole                 CloudResourceKind = 12010
+	CloudResourceKind_AliCloudRamPolicy               CloudResourceKind = 12011
+	CloudResourceKind_AliCloudVpc                     CloudResourceKind = 12020
+	CloudResourceKind_AliCloudVswitch                 CloudResourceKind = 12021
+	CloudResourceKind_AliCloudSecurityGroup           CloudResourceKind = 12022
+	CloudResourceKind_AliCloudEipAddress              CloudResourceKind = 12023
+	CloudResourceKind_AliCloudNatGateway              CloudResourceKind = 12024
+	CloudResourceKind_AliCloudApplicationLoadBalancer CloudResourceKind = 12025
+	CloudResourceKind_AliCloudNetworkLoadBalancer     CloudResourceKind = 12026
+	CloudResourceKind_AliCloudVpnGateway              CloudResourceKind = 12027
+	CloudResourceKind_AliCloudDnsZone                 CloudResourceKind = 12040
+	CloudResourceKind_AliCloudDnsRecord               CloudResourceKind = 12041
+	CloudResourceKind_AliCloudPrivateDnsZone          CloudResourceKind = 12042
+	CloudResourceKind_AliCloudStorageBucket           CloudResourceKind = 12050
+	CloudResourceKind_AliCloudNasFileSystem           CloudResourceKind = 12051
+	CloudResourceKind_AliCloudKmsKey                  CloudResourceKind = 12060
+	CloudResourceKind_AliCloudRdsInstance             CloudResourceKind = 12070
+	CloudResourceKind_AliCloudPolardbCluster          CloudResourceKind = 12071
+	CloudResourceKind_AliCloudRedisInstance           CloudResourceKind = 12072
+	CloudResourceKind_AliCloudMongodbInstance         CloudResourceKind = 12073
+	CloudResourceKind_AliCloudEcsInstance             CloudResourceKind = 12080
+	CloudResourceKind_AliCloudContainerRegistry       CloudResourceKind = 12090
+	CloudResourceKind_AliCloudKubernetesCluster       CloudResourceKind = 12091
+	CloudResourceKind_AliCloudKubernetesNodePool      CloudResourceKind = 12092
+	CloudResourceKind_AliCloudCdnDomain               CloudResourceKind = 12100
+	CloudResourceKind_AliCloudFunction                CloudResourceKind = 12110
+	CloudResourceKind_AliCloudSaeApplication          CloudResourceKind = 12111
+	CloudResourceKind_AliCloudRocketmqInstance        CloudResourceKind = 12120
+	CloudResourceKind_AliCloudCenInstance             CloudResourceKind = 12130
+	CloudResourceKind_OciVcn                          CloudResourceKind = 13000
+	CloudResourceKind_OciSubnet                       CloudResourceKind = 13001
+	CloudResourceKind_OciSecurityGroup                CloudResourceKind = 13002
+	CloudResourceKind_OciCompartment                  CloudResourceKind = 13003
+	CloudResourceKind_OciIdentityPolicy               CloudResourceKind = 13004
+	CloudResourceKind_OciDynamicGroup                 CloudResourceKind = 13005
+	CloudResourceKind_OciComputeInstance              CloudResourceKind = 13010
+	CloudResourceKind_OciContainerEngineCluster       CloudResourceKind = 13011
+	CloudResourceKind_OciContainerEngineNodePool      CloudResourceKind = 13012
+	CloudResourceKind_OciContainerInstance            CloudResourceKind = 13013
+	CloudResourceKind_OciApplicationLoadBalancer      CloudResourceKind = 13020
+	CloudResourceKind_OciNetworkLoadBalancer          CloudResourceKind = 13021
+	CloudResourceKind_OciDynamicRoutingGateway        CloudResourceKind = 13022
+	CloudResourceKind_OciPublicIp                     CloudResourceKind = 13023
+	CloudResourceKind_OciAutonomousDatabase           CloudResourceKind = 13030
+	CloudResourceKind_OciDbSystem                     CloudResourceKind = 13031
+	CloudResourceKind_OciMysqlDbSystem                CloudResourceKind = 13032
+	CloudResourceKind_OciPostgresqlDbSystem           CloudResourceKind = 13033
+	CloudResourceKind_OciRedisCluster                 CloudResourceKind = 13034
+	CloudResourceKind_OciNosqlTable                   CloudResourceKind = 13035
+	CloudResourceKind_OciObjectStorageBucket          CloudResourceKind = 13040
+	CloudResourceKind_OciFileSystem                   CloudResourceKind = 13041
+	CloudResourceKind_OciBlockVolume                  CloudResourceKind = 13042
+	CloudResourceKind_OciKmsVault                     CloudResourceKind = 13050
+	CloudResourceKind_OciKmsKey                       CloudResourceKind = 13051
+	CloudResourceKind_OciVaultSecret                  CloudResourceKind = 13052
+	CloudResourceKind_OciBastion                      CloudResourceKind = 13053
+	CloudResourceKind_OciFunctionsApplication         CloudResourceKind = 13060
+	CloudResourceKind_OciApiGateway                   CloudResourceKind = 13061
+	CloudResourceKind_OciStreamPool                   CloudResourceKind = 13070
+	CloudResourceKind_OciQueue                        CloudResourceKind = 13071
+	CloudResourceKind_OciAlarm                        CloudResourceKind = 13080
+	CloudResourceKind_OciLogGroup                     CloudResourceKind = 13081
+	CloudResourceKind_OciDnsZone                      CloudResourceKind = 13090
+	CloudResourceKind_OciDnsRecord                    CloudResourceKind = 13091
+	CloudResourceKind_OciNetworkFirewall              CloudResourceKind = 13095
+	CloudResourceKind_OciDevopsProject                CloudResourceKind = 13096
+	CloudResourceKind_HetznerCloudSshKey              CloudResourceKind = 14000
+	CloudResourceKind_HetznerCloudPlacementGroup      CloudResourceKind = 14001
+	CloudResourceKind_HetznerCloudFirewall            CloudResourceKind = 14002
+	CloudResourceKind_HetznerCloudNetwork             CloudResourceKind = 14010
+	CloudResourceKind_HetznerCloudPrimaryIp           CloudResourceKind = 14011
+	CloudResourceKind_HetznerCloudFloatingIp          CloudResourceKind = 14012
+	CloudResourceKind_HetznerCloudServer              CloudResourceKind = 14020
+	CloudResourceKind_HetznerCloudVolume              CloudResourceKind = 14021
+	CloudResourceKind_HetznerCloudSnapshot            CloudResourceKind = 14022
+	CloudResourceKind_HetznerCloudCertificate         CloudResourceKind = 14030
+	CloudResourceKind_HetznerCloudLoadBalancer        CloudResourceKind = 14031
+	CloudResourceKind_HetznerCloudDnsZone             CloudResourceKind = 14040
 )
 
 // Enum value maps for CloudResourceKind.
 var (
 	CloudResourceKind_name = map[int32]string{
-		0:    "unspecified",
-		1:    "TestCloudResourceGeneric",
-		2:    "TestCloudResourceKubernetes",
-		50:   "ConfluentKafka",
-		51:   "AtlasMongodb",
-		52:   "SnowflakeDatabase",
-		200:  "AwsAlb",
-		201:  "AwsCertManagerCert",
-		202:  "AwsCloudFront",
-		203:  "AwsDynamodb",
-		204:  "AwsEcrRepo",
-		205:  "AwsEcsCluster",
-		206:  "AwsEcsService",
-		207:  "AwsEksCluster",
-		208:  "AwsIamRole",
-		209:  "AwsLambda",
-		210:  "AwsRdsCluster",
-		211:  "AwsRdsInstance",
-		212:  "AwsRoute53Zone",
-		213:  "AwsS3Bucket",
-		214:  "AwsLbTargetGroup",
-		215:  "AwsSecurityGroup",
-		216:  "AwsVpc",
-		217:  "AwsEksNodeGroup",
-		218:  "AwsIamUser",
-		219:  "AwsKmsKey",
-		220:  "AwsEc2Instance",
-		221:  "AwsClientVpn",
-		222:  "AwsDocumentDb",
-		223:  "AwsRoute53DnsRecord",
-		224:  "AwsS3ObjectSet",
-		225:  "AwsSqsQueue",
-		226:  "AwsSnsTopic",
-		227:  "AwsEventBridgeBus",
-		228:  "AwsEventBridgeRule",
-		229:  "AwsIamOidcProvider",
-		230:  "AwsIamPolicy",
-		231:  "AwsIamInstanceProfile",
-		232:  "AwsLbListener",
-		233:  "AwsLbListenerRule",
-		234:  "AwsLaunchTemplate",
-		235:  "AwsAutoScalingGroup",
-		236:  "AwsEksAddon",
-		237:  "AwsEksFargateProfile",
-		238:  "AwsEksAccessEntry",
-		239:  "AwsEcsTaskDefinition",
-		240:  "AwsHttpApiGateway",
-		241:  "AwsStepFunction",
-		356:  "AwsHttpApiVpcLink",
-		357:  "AwsHttpApiDomain",
-		242:  "AwsVpcEndpoint",
-		243:  "AwsElasticacheUser",
-		244:  "AwsElasticacheUserGroup",
-		245:  "AwsRedshiftServerlessNamespace",
-		246:  "AwsRedshiftServerlessWorkgroup",
-		250:  "AwsRedisElasticache",
-		251:  "AwsOpenSearchDomain",
-		252:  "AwsMemcachedElasticache",
-		253:  "AwsServerlessElasticache",
-		280:  "AwsNlb",
-		281:  "AwsElasticIp",
-		282:  "AwsTransitGateway",
-		283:  "AwsGlobalAccelerator",
-		284:  "AwsSubnet",
-		285:  "AwsInternetGateway",
-		286:  "AwsNatGateway",
-		287:  "AwsEgressOnlyInternetGateway",
-		290:  "AwsElasticFileSystem",
-		360:  "AwsEfsAccessPoint",
-		291:  "AwsFsxLustreFileSystem",
-		292:  "AwsFsxOpenzfsFileSystem",
-		293:  "AwsFsxWindowsFileSystem",
-		294:  "AwsFsxOntapFileSystem",
-		295:  "AwsFsxOntapStorageVirtualMachine",
-		296:  "AwsFsxOntapVolume",
-		375:  "AwsFsxDataRepositoryAssociation",
-		300:  "AwsCognitoUserPool",
-		302:  "AwsCognitoIdentityProvider",
-		358:  "AwsCognitoUserPoolClient",
-		359:  "AwsCognitoResourceServer",
-		301:  "AwsWafWebAcl",
-		361:  "AwsWafIpSet",
-		362:  "AwsWafRegexPatternSet",
-		310:  "AwsCloudwatchLogGroup",
-		311:  "AwsCloudwatchAlarm",
-		355:  "AwsCloudwatchCompositeAlarm",
-		260:  "AwsKinesisStream",
-		261:  "AwsKinesisFirehose",
-		262:  "AwsKinesisStreamConsumer",
-		263:  "AwsAthenaWorkgroup",
-		264:  "AwsGlueCatalogDatabase",
-		265:  "AwsRedshiftCluster",
-		270:  "AwsSagemakerDomain",
-		320:  "AwsAppRunnerService",
-		368:  "AwsAppRunnerAutoScalingConfiguration",
-		369:  "AwsAppRunnerVpcConnector",
-		370:  "AwsAppRunnerObservabilityConfiguration",
-		371:  "AwsTransitGatewayVpcAttachment",
-		372:  "AwsTransitGatewayRouteTable",
-		321:  "AwsBatchComputeEnvironment",
-		363:  "AwsBatchJobQueue",
-		364:  "AwsBatchSchedulingPolicy",
-		365:  "AwsBatchJobDefinition",
-		330:  "AwsCodeBuildProject",
-		331:  "AwsCodePipeline",
-		340:  "AwsMwaaEnvironment",
-		341:  "AwsNeptuneCluster",
-		342:  "AwsMemorydbCluster",
-		373:  "AwsMemorydbUser",
-		374:  "AwsMemorydbAcl",
-		350:  "AwsMskCluster",
-		351:  "AwsMskServerlessCluster",
-		352:  "AwsLambdaEventSourceMapping",
-		353:  "AwsSnsSubscription",
-		354:  "AwsPlantonRunner",
-		376:  "AwsRoute53HealthCheck",
-		366:  "AwsSesConfigurationSet",
-		367:  "AwsSesEmailIdentity",
-		400:  "AzureResourceGroup",
-		401:  "AzureAksCluster",
-		402:  "AzureAksNodePool",
-		403:  "AzureContainerRegistry",
-		404:  "AzureDnsZone",
-		405:  "AzureKeyVault",
-		406:  "AzureVirtualNetwork",
-		407:  "AzureNatGateway",
-		408:  "AzureVirtualMachine",
-		409:  "AzureStorageAccount",
-		410:  "AzureDnsRecord",
-		411:  "AzureSubnet",
-		412:  "AzureNetworkSecurityGroup",
-		413:  "AzurePublicIp",
-		414:  "AzurePrivateEndpoint",
-		415:  "AzurePrivateDnsZone",
-		416:  "AzureApplicationGateway",
-		417:  "AzureLoadBalancer",
-		418:  "AzureRouteTable",
-		419:  "AzurePrivateDnsZoneVirtualNetworkLink",
-		420:  "AzureVirtualNetworkPeering",
-		421:  "AzurePublicIpPrefix",
-		422:  "AzureNetworkInterface",
-		423:  "AzureManagedDisk",
-		424:  "AzureVirtualMachineScaleSet",
-		425:  "AzureKeyVaultKey",
-		426:  "AzureKeyVaultCertificate",
-		427:  "AzureWebApplicationFirewallPolicy",
-		428:  "AzureApplicationSecurityGroup",
-		429:  "AzureDiskEncryptionSet",
-		430:  "AzurePostgresqlFlexibleServer",
-		431:  "AzureRedisCache",
-		432:  "AzureCosmosdbAccount",
-		433:  "AzureMssqlServer",
-		434:  "AzureMysqlFlexibleServer",
-		435:  "AzureMssqlDatabase",
-		436:  "AzureMssqlElasticPool",
-		437:  "AzureRedisLinkedServer",
-		438:  "AzureRedisCacheAccessPolicy",
-		439:  "AzureRedisCacheAccessPolicyAssignment",
-		440:  "AzureContainerAppEnvironment",
-		441:  "AzureContainerApp",
-		442:  "AzureServicePlan",
-		443:  "AzureFunctionApp",
-		444:  "AzureLinuxWebApp",
-		445:  "AzureContainerAppJob",
-		446:  "AzureContainerAppEnvironmentStorage",
-		447:  "AzureContainerAppEnvironmentDaprComponent",
-		448:  "AzureContainerAppEnvironmentCertificate",
-		449:  "AzureContainerAppEnvironmentManagedCertificate",
-		450:  "AzureLogAnalyticsWorkspace",
-		451:  "AzureApplicationInsights",
-		452:  "AzureMonitorDiagnosticSetting",
-		453:  "AzureMonitorActionGroup",
-		454:  "AzureMonitorMetricAlert",
-		455:  "AzureMonitorScheduledQueryAlert",
-		456:  "AzureMonitorActivityLogAlert",
-		457:  "AzureApplicationInsightsStandardWebTest",
-		460:  "AzureUserAssignedIdentity",
-		461:  "AzureRoleAssignment",
-		462:  "AzureRoleDefinition",
-		463:  "AzureFederatedIdentityCredential",
-		470:  "AzureServiceBusNamespace",
-		471:  "AzureEventHubNamespace",
-		472:  "AzureServiceBusQueue",
-		473:  "AzureServiceBusTopic",
-		474:  "AzureServiceBusSubscription",
-		475:  "AzureServiceBusAuthorizationRule",
-		476:  "AzureServiceBusDisasterRecoveryConfig",
-		477:  "AzureEventHub",
-		478:  "AzureEventHubConsumerGroup",
-		479:  "AzureEventHubAuthorizationRule",
-		480:  "AzureFrontDoorProfile",
-		481:  "AzureFrontDoorEndpoint",
-		482:  "AzureFrontDoorOriginGroup",
-		483:  "AzureFrontDoorOrigin",
-		484:  "AzureFrontDoorRoute",
-		485:  "AzureFrontDoorRuleSet",
-		486:  "AzureFrontDoorCustomDomain",
-		487:  "AzureFrontDoorSecret",
-		488:  "AzureFrontDoorFirewallPolicy",
-		489:  "AzureFrontDoorSecurityPolicy",
-		490:  "AzureStorageContainer",
-		491:  "AzureStorageShare",
-		492:  "AzureStorageQueue",
-		493:  "AzureStorageTable",
-		494:  "AzureStorageEncryptionScope",
-		495:  "AzureStorageDataLakeGen2Filesystem",
-		496:  "AzureStorageLocalUser",
-		497:  "AzureStorageObjectReplication",
-		500:  "AzureCosmosdbSqlDatabase",
-		501:  "AzureCosmosdbSqlContainer",
-		502:  "AzureCosmosdbMongoDatabase",
-		503:  "AzureCosmosdbMongoCollection",
-		504:  "AzureCosmosdbSqlRoleDefinition",
-		505:  "AzureCosmosdbSqlRoleAssignment",
-		510:  "AzureManagedRedis",
-		511:  "AzureManagedRedisGeoReplication",
-		512:  "AzureManagedRedisAccessPolicyAssignment",
-		520:  "AzureEventHubDisasterRecoveryConfig",
-		521:  "AzureEventHubSchemaGroup",
-		522:  "AzureEventHubCluster",
-		523:  "AzureEventHubNamespaceCustomerManagedKey",
-		524:  "AzureMssqlFailoverGroup",
-		525:  "AzureContainerAppCustomDomain",
-		530:  "AzureFirewallPolicy",
-		531:  "AzureFirewallPolicyRuleCollectionGroup",
-		532:  "AzureFirewall",
-		533:  "AzureIpGroup",
-		600:  "GcpArtifactRegistryRepo",
-		601:  "GcpTargetHttpsProxy",
-		602:  "GcpCloudFunction",
-		603:  "GcpCloudRun",
-		604:  "GcpCloudSql",
-		605:  "GcpDnsZone",
-		606:  "GcpGcsBucket",
-		607:  "GcpGkeCluster",
-		608:  "GcpIamCustomRole",
-		609:  "GcpProject",
-		610:  "GcpVpcNetwork",
-		611:  "GcpSubnetwork",
-		612:  "GcpRouterNat",
-		613:  "GcpGkeNodePool",
-		614:  "GcpServiceAccount",
-		615:  "GcpGkeWorkloadIdentityBinding",
-		616:  "GcpCertManagerCert",
-		617:  "GcpComputeInstance",
-		618:  "GcpDnsRecord",
-		619:  "GcpProjectIamMember",
-		620:  "GcpFirewallRule",
-		621:  "GcpGlobalAddress",
-		622:  "GcpCloudArmorPolicy",
-		623:  "GcpHealthCheck",
-		624:  "GcpBackendBucket",
-		625:  "GcpBackendService",
-		626:  "GcpRegionNetworkEndpointGroup",
-		627:  "GcpUrlMap",
-		628:  "GcpManagedSslCertificate",
-		629:  "GcpTargetHttpProxy",
-		630:  "GcpAlloydbCluster",
-		631:  "GcpRedisInstance",
-		632:  "GcpFirestoreDatabase",
-		633:  "GcpSpannerInstance",
-		634:  "GcpSpannerDatabase",
-		635:  "GcpBigtableInstance",
-		636:  "GcpMemorystoreInstance",
-		637:  "GcpCloudSqlDatabase",
-		638:  "GcpCloudSqlUser",
-		639:  "GcpAlloydbInstance",
-		640:  "GcpAlloydbUser",
-		641:  "GcpSpannerBackupSchedule",
-		642:  "GcpBigtableTable",
-		643:  "GcpFirestoreBackupSchedule",
-		644:  "GcpFirestoreIndex",
-		650:  "GcpBigQueryDataset",
-		651:  "GcpDataprocCluster",
-		652:  "GcpDataprocAutoscalingPolicy",
-		653:  "GcpBigQueryTable",
-		660:  "GcpPubSubTopic",
-		661:  "GcpPubSubSubscription",
-		662:  "GcpCloudTasksQueue",
-		663:  "GcpCloudSchedulerJob",
-		664:  "GcpPubSubSchema",
-		670:  "GcpVertexAiNotebook",
-		671:  "GcpVertexAiEndpoint",
-		672:  "GcpVertexAiIndex",
-		673:  "GcpVertexAiIndexEndpoint",
-		674:  "GcpVertexAiDeployedIndex",
-		680:  "GcpCloudComposerEnvironment",
-		681:  "GcpCloudComposerUserWorkloadsSecret",
-		682:  "GcpCloudComposerUserWorkloadsConfigMap",
-		690:  "GcpKmsKeyRing",
-		691:  "GcpKmsKey",
-		692:  "GcpKmsKeyIamMember",
-		700:  "GcpFilestoreInstance",
-		701:  "GcpWorkloadIdentityPool",
-		702:  "GcpWorkloadIdentityPoolProvider",
-		703:  "GcpServiceAccountIamMember",
-		710:  "GcpGlobalForwardingRule",
-		711:  "GcpSslPolicy",
-		712:  "GcpSslCertificate",
-		713:  "GcpServiceNetworkingConnection",
-		714:  "GcpAddress",
-		715:  "GcpServiceConnectionPolicy",
-		716:  "GcpCertManagerDnsAuthorization",
-		720:  "GcpCloudRunJob",
-		721:  "GcpServerlessVpcConnector",
-		730:  "GcpComputeDisk",
-		800:  "KubernetesNamespace",
-		801:  "KubernetesDeployment",
-		802:  "KubernetesStatefulSet",
-		803:  "KubernetesDaemonSet",
-		804:  "KubernetesJob",
-		805:  "KubernetesCronJob",
-		806:  "KubernetesService",
-		807:  "KubernetesSecret",
-		808:  "KubernetesManifest",
-		809:  "KubernetesHelmRelease",
-		810:  "KubernetesConfigMap",
-		811:  "KubernetesServiceAccount",
-		812:  "KubernetesRbac",
-		813:  "KubernetesIngress",
-		814:  "KubernetesNetworkPolicy",
-		815:  "KubernetesPersistentVolumeClaim",
-		816:  "KubernetesStorageClass",
-		817:  "KubernetesResourceQuota",
-		818:  "KubernetesPriorityClass",
-		819:  "KubernetesPodDisruptionBudget",
-		820:  "KubernetesHorizontalPodAutoscaler",
-		830:  "KubernetesCertManager",
-		831:  "KubernetesClusterIssuer",
-		832:  "KubernetesIssuer",
-		833:  "KubernetesCertificate",
-		834:  "KubernetesExternalDns",
-		835:  "KubernetesExternalSecretsOperator",
-		836:  "KubernetesClusterSecretStore",
-		837:  "KubernetesSecretStore",
-		838:  "KubernetesExternalSecret",
-		839:  "KubernetesIngressNginx",
-		840:  "KubernetesGatewayApiCrds",
-		841:  "KubernetesGatewayClass",
-		842:  "KubernetesGateway",
-		843:  "KubernetesListenerSet",
-		844:  "KubernetesHttpRoute",
-		845:  "KubernetesGrpcRoute",
-		846:  "KubernetesTcpRoute",
-		847:  "KubernetesUdpRoute",
-		848:  "KubernetesTlsRoute",
-		849:  "KubernetesReferenceGrant",
-		850:  "KubernetesBackendTlsPolicy",
-		851:  "KubernetesIstioBaseCrds",
-		852:  "KubernetesIstio",
-		853:  "KubernetesDestinationRule",
-		854:  "KubernetesServiceEntry",
-		855:  "KubernetesPeerAuthentication",
-		856:  "KubernetesRequestAuthentication",
-		857:  "KubernetesAuthorizationPolicy",
-		858:  "KubernetesTelemetry",
-		859:  "KubernetesEnvoyFilter",
-		860:  "KubernetesMetricsServer",
-		861:  "KubernetesCilium",
-		862:  "KubernetesKeda",
-		863:  "KubernetesKarpenter",
-		864:  "KubernetesKarpenterNodePool",
-		865:  "KubernetesKarpenterEc2NodeClass",
-		866:  "KubernetesClusterAutoscaler",
-		867:  "KubernetesVelero",
-		870:  "KubernetesKubePrometheusStack",
-		871:  "KubernetesGrafana",
-		872:  "KubernetesSignoz",
-		873:  "KubernetesLoki",
-		874:  "KubernetesTempo",
-		875:  "KubernetesOtelOperator",
-		876:  "KubernetesOtelCollector",
-		880:  "KubernetesKyverno",
-		881:  "KubernetesGatekeeper",
-		890:  "KubernetesKeycloak",
-		891:  "KubernetesOpenBao",
-		892:  "KubernetesOpenFga",
-		893:  "KubernetesKeycloakOperator",
-		900:  "KubernetesCloudNativePgOperator",
-		901:  "KubernetesPostgres",
-		902:  "KubernetesValkey",
-		903:  "KubernetesPerconaMysqlOperator",
-		904:  "KubernetesMysql",
-		905:  "KubernetesPerconaMongoOperator",
-		906:  "KubernetesMongodb",
-		907:  "KubernetesStrimziKafkaOperator",
-		908:  "KubernetesKafka",
-		909:  "KubernetesKafkaTopic",
-		910:  "KubernetesKafkaUser",
-		911:  "KubernetesKafkaConnect",
-		912:  "KubernetesKafkaConnector",
-		913:  "KubernetesKafkaMirrorMaker2",
-		914:  "KubernetesKarapace",
-		915:  "KubernetesKafkaUi",
-		916:  "KubernetesOpenSearchOperator",
-		917:  "KubernetesOpenSearch",
-		918:  "KubernetesAltinityOperator",
-		919:  "KubernetesClickHouse",
-		920:  "KubernetesSolrOperator",
-		921:  "KubernetesSolr",
-		922:  "KubernetesNeo4j",
-		923:  "KubernetesSeaweedFs",
-		924:  "KubernetesQdrant",
-		925:  "KubernetesRabbitMqOperator",
-		926:  "KubernetesRabbitMq",
-		930:  "KubernetesAirflow",
-		931:  "KubernetesSparkOperator",
-		932:  "KubernetesKubeRayOperator",
-		933:  "KubernetesRayCluster",
-		934:  "KubernetesFlinkOperator",
-		935:  "KubernetesFlinkDeployment",
-		936:  "KubernetesJupyterHub",
-		937:  "KubernetesMlflow",
-		938:  "KubernetesTrino",
-		939:  "KubernetesSuperset",
-		950:  "KubernetesArgocd",
-		951:  "KubernetesArgoWorkflows",
-		952:  "KubernetesTektonOperator",
-		953:  "KubernetesTekton",
-		954:  "KubernetesGhaRunnerScaleSetController",
-		955:  "KubernetesGhaRunnerScaleSet",
-		956:  "KubernetesHarbor",
-		957:  "KubernetesJenkins",
-		970:  "KubernetesTemporal",
-		971:  "KubernetesNats",
-		972:  "KubernetesLocust",
-		1200: "DigitalOceanAppPlatformService",
-		1201: "DigitalOceanBucket",
-		1202: "DigitalOceanContainerRegistry",
-		1203: "DigitalOceanDatabaseCluster",
-		1204: "DigitalOceanDnsZone",
-		1205: "DigitalOceanDroplet",
-		1206: "DigitalOceanFirewall",
-		1207: "DigitalOceanFunction",
-		1208: "DigitalOceanKubernetesCluster",
-		1209: "DigitalOceanKubernetesNodePool",
-		1210: "DigitalOceanLoadBalancer",
-		1211: "DigitalOceanVolume",
-		1212: "DigitalOceanVpc",
-		1213: "DigitalOceanCertificate",
-		1214: "DigitalOceanDnsRecord",
-		1500: "CivoBucket",
-		1501: "CivoCertificate",
-		1502: "CivoComputeInstance",
-		1503: "CivoDatabase",
-		1504: "CivoDnsZone",
-		1505: "CivoFirewall",
-		1506: "CivoIpAddress",
-		1507: "CivoKubernetesCluster",
-		1508: "CivoKubernetesNodePool",
-		1509: "CivoVolume",
-		1510: "CivoVpc",
-		1511: "CivoDnsRecord",
-		1800: "CloudflareDnsZone",
-		1801: "CloudflareKvNamespace",
-		1802: "CloudflareR2Bucket",
-		1803: "CloudflareWorker",
-		1804: "CloudflareLoadBalancer",
-		1805: "CloudflareD1Database",
-		1806: "CloudflareZeroTrustAccessApplication",
-		1807: "CloudflareDnsRecord",
-		1808: "CloudflareRuleset",
-		1809: "CloudflareWorkersKvPair",
-		1810: "CloudflareHyperdriveConfig",
-		1811: "CloudflareLoadBalancerPool",
-		1812: "CloudflareLoadBalancerMonitor",
-		1813: "CloudflareZeroTrustAccessPolicy",
-		1814: "CloudflareZeroTrustAccessGroup",
-		1815: "CloudflareQueue",
-		1816: "CloudflarePagesProject",
-		1817: "CloudflareZeroTrustTunnel",
-		1818: "CloudflareZeroTrustTunnelVirtualNetwork",
-		1819: "CloudflareZeroTrustTunnelRoute",
-		1820: "CloudflareList",
-		1821: "CloudflareListItem",
-		1822: "CloudflareTurnstileWidget",
-		1823: "CloudflareEmailRoutingZone",
-		1824: "CloudflareEmailRoutingRule",
-		1825: "CloudflareEmailRoutingAddress",
-		1826: "CloudflareOriginCaCertificate",
-		1827: "CloudflareCertificatePack",
-		1828: "CloudflareCustomHostname",
-		1829: "CloudflareCustomHostnameFallbackOrigin",
-		2100: "Auth0Connection",
-		2101: "Auth0Client",
-		2102: "Auth0EventStream",
-		2103: "Auth0ResourceServer",
-		2104: "Auth0Action",
-		2105: "Auth0Role",
-		2300: "OpenFgaStore",
-		2301: "OpenFgaAuthorizationModel",
-		2302: "OpenFgaRelationshipTuple",
-		2500: "OpenStackKeypair",
-		2501: "OpenStackNetwork",
-		2502: "OpenStackSubnet",
-		2503: "OpenStackRouter",
-		2504: "OpenStackRouterInterface",
-		2505: "OpenStackSecurityGroup",
-		2506: "OpenStackFloatingIp",
-		2507: "OpenStackNetworkPort",
-		2525: "OpenStackSecurityGroupRule",
-		2526: "OpenStackFloatingIpAssociate",
-		2508: "OpenStackInstance",
-		2509: "OpenStackServerGroup",
-		2510: "OpenStackVolume",
-		2511: "OpenStackVolumeAttach",
-		2512: "OpenStackProject",
-		2513: "OpenStackApplicationCredential",
-		2514: "OpenStackImage",
-		2515: "OpenStackRoleAssignment",
-		2516: "OpenStackLoadBalancer",
-		2517: "OpenStackLoadBalancerListener",
-		2518: "OpenStackLoadBalancerPool",
-		2519: "OpenStackLoadBalancerMember",
-		2520: "OpenStackLoadBalancerMonitor",
-		2521: "OpenStackDnsZone",
-		2522: "OpenStackDnsRecord",
-		2800: "ScalewayVpc",
-		2801: "ScalewayPrivateNetwork",
-		2802: "ScalewayPublicGateway",
-		2803: "ScalewayLoadBalancer",
-		2804: "ScalewayInstanceSecurityGroup",
-		2810: "ScalewayInstance",
-		2820: "ScalewayKapsuleCluster",
-		2821: "ScalewayKapsulePool",
-		2830: "ScalewayRdbInstance",
-		2831: "ScalewayRedisCluster",
-		2832: "ScalewayMongodbInstance",
-		2840: "ScalewayObjectBucket",
-		2841: "ScalewayBlockVolume",
-		2850: "ScalewayContainerRegistry",
-		2860: "ScalewayDnsZone",
-		2861: "ScalewayDnsRecord",
-		2870: "ScalewayServerlessFunction",
-		2871: "ScalewayServerlessContainer",
-		3000: "AliCloudLogProject",
-		3010: "AliCloudRamRole",
-		3011: "AliCloudRamPolicy",
-		3020: "AliCloudVpc",
-		3021: "AliCloudVswitch",
-		3022: "AliCloudSecurityGroup",
-		3023: "AliCloudEipAddress",
-		3024: "AliCloudNatGateway",
-		3025: "AliCloudApplicationLoadBalancer",
-		3026: "AliCloudNetworkLoadBalancer",
-		3027: "AliCloudVpnGateway",
-		3040: "AliCloudDnsZone",
-		3041: "AliCloudDnsRecord",
-		3042: "AliCloudPrivateDnsZone",
-		3050: "AliCloudStorageBucket",
-		3051: "AliCloudNasFileSystem",
-		3060: "AliCloudKmsKey",
-		3070: "AliCloudRdsInstance",
-		3071: "AliCloudPolardbCluster",
-		3072: "AliCloudRedisInstance",
-		3073: "AliCloudMongodbInstance",
-		3080: "AliCloudEcsInstance",
-		3090: "AliCloudContainerRegistry",
-		3091: "AliCloudKubernetesCluster",
-		3092: "AliCloudKubernetesNodePool",
-		3100: "AliCloudCdnDomain",
-		3110: "AliCloudFunction",
-		3111: "AliCloudSaeApplication",
-		3120: "AliCloudRocketmqInstance",
-		3130: "AliCloudCenInstance",
-		3300: "OciVcn",
-		3301: "OciSubnet",
-		3302: "OciSecurityGroup",
-		3303: "OciCompartment",
-		3304: "OciIdentityPolicy",
-		3305: "OciDynamicGroup",
-		3310: "OciComputeInstance",
-		3311: "OciContainerEngineCluster",
-		3312: "OciContainerEngineNodePool",
-		3313: "OciContainerInstance",
-		3320: "OciApplicationLoadBalancer",
-		3321: "OciNetworkLoadBalancer",
-		3322: "OciDynamicRoutingGateway",
-		3323: "OciPublicIp",
-		3330: "OciAutonomousDatabase",
-		3331: "OciDbSystem",
-		3332: "OciMysqlDbSystem",
-		3333: "OciPostgresqlDbSystem",
-		3334: "OciRedisCluster",
-		3335: "OciNosqlTable",
-		3340: "OciObjectStorageBucket",
-		3341: "OciFileSystem",
-		3342: "OciBlockVolume",
-		3350: "OciKmsVault",
-		3351: "OciKmsKey",
-		3352: "OciVaultSecret",
-		3353: "OciBastion",
-		3360: "OciFunctionsApplication",
-		3361: "OciApiGateway",
-		3370: "OciStreamPool",
-		3371: "OciQueue",
-		3380: "OciAlarm",
-		3381: "OciLogGroup",
-		3390: "OciDnsZone",
-		3391: "OciDnsRecord",
-		3395: "OciNetworkFirewall",
-		3396: "OciDevopsProject",
-		3500: "HetznerCloudSshKey",
-		3501: "HetznerCloudPlacementGroup",
-		3502: "HetznerCloudFirewall",
-		3510: "HetznerCloudNetwork",
-		3511: "HetznerCloudPrimaryIp",
-		3512: "HetznerCloudFloatingIp",
-		3520: "HetznerCloudServer",
-		3521: "HetznerCloudVolume",
-		3522: "HetznerCloudSnapshot",
-		3530: "HetznerCloudCertificate",
-		3531: "HetznerCloudLoadBalancer",
-		3540: "HetznerCloudDnsZone",
+		0:     "unspecified",
+		1:     "TestCloudResourceGeneric",
+		2:     "TestCloudResourceKubernetes",
+		50:    "ConfluentKafka",
+		51:    "AtlasMongodb",
+		52:    "SnowflakeDatabase",
+		1000:  "AwsAlb",
+		1001:  "AwsCertManagerCert",
+		1002:  "AwsCloudFront",
+		1003:  "AwsDynamodb",
+		1004:  "AwsEcrRepo",
+		1005:  "AwsEcsCluster",
+		1006:  "AwsEcsService",
+		1007:  "AwsEksCluster",
+		1008:  "AwsIamRole",
+		1009:  "AwsLambda",
+		1010:  "AwsRdsCluster",
+		1011:  "AwsRdsInstance",
+		1012:  "AwsRoute53Zone",
+		1013:  "AwsS3Bucket",
+		1014:  "AwsLbTargetGroup",
+		1015:  "AwsSecurityGroup",
+		1016:  "AwsVpc",
+		1017:  "AwsEksNodeGroup",
+		1018:  "AwsIamUser",
+		1019:  "AwsKmsKey",
+		1020:  "AwsEc2Instance",
+		1021:  "AwsClientVpn",
+		1022:  "AwsDocumentDb",
+		1023:  "AwsRoute53DnsRecord",
+		1024:  "AwsS3ObjectSet",
+		1025:  "AwsSqsQueue",
+		1026:  "AwsSnsTopic",
+		1027:  "AwsEventBridgeBus",
+		1028:  "AwsEventBridgeRule",
+		1029:  "AwsIamOidcProvider",
+		1030:  "AwsIamPolicy",
+		1031:  "AwsIamInstanceProfile",
+		1032:  "AwsLbListener",
+		1033:  "AwsLbListenerRule",
+		1034:  "AwsLaunchTemplate",
+		1035:  "AwsAutoScalingGroup",
+		1036:  "AwsEksAddon",
+		1037:  "AwsEksFargateProfile",
+		1038:  "AwsEksAccessEntry",
+		1039:  "AwsEcsTaskDefinition",
+		1040:  "AwsHttpApiGateway",
+		1041:  "AwsStepFunction",
+		1156:  "AwsHttpApiVpcLink",
+		1157:  "AwsHttpApiDomain",
+		1042:  "AwsVpcEndpoint",
+		1043:  "AwsElasticacheUser",
+		1044:  "AwsElasticacheUserGroup",
+		1045:  "AwsRedshiftServerlessNamespace",
+		1046:  "AwsRedshiftServerlessWorkgroup",
+		1050:  "AwsRedisElasticache",
+		1051:  "AwsOpenSearchDomain",
+		1052:  "AwsMemcachedElasticache",
+		1053:  "AwsServerlessElasticache",
+		1080:  "AwsNlb",
+		1081:  "AwsElasticIp",
+		1082:  "AwsTransitGateway",
+		1083:  "AwsGlobalAccelerator",
+		1084:  "AwsSubnet",
+		1085:  "AwsInternetGateway",
+		1086:  "AwsNatGateway",
+		1087:  "AwsEgressOnlyInternetGateway",
+		1090:  "AwsElasticFileSystem",
+		1160:  "AwsEfsAccessPoint",
+		1091:  "AwsFsxLustreFileSystem",
+		1092:  "AwsFsxOpenzfsFileSystem",
+		1093:  "AwsFsxWindowsFileSystem",
+		1094:  "AwsFsxOntapFileSystem",
+		1095:  "AwsFsxOntapStorageVirtualMachine",
+		1096:  "AwsFsxOntapVolume",
+		1175:  "AwsFsxDataRepositoryAssociation",
+		1100:  "AwsCognitoUserPool",
+		1102:  "AwsCognitoIdentityProvider",
+		1158:  "AwsCognitoUserPoolClient",
+		1159:  "AwsCognitoResourceServer",
+		1101:  "AwsWafWebAcl",
+		1161:  "AwsWafIpSet",
+		1162:  "AwsWafRegexPatternSet",
+		1110:  "AwsCloudwatchLogGroup",
+		1111:  "AwsCloudwatchAlarm",
+		1155:  "AwsCloudwatchCompositeAlarm",
+		1060:  "AwsKinesisStream",
+		1061:  "AwsKinesisFirehose",
+		1062:  "AwsKinesisStreamConsumer",
+		1063:  "AwsAthenaWorkgroup",
+		1064:  "AwsGlueCatalogDatabase",
+		1065:  "AwsRedshiftCluster",
+		1070:  "AwsSagemakerDomain",
+		1120:  "AwsAppRunnerService",
+		1168:  "AwsAppRunnerAutoScalingConfiguration",
+		1169:  "AwsAppRunnerVpcConnector",
+		1170:  "AwsAppRunnerObservabilityConfiguration",
+		1171:  "AwsTransitGatewayVpcAttachment",
+		1172:  "AwsTransitGatewayRouteTable",
+		1121:  "AwsBatchComputeEnvironment",
+		1163:  "AwsBatchJobQueue",
+		1164:  "AwsBatchSchedulingPolicy",
+		1165:  "AwsBatchJobDefinition",
+		1130:  "AwsCodeBuildProject",
+		1131:  "AwsCodePipeline",
+		1140:  "AwsMwaaEnvironment",
+		1141:  "AwsNeptuneCluster",
+		1142:  "AwsMemorydbCluster",
+		1173:  "AwsMemorydbUser",
+		1174:  "AwsMemorydbAcl",
+		1150:  "AwsMskCluster",
+		1151:  "AwsMskServerlessCluster",
+		1152:  "AwsLambdaEventSourceMapping",
+		1153:  "AwsSnsSubscription",
+		1154:  "AwsPlantonRunner",
+		1176:  "AwsRoute53HealthCheck",
+		1166:  "AwsSesConfigurationSet",
+		1167:  "AwsSesEmailIdentity",
+		2000:  "AzureResourceGroup",
+		2001:  "AzureAksCluster",
+		2002:  "AzureAksNodePool",
+		2003:  "AzureContainerRegistry",
+		2004:  "AzureDnsZone",
+		2005:  "AzureKeyVault",
+		2006:  "AzureVirtualNetwork",
+		2007:  "AzureNatGateway",
+		2008:  "AzureVirtualMachine",
+		2009:  "AzureStorageAccount",
+		2010:  "AzureDnsRecord",
+		2011:  "AzureSubnet",
+		2012:  "AzureNetworkSecurityGroup",
+		2013:  "AzurePublicIp",
+		2014:  "AzurePrivateEndpoint",
+		2015:  "AzurePrivateDnsZone",
+		2016:  "AzureApplicationGateway",
+		2017:  "AzureLoadBalancer",
+		2018:  "AzureRouteTable",
+		2019:  "AzurePrivateDnsZoneVirtualNetworkLink",
+		2020:  "AzureVirtualNetworkPeering",
+		2021:  "AzurePublicIpPrefix",
+		2022:  "AzureNetworkInterface",
+		2023:  "AzureManagedDisk",
+		2024:  "AzureVirtualMachineScaleSet",
+		2025:  "AzureKeyVaultKey",
+		2026:  "AzureKeyVaultCertificate",
+		2027:  "AzureWebApplicationFirewallPolicy",
+		2028:  "AzureApplicationSecurityGroup",
+		2029:  "AzureDiskEncryptionSet",
+		2030:  "AzurePostgresqlFlexibleServer",
+		2031:  "AzureRedisCache",
+		2032:  "AzureCosmosdbAccount",
+		2033:  "AzureMssqlServer",
+		2034:  "AzureMysqlFlexibleServer",
+		2035:  "AzureMssqlDatabase",
+		2036:  "AzureMssqlElasticPool",
+		2037:  "AzureRedisLinkedServer",
+		2038:  "AzureRedisCacheAccessPolicy",
+		2039:  "AzureRedisCacheAccessPolicyAssignment",
+		2040:  "AzureContainerAppEnvironment",
+		2041:  "AzureContainerApp",
+		2042:  "AzureServicePlan",
+		2043:  "AzureFunctionApp",
+		2044:  "AzureLinuxWebApp",
+		2045:  "AzureContainerAppJob",
+		2046:  "AzureContainerAppEnvironmentStorage",
+		2047:  "AzureContainerAppEnvironmentDaprComponent",
+		2048:  "AzureContainerAppEnvironmentCertificate",
+		2049:  "AzureContainerAppEnvironmentManagedCertificate",
+		2050:  "AzureLogAnalyticsWorkspace",
+		2051:  "AzureApplicationInsights",
+		2052:  "AzureMonitorDiagnosticSetting",
+		2053:  "AzureMonitorActionGroup",
+		2054:  "AzureMonitorMetricAlert",
+		2055:  "AzureMonitorScheduledQueryAlert",
+		2056:  "AzureMonitorActivityLogAlert",
+		2057:  "AzureApplicationInsightsStandardWebTest",
+		2060:  "AzureUserAssignedIdentity",
+		2061:  "AzureRoleAssignment",
+		2062:  "AzureRoleDefinition",
+		2063:  "AzureFederatedIdentityCredential",
+		2070:  "AzureServiceBusNamespace",
+		2071:  "AzureEventHubNamespace",
+		2072:  "AzureServiceBusQueue",
+		2073:  "AzureServiceBusTopic",
+		2074:  "AzureServiceBusSubscription",
+		2075:  "AzureServiceBusAuthorizationRule",
+		2076:  "AzureServiceBusDisasterRecoveryConfig",
+		2077:  "AzureEventHub",
+		2078:  "AzureEventHubConsumerGroup",
+		2079:  "AzureEventHubAuthorizationRule",
+		2080:  "AzureFrontDoorProfile",
+		2081:  "AzureFrontDoorEndpoint",
+		2082:  "AzureFrontDoorOriginGroup",
+		2083:  "AzureFrontDoorOrigin",
+		2084:  "AzureFrontDoorRoute",
+		2085:  "AzureFrontDoorRuleSet",
+		2086:  "AzureFrontDoorCustomDomain",
+		2087:  "AzureFrontDoorSecret",
+		2088:  "AzureFrontDoorFirewallPolicy",
+		2089:  "AzureFrontDoorSecurityPolicy",
+		2090:  "AzureStorageContainer",
+		2091:  "AzureStorageShare",
+		2092:  "AzureStorageQueue",
+		2093:  "AzureStorageTable",
+		2094:  "AzureStorageEncryptionScope",
+		2095:  "AzureStorageDataLakeGen2Filesystem",
+		2096:  "AzureStorageLocalUser",
+		2097:  "AzureStorageObjectReplication",
+		2100:  "AzureCosmosdbSqlDatabase",
+		2101:  "AzureCosmosdbSqlContainer",
+		2102:  "AzureCosmosdbMongoDatabase",
+		2103:  "AzureCosmosdbMongoCollection",
+		2104:  "AzureCosmosdbSqlRoleDefinition",
+		2105:  "AzureCosmosdbSqlRoleAssignment",
+		2110:  "AzureManagedRedis",
+		2111:  "AzureManagedRedisGeoReplication",
+		2112:  "AzureManagedRedisAccessPolicyAssignment",
+		2120:  "AzureEventHubDisasterRecoveryConfig",
+		2121:  "AzureEventHubSchemaGroup",
+		2122:  "AzureEventHubCluster",
+		2123:  "AzureEventHubNamespaceCustomerManagedKey",
+		2124:  "AzureMssqlFailoverGroup",
+		2125:  "AzureContainerAppCustomDomain",
+		2130:  "AzureFirewallPolicy",
+		2131:  "AzureFirewallPolicyRuleCollectionGroup",
+		2132:  "AzureFirewall",
+		2133:  "AzureIpGroup",
+		3000:  "GcpArtifactRegistryRepo",
+		3001:  "GcpTargetHttpsProxy",
+		3002:  "GcpCloudFunction",
+		3003:  "GcpCloudRun",
+		3004:  "GcpCloudSql",
+		3005:  "GcpDnsZone",
+		3006:  "GcpGcsBucket",
+		3007:  "GcpGkeCluster",
+		3008:  "GcpIamCustomRole",
+		3009:  "GcpProject",
+		3010:  "GcpVpcNetwork",
+		3011:  "GcpSubnetwork",
+		3012:  "GcpRouterNat",
+		3013:  "GcpGkeNodePool",
+		3014:  "GcpServiceAccount",
+		3015:  "GcpGkeWorkloadIdentityBinding",
+		3016:  "GcpCertManagerCert",
+		3017:  "GcpComputeInstance",
+		3018:  "GcpDnsRecord",
+		3019:  "GcpProjectIamMember",
+		3020:  "GcpFirewallRule",
+		3021:  "GcpGlobalAddress",
+		3022:  "GcpCloudArmorPolicy",
+		3023:  "GcpHealthCheck",
+		3024:  "GcpBackendBucket",
+		3025:  "GcpBackendService",
+		3026:  "GcpRegionNetworkEndpointGroup",
+		3027:  "GcpUrlMap",
+		3028:  "GcpManagedSslCertificate",
+		3029:  "GcpTargetHttpProxy",
+		3030:  "GcpAlloydbCluster",
+		3031:  "GcpRedisInstance",
+		3032:  "GcpFirestoreDatabase",
+		3033:  "GcpSpannerInstance",
+		3034:  "GcpSpannerDatabase",
+		3035:  "GcpBigtableInstance",
+		3036:  "GcpMemorystoreInstance",
+		3037:  "GcpCloudSqlDatabase",
+		3038:  "GcpCloudSqlUser",
+		3039:  "GcpAlloydbInstance",
+		3040:  "GcpAlloydbUser",
+		3041:  "GcpSpannerBackupSchedule",
+		3042:  "GcpBigtableTable",
+		3043:  "GcpFirestoreBackupSchedule",
+		3044:  "GcpFirestoreIndex",
+		3050:  "GcpBigQueryDataset",
+		3051:  "GcpDataprocCluster",
+		3052:  "GcpDataprocAutoscalingPolicy",
+		3053:  "GcpBigQueryTable",
+		3060:  "GcpPubSubTopic",
+		3061:  "GcpPubSubSubscription",
+		3062:  "GcpCloudTasksQueue",
+		3063:  "GcpCloudSchedulerJob",
+		3064:  "GcpPubSubSchema",
+		3070:  "GcpVertexAiNotebook",
+		3071:  "GcpVertexAiEndpoint",
+		3072:  "GcpVertexAiIndex",
+		3073:  "GcpVertexAiIndexEndpoint",
+		3074:  "GcpVertexAiDeployedIndex",
+		3080:  "GcpCloudComposerEnvironment",
+		3081:  "GcpCloudComposerUserWorkloadsSecret",
+		3082:  "GcpCloudComposerUserWorkloadsConfigMap",
+		3090:  "GcpKmsKeyRing",
+		3091:  "GcpKmsKey",
+		3092:  "GcpKmsKeyIamMember",
+		3100:  "GcpFilestoreInstance",
+		3101:  "GcpWorkloadIdentityPool",
+		3102:  "GcpWorkloadIdentityPoolProvider",
+		3103:  "GcpServiceAccountIamMember",
+		3110:  "GcpGlobalForwardingRule",
+		3111:  "GcpSslPolicy",
+		3112:  "GcpSslCertificate",
+		3113:  "GcpServiceNetworkingConnection",
+		3114:  "GcpAddress",
+		3115:  "GcpServiceConnectionPolicy",
+		3116:  "GcpCertManagerDnsAuthorization",
+		3120:  "GcpCloudRunJob",
+		3121:  "GcpServerlessVpcConnector",
+		3130:  "GcpComputeDisk",
+		4000:  "KubernetesNamespace",
+		4001:  "KubernetesDeployment",
+		4002:  "KubernetesStatefulSet",
+		4003:  "KubernetesDaemonSet",
+		4004:  "KubernetesJob",
+		4005:  "KubernetesCronJob",
+		4006:  "KubernetesService",
+		4007:  "KubernetesSecret",
+		4008:  "KubernetesManifest",
+		4009:  "KubernetesHelmRelease",
+		4010:  "KubernetesConfigMap",
+		4011:  "KubernetesServiceAccount",
+		4012:  "KubernetesRbac",
+		4013:  "KubernetesIngress",
+		4014:  "KubernetesNetworkPolicy",
+		4015:  "KubernetesPersistentVolumeClaim",
+		4016:  "KubernetesStorageClass",
+		4017:  "KubernetesResourceQuota",
+		4018:  "KubernetesPriorityClass",
+		4019:  "KubernetesPodDisruptionBudget",
+		4020:  "KubernetesHorizontalPodAutoscaler",
+		4030:  "KubernetesCertManager",
+		4031:  "KubernetesClusterIssuer",
+		4032:  "KubernetesIssuer",
+		4033:  "KubernetesCertificate",
+		4034:  "KubernetesExternalDns",
+		4035:  "KubernetesExternalSecretsOperator",
+		4036:  "KubernetesClusterSecretStore",
+		4037:  "KubernetesSecretStore",
+		4038:  "KubernetesExternalSecret",
+		4039:  "KubernetesIngressNginx",
+		4040:  "KubernetesGatewayApiCrds",
+		4041:  "KubernetesGatewayClass",
+		4042:  "KubernetesGateway",
+		4043:  "KubernetesListenerSet",
+		4044:  "KubernetesHttpRoute",
+		4045:  "KubernetesGrpcRoute",
+		4046:  "KubernetesTcpRoute",
+		4047:  "KubernetesUdpRoute",
+		4048:  "KubernetesTlsRoute",
+		4049:  "KubernetesReferenceGrant",
+		4050:  "KubernetesBackendTlsPolicy",
+		4051:  "KubernetesIstioBaseCrds",
+		4052:  "KubernetesIstio",
+		4053:  "KubernetesDestinationRule",
+		4054:  "KubernetesServiceEntry",
+		4055:  "KubernetesPeerAuthentication",
+		4056:  "KubernetesRequestAuthentication",
+		4057:  "KubernetesAuthorizationPolicy",
+		4058:  "KubernetesTelemetry",
+		4059:  "KubernetesEnvoyFilter",
+		4060:  "KubernetesMetricsServer",
+		4061:  "KubernetesCilium",
+		4062:  "KubernetesKeda",
+		4063:  "KubernetesKarpenter",
+		4064:  "KubernetesKarpenterNodePool",
+		4065:  "KubernetesKarpenterEc2NodeClass",
+		4066:  "KubernetesClusterAutoscaler",
+		4067:  "KubernetesVelero",
+		4070:  "KubernetesKubePrometheusStack",
+		4071:  "KubernetesGrafana",
+		4072:  "KubernetesSignoz",
+		4073:  "KubernetesLoki",
+		4074:  "KubernetesTempo",
+		4075:  "KubernetesOtelOperator",
+		4076:  "KubernetesOtelCollector",
+		4080:  "KubernetesKyverno",
+		4081:  "KubernetesGatekeeper",
+		4090:  "KubernetesKeycloak",
+		4091:  "KubernetesOpenBao",
+		4092:  "KubernetesOpenFga",
+		4093:  "KubernetesKeycloakOperator",
+		4100:  "KubernetesCloudNativePgOperator",
+		4101:  "KubernetesPostgres",
+		4102:  "KubernetesValkey",
+		4103:  "KubernetesPerconaMysqlOperator",
+		4104:  "KubernetesMysql",
+		4105:  "KubernetesPerconaMongoOperator",
+		4106:  "KubernetesMongodb",
+		4107:  "KubernetesStrimziKafkaOperator",
+		4108:  "KubernetesKafka",
+		4109:  "KubernetesKafkaTopic",
+		4110:  "KubernetesKafkaUser",
+		4111:  "KubernetesKafkaConnect",
+		4112:  "KubernetesKafkaConnector",
+		4113:  "KubernetesKafkaMirrorMaker2",
+		4114:  "KubernetesKarapace",
+		4115:  "KubernetesKafkaUi",
+		4116:  "KubernetesOpenSearchOperator",
+		4117:  "KubernetesOpenSearch",
+		4118:  "KubernetesAltinityOperator",
+		4119:  "KubernetesClickHouse",
+		4120:  "KubernetesSolrOperator",
+		4121:  "KubernetesSolr",
+		4122:  "KubernetesNeo4j",
+		4123:  "KubernetesSeaweedFs",
+		4124:  "KubernetesQdrant",
+		4125:  "KubernetesRabbitMqOperator",
+		4126:  "KubernetesRabbitMq",
+		4130:  "KubernetesAirflow",
+		4131:  "KubernetesSparkOperator",
+		4132:  "KubernetesKubeRayOperator",
+		4133:  "KubernetesRayCluster",
+		4134:  "KubernetesFlinkOperator",
+		4135:  "KubernetesFlinkDeployment",
+		4136:  "KubernetesJupyterHub",
+		4137:  "KubernetesMlflow",
+		4138:  "KubernetesTrino",
+		4139:  "KubernetesSuperset",
+		4150:  "KubernetesArgocd",
+		4151:  "KubernetesArgoWorkflows",
+		4152:  "KubernetesTektonOperator",
+		4153:  "KubernetesTekton",
+		4154:  "KubernetesGhaRunnerScaleSetController",
+		4155:  "KubernetesGhaRunnerScaleSet",
+		4156:  "KubernetesHarbor",
+		4157:  "KubernetesJenkins",
+		4170:  "KubernetesTemporal",
+		4171:  "KubernetesNats",
+		4172:  "KubernetesLocust",
+		5000:  "DigitalOceanAppPlatformService",
+		5001:  "DigitalOceanBucket",
+		5002:  "DigitalOceanContainerRegistry",
+		5003:  "DigitalOceanDatabaseCluster",
+		5004:  "DigitalOceanDnsZone",
+		5005:  "DigitalOceanDroplet",
+		5006:  "DigitalOceanFirewall",
+		5007:  "DigitalOceanFunction",
+		5008:  "DigitalOceanKubernetesCluster",
+		5009:  "DigitalOceanKubernetesNodePool",
+		5010:  "DigitalOceanLoadBalancer",
+		5011:  "DigitalOceanVolume",
+		5012:  "DigitalOceanVpc",
+		5013:  "DigitalOceanCertificate",
+		5014:  "DigitalOceanDnsRecord",
+		6000:  "CivoBucket",
+		6001:  "CivoCertificate",
+		6002:  "CivoComputeInstance",
+		6003:  "CivoDatabase",
+		6004:  "CivoDnsZone",
+		6005:  "CivoFirewall",
+		6006:  "CivoIpAddress",
+		6007:  "CivoKubernetesCluster",
+		6008:  "CivoKubernetesNodePool",
+		6009:  "CivoVolume",
+		6010:  "CivoVpc",
+		6011:  "CivoDnsRecord",
+		7000:  "CloudflareDnsZone",
+		7001:  "CloudflareKvNamespace",
+		7002:  "CloudflareR2Bucket",
+		7003:  "CloudflareWorker",
+		7004:  "CloudflareLoadBalancer",
+		7005:  "CloudflareD1Database",
+		7006:  "CloudflareZeroTrustAccessApplication",
+		7007:  "CloudflareDnsRecord",
+		7008:  "CloudflareRuleset",
+		7009:  "CloudflareWorkersKvPair",
+		7010:  "CloudflareHyperdriveConfig",
+		7011:  "CloudflareLoadBalancerPool",
+		7012:  "CloudflareLoadBalancerMonitor",
+		7013:  "CloudflareZeroTrustAccessPolicy",
+		7014:  "CloudflareZeroTrustAccessGroup",
+		7015:  "CloudflareQueue",
+		7016:  "CloudflarePagesProject",
+		7017:  "CloudflareZeroTrustTunnel",
+		7018:  "CloudflareZeroTrustTunnelVirtualNetwork",
+		7019:  "CloudflareZeroTrustTunnelRoute",
+		7020:  "CloudflareList",
+		7021:  "CloudflareListItem",
+		7022:  "CloudflareTurnstileWidget",
+		7023:  "CloudflareEmailRoutingZone",
+		7024:  "CloudflareEmailRoutingRule",
+		7025:  "CloudflareEmailRoutingAddress",
+		7026:  "CloudflareOriginCaCertificate",
+		7027:  "CloudflareCertificatePack",
+		7028:  "CloudflareCustomHostname",
+		7029:  "CloudflareCustomHostnameFallbackOrigin",
+		8000:  "Auth0Connection",
+		8001:  "Auth0Client",
+		8002:  "Auth0EventStream",
+		8003:  "Auth0ResourceServer",
+		8004:  "Auth0Action",
+		8005:  "Auth0Role",
+		9000:  "OpenFgaStore",
+		9001:  "OpenFgaAuthorizationModel",
+		9002:  "OpenFgaRelationshipTuple",
+		10000: "OpenStackKeypair",
+		10001: "OpenStackNetwork",
+		10002: "OpenStackSubnet",
+		10003: "OpenStackRouter",
+		10004: "OpenStackRouterInterface",
+		10005: "OpenStackSecurityGroup",
+		10006: "OpenStackFloatingIp",
+		10007: "OpenStackNetworkPort",
+		10025: "OpenStackSecurityGroupRule",
+		10026: "OpenStackFloatingIpAssociate",
+		10008: "OpenStackInstance",
+		10009: "OpenStackServerGroup",
+		10010: "OpenStackVolume",
+		10011: "OpenStackVolumeAttach",
+		10012: "OpenStackProject",
+		10013: "OpenStackApplicationCredential",
+		10014: "OpenStackImage",
+		10015: "OpenStackRoleAssignment",
+		10016: "OpenStackLoadBalancer",
+		10017: "OpenStackLoadBalancerListener",
+		10018: "OpenStackLoadBalancerPool",
+		10019: "OpenStackLoadBalancerMember",
+		10020: "OpenStackLoadBalancerMonitor",
+		10021: "OpenStackDnsZone",
+		10022: "OpenStackDnsRecord",
+		11000: "ScalewayVpc",
+		11001: "ScalewayPrivateNetwork",
+		11002: "ScalewayPublicGateway",
+		11003: "ScalewayLoadBalancer",
+		11004: "ScalewayInstanceSecurityGroup",
+		11010: "ScalewayInstance",
+		11020: "ScalewayKapsuleCluster",
+		11021: "ScalewayKapsulePool",
+		11030: "ScalewayRdbInstance",
+		11031: "ScalewayRedisCluster",
+		11032: "ScalewayMongodbInstance",
+		11040: "ScalewayObjectBucket",
+		11041: "ScalewayBlockVolume",
+		11050: "ScalewayContainerRegistry",
+		11060: "ScalewayDnsZone",
+		11061: "ScalewayDnsRecord",
+		11070: "ScalewayServerlessFunction",
+		11071: "ScalewayServerlessContainer",
+		12000: "AliCloudLogProject",
+		12010: "AliCloudRamRole",
+		12011: "AliCloudRamPolicy",
+		12020: "AliCloudVpc",
+		12021: "AliCloudVswitch",
+		12022: "AliCloudSecurityGroup",
+		12023: "AliCloudEipAddress",
+		12024: "AliCloudNatGateway",
+		12025: "AliCloudApplicationLoadBalancer",
+		12026: "AliCloudNetworkLoadBalancer",
+		12027: "AliCloudVpnGateway",
+		12040: "AliCloudDnsZone",
+		12041: "AliCloudDnsRecord",
+		12042: "AliCloudPrivateDnsZone",
+		12050: "AliCloudStorageBucket",
+		12051: "AliCloudNasFileSystem",
+		12060: "AliCloudKmsKey",
+		12070: "AliCloudRdsInstance",
+		12071: "AliCloudPolardbCluster",
+		12072: "AliCloudRedisInstance",
+		12073: "AliCloudMongodbInstance",
+		12080: "AliCloudEcsInstance",
+		12090: "AliCloudContainerRegistry",
+		12091: "AliCloudKubernetesCluster",
+		12092: "AliCloudKubernetesNodePool",
+		12100: "AliCloudCdnDomain",
+		12110: "AliCloudFunction",
+		12111: "AliCloudSaeApplication",
+		12120: "AliCloudRocketmqInstance",
+		12130: "AliCloudCenInstance",
+		13000: "OciVcn",
+		13001: "OciSubnet",
+		13002: "OciSecurityGroup",
+		13003: "OciCompartment",
+		13004: "OciIdentityPolicy",
+		13005: "OciDynamicGroup",
+		13010: "OciComputeInstance",
+		13011: "OciContainerEngineCluster",
+		13012: "OciContainerEngineNodePool",
+		13013: "OciContainerInstance",
+		13020: "OciApplicationLoadBalancer",
+		13021: "OciNetworkLoadBalancer",
+		13022: "OciDynamicRoutingGateway",
+		13023: "OciPublicIp",
+		13030: "OciAutonomousDatabase",
+		13031: "OciDbSystem",
+		13032: "OciMysqlDbSystem",
+		13033: "OciPostgresqlDbSystem",
+		13034: "OciRedisCluster",
+		13035: "OciNosqlTable",
+		13040: "OciObjectStorageBucket",
+		13041: "OciFileSystem",
+		13042: "OciBlockVolume",
+		13050: "OciKmsVault",
+		13051: "OciKmsKey",
+		13052: "OciVaultSecret",
+		13053: "OciBastion",
+		13060: "OciFunctionsApplication",
+		13061: "OciApiGateway",
+		13070: "OciStreamPool",
+		13071: "OciQueue",
+		13080: "OciAlarm",
+		13081: "OciLogGroup",
+		13090: "OciDnsZone",
+		13091: "OciDnsRecord",
+		13095: "OciNetworkFirewall",
+		13096: "OciDevopsProject",
+		14000: "HetznerCloudSshKey",
+		14001: "HetznerCloudPlacementGroup",
+		14002: "HetznerCloudFirewall",
+		14010: "HetznerCloudNetwork",
+		14011: "HetznerCloudPrimaryIp",
+		14012: "HetznerCloudFloatingIp",
+		14020: "HetznerCloudServer",
+		14021: "HetznerCloudVolume",
+		14022: "HetznerCloudSnapshot",
+		14030: "HetznerCloudCertificate",
+		14031: "HetznerCloudLoadBalancer",
+		14040: "HetznerCloudDnsZone",
 	}
 	CloudResourceKind_value = map[string]int32{
 		"unspecified":                                    0,
@@ -1847,614 +1847,614 @@ var (
 		"ConfluentKafka":                                 50,
 		"AtlasMongodb":                                   51,
 		"SnowflakeDatabase":                              52,
-		"AwsAlb":                                         200,
-		"AwsCertManagerCert":                             201,
-		"AwsCloudFront":                                  202,
-		"AwsDynamodb":                                    203,
-		"AwsEcrRepo":                                     204,
-		"AwsEcsCluster":                                  205,
-		"AwsEcsService":                                  206,
-		"AwsEksCluster":                                  207,
-		"AwsIamRole":                                     208,
-		"AwsLambda":                                      209,
-		"AwsRdsCluster":                                  210,
-		"AwsRdsInstance":                                 211,
-		"AwsRoute53Zone":                                 212,
-		"AwsS3Bucket":                                    213,
-		"AwsLbTargetGroup":                               214,
-		"AwsSecurityGroup":                               215,
-		"AwsVpc":                                         216,
-		"AwsEksNodeGroup":                                217,
-		"AwsIamUser":                                     218,
-		"AwsKmsKey":                                      219,
-		"AwsEc2Instance":                                 220,
-		"AwsClientVpn":                                   221,
-		"AwsDocumentDb":                                  222,
-		"AwsRoute53DnsRecord":                            223,
-		"AwsS3ObjectSet":                                 224,
-		"AwsSqsQueue":                                    225,
-		"AwsSnsTopic":                                    226,
-		"AwsEventBridgeBus":                              227,
-		"AwsEventBridgeRule":                             228,
-		"AwsIamOidcProvider":                             229,
-		"AwsIamPolicy":                                   230,
-		"AwsIamInstanceProfile":                          231,
-		"AwsLbListener":                                  232,
-		"AwsLbListenerRule":                              233,
-		"AwsLaunchTemplate":                              234,
-		"AwsAutoScalingGroup":                            235,
-		"AwsEksAddon":                                    236,
-		"AwsEksFargateProfile":                           237,
-		"AwsEksAccessEntry":                              238,
-		"AwsEcsTaskDefinition":                           239,
-		"AwsHttpApiGateway":                              240,
-		"AwsStepFunction":                                241,
-		"AwsHttpApiVpcLink":                              356,
-		"AwsHttpApiDomain":                               357,
-		"AwsVpcEndpoint":                                 242,
-		"AwsElasticacheUser":                             243,
-		"AwsElasticacheUserGroup":                        244,
-		"AwsRedshiftServerlessNamespace":                 245,
-		"AwsRedshiftServerlessWorkgroup":                 246,
-		"AwsRedisElasticache":                            250,
-		"AwsOpenSearchDomain":                            251,
-		"AwsMemcachedElasticache":                        252,
-		"AwsServerlessElasticache":                       253,
-		"AwsNlb":                                         280,
-		"AwsElasticIp":                                   281,
-		"AwsTransitGateway":                              282,
-		"AwsGlobalAccelerator":                           283,
-		"AwsSubnet":                                      284,
-		"AwsInternetGateway":                             285,
-		"AwsNatGateway":                                  286,
-		"AwsEgressOnlyInternetGateway":                   287,
-		"AwsElasticFileSystem":                           290,
-		"AwsEfsAccessPoint":                              360,
-		"AwsFsxLustreFileSystem":                         291,
-		"AwsFsxOpenzfsFileSystem":                        292,
-		"AwsFsxWindowsFileSystem":                        293,
-		"AwsFsxOntapFileSystem":                          294,
-		"AwsFsxOntapStorageVirtualMachine":               295,
-		"AwsFsxOntapVolume":                              296,
-		"AwsFsxDataRepositoryAssociation":                375,
-		"AwsCognitoUserPool":                             300,
-		"AwsCognitoIdentityProvider":                     302,
-		"AwsCognitoUserPoolClient":                       358,
-		"AwsCognitoResourceServer":                       359,
-		"AwsWafWebAcl":                                   301,
-		"AwsWafIpSet":                                    361,
-		"AwsWafRegexPatternSet":                          362,
-		"AwsCloudwatchLogGroup":                          310,
-		"AwsCloudwatchAlarm":                             311,
-		"AwsCloudwatchCompositeAlarm":                    355,
-		"AwsKinesisStream":                               260,
-		"AwsKinesisFirehose":                             261,
-		"AwsKinesisStreamConsumer":                       262,
-		"AwsAthenaWorkgroup":                             263,
-		"AwsGlueCatalogDatabase":                         264,
-		"AwsRedshiftCluster":                             265,
-		"AwsSagemakerDomain":                             270,
-		"AwsAppRunnerService":                            320,
-		"AwsAppRunnerAutoScalingConfiguration":           368,
-		"AwsAppRunnerVpcConnector":                       369,
-		"AwsAppRunnerObservabilityConfiguration":         370,
-		"AwsTransitGatewayVpcAttachment":                 371,
-		"AwsTransitGatewayRouteTable":                    372,
-		"AwsBatchComputeEnvironment":                     321,
-		"AwsBatchJobQueue":                               363,
-		"AwsBatchSchedulingPolicy":                       364,
-		"AwsBatchJobDefinition":                          365,
-		"AwsCodeBuildProject":                            330,
-		"AwsCodePipeline":                                331,
-		"AwsMwaaEnvironment":                             340,
-		"AwsNeptuneCluster":                              341,
-		"AwsMemorydbCluster":                             342,
-		"AwsMemorydbUser":                                373,
-		"AwsMemorydbAcl":                                 374,
-		"AwsMskCluster":                                  350,
-		"AwsMskServerlessCluster":                        351,
-		"AwsLambdaEventSourceMapping":                    352,
-		"AwsSnsSubscription":                             353,
-		"AwsPlantonRunner":                               354,
-		"AwsRoute53HealthCheck":                          376,
-		"AwsSesConfigurationSet":                         366,
-		"AwsSesEmailIdentity":                            367,
-		"AzureResourceGroup":                             400,
-		"AzureAksCluster":                                401,
-		"AzureAksNodePool":                               402,
-		"AzureContainerRegistry":                         403,
-		"AzureDnsZone":                                   404,
-		"AzureKeyVault":                                  405,
-		"AzureVirtualNetwork":                            406,
-		"AzureNatGateway":                                407,
-		"AzureVirtualMachine":                            408,
-		"AzureStorageAccount":                            409,
-		"AzureDnsRecord":                                 410,
-		"AzureSubnet":                                    411,
-		"AzureNetworkSecurityGroup":                      412,
-		"AzurePublicIp":                                  413,
-		"AzurePrivateEndpoint":                           414,
-		"AzurePrivateDnsZone":                            415,
-		"AzureApplicationGateway":                        416,
-		"AzureLoadBalancer":                              417,
-		"AzureRouteTable":                                418,
-		"AzurePrivateDnsZoneVirtualNetworkLink":          419,
-		"AzureVirtualNetworkPeering":                     420,
-		"AzurePublicIpPrefix":                            421,
-		"AzureNetworkInterface":                          422,
-		"AzureManagedDisk":                               423,
-		"AzureVirtualMachineScaleSet":                    424,
-		"AzureKeyVaultKey":                               425,
-		"AzureKeyVaultCertificate":                       426,
-		"AzureWebApplicationFirewallPolicy":              427,
-		"AzureApplicationSecurityGroup":                  428,
-		"AzureDiskEncryptionSet":                         429,
-		"AzurePostgresqlFlexibleServer":                  430,
-		"AzureRedisCache":                                431,
-		"AzureCosmosdbAccount":                           432,
-		"AzureMssqlServer":                               433,
-		"AzureMysqlFlexibleServer":                       434,
-		"AzureMssqlDatabase":                             435,
-		"AzureMssqlElasticPool":                          436,
-		"AzureRedisLinkedServer":                         437,
-		"AzureRedisCacheAccessPolicy":                    438,
-		"AzureRedisCacheAccessPolicyAssignment":          439,
-		"AzureContainerAppEnvironment":                   440,
-		"AzureContainerApp":                              441,
-		"AzureServicePlan":                               442,
-		"AzureFunctionApp":                               443,
-		"AzureLinuxWebApp":                               444,
-		"AzureContainerAppJob":                           445,
-		"AzureContainerAppEnvironmentStorage":            446,
-		"AzureContainerAppEnvironmentDaprComponent":      447,
-		"AzureContainerAppEnvironmentCertificate":        448,
-		"AzureContainerAppEnvironmentManagedCertificate": 449,
-		"AzureLogAnalyticsWorkspace":                     450,
-		"AzureApplicationInsights":                       451,
-		"AzureMonitorDiagnosticSetting":                  452,
-		"AzureMonitorActionGroup":                        453,
-		"AzureMonitorMetricAlert":                        454,
-		"AzureMonitorScheduledQueryAlert":                455,
-		"AzureMonitorActivityLogAlert":                   456,
-		"AzureApplicationInsightsStandardWebTest":        457,
-		"AzureUserAssignedIdentity":                      460,
-		"AzureRoleAssignment":                            461,
-		"AzureRoleDefinition":                            462,
-		"AzureFederatedIdentityCredential":               463,
-		"AzureServiceBusNamespace":                       470,
-		"AzureEventHubNamespace":                         471,
-		"AzureServiceBusQueue":                           472,
-		"AzureServiceBusTopic":                           473,
-		"AzureServiceBusSubscription":                    474,
-		"AzureServiceBusAuthorizationRule":               475,
-		"AzureServiceBusDisasterRecoveryConfig":          476,
-		"AzureEventHub":                                  477,
-		"AzureEventHubConsumerGroup":                     478,
-		"AzureEventHubAuthorizationRule":                 479,
-		"AzureFrontDoorProfile":                          480,
-		"AzureFrontDoorEndpoint":                         481,
-		"AzureFrontDoorOriginGroup":                      482,
-		"AzureFrontDoorOrigin":                           483,
-		"AzureFrontDoorRoute":                            484,
-		"AzureFrontDoorRuleSet":                          485,
-		"AzureFrontDoorCustomDomain":                     486,
-		"AzureFrontDoorSecret":                           487,
-		"AzureFrontDoorFirewallPolicy":                   488,
-		"AzureFrontDoorSecurityPolicy":                   489,
-		"AzureStorageContainer":                          490,
-		"AzureStorageShare":                              491,
-		"AzureStorageQueue":                              492,
-		"AzureStorageTable":                              493,
-		"AzureStorageEncryptionScope":                    494,
-		"AzureStorageDataLakeGen2Filesystem":             495,
-		"AzureStorageLocalUser":                          496,
-		"AzureStorageObjectReplication":                  497,
-		"AzureCosmosdbSqlDatabase":                       500,
-		"AzureCosmosdbSqlContainer":                      501,
-		"AzureCosmosdbMongoDatabase":                     502,
-		"AzureCosmosdbMongoCollection":                   503,
-		"AzureCosmosdbSqlRoleDefinition":                 504,
-		"AzureCosmosdbSqlRoleAssignment":                 505,
-		"AzureManagedRedis":                              510,
-		"AzureManagedRedisGeoReplication":                511,
-		"AzureManagedRedisAccessPolicyAssignment":        512,
-		"AzureEventHubDisasterRecoveryConfig":            520,
-		"AzureEventHubSchemaGroup":                       521,
-		"AzureEventHubCluster":                           522,
-		"AzureEventHubNamespaceCustomerManagedKey":       523,
-		"AzureMssqlFailoverGroup":                        524,
-		"AzureContainerAppCustomDomain":                  525,
-		"AzureFirewallPolicy":                            530,
-		"AzureFirewallPolicyRuleCollectionGroup":         531,
-		"AzureFirewall":                                  532,
-		"AzureIpGroup":                                   533,
-		"GcpArtifactRegistryRepo":                        600,
-		"GcpTargetHttpsProxy":                            601,
-		"GcpCloudFunction":                               602,
-		"GcpCloudRun":                                    603,
-		"GcpCloudSql":                                    604,
-		"GcpDnsZone":                                     605,
-		"GcpGcsBucket":                                   606,
-		"GcpGkeCluster":                                  607,
-		"GcpIamCustomRole":                               608,
-		"GcpProject":                                     609,
-		"GcpVpcNetwork":                                  610,
-		"GcpSubnetwork":                                  611,
-		"GcpRouterNat":                                   612,
-		"GcpGkeNodePool":                                 613,
-		"GcpServiceAccount":                              614,
-		"GcpGkeWorkloadIdentityBinding":                  615,
-		"GcpCertManagerCert":                             616,
-		"GcpComputeInstance":                             617,
-		"GcpDnsRecord":                                   618,
-		"GcpProjectIamMember":                            619,
-		"GcpFirewallRule":                                620,
-		"GcpGlobalAddress":                               621,
-		"GcpCloudArmorPolicy":                            622,
-		"GcpHealthCheck":                                 623,
-		"GcpBackendBucket":                               624,
-		"GcpBackendService":                              625,
-		"GcpRegionNetworkEndpointGroup":                  626,
-		"GcpUrlMap":                                      627,
-		"GcpManagedSslCertificate":                       628,
-		"GcpTargetHttpProxy":                             629,
-		"GcpAlloydbCluster":                              630,
-		"GcpRedisInstance":                               631,
-		"GcpFirestoreDatabase":                           632,
-		"GcpSpannerInstance":                             633,
-		"GcpSpannerDatabase":                             634,
-		"GcpBigtableInstance":                            635,
-		"GcpMemorystoreInstance":                         636,
-		"GcpCloudSqlDatabase":                            637,
-		"GcpCloudSqlUser":                                638,
-		"GcpAlloydbInstance":                             639,
-		"GcpAlloydbUser":                                 640,
-		"GcpSpannerBackupSchedule":                       641,
-		"GcpBigtableTable":                               642,
-		"GcpFirestoreBackupSchedule":                     643,
-		"GcpFirestoreIndex":                              644,
-		"GcpBigQueryDataset":                             650,
-		"GcpDataprocCluster":                             651,
-		"GcpDataprocAutoscalingPolicy":                   652,
-		"GcpBigQueryTable":                               653,
-		"GcpPubSubTopic":                                 660,
-		"GcpPubSubSubscription":                          661,
-		"GcpCloudTasksQueue":                             662,
-		"GcpCloudSchedulerJob":                           663,
-		"GcpPubSubSchema":                                664,
-		"GcpVertexAiNotebook":                            670,
-		"GcpVertexAiEndpoint":                            671,
-		"GcpVertexAiIndex":                               672,
-		"GcpVertexAiIndexEndpoint":                       673,
-		"GcpVertexAiDeployedIndex":                       674,
-		"GcpCloudComposerEnvironment":                    680,
-		"GcpCloudComposerUserWorkloadsSecret":            681,
-		"GcpCloudComposerUserWorkloadsConfigMap":         682,
-		"GcpKmsKeyRing":                                  690,
-		"GcpKmsKey":                                      691,
-		"GcpKmsKeyIamMember":                             692,
-		"GcpFilestoreInstance":                           700,
-		"GcpWorkloadIdentityPool":                        701,
-		"GcpWorkloadIdentityPoolProvider":                702,
-		"GcpServiceAccountIamMember":                     703,
-		"GcpGlobalForwardingRule":                        710,
-		"GcpSslPolicy":                                   711,
-		"GcpSslCertificate":                              712,
-		"GcpServiceNetworkingConnection":                 713,
-		"GcpAddress":                                     714,
-		"GcpServiceConnectionPolicy":                     715,
-		"GcpCertManagerDnsAuthorization":                 716,
-		"GcpCloudRunJob":                                 720,
-		"GcpServerlessVpcConnector":                      721,
-		"GcpComputeDisk":                                 730,
-		"KubernetesNamespace":                            800,
-		"KubernetesDeployment":                           801,
-		"KubernetesStatefulSet":                          802,
-		"KubernetesDaemonSet":                            803,
-		"KubernetesJob":                                  804,
-		"KubernetesCronJob":                              805,
-		"KubernetesService":                              806,
-		"KubernetesSecret":                               807,
-		"KubernetesManifest":                             808,
-		"KubernetesHelmRelease":                          809,
-		"KubernetesConfigMap":                            810,
-		"KubernetesServiceAccount":                       811,
-		"KubernetesRbac":                                 812,
-		"KubernetesIngress":                              813,
-		"KubernetesNetworkPolicy":                        814,
-		"KubernetesPersistentVolumeClaim":                815,
-		"KubernetesStorageClass":                         816,
-		"KubernetesResourceQuota":                        817,
-		"KubernetesPriorityClass":                        818,
-		"KubernetesPodDisruptionBudget":                  819,
-		"KubernetesHorizontalPodAutoscaler":              820,
-		"KubernetesCertManager":                          830,
-		"KubernetesClusterIssuer":                        831,
-		"KubernetesIssuer":                               832,
-		"KubernetesCertificate":                          833,
-		"KubernetesExternalDns":                          834,
-		"KubernetesExternalSecretsOperator":              835,
-		"KubernetesClusterSecretStore":                   836,
-		"KubernetesSecretStore":                          837,
-		"KubernetesExternalSecret":                       838,
-		"KubernetesIngressNginx":                         839,
-		"KubernetesGatewayApiCrds":                       840,
-		"KubernetesGatewayClass":                         841,
-		"KubernetesGateway":                              842,
-		"KubernetesListenerSet":                          843,
-		"KubernetesHttpRoute":                            844,
-		"KubernetesGrpcRoute":                            845,
-		"KubernetesTcpRoute":                             846,
-		"KubernetesUdpRoute":                             847,
-		"KubernetesTlsRoute":                             848,
-		"KubernetesReferenceGrant":                       849,
-		"KubernetesBackendTlsPolicy":                     850,
-		"KubernetesIstioBaseCrds":                        851,
-		"KubernetesIstio":                                852,
-		"KubernetesDestinationRule":                      853,
-		"KubernetesServiceEntry":                         854,
-		"KubernetesPeerAuthentication":                   855,
-		"KubernetesRequestAuthentication":                856,
-		"KubernetesAuthorizationPolicy":                  857,
-		"KubernetesTelemetry":                            858,
-		"KubernetesEnvoyFilter":                          859,
-		"KubernetesMetricsServer":                        860,
-		"KubernetesCilium":                               861,
-		"KubernetesKeda":                                 862,
-		"KubernetesKarpenter":                            863,
-		"KubernetesKarpenterNodePool":                    864,
-		"KubernetesKarpenterEc2NodeClass":                865,
-		"KubernetesClusterAutoscaler":                    866,
-		"KubernetesVelero":                               867,
-		"KubernetesKubePrometheusStack":                  870,
-		"KubernetesGrafana":                              871,
-		"KubernetesSignoz":                               872,
-		"KubernetesLoki":                                 873,
-		"KubernetesTempo":                                874,
-		"KubernetesOtelOperator":                         875,
-		"KubernetesOtelCollector":                        876,
-		"KubernetesKyverno":                              880,
-		"KubernetesGatekeeper":                           881,
-		"KubernetesKeycloak":                             890,
-		"KubernetesOpenBao":                              891,
-		"KubernetesOpenFga":                              892,
-		"KubernetesKeycloakOperator":                     893,
-		"KubernetesCloudNativePgOperator":                900,
-		"KubernetesPostgres":                             901,
-		"KubernetesValkey":                               902,
-		"KubernetesPerconaMysqlOperator":                 903,
-		"KubernetesMysql":                                904,
-		"KubernetesPerconaMongoOperator":                 905,
-		"KubernetesMongodb":                              906,
-		"KubernetesStrimziKafkaOperator":                 907,
-		"KubernetesKafka":                                908,
-		"KubernetesKafkaTopic":                           909,
-		"KubernetesKafkaUser":                            910,
-		"KubernetesKafkaConnect":                         911,
-		"KubernetesKafkaConnector":                       912,
-		"KubernetesKafkaMirrorMaker2":                    913,
-		"KubernetesKarapace":                             914,
-		"KubernetesKafkaUi":                              915,
-		"KubernetesOpenSearchOperator":                   916,
-		"KubernetesOpenSearch":                           917,
-		"KubernetesAltinityOperator":                     918,
-		"KubernetesClickHouse":                           919,
-		"KubernetesSolrOperator":                         920,
-		"KubernetesSolr":                                 921,
-		"KubernetesNeo4j":                                922,
-		"KubernetesSeaweedFs":                            923,
-		"KubernetesQdrant":                               924,
-		"KubernetesRabbitMqOperator":                     925,
-		"KubernetesRabbitMq":                             926,
-		"KubernetesAirflow":                              930,
-		"KubernetesSparkOperator":                        931,
-		"KubernetesKubeRayOperator":                      932,
-		"KubernetesRayCluster":                           933,
-		"KubernetesFlinkOperator":                        934,
-		"KubernetesFlinkDeployment":                      935,
-		"KubernetesJupyterHub":                           936,
-		"KubernetesMlflow":                               937,
-		"KubernetesTrino":                                938,
-		"KubernetesSuperset":                             939,
-		"KubernetesArgocd":                               950,
-		"KubernetesArgoWorkflows":                        951,
-		"KubernetesTektonOperator":                       952,
-		"KubernetesTekton":                               953,
-		"KubernetesGhaRunnerScaleSetController":          954,
-		"KubernetesGhaRunnerScaleSet":                    955,
-		"KubernetesHarbor":                               956,
-		"KubernetesJenkins":                              957,
-		"KubernetesTemporal":                             970,
-		"KubernetesNats":                                 971,
-		"KubernetesLocust":                               972,
-		"DigitalOceanAppPlatformService":                 1200,
-		"DigitalOceanBucket":                             1201,
-		"DigitalOceanContainerRegistry":                  1202,
-		"DigitalOceanDatabaseCluster":                    1203,
-		"DigitalOceanDnsZone":                            1204,
-		"DigitalOceanDroplet":                            1205,
-		"DigitalOceanFirewall":                           1206,
-		"DigitalOceanFunction":                           1207,
-		"DigitalOceanKubernetesCluster":                  1208,
-		"DigitalOceanKubernetesNodePool":                 1209,
-		"DigitalOceanLoadBalancer":                       1210,
-		"DigitalOceanVolume":                             1211,
-		"DigitalOceanVpc":                                1212,
-		"DigitalOceanCertificate":                        1213,
-		"DigitalOceanDnsRecord":                          1214,
-		"CivoBucket":                                     1500,
-		"CivoCertificate":                                1501,
-		"CivoComputeInstance":                            1502,
-		"CivoDatabase":                                   1503,
-		"CivoDnsZone":                                    1504,
-		"CivoFirewall":                                   1505,
-		"CivoIpAddress":                                  1506,
-		"CivoKubernetesCluster":                          1507,
-		"CivoKubernetesNodePool":                         1508,
-		"CivoVolume":                                     1509,
-		"CivoVpc":                                        1510,
-		"CivoDnsRecord":                                  1511,
-		"CloudflareDnsZone":                              1800,
-		"CloudflareKvNamespace":                          1801,
-		"CloudflareR2Bucket":                             1802,
-		"CloudflareWorker":                               1803,
-		"CloudflareLoadBalancer":                         1804,
-		"CloudflareD1Database":                           1805,
-		"CloudflareZeroTrustAccessApplication":           1806,
-		"CloudflareDnsRecord":                            1807,
-		"CloudflareRuleset":                              1808,
-		"CloudflareWorkersKvPair":                        1809,
-		"CloudflareHyperdriveConfig":                     1810,
-		"CloudflareLoadBalancerPool":                     1811,
-		"CloudflareLoadBalancerMonitor":                  1812,
-		"CloudflareZeroTrustAccessPolicy":                1813,
-		"CloudflareZeroTrustAccessGroup":                 1814,
-		"CloudflareQueue":                                1815,
-		"CloudflarePagesProject":                         1816,
-		"CloudflareZeroTrustTunnel":                      1817,
-		"CloudflareZeroTrustTunnelVirtualNetwork":        1818,
-		"CloudflareZeroTrustTunnelRoute":                 1819,
-		"CloudflareList":                                 1820,
-		"CloudflareListItem":                             1821,
-		"CloudflareTurnstileWidget":                      1822,
-		"CloudflareEmailRoutingZone":                     1823,
-		"CloudflareEmailRoutingRule":                     1824,
-		"CloudflareEmailRoutingAddress":                  1825,
-		"CloudflareOriginCaCertificate":                  1826,
-		"CloudflareCertificatePack":                      1827,
-		"CloudflareCustomHostname":                       1828,
-		"CloudflareCustomHostnameFallbackOrigin":         1829,
-		"Auth0Connection":                                2100,
-		"Auth0Client":                                    2101,
-		"Auth0EventStream":                               2102,
-		"Auth0ResourceServer":                            2103,
-		"Auth0Action":                                    2104,
-		"Auth0Role":                                      2105,
-		"OpenFgaStore":                                   2300,
-		"OpenFgaAuthorizationModel":                      2301,
-		"OpenFgaRelationshipTuple":                       2302,
-		"OpenStackKeypair":                               2500,
-		"OpenStackNetwork":                               2501,
-		"OpenStackSubnet":                                2502,
-		"OpenStackRouter":                                2503,
-		"OpenStackRouterInterface":                       2504,
-		"OpenStackSecurityGroup":                         2505,
-		"OpenStackFloatingIp":                            2506,
-		"OpenStackNetworkPort":                           2507,
-		"OpenStackSecurityGroupRule":                     2525,
-		"OpenStackFloatingIpAssociate":                   2526,
-		"OpenStackInstance":                              2508,
-		"OpenStackServerGroup":                           2509,
-		"OpenStackVolume":                                2510,
-		"OpenStackVolumeAttach":                          2511,
-		"OpenStackProject":                               2512,
-		"OpenStackApplicationCredential":                 2513,
-		"OpenStackImage":                                 2514,
-		"OpenStackRoleAssignment":                        2515,
-		"OpenStackLoadBalancer":                          2516,
-		"OpenStackLoadBalancerListener":                  2517,
-		"OpenStackLoadBalancerPool":                      2518,
-		"OpenStackLoadBalancerMember":                    2519,
-		"OpenStackLoadBalancerMonitor":                   2520,
-		"OpenStackDnsZone":                               2521,
-		"OpenStackDnsRecord":                             2522,
-		"ScalewayVpc":                                    2800,
-		"ScalewayPrivateNetwork":                         2801,
-		"ScalewayPublicGateway":                          2802,
-		"ScalewayLoadBalancer":                           2803,
-		"ScalewayInstanceSecurityGroup":                  2804,
-		"ScalewayInstance":                               2810,
-		"ScalewayKapsuleCluster":                         2820,
-		"ScalewayKapsulePool":                            2821,
-		"ScalewayRdbInstance":                            2830,
-		"ScalewayRedisCluster":                           2831,
-		"ScalewayMongodbInstance":                        2832,
-		"ScalewayObjectBucket":                           2840,
-		"ScalewayBlockVolume":                            2841,
-		"ScalewayContainerRegistry":                      2850,
-		"ScalewayDnsZone":                                2860,
-		"ScalewayDnsRecord":                              2861,
-		"ScalewayServerlessFunction":                     2870,
-		"ScalewayServerlessContainer":                    2871,
-		"AliCloudLogProject":                             3000,
-		"AliCloudRamRole":                                3010,
-		"AliCloudRamPolicy":                              3011,
-		"AliCloudVpc":                                    3020,
-		"AliCloudVswitch":                                3021,
-		"AliCloudSecurityGroup":                          3022,
-		"AliCloudEipAddress":                             3023,
-		"AliCloudNatGateway":                             3024,
-		"AliCloudApplicationLoadBalancer":                3025,
-		"AliCloudNetworkLoadBalancer":                    3026,
-		"AliCloudVpnGateway":                             3027,
-		"AliCloudDnsZone":                                3040,
-		"AliCloudDnsRecord":                              3041,
-		"AliCloudPrivateDnsZone":                         3042,
-		"AliCloudStorageBucket":                          3050,
-		"AliCloudNasFileSystem":                          3051,
-		"AliCloudKmsKey":                                 3060,
-		"AliCloudRdsInstance":                            3070,
-		"AliCloudPolardbCluster":                         3071,
-		"AliCloudRedisInstance":                          3072,
-		"AliCloudMongodbInstance":                        3073,
-		"AliCloudEcsInstance":                            3080,
-		"AliCloudContainerRegistry":                      3090,
-		"AliCloudKubernetesCluster":                      3091,
-		"AliCloudKubernetesNodePool":                     3092,
-		"AliCloudCdnDomain":                              3100,
-		"AliCloudFunction":                               3110,
-		"AliCloudSaeApplication":                         3111,
-		"AliCloudRocketmqInstance":                       3120,
-		"AliCloudCenInstance":                            3130,
-		"OciVcn":                                         3300,
-		"OciSubnet":                                      3301,
-		"OciSecurityGroup":                               3302,
-		"OciCompartment":                                 3303,
-		"OciIdentityPolicy":                              3304,
-		"OciDynamicGroup":                                3305,
-		"OciComputeInstance":                             3310,
-		"OciContainerEngineCluster":                      3311,
-		"OciContainerEngineNodePool":                     3312,
-		"OciContainerInstance":                           3313,
-		"OciApplicationLoadBalancer":                     3320,
-		"OciNetworkLoadBalancer":                         3321,
-		"OciDynamicRoutingGateway":                       3322,
-		"OciPublicIp":                                    3323,
-		"OciAutonomousDatabase":                          3330,
-		"OciDbSystem":                                    3331,
-		"OciMysqlDbSystem":                               3332,
-		"OciPostgresqlDbSystem":                          3333,
-		"OciRedisCluster":                                3334,
-		"OciNosqlTable":                                  3335,
-		"OciObjectStorageBucket":                         3340,
-		"OciFileSystem":                                  3341,
-		"OciBlockVolume":                                 3342,
-		"OciKmsVault":                                    3350,
-		"OciKmsKey":                                      3351,
-		"OciVaultSecret":                                 3352,
-		"OciBastion":                                     3353,
-		"OciFunctionsApplication":                        3360,
-		"OciApiGateway":                                  3361,
-		"OciStreamPool":                                  3370,
-		"OciQueue":                                       3371,
-		"OciAlarm":                                       3380,
-		"OciLogGroup":                                    3381,
-		"OciDnsZone":                                     3390,
-		"OciDnsRecord":                                   3391,
-		"OciNetworkFirewall":                             3395,
-		"OciDevopsProject":                               3396,
-		"HetznerCloudSshKey":                             3500,
-		"HetznerCloudPlacementGroup":                     3501,
-		"HetznerCloudFirewall":                           3502,
-		"HetznerCloudNetwork":                            3510,
-		"HetznerCloudPrimaryIp":                          3511,
-		"HetznerCloudFloatingIp":                         3512,
-		"HetznerCloudServer":                             3520,
-		"HetznerCloudVolume":                             3521,
-		"HetznerCloudSnapshot":                           3522,
-		"HetznerCloudCertificate":                        3530,
-		"HetznerCloudLoadBalancer":                       3531,
-		"HetznerCloudDnsZone":                            3540,
+		"AwsAlb":                                         1000,
+		"AwsCertManagerCert":                             1001,
+		"AwsCloudFront":                                  1002,
+		"AwsDynamodb":                                    1003,
+		"AwsEcrRepo":                                     1004,
+		"AwsEcsCluster":                                  1005,
+		"AwsEcsService":                                  1006,
+		"AwsEksCluster":                                  1007,
+		"AwsIamRole":                                     1008,
+		"AwsLambda":                                      1009,
+		"AwsRdsCluster":                                  1010,
+		"AwsRdsInstance":                                 1011,
+		"AwsRoute53Zone":                                 1012,
+		"AwsS3Bucket":                                    1013,
+		"AwsLbTargetGroup":                               1014,
+		"AwsSecurityGroup":                               1015,
+		"AwsVpc":                                         1016,
+		"AwsEksNodeGroup":                                1017,
+		"AwsIamUser":                                     1018,
+		"AwsKmsKey":                                      1019,
+		"AwsEc2Instance":                                 1020,
+		"AwsClientVpn":                                   1021,
+		"AwsDocumentDb":                                  1022,
+		"AwsRoute53DnsRecord":                            1023,
+		"AwsS3ObjectSet":                                 1024,
+		"AwsSqsQueue":                                    1025,
+		"AwsSnsTopic":                                    1026,
+		"AwsEventBridgeBus":                              1027,
+		"AwsEventBridgeRule":                             1028,
+		"AwsIamOidcProvider":                             1029,
+		"AwsIamPolicy":                                   1030,
+		"AwsIamInstanceProfile":                          1031,
+		"AwsLbListener":                                  1032,
+		"AwsLbListenerRule":                              1033,
+		"AwsLaunchTemplate":                              1034,
+		"AwsAutoScalingGroup":                            1035,
+		"AwsEksAddon":                                    1036,
+		"AwsEksFargateProfile":                           1037,
+		"AwsEksAccessEntry":                              1038,
+		"AwsEcsTaskDefinition":                           1039,
+		"AwsHttpApiGateway":                              1040,
+		"AwsStepFunction":                                1041,
+		"AwsHttpApiVpcLink":                              1156,
+		"AwsHttpApiDomain":                               1157,
+		"AwsVpcEndpoint":                                 1042,
+		"AwsElasticacheUser":                             1043,
+		"AwsElasticacheUserGroup":                        1044,
+		"AwsRedshiftServerlessNamespace":                 1045,
+		"AwsRedshiftServerlessWorkgroup":                 1046,
+		"AwsRedisElasticache":                            1050,
+		"AwsOpenSearchDomain":                            1051,
+		"AwsMemcachedElasticache":                        1052,
+		"AwsServerlessElasticache":                       1053,
+		"AwsNlb":                                         1080,
+		"AwsElasticIp":                                   1081,
+		"AwsTransitGateway":                              1082,
+		"AwsGlobalAccelerator":                           1083,
+		"AwsSubnet":                                      1084,
+		"AwsInternetGateway":                             1085,
+		"AwsNatGateway":                                  1086,
+		"AwsEgressOnlyInternetGateway":                   1087,
+		"AwsElasticFileSystem":                           1090,
+		"AwsEfsAccessPoint":                              1160,
+		"AwsFsxLustreFileSystem":                         1091,
+		"AwsFsxOpenzfsFileSystem":                        1092,
+		"AwsFsxWindowsFileSystem":                        1093,
+		"AwsFsxOntapFileSystem":                          1094,
+		"AwsFsxOntapStorageVirtualMachine":               1095,
+		"AwsFsxOntapVolume":                              1096,
+		"AwsFsxDataRepositoryAssociation":                1175,
+		"AwsCognitoUserPool":                             1100,
+		"AwsCognitoIdentityProvider":                     1102,
+		"AwsCognitoUserPoolClient":                       1158,
+		"AwsCognitoResourceServer":                       1159,
+		"AwsWafWebAcl":                                   1101,
+		"AwsWafIpSet":                                    1161,
+		"AwsWafRegexPatternSet":                          1162,
+		"AwsCloudwatchLogGroup":                          1110,
+		"AwsCloudwatchAlarm":                             1111,
+		"AwsCloudwatchCompositeAlarm":                    1155,
+		"AwsKinesisStream":                               1060,
+		"AwsKinesisFirehose":                             1061,
+		"AwsKinesisStreamConsumer":                       1062,
+		"AwsAthenaWorkgroup":                             1063,
+		"AwsGlueCatalogDatabase":                         1064,
+		"AwsRedshiftCluster":                             1065,
+		"AwsSagemakerDomain":                             1070,
+		"AwsAppRunnerService":                            1120,
+		"AwsAppRunnerAutoScalingConfiguration":           1168,
+		"AwsAppRunnerVpcConnector":                       1169,
+		"AwsAppRunnerObservabilityConfiguration":         1170,
+		"AwsTransitGatewayVpcAttachment":                 1171,
+		"AwsTransitGatewayRouteTable":                    1172,
+		"AwsBatchComputeEnvironment":                     1121,
+		"AwsBatchJobQueue":                               1163,
+		"AwsBatchSchedulingPolicy":                       1164,
+		"AwsBatchJobDefinition":                          1165,
+		"AwsCodeBuildProject":                            1130,
+		"AwsCodePipeline":                                1131,
+		"AwsMwaaEnvironment":                             1140,
+		"AwsNeptuneCluster":                              1141,
+		"AwsMemorydbCluster":                             1142,
+		"AwsMemorydbUser":                                1173,
+		"AwsMemorydbAcl":                                 1174,
+		"AwsMskCluster":                                  1150,
+		"AwsMskServerlessCluster":                        1151,
+		"AwsLambdaEventSourceMapping":                    1152,
+		"AwsSnsSubscription":                             1153,
+		"AwsPlantonRunner":                               1154,
+		"AwsRoute53HealthCheck":                          1176,
+		"AwsSesConfigurationSet":                         1166,
+		"AwsSesEmailIdentity":                            1167,
+		"AzureResourceGroup":                             2000,
+		"AzureAksCluster":                                2001,
+		"AzureAksNodePool":                               2002,
+		"AzureContainerRegistry":                         2003,
+		"AzureDnsZone":                                   2004,
+		"AzureKeyVault":                                  2005,
+		"AzureVirtualNetwork":                            2006,
+		"AzureNatGateway":                                2007,
+		"AzureVirtualMachine":                            2008,
+		"AzureStorageAccount":                            2009,
+		"AzureDnsRecord":                                 2010,
+		"AzureSubnet":                                    2011,
+		"AzureNetworkSecurityGroup":                      2012,
+		"AzurePublicIp":                                  2013,
+		"AzurePrivateEndpoint":                           2014,
+		"AzurePrivateDnsZone":                            2015,
+		"AzureApplicationGateway":                        2016,
+		"AzureLoadBalancer":                              2017,
+		"AzureRouteTable":                                2018,
+		"AzurePrivateDnsZoneVirtualNetworkLink":          2019,
+		"AzureVirtualNetworkPeering":                     2020,
+		"AzurePublicIpPrefix":                            2021,
+		"AzureNetworkInterface":                          2022,
+		"AzureManagedDisk":                               2023,
+		"AzureVirtualMachineScaleSet":                    2024,
+		"AzureKeyVaultKey":                               2025,
+		"AzureKeyVaultCertificate":                       2026,
+		"AzureWebApplicationFirewallPolicy":              2027,
+		"AzureApplicationSecurityGroup":                  2028,
+		"AzureDiskEncryptionSet":                         2029,
+		"AzurePostgresqlFlexibleServer":                  2030,
+		"AzureRedisCache":                                2031,
+		"AzureCosmosdbAccount":                           2032,
+		"AzureMssqlServer":                               2033,
+		"AzureMysqlFlexibleServer":                       2034,
+		"AzureMssqlDatabase":                             2035,
+		"AzureMssqlElasticPool":                          2036,
+		"AzureRedisLinkedServer":                         2037,
+		"AzureRedisCacheAccessPolicy":                    2038,
+		"AzureRedisCacheAccessPolicyAssignment":          2039,
+		"AzureContainerAppEnvironment":                   2040,
+		"AzureContainerApp":                              2041,
+		"AzureServicePlan":                               2042,
+		"AzureFunctionApp":                               2043,
+		"AzureLinuxWebApp":                               2044,
+		"AzureContainerAppJob":                           2045,
+		"AzureContainerAppEnvironmentStorage":            2046,
+		"AzureContainerAppEnvironmentDaprComponent":      2047,
+		"AzureContainerAppEnvironmentCertificate":        2048,
+		"AzureContainerAppEnvironmentManagedCertificate": 2049,
+		"AzureLogAnalyticsWorkspace":                     2050,
+		"AzureApplicationInsights":                       2051,
+		"AzureMonitorDiagnosticSetting":                  2052,
+		"AzureMonitorActionGroup":                        2053,
+		"AzureMonitorMetricAlert":                        2054,
+		"AzureMonitorScheduledQueryAlert":                2055,
+		"AzureMonitorActivityLogAlert":                   2056,
+		"AzureApplicationInsightsStandardWebTest":        2057,
+		"AzureUserAssignedIdentity":                      2060,
+		"AzureRoleAssignment":                            2061,
+		"AzureRoleDefinition":                            2062,
+		"AzureFederatedIdentityCredential":               2063,
+		"AzureServiceBusNamespace":                       2070,
+		"AzureEventHubNamespace":                         2071,
+		"AzureServiceBusQueue":                           2072,
+		"AzureServiceBusTopic":                           2073,
+		"AzureServiceBusSubscription":                    2074,
+		"AzureServiceBusAuthorizationRule":               2075,
+		"AzureServiceBusDisasterRecoveryConfig":          2076,
+		"AzureEventHub":                                  2077,
+		"AzureEventHubConsumerGroup":                     2078,
+		"AzureEventHubAuthorizationRule":                 2079,
+		"AzureFrontDoorProfile":                          2080,
+		"AzureFrontDoorEndpoint":                         2081,
+		"AzureFrontDoorOriginGroup":                      2082,
+		"AzureFrontDoorOrigin":                           2083,
+		"AzureFrontDoorRoute":                            2084,
+		"AzureFrontDoorRuleSet":                          2085,
+		"AzureFrontDoorCustomDomain":                     2086,
+		"AzureFrontDoorSecret":                           2087,
+		"AzureFrontDoorFirewallPolicy":                   2088,
+		"AzureFrontDoorSecurityPolicy":                   2089,
+		"AzureStorageContainer":                          2090,
+		"AzureStorageShare":                              2091,
+		"AzureStorageQueue":                              2092,
+		"AzureStorageTable":                              2093,
+		"AzureStorageEncryptionScope":                    2094,
+		"AzureStorageDataLakeGen2Filesystem":             2095,
+		"AzureStorageLocalUser":                          2096,
+		"AzureStorageObjectReplication":                  2097,
+		"AzureCosmosdbSqlDatabase":                       2100,
+		"AzureCosmosdbSqlContainer":                      2101,
+		"AzureCosmosdbMongoDatabase":                     2102,
+		"AzureCosmosdbMongoCollection":                   2103,
+		"AzureCosmosdbSqlRoleDefinition":                 2104,
+		"AzureCosmosdbSqlRoleAssignment":                 2105,
+		"AzureManagedRedis":                              2110,
+		"AzureManagedRedisGeoReplication":                2111,
+		"AzureManagedRedisAccessPolicyAssignment":        2112,
+		"AzureEventHubDisasterRecoveryConfig":            2120,
+		"AzureEventHubSchemaGroup":                       2121,
+		"AzureEventHubCluster":                           2122,
+		"AzureEventHubNamespaceCustomerManagedKey":       2123,
+		"AzureMssqlFailoverGroup":                        2124,
+		"AzureContainerAppCustomDomain":                  2125,
+		"AzureFirewallPolicy":                            2130,
+		"AzureFirewallPolicyRuleCollectionGroup":         2131,
+		"AzureFirewall":                                  2132,
+		"AzureIpGroup":                                   2133,
+		"GcpArtifactRegistryRepo":                        3000,
+		"GcpTargetHttpsProxy":                            3001,
+		"GcpCloudFunction":                               3002,
+		"GcpCloudRun":                                    3003,
+		"GcpCloudSql":                                    3004,
+		"GcpDnsZone":                                     3005,
+		"GcpGcsBucket":                                   3006,
+		"GcpGkeCluster":                                  3007,
+		"GcpIamCustomRole":                               3008,
+		"GcpProject":                                     3009,
+		"GcpVpcNetwork":                                  3010,
+		"GcpSubnetwork":                                  3011,
+		"GcpRouterNat":                                   3012,
+		"GcpGkeNodePool":                                 3013,
+		"GcpServiceAccount":                              3014,
+		"GcpGkeWorkloadIdentityBinding":                  3015,
+		"GcpCertManagerCert":                             3016,
+		"GcpComputeInstance":                             3017,
+		"GcpDnsRecord":                                   3018,
+		"GcpProjectIamMember":                            3019,
+		"GcpFirewallRule":                                3020,
+		"GcpGlobalAddress":                               3021,
+		"GcpCloudArmorPolicy":                            3022,
+		"GcpHealthCheck":                                 3023,
+		"GcpBackendBucket":                               3024,
+		"GcpBackendService":                              3025,
+		"GcpRegionNetworkEndpointGroup":                  3026,
+		"GcpUrlMap":                                      3027,
+		"GcpManagedSslCertificate":                       3028,
+		"GcpTargetHttpProxy":                             3029,
+		"GcpAlloydbCluster":                              3030,
+		"GcpRedisInstance":                               3031,
+		"GcpFirestoreDatabase":                           3032,
+		"GcpSpannerInstance":                             3033,
+		"GcpSpannerDatabase":                             3034,
+		"GcpBigtableInstance":                            3035,
+		"GcpMemorystoreInstance":                         3036,
+		"GcpCloudSqlDatabase":                            3037,
+		"GcpCloudSqlUser":                                3038,
+		"GcpAlloydbInstance":                             3039,
+		"GcpAlloydbUser":                                 3040,
+		"GcpSpannerBackupSchedule":                       3041,
+		"GcpBigtableTable":                               3042,
+		"GcpFirestoreBackupSchedule":                     3043,
+		"GcpFirestoreIndex":                              3044,
+		"GcpBigQueryDataset":                             3050,
+		"GcpDataprocCluster":                             3051,
+		"GcpDataprocAutoscalingPolicy":                   3052,
+		"GcpBigQueryTable":                               3053,
+		"GcpPubSubTopic":                                 3060,
+		"GcpPubSubSubscription":                          3061,
+		"GcpCloudTasksQueue":                             3062,
+		"GcpCloudSchedulerJob":                           3063,
+		"GcpPubSubSchema":                                3064,
+		"GcpVertexAiNotebook":                            3070,
+		"GcpVertexAiEndpoint":                            3071,
+		"GcpVertexAiIndex":                               3072,
+		"GcpVertexAiIndexEndpoint":                       3073,
+		"GcpVertexAiDeployedIndex":                       3074,
+		"GcpCloudComposerEnvironment":                    3080,
+		"GcpCloudComposerUserWorkloadsSecret":            3081,
+		"GcpCloudComposerUserWorkloadsConfigMap":         3082,
+		"GcpKmsKeyRing":                                  3090,
+		"GcpKmsKey":                                      3091,
+		"GcpKmsKeyIamMember":                             3092,
+		"GcpFilestoreInstance":                           3100,
+		"GcpWorkloadIdentityPool":                        3101,
+		"GcpWorkloadIdentityPoolProvider":                3102,
+		"GcpServiceAccountIamMember":                     3103,
+		"GcpGlobalForwardingRule":                        3110,
+		"GcpSslPolicy":                                   3111,
+		"GcpSslCertificate":                              3112,
+		"GcpServiceNetworkingConnection":                 3113,
+		"GcpAddress":                                     3114,
+		"GcpServiceConnectionPolicy":                     3115,
+		"GcpCertManagerDnsAuthorization":                 3116,
+		"GcpCloudRunJob":                                 3120,
+		"GcpServerlessVpcConnector":                      3121,
+		"GcpComputeDisk":                                 3130,
+		"KubernetesNamespace":                            4000,
+		"KubernetesDeployment":                           4001,
+		"KubernetesStatefulSet":                          4002,
+		"KubernetesDaemonSet":                            4003,
+		"KubernetesJob":                                  4004,
+		"KubernetesCronJob":                              4005,
+		"KubernetesService":                              4006,
+		"KubernetesSecret":                               4007,
+		"KubernetesManifest":                             4008,
+		"KubernetesHelmRelease":                          4009,
+		"KubernetesConfigMap":                            4010,
+		"KubernetesServiceAccount":                       4011,
+		"KubernetesRbac":                                 4012,
+		"KubernetesIngress":                              4013,
+		"KubernetesNetworkPolicy":                        4014,
+		"KubernetesPersistentVolumeClaim":                4015,
+		"KubernetesStorageClass":                         4016,
+		"KubernetesResourceQuota":                        4017,
+		"KubernetesPriorityClass":                        4018,
+		"KubernetesPodDisruptionBudget":                  4019,
+		"KubernetesHorizontalPodAutoscaler":              4020,
+		"KubernetesCertManager":                          4030,
+		"KubernetesClusterIssuer":                        4031,
+		"KubernetesIssuer":                               4032,
+		"KubernetesCertificate":                          4033,
+		"KubernetesExternalDns":                          4034,
+		"KubernetesExternalSecretsOperator":              4035,
+		"KubernetesClusterSecretStore":                   4036,
+		"KubernetesSecretStore":                          4037,
+		"KubernetesExternalSecret":                       4038,
+		"KubernetesIngressNginx":                         4039,
+		"KubernetesGatewayApiCrds":                       4040,
+		"KubernetesGatewayClass":                         4041,
+		"KubernetesGateway":                              4042,
+		"KubernetesListenerSet":                          4043,
+		"KubernetesHttpRoute":                            4044,
+		"KubernetesGrpcRoute":                            4045,
+		"KubernetesTcpRoute":                             4046,
+		"KubernetesUdpRoute":                             4047,
+		"KubernetesTlsRoute":                             4048,
+		"KubernetesReferenceGrant":                       4049,
+		"KubernetesBackendTlsPolicy":                     4050,
+		"KubernetesIstioBaseCrds":                        4051,
+		"KubernetesIstio":                                4052,
+		"KubernetesDestinationRule":                      4053,
+		"KubernetesServiceEntry":                         4054,
+		"KubernetesPeerAuthentication":                   4055,
+		"KubernetesRequestAuthentication":                4056,
+		"KubernetesAuthorizationPolicy":                  4057,
+		"KubernetesTelemetry":                            4058,
+		"KubernetesEnvoyFilter":                          4059,
+		"KubernetesMetricsServer":                        4060,
+		"KubernetesCilium":                               4061,
+		"KubernetesKeda":                                 4062,
+		"KubernetesKarpenter":                            4063,
+		"KubernetesKarpenterNodePool":                    4064,
+		"KubernetesKarpenterEc2NodeClass":                4065,
+		"KubernetesClusterAutoscaler":                    4066,
+		"KubernetesVelero":                               4067,
+		"KubernetesKubePrometheusStack":                  4070,
+		"KubernetesGrafana":                              4071,
+		"KubernetesSignoz":                               4072,
+		"KubernetesLoki":                                 4073,
+		"KubernetesTempo":                                4074,
+		"KubernetesOtelOperator":                         4075,
+		"KubernetesOtelCollector":                        4076,
+		"KubernetesKyverno":                              4080,
+		"KubernetesGatekeeper":                           4081,
+		"KubernetesKeycloak":                             4090,
+		"KubernetesOpenBao":                              4091,
+		"KubernetesOpenFga":                              4092,
+		"KubernetesKeycloakOperator":                     4093,
+		"KubernetesCloudNativePgOperator":                4100,
+		"KubernetesPostgres":                             4101,
+		"KubernetesValkey":                               4102,
+		"KubernetesPerconaMysqlOperator":                 4103,
+		"KubernetesMysql":                                4104,
+		"KubernetesPerconaMongoOperator":                 4105,
+		"KubernetesMongodb":                              4106,
+		"KubernetesStrimziKafkaOperator":                 4107,
+		"KubernetesKafka":                                4108,
+		"KubernetesKafkaTopic":                           4109,
+		"KubernetesKafkaUser":                            4110,
+		"KubernetesKafkaConnect":                         4111,
+		"KubernetesKafkaConnector":                       4112,
+		"KubernetesKafkaMirrorMaker2":                    4113,
+		"KubernetesKarapace":                             4114,
+		"KubernetesKafkaUi":                              4115,
+		"KubernetesOpenSearchOperator":                   4116,
+		"KubernetesOpenSearch":                           4117,
+		"KubernetesAltinityOperator":                     4118,
+		"KubernetesClickHouse":                           4119,
+		"KubernetesSolrOperator":                         4120,
+		"KubernetesSolr":                                 4121,
+		"KubernetesNeo4j":                                4122,
+		"KubernetesSeaweedFs":                            4123,
+		"KubernetesQdrant":                               4124,
+		"KubernetesRabbitMqOperator":                     4125,
+		"KubernetesRabbitMq":                             4126,
+		"KubernetesAirflow":                              4130,
+		"KubernetesSparkOperator":                        4131,
+		"KubernetesKubeRayOperator":                      4132,
+		"KubernetesRayCluster":                           4133,
+		"KubernetesFlinkOperator":                        4134,
+		"KubernetesFlinkDeployment":                      4135,
+		"KubernetesJupyterHub":                           4136,
+		"KubernetesMlflow":                               4137,
+		"KubernetesTrino":                                4138,
+		"KubernetesSuperset":                             4139,
+		"KubernetesArgocd":                               4150,
+		"KubernetesArgoWorkflows":                        4151,
+		"KubernetesTektonOperator":                       4152,
+		"KubernetesTekton":                               4153,
+		"KubernetesGhaRunnerScaleSetController":          4154,
+		"KubernetesGhaRunnerScaleSet":                    4155,
+		"KubernetesHarbor":                               4156,
+		"KubernetesJenkins":                              4157,
+		"KubernetesTemporal":                             4170,
+		"KubernetesNats":                                 4171,
+		"KubernetesLocust":                               4172,
+		"DigitalOceanAppPlatformService":                 5000,
+		"DigitalOceanBucket":                             5001,
+		"DigitalOceanContainerRegistry":                  5002,
+		"DigitalOceanDatabaseCluster":                    5003,
+		"DigitalOceanDnsZone":                            5004,
+		"DigitalOceanDroplet":                            5005,
+		"DigitalOceanFirewall":                           5006,
+		"DigitalOceanFunction":                           5007,
+		"DigitalOceanKubernetesCluster":                  5008,
+		"DigitalOceanKubernetesNodePool":                 5009,
+		"DigitalOceanLoadBalancer":                       5010,
+		"DigitalOceanVolume":                             5011,
+		"DigitalOceanVpc":                                5012,
+		"DigitalOceanCertificate":                        5013,
+		"DigitalOceanDnsRecord":                          5014,
+		"CivoBucket":                                     6000,
+		"CivoCertificate":                                6001,
+		"CivoComputeInstance":                            6002,
+		"CivoDatabase":                                   6003,
+		"CivoDnsZone":                                    6004,
+		"CivoFirewall":                                   6005,
+		"CivoIpAddress":                                  6006,
+		"CivoKubernetesCluster":                          6007,
+		"CivoKubernetesNodePool":                         6008,
+		"CivoVolume":                                     6009,
+		"CivoVpc":                                        6010,
+		"CivoDnsRecord":                                  6011,
+		"CloudflareDnsZone":                              7000,
+		"CloudflareKvNamespace":                          7001,
+		"CloudflareR2Bucket":                             7002,
+		"CloudflareWorker":                               7003,
+		"CloudflareLoadBalancer":                         7004,
+		"CloudflareD1Database":                           7005,
+		"CloudflareZeroTrustAccessApplication":           7006,
+		"CloudflareDnsRecord":                            7007,
+		"CloudflareRuleset":                              7008,
+		"CloudflareWorkersKvPair":                        7009,
+		"CloudflareHyperdriveConfig":                     7010,
+		"CloudflareLoadBalancerPool":                     7011,
+		"CloudflareLoadBalancerMonitor":                  7012,
+		"CloudflareZeroTrustAccessPolicy":                7013,
+		"CloudflareZeroTrustAccessGroup":                 7014,
+		"CloudflareQueue":                                7015,
+		"CloudflarePagesProject":                         7016,
+		"CloudflareZeroTrustTunnel":                      7017,
+		"CloudflareZeroTrustTunnelVirtualNetwork":        7018,
+		"CloudflareZeroTrustTunnelRoute":                 7019,
+		"CloudflareList":                                 7020,
+		"CloudflareListItem":                             7021,
+		"CloudflareTurnstileWidget":                      7022,
+		"CloudflareEmailRoutingZone":                     7023,
+		"CloudflareEmailRoutingRule":                     7024,
+		"CloudflareEmailRoutingAddress":                  7025,
+		"CloudflareOriginCaCertificate":                  7026,
+		"CloudflareCertificatePack":                      7027,
+		"CloudflareCustomHostname":                       7028,
+		"CloudflareCustomHostnameFallbackOrigin":         7029,
+		"Auth0Connection":                                8000,
+		"Auth0Client":                                    8001,
+		"Auth0EventStream":                               8002,
+		"Auth0ResourceServer":                            8003,
+		"Auth0Action":                                    8004,
+		"Auth0Role":                                      8005,
+		"OpenFgaStore":                                   9000,
+		"OpenFgaAuthorizationModel":                      9001,
+		"OpenFgaRelationshipTuple":                       9002,
+		"OpenStackKeypair":                               10000,
+		"OpenStackNetwork":                               10001,
+		"OpenStackSubnet":                                10002,
+		"OpenStackRouter":                                10003,
+		"OpenStackRouterInterface":                       10004,
+		"OpenStackSecurityGroup":                         10005,
+		"OpenStackFloatingIp":                            10006,
+		"OpenStackNetworkPort":                           10007,
+		"OpenStackSecurityGroupRule":                     10025,
+		"OpenStackFloatingIpAssociate":                   10026,
+		"OpenStackInstance":                              10008,
+		"OpenStackServerGroup":                           10009,
+		"OpenStackVolume":                                10010,
+		"OpenStackVolumeAttach":                          10011,
+		"OpenStackProject":                               10012,
+		"OpenStackApplicationCredential":                 10013,
+		"OpenStackImage":                                 10014,
+		"OpenStackRoleAssignment":                        10015,
+		"OpenStackLoadBalancer":                          10016,
+		"OpenStackLoadBalancerListener":                  10017,
+		"OpenStackLoadBalancerPool":                      10018,
+		"OpenStackLoadBalancerMember":                    10019,
+		"OpenStackLoadBalancerMonitor":                   10020,
+		"OpenStackDnsZone":                               10021,
+		"OpenStackDnsRecord":                             10022,
+		"ScalewayVpc":                                    11000,
+		"ScalewayPrivateNetwork":                         11001,
+		"ScalewayPublicGateway":                          11002,
+		"ScalewayLoadBalancer":                           11003,
+		"ScalewayInstanceSecurityGroup":                  11004,
+		"ScalewayInstance":                               11010,
+		"ScalewayKapsuleCluster":                         11020,
+		"ScalewayKapsulePool":                            11021,
+		"ScalewayRdbInstance":                            11030,
+		"ScalewayRedisCluster":                           11031,
+		"ScalewayMongodbInstance":                        11032,
+		"ScalewayObjectBucket":                           11040,
+		"ScalewayBlockVolume":                            11041,
+		"ScalewayContainerRegistry":                      11050,
+		"ScalewayDnsZone":                                11060,
+		"ScalewayDnsRecord":                              11061,
+		"ScalewayServerlessFunction":                     11070,
+		"ScalewayServerlessContainer":                    11071,
+		"AliCloudLogProject":                             12000,
+		"AliCloudRamRole":                                12010,
+		"AliCloudRamPolicy":                              12011,
+		"AliCloudVpc":                                    12020,
+		"AliCloudVswitch":                                12021,
+		"AliCloudSecurityGroup":                          12022,
+		"AliCloudEipAddress":                             12023,
+		"AliCloudNatGateway":                             12024,
+		"AliCloudApplicationLoadBalancer":                12025,
+		"AliCloudNetworkLoadBalancer":                    12026,
+		"AliCloudVpnGateway":                             12027,
+		"AliCloudDnsZone":                                12040,
+		"AliCloudDnsRecord":                              12041,
+		"AliCloudPrivateDnsZone":                         12042,
+		"AliCloudStorageBucket":                          12050,
+		"AliCloudNasFileSystem":                          12051,
+		"AliCloudKmsKey":                                 12060,
+		"AliCloudRdsInstance":                            12070,
+		"AliCloudPolardbCluster":                         12071,
+		"AliCloudRedisInstance":                          12072,
+		"AliCloudMongodbInstance":                        12073,
+		"AliCloudEcsInstance":                            12080,
+		"AliCloudContainerRegistry":                      12090,
+		"AliCloudKubernetesCluster":                      12091,
+		"AliCloudKubernetesNodePool":                     12092,
+		"AliCloudCdnDomain":                              12100,
+		"AliCloudFunction":                               12110,
+		"AliCloudSaeApplication":                         12111,
+		"AliCloudRocketmqInstance":                       12120,
+		"AliCloudCenInstance":                            12130,
+		"OciVcn":                                         13000,
+		"OciSubnet":                                      13001,
+		"OciSecurityGroup":                               13002,
+		"OciCompartment":                                 13003,
+		"OciIdentityPolicy":                              13004,
+		"OciDynamicGroup":                                13005,
+		"OciComputeInstance":                             13010,
+		"OciContainerEngineCluster":                      13011,
+		"OciContainerEngineNodePool":                     13012,
+		"OciContainerInstance":                           13013,
+		"OciApplicationLoadBalancer":                     13020,
+		"OciNetworkLoadBalancer":                         13021,
+		"OciDynamicRoutingGateway":                       13022,
+		"OciPublicIp":                                    13023,
+		"OciAutonomousDatabase":                          13030,
+		"OciDbSystem":                                    13031,
+		"OciMysqlDbSystem":                               13032,
+		"OciPostgresqlDbSystem":                          13033,
+		"OciRedisCluster":                                13034,
+		"OciNosqlTable":                                  13035,
+		"OciObjectStorageBucket":                         13040,
+		"OciFileSystem":                                  13041,
+		"OciBlockVolume":                                 13042,
+		"OciKmsVault":                                    13050,
+		"OciKmsKey":                                      13051,
+		"OciVaultSecret":                                 13052,
+		"OciBastion":                                     13053,
+		"OciFunctionsApplication":                        13060,
+		"OciApiGateway":                                  13061,
+		"OciStreamPool":                                  13070,
+		"OciQueue":                                       13071,
+		"OciAlarm":                                       13080,
+		"OciLogGroup":                                    13081,
+		"OciDnsZone":                                     13090,
+		"OciDnsRecord":                                   13091,
+		"OciNetworkFirewall":                             13095,
+		"OciDevopsProject":                               13096,
+		"HetznerCloudSshKey":                             14000,
+		"HetznerCloudPlacementGroup":                     14001,
+		"HetznerCloudFirewall":                           14002,
+		"HetznerCloudNetwork":                            14010,
+		"HetznerCloudPrimaryIp":                          14011,
+		"HetznerCloudFloatingIp":                         14012,
+		"HetznerCloudServer":                             14020,
+		"HetznerCloudVolume":                             14021,
+		"HetznerCloudSnapshot":                           14022,
+		"HetznerCloudCertificate":                        14030,
+		"HetznerCloudLoadBalancer":                       14031,
+		"HetznerCloudDnsZone":                            14040,
 	}
 )
 
@@ -2741,660 +2741,660 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eConfluentKafka\x102\x1a\x12\xa2\xf7\x04\x0e\b\x10\x12\x02v1\"\x06conkaf\x12$\n" +
 	"\fAtlasMongodb\x103\x1a\x12\xa2\xf7\x04\x0e\b\v\x12\x02v1\"\x06atlmdb\x12)\n" +
 	"\x11SnowflakeDatabase\x104\x1a\x12\xa2\xf7\x04\x0e\b\x14\x12\x02v1\"\x06snowdb\x12#\n" +
-	"\x06AwsAlb\x10\xc8\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsalb:\x02\x9c\x02\x12,\n" +
-	"\x12AwsCertManagerCert\x10\xc9\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aacmcert\x12%\n" +
-	"\rAwsCloudFront\x10\xca\x01\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awscf\x12$\n" +
-	"\vAwsDynamodb\x10\xcb\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsdyn\x12 \n" +
+	"\x06AwsAlb\x10\xe8\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsalb:\x02\xbc\b\x12,\n" +
+	"\x12AwsCertManagerCert\x10\xe9\a\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aacmcert\x12%\n" +
+	"\rAwsCloudFront\x10\xea\a\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awscf\x12$\n" +
+	"\vAwsDynamodb\x10\xeb\a\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsdyn\x12 \n" +
 	"\n" +
-	"AwsEcrRepo\x10\xcc\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x12\x02v1\"\x03ecr\x12(\n" +
-	"\rAwsEcsCluster\x10\xcd\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06ecsclu0\x01\x12.\n" +
-	"\rAwsEcsService\x10\xce\x01\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06ecssvc:\x06\xcd\x01\xef\x01\x9c\x02\x12+\n" +
-	"\rAwsEksCluster\x10\xcf\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x03eks0\x01:\x04\x9c\x02\xd0\x01\x12 \n" +
+	"AwsEcrRepo\x10\xec\a\x1a\x0f\xa2\xf7\x04\v\b\f\x12\x02v1\"\x03ecr\x12(\n" +
+	"\rAwsEcsCluster\x10\xed\a\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06ecsclu0\x01\x12.\n" +
+	"\rAwsEcsService\x10\xee\a\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06ecssvc:\x06\xed\a\x8f\b\xbc\b\x12+\n" +
+	"\rAwsEksCluster\x10\xef\a\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x03eks0\x01:\x04\xbc\b\xf0\a\x12 \n" +
 	"\n" +
-	"AwsIamRole\x10\xd0\x01\x1a\x0f\xa2\xf7\x04\v\b\f\x12\x02v1\"\x03air\x12&\n" +
-	"\tAwsLambda\x10\xd1\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06lambda:\x02\xd0\x01\x12*\n" +
-	"\rAwsRdsCluster\x10\xd2\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06rdsclu:\x02\x9c\x02\x12+\n" +
-	"\x0eAwsRdsInstance\x10\xd3\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06rdsins:\x02\x9c\x02\x12'\n" +
-	"\x0eAwsRoute53Zone\x10\xd4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x04r53z0\x01\x12#\n" +
-	"\vAwsS3Bucket\x10\xd5\x01\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05s3bkt\x12+\n" +
-	"\x10AwsLbTargetGroup\x10\xd6\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04lbtg:\x02\xd8\x01\x12,\n" +
-	"\x10AwsSecurityGroup\x10\xd7\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awssg:\x02\xd8\x01\x12!\n" +
-	"\x06AwsVpc\x10\xd8\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06awsvpc0\x01\x12/\n" +
-	"\x0fAwsEksNodeGroup\x10\xd9\x01\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\x05eksng:\x06\xcf\x01\xd0\x01\x9c\x02\x12$\n" +
+	"AwsIamRole\x10\xf0\a\x1a\x0f\xa2\xf7\x04\v\b\f\x12\x02v1\"\x03air\x12&\n" +
+	"\tAwsLambda\x10\xf1\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06lambda:\x02\xf0\a\x12*\n" +
+	"\rAwsRdsCluster\x10\xf2\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06rdsclu:\x02\xbc\b\x12+\n" +
+	"\x0eAwsRdsInstance\x10\xf3\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06rdsins:\x02\xbc\b\x12'\n" +
+	"\x0eAwsRoute53Zone\x10\xf4\a\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x04r53z0\x01\x12#\n" +
+	"\vAwsS3Bucket\x10\xf5\a\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05s3bkt\x12+\n" +
+	"\x10AwsLbTargetGroup\x10\xf6\a\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04lbtg:\x02\xf8\a\x12,\n" +
+	"\x10AwsSecurityGroup\x10\xf7\a\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awssg:\x02\xf8\a\x12!\n" +
+	"\x06AwsVpc\x10\xf8\a\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06awsvpc0\x01\x12/\n" +
+	"\x0fAwsEksNodeGroup\x10\xf9\a\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\x05eksng:\x06\xef\a\xf0\a\xbc\b\x12$\n" +
 	"\n" +
-	"AwsIamUser\x10\xda\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsuser\x12\"\n" +
-	"\tAwsKmsKey\x10\xdb\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awskms\x12(\n" +
-	"\x0eAwsEc2Instance\x10\xdc\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aec2inst\x12)\n" +
-	"\fAwsClientVpn\x10\xdd\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsvpn:\x02\xc9\x01\x12)\n" +
-	"\rAwsDocumentDb\x10\xde\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05docdb:\x02\x9c\x02\x120\n" +
-	"\x13AwsRoute53DnsRecord\x10\xdf\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06r53rec:\x02\xd4\x01\x12+\n" +
-	"\x0eAwsS3ObjectSet\x10\xe0\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06s3objs:\x02\xd5\x01\x12$\n" +
-	"\vAwsSqsQueue\x10\xe1\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awssqs\x12$\n" +
-	"\vAwsSnsTopic\x10\xe2\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awssns\x12+\n" +
-	"\x11AwsEventBridgeBus\x10\xe3\x01\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\x05awseb0\x01\x12+\n" +
-	"\x12AwsEventBridgeRule\x10\xe4\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsebr\x12*\n" +
-	"\x12AwsIamOidcProvider\x10\xe5\x01\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05oidcp\x12%\n" +
-	"\fAwsIamPolicy\x10\xe6\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06iampol\x121\n" +
-	"\x15AwsIamInstanceProfile\x10\xe7\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05iamip:\x02\xd0\x01\x12)\n" +
-	"\rAwsLbListener\x10\xe8\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x03lbl:\x04\xc8\x01\xd6\x01\x12,\n" +
-	"\x11AwsLbListenerRule\x10\xe9\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04lblr:\x02\xe8\x01\x12&\n" +
-	"\x11AwsLaunchTemplate\x10\xea\x01\x1a\x0e\xa2\xf7\x04\n" +
+	"AwsIamUser\x10\xfa\a\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsuser\x12\"\n" +
+	"\tAwsKmsKey\x10\xfb\a\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awskms\x12(\n" +
+	"\x0eAwsEc2Instance\x10\xfc\a\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aec2inst\x12)\n" +
+	"\fAwsClientVpn\x10\xfd\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsvpn:\x02\xe9\a\x12)\n" +
+	"\rAwsDocumentDb\x10\xfe\a\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05docdb:\x02\xbc\b\x120\n" +
+	"\x13AwsRoute53DnsRecord\x10\xff\a\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06r53rec:\x02\xf4\a\x12+\n" +
+	"\x0eAwsS3ObjectSet\x10\x80\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06s3objs:\x02\xf5\a\x12$\n" +
+	"\vAwsSqsQueue\x10\x81\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awssqs\x12$\n" +
+	"\vAwsSnsTopic\x10\x82\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awssns\x12+\n" +
+	"\x11AwsEventBridgeBus\x10\x83\b\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\x05awseb0\x01\x12+\n" +
+	"\x12AwsEventBridgeRule\x10\x84\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsebr\x12*\n" +
+	"\x12AwsIamOidcProvider\x10\x85\b\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05oidcp\x12%\n" +
+	"\fAwsIamPolicy\x10\x86\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06iampol\x121\n" +
+	"\x15AwsIamInstanceProfile\x10\x87\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05iamip:\x02\xf0\a\x12)\n" +
+	"\rAwsLbListener\x10\x88\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x03lbl:\x04\xe8\a\xf6\a\x12,\n" +
+	"\x11AwsLbListenerRule\x10\x89\b\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04lblr:\x02\x88\b\x12&\n" +
+	"\x11AwsLaunchTemplate\x10\x8a\b\x1a\x0e\xa2\xf7\x04\n" +
 	"\b\f\x12\x02v1\"\x02lt\x12/\n" +
-	"\x13AwsAutoScalingGroup\x10\xeb\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x03asg:\x04\x9c\x02\xea\x01\x12*\n" +
-	"\vAwsEksAddon\x10\xec\x01\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\beksaddon:\x02\xcf\x01\x124\n" +
-	"\x14AwsEksFargateProfile\x10\xed\x01\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\x05eksfp:\x06\xcf\x01\xd0\x01\x9c\x02\x12/\n" +
-	"\x11AwsEksAccessEntry\x10\xee\x01\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05eksae:\x04\xcf\x01\xd0\x01\x120\n" +
-	"\x14AwsEcsTaskDefinition\x10\xef\x01\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05ecstd:\x02\xd0\x01\x120\n" +
-	"\x11AwsHttpApiGateway\x10\xf0\x01\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\fawshttpapigw\x12,\n" +
-	"\x0fAwsStepFunction\x10\xf1\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awssfn:\x02\xd0\x01\x123\n" +
-	"\x11AwsHttpApiVpcLink\x10\xe4\x02\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\x02v1\"\vawshttpvpcl:\x02\x9c\x02\x121\n" +
-	"\x10AwsHttpApiDomain\x10\xe5\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\n" +
-	"awshttpdom:\x02\xc9\x01\x12+\n" +
-	"\x0eAwsVpcEndpoint\x10\xf2\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x04vpce:\x04\xd8\x01\x9c\x02\x12+\n" +
-	"\x12AwsElasticacheUser\x10\xf3\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06ecuser\x122\n" +
-	"\x17AwsElasticacheUserGroup\x10\xf4\x01\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04ecug:\x02\xf3\x01\x127\n" +
-	"\x1eAwsRedshiftServerlessNamespace\x10\xf5\x01\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x04rsns0\x01\x12;\n" +
-	"\x1eAwsRedshiftServerlessWorkgroup\x10\xf6\x01\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x04rswg:\x04\xf5\x01\x9c\x02\x122\n" +
-	"\x13AwsRedisElasticache\x10\xfa\x01\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsredis:\x02\x9c\x02\x12+\n" +
-	"\x13AwsOpenSearchDomain\x10\xfb\x01\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsos\x12:\n" +
-	"\x17AwsMemcachedElasticache\x10\xfc\x01\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\x02v1\"\fawsmemcached:\x02\x9c\x02\x128\n" +
-	"\x18AwsServerlessElasticache\x10\xfd\x01\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawsslselc:\x02\x9c\x02\x12#\n" +
-	"\x06AwsNlb\x10\x98\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsnlb:\x02\x9c\x02\x12%\n" +
-	"\fAwsElasticIp\x10\x99\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awseip\x12*\n" +
-	"\x11AwsTransitGateway\x10\x9a\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awstgw\x12,\n" +
-	"\x14AwsGlobalAccelerator\x10\x9b\x02\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsga\x12'\n" +
-	"\tAwsSubnet\x10\x9c\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05awssn0\x01:\x02\xd8\x01\x12/\n" +
-	"\x12AwsInternetGateway\x10\x9d\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsigw:\x02\xd8\x01\x12.\n" +
-	"\rAwsNatGateway\x10\x9e\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06awsnat:\x06\x9c\x02\x99\x02\x9d\x02\x12:\n" +
-	"\x1cAwsEgressOnlyInternetGateway\x10\x9f\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawseigw:\x02\xd8\x01\x125\n" +
-	"\x14AwsElasticFileSystem\x10\xa2\x02\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06awsefs0\x01:\x04\x9c\x02\xd7\x01\x120\n" +
-	"\x11AwsEfsAccessPoint\x10\xe8\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsefsap:\x02\xa2\x02\x125\n" +
-	"\x16AwsFsxLustreFileSystem\x10\xa3\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsfxl0\x01:\x02\x9c\x02\x124\n" +
-	"\x17AwsFsxOpenzfsFileSystem\x10\xa4\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsfxz:\x02\x9c\x02\x124\n" +
-	"\x17AwsFsxWindowsFileSystem\x10\xa5\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsfxw:\x02\x9c\x02\x124\n" +
-	"\x15AwsFsxOntapFileSystem\x10\xa6\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsfxo0\x01:\x02\x9c\x02\x12B\n" +
-	" AwsFsxOntapStorageVirtualMachine\x10\xa7\x02\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\x02v1\"\tawsfxosvm0\x01:\x02\xa6\x02\x12/\n" +
-	"\x11AwsFsxOntapVolume\x10\xa8\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawsfxov:\x02\xa7\x02\x12>\n" +
-	"\x1fAwsFsxDataRepositoryAssociation\x10\xf7\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsfxdra:\x02\xa3\x02\x12-\n" +
-	"\x12AwsCognitoUserPool\x10\xac\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06awscog0\x01\x12:\n" +
-	"\x1aAwsCognitoIdentityProvider\x10\xae\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawscogidp:\x02\xac\x02\x12;\n" +
-	"\x18AwsCognitoUserPoolClient\x10\xe6\x02\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\x02v1\"\fawscogclient:\x02\xac\x02\x127\n" +
-	"\x18AwsCognitoResourceServer\x10\xe7\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawscogrs:\x02\xac\x02\x12%\n" +
-	"\fAwsWafWebAcl\x10\xad\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awswaf\x12'\n" +
-	"\vAwsWafIpSet\x10\xe9\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\tawswafips\x123\n" +
-	"\x15AwsWafRegexPatternSet\x10\xea\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\vawswafregex\x12/\n" +
-	"\x15AwsCloudwatchLogGroup\x10\xb6\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawscwlg\x12+\n" +
-	"\x12AwsCloudwatchAlarm\x10\xb7\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awscwa\x129\n" +
-	"\x1bAwsCloudwatchCompositeAlarm\x10\xe3\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawscwca:\x02\xb7\x02\x12)\n" +
-	"\x10AwsKinesisStream\x10\x84\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awskin\x121\n" +
-	"\x12AwsKinesisFirehose\x10\x85\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awskfh:\x04\xd5\x01\xd0\x01\x128\n" +
-	"\x18AwsKinesisStreamConsumer\x10\x86\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawskincon:\x02\x84\x02\x12+\n" +
-	"\x12AwsAthenaWorkgroup\x10\x87\x02\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsath\x120\n" +
-	"\x16AwsGlueCatalogDatabase\x10\x88\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsglue\x12.\n" +
-	"\x12AwsRedshiftCluster\x10\x89\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awsrs:\x02\x9c\x02\x120\n" +
-	"\x12AwsSagemakerDomain\x10\x8e\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05sgmkd:\x04\x9c\x02\xd0\x01\x12+\n" +
-	"\x13AwsAppRunnerService\x10\xc0\x02\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsar\x12?\n" +
-	"$AwsAppRunnerAutoScalingConfiguration\x10\xf0\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsarasc\x128\n" +
-	"\x18AwsAppRunnerVpcConnector\x10\xf1\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawsarvc:\x04\x9c\x02\xd7\x01\x12@\n" +
-	"&AwsAppRunnerObservabilityConfiguration\x10\xf2\x02\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsaroc\x12>\n" +
-	"\x1eAwsTransitGatewayVpcAttachment\x10\xf3\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawstgwa:\x04\x9a\x02\x9c\x02\x126\n" +
-	"\x1bAwsTransitGatewayRouteTable\x10\xf4\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawstgwrt\x127\n" +
-	"\x1aAwsBatchComputeEnvironment\x10\xc1\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsbat:\x02\x9c\x02\x12/\n" +
-	"\x10AwsBatchJobQueue\x10\xeb\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsbatjq:\x02\xc1\x02\x123\n" +
-	"\x18AwsBatchSchedulingPolicy\x10\xec\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsbatsp\x120\n" +
-	"\x15AwsBatchJobDefinition\x10\xed\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsbatjd\x12/\n" +
-	"\x13AwsCodeBuildProject\x10\xca\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awscb:\x02\xd0\x01\x12-\n" +
-	"\x0fAwsCodePipeline\x10\xcb\x02\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05awscp:\x04\xd0\x01\xd5\x01\x122\n" +
-	"\x12AwsMwaaEnvironment\x10\xd4\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawsmwaa:\x04\x9c\x02\xd7\x01\x12.\n" +
-	"\x11AwsNeptuneCluster\x10\xd5\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsnep:\x02\x9c\x02\x12/\n" +
-	"\x12AwsMemorydbCluster\x10\xd6\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsmdb:\x02\x9c\x02\x12,\n" +
-	"\x0fAwsMemorydbUser\x10\xf5\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\n" +
+	"\x13AwsAutoScalingGroup\x10\x8b\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x03asg:\x04\xbc\b\x8a\b\x12*\n" +
+	"\vAwsEksAddon\x10\x8c\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\beksaddon:\x02\xef\a\x124\n" +
+	"\x14AwsEksFargateProfile\x10\x8d\b\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\x05eksfp:\x06\xef\a\xf0\a\xbc\b\x12/\n" +
+	"\x11AwsEksAccessEntry\x10\x8e\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05eksae:\x04\xef\a\xf0\a\x120\n" +
+	"\x14AwsEcsTaskDefinition\x10\x8f\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05ecstd:\x02\xf0\a\x120\n" +
+	"\x11AwsHttpApiGateway\x10\x90\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\fawshttpapigw\x12,\n" +
+	"\x0fAwsStepFunction\x10\x91\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awssfn:\x02\xf0\a\x123\n" +
+	"\x11AwsHttpApiVpcLink\x10\x84\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\x02v1\"\vawshttpvpcl:\x02\xbc\b\x121\n" +
+	"\x10AwsHttpApiDomain\x10\x85\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\n" +
+	"awshttpdom:\x02\xe9\a\x12+\n" +
+	"\x0eAwsVpcEndpoint\x10\x92\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x04vpce:\x04\xf8\a\xbc\b\x12+\n" +
+	"\x12AwsElasticacheUser\x10\x93\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06ecuser\x122\n" +
+	"\x17AwsElasticacheUserGroup\x10\x94\b\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x04ecug:\x02\x93\b\x127\n" +
+	"\x1eAwsRedshiftServerlessNamespace\x10\x95\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x04rsns0\x01\x12;\n" +
+	"\x1eAwsRedshiftServerlessWorkgroup\x10\x96\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x04rswg:\x04\x95\b\xbc\b\x122\n" +
+	"\x13AwsRedisElasticache\x10\x9a\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsredis:\x02\xbc\b\x12+\n" +
+	"\x13AwsOpenSearchDomain\x10\x9b\b\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsos\x12:\n" +
+	"\x17AwsMemcachedElasticache\x10\x9c\b\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\x02v1\"\fawsmemcached:\x02\xbc\b\x128\n" +
+	"\x18AwsServerlessElasticache\x10\x9d\b\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawsslselc:\x02\xbc\b\x12#\n" +
+	"\x06AwsNlb\x10\xb8\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsnlb:\x02\xbc\b\x12%\n" +
+	"\fAwsElasticIp\x10\xb9\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awseip\x12*\n" +
+	"\x11AwsTransitGateway\x10\xba\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awstgw\x12,\n" +
+	"\x14AwsGlobalAccelerator\x10\xbb\b\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsga\x12'\n" +
+	"\tAwsSubnet\x10\xbc\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05awssn0\x01:\x02\xf8\a\x12/\n" +
+	"\x12AwsInternetGateway\x10\xbd\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsigw:\x02\xf8\a\x12.\n" +
+	"\rAwsNatGateway\x10\xbe\b\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06awsnat:\x06\xbc\b\xb9\b\xbd\b\x12:\n" +
+	"\x1cAwsEgressOnlyInternetGateway\x10\xbf\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawseigw:\x02\xf8\a\x125\n" +
+	"\x14AwsElasticFileSystem\x10\xc2\b\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\x02v1\"\x06awsefs0\x01:\x04\xbc\b\xf7\a\x120\n" +
+	"\x11AwsEfsAccessPoint\x10\x88\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsefsap:\x02\xc2\b\x125\n" +
+	"\x16AwsFsxLustreFileSystem\x10\xc3\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsfxl0\x01:\x02\xbc\b\x124\n" +
+	"\x17AwsFsxOpenzfsFileSystem\x10\xc4\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsfxz:\x02\xbc\b\x124\n" +
+	"\x17AwsFsxWindowsFileSystem\x10\xc5\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsfxw:\x02\xbc\b\x124\n" +
+	"\x15AwsFsxOntapFileSystem\x10\xc6\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsfxo0\x01:\x02\xbc\b\x12B\n" +
+	" AwsFsxOntapStorageVirtualMachine\x10\xc7\b\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\x02v1\"\tawsfxosvm0\x01:\x02\xc6\b\x12/\n" +
+	"\x11AwsFsxOntapVolume\x10\xc8\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawsfxov:\x02\xc7\b\x12>\n" +
+	"\x1fAwsFsxDataRepositoryAssociation\x10\x97\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsfxdra:\x02\xc3\b\x12-\n" +
+	"\x12AwsCognitoUserPool\x10\xcc\b\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\x06awscog0\x01\x12:\n" +
+	"\x1aAwsCognitoIdentityProvider\x10\xce\b\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawscogidp:\x02\xcc\b\x12;\n" +
+	"\x18AwsCognitoUserPoolClient\x10\x86\t\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\x02v1\"\fawscogclient:\x02\xcc\b\x127\n" +
+	"\x18AwsCognitoResourceServer\x10\x87\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawscogrs:\x02\xcc\b\x12%\n" +
+	"\fAwsWafWebAcl\x10\xcd\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awswaf\x12'\n" +
+	"\vAwsWafIpSet\x10\x89\t\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\tawswafips\x123\n" +
+	"\x15AwsWafRegexPatternSet\x10\x8a\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\vawswafregex\x12/\n" +
+	"\x15AwsCloudwatchLogGroup\x10\xd6\b\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawscwlg\x12+\n" +
+	"\x12AwsCloudwatchAlarm\x10\xd7\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awscwa\x129\n" +
+	"\x1bAwsCloudwatchCompositeAlarm\x10\x83\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\aawscwca:\x02\xd7\b\x12)\n" +
+	"\x10AwsKinesisStream\x10\xa4\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awskin\x121\n" +
+	"\x12AwsKinesisFirehose\x10\xa5\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awskfh:\x04\xf5\a\xf0\a\x128\n" +
+	"\x18AwsKinesisStreamConsumer\x10\xa6\b\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawskincon:\x02\xa4\b\x12+\n" +
+	"\x12AwsAthenaWorkgroup\x10\xa7\b\x1a\x12\xa2\xf7\x04\x0e\b\f\x12\x02v1\"\x06awsath\x120\n" +
+	"\x16AwsGlueCatalogDatabase\x10\xa8\b\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsglue\x12.\n" +
+	"\x12AwsRedshiftCluster\x10\xa9\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awsrs:\x02\xbc\b\x120\n" +
+	"\x12AwsSagemakerDomain\x10\xae\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05sgmkd:\x04\xbc\b\xf0\a\x12+\n" +
+	"\x13AwsAppRunnerService\x10\xe0\b\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05awsar\x12?\n" +
+	"$AwsAppRunnerAutoScalingConfiguration\x10\x90\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsarasc\x128\n" +
+	"\x18AwsAppRunnerVpcConnector\x10\x91\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawsarvc:\x04\xbc\b\xf7\a\x12@\n" +
+	"&AwsAppRunnerObservabilityConfiguration\x10\x92\t\x1a\x13\xa2\xf7\x04\x0f\b\f\x12\x02v1\"\aawsaroc\x12>\n" +
+	"\x1eAwsTransitGatewayVpcAttachment\x10\x93\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawstgwa:\x04\xba\b\xbc\b\x126\n" +
+	"\x1bAwsTransitGatewayRouteTable\x10\x94\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawstgwrt\x127\n" +
+	"\x1aAwsBatchComputeEnvironment\x10\xe1\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsbat:\x02\xbc\b\x12/\n" +
+	"\x10AwsBatchJobQueue\x10\x8b\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsbatjq:\x02\xe1\b\x123\n" +
+	"\x18AwsBatchSchedulingPolicy\x10\x8c\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsbatsp\x120\n" +
+	"\x15AwsBatchJobDefinition\x10\x8d\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawsbatjd\x12/\n" +
+	"\x13AwsCodeBuildProject\x10\xea\b\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\x05awscb:\x02\xf0\a\x12-\n" +
+	"\x0fAwsCodePipeline\x10\xeb\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\x02v1\"\x05awscp:\x04\xf0\a\xf5\a\x122\n" +
+	"\x12AwsMwaaEnvironment\x10\xf4\b\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\aawsmwaa:\x04\xbc\b\xf7\a\x12.\n" +
+	"\x11AwsNeptuneCluster\x10\xf5\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsnep:\x02\xbc\b\x12/\n" +
+	"\x12AwsMemorydbCluster\x10\xf6\b\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsmdb:\x02\xbc\b\x12,\n" +
+	"\x0fAwsMemorydbUser\x10\x95\t\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\n" +
 	"awsmdbuser\x12*\n" +
-	"\x0eAwsMemorydbAcl\x10\xf6\x02\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\tawsmdbacl\x12,\n" +
-	"\rAwsMskCluster\x10\xde\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsmsk:\x04\x9c\x02\xd7\x01\x126\n" +
-	"\x17AwsMskServerlessCluster\x10\xdf\x02\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsmsksl:\x02\x9c\x02\x12;\n" +
-	"\x1bAwsLambdaEventSourceMapping\x10\xe0\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tlambdaesm:\x02\xd1\x01\x122\n" +
-	"\x12AwsSnsSubscription\x10\xe1\x02\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawssnssub:\x02\xe2\x01\x12-\n" +
-	"\x10AwsPlantonRunner\x10\xe2\x02\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsrun:\x02\x9c\x02\x12-\n" +
-	"\x15AwsRoute53HealthCheck\x10\xf8\x02\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05r53hc\x121\n" +
-	"\x16AwsSesConfigurationSet\x10\xee\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawssescs\x12.\n" +
-	"\x13AwsSesEmailIdentity\x10\xef\x02\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawssesid\x12+\n" +
-	"\x12AzureResourceGroup\x10\x90\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x04azrg0\x01\x12+\n" +
-	"\x0fAzureAksCluster\x10\x91\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x03aks0\x01:\x02\x90\x03\x12,\n" +
-	"\x10AzureAksNodePool\x10\x92\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aksnp:\x02\x91\x03\x120\n" +
-	"\x16AzureContainerRegistry\x10\x93\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\x03acr:\x02\x90\x03\x12*\n" +
-	"\fAzureDnsZone\x10\x94\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azdns0\x01:\x02\x90\x03\x12*\n" +
-	"\rAzureKeyVault\x10\x95\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azkv0\x01:\x02\x90\x03\x122\n" +
-	"\x13AzureVirtualNetwork\x10\x96\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azvnet0\x01:\x02\x90\x03\x12+\n" +
-	"\x0fAzureNatGateway\x10\x97\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznat:\x02\x90\x03\x12.\n" +
-	"\x13AzureVirtualMachine\x10\x98\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azvm:\x02\xa6\x03\x120\n" +
-	"\x13AzureStorageAccount\x10\x99\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azsa0\x01:\x02\x90\x03\x12+\n" +
-	"\x0eAzureDnsRecord\x10\x9a\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azdrec:\x02\x94\x03\x12)\n" +
-	"\vAzureSubnet\x10\x9b\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azsub0\x01:\x02\x96\x03\x125\n" +
-	"\x19AzureNetworkSecurityGroup\x10\x9c\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznsg:\x02\x90\x03\x12)\n" +
-	"\rAzurePublicIp\x10\x9d\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azpip:\x02\x90\x03\x12/\n" +
-	"\x14AzurePrivateEndpoint\x10\x9e\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azpe:\x02\x9b\x03\x122\n" +
-	"\x13AzurePrivateDnsZone\x10\x9f\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azpdns0\x01:\x02\x90\x03\x123\n" +
-	"\x17AzureApplicationGateway\x10\xa0\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azagw:\x02\x9b\x03\x12,\n" +
-	"\x11AzureLoadBalancer\x10\xa1\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azlb:\x02\x90\x03\x12*\n" +
-	"\x0fAzureRouteTable\x10\xa2\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azrt:\x02\x90\x03\x12H\n" +
-	"%AzurePrivateDnsZoneVirtualNetworkLink\x10\xa3\x03\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\x02v1\"\n" +
-	"azpdnslink:\x04\x9f\x03\x96\x03\x127\n" +
-	"\x1aAzureVirtualNetworkPeering\x10\xa4\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azpeer:\x02\x96\x03\x122\n" +
-	"\x13AzurePublicIpPrefix\x10\xa5\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazpippfx:\x02\x90\x03\x121\n" +
-	"\x15AzureNetworkInterface\x10\xa6\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznic:\x02\x9b\x03\x12-\n" +
-	"\x10AzureManagedDisk\x10\xa7\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azdisk:\x02\x90\x03\x128\n" +
-	"\x1bAzureVirtualMachineScaleSet\x10\xa8\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azvmss:\x02\x9b\x03\x12.\n" +
-	"\x10AzureKeyVaultKey\x10\xa9\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazkvkey:\x02\x95\x03\x127\n" +
-	"\x18AzureKeyVaultCertificate\x10\xaa\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazkvcert:\x02\x95\x03\x12@\n" +
-	"!AzureWebApplicationFirewallPolicy\x10\xab\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazwafpol:\x02\x90\x03\x129\n" +
-	"\x1dAzureApplicationSecurityGroup\x10\xac\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azasg:\x02\x90\x03\x122\n" +
-	"\x16AzureDiskEncryptionSet\x10\xad\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azdes:\x02\xa9\x03\x128\n" +
-	"\x1dAzurePostgresqlFlexibleServer\x10\xae\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azpg:\x02\x90\x03\x12+\n" +
-	"\x0fAzureRedisCache\x10\xaf\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azred:\x02\x90\x03\x122\n" +
-	"\x14AzureCosmosdbAccount\x10\xb0\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azcdb0\x01:\x02\x90\x03\x12/\n" +
-	"\x10AzureMssqlServer\x10\xb1\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azmsql0\x01:\x02\x90\x03\x126\n" +
-	"\x18AzureMysqlFlexibleServer\x10\xb2\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazmysql:\x02\x90\x03\x12-\n" +
-	"\x12AzureMssqlDatabase\x10\xb3\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazmsqldb\x126\n" +
-	"\x15AzureMssqlElasticPool\x10\xb4\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
-	"azmsqlpool:\x02\xb1\x03\x122\n" +
-	"\x16AzureRedisLinkedServer\x10\xb5\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\tazredlink\x126\n" +
-	"\x1bAzureRedisCacheAccessPolicy\x10\xb6\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazredpol\x12A\n" +
-	"%AzureRedisCacheAccessPolicyAssignment\x10\xb7\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\tazredpola\x12:\n" +
-	"\x1cAzureContainerAppEnvironment\x10\xb8\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azcae0\x01:\x02\x90\x03\x12,\n" +
-	"\x11AzureContainerApp\x10\xb9\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azca:\x02\xb8\x03\x12+\n" +
-	"\x10AzureServicePlan\x10\xba\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azsp:\x02\x90\x03\x12+\n" +
-	"\x10AzureFunctionApp\x10\xbb\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azfn:\x02\xba\x03\x12,\n" +
-	"\x10AzureLinuxWebApp\x10\xbc\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azweb:\x02\xba\x03\x120\n" +
-	"\x14AzureContainerAppJob\x10\xbd\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azcaj:\x02\xb8\x03\x12@\n" +
-	"#AzureContainerAppEnvironmentStorage\x10\xbe\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azcaes:\x02\xb8\x03\x12H\n" +
-	")AzureContainerAppEnvironmentDaprComponent\x10\xbf\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazcadapr:\x02\xb8\x03\x12F\n" +
-	"'AzureContainerAppEnvironmentCertificate\x10\xc0\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazcacert:\x02\xb8\x03\x12O\n" +
-	".AzureContainerAppEnvironmentManagedCertificate\x10\xc1\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
-	"azcamgcert:\x02\xb8\x03\x126\n" +
-	"\x1aAzureLogAnalyticsWorkspace\x10\xc2\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azlaw:\x02\x90\x03\x123\n" +
-	"\x18AzureApplicationInsights\x10\xc3\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azai:\x02\xc2\x03\x12=\n" +
-	"\x1dAzureMonitorDiagnosticSetting\x10\xc4\x03\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazmondiag:\x02\xc2\x03\x125\n" +
-	"\x17AzureMonitorActionGroup\x10\xc5\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazmonag:\x02\x90\x03\x126\n" +
-	"\x17AzureMonitorMetricAlert\x10\xc6\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazmalert:\x02\xc5\x03\x12A\n" +
-	"\x1fAzureMonitorScheduledQueryAlert\x10\xc7\x03\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\x02v1\"\tazsqalert:\x04\xc2\x03\xc5\x03\x12=\n" +
-	"\x1cAzureMonitorActivityLogAlert\x10\xc8\x03\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
-	"azactalert:\x02\xc5\x03\x12G\n" +
-	"'AzureApplicationInsightsStandardWebTest\x10\xc9\x03\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazwebtest:\x02\xc3\x03\x124\n" +
-	"\x19AzureUserAssignedIdentity\x10\xcc\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azid:\x02\x90\x03\x120\n" +
-	"\x13AzureRoleAssignment\x10\xcd\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azra:\x04\x90\x03\xcc\x03\x12.\n" +
-	"\x13AzureRoleDefinition\x10\xce\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azrd:\x02\x90\x03\x12<\n" +
-	" AzureFederatedIdentityCredential\x10\xcf\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azfic:\x02\xcc\x03\x125\n" +
-	"\x18AzureServiceBusNamespace\x10\xd6\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azsb0\x01:\x02\x90\x03\x123\n" +
-	"\x16AzureEventHubNamespace\x10\xd7\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azeh0\x01:\x02\x90\x03\x12.\n" +
-	"\x14AzureServiceBusQueue\x10\xd8\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazsbque\x120\n" +
-	"\x14AzureServiceBusTopic\x10\xd9\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\aazsbtop0\x01\x125\n" +
-	"\x1bAzureServiceBusSubscription\x10\xda\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazsbsub\x12;\n" +
-	" AzureServiceBusAuthorizationRule\x10\xdb\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazsbauth\x12>\n" +
-	"%AzureServiceBusDisasterRecoveryConfig\x10\xdc\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azsbdr\x12(\n" +
-	"\rAzureEventHub\x10\xdd\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x06azehub0\x01\x123\n" +
-	"\x1aAzureEventHubConsumerGroup\x10\xde\x03\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehcg\x129\n" +
-	"\x1eAzureEventHubAuthorizationRule\x10\xdf\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazehauth\x122\n" +
-	"\x15AzureFrontDoorProfile\x10\xe0\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azfd0\x01:\x02\x90\x03\x124\n" +
-	"\x16AzureFrontDoorEndpoint\x10\xe1\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azfde0\x01:\x02\xe0\x03\x126\n" +
-	"\x19AzureFrontDoorOriginGroup\x10\xe2\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdog:\x02\xe0\x03\x120\n" +
-	"\x14AzureFrontDoorOrigin\x10\xe3\x03\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azfdo:\x02\xe2\x03\x122\n" +
-	"\x13AzureFrontDoorRoute\x10\xe4\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azfdrt:\x04\xe1\x03\xe3\x03\x122\n" +
-	"\x15AzureFrontDoorRuleSet\x10\xe5\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdrs:\x02\xe0\x03\x127\n" +
-	"\x1aAzureFrontDoorCustomDomain\x10\xe6\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdcd:\x02\xe0\x03\x122\n" +
-	"\x14AzureFrontDoorSecret\x10\xe7\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfdsec:\x02\xe0\x03\x12:\n" +
-	"\x1cAzureFrontDoorFirewallPolicy\x10\xe8\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfdwaf:\x02\x90\x03\x12?\n" +
-	"\x1cAzureFrontDoorSecurityPolicy\x10\xe9\x03\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\x02v1\"\n" +
-	"azfdsecpol:\x04\xe1\x03\xe8\x03\x12,\n" +
-	"\x15AzureStorageContainer\x10\xea\x03\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azsc\x12+\n" +
-	"\x11AzureStorageShare\x10\xeb\x03\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazshare\x12(\n" +
-	"\x11AzureStorageQueue\x10\xec\x03\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azsq\x12(\n" +
-	"\x11AzureStorageTable\x10\xed\x03\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azst\x123\n" +
-	"\x1bAzureStorageEncryptionScope\x10\xee\x03\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azses\x12=\n" +
-	"\"AzureStorageDataLakeGen2Filesystem\x10\xef\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazadlsfs\x12-\n" +
-	"\x15AzureStorageLocalUser\x10\xf0\x03\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azslu\x125\n" +
-	"\x1dAzureStorageObjectReplication\x10\xf1\x03\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azsor\x125\n" +
-	"\x18AzureCosmosdbSqlDatabase\x10\xf4\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\bazcsqldb0\x01\x124\n" +
-	"\x19AzureCosmosdbSqlContainer\x10\xf5\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazcsqlct\x127\n" +
-	"\x1aAzureCosmosdbMongoDatabase\x10\xf6\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\bazcmgodb0\x01\x127\n" +
-	"\x1cAzureCosmosdbMongoCollection\x10\xf7\x03\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazcmgocl\x12;\n" +
-	"\x1eAzureCosmosdbSqlRoleDefinition\x10\xf8\x03\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\n" +
+	"\x0eAwsMemorydbAcl\x10\x96\t\x1a\x15\xa2\xf7\x04\x11\b\f\x12\x02v1\"\tawsmdbacl\x12,\n" +
+	"\rAwsMskCluster\x10\xfe\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\x06awsmsk:\x04\xbc\b\xf7\a\x126\n" +
+	"\x17AwsMskServerlessCluster\x10\xff\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\x02v1\"\bawsmsksl:\x02\xbc\b\x12;\n" +
+	"\x1bAwsLambdaEventSourceMapping\x10\x80\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tlambdaesm:\x02\xf1\a\x122\n" +
+	"\x12AwsSnsSubscription\x10\x81\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\x02v1\"\tawssnssub:\x02\x82\b\x12-\n" +
+	"\x10AwsPlantonRunner\x10\x82\t\x1a\x16\xa2\xf7\x04\x12\b\f\x12\x02v1\"\x06awsrun:\x02\xbc\b\x12-\n" +
+	"\x15AwsRoute53HealthCheck\x10\x98\t\x1a\x11\xa2\xf7\x04\r\b\f\x12\x02v1\"\x05r53hc\x121\n" +
+	"\x16AwsSesConfigurationSet\x10\x8e\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawssescs\x12.\n" +
+	"\x13AwsSesEmailIdentity\x10\x8f\t\x1a\x14\xa2\xf7\x04\x10\b\f\x12\x02v1\"\bawssesid\x12+\n" +
+	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x04azrg0\x01\x12+\n" +
+	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x03aks0\x01:\x02\xd0\x0f\x12,\n" +
+	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aksnp:\x02\xd1\x0f\x120\n" +
+	"\x16AzureContainerRegistry\x10\xd3\x0f\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\x03acr:\x02\xd0\x0f\x12*\n" +
+	"\fAzureDnsZone\x10\xd4\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azdns0\x01:\x02\xd0\x0f\x12*\n" +
+	"\rAzureKeyVault\x10\xd5\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azkv0\x01:\x02\xd0\x0f\x122\n" +
+	"\x13AzureVirtualNetwork\x10\xd6\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azvnet0\x01:\x02\xd0\x0f\x12+\n" +
+	"\x0fAzureNatGateway\x10\xd7\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznat:\x02\xd0\x0f\x12.\n" +
+	"\x13AzureVirtualMachine\x10\xd8\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azvm:\x02\xe6\x0f\x120\n" +
+	"\x13AzureStorageAccount\x10\xd9\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azsa0\x01:\x02\xd0\x0f\x12+\n" +
+	"\x0eAzureDnsRecord\x10\xda\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azdrec:\x02\xd4\x0f\x12)\n" +
+	"\vAzureSubnet\x10\xdb\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azsub0\x01:\x02\xd6\x0f\x125\n" +
+	"\x19AzureNetworkSecurityGroup\x10\xdc\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznsg:\x02\xd0\x0f\x12)\n" +
+	"\rAzurePublicIp\x10\xdd\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azpip:\x02\xd0\x0f\x12/\n" +
+	"\x14AzurePrivateEndpoint\x10\xde\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azpe:\x02\xdb\x0f\x122\n" +
+	"\x13AzurePrivateDnsZone\x10\xdf\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azpdns0\x01:\x02\xd0\x0f\x123\n" +
+	"\x17AzureApplicationGateway\x10\xe0\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azagw:\x02\xdb\x0f\x12,\n" +
+	"\x11AzureLoadBalancer\x10\xe1\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azlb:\x02\xd0\x0f\x12*\n" +
+	"\x0fAzureRouteTable\x10\xe2\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azrt:\x02\xd0\x0f\x12H\n" +
+	"%AzurePrivateDnsZoneVirtualNetworkLink\x10\xe3\x0f\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\x02v1\"\n" +
+	"azpdnslink:\x04\xdf\x0f\xd6\x0f\x127\n" +
+	"\x1aAzureVirtualNetworkPeering\x10\xe4\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azpeer:\x02\xd6\x0f\x122\n" +
+	"\x13AzurePublicIpPrefix\x10\xe5\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazpippfx:\x02\xd0\x0f\x121\n" +
+	"\x15AzureNetworkInterface\x10\xe6\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05aznic:\x02\xdb\x0f\x12-\n" +
+	"\x10AzureManagedDisk\x10\xe7\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azdisk:\x02\xd0\x0f\x128\n" +
+	"\x1bAzureVirtualMachineScaleSet\x10\xe8\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azvmss:\x02\xdb\x0f\x12.\n" +
+	"\x10AzureKeyVaultKey\x10\xe9\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazkvkey:\x02\xd5\x0f\x127\n" +
+	"\x18AzureKeyVaultCertificate\x10\xea\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazkvcert:\x02\xd5\x0f\x12@\n" +
+	"!AzureWebApplicationFirewallPolicy\x10\xeb\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazwafpol:\x02\xd0\x0f\x129\n" +
+	"\x1dAzureApplicationSecurityGroup\x10\xec\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azasg:\x02\xd0\x0f\x122\n" +
+	"\x16AzureDiskEncryptionSet\x10\xed\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azdes:\x02\xe9\x0f\x128\n" +
+	"\x1dAzurePostgresqlFlexibleServer\x10\xee\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azpg:\x02\xd0\x0f\x12+\n" +
+	"\x0fAzureRedisCache\x10\xef\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azred:\x02\xd0\x0f\x122\n" +
+	"\x14AzureCosmosdbAccount\x10\xf0\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azcdb0\x01:\x02\xd0\x0f\x12/\n" +
+	"\x10AzureMssqlServer\x10\xf1\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azmsql0\x01:\x02\xd0\x0f\x126\n" +
+	"\x18AzureMysqlFlexibleServer\x10\xf2\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazmysql:\x02\xd0\x0f\x12-\n" +
+	"\x12AzureMssqlDatabase\x10\xf3\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazmsqldb\x126\n" +
+	"\x15AzureMssqlElasticPool\x10\xf4\x0f\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
+	"azmsqlpool:\x02\xf1\x0f\x122\n" +
+	"\x16AzureRedisLinkedServer\x10\xf5\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\tazredlink\x126\n" +
+	"\x1bAzureRedisCacheAccessPolicy\x10\xf6\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazredpol\x12A\n" +
+	"%AzureRedisCacheAccessPolicyAssignment\x10\xf7\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\tazredpola\x12:\n" +
+	"\x1cAzureContainerAppEnvironment\x10\xf8\x0f\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azcae0\x01:\x02\xd0\x0f\x12,\n" +
+	"\x11AzureContainerApp\x10\xf9\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azca:\x02\xf8\x0f\x12+\n" +
+	"\x10AzureServicePlan\x10\xfa\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azsp:\x02\xd0\x0f\x12+\n" +
+	"\x10AzureFunctionApp\x10\xfb\x0f\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azfn:\x02\xfa\x0f\x12,\n" +
+	"\x10AzureLinuxWebApp\x10\xfc\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azweb:\x02\xfa\x0f\x120\n" +
+	"\x14AzureContainerAppJob\x10\xfd\x0f\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azcaj:\x02\xf8\x0f\x12@\n" +
+	"#AzureContainerAppEnvironmentStorage\x10\xfe\x0f\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azcaes:\x02\xf8\x0f\x12H\n" +
+	")AzureContainerAppEnvironmentDaprComponent\x10\xff\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazcadapr:\x02\xf8\x0f\x12F\n" +
+	"'AzureContainerAppEnvironmentCertificate\x10\x80\x10\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazcacert:\x02\xf8\x0f\x12O\n" +
+	".AzureContainerAppEnvironmentManagedCertificate\x10\x81\x10\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
+	"azcamgcert:\x02\xf8\x0f\x126\n" +
+	"\x1aAzureLogAnalyticsWorkspace\x10\x82\x10\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azlaw:\x02\xd0\x0f\x123\n" +
+	"\x18AzureApplicationInsights\x10\x83\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azai:\x02\x82\x10\x12=\n" +
+	"\x1dAzureMonitorDiagnosticSetting\x10\x84\x10\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazmondiag:\x02\x82\x10\x125\n" +
+	"\x17AzureMonitorActionGroup\x10\x85\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazmonag:\x02\xd0\x0f\x126\n" +
+	"\x17AzureMonitorMetricAlert\x10\x86\x10\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazmalert:\x02\x85\x10\x12A\n" +
+	"\x1fAzureMonitorScheduledQueryAlert\x10\x87\x10\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\x02v1\"\tazsqalert:\x04\x82\x10\x85\x10\x12=\n" +
+	"\x1cAzureMonitorActivityLogAlert\x10\x88\x10\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\x02v1\"\n" +
+	"azactalert:\x02\x85\x10\x12G\n" +
+	"'AzureApplicationInsightsStandardWebTest\x10\x89\x10\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazwebtest:\x02\x83\x10\x124\n" +
+	"\x19AzureUserAssignedIdentity\x10\x8c\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azid:\x02\xd0\x0f\x120\n" +
+	"\x13AzureRoleAssignment\x10\x8d\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azra:\x04\xd0\x0f\x8c\x10\x12.\n" +
+	"\x13AzureRoleDefinition\x10\x8e\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azrd:\x02\xd0\x0f\x12<\n" +
+	" AzureFederatedIdentityCredential\x10\x8f\x10\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azfic:\x02\x8c\x10\x125\n" +
+	"\x18AzureServiceBusNamespace\x10\x96\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azsb0\x01:\x02\xd0\x0f\x123\n" +
+	"\x16AzureEventHubNamespace\x10\x97\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azeh0\x01:\x02\xd0\x0f\x12.\n" +
+	"\x14AzureServiceBusQueue\x10\x98\x10\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazsbque\x120\n" +
+	"\x14AzureServiceBusTopic\x10\x99\x10\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\aazsbtop0\x01\x125\n" +
+	"\x1bAzureServiceBusSubscription\x10\x9a\x10\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazsbsub\x12;\n" +
+	" AzureServiceBusAuthorizationRule\x10\x9b\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazsbauth\x12>\n" +
+	"%AzureServiceBusDisasterRecoveryConfig\x10\x9c\x10\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azsbdr\x12(\n" +
+	"\rAzureEventHub\x10\x9d\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x06azehub0\x01\x123\n" +
+	"\x1aAzureEventHubConsumerGroup\x10\x9e\x10\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehcg\x129\n" +
+	"\x1eAzureEventHubAuthorizationRule\x10\x9f\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazehauth\x122\n" +
+	"\x15AzureFrontDoorProfile\x10\xa0\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x04azfd0\x01:\x02\xd0\x0f\x124\n" +
+	"\x16AzureFrontDoorEndpoint\x10\xa1\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\x05azfde0\x01:\x02\xa0\x10\x126\n" +
+	"\x19AzureFrontDoorOriginGroup\x10\xa2\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdog:\x02\xa0\x10\x120\n" +
+	"\x14AzureFrontDoorOrigin\x10\xa3\x10\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azfdo:\x02\xa2\x10\x122\n" +
+	"\x13AzureFrontDoorRoute\x10\xa4\x10\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\x06azfdrt:\x04\xa1\x10\xa3\x10\x122\n" +
+	"\x15AzureFrontDoorRuleSet\x10\xa5\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdrs:\x02\xa0\x10\x127\n" +
+	"\x1aAzureFrontDoorCustomDomain\x10\xa6\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\x06azfdcd:\x02\xa0\x10\x122\n" +
+	"\x14AzureFrontDoorSecret\x10\xa7\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfdsec:\x02\xa0\x10\x12:\n" +
+	"\x1cAzureFrontDoorFirewallPolicy\x10\xa8\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfdwaf:\x02\xd0\x0f\x12?\n" +
+	"\x1cAzureFrontDoorSecurityPolicy\x10\xa9\x10\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\x02v1\"\n" +
+	"azfdsecpol:\x04\xa1\x10\xa8\x10\x12,\n" +
+	"\x15AzureStorageContainer\x10\xaa\x10\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azsc\x12+\n" +
+	"\x11AzureStorageShare\x10\xab\x10\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazshare\x12(\n" +
+	"\x11AzureStorageQueue\x10\xac\x10\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azsq\x12(\n" +
+	"\x11AzureStorageTable\x10\xad\x10\x1a\x10\xa2\xf7\x04\f\b\r\x12\x02v1\"\x04azst\x123\n" +
+	"\x1bAzureStorageEncryptionScope\x10\xae\x10\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azses\x12=\n" +
+	"\"AzureStorageDataLakeGen2Filesystem\x10\xaf\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazadlsfs\x12-\n" +
+	"\x15AzureStorageLocalUser\x10\xb0\x10\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azslu\x125\n" +
+	"\x1dAzureStorageObjectReplication\x10\xb1\x10\x1a\x11\xa2\xf7\x04\r\b\r\x12\x02v1\"\x05azsor\x125\n" +
+	"\x18AzureCosmosdbSqlDatabase\x10\xb4\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\bazcsqldb0\x01\x124\n" +
+	"\x19AzureCosmosdbSqlContainer\x10\xb5\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazcsqlct\x127\n" +
+	"\x1aAzureCosmosdbMongoDatabase\x10\xb6\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\bazcmgodb0\x01\x127\n" +
+	"\x1cAzureCosmosdbMongoCollection\x10\xb7\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\bazcmgocl\x12;\n" +
+	"\x1eAzureCosmosdbSqlRoleDefinition\x10\xb8\x10\x1a\x16\xa2\xf7\x04\x12\b\r\x12\x02v1\"\n" +
 	"azcsqlrdef\x12<\n" +
-	"\x1eAzureCosmosdbSqlRoleAssignment\x10\xf9\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\vazcsqlrasgn\x120\n" +
-	"\x11AzureManagedRedis\x10\xfe\x03\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazmredis:\x02\x90\x03\x12=\n" +
-	"\x1fAzureManagedRedisGeoReplication\x10\xff\x03\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\vazmredisgeo\x12G\n" +
-	"'AzureManagedRedisAccessPolicyAssignment\x10\x80\x04\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\razmredisgrant\x12<\n" +
-	"#AzureEventHubDisasterRecoveryConfig\x10\x88\x04\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehdr\x121\n" +
-	"\x18AzureEventHubSchemaGroup\x10\x89\x04\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehsg\x124\n" +
-	"\x14AzureEventHubCluster\x10\x8a\x04\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\aazehclu0\x01:\x02\x90\x03\x12B\n" +
-	"(AzureEventHubNamespaceCustomerManagedKey\x10\x8b\x04\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazehcmk\x127\n" +
-	"\x17AzureMssqlFailoverGroup\x10\x8c\x04\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazmsqlfog:\x02\xb1\x03\x12;\n" +
-	"\x1dAzureContainerAppCustomDomain\x10\x8d\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazcadom:\x02\xb9\x03\x121\n" +
-	"\x13AzureFirewallPolicy\x10\x92\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfwpol:\x02\x90\x03\x12D\n" +
-	"&AzureFirewallPolicyRuleCollectionGroup\x10\x93\x04\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfwrcg:\x02\x92\x04\x12(\n" +
-	"\rAzureFirewall\x10\x94\x04\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azfw:\x02\x9b\x03\x12(\n" +
-	"\fAzureIpGroup\x10\x95\x04\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azipg:\x02\x90\x03\x124\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xd8\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpart:\x02\xe6\x04\x129\n" +
-	"\x13GcpTargetHttpsProxy\x10\xd9\x04\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\x02v1\"\agcpthsp:\n" +
-	"\xf3\x04\xf4\x04\xc7\x05\xc8\x05\xe8\x04\x12.\n" +
-	"\x10GcpCloudFunction\x10\xda\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\acldfunc:\x02\xd1\x05\x12$\n" +
-	"\vGcpCloudRun\x10\xdb\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06cldrun\x12*\n" +
-	"\vGcpCloudSql\x10\xdc\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsql0\x01:\x02\xc9\x05\x12)\n" +
+	"\x1eAzureCosmosdbSqlRoleAssignment\x10\xb9\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\vazcsqlrasgn\x120\n" +
+	"\x11AzureManagedRedis\x10\xbe\x10\x1a\x18\xa2\xf7\x04\x14\b\r\x12\x02v1\"\bazmredis:\x02\xd0\x0f\x12=\n" +
+	"\x1fAzureManagedRedisGeoReplication\x10\xbf\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\vazmredisgeo\x12G\n" +
+	"'AzureManagedRedisAccessPolicyAssignment\x10\xc0\x10\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\razmredisgrant\x12<\n" +
+	"#AzureEventHubDisasterRecoveryConfig\x10\xc8\x10\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehdr\x121\n" +
+	"\x18AzureEventHubSchemaGroup\x10\xc9\x10\x1a\x12\xa2\xf7\x04\x0e\b\r\x12\x02v1\"\x06azehsg\x124\n" +
+	"\x14AzureEventHubCluster\x10\xca\x10\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\aazehclu0\x01:\x02\xd0\x0f\x12B\n" +
+	"(AzureEventHubNamespaceCustomerManagedKey\x10\xcb\x10\x1a\x13\xa2\xf7\x04\x0f\b\r\x12\x02v1\"\aazehcmk\x127\n" +
+	"\x17AzureMssqlFailoverGroup\x10\xcc\x10\x1a\x19\xa2\xf7\x04\x15\b\r\x12\x02v1\"\tazmsqlfog:\x02\xf1\x0f\x12;\n" +
+	"\x1dAzureContainerAppCustomDomain\x10\xcd\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazcadom:\x02\xf9\x0f\x121\n" +
+	"\x13AzureFirewallPolicy\x10\xd2\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfwpol:\x02\xd0\x0f\x12D\n" +
+	"&AzureFirewallPolicyRuleCollectionGroup\x10\xd3\x10\x1a\x17\xa2\xf7\x04\x13\b\r\x12\x02v1\"\aazfwrcg:\x02\xd2\x10\x12(\n" +
+	"\rAzureFirewall\x10\xd4\x10\x1a\x14\xa2\xf7\x04\x10\b\r\x12\x02v1\"\x04azfw:\x02\xdb\x0f\x12(\n" +
+	"\fAzureIpGroup\x10\xd5\x10\x1a\x15\xa2\xf7\x04\x11\b\r\x12\x02v1\"\x05azipg:\x02\xd0\x0f\x124\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpart:\x02\xc6\x17\x129\n" +
+	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\x02v1\"\agcpthsp:\n" +
+	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x12.\n" +
+	"\x10GcpCloudFunction\x10\xba\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\acldfunc:\x02\xb1\x18\x12$\n" +
+	"\vGcpCloudRun\x10\xbb\x17\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06cldrun\x12*\n" +
+	"\vGcpCloudSql\x10\xbc\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsql0\x01:\x02\xa9\x18\x12)\n" +
 	"\n" +
-	"GcpDnsZone\x10\xdd\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpdns0\x01:\x02\xe2\x04\x12)\n" +
-	"\fGcpGcsBucket\x10\xde\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcsbkt:\x02\xe6\x04\x12+\n" +
-	"\rGcpGkeCluster\x10\xdf\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\x03gke0\x01:\x04\xe2\x04\xe3\x04\x12*\n" +
-	"\x10GcpIamCustomRole\x10\xe0\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcprole\x12%\n" +
+	"GcpDnsZone\x10\xbd\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpdns0\x01:\x02\xc2\x17\x12)\n" +
+	"\fGcpGcsBucket\x10\xbe\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcsbkt:\x02\xc6\x17\x12+\n" +
+	"\rGcpGkeCluster\x10\xbf\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\x03gke0\x01:\x04\xc2\x17\xc3\x17\x12*\n" +
+	"\x10GcpIamCustomRole\x10\xc0\x17\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcprole\x12%\n" +
 	"\n" +
-	"GcpProject\x10\xe1\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpprj0\x01\x12(\n" +
-	"\rGcpVpcNetwork\x10\xe2\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpvpc0\x01\x12,\n" +
-	"\rGcpSubnetwork\x10\xe3\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsnw0\x01:\x02\xe2\x04\x12,\n" +
-	"\fGcpRouterNat\x10\xe4\x04\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcprnat:\x04\xe2\x04\xca\x05\x12*\n" +
-	"\x0eGcpGkeNodePool\x10\xe5\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gkenp:\x02\xdf\x04\x12'\n" +
-	"\x11GcpServiceAccount\x10\xe6\x04\x1a\x0f\xa2\xf7\x04\v\b\x12\x12\x02v1\"\x03gsa\x12:\n" +
-	"\x1dGcpGkeWorkloadIdentityBinding\x10\xe7\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gkewib:\x02\xe6\x04\x120\n" +
-	"\x12GcpCertManagerCert\x10\xe8\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpcert:\x02\xcc\x05\x124\n" +
-	"\x12GcpComputeInstance\x10\xe9\x04\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\x02v1\"\x05gcpvm:\b\xe2\x04\xe3\x04\xe6\x04\xda\x05\x12*\n" +
-	"\fGcpDnsRecord\x10\xea\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpdrec:\x02\xdd\x04\x122\n" +
-	"\x13GcpProjectIamMember\x10\xeb\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcppim:\x04\xe6\x04\xe0\x04\x12(\n" +
-	"\x0fGcpFirewallRule\x10\xec\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpfwr\x12)\n" +
-	"\x10GcpGlobalAddress\x10\xed\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpgip\x12,\n" +
-	"\x13GcpCloudArmorPolicy\x10\xee\x04\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpcap\x12&\n" +
-	"\x0eGcpHealthCheck\x10\xef\x04\x1a\x11\xa2\xf7\x04\r\b\x12\x12\x02v1\"\x05gcphc\x12,\n" +
-	"\x10GcpBackendBucket\x10\xf0\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcpbb:\x02\xde\x04\x12/\n" +
-	"\x11GcpBackendService\x10\xf1\x04\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\x05gcpbs:\x04\xef\x04\xf2\x04\x127\n" +
-	"\x1dGcpRegionNetworkEndpointGroup\x10\xf2\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcprneg\x12%\n" +
-	"\tGcpUrlMap\x10\xf3\x04\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcpum:\x02\xf1\x04\x122\n" +
-	"\x18GcpManagedSslCertificate\x10\xf4\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpmssl\x12/\n" +
-	"\x12GcpTargetHttpProxy\x10\xf5\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpthp:\x02\xf3\x04\x120\n" +
-	"\x11GcpAlloydbCluster\x10\xf6\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpadb0\x01:\x02\xc9\x05\x12-\n" +
-	"\x10GcpRedisInstance\x10\xf7\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpred:\x02\xc9\x05\x12/\n" +
-	"\x14GcpFirestoreDatabase\x10\xf8\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpfst0\x01\x12-\n" +
-	"\x12GcpSpannerInstance\x10\xf9\x04\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpspn0\x01\x122\n" +
-	"\x12GcpSpannerDatabase\x10\xfa\x04\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcpspdb0\x01:\x02\xf9\x04\x12-\n" +
-	"\x13GcpBigtableInstance\x10\xfb\x04\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\x05gcpbt0\x01\x123\n" +
-	"\x16GcpMemorystoreInstance\x10\xfc\x04\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpmsi:\x02\xcb\x05\x122\n" +
-	"\x13GcpCloudSqlDatabase\x10\xfd\x04\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpsqldb:\x02\xdc\x04\x12/\n" +
-	"\x0fGcpCloudSqlUser\x10\xfe\x04\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpsqlusr:\x02\xdc\x04\x123\n" +
-	"\x12GcpAlloydbInstance\x10\xff\x04\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\n" +
-	"gcpadbinst:\x02\xf6\x04\x12.\n" +
-	"\x0eGcpAlloydbUser\x10\x80\x05\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpadbusr:\x02\xf6\x04\x127\n" +
-	"\x18GcpSpannerBackupSchedule\x10\x81\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsbs:\x04\xf9\x04\xfa\x04\x12/\n" +
-	"\x10GcpBigtableTable\x10\x82\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpbttbl:\x02\xfb\x04\x129\n" +
-	"\x1aGcpFirestoreBackupSchedule\x10\x83\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpfstbs:\x02\xf8\x04\x121\n" +
-	"\x11GcpFirestoreIndex\x10\x84\x05\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpfstidx:\x02\xf8\x04\x12.\n" +
-	"\x12GcpBigQueryDataset\x10\x8a\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\agcpbqds0\x01\x127\n" +
-	"\x12GcpDataprocCluster\x10\x8b\x05\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\x02v1\"\x06gcpdpc:\n" +
-	"\xe2\x04\xe3\x04\xec\x04\xe6\x04\x8c\x05\x127\n" +
-	"\x1cGcpDataprocAutoscalingPolicy\x10\x8c\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\bgcpdpasp\x12/\n" +
-	"\x10GcpBigQueryTable\x10\x8d\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpbqtbl:\x02\x8a\x05\x12+\n" +
-	"\x0eGcpPubSubTopic\x10\x94\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcppst:\x02\x98\x05\x122\n" +
-	"\x15GcpPubSubSubscription\x10\x95\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcppss:\x02\x94\x05\x12.\n" +
-	"\x12GcpCloudTasksQueue\x10\x96\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcptq:\x02\xe6\x04\x123\n" +
-	"\x14GcpCloudSchedulerJob\x10\x97\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpcsj:\x04\x94\x05\xe6\x04\x12)\n" +
-	"\x0fGcpPubSubSchema\x10\x98\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcppsch\x124\n" +
-	"\x13GcpVertexAiNotebook\x10\x9e\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\x06gcpvnb:\x06\xe2\x04\xe3\x04\xe6\x04\x12,\n" +
-	"\x13GcpVertexAiEndpoint\x10\x9f\x05\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpvep\x12+\n" +
-	"\x10GcpVertexAiIndex\x10\xa0\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\bgcpvaidx\x125\n" +
-	"\x18GcpVertexAiIndexEndpoint\x10\xa1\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\bgcpvaiep0\x01\x129\n" +
-	"\x18GcpVertexAiDeployedIndex\x10\xa2\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\bgcpvdidx:\x04\xa0\x05\xa1\x05\x12>\n" +
-	"\x1bGcpCloudComposerEnvironment\x10\xa8\x05\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\x02v1\"\x06gcpcce0\x01:\x06\xe2\x04\xe3\x04\xe6\x04\x12A\n" +
-	"#GcpCloudComposerUserWorkloadsSecret\x10\xa9\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpcuws:\x02\xa8\x05\x12E\n" +
-	"&GcpCloudComposerUserWorkloadsConfigMap\x10\xaa\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpcuwcm:\x02\xa8\x05\x12'\n" +
-	"\rGcpKmsKeyRing\x10\xb2\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\x05gcpkr0\x01\x12&\n" +
-	"\tGcpKmsKey\x10\xb3\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpkms:\x02\xb2\x05\x123\n" +
-	"\x12GcpKmsKeyIamMember\x10\xb4\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\x06gcpkim:\x06\xb2\x05\xb3\x05\xe6\x04\x121\n" +
-	"\x14GcpFilestoreInstance\x10\xbc\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpnfs:\x02\xe2\x04\x122\n" +
-	"\x17GcpWorkloadIdentityPool\x10\xbd\x05\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpwip0\x01\x12=\n" +
-	"\x1fGcpWorkloadIdentityPoolProvider\x10\xbe\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpwipp:\x02\xbd\x05\x128\n" +
-	"\x1aGcpServiceAccountIamMember\x10\xbf\x05\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpsaim:\x02\xe6\x04\x126\n" +
-	"\x17GcpGlobalForwardingRule\x10\xc6\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpgfr:\x04\xd9\x04\xed\x04\x12(\n" +
-	"\fGcpSslPolicy\x10\xc7\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\tgcpsslpol\x12.\n" +
-	"\x11GcpSslCertificate\x10\xc8\x05\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\n" +
+	"GcpProject\x10\xc1\x17\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpprj0\x01\x12(\n" +
+	"\rGcpVpcNetwork\x10\xc2\x17\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpvpc0\x01\x12,\n" +
+	"\rGcpSubnetwork\x10\xc3\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsnw0\x01:\x02\xc2\x17\x12,\n" +
+	"\fGcpRouterNat\x10\xc4\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcprnat:\x04\xc2\x17\xaa\x18\x12*\n" +
+	"\x0eGcpGkeNodePool\x10\xc5\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gkenp:\x02\xbf\x17\x12'\n" +
+	"\x11GcpServiceAccount\x10\xc6\x17\x1a\x0f\xa2\xf7\x04\v\b\x12\x12\x02v1\"\x03gsa\x12:\n" +
+	"\x1dGcpGkeWorkloadIdentityBinding\x10\xc7\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gkewib:\x02\xc6\x17\x120\n" +
+	"\x12GcpCertManagerCert\x10\xc8\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpcert:\x02\xac\x18\x124\n" +
+	"\x12GcpComputeInstance\x10\xc9\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\x02v1\"\x05gcpvm:\b\xc2\x17\xc3\x17\xc6\x17\xba\x18\x12*\n" +
+	"\fGcpDnsRecord\x10\xca\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpdrec:\x02\xbd\x17\x122\n" +
+	"\x13GcpProjectIamMember\x10\xcb\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcppim:\x04\xc6\x17\xc0\x17\x12(\n" +
+	"\x0fGcpFirewallRule\x10\xcc\x17\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpfwr\x12)\n" +
+	"\x10GcpGlobalAddress\x10\xcd\x17\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpgip\x12,\n" +
+	"\x13GcpCloudArmorPolicy\x10\xce\x17\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpcap\x12&\n" +
+	"\x0eGcpHealthCheck\x10\xcf\x17\x1a\x11\xa2\xf7\x04\r\b\x12\x12\x02v1\"\x05gcphc\x12,\n" +
+	"\x10GcpBackendBucket\x10\xd0\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcpbb:\x02\xbe\x17\x12/\n" +
+	"\x11GcpBackendService\x10\xd1\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\x05gcpbs:\x04\xcf\x17\xd2\x17\x127\n" +
+	"\x1dGcpRegionNetworkEndpointGroup\x10\xd2\x17\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcprneg\x12%\n" +
+	"\tGcpUrlMap\x10\xd3\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcpum:\x02\xd1\x17\x122\n" +
+	"\x18GcpManagedSslCertificate\x10\xd4\x17\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpmssl\x12/\n" +
+	"\x12GcpTargetHttpProxy\x10\xd5\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpthp:\x02\xd3\x17\x120\n" +
+	"\x11GcpAlloydbCluster\x10\xd6\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpadb0\x01:\x02\xa9\x18\x12-\n" +
+	"\x10GcpRedisInstance\x10\xd7\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpred:\x02\xa9\x18\x12/\n" +
+	"\x14GcpFirestoreDatabase\x10\xd8\x17\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpfst0\x01\x12-\n" +
+	"\x12GcpSpannerInstance\x10\xd9\x17\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpspn0\x01\x122\n" +
+	"\x12GcpSpannerDatabase\x10\xda\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcpspdb0\x01:\x02\xd9\x17\x12-\n" +
+	"\x13GcpBigtableInstance\x10\xdb\x17\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\x05gcpbt0\x01\x123\n" +
+	"\x16GcpMemorystoreInstance\x10\xdc\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpmsi:\x02\xab\x18\x122\n" +
+	"\x13GcpCloudSqlDatabase\x10\xdd\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpsqldb:\x02\xbc\x17\x12/\n" +
+	"\x0fGcpCloudSqlUser\x10\xde\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpsqlusr:\x02\xbc\x17\x123\n" +
+	"\x12GcpAlloydbInstance\x10\xdf\x17\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\n" +
+	"gcpadbinst:\x02\xd6\x17\x12.\n" +
+	"\x0eGcpAlloydbUser\x10\xe0\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpadbusr:\x02\xd6\x17\x127\n" +
+	"\x18GcpSpannerBackupSchedule\x10\xe1\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsbs:\x04\xd9\x17\xda\x17\x12/\n" +
+	"\x10GcpBigtableTable\x10\xe2\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpbttbl:\x02\xdb\x17\x129\n" +
+	"\x1aGcpFirestoreBackupSchedule\x10\xe3\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpfstbs:\x02\xd8\x17\x121\n" +
+	"\x11GcpFirestoreIndex\x10\xe4\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\tgcpfstidx:\x02\xd8\x17\x12.\n" +
+	"\x12GcpBigQueryDataset\x10\xea\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\agcpbqds0\x01\x127\n" +
+	"\x12GcpDataprocCluster\x10\xeb\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\x02v1\"\x06gcpdpc:\n" +
+	"\xc2\x17\xc3\x17\xcc\x17\xc6\x17\xec\x17\x127\n" +
+	"\x1cGcpDataprocAutoscalingPolicy\x10\xec\x17\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\bgcpdpasp\x12/\n" +
+	"\x10GcpBigQueryTable\x10\xed\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpbqtbl:\x02\xea\x17\x12+\n" +
+	"\x0eGcpPubSubTopic\x10\xf4\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcppst:\x02\xf8\x17\x122\n" +
+	"\x15GcpPubSubSubscription\x10\xf5\x17\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcppss:\x02\xf4\x17\x12.\n" +
+	"\x12GcpCloudTasksQueue\x10\xf6\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\x05gcptq:\x02\xc6\x17\x123\n" +
+	"\x14GcpCloudSchedulerJob\x10\xf7\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpcsj:\x04\xf4\x17\xc6\x17\x12)\n" +
+	"\x0fGcpPubSubSchema\x10\xf8\x17\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcppsch\x124\n" +
+	"\x13GcpVertexAiNotebook\x10\xfe\x17\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\x06gcpvnb:\x06\xc2\x17\xc3\x17\xc6\x17\x12,\n" +
+	"\x13GcpVertexAiEndpoint\x10\xff\x17\x1a\x12\xa2\xf7\x04\x0e\b\x12\x12\x02v1\"\x06gcpvep\x12+\n" +
+	"\x10GcpVertexAiIndex\x10\x80\x18\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\bgcpvaidx\x125\n" +
+	"\x18GcpVertexAiIndexEndpoint\x10\x81\x18\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\bgcpvaiep0\x01\x129\n" +
+	"\x18GcpVertexAiDeployedIndex\x10\x82\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\bgcpvdidx:\x04\x80\x18\x81\x18\x12>\n" +
+	"\x1bGcpCloudComposerEnvironment\x10\x88\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\x02v1\"\x06gcpcce0\x01:\x06\xc2\x17\xc3\x17\xc6\x17\x12A\n" +
+	"#GcpCloudComposerUserWorkloadsSecret\x10\x89\x18\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpcuws:\x02\x88\x18\x12E\n" +
+	"&GcpCloudComposerUserWorkloadsConfigMap\x10\x8a\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\bgcpcuwcm:\x02\x88\x18\x12'\n" +
+	"\rGcpKmsKeyRing\x10\x92\x18\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\x05gcpkr0\x01\x12&\n" +
+	"\tGcpKmsKey\x10\x93\x18\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpkms:\x02\x92\x18\x123\n" +
+	"\x12GcpKmsKeyIamMember\x10\x94\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\x02v1\"\x06gcpkim:\x06\x92\x18\x93\x18\xc6\x17\x121\n" +
+	"\x14GcpFilestoreInstance\x10\x9c\x18\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\x06gcpnfs:\x02\xc2\x17\x122\n" +
+	"\x17GcpWorkloadIdentityPool\x10\x9d\x18\x1a\x14\xa2\xf7\x04\x10\b\x12\x12\x02v1\"\x06gcpwip0\x01\x12=\n" +
+	"\x1fGcpWorkloadIdentityPoolProvider\x10\x9e\x18\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpwipp:\x02\x9d\x18\x128\n" +
+	"\x1aGcpServiceAccountIamMember\x10\x9f\x18\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\x02v1\"\agcpsaim:\x02\xc6\x17\x126\n" +
+	"\x17GcpGlobalForwardingRule\x10\xa6\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpgfr:\x04\xb9\x17\xcd\x17\x12(\n" +
+	"\fGcpSslPolicy\x10\xa7\x18\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\tgcpsslpol\x12.\n" +
+	"\x11GcpSslCertificate\x10\xa8\x18\x1a\x16\xa2\xf7\x04\x12\b\x12\x12\x02v1\"\n" +
 	"gcpsslcert\x12=\n" +
-	"\x1eGcpServiceNetworkingConnection\x10\xc9\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsnc:\x04\xe2\x04\xed\x04\x12*\n" +
+	"\x1eGcpServiceNetworkingConnection\x10\xa9\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpsnc:\x04\xc2\x17\xcd\x17\x12*\n" +
 	"\n" +
-	"GcpAddress\x10\xca\x05\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcpaddr:\x04\xe2\x04\xe3\x04\x129\n" +
-	"\x1aGcpServiceConnectionPolicy\x10\xcb\x05\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpscp:\x04\xe2\x04\xe3\x04\x128\n" +
-	"\x1eGcpCertManagerDnsAuthorization\x10\xcc\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpcmda\x12*\n" +
-	"\x0eGcpCloudRunJob\x10\xd0\x05\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\tcldrunjob\x12<\n" +
-	"\x19GcpServerlessVpcConnector\x10\xd1\x05\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\x02v1\"\n" +
-	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12(\n" +
-	"\x0eGcpComputeDisk\x10\xda\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpdisk\x12-\n" +
-	"\x13KubernetesNamespace\x10\xa0\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\x05k8sns0\x01\x12/\n" +
-	"\x14KubernetesDeployment\x10\xa1\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\x06k8sdpl(\x01\x120\n" +
-	"\x15KubernetesStatefulSet\x10\xa2\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\x06k8ssts(\x01\x12+\n" +
-	"\x13KubernetesDaemonSet\x10\xa3\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8sds\x12&\n" +
-	"\rKubernetesJob\x10\xa4\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sjob\x12-\n" +
-	"\x11KubernetesCronJob\x10\xa5\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\ak8scron(\x01\x12*\n" +
-	"\x11KubernetesService\x10\xa6\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8ssvc\x12)\n" +
-	"\x10KubernetesSecret\x10\xa7\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8ssec\x12,\n" +
-	"\x12KubernetesManifest\x10\xa8\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8smfst\x12/\n" +
-	"\x15KubernetesHelmRelease\x10\xa9\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8shelm\x12,\n" +
-	"\x13KubernetesConfigMap\x10\xaa\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scfg\x120\n" +
-	"\x18KubernetesServiceAccount\x10\xab\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8ssa\x12(\n" +
-	"\x0eKubernetesRbac\x10\xac\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8srbac\x12*\n" +
-	"\x11KubernetesIngress\x10\xad\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sing\x12/\n" +
-	"\x17KubernetesNetworkPolicy\x10\xae\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8snp\x128\n" +
-	"\x1fKubernetesPersistentVolumeClaim\x10\xaf\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8spvc\x12.\n" +
-	"\x16KubernetesStorageClass\x10\xb0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8ssc\x12/\n" +
-	"\x17KubernetesResourceQuota\x10\xb1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8srq\x12/\n" +
-	"\x17KubernetesPriorityClass\x10\xb2\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8spc\x126\n" +
-	"\x1dKubernetesPodDisruptionBudget\x10\xb3\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8spdb\x12:\n" +
-	"!KubernetesHorizontalPodAutoscaler\x10\xb4\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8shpa\x12-\n" +
-	"\x15KubernetesCertManager\x10\xbe\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8scm\x123\n" +
-	"\x17KubernetesClusterIssuer\x10\xbf\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8sci:\x02\xbe\x06\x12-\n" +
-	"\x10KubernetesIssuer\x10\xc0\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8siss:\x02\xbe\x06\x122\n" +
-	"\x15KubernetesCertificate\x10\xc1\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8scrt:\x02\xbe\x06\x121\n" +
-	"\x15KubernetesExternalDns\x10\xc2\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sextdns\x12=\n" +
-	"!KubernetesExternalSecretsOperator\x10\xc3\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sextsec\x129\n" +
-	"\x1cKubernetesClusterSecretStore\x10\xc4\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8scss:\x02\xc3\x06\x122\n" +
-	"\x15KubernetesSecretStore\x10\xc5\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8ssst:\x02\xc3\x06\x126\n" +
-	"\x18KubernetesExternalSecret\x10\xc6\x06\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8sxsec:\x02\xc3\x06\x12/\n" +
-	"\x16KubernetesIngressNginx\x10\xc7\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sngx\x124\n" +
-	"\x18KubernetesGatewayApiCrds\x10\xc8\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sgwcrds\x12a\n" +
-	"\x16KubernetesGatewayClass\x10\xc9\x06\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\x06k8sgwc:\x02\xc8\x06B,\n" +
+	"GcpAddress\x10\xaa\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\x02v1\"\agcpaddr:\x04\xc2\x17\xc3\x17\x129\n" +
+	"\x1aGcpServiceConnectionPolicy\x10\xab\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\x02v1\"\x06gcpscp:\x04\xc2\x17\xc3\x17\x128\n" +
+	"\x1eGcpCertManagerDnsAuthorization\x10\xac\x18\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpcmda\x12*\n" +
+	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\x02v1\"\tcldrunjob\x12<\n" +
+	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\x02v1\"\n" +
+	"gcpvpcconn:\x04\xc2\x17\xc3\x17\x12(\n" +
+	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x13\xa2\xf7\x04\x0f\b\x12\x12\x02v1\"\agcpdisk\x12-\n" +
+	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\x05k8sns0\x01\x12/\n" +
+	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\x06k8sdpl(\x01\x120\n" +
+	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\x06k8ssts(\x01\x12+\n" +
+	"\x13KubernetesDaemonSet\x10\xa3\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8sds\x12&\n" +
+	"\rKubernetesJob\x10\xa4\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sjob\x12-\n" +
+	"\x11KubernetesCronJob\x10\xa5\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\ak8scron(\x01\x12*\n" +
+	"\x11KubernetesService\x10\xa6\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8ssvc\x12)\n" +
+	"\x10KubernetesSecret\x10\xa7\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8ssec\x12,\n" +
+	"\x12KubernetesManifest\x10\xa8\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8smfst\x12/\n" +
+	"\x15KubernetesHelmRelease\x10\xa9\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8shelm\x12,\n" +
+	"\x13KubernetesConfigMap\x10\xaa\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scfg\x120\n" +
+	"\x18KubernetesServiceAccount\x10\xab\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8ssa\x12(\n" +
+	"\x0eKubernetesRbac\x10\xac\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8srbac\x12*\n" +
+	"\x11KubernetesIngress\x10\xad\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sing\x12/\n" +
+	"\x17KubernetesNetworkPolicy\x10\xae\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8snp\x128\n" +
+	"\x1fKubernetesPersistentVolumeClaim\x10\xaf\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8spvc\x12.\n" +
+	"\x16KubernetesStorageClass\x10\xb0\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8ssc\x12/\n" +
+	"\x17KubernetesResourceQuota\x10\xb1\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8srq\x12/\n" +
+	"\x17KubernetesPriorityClass\x10\xb2\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8spc\x126\n" +
+	"\x1dKubernetesPodDisruptionBudget\x10\xb3\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8spdb\x12:\n" +
+	"!KubernetesHorizontalPodAutoscaler\x10\xb4\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8shpa\x12-\n" +
+	"\x15KubernetesCertManager\x10\xbe\x1f\x1a\x11\xa2\xf7\x04\r\b\x13\x12\x02v1\"\x05k8scm\x123\n" +
+	"\x17KubernetesClusterIssuer\x10\xbf\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8sci:\x02\xbe\x1f\x12-\n" +
+	"\x10KubernetesIssuer\x10\xc0\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8siss:\x02\xbe\x1f\x122\n" +
+	"\x15KubernetesCertificate\x10\xc1\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8scrt:\x02\xbe\x1f\x121\n" +
+	"\x15KubernetesExternalDns\x10\xc2\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sextdns\x12=\n" +
+	"!KubernetesExternalSecretsOperator\x10\xc3\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sextsec\x129\n" +
+	"\x1cKubernetesClusterSecretStore\x10\xc4\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8scss:\x02\xc3\x1f\x122\n" +
+	"\x15KubernetesSecretStore\x10\xc5\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8ssst:\x02\xc3\x1f\x126\n" +
+	"\x18KubernetesExternalSecret\x10\xc6\x1f\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8sxsec:\x02\xc3\x1f\x12/\n" +
+	"\x16KubernetesIngressNginx\x10\xc7\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sngx\x124\n" +
+	"\x18KubernetesGatewayApiCrds\x10\xc8\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sgwcrds\x12a\n" +
+	"\x16KubernetesGatewayClass\x10\xc9\x1f\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\x06k8sgwc:\x02\xc8\x1fB,\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\fGatewayClass\x12V\n" +
-	"\x11KubernetesGateway\x10\xca\x06\x1a>\xa2\xf7\x04:\b\x13\x12\x02v1\"\x05k8sgw:\x02\xc8\x06B'\n" +
+	"\x11KubernetesGateway\x10\xca\x1f\x1a>\xa2\xf7\x04:\b\x13\x12\x02v1\"\x05k8sgw:\x02\xc8\x1fB'\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\aGateway\x12`\n" +
-	"\x15KubernetesListenerSet\x10\xcb\x06\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\ak8slset:\x02\xc8\x06B+\n" +
+	"\x15KubernetesListenerSet\x10\xcb\x1f\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\ak8slset:\x02\xc8\x1fB+\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\vListenerSet\x12[\n" +
-	"\x13KubernetesHttpRoute\x10\xcc\x06\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x06k8shrt:\x02\xc8\x06B)\n" +
+	"\x13KubernetesHttpRoute\x10\xcc\x1f\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x06k8shrt:\x02\xc8\x1fB)\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\tHTTPRoute\x12[\n" +
-	"\x13KubernetesGrpcRoute\x10\xcd\x06\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x06k8sgrt:\x02\xc8\x06B)\n" +
+	"\x13KubernetesGrpcRoute\x10\xcd\x1f\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x06k8sgrt:\x02\xc8\x1fB)\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\tGRPCRoute\x12Y\n" +
-	"\x12KubernetesTcpRoute\x10\xce\x06\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x06k8strt:\x02\xc8\x06B(\n" +
+	"\x12KubernetesTcpRoute\x10\xce\x1f\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x06k8strt:\x02\xc8\x1fB(\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\bTCPRoute\x12Y\n" +
-	"\x12KubernetesUdpRoute\x10\xcf\x06\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x06k8surt:\x02\xc8\x06B(\n" +
+	"\x12KubernetesUdpRoute\x10\xcf\x1f\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x06k8surt:\x02\xc8\x1fB(\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\bUDPRoute\x12[\n" +
-	"\x12KubernetesTlsRoute\x10\xd0\x06\x1aB\xa2\xf7\x04>\b\x13\x12\x02v1\"\bk8stlsrt:\x02\xc8\x06B(\n" +
+	"\x12KubernetesTlsRoute\x10\xd0\x1f\x1aB\xa2\xf7\x04>\b\x13\x12\x02v1\"\bk8stlsrt:\x02\xc8\x1fB(\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\bTLSRoute\x12h\n" +
-	"\x18KubernetesReferenceGrant\x10\xd1\x06\x1aI\xa2\xf7\x04E\b\x13\x12\x02v1\"\tk8srefgrt:\x02\xc8\x06B.\n" +
+	"\x18KubernetesReferenceGrant\x10\xd1\x1f\x1aI\xa2\xf7\x04E\b\x13\x12\x02v1\"\tk8srefgrt:\x02\xc8\x1fB.\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\x0eReferenceGrant\x12j\n" +
-	"\x1aKubernetesBackendTlsPolicy\x10\xd2\x06\x1aI\xa2\xf7\x04E\b\x13\x12\x02v1\"\ak8sbtls:\x02\xc8\x06B0\n" +
+	"\x1aKubernetesBackendTlsPolicy\x10\xd2\x1f\x1aI\xa2\xf7\x04E\b\x13\x12\x02v1\"\ak8sbtls:\x02\xc8\x1fB0\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\x10BackendTLSPolicy\x124\n" +
-	"\x17KubernetesIstioBaseCrds\x10\xd3\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\n" +
+	"\x17KubernetesIstioBaseCrds\x10\xd3\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\n" +
 	"k8sistcrds\x12(\n" +
-	"\x0fKubernetesIstio\x10\xd4\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sist\x12`\n" +
-	"\x19KubernetesDestinationRule\x10\xd5\x06\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x05k8sdr:\x02\xd3\x06B)\n" +
+	"\x0fKubernetesIstio\x10\xd4\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sist\x12`\n" +
+	"\x19KubernetesDestinationRule\x10\xd5\x1f\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\x05k8sdr:\x02\xd3\x1fB)\n" +
 	"\x16networking.istio.io/v1\x12\x0fDestinationRule\x12Z\n" +
-	"\x16KubernetesServiceEntry\x10\xd6\x06\x1a=\xa2\xf7\x049\b\x13\x12\x02v1\"\x05k8sse:\x02\xd3\x06B&\n" +
+	"\x16KubernetesServiceEntry\x10\xd6\x1f\x1a=\xa2\xf7\x049\b\x13\x12\x02v1\"\x05k8sse:\x02\xd3\x1fB&\n" +
 	"\x16networking.istio.io/v1\x12\fServiceEntry\x12d\n" +
-	"\x1cKubernetesPeerAuthentication\x10\xd7\x06\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x05k8spa:\x02\xd3\x06B*\n" +
+	"\x1cKubernetesPeerAuthentication\x10\xd7\x1f\x1aA\xa2\xf7\x04=\b\x13\x12\x02v1\"\x05k8spa:\x02\xd3\x1fB*\n" +
 	"\x14security.istio.io/v1\x12\x12PeerAuthentication\x12j\n" +
-	"\x1fKubernetesRequestAuthentication\x10\xd8\x06\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\x05k8sra:\x02\xd3\x06B-\n" +
+	"\x1fKubernetesRequestAuthentication\x10\xd8\x1f\x1aD\xa2\xf7\x04@\b\x13\x12\x02v1\"\x05k8sra:\x02\xd3\x1fB-\n" +
 	"\x14security.istio.io/v1\x12\x15RequestAuthentication\x12i\n" +
-	"\x1dKubernetesAuthorizationPolicy\x10\xd9\x06\x1aE\xa2\xf7\x04A\b\x13\x12\x02v1\"\bk8sauthz:\x02\xd3\x06B+\n" +
+	"\x1dKubernetesAuthorizationPolicy\x10\xd9\x1f\x1aE\xa2\xf7\x04A\b\x13\x12\x02v1\"\bk8sauthz:\x02\xd3\x1fB+\n" +
 	"\x14security.istio.io/v1\x12\x13AuthorizationPolicy\x12T\n" +
-	"\x13KubernetesTelemetry\x10\xda\x06\x1a:\xa2\xf7\x046\b\x13\x12\x02v1\"\x06k8stel:\x02\xd3\x06B\"\n" +
+	"\x13KubernetesTelemetry\x10\xda\x1f\x1a:\xa2\xf7\x046\b\x13\x12\x02v1\"\x06k8stel:\x02\xd3\x1fB\"\n" +
 	"\x15telemetry.istio.io/v1\x12\tTelemetry\x12^\n" +
-	"\x15KubernetesEnvoyFilter\x10\xdb\x06\x1aB\xa2\xf7\x04>\b\x13\x12\x02v1\"\x05k8sef:\x02\xd3\x06B+\n" +
+	"\x15KubernetesEnvoyFilter\x10\xdb\x1f\x1aB\xa2\xf7\x04>\b\x13\x12\x02v1\"\x05k8sef:\x02\xd3\x1fB+\n" +
 	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x123\n" +
-	"\x17KubernetesMetricsServer\x10\xdc\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8smetsrv\x12)\n" +
-	"\x10KubernetesCilium\x10\xdd\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scil\x12(\n" +
-	"\x0eKubernetesKeda\x10\xde\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skeda\x12-\n" +
-	"\x13KubernetesKarpenter\x10\xdf\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skarp\x12X\n" +
-	"\x1bKubernetesKarpenterNodePool\x10\xe0\x06\x1a6\xa2\xf7\x042\b\x13\x12\x02v1\"\tk8skarpnp:\x02\xdf\x06B\x1b\n" +
+	"\x17KubernetesMetricsServer\x10\xdc\x1f\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8smetsrv\x12)\n" +
+	"\x10KubernetesCilium\x10\xdd\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scil\x12(\n" +
+	"\x0eKubernetesKeda\x10\xde\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skeda\x12-\n" +
+	"\x13KubernetesKarpenter\x10\xdf\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skarp\x12X\n" +
+	"\x1bKubernetesKarpenterNodePool\x10\xe0\x1f\x1a6\xa2\xf7\x042\b\x13\x12\x02v1\"\tk8skarpnp:\x02\xdf\x1fB\x1b\n" +
 	"\x0fkarpenter.sh/v1\x12\bNodePool\x12f\n" +
-	"\x1fKubernetesKarpenterEc2NodeClass\x10\xe1\x06\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\n" +
-	"k8skarpenc:\x02\xdf\x06B$\n" +
+	"\x1fKubernetesKarpenterEc2NodeClass\x10\xe1\x1f\x1a@\xa2\xf7\x04<\b\x13\x12\x02v1\"\n" +
+	"k8skarpenc:\x02\xdf\x1fB$\n" +
 	"\x14karpenter.k8s.aws/v1\x12\fEC2NodeClass\x124\n" +
-	"\x1bKubernetesClusterAutoscaler\x10\xe2\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scas\x12)\n" +
-	"\x10KubernetesVelero\x10\xe3\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8svel\x126\n" +
-	"\x1dKubernetesKubePrometheusStack\x10\xe6\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8skps\x12*\n" +
-	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sgfn\x12-\n" +
-	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8ssgz:\x02\x97\a\x12(\n" +
-	"\x0eKubernetesLoki\x10\xe9\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sloki\x12*\n" +
-	"\x0fKubernetesTempo\x10\xea\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8stempo\x126\n" +
-	"\x16KubernetesOtelOperator\x10\xeb\x06\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sotelop:\x02\xbe\x06\x128\n" +
-	"\x17KubernetesOtelCollector\x10\xec\x06\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\n" +
-	"k8sotelcol:\x02\xeb\x06\x12,\n" +
-	"\x11KubernetesKyverno\x10\xf0\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8skyvrn\x12/\n" +
-	"\x14KubernetesGatekeeper\x10\xf1\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sgtkpr\x120\n" +
-	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\x05k8skc:\x04\xfd\x06\x85\a\x12*\n" +
-	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sbao\x12.\n" +
-	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8sfga:\x02\x85\a\x124\n" +
-	"\x1aKubernetesKeycloakOperator\x10\xfd\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skcop\x12;\n" +
-	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8scnpgop\x12.\n" +
-	"\x12KubernetesPostgres\x10\x85\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8spg:\x02\x84\a\x12)\n" +
-	"\x10KubernetesValkey\x10\x86\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8svlk\x12?\n" +
-	"\x1eKubernetesPerconaMysqlOperator\x10\x87\a\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\x0ek8sprcnmysqlop\x12.\n" +
-	"\x0fKubernetesMysql\x10\x88\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8smysql:\x02\x87\a\x12=\n" +
-	"\x1eKubernetesPerconaMongoOperator\x10\x89\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\fk8sprcnmdbop\x12.\n" +
-	"\x11KubernetesMongodb\x10\x8a\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8smdb:\x02\x89\a\x129\n" +
-	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sstzop\x12.\n" +
-	"\x0fKubernetesKafka\x10\x8c\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\x06k8skaf0\x01:\x02\x8b\a\x124\n" +
-	"\x14KubernetesKafkaTopic\x10\x8d\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skaftop:\x02\x8c\a\x123\n" +
-	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafusr:\x02\x8c\a\x128\n" +
-	"\x16KubernetesKafkaConnect\x10\x8f\a\x1a\x1b\xa2\xf7\x04\x17\b\x13\x12\x02v1\"\tk8skafcon0\x01:\x02\x8c\a\x128\n" +
-	"\x18KubernetesKafkaConnector\x10\x90\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafcnr:\x02\x8f\a\x12;\n" +
-	"\x1bKubernetesKafkaMirrorMaker2\x10\x91\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafmm2:\x02\x8c\a\x120\n" +
-	"\x12KubernetesKarapace\x10\x92\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8skrpc:\x02\x8c\a\x12,\n" +
-	"\x11KubernetesKafkaUi\x10\x93\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8skafui\x126\n" +
-	"\x1cKubernetesOpenSearchOperator\x10\x94\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sosop\x120\n" +
-	"\x14KubernetesOpenSearch\x10\x95\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8sos:\x02\x94\a\x125\n" +
-	"\x1aKubernetesAltinityOperator\x10\x96\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8saltop\x123\n" +
-	"\x14KubernetesClickHouse\x10\x97\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sclkhs:\x02\x96\a\x121\n" +
-	"\x16KubernetesSolrOperator\x10\x98\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sslrop\x12,\n" +
-	"\x0eKubernetesSolr\x10\x99\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8ssolr:\x02\x98\a\x12(\n" +
-	"\x0fKubernetesNeo4j\x10\x9a\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sneo\x12-\n" +
-	"\x13KubernetesSeaweedFs\x10\x9b\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sswfs\x12*\n" +
-	"\x10KubernetesQdrant\x10\x9c\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sqdrt\x129\n" +
-	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8srmqop:\x02\xbe\x06\x12/\n" +
-	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8srmq:\x02\x9d\a\x12/\n" +
-	"\x11KubernetesAirflow\x10\xa2\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8saflw:\x02\x85\a\x123\n" +
-	"\x17KubernetesSparkOperator\x10\xa3\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8ssprkop\x125\n" +
-	"\x19KubernetesKubeRayOperator\x10\xa4\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8skrayop\x123\n" +
-	"\x14KubernetesRayCluster\x10\xa5\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sraycl:\x02\xa4\a\x127\n" +
-	"\x17KubernetesFlinkOperator\x10\xa6\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sflnkop:\x02\xbe\x06\x128\n" +
-	"\x19KubernetesFlinkDeployment\x10\xa7\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sflnkd:\x02\xa6\a\x122\n" +
-	"\x14KubernetesJupyterHub\x10\xa8\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8sjhub:\x02\x85\a\x121\n" +
-	"\x10KubernetesMlflow\x10\xa9\a\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\bk8smlflw:\x04\x85\a\x9b\a\x12.\n" +
-	"\x0fKubernetesTrino\x10\xaa\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8strino:\x02\x85\a\x123\n" +
-	"\x12KubernetesSuperset\x10\xab\a\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\bk8ssprst:\x04\x85\a\x86\a\x12*\n" +
-	"\x10KubernetesArgocd\x10\xb6\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sargo\x123\n" +
-	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sargowf\x124\n" +
-	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8stktnop\x12.\n" +
-	"\x10KubernetesTekton\x10\xb9\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8stktn:\x02\xb8\a\x12A\n" +
-	"%KubernetesGhaRunnerScaleSetController\x10\xba\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sgharsc\x12;\n" +
-	"\x1bKubernetesGhaRunnerScaleSet\x10\xbb\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sgharss:\x02\xba\a\x12*\n" +
-	"\x10KubernetesHarbor\x10\xbc\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8shrbr\x12*\n" +
-	"\x11KubernetesJenkins\x10\xbd\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sjkn\x120\n" +
-	"\x12KubernetesTemporal\x10\xca\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8stprl:\x02\x85\a\x12(\n" +
-	"\x0eKubernetesNats\x10\xcb\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8snats\x12)\n" +
-	"\x10KubernetesLocust\x10\xcc\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sloc\x126\n" +
-	"\x1eDigitalOceanAppPlatformService\x10\xb0\t\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05doapp\x12*\n" +
-	"\x12DigitalOceanBucket\x10\xb1\t\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05dobkt\x124\n" +
-	"\x1dDigitalOceanContainerRegistry\x10\xb2\t\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04docr\x122\n" +
-	"\x1bDigitalOceanDatabaseCluster\x10\xb3\t\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dodb\x12-\n" +
-	"\x13DigitalOceanDnsZone\x10\xb4\t\x1a\x13\xa2\xf7\x04\x0f\b\x11\x12\x02v1\"\x05dodns0\x01\x12,\n" +
-	"\x13DigitalOceanDroplet\x10\xb5\t\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x06dodrop\x12+\n" +
-	"\x14DigitalOceanFirewall\x10\xb6\t\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dofw\x12+\n" +
-	"\x14DigitalOceanFunction\x10\xb7\t\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dofn\x126\n" +
-	"\x1dDigitalOceanKubernetesCluster\x10\xb8\t\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x04dokc0\x01\x126\n" +
-	"\x1eDigitalOceanKubernetesNodePool\x10\xb9\t\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05doknp\x12/\n" +
-	"\x18DigitalOceanLoadBalancer\x10\xba\t\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dolb\x12*\n" +
-	"\x12DigitalOceanVolume\x10\xbb\t\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05dovol\x12)\n" +
-	"\x0fDigitalOceanVpc\x10\xbc\t\x1a\x13\xa2\xf7\x04\x0f\b\x11\x12\x02v1\"\x05dovpc0\x01\x120\n" +
-	"\x17DigitalOceanCertificate\x10\xbd\t\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x06docert\x120\n" +
-	"\x15DigitalOceanDnsRecord\x10\xbe\t\x1a\x14\xa2\xf7\x04\x10\b\x11\x12\x02v1\"\bdodnsrec\x12\"\n" +
+	"\x1bKubernetesClusterAutoscaler\x10\xe2\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8scas\x12)\n" +
+	"\x10KubernetesVelero\x10\xe3\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8svel\x126\n" +
+	"\x1dKubernetesKubePrometheusStack\x10\xe6\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8skps\x12*\n" +
+	"\x11KubernetesGrafana\x10\xe7\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sgfn\x12-\n" +
+	"\x10KubernetesSignoz\x10\xe8\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8ssgz:\x02\x97 \x12(\n" +
+	"\x0eKubernetesLoki\x10\xe9\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sloki\x12*\n" +
+	"\x0fKubernetesTempo\x10\xea\x1f\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8stempo\x126\n" +
+	"\x16KubernetesOtelOperator\x10\xeb\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sotelop:\x02\xbe\x1f\x128\n" +
+	"\x17KubernetesOtelCollector\x10\xec\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\n" +
+	"k8sotelcol:\x02\xeb\x1f\x12,\n" +
+	"\x11KubernetesKyverno\x10\xf0\x1f\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8skyvrn\x12/\n" +
+	"\x14KubernetesGatekeeper\x10\xf1\x1f\x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sgtkpr\x120\n" +
+	"\x12KubernetesKeycloak\x10\xfa\x1f\x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\x05k8skc:\x04\xfd\x1f\x85 \x12*\n" +
+	"\x11KubernetesOpenBao\x10\xfb\x1f\x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sbao\x12.\n" +
+	"\x11KubernetesOpenFga\x10\xfc\x1f\x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8sfga:\x02\x85 \x124\n" +
+	"\x1aKubernetesKeycloakOperator\x10\xfd\x1f\x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8skcop\x12;\n" +
+	"\x1fKubernetesCloudNativePgOperator\x10\x84 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8scnpgop\x12.\n" +
+	"\x12KubernetesPostgres\x10\x85 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8spg:\x02\x84 \x12)\n" +
+	"\x10KubernetesValkey\x10\x86 \x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8svlk\x12?\n" +
+	"\x1eKubernetesPerconaMysqlOperator\x10\x87 \x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\x0ek8sprcnmysqlop\x12.\n" +
+	"\x0fKubernetesMysql\x10\x88 \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8smysql:\x02\x87 \x12=\n" +
+	"\x1eKubernetesPerconaMongoOperator\x10\x89 \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\fk8sprcnmdbop\x12.\n" +
+	"\x11KubernetesMongodb\x10\x8a \x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8smdb:\x02\x89 \x129\n" +
+	"\x1eKubernetesStrimziKafkaOperator\x10\x8b \x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sstzop\x12.\n" +
+	"\x0fKubernetesKafka\x10\x8c \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\x06k8skaf0\x01:\x02\x8b \x124\n" +
+	"\x14KubernetesKafkaTopic\x10\x8d \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skaftop:\x02\x8c \x123\n" +
+	"\x13KubernetesKafkaUser\x10\x8e \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafusr:\x02\x8c \x128\n" +
+	"\x16KubernetesKafkaConnect\x10\x8f \x1a\x1b\xa2\xf7\x04\x17\b\x13\x12\x02v1\"\tk8skafcon0\x01:\x02\x8c \x128\n" +
+	"\x18KubernetesKafkaConnector\x10\x90 \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafcnr:\x02\x8f \x12;\n" +
+	"\x1bKubernetesKafkaMirrorMaker2\x10\x91 \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8skafmm2:\x02\x8c \x120\n" +
+	"\x12KubernetesKarapace\x10\x92 \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8skrpc:\x02\x8c \x12,\n" +
+	"\x11KubernetesKafkaUi\x10\x93 \x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8skafui\x126\n" +
+	"\x1cKubernetesOpenSearchOperator\x10\x94 \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sosop\x120\n" +
+	"\x14KubernetesOpenSearch\x10\x95 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\x05k8sos:\x02\x94 \x125\n" +
+	"\x1aKubernetesAltinityOperator\x10\x96 \x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8saltop\x123\n" +
+	"\x14KubernetesClickHouse\x10\x97 \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sclkhs:\x02\x96 \x121\n" +
+	"\x16KubernetesSolrOperator\x10\x98 \x1a\x14\xa2\xf7\x04\x10\b\x13\x12\x02v1\"\bk8sslrop\x12,\n" +
+	"\x0eKubernetesSolr\x10\x99 \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8ssolr:\x02\x98 \x12(\n" +
+	"\x0fKubernetesNeo4j\x10\x9a \x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sneo\x12-\n" +
+	"\x13KubernetesSeaweedFs\x10\x9b \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sswfs\x12*\n" +
+	"\x10KubernetesQdrant\x10\x9c \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sqdrt\x129\n" +
+	"\x1aKubernetesRabbitMqOperator\x10\x9d \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8srmqop:\x02\xbe\x1f\x12/\n" +
+	"\x12KubernetesRabbitMq\x10\x9e \x1a\x16\xa2\xf7\x04\x12\b\x13\x12\x02v1\"\x06k8srmq:\x02\x9d \x12/\n" +
+	"\x11KubernetesAirflow\x10\xa2 \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8saflw:\x02\x85 \x123\n" +
+	"\x17KubernetesSparkOperator\x10\xa3 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8ssprkop\x125\n" +
+	"\x19KubernetesKubeRayOperator\x10\xa4 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8skrayop\x123\n" +
+	"\x14KubernetesRayCluster\x10\xa5 \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sraycl:\x02\xa4 \x127\n" +
+	"\x17KubernetesFlinkOperator\x10\xa6 \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sflnkop:\x02\xbe\x1f\x128\n" +
+	"\x19KubernetesFlinkDeployment\x10\xa7 \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8sflnkd:\x02\xa6 \x122\n" +
+	"\x14KubernetesJupyterHub\x10\xa8 \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8sjhub:\x02\x85 \x121\n" +
+	"\x10KubernetesMlflow\x10\xa9 \x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\bk8smlflw:\x04\x85 \x9b \x12.\n" +
+	"\x0fKubernetesTrino\x10\xaa \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\x02v1\"\bk8strino:\x02\x85 \x123\n" +
+	"\x12KubernetesSuperset\x10\xab \x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\x02v1\"\bk8ssprst:\x04\x85 \x86 \x12*\n" +
+	"\x10KubernetesArgocd\x10\xb6 \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8sargo\x123\n" +
+	"\x17KubernetesArgoWorkflows\x10\xb7 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sargowf\x124\n" +
+	"\x18KubernetesTektonOperator\x10\xb8 \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8stktnop\x12.\n" +
+	"\x10KubernetesTekton\x10\xb9 \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8stktn:\x02\xb8 \x12A\n" +
+	"%KubernetesGhaRunnerScaleSetController\x10\xba \x1a\x15\xa2\xf7\x04\x11\b\x13\x12\x02v1\"\tk8sgharsc\x12;\n" +
+	"\x1bKubernetesGhaRunnerScaleSet\x10\xbb \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\x02v1\"\tk8sgharss:\x02\xba \x12*\n" +
+	"\x10KubernetesHarbor\x10\xbc \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8shrbr\x12*\n" +
+	"\x11KubernetesJenkins\x10\xbd \x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sjkn\x120\n" +
+	"\x12KubernetesTemporal\x10\xca \x1a\x17\xa2\xf7\x04\x13\b\x13\x12\x02v1\"\ak8stprl:\x02\x85 \x12(\n" +
+	"\x0eKubernetesNats\x10\xcb \x1a\x13\xa2\xf7\x04\x0f\b\x13\x12\x02v1\"\ak8snats\x12)\n" +
+	"\x10KubernetesLocust\x10\xcc \x1a\x12\xa2\xf7\x04\x0e\b\x13\x12\x02v1\"\x06k8sloc\x126\n" +
+	"\x1eDigitalOceanAppPlatformService\x10\x88'\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05doapp\x12*\n" +
+	"\x12DigitalOceanBucket\x10\x89'\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05dobkt\x124\n" +
+	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04docr\x122\n" +
+	"\x1bDigitalOceanDatabaseCluster\x10\x8b'\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dodb\x12-\n" +
+	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x13\xa2\xf7\x04\x0f\b\x11\x12\x02v1\"\x05dodns0\x01\x12,\n" +
+	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x06dodrop\x12+\n" +
+	"\x14DigitalOceanFirewall\x10\x8e'\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dofw\x12+\n" +
+	"\x14DigitalOceanFunction\x10\x8f'\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dofn\x126\n" +
+	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x04dokc0\x01\x126\n" +
+	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05doknp\x12/\n" +
+	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x10\xa2\xf7\x04\f\b\x11\x12\x02v1\"\x04dolb\x12*\n" +
+	"\x12DigitalOceanVolume\x10\x93'\x1a\x11\xa2\xf7\x04\r\b\x11\x12\x02v1\"\x05dovol\x12)\n" +
+	"\x0fDigitalOceanVpc\x10\x94'\x1a\x13\xa2\xf7\x04\x0f\b\x11\x12\x02v1\"\x05dovpc0\x01\x120\n" +
+	"\x17DigitalOceanCertificate\x10\x95'\x1a\x12\xa2\xf7\x04\x0e\b\x11\x12\x02v1\"\x06docert\x120\n" +
+	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x14\xa2\xf7\x04\x10\b\x11\x12\x02v1\"\bdodnsrec\x12\"\n" +
 	"\n" +
-	"CivoBucket\x10\xdc\v\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05cibkt\x12(\n" +
-	"\x0fCivoCertificate\x10\xdd\v\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x06cicert\x12,\n" +
-	"\x13CivoComputeInstance\x10\xde\v\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x06ciinst\x12#\n" +
-	"\fCivoDatabase\x10\xdf\v\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04cidb\x12%\n" +
-	"\vCivoDnsZone\x10\xe0\v\x1a\x13\xa2\xf7\x04\x0f\b\x0e\x12\x02v1\"\x05cidns0\x01\x12#\n" +
-	"\fCivoFirewall\x10\xe1\v\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04cifw\x12$\n" +
-	"\rCivoIpAddress\x10\xe2\v\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04ciip\x12.\n" +
-	"\x15CivoKubernetesCluster\x10\xe3\v\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x04cikc0\x01\x12.\n" +
-	"\x16CivoKubernetesNodePool\x10\xe4\v\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05ciknp\x12\"\n" +
+	"CivoBucket\x10\xf0.\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05cibkt\x12(\n" +
+	"\x0fCivoCertificate\x10\xf1.\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x06cicert\x12,\n" +
+	"\x13CivoComputeInstance\x10\xf2.\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x06ciinst\x12#\n" +
+	"\fCivoDatabase\x10\xf3.\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04cidb\x12%\n" +
+	"\vCivoDnsZone\x10\xf4.\x1a\x13\xa2\xf7\x04\x0f\b\x0e\x12\x02v1\"\x05cidns0\x01\x12#\n" +
+	"\fCivoFirewall\x10\xf5.\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04cifw\x12$\n" +
+	"\rCivoIpAddress\x10\xf6.\x1a\x10\xa2\xf7\x04\f\b\x0e\x12\x02v1\"\x04ciip\x12.\n" +
+	"\x15CivoKubernetesCluster\x10\xf7.\x1a\x12\xa2\xf7\x04\x0e\b\x0e\x12\x02v1\"\x04cikc0\x01\x12.\n" +
+	"\x16CivoKubernetesNodePool\x10\xf8.\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05ciknp\x12\"\n" +
 	"\n" +
-	"CivoVolume\x10\xe5\v\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05civol\x12!\n" +
-	"\aCivoVpc\x10\xe6\v\x1a\x13\xa2\xf7\x04\x0f\b\x0e\x12\x02v1\"\x05civpc0\x01\x12%\n" +
-	"\rCivoDnsRecord\x10\xe7\v\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05cirec\x12+\n" +
-	"\x11CloudflareDnsZone\x10\x88\x0e\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\x05cfdns0\x01\x12-\n" +
-	"\x15CloudflareKvNamespace\x10\x89\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfkvn\x12*\n" +
-	"\x12CloudflareR2Bucket\x10\x8a\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfr2b\x12(\n" +
-	"\x10CloudflareWorker\x10\x8b\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfwrk\x12-\n" +
-	"\x16CloudflareLoadBalancer\x10\x8c\x0e\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cflb\x12-\n" +
-	"\x14CloudflareD1Database\x10\x8d\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfd1db\x12<\n" +
-	"$CloudflareZeroTrustAccessApplication\x10\x8e\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfzta\x12+\n" +
-	"\x13CloudflareDnsRecord\x10\x8f\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfrec\x12(\n" +
-	"\x11CloudflareRuleset\x10\x90\x0e\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfrs\x12/\n" +
-	"\x17CloudflareWorkersKvPair\x10\x91\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfkvp\x122\n" +
-	"\x1aCloudflareHyperdriveConfig\x10\x92\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfhyp\x122\n" +
-	"\x1aCloudflareLoadBalancerPool\x10\x93\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cflbp\x125\n" +
-	"\x1dCloudflareLoadBalancerMonitor\x10\x94\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cflbm\x127\n" +
-	"\x1fCloudflareZeroTrustAccessPolicy\x10\x95\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfztp\x126\n" +
-	"\x1eCloudflareZeroTrustAccessGroup\x10\x96\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfztg\x12%\n" +
-	"\x0fCloudflareQueue\x10\x97\x0e\x1a\x0f\xa2\xf7\x04\v\b\x0f\x12\x02v1\"\x03cfq\x12-\n" +
-	"\x16CloudflarePagesProject\x10\x98\x0e\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfpg\x122\n" +
-	"\x19CloudflareZeroTrustTunnel\x10\x99\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfztun\x12B\n" +
-	"'CloudflareZeroTrustTunnelVirtualNetwork\x10\x9a\x0e\x1a\x14\xa2\xf7\x04\x10\b\x0f\x12\x02v1\"\x06cfztvn0\x01\x127\n" +
-	"\x1eCloudflareZeroTrustTunnelRoute\x10\x9b\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfztrt\x12'\n" +
-	"\x0eCloudflareList\x10\x9c\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cflist\x12)\n" +
-	"\x12CloudflareListItem\x10\x9d\x0e\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfli\x122\n" +
-	"\x19CloudflareTurnstileWidget\x10\x9e\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfturn\x122\n" +
-	"\x1aCloudflareEmailRoutingZone\x10\x9f\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cferz\x122\n" +
-	"\x1aCloudflareEmailRoutingRule\x10\xa0\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cferr\x125\n" +
-	"\x1dCloudflareEmailRoutingAddress\x10\xa1\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfera\x125\n" +
-	"\x1dCloudflareOriginCaCertificate\x10\xa2\x0e\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfoca\x123\n" +
-	"\x19CloudflareCertificatePack\x10\xa3\x0e\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\acfcertp\x122\n" +
-	"\x18CloudflareCustomHostname\x10\xa4\x0e\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\acfchost\x12?\n" +
-	"&CloudflareCustomHostnameFallbackOrigin\x10\xa5\x0e\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfchfo\x12(\n" +
-	"\x0fAuth0Connection\x10\xb4\x10\x1a\x12\xa2\xf7\x04\x0e\b\x15\x12\x02v1\"\x06a0conn\x12#\n" +
-	"\vAuth0Client\x10\xb5\x10\x1a\x11\xa2\xf7\x04\r\b\x15\x12\x02v1\"\x05a0cli\x12'\n" +
-	"\x10Auth0EventStream\x10\xb6\x10\x1a\x10\xa2\xf7\x04\f\b\x15\x12\x02v1\"\x04a0es\x12*\n" +
-	"\x13Auth0ResourceServer\x10\xb7\x10\x1a\x10\xa2\xf7\x04\f\b\x15\x12\x02v1\"\x04a0rs\x12#\n" +
-	"\vAuth0Action\x10\xb8\x10\x1a\x11\xa2\xf7\x04\r\b\x15\x12\x02v1\"\x05a0act\x12\"\n" +
-	"\tAuth0Role\x10\xb9\x10\x1a\x12\xa2\xf7\x04\x0e\b\x15\x12\x02v1\"\x06a0role\x12)\n" +
-	"\fOpenFgaStore\x10\xfc\x11\x1a\x16\xa2\xf7\x04\x12\b\x16\x12\x02v1\"\bfgastore0\x01\x124\n" +
-	"\x19OpenFgaAuthorizationModel\x10\xfd\x11\x1a\x14\xa2\xf7\x04\x10\b\x16\x12\x02v1\"\bfgamodel\x123\n" +
-	"\x18OpenFgaRelationshipTuple\x10\xfe\x11\x1a\x14\xa2\xf7\x04\x10\b\x16\x12\x02v1\"\bfgatuple\x12'\n" +
-	"\x10OpenStackKeypair\x10\xc4\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04oskp\x12*\n" +
-	"\x10OpenStackNetwork\x10\xc5\x13\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05osnet0\x01\x12)\n" +
-	"\x0fOpenStackSubnet\x10\xc6\x13\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05ossub0\x01\x12'\n" +
-	"\x0fOpenStackRouter\x10\xc7\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osrtr\x12/\n" +
-	"\x18OpenStackRouterInterface\x10\xc8\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osri\x12-\n" +
-	"\x16OpenStackSecurityGroup\x10\xc9\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04ossg\x12+\n" +
-	"\x13OpenStackFloatingIp\x10\xca\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osfip\x12+\n" +
-	"\x14OpenStackNetworkPort\x10\xcb\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osnp\x122\n" +
-	"\x1aOpenStackSecurityGroupRule\x10\xdd\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05ossgr\x125\n" +
-	"\x1cOpenStackFloatingIpAssociate\x10\xde\x13\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06osfipa\x12*\n" +
-	"\x11OpenStackInstance\x10\xcc\x13\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06osinst\x12-\n" +
-	"\x14OpenStackServerGroup\x10\xcd\x13\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06ossgrp\x12'\n" +
-	"\x0fOpenStackVolume\x10\xce\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osvol\x12,\n" +
-	"\x15OpenStackVolumeAttach\x10\xcf\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osva\x12*\n" +
-	"\x10OpenStackProject\x10\xd0\x13\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05osprj0\x01\x125\n" +
-	"\x1eOpenStackApplicationCredential\x10\xd1\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osac\x12&\n" +
-	"\x0eOpenStackImage\x10\xd2\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osimg\x12.\n" +
-	"\x17OpenStackRoleAssignment\x10\xd3\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osra\x12,\n" +
-	"\x15OpenStackLoadBalancer\x10\xd4\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04oslb\x125\n" +
-	"\x1dOpenStackLoadBalancerListener\x10\xd5\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbl\x121\n" +
-	"\x19OpenStackLoadBalancerPool\x10\xd6\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbp\x123\n" +
-	"\x1bOpenStackLoadBalancerMember\x10\xd7\x13\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbm\x126\n" +
-	"\x1cOpenStackLoadBalancerMonitor\x10\xd8\x13\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\aoslbmon\x12)\n" +
-	"\x10OpenStackDnsZone\x10\xd9\x13\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x04osdz0\x01\x12)\n" +
-	"\x12OpenStackDnsRecord\x10\xda\x13\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osdr\x12&\n" +
-	"\vScalewayVpc\x10\xf0\x15\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwvpc0\x01\x120\n" +
-	"\x16ScalewayPrivateNetwork\x10\xf1\x15\x1a\x13\xa2\xf7\x04\x0f\b\x18\x12\x02v1\"\x05scwpn0\x01\x12.\n" +
-	"\x15ScalewayPublicGateway\x10\xf2\x15\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwpgw\x12,\n" +
-	"\x14ScalewayLoadBalancer\x10\xf3\x15\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwlb\x125\n" +
-	"\x1dScalewayInstanceSecurityGroup\x10\xf4\x15\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwsg\x12*\n" +
-	"\x10ScalewayInstance\x10\xfa\x15\x1a\x13\xa2\xf7\x04\x0f\b\x18\x12\x02v1\"\ascwinst\x121\n" +
-	"\x16ScalewayKapsuleCluster\x10\x84\x16\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwk8s0\x01\x12,\n" +
-	"\x13ScalewayKapsulePool\x10\x85\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwknp\x12,\n" +
-	"\x13ScalewayRdbInstance\x10\x8e\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwrdb\x12-\n" +
-	"\x14ScalewayRedisCluster\x10\x8f\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwred\x120\n" +
-	"\x17ScalewayMongodbInstance\x10\x90\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwmdb\x12-\n" +
-	"\x14ScalewayObjectBucket\x10\x98\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwbkt\x12,\n" +
-	"\x13ScalewayBlockVolume\x10\x99\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwblk\x121\n" +
-	"\x19ScalewayContainerRegistry\x10\xa2\x16\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwcr\x12*\n" +
-	"\x0fScalewayDnsZone\x10\xac\x16\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwdns0\x01\x12*\n" +
-	"\x11ScalewayDnsRecord\x10\xad\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwrec\x122\n" +
-	"\x1aScalewayServerlessFunction\x10\xb6\x16\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwfn\x124\n" +
-	"\x1bScalewayServerlessContainer\x10\xb7\x16\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwscn\x12*\n" +
-	"\x12AliCloudLogProject\x10\xb8\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05aclog\x12(\n" +
-	"\x0fAliCloudRamRole\x10\xc2\x17\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x06acramr\x12*\n" +
-	"\x11AliCloudRamPolicy\x10\xc3\x17\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x06acramp\x12%\n" +
-	"\vAliCloudVpc\x10\xcc\x17\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acvpc0\x01\x12)\n" +
-	"\x0fAliCloudVswitch\x10\xcd\x17\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acvsw0\x01\x12,\n" +
-	"\x15AliCloudSecurityGroup\x10\xce\x17\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acsg\x12*\n" +
-	"\x12AliCloudEipAddress\x10\xcf\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05aceip\x12*\n" +
-	"\x12AliCloudNatGateway\x10\xd0\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnat\x127\n" +
-	"\x1fAliCloudApplicationLoadBalancer\x10\xd1\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acalb\x123\n" +
-	"\x1bAliCloudNetworkLoadBalancer\x10\xd2\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnlb\x12*\n" +
-	"\x12AliCloudVpnGateway\x10\xd3\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acvpn\x12(\n" +
-	"\x0fAliCloudDnsZone\x10\xe0\x17\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x04acdz0\x01\x12(\n" +
-	"\x11AliCloudDnsRecord\x10\xe1\x17\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acdr\x120\n" +
-	"\x16AliCloudPrivateDnsZone\x10\xe2\x17\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acdpz0\x01\x12-\n" +
-	"\x15AliCloudStorageBucket\x10\xea\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acbkt\x12-\n" +
-	"\x15AliCloudNasFileSystem\x10\xeb\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnas\x12&\n" +
-	"\x0eAliCloudKmsKey\x10\xf4\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05ackms\x12+\n" +
-	"\x13AliCloudRdsInstance\x10\xfe\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acrds\x12.\n" +
-	"\x16AliCloudPolardbCluster\x10\xff\x17\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acpdb\x12-\n" +
-	"\x15AliCloudRedisInstance\x10\x80\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acred\x12/\n" +
-	"\x17AliCloudMongodbInstance\x10\x81\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acmdb\x12+\n" +
-	"\x13AliCloudEcsInstance\x10\x88\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acecs\x120\n" +
-	"\x19AliCloudContainerRegistry\x10\x92\x18\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04accr\x123\n" +
-	"\x19AliCloudKubernetesCluster\x10\x93\x18\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acack0\x01\x122\n" +
-	"\x1aAliCloudKubernetesNodePool\x10\x94\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acknp\x12)\n" +
-	"\x11AliCloudCdnDomain\x10\x9c\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05accdn\x12'\n" +
-	"\x10AliCloudFunction\x10\xa6\x18\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acfc\x12.\n" +
-	"\x16AliCloudSaeApplication\x10\xa7\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acsae\x120\n" +
-	"\x18AliCloudRocketmqInstance\x10\xb0\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acrmq\x12+\n" +
-	"\x13AliCloudCenInstance\x10\xba\x18\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05accen\x12!\n" +
-	"\x06OciVcn\x10\xe4\x19\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocivcn0\x01\x12$\n" +
-	"\tOciSubnet\x10\xe5\x19\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocisub0\x01\x12(\n" +
-	"\x10OciSecurityGroup\x10\xe6\x19\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocisg\x12)\n" +
-	"\x0eOciCompartment\x10\xe7\x19\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocicmp0\x01\x12*\n" +
-	"\x11OciIdentityPolicy\x10\xe8\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociply\x12'\n" +
-	"\x0fOciDynamicGroup\x10\xe9\x19\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocidg\x12*\n" +
-	"\x12OciComputeInstance\x10\xee\x19\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocivm\x124\n" +
-	"\x19OciContainerEngineCluster\x10\xef\x19\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocioke0\x01\x123\n" +
-	"\x1aOciContainerEngineNodePool\x10\xf0\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocienp\x12,\n" +
-	"\x14OciContainerInstance\x10\xf1\x19\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocici\x123\n" +
-	"\x1aOciApplicationLoadBalancer\x10\xf8\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocialb\x12/\n" +
-	"\x16OciNetworkLoadBalancer\x10\xf9\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocinlb\x121\n" +
-	"\x18OciDynamicRoutingGateway\x10\xfa\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocidrg\x12$\n" +
-	"\vOciPublicIp\x10\xfb\x19\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocipip\x12.\n" +
-	"\x15OciAutonomousDatabase\x10\x82\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociadb\x12#\n" +
-	"\vOciDbSystem\x10\x83\x1a\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocidb\x12+\n" +
-	"\x10OciMysqlDbSystem\x10\x84\x1a\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocimysql\x12-\n" +
-	"\x15OciPostgresqlDbSystem\x10\x85\x1a\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocipg\x12(\n" +
-	"\x0fOciRedisCluster\x10\x86\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocired\x12(\n" +
-	"\rOciNosqlTable\x10\x87\x1a\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocinosql\x120\n" +
-	"\x16OciObjectStorageBucket\x10\x8c\x1a\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aociobkt\x12%\n" +
-	"\rOciFileSystem\x10\x8d\x1a\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocifs\x12(\n" +
-	"\x0eOciBlockVolume\x10\x8e\x1a\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aocibvol\x12&\n" +
-	"\vOciKmsVault\x10\x96\x1a\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocivlt0\x01\x12\"\n" +
-	"\tOciKmsKey\x10\x97\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocikey\x12'\n" +
-	"\x0eOciVaultSecret\x10\x98\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocisec\x12#\n" +
+	"CivoVolume\x10\xf9.\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05civol\x12!\n" +
+	"\aCivoVpc\x10\xfa.\x1a\x13\xa2\xf7\x04\x0f\b\x0e\x12\x02v1\"\x05civpc0\x01\x12%\n" +
+	"\rCivoDnsRecord\x10\xfb.\x1a\x11\xa2\xf7\x04\r\b\x0e\x12\x02v1\"\x05cirec\x12+\n" +
+	"\x11CloudflareDnsZone\x10\xd86\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\x05cfdns0\x01\x12-\n" +
+	"\x15CloudflareKvNamespace\x10\xd96\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfkvn\x12*\n" +
+	"\x12CloudflareR2Bucket\x10\xda6\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfr2b\x12(\n" +
+	"\x10CloudflareWorker\x10\xdb6\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfwrk\x12-\n" +
+	"\x16CloudflareLoadBalancer\x10\xdc6\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cflb\x12-\n" +
+	"\x14CloudflareD1Database\x10\xdd6\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfd1db\x12<\n" +
+	"$CloudflareZeroTrustAccessApplication\x10\xde6\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfzta\x12+\n" +
+	"\x13CloudflareDnsRecord\x10\xdf6\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfrec\x12(\n" +
+	"\x11CloudflareRuleset\x10\xe06\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfrs\x12/\n" +
+	"\x17CloudflareWorkersKvPair\x10\xe16\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfkvp\x122\n" +
+	"\x1aCloudflareHyperdriveConfig\x10\xe26\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfhyp\x122\n" +
+	"\x1aCloudflareLoadBalancerPool\x10\xe36\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cflbp\x125\n" +
+	"\x1dCloudflareLoadBalancerMonitor\x10\xe46\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cflbm\x127\n" +
+	"\x1fCloudflareZeroTrustAccessPolicy\x10\xe56\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfztp\x126\n" +
+	"\x1eCloudflareZeroTrustAccessGroup\x10\xe66\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfztg\x12%\n" +
+	"\x0fCloudflareQueue\x10\xe76\x1a\x0f\xa2\xf7\x04\v\b\x0f\x12\x02v1\"\x03cfq\x12-\n" +
+	"\x16CloudflarePagesProject\x10\xe86\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfpg\x122\n" +
+	"\x19CloudflareZeroTrustTunnel\x10\xe96\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfztun\x12B\n" +
+	"'CloudflareZeroTrustTunnelVirtualNetwork\x10\xea6\x1a\x14\xa2\xf7\x04\x10\b\x0f\x12\x02v1\"\x06cfztvn0\x01\x127\n" +
+	"\x1eCloudflareZeroTrustTunnelRoute\x10\xeb6\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfztrt\x12'\n" +
+	"\x0eCloudflareList\x10\xec6\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cflist\x12)\n" +
+	"\x12CloudflareListItem\x10\xed6\x1a\x10\xa2\xf7\x04\f\b\x0f\x12\x02v1\"\x04cfli\x122\n" +
+	"\x19CloudflareTurnstileWidget\x10\xee6\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfturn\x122\n" +
+	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cferz\x122\n" +
+	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cferr\x125\n" +
+	"\x1dCloudflareEmailRoutingAddress\x10\xf16\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfera\x125\n" +
+	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x11\xa2\xf7\x04\r\b\x0f\x12\x02v1\"\x05cfoca\x123\n" +
+	"\x19CloudflareCertificatePack\x10\xf36\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\acfcertp\x122\n" +
+	"\x18CloudflareCustomHostname\x10\xf46\x1a\x13\xa2\xf7\x04\x0f\b\x0f\x12\x02v1\"\acfchost\x12?\n" +
+	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x12\xa2\xf7\x04\x0e\b\x0f\x12\x02v1\"\x06cfchfo\x12(\n" +
+	"\x0fAuth0Connection\x10\xc0>\x1a\x12\xa2\xf7\x04\x0e\b\x15\x12\x02v1\"\x06a0conn\x12#\n" +
+	"\vAuth0Client\x10\xc1>\x1a\x11\xa2\xf7\x04\r\b\x15\x12\x02v1\"\x05a0cli\x12'\n" +
+	"\x10Auth0EventStream\x10\xc2>\x1a\x10\xa2\xf7\x04\f\b\x15\x12\x02v1\"\x04a0es\x12*\n" +
+	"\x13Auth0ResourceServer\x10\xc3>\x1a\x10\xa2\xf7\x04\f\b\x15\x12\x02v1\"\x04a0rs\x12#\n" +
+	"\vAuth0Action\x10\xc4>\x1a\x11\xa2\xf7\x04\r\b\x15\x12\x02v1\"\x05a0act\x12\"\n" +
+	"\tAuth0Role\x10\xc5>\x1a\x12\xa2\xf7\x04\x0e\b\x15\x12\x02v1\"\x06a0role\x12)\n" +
+	"\fOpenFgaStore\x10\xa8F\x1a\x16\xa2\xf7\x04\x12\b\x16\x12\x02v1\"\bfgastore0\x01\x124\n" +
+	"\x19OpenFgaAuthorizationModel\x10\xa9F\x1a\x14\xa2\xf7\x04\x10\b\x16\x12\x02v1\"\bfgamodel\x123\n" +
+	"\x18OpenFgaRelationshipTuple\x10\xaaF\x1a\x14\xa2\xf7\x04\x10\b\x16\x12\x02v1\"\bfgatuple\x12'\n" +
+	"\x10OpenStackKeypair\x10\x90N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04oskp\x12*\n" +
+	"\x10OpenStackNetwork\x10\x91N\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05osnet0\x01\x12)\n" +
+	"\x0fOpenStackSubnet\x10\x92N\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05ossub0\x01\x12'\n" +
+	"\x0fOpenStackRouter\x10\x93N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osrtr\x12/\n" +
+	"\x18OpenStackRouterInterface\x10\x94N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osri\x12-\n" +
+	"\x16OpenStackSecurityGroup\x10\x95N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04ossg\x12+\n" +
+	"\x13OpenStackFloatingIp\x10\x96N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osfip\x12+\n" +
+	"\x14OpenStackNetworkPort\x10\x97N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osnp\x122\n" +
+	"\x1aOpenStackSecurityGroupRule\x10\xa9N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05ossgr\x125\n" +
+	"\x1cOpenStackFloatingIpAssociate\x10\xaaN\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06osfipa\x12*\n" +
+	"\x11OpenStackInstance\x10\x98N\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06osinst\x12-\n" +
+	"\x14OpenStackServerGroup\x10\x99N\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x06ossgrp\x12'\n" +
+	"\x0fOpenStackVolume\x10\x9aN\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osvol\x12,\n" +
+	"\x15OpenStackVolumeAttach\x10\x9bN\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osva\x12*\n" +
+	"\x10OpenStackProject\x10\x9cN\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\x05osprj0\x01\x125\n" +
+	"\x1eOpenStackApplicationCredential\x10\x9dN\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osac\x12&\n" +
+	"\x0eOpenStackImage\x10\x9eN\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05osimg\x12.\n" +
+	"\x17OpenStackRoleAssignment\x10\x9fN\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osra\x12,\n" +
+	"\x15OpenStackLoadBalancer\x10\xa0N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04oslb\x125\n" +
+	"\x1dOpenStackLoadBalancerListener\x10\xa1N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbl\x121\n" +
+	"\x19OpenStackLoadBalancerPool\x10\xa2N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbp\x123\n" +
+	"\x1bOpenStackLoadBalancerMember\x10\xa3N\x1a\x11\xa2\xf7\x04\r\b\x17\x12\x02v1\"\x05oslbm\x126\n" +
+	"\x1cOpenStackLoadBalancerMonitor\x10\xa4N\x1a\x13\xa2\xf7\x04\x0f\b\x17\x12\x02v1\"\aoslbmon\x12)\n" +
+	"\x10OpenStackDnsZone\x10\xa5N\x1a\x12\xa2\xf7\x04\x0e\b\x17\x12\x02v1\"\x04osdz0\x01\x12)\n" +
+	"\x12OpenStackDnsRecord\x10\xa6N\x1a\x10\xa2\xf7\x04\f\b\x17\x12\x02v1\"\x04osdr\x12&\n" +
+	"\vScalewayVpc\x10\xf8U\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwvpc0\x01\x120\n" +
+	"\x16ScalewayPrivateNetwork\x10\xf9U\x1a\x13\xa2\xf7\x04\x0f\b\x18\x12\x02v1\"\x05scwpn0\x01\x12.\n" +
+	"\x15ScalewayPublicGateway\x10\xfaU\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwpgw\x12,\n" +
+	"\x14ScalewayLoadBalancer\x10\xfbU\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwlb\x125\n" +
+	"\x1dScalewayInstanceSecurityGroup\x10\xfcU\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwsg\x12*\n" +
+	"\x10ScalewayInstance\x10\x82V\x1a\x13\xa2\xf7\x04\x0f\b\x18\x12\x02v1\"\ascwinst\x121\n" +
+	"\x16ScalewayKapsuleCluster\x10\x8cV\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwk8s0\x01\x12,\n" +
+	"\x13ScalewayKapsulePool\x10\x8dV\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwknp\x12,\n" +
+	"\x13ScalewayRdbInstance\x10\x96V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwrdb\x12-\n" +
+	"\x14ScalewayRedisCluster\x10\x97V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwred\x120\n" +
+	"\x17ScalewayMongodbInstance\x10\x98V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwmdb\x12-\n" +
+	"\x14ScalewayObjectBucket\x10\xa0V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwbkt\x12,\n" +
+	"\x13ScalewayBlockVolume\x10\xa1V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwblk\x121\n" +
+	"\x19ScalewayContainerRegistry\x10\xaaV\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwcr\x12*\n" +
+	"\x0fScalewayDnsZone\x10\xb4V\x1a\x14\xa2\xf7\x04\x10\b\x18\x12\x02v1\"\x06scwdns0\x01\x12*\n" +
+	"\x11ScalewayDnsRecord\x10\xb5V\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwrec\x122\n" +
+	"\x1aScalewayServerlessFunction\x10\xbeV\x1a\x11\xa2\xf7\x04\r\b\x18\x12\x02v1\"\x05scwfn\x124\n" +
+	"\x1bScalewayServerlessContainer\x10\xbfV\x1a\x12\xa2\xf7\x04\x0e\b\x18\x12\x02v1\"\x06scwscn\x12*\n" +
+	"\x12AliCloudLogProject\x10\xe0]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05aclog\x12(\n" +
+	"\x0fAliCloudRamRole\x10\xea]\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x06acramr\x12*\n" +
+	"\x11AliCloudRamPolicy\x10\xeb]\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x06acramp\x12%\n" +
+	"\vAliCloudVpc\x10\xf4]\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acvpc0\x01\x12)\n" +
+	"\x0fAliCloudVswitch\x10\xf5]\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acvsw0\x01\x12,\n" +
+	"\x15AliCloudSecurityGroup\x10\xf6]\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acsg\x12*\n" +
+	"\x12AliCloudEipAddress\x10\xf7]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05aceip\x12*\n" +
+	"\x12AliCloudNatGateway\x10\xf8]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnat\x127\n" +
+	"\x1fAliCloudApplicationLoadBalancer\x10\xf9]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acalb\x123\n" +
+	"\x1bAliCloudNetworkLoadBalancer\x10\xfa]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnlb\x12*\n" +
+	"\x12AliCloudVpnGateway\x10\xfb]\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acvpn\x12(\n" +
+	"\x0fAliCloudDnsZone\x10\x88^\x1a\x12\xa2\xf7\x04\x0e\b\x19\x12\x02v1\"\x04acdz0\x01\x12(\n" +
+	"\x11AliCloudDnsRecord\x10\x89^\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acdr\x120\n" +
+	"\x16AliCloudPrivateDnsZone\x10\x8a^\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acdpz0\x01\x12-\n" +
+	"\x15AliCloudStorageBucket\x10\x92^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acbkt\x12-\n" +
+	"\x15AliCloudNasFileSystem\x10\x93^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acnas\x12&\n" +
+	"\x0eAliCloudKmsKey\x10\x9c^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05ackms\x12+\n" +
+	"\x13AliCloudRdsInstance\x10\xa6^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acrds\x12.\n" +
+	"\x16AliCloudPolardbCluster\x10\xa7^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acpdb\x12-\n" +
+	"\x15AliCloudRedisInstance\x10\xa8^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acred\x12/\n" +
+	"\x17AliCloudMongodbInstance\x10\xa9^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acmdb\x12+\n" +
+	"\x13AliCloudEcsInstance\x10\xb0^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acecs\x120\n" +
+	"\x19AliCloudContainerRegistry\x10\xba^\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04accr\x123\n" +
+	"\x19AliCloudKubernetesCluster\x10\xbb^\x1a\x13\xa2\xf7\x04\x0f\b\x19\x12\x02v1\"\x05acack0\x01\x122\n" +
+	"\x1aAliCloudKubernetesNodePool\x10\xbc^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acknp\x12)\n" +
+	"\x11AliCloudCdnDomain\x10\xc4^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05accdn\x12'\n" +
+	"\x10AliCloudFunction\x10\xce^\x1a\x10\xa2\xf7\x04\f\b\x19\x12\x02v1\"\x04acfc\x12.\n" +
+	"\x16AliCloudSaeApplication\x10\xcf^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acsae\x120\n" +
+	"\x18AliCloudRocketmqInstance\x10\xd8^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05acrmq\x12+\n" +
+	"\x13AliCloudCenInstance\x10\xe2^\x1a\x11\xa2\xf7\x04\r\b\x19\x12\x02v1\"\x05accen\x12!\n" +
+	"\x06OciVcn\x10\xc8e\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocivcn0\x01\x12$\n" +
+	"\tOciSubnet\x10\xc9e\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocisub0\x01\x12(\n" +
+	"\x10OciSecurityGroup\x10\xcae\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocisg\x12)\n" +
+	"\x0eOciCompartment\x10\xcbe\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocicmp0\x01\x12*\n" +
+	"\x11OciIdentityPolicy\x10\xcce\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociply\x12'\n" +
+	"\x0fOciDynamicGroup\x10\xcde\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocidg\x12*\n" +
+	"\x12OciComputeInstance\x10\xd2e\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocivm\x124\n" +
+	"\x19OciContainerEngineCluster\x10\xd3e\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocioke0\x01\x123\n" +
+	"\x1aOciContainerEngineNodePool\x10\xd4e\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocienp\x12,\n" +
+	"\x14OciContainerInstance\x10\xd5e\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocici\x123\n" +
+	"\x1aOciApplicationLoadBalancer\x10\xdce\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocialb\x12/\n" +
+	"\x16OciNetworkLoadBalancer\x10\xdde\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocinlb\x121\n" +
+	"\x18OciDynamicRoutingGateway\x10\xdee\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocidrg\x12$\n" +
+	"\vOciPublicIp\x10\xdfe\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocipip\x12.\n" +
+	"\x15OciAutonomousDatabase\x10\xe6e\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociadb\x12#\n" +
+	"\vOciDbSystem\x10\xe7e\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocidb\x12+\n" +
+	"\x10OciMysqlDbSystem\x10\xe8e\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocimysql\x12-\n" +
+	"\x15OciPostgresqlDbSystem\x10\xe9e\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocipg\x12(\n" +
+	"\x0fOciRedisCluster\x10\xeae\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocired\x12(\n" +
+	"\rOciNosqlTable\x10\xebe\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocinosql\x120\n" +
+	"\x16OciObjectStorageBucket\x10\xf0e\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aociobkt\x12%\n" +
+	"\rOciFileSystem\x10\xf1e\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocifs\x12(\n" +
+	"\x0eOciBlockVolume\x10\xf2e\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aocibvol\x12&\n" +
+	"\vOciKmsVault\x10\xfae\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocivlt0\x01\x12\"\n" +
+	"\tOciKmsKey\x10\xfbe\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocikey\x12'\n" +
+	"\x0eOciVaultSecret\x10\xfce\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocisec\x12#\n" +
 	"\n" +
-	"OciBastion\x10\x99\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocibst\x122\n" +
-	"\x17OciFunctionsApplication\x10\xa0\x1a\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocifnapp\x12&\n" +
-	"\rOciApiGateway\x10\xa1\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociagw\x12&\n" +
-	"\rOciStreamPool\x10\xaa\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocistr\x12!\n" +
-	"\bOciQueue\x10\xab\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocique\x12!\n" +
-	"\bOciAlarm\x10\xb4\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocialm\x12$\n" +
-	"\vOciLogGroup\x10\xb5\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocilog\x12%\n" +
+	"OciBastion\x10\xfde\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocibst\x122\n" +
+	"\x17OciFunctionsApplication\x10\x84f\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\bocifnapp\x12&\n" +
+	"\rOciApiGateway\x10\x85f\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ociagw\x12&\n" +
+	"\rOciStreamPool\x10\x8ef\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocistr\x12!\n" +
+	"\bOciQueue\x10\x8ff\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocique\x12!\n" +
+	"\bOciAlarm\x10\x98f\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocialm\x12$\n" +
+	"\vOciLogGroup\x10\x99f\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocilog\x12%\n" +
 	"\n" +
-	"OciDnsZone\x10\xbe\x1a\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocidns0\x01\x12&\n" +
-	"\fOciDnsRecord\x10\xbf\x1a\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aocidnsr\x12*\n" +
-	"\x12OciNetworkFirewall\x10\xc3\x1a\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocifw\x12)\n" +
-	"\x10OciDevopsProject\x10\xc4\x1a\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocidev\x12*\n" +
-	"\x12HetznerCloudSshKey\x10\xac\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcssh\x121\n" +
-	"\x1aHetznerCloudPlacementGroup\x10\xad\x1b\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hcpg\x12+\n" +
-	"\x14HetznerCloudFirewall\x10\xae\x1b\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hcfw\x12-\n" +
-	"\x13HetznerCloudNetwork\x10\xb6\x1b\x1a\x13\xa2\xf7\x04\x0f\b\x1b\x12\x02v1\"\x05hcnet0\x01\x12-\n" +
-	"\x15HetznerCloudPrimaryIp\x10\xb7\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcpip\x12.\n" +
-	"\x16HetznerCloudFloatingIp\x10\xb8\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcfip\x12*\n" +
-	"\x12HetznerCloudServer\x10\xc0\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcsrv\x12*\n" +
-	"\x12HetznerCloudVolume\x10\xc1\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcvol\x12,\n" +
-	"\x14HetznerCloudSnapshot\x10\xc2\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcsnp\x12/\n" +
-	"\x17HetznerCloudCertificate\x10\xca\x1b\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hccrt\x12/\n" +
-	"\x18HetznerCloudLoadBalancer\x10\xcb\x1b\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hclb\x12-\n" +
-	"\x13HetznerCloudDnsZone\x10\xd4\x1b\x1a\x13\xa2\xf7\x04\x0f\b\x1b\x12\x02v1\"\x05hcdns0\x01:|\n" +
+	"OciDnsZone\x10\xa2f\x1a\x14\xa2\xf7\x04\x10\b\x1a\x12\x02v1\"\x06ocidns0\x01\x12&\n" +
+	"\fOciDnsRecord\x10\xa3f\x1a\x13\xa2\xf7\x04\x0f\b\x1a\x12\x02v1\"\aocidnsr\x12*\n" +
+	"\x12OciNetworkFirewall\x10\xa7f\x1a\x11\xa2\xf7\x04\r\b\x1a\x12\x02v1\"\x05ocifw\x12)\n" +
+	"\x10OciDevopsProject\x10\xa8f\x1a\x12\xa2\xf7\x04\x0e\b\x1a\x12\x02v1\"\x06ocidev\x12*\n" +
+	"\x12HetznerCloudSshKey\x10\xb0m\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcssh\x121\n" +
+	"\x1aHetznerCloudPlacementGroup\x10\xb1m\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hcpg\x12+\n" +
+	"\x14HetznerCloudFirewall\x10\xb2m\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hcfw\x12-\n" +
+	"\x13HetznerCloudNetwork\x10\xbam\x1a\x13\xa2\xf7\x04\x0f\b\x1b\x12\x02v1\"\x05hcnet0\x01\x12-\n" +
+	"\x15HetznerCloudPrimaryIp\x10\xbbm\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcpip\x12.\n" +
+	"\x16HetznerCloudFloatingIp\x10\xbcm\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcfip\x12*\n" +
+	"\x12HetznerCloudServer\x10\xc4m\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcsrv\x12*\n" +
+	"\x12HetznerCloudVolume\x10\xc5m\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcvol\x12,\n" +
+	"\x14HetznerCloudSnapshot\x10\xc6m\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hcsnp\x12/\n" +
+	"\x17HetznerCloudCertificate\x10\xcem\x1a\x11\xa2\xf7\x04\r\b\x1b\x12\x02v1\"\x05hccrt\x12/\n" +
+	"\x18HetznerCloudLoadBalancer\x10\xcfm\x1a\x10\xa2\xf7\x04\f\b\x1b\x12\x02v1\"\x04hclb\x12-\n" +
+	"\x13HetznerCloudDnsZone\x10\xd8m\x1a\x13\xa2\xf7\x04\x0f\b\x1b\x12\x02v1\"\x05hcdns0\x01:|\n" +
 	"\tkind_meta\x12!.google.protobuf.EnumValueOptions\x18\xf4N \x01(\v2;.dev.planton.shared.cloudresourcekind.CloudResourceKindMetaR\bkindMetaB\xbe\x02\n" +
 	"(com.dev.planton.shared.cloudresourcekindB\x16CloudResourceKindProtoP\x01ZFgithub.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind\xa2\x02\x04DPSC\xaa\x02$Dev.Planton.Shared.Cloudresourcekind\xca\x02$Dev\\Planton\\Shared\\Cloudresourcekind\xe2\x020Dev\\Planton\\Shared\\Cloudresourcekind\\GPBMetadata\xea\x02'Dev::Planton::Shared::Cloudresourcekindb\x06proto3"
 

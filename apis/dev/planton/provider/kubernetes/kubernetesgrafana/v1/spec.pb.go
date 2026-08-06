@@ -1298,7 +1298,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesgrafana/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgrafana.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd0\x11\n" +
 	"\x15KubernetesGrafanaSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x0612.8.0H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
@@ -1336,11 +1336,11 @@ const file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDe
 	"\r_password_key\"\x82\x02\n" +
 	"\x18KubernetesGrafanaStorage\x12W\n" +
 	"\x04size\x18\x01 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x00R\x04size\x88\x01\x01\x12\x83\x01\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x1f\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
 	"\x05_size\"\xe6\x03\n" +
 	"\x19KubernetesGrafanaDatabase\x12z\n" +
 	"\x06engine\x18\x01 \x01(\x0e2U.dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaDatabaseEngineB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x06engine\x12s\n" +
-	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04host\x12\x1a\n" +
+	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x1cstatus.outputs.kube_endpointR\x04host\x12\x1a\n" +
 	"\x04name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1a\n" +
 	"\x04user\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04user\x12\x84\x01\n" +
 	"\x0fpassword_secret\x18\x05 \x01(\v2S.dev.planton.provider.kubernetes.kubernetesgrafana.v1.KubernetesGrafanaSecretKeyRefB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x12\x19\n" +
@@ -1352,7 +1352,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_spec_proto_rawDe
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12'\n" +
 	"\x04type\x18\x02 \x01(\tB\x0e\x8a\xa6\x1d\n" +
 	"prometheusH\x00R\x04type\x88\x01\x01\x12w\n" +
-	"\x03url\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x06\x92\xd4a\"status.outputs.prometheus_endpointR\x03url\x12\x1d\n" +
+	"\x03url\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x1f\x92\xd4a\"status.outputs.prometheus_endpointR\x03url\x12\x1d\n" +
 	"\n" +
 	"is_default\x18\x04 \x01(\bR\tisDefault\x12\x10\n" +
 	"\x03uid\x18\x05 \x01(\tR\x03uid\x12y\n" +

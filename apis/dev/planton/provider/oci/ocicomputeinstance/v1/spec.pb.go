@@ -1313,7 +1313,7 @@ const file_dev_planton_provider_oci_ocicomputeinstance_v1_spec_proto_rawDesc = "
 	"\n" +
 	"9dev/planton/provider/oci/ocicomputeinstance/v1/spec.proto\x12.dev.planton.provider.oci.ocicomputeinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f4\n" +
 	"\x16OciComputeInstanceSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x128\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xcbe\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x128\n" +
 	"\x13availability_domain\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12availabilityDomain\x12\x1d\n" +
 	"\x05shape\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05shape\x12!\n" +
 	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\x12u\n" +
@@ -1350,7 +1350,7 @@ const file_dev_planton_provider_oci_ocicomputeinstance_v1_spec_proto_rawDesc = "
 	"\x17boot_volume_size_in_gbs\x18\x03 \x01(\x03H\x00R\x13bootVolumeSizeInGbs\x88\x01\x01\x129\n" +
 	"\x17boot_volume_vpus_per_gb\x18\x04 \x01(\x03H\x01R\x13bootVolumeVpusPerGb\x88\x01\x01\x12p\n" +
 	"\n" +
-	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x97\x1a\x92\xd4a\x15status.outputs.key_idR\bkmsKeyId\"E\n" +
+	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xfbe\x92\xd4a\x15status.outputs.key_idR\bkmsKeyId\"E\n" +
 	"\n" +
 	"SourceType\x12\x1b\n" +
 	"\x17source_type_unspecified\x10\x00\x12\t\n" +
@@ -1359,8 +1359,8 @@ const file_dev_planton_provider_oci_ocicomputeinstance_v1_spec_proto_rawDesc = "
 	"\x18_boot_volume_size_in_gbsB\x1a\n" +
 	"\x18_boot_volume_vpus_per_gb\x1a\xf6\x04\n" +
 	"\x11CreateVnicDetails\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x86\x01\n" +
-	"\ansg_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12-\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9e\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x86\x01\n" +
+	"\ansg_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xcae\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12-\n" +
 	"\x10assign_public_ip\x18\x03 \x01(\bH\x00R\x0eassignPublicIp\x88\x01\x01\x12!\n" +
 	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\x12%\n" +
 	"\x0ehostname_label\x18\x05 \x01(\tR\rhostnameLabel\x12\x1d\n" +

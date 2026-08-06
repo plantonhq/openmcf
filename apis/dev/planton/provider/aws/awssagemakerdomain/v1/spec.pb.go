@@ -2460,11 +2460,11 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x16AwsSagemakerDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12#\n" +
 	"\tauth_mode\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bauthMode\x12o\n" +
-	"\x06vpc_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12~\n" +
+	"\x06vpc_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12~\n" +
 	"\n" +
-	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\a\x92\x01\x04\b\x01\x10\x10\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12q\n" +
+	"subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\a\x92\x01\x04\b\x01\x10\x10\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12R\n" +
+	"kms_key_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12R\n" +
 	"\x17app_network_access_type\x18\x06 \x01(\tB\x16\x8a\xa6\x1d\x12PublicInternetOnlyH\x00R\x14appNetworkAccessType\x88\x01\x01\x12F\n" +
 	"\x1dapp_security_group_management\x18\a \x01(\tH\x01R\x1aappSecurityGroupManagement\x88\x01\x01\x12:\n" +
 	"\x0ftag_propagation\x18\b \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x02R\x0etagPropagation\x88\x01\x01\x12J\n" +
@@ -2473,7 +2473,7 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x15default_user_settings\x18\n" +
 	" \x01(\v2U.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainDefaultUserSettingsB\x06\xbaH\x03\xc8\x01\x01R\x13defaultUserSettings\x12\x8c\x01\n" +
 	"\x16default_space_settings\x18\v \x01(\v2V.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainDefaultSpaceSettingsR\x14defaultSpaceSettings\x12\xa0\x01\n" +
-	"\x19domain_security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x03\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x16domainSecurityGroupIds\x12y\n" +
+	"\x19domain_security_group_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x03\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x16domainSecurityGroupIds\x12y\n" +
 	"\x0fdocker_settings\x18\r \x01(\v2P.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainDockerSettingsR\x0edockerSettings\x12H\n" +
 	"\x1eexecution_role_identity_config\x18\x0e \x01(\tH\x04R\x1bexecutionRoleIdentityConfig\x88\x01\x01\x12\xad\x01\n" +
 	"#r_studio_server_pro_domain_settings\x18\x0f \x01(\v2`.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainRStudioServerProDomainSettingsR\x1erStudioServerProDomainSettings\x12R\n" +
@@ -2494,8 +2494,8 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x1f_execution_role_identity_configB&\n" +
 	"$_trusted_identity_propagation_status\"\xfe\x15\n" +
 	"%AwsSagemakerDomainDefaultUserSettings\x12\x88\x01\n" +
-	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
+	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
 	"\x13default_landing_uri\x18\x03 \x01(\tR\x11defaultLandingUri\x12<\n" +
 	"\x11studio_web_portal\x18\x04 \x01(\tB\v\x8a\xa6\x1d\aENABLEDH\x00R\x0fstudioWebPortal\x88\x01\x01\x122\n" +
 	"\x13auto_mount_home_efs\x18\x05 \x01(\tH\x01R\x10autoMountHomeEfs\x88\x01\x01\x12\x90\x01\n" +
@@ -2518,8 +2518,8 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x12_studio_web_portalB\x16\n" +
 	"\x14_auto_mount_home_efs\"\xce\t\n" +
 	"&AwsSagemakerDomainDefaultSpaceSettings\x12\x88\x01\n" +
-	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x90\x01\n" +
+	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x90\x01\n" +
 	"\x18jupyter_lab_app_settings\x18\x03 \x01(\v2W.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainJupyterLabAppSettingsR\x15jupyterLabAppSettings\x12\x99\x01\n" +
 	"\x1bjupyter_server_app_settings\x18\x04 \x01(\v2Z.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainJupyterServerAppSettingsR\x18jupyterServerAppSettings\x12\x99\x01\n" +
 	"\x1bkernel_gateway_app_settings\x18\x05 \x01(\v2Z.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainKernelGatewayAppSettingsR\x18kernelGatewayAppSettings\x12\x8c\x01\n" +
@@ -2563,14 +2563,14 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x10user_group_valid\x126user_group must be 'R_STUDIO_ADMIN' or 'R_STUDIO_USER'\x1aOthis.user_group == '' || this.user_group in ['R_STUDIO_ADMIN', 'R_STUDIO_USER']\x1a\x93\x01\n" +
 	"\x1buser_group_requires_enabled\x12:user_group is only honored when access_status is 'ENABLED'\x1a8this.user_group == '' || this.access_status == 'ENABLED'\"\xc0\x03\n" +
 	"0AwsSagemakerDomainRStudioServerProDomainSettings\x12\x95\x01\n" +
-	"\x19domain_execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x16domainExecutionRoleArn\x12/\n" +
+	"\x19domain_execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x16domainExecutionRoleArn\x12/\n" +
 	"\x14r_studio_connect_url\x18\x02 \x01(\tR\x11rStudioConnectUrl\x12>\n" +
 	"\x1cr_studio_package_manager_url\x18\x03 \x01(\tR\x18rStudioPackageManagerUrl\x12\x82\x01\n" +
 	"\x15default_resource_spec\x18\x04 \x01(\v2N.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainResourceSpecR\x13defaultResourceSpec\"\xf8\v\n" +
 	"#AwsSagemakerDomainCanvasAppSettings\x125\n" +
 	"\x14direct_deploy_status\x18\x01 \x01(\tH\x00R\x12directDeployStatus\x88\x01\x01\x12\x95\x01\n" +
 	"\x17emr_serverless_settings\x18\x02 \x01(\v2].dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainCanvasEmrServerlessSettingsR\x15emrServerlessSettings\x12\x98\x01\n" +
-	"\x1egenerative_ai_bedrock_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x1agenerativeAiBedrockRoleArn\x12\xb8\x01\n" +
+	"\x1egenerative_ai_bedrock_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x1agenerativeAiBedrockRoleArn\x12\xb8\x01\n" +
 	" identity_provider_oauth_settings\x18\x04 \x03(\v2e.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainCanvasIdentityProviderOauthSettingsB\b\xbaH\x05\x92\x01\x02\x10\x14R\x1didentityProviderOauthSettings\x129\n" +
 	"\x16kendra_settings_status\x18\x05 \x01(\tH\x01R\x14kendraSettingsStatus\x88\x01\x01\x12\x95\x01\n" +
 	"\x17model_register_settings\x18\x06 \x01(\v2].dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainCanvasModelRegisterSettingsR\x15modelRegisterSettings\x12\xae\x01\n" +
@@ -2581,7 +2581,7 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x15_direct_deploy_statusB\x19\n" +
 	"\x17_kendra_settings_status\"\xc6\x02\n" +
 	"-AwsSagemakerDomainCanvasEmrServerlessSettings\x12\x82\x01\n" +
-	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x16\n" +
+	"\x12execution_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status:x\xbaHu\x1as\n" +
 	"\fstatus_valid\x12&status must be 'ENABLED' or 'DISABLED'\x1a;this.status == '' || this.status in ['ENABLED', 'DISABLED']\"\xcc\x03\n" +
 	"5AwsSagemakerDomainCanvasIdentityProviderOauthSettings\x12(\n" +
@@ -2596,12 +2596,12 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x06status\x18\x02 \x01(\tR\x06status:x\xbaHu\x1as\n" +
 	"\fstatus_valid\x12&status must be 'ENABLED' or 'DISABLED'\x1a;this.status == '' || this.status in ['ENABLED', 'DISABLED']\"\xd9\x02\n" +
 	"5AwsSagemakerDomainCanvasTimeSeriesForecastingSettings\x12\x8d\x01\n" +
-	"\x18amazon_forecast_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x15amazonForecastRoleArn\x12\x16\n" +
+	"\x18amazon_forecast_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x15amazonForecastRoleArn\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status:x\xbaHu\x1as\n" +
 	"\fstatus_valid\x12&status must be 'ENABLED' or 'DISABLED'\x1a;this.status == '' || this.status in ['ENABLED', 'DISABLED']\"\xa7\x03\n" +
 	")AwsSagemakerDomainCanvasWorkspaceSettings\x122\n" +
 	"\x10s3_artifact_path\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x0es3ArtifactPath\x12v\n" +
-	"\rs3_kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\n" +
+	"\rs3_kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\n" +
 	"s3KmsKeyId:\xcd\x01\xbaH\xc9\x01\x1a\xc6\x01\n" +
 	"\x17s3_artifact_path_format\x121s3_artifact_path must be an s3:// or https:// URI\x1axthis.s3_artifact_path == '' || this.s3_artifact_path.startsWith('s3://') || this.s3_artifact_path.startsWith('https://')\"\xfa\x03\n" +
 	"\x1eAwsSagemakerDomainResourceSpec\x12#\n" +
@@ -2625,11 +2625,11 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x1bmax_idle_timeout_in_minutes\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xa0\x8a (<R\x17maxIdleTimeoutInMinutes:\x9e\x01\xbaH\x9a\x01\x1a\x97\x01\n" +
 	"\vmax_gte_min\x12Bmax_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes\x1aDthis.max_idle_timeout_in_minutes >= this.min_idle_timeout_in_minutes\"\xad\x02\n" +
 	"\x1dAwsSagemakerDomainEmrSettings\x12\x84\x01\n" +
-	"\x13assumable_role_arns\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11assumableRoleArns\x12\x84\x01\n" +
-	"\x13execution_role_arns\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x11executionRoleArns\"\xbc\x05\n" +
+	"\x13assumable_role_arns\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11assumableRoleArns\x12\x84\x01\n" +
+	"\x13execution_role_arns\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x11executionRoleArns\"\xbc\x05\n" +
 	"!AwsSagemakerDomainSharingSettings\x12G\n" +
 	"\x16notebook_output_option\x18\x01 \x01(\tB\f\x8a\xa6\x1d\bDisabledH\x00R\x14notebookOutputOption\x88\x01\x01\x12v\n" +
-	"\rs3_kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\n" +
+	"\rs3_kms_key_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\n" +
 	"s3KmsKeyId\x12$\n" +
 	"\x0es3_output_path\x18\x03 \x01(\tR\fs3OutputPath:\x94\x03\xbaH\x90\x03\x1a\xb3\x01\n" +
 	"\x1cnotebook_output_option_valid\x126notebook_output_option must be 'Allowed' or 'Disabled'\x1a[!has(this.notebook_output_option) || this.notebook_output_option in ['Allowed', 'Disabled']\x1a\xd7\x01\n" +
@@ -2642,7 +2642,7 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"(AwsSagemakerDomainCustomFileSystemConfig\x12\x92\x01\n" +
 	"\x16efs_file_system_config\x18\x01 \x01(\v2U.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainEfsFileSystemConfigB\x06\xbaH\x03\xc8\x01\x01R\x13efsFileSystemConfig\"\xe6\x01\n" +
 	"%AwsSagemakerDomainEfsFileSystemConfig\x12\x8a\x01\n" +
-	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x120\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x120\n" +
 	"\x10file_system_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0efileSystemPath\"g\n" +
 	"'AwsSagemakerDomainCustomPosixUserConfig\x12\x1d\n" +
 	"\x03uid\x18\x01 \x01(\x03B\v\xbaH\b\xc8\x01\x01\"\x03(\x90NR\x03uid\x12\x1d\n" +

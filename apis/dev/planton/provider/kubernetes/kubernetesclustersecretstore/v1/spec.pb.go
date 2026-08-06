@@ -186,7 +186,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclustersecretstore_v1_spec_
 	"\n" +
 	"Jdev/planton/provider/kubernetes/kubernetesclustersecretstore/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetesclustersecretstore.v1\x1a\x1bbuf/validate/validate.proto\x1a<dev/planton/provider/kubernetes/external_secrets_store.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x93\x03\n" +
 	" KubernetesClusterSecretStoreSpec\x12\x88\x01\n" +
-	"\x11secrets_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x06\x92\xd4a\x18status.outputs.namespaceR\x10secretsNamespace\x12[\n" +
+	"\x11secrets_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x1f\x92\xd4a\x18status.outputs.namespaceR\x10secretsNamespace\x12[\n" +
 	"\x06config\x18\x02 \x01(\v2;.dev.planton.provider.kubernetes.ExternalSecretsStoreConfigB\x06\xbaH\x03\xc8\x01\x01R\x06config\x12\x86\x01\n" +
 	"\n" +
 	"conditions\x18\x03 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesclustersecretstore.v1.KubernetesClusterSecretStoreConditionR\n" +

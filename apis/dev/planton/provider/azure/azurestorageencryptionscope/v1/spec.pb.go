@@ -200,13 +200,13 @@ const file_dev_planton_provider_azure_azurestorageencryptionscope_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/azure/azurestorageencryptionscope/v1/spec.proto\x129dev.planton.provider.azure.azurestorageencryptionscope.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xeb\x06\n" +
 	"\x1fAzureStorageEncryptionScopeSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x01\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x01\n" +
 	"\n" +
 	"scope_name\x18\x02 \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x84\x01\n" +
 	"$storage_encryption_scope_name_format\x127scope_name must be 4-63 letters and digits (no hyphens)\x1a#this.matches('^[0-9a-zA-Z]{4,63}$')\xc8\x01\x01R\tscopeName\x12\x80\x01\n" +
 	"\x06source\x18\x03 \x01(\x0e2\\.dev.planton.provider.azure.azurestorageencryptionscope.v1.AzureStorageEncryptionScopeSourceB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x06source\x12\x83\x01\n" +
-	"\x10key_vault_key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12L\n" +
+	"\x10key_vault_key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12L\n" +
 	"\"infrastructure_encryption_required\x18\x05 \x01(\bR infrastructureEncryptionRequired:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
 	"/storage_encryption_scope_key_vault_key_required\x12?key_vault_key_id is required when source is MICROSOFT_KEY_VAULT\x1a.this.source != 2 || has(this.key_vault_key_id)*\x8a\x01\n" +
 	"!AzureStorageEncryptionScopeSource\x125\n" +

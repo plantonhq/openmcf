@@ -274,17 +274,17 @@ const file_dev_planton_provider_gcp_gcptargethttpsproxy_v1_spec_proto_rawDesc = 
 	":dev/planton/provider/gcp/gcptargethttpsproxy/v1/spec.proto\x12/dev.planton.provider.gcp.gcptargethttpsproxy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x11\n" +
 	"\x17GcpTargetHttpsProxySpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x02\n" +
 	"\n" +
 	"proxy_name\x18\x02 \x01(\tB\xe7\x01\xbaH\xe3\x01\xba\x01\xdf\x01\n" +
 	"\x10valid_proxy_name\x12\x89\x01proxy_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\tproxyName\x12*\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12t\n" +
-	"\aurl_map\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf3\x04\x92\xd4a\x18status.outputs.self_linkR\x06urlMap\x12\x88\x01\n" +
-	"\x10ssl_certificates\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10\x0f\x88\xd4a\xf4\x04\x92\xd4a\x18status.outputs.self_linkR\x0fsslCertificates\x12\xa6\x01\n" +
-	" certificate_manager_certificates\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xe8\x04\x92\xd4a\x1fstatus.outputs.certificate_nameR\x1ecertificateManagerCertificates\x121\n" +
+	"\aurl_map\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd3\x17\x92\xd4a\x18status.outputs.self_linkR\x06urlMap\x12\x88\x01\n" +
+	"\x10ssl_certificates\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10\x0f\x88\xd4a\xd4\x17\x92\xd4a\x18status.outputs.self_linkR\x0fsslCertificates\x12\xa6\x01\n" +
+	" certificate_manager_certificates\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xc8\x17\x92\xd4a\x1fstatus.outputs.certificate_nameR\x1ecertificateManagerCertificates\x121\n" +
 	"\x0fcertificate_map\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x0ecertificateMap\x12t\n" +
 	"\n" +
-	"ssl_policy\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc7\x05\x92\xd4a\x18status.outputs.self_linkR\tsslPolicy\x12^\n" +
+	"ssl_policy\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xa7\x18\x92\xd4a\x18status.outputs.self_linkR\tsslPolicy\x12^\n" +
 	"\x11server_tls_policy\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0fserverTlsPolicy\x12\xb4\x01\n" +
 	"\rquic_override\x18\n" +
 	" \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +

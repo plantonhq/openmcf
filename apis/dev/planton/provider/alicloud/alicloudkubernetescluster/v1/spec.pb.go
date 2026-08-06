@@ -710,10 +710,10 @@ const file_dev_planton_provider_alicloud_alicloudkubernetescluster_v1_spec_proto
 	"\x0ecluster_domain\x18\x05 \x01(\tR\rclusterDomain\x12\x84\x01\n" +
 	"\vvswitch_ids\x18\n" +
 	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\n" +
+	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\n" +
 	"vswitchIds\x12\x19\n" +
 	"\bpod_cidr\x18\v \x01(\tR\apodCidr\x12~\n" +
-	"\x0fpod_vswitch_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\rpodVswitchIds\x12-\n" +
+	"\x0fpod_vswitch_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\rpodVswitchIds\x12-\n" +
 	"\fservice_cidr\x18\r \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vserviceCidr\x12\x9b\x01\n" +
 	"\n" +
@@ -722,12 +722,12 @@ const file_dev_planton_provider_alicloud_alicloudkubernetescluster_v1_spec_proto
 	"\x0enode_cidr_mask\x18\x0f \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18\x1c(\x18\x8a\xa6\x1d\x0224H\x02R\fnodeCidrMask\x88\x01\x01\x125\n" +
 	"\x0fnew_nat_gateway\x18\x10 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\rnewNatGateway\x88\x01\x01\x12?\n" +
 	"\x14slb_internet_enabled\x18\x11 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x12slbInternetEnabled\x88\x01\x01\x12\x89\x01\n" +
-	"\x11security_group_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xce\x17\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12D\n" +
+	"\x11security_group_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf6]\x92\xd4a status.outputs.security_group_idR\x0fsecurityGroupId\x12D\n" +
 	"\x1cis_enterprise_security_group\x18\x15 \x01(\bH\x05R\x19isEnterpriseSecurityGroup\x88\x01\x01\x12$\n" +
 	"\venable_rrsa\x18\x16 \x01(\bH\x06R\n" +
 	"enableRrsa\x88\x01\x01\x124\n" +
 	"\x13deletion_protection\x18\x17 \x01(\bH\aR\x12deletionProtection\x88\x01\x01\x12\x8a\x01\n" +
-	"\x17encryption_provider_key\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf4\x17\x92\xd4a\x15status.outputs.key_idR\x15encryptionProviderKey\x12\x1d\n" +
+	"\x17encryption_provider_key\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x9c^\x92\xd4a\x15status.outputs.key_idR\x15encryptionProviderKey\x12\x1d\n" +
 	"\n" +
 	"custom_san\x18\x19 \x01(\tR\tcustomSan\x12k\n" +
 	"\x06addons\x18\x1e \x03(\v2S.dev.planton.provider.alicloud.alicloudkubernetescluster.v1.AliCloudKubernetesAddonR\x06addons\x12v\n" +
@@ -755,7 +755,7 @@ const file_dev_planton_provider_alicloud_alicloudkubernetescluster_v1_spec_proto
 	"\aversion\x18\x03 \x01(\tR\aversion\x12\x1a\n" +
 	"\bdisabled\x18\x04 \x01(\bR\bdisabled\"\xb2\x03\n" +
 	" AliCloudKubernetesClusterLogging\x12\x93\x01\n" +
-	"\x19control_plane_log_project\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xb8\x17\x92\xd4a\x1bstatus.outputs.project_nameR\x16controlPlaneLogProject\x12>\n" +
+	"\x19control_plane_log_project\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe0]\x92\xd4a\x1bstatus.outputs.project_nameR\x16controlPlaneLogProject\x12>\n" +
 	"\x15control_plane_log_ttl\x18\x02 \x01(\tB\x06\x8a\xa6\x1d\x0230H\x00R\x12controlPlaneLogTtl\x88\x01\x01\x12?\n" +
 	"\x1ccontrol_plane_log_components\x18\x03 \x03(\tR\x19controlPlaneLogComponents\x12*\n" +
 	"\x11audit_log_enabled\x18\x04 \x01(\bR\x0fauditLogEnabled\x121\n" +

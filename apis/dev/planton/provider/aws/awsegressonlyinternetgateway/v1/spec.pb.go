@@ -113,7 +113,7 @@ const file_dev_planton_provider_aws_awsegressonlyinternetgateway_v1_spec_proto_r
 	"Cdev/planton/provider/aws/awsegressonlyinternetgateway/v1/spec.proto\x128dev.planton.provider.aws.awsegressonlyinternetgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb4\x01\n" +
 	" AwsEgressOnlyInternetGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcIdB\xcb\x03\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcIdB\xcb\x03\n" +
 	"<com.dev.planton.provider.aws.awsegressonlyinternetgateway.v1B\tSpecProtoP\x01Zygithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsegressonlyinternetgateway/v1;awsegressonlyinternetgatewayv1\xa2\x02\x05DPPAA\xaa\x028Dev.Planton.Provider.Aws.Awsegressonlyinternetgateway.V1\xca\x028Dev\\Planton\\Provider\\Aws\\Awsegressonlyinternetgateway\\V1\xe2\x02DDev\\Planton\\Provider\\Aws\\Awsegressonlyinternetgateway\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Aws::Awsegressonlyinternetgateway::V1b\x06proto3"
 
 var (

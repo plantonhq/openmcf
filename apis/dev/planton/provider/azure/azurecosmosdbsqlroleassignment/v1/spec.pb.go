@@ -184,10 +184,10 @@ const file_dev_planton_provider_azure_azurecosmosdbsqlroleassignment_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1/spec.proto\x12<dev.planton.provider.azure.azurecosmosdbsqlroleassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf3\x04\n" +
 	"\"AzureCosmosdbSqlRoleAssignmentSpec\x12\x95\x01\n" +
-	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x03\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x12\x92\x01\n" +
-	"\x12role_definition_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x03\x92\xd4a!status.outputs.role_definition_idR\x10roleDefinitionId\x12\x81\x01\n" +
-	"\fprincipal_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\vprincipalId\x12{\n" +
-	"\x05scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x03\x92\xd4a\"status.outputs.cosmosdb_account_idR\x05scope\x12\x1f\n" +
+	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\x0f\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x12\x92\x01\n" +
+	"\x12role_definition_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x10\x92\xd4a!status.outputs.role_definition_idR\x10roleDefinitionId\x12\x81\x01\n" +
+	"\fprincipal_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\vprincipalId\x12{\n" +
+	"\x05scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\x0f\x92\xd4a\"status.outputs.cosmosdb_account_idR\x05scope\x12\x1f\n" +
 	"\x04name\x18\x05 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\x04nameB\xe5\x03\n" +
 	"@com.dev.planton.provider.azure.azurecosmosdbsqlroleassignment.v1B\tSpecProtoP\x01Z\x7fgithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azurecosmosdbsqlroleassignment/v1;azurecosmosdbsqlroleassignmentv1\xa2\x02\x05DPPAA\xaa\x02<Dev.Planton.Provider.Azure.Azurecosmosdbsqlroleassignment.V1\xca\x02<Dev\\Planton\\Provider\\Azure\\Azurecosmosdbsqlroleassignment\\V1\xe2\x02HDev\\Planton\\Provider\\Azure\\Azurecosmosdbsqlroleassignment\\V1\\GPBMetadata\xea\x02ADev::Planton::Provider::Azure::Azurecosmosdbsqlroleassignment::V1b\x06proto3"
 

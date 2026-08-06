@@ -841,7 +841,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/kubernetes/kubernetesgrpcroute/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesgrpcroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
 	"\x17KubernetesGrpcRouteSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
 	"\thostnames\x18\x04 \x03(\tB[\xbaHX\x92\x01U\x10\x10\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12q\n" +
@@ -911,7 +911,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_raw
 	"\x1dKubernetesGrpcRouteBackendRef\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x1f\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01\x12(\n" +
 	"\x06weight\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00H\x04R\x06weight\x88\x01\x01\x12u\n" +

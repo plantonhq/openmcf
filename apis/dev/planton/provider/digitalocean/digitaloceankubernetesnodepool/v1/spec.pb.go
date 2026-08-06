@@ -238,7 +238,7 @@ const file_dev_planton_provider_digitalocean_digitaloceankubernetesnodepool_v1_s
 	"Ndev/planton/provider/digitalocean/digitaloceankubernetesnodepool/v1/spec.proto\x12Cdev.planton.provider.digitalocean.digitaloceankubernetesnodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbe\x05\n" +
 	"\"DigitalOceanKubernetesNodePoolSpec\x12,\n" +
 	"\x0enode_pool_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodePoolName\x12j\n" +
-	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\t\x92\xd4a\rmetadata.nameR\acluster\x12\x1a\n" +
+	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\x90'\x92\xd4a\rmetadata.nameR\acluster\x12\x1a\n" +
 	"\x04size\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04size\x12)\n" +
 	"\n" +
 	"node_count\x18\x04 \x01(\rB\n" +

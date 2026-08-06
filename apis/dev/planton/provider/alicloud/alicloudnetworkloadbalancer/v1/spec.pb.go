@@ -690,7 +690,7 @@ const file_dev_planton_provider_alicloud_alicloudnetworkloadbalancer_v1_spec_pro
 	"\x1fAliCloudNetworkLoadBalancerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\xcc\x01\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\xcc\x01\n" +
 	"\x12load_balancer_name\x18\x03 \x01(\tB\x9d\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
 	"\x19load_balancer_name_length\x12@load_balancer_name must be between 2 and 128 characters when set\x1a6this == '' || (this.size() >= 2 && this.size() <= 128)R\x10loadBalancerName\x12\xb0\x01\n" +
 	"\faddress_type\x18\x04 \x01(\tB\x87\x01\xbaHx\xba\x01u\n" +
@@ -711,8 +711,8 @@ const file_dev_planton_provider_alicloud_alicloudnetworkloadbalancer_v1_spec_pro
 	"\azone_id\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06zoneId\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12w\n" +
-	"\rallocation_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xcf\x17\x92\xd4a\x15status.outputs.eip_idR\fallocationId\"\xa7\a\n" +
+	"vswitch_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x12w\n" +
+	"\rallocation_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf7]\x92\xd4a\x15status.outputs.eip_idR\fallocationId\"\xa7\a\n" +
 	"&AliCloudNetworkLoadBalancerServerGroup\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x02\x18\x80\x01R\x04name\x12\xa7\x01\n" +

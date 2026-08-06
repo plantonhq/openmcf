@@ -1471,12 +1471,12 @@ const file_dev_planton_provider_azure_azurepostgresqlflexibleserver_v1_spec_prot
 	"!AzurePostgresqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12N\n" +
 	"\vserver_name\x18\x03 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18?2\x1f^[a-z0-9]([a-z0-9-]*[a-z0-9])?$R\n" +
 	"serverName\x12\x85\x01\n" +
 	"\vcreate_mode\x18\x04 \x01(\x0e2d.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerCreateModeR\n" +
 	"createMode\x12\x7f\n" +
-	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xae\x03\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xba\x02\n" +
+	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xee\x0f\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xba\x02\n" +
 	"!point_in_time_restore_time_in_utc\x18\x06 \x01(\tB\xf1\x01\xbaH\xed\x01\xba\x01\xe9\x01\n" +
 	"\x1dpostgres_restore_time_rfc3339\x12^point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x1bpointInTimeRestoreTimeInUtc\x12\x94\x01\n" +
 	"\x10replication_role\x18\a \x01(\x0e2i.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\x8f\x03\n" +
@@ -1500,8 +1500,8 @@ const file_dev_planton_provider_azure_azurepostgresqlflexibleserver_v1_spec_prot
 	"\x15backup_retention_days\x18\x12 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\a\x8a\xa6\x1d\x017H\x02R\x13backupRetentionDays\x88\x01\x01\x12?\n" +
 	"\x1cgeo_redundant_backup_enabled\x18\x13 \x01(\bR\x19geoRedundantBackupEnabled\x12P\n" +
 	"\x1dpublic_network_access_enabled\x18\x14 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x1apublicNetworkAccessEnabled\x88\x01\x01\x12\x85\x01\n" +
-	"\x13delegated_subnet_id\x18\x15 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x86\x01\n" +
-	"\x13private_dns_zone_id\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12\x90\x01\n" +
+	"\x13delegated_subnet_id\x18\x15 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xdb\x0f\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x86\x01\n" +
+	"\x13private_dns_zone_id\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdf\x0f\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12\x90\x01\n" +
 	"\x0eauthentication\x18\x17 \x01(\v2h.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerAuthenticationR\x0eauthentication\x12\x99\x01\n" +
 	"\x12aad_administrators\x18\x18 \x03(\v2j.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerAadAdministratorR\x11aadAdministrators\x12~\n" +
 	"\bidentity\x18\x19 \x01(\v2b.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerIdentityR\bidentity\x12\x9e\x01\n" +
@@ -1545,19 +1545,19 @@ const file_dev_planton_provider_azure_azurepostgresqlflexibleserver_v1_spec_prot
 	"\n" +
 	"_tenant_id\"\xfb\x02\n" +
 	"-AzurePostgresqlFlexibleServerAadAdministrator\x12{\n" +
-	"\tobject_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x121\n" +
+	"\tobject_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x121\n" +
 	"\x0eprincipal_name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\rprincipalName\x12\x99\x01\n" +
 	"\x0eprincipal_type\x18\x03 \x01(\x0e2j.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerAadPrincipalTypeB\x06\xbaH\x03\xc8\x01\x01R\rprincipalType\"\xa6\x04\n" +
 	"%AzurePostgresqlFlexibleServerIdentity\x12\x82\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2f.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xfb\x01\xbaH\xf7\x01\x1a\xf4\x01\n" +
 	" postgres_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xf9\x06\n" +
 	"/AzurePostgresqlFlexibleServerCustomerManagedKey\x12\x89\x01\n" +
-	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\xa1\x01\n" +
-	"!primary_user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\x97\x01\n" +
-	"\x1bgeo_backup_key_vault_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\x16geoBackupKeyVaultKeyId\x12\xa6\x01\n" +
-	"$geo_backup_user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x1fgeoBackupUserAssignedIdentityId:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
+	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\xa1\x01\n" +
+	"!primary_user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1dprimaryUserAssignedIdentityId\x12\x97\x01\n" +
+	"\x1bgeo_backup_key_vault_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\x16geoBackupKeyVaultKeyId\x12\xa6\x01\n" +
+	"$geo_backup_user_assigned_identity_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1fgeoBackupUserAssignedIdentityId:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
 	"\x15postgres_cmk_geo_pair\x12Ygeo_backup_key_vault_key_id and geo_backup_user_assigned_identity_id must be set together\x1aWhas(this.geo_backup_key_vault_key_id) == has(this.geo_backup_user_assigned_identity_id)\"\xf9\x02\n" +
 	"-AzurePostgresqlFlexibleServerHighAvailability\x12\x8a\x01\n" +
 	"\x04mode\x18\x01 \x01(\x0e2n.dev.planton.provider.azure.azurepostgresqlflexibleserver.v1.AzurePostgresqlFlexibleServerHighAvailabilityModeB\x06\xbaH\x03\xc8\x01\x01R\x04mode\x12\xba\x01\n" +

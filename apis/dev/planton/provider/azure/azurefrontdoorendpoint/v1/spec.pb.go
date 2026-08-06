@@ -138,7 +138,7 @@ const file_dev_planton_provider_azure_azurefrontdoorendpoint_v1_spec_proto_rawDe
 	"?dev/planton/provider/azure/azurefrontdoorendpoint/v1/spec.proto\x124dev.planton.provider.azure.azurefrontdoorendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8a\x05\n" +
 	"\x1aAzureFrontDoorEndpointSpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x90\x02\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x90\x02\n" +
 	"\rendpoint_name\x18\x02 \x01(\tB\xea\x01\xbaH\xe6\x01\xba\x01\xd9\x01\n" +
 	"\x1ffront_door_endpoint_name_format\x12zendpoint_name must be 2-46 characters, start and end with a letter or digit, and contain only letters, digits, and hyphens\x1a:this.matches('^[a-zA-Z0-9][a-zA-Z0-9-]{0,44}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x02\x18.R\fendpointName\x12'\n" +
 	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12n\n" +

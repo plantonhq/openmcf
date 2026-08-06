@@ -281,7 +281,7 @@ const file_dev_planton_provider_civo_civofirewall_v1_spec_proto_rawDesc = "" +
 	"\x10CivoFirewallSpec\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12{\n" +
 	"\n" +
-	"network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\v\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12g\n" +
+	"network_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xfa.\x92\xd4a\x19status.outputs.network_idR\tnetworkId\x12g\n" +
 	"\rinbound_rules\x18\x03 \x03(\v2B.dev.planton.provider.civo.civofirewall.v1.CivoFirewallInboundRuleR\finboundRules\x12j\n" +
 	"\x0eoutbound_rules\x18\x04 \x03(\v2C.dev.planton.provider.civo.civofirewall.v1.CivoFirewallOutboundRuleR\routboundRules\x12\x12\n" +
 	"\x04tags\x18\x05 \x03(\tR\x04tags\"\xb1\x01\n" +

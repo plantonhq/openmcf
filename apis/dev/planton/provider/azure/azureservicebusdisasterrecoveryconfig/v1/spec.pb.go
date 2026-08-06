@@ -142,9 +142,9 @@ const file_dev_planton_provider_azure_azureservicebusdisasterrecoveryconfig_v1_s
 	")AzureServiceBusDisasterRecoveryConfigSpec\x12+\n" +
 	"\n" +
 	"alias_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x182R\taliasName\x12\x90\x01\n" +
-	"\x14primary_namespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\x12primaryNamespaceId\x12\x94\x01\n" +
-	"\x14partner_namespace_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x03\x92\xd4a\x1bstatus.outputs.namespace_id\x98\xd4a\x01R\x12partnerNamespaceId\x12\xa0\x01\n" +
-	"\x1balias_authorization_rule_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xdb\x03\x92\xd4a$status.outputs.authorization_rule_idR\x18aliasAuthorizationRuleIdB\x97\x04\n" +
+	"\x14primary_namespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\x12primaryNamespaceId\x12\x94\x01\n" +
+	"\x14partner_namespace_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_id\x98\xd4a\x01R\x12partnerNamespaceId\x12\xa0\x01\n" +
+	"\x1balias_authorization_rule_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x9b\x10\x92\xd4a$status.outputs.authorization_rule_idR\x18aliasAuthorizationRuleIdB\x97\x04\n" +
 	"Gcom.dev.planton.provider.azure.azureservicebusdisasterrecoveryconfig.v1B\tSpecProtoP\x01Z\x8d\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureservicebusdisasterrecoveryconfig/v1;azureservicebusdisasterrecoveryconfigv1\xa2\x02\x05DPPAA\xaa\x02CDev.Planton.Provider.Azure.Azureservicebusdisasterrecoveryconfig.V1\xca\x02CDev\\Planton\\Provider\\Azure\\Azureservicebusdisasterrecoveryconfig\\V1\xe2\x02ODev\\Planton\\Provider\\Azure\\Azureservicebusdisasterrecoveryconfig\\V1\\GPBMetadata\xea\x02HDev::Planton::Provider::Azure::Azureservicebusdisasterrecoveryconfig::V1b\x06proto3"
 
 var (

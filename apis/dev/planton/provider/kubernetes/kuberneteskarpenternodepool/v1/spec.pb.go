@@ -688,7 +688,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskarpenternodepool_v1_spec_p
 	"\x04kind\x18\x02 \x01(\tBu\xbaHb\xba\x01_\n" +
 	"+spec.template.node_class_ref.kind_not_empty\x12$node_class_ref kind may not be empty\x1a\n" +
 	"this != ''\x8a\xa6\x1d\fEC2NodeClassH\x01R\x04kind\x88\x01\x01\x12\x89\x01\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBA\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10machine template\x88\xd4a\xe1\x06\x92\xd4a\x1estatus.outputs.node_class_nameR\x04nameB\b\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBA\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10machine template\x88\xd4a\xe1\x1f\x92\xd4a\x1estatus.outputs.node_class_nameR\x04nameB\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kind\"\x92\a\n" +
 	"&KubernetesKarpenterNodePoolRequirement\x12\xdf\x03\n" +

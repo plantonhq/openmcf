@@ -2153,7 +2153,7 @@ const file_dev_planton_provider_kubernetes_kubernetestrino_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/kubernetes/kubernetestrino/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetestrino.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\x14\n" +
 	"\x13KubernetesTrinoSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12^\n" +
 	"\x05image\x18\x03 \x01(\v2H.dev.planton.provider.kubernetes.kubernetestrino.v1.KubernetesTrinoImageR\x05image\x12\x7f\n" +
 	"\x12image_pull_secrets\x18\x04 \x03(\tBQ\xaa\xa6\x1dMSecret NAMES (references to existing image-pull Secrets), not secret materialR\x10imagePullSecrets\x12Y\n" +
@@ -2284,7 +2284,7 @@ const file_dev_planton_provider_kubernetes_kubernetestrino_v1_spec_proto_rawDesc
 	"\x18_sample_catalogs_enabled\"\x97\x04\n" +
 	"\x1eKubernetesTrinoPostgresCatalog\x12/\n" +
 	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[a-z][a-z0-9_]*$R\x04name\x12p\n" +
-	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12\"\n" +
 	"\bdatabase\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12(\n" +
 	"\busername\x18\x05 \x01(\tB\a\x8a\xa6\x1d\x03appH\x01R\busername\x88\x01\x01\x12\x8a\x01\n" +
@@ -2293,14 +2293,14 @@ const file_dev_planton_provider_kubernetes_kubernetestrino_v1_spec_proto_rawDesc
 	"\x05_portB\v\n" +
 	"\t_username\"\xbb\x02\n" +
 	"%KubernetesTrinoPostgresPasswordSecret\x12\x87\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
 	"\v_secret_key\"\xf3\x03\n" +
 	"\x1bKubernetesTrinoMysqlCatalog\x12/\n" +
 	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[a-z][a-z0-9_]*$R\x04name\x12u\n" +
-	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
+	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x043306H\x00R\x04port\x88\x01\x01\x12)\n" +
 	"\busername\x18\x04 \x01(\tB\b\x8a\xa6\x1d\x04rootH\x01R\busername\x88\x01\x01\x12\x87\x01\n" +
 	"\x0fpassword_secret\x18\x05 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestrino.v1.KubernetesTrinoMysqlPasswordSecretB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x123\n" +
@@ -2308,7 +2308,7 @@ const file_dev_planton_provider_kubernetes_kubernetestrino_v1_spec_proto_rawDesc
 	"\x05_portB\v\n" +
 	"\t_username\"\xbd\x02\n" +
 	"\"KubernetesTrinoMysqlPasswordSecret\x12\x8c\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a(status.outputs.root_password_secret.nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88 \x92\xd4a(status.outputs.root_password_secret.nameR\n" +
 	"secretName\x12y\n" +
 	"\n" +
 	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +

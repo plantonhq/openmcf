@@ -395,12 +395,12 @@ const file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec
 	"\n" +
 	"Kdev/planton/provider/azure/azurestoragedatalakegen2filesystem/v1/spec.proto\x12@dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa2\t\n" +
 	"&AzureStorageDataLakeGen2FilesystemSpec\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\x8d\x02\n" +
+	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\x8d\x02\n" +
 	"\x0ffilesystem_name\x18\x02 \x01(\tB\xe3\x01\xbaH\xdf\x01\xba\x01\xd8\x01\n" +
 	"\x1badls_filesystem_name_format\x12{filesystem_name must be 3-63 lowercase letters, digits, and hyphens, not starting with a hyphen (or the special name $root)\x1a<this == '$root' || this.matches('^[0-9a-z][0-9a-z-]{2,62}$')\xc8\x01\x01R\x0efilesystemName\x12\x9b\x01\n" +
-	"\x18default_encryption_scope\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xee\x03\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12n\n" +
-	"\x05owner\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\x05owner\x12n\n" +
-	"\x05group\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\x05group\x12{\n" +
+	"\x18default_encryption_scope\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xae\x10\x92\xd4a$status.outputs.encryption_scope_nameR\x16defaultEncryptionScope\x12n\n" +
+	"\x05owner\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\x05owner\x12n\n" +
+	"\x05group\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\x05group\x12{\n" +
 	"\x04aces\x18\x06 \x03(\v2g.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceR\x04aces\x12\x98\x01\n" +
 	"\n" +
 	"properties\x18\a \x03(\v2x.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemSpec.PropertiesEntryR\n" +
@@ -412,7 +412,7 @@ const file_dev_planton_provider_azure_azurestoragedatalakegen2filesystem_v1_spec
 	"\x05scope\x18\x01 \x01(\x0e2l.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceScopeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x05scope\x12\x8b\x01\n" +
 	"\x04type\x18\x02 \x01(\x0e2k.dev.planton.provider.azure.azurestoragedatalakegen2filesystem.v1.AzureStorageDataLakeGen2FilesystemAceTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12u\n" +
-	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12\xce\x01\n" +
+	"\tobject_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectId\x12\xce\x01\n" +
 	"\vpermissions\x18\x04 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\xa0\x01\n" +
 	"&adls_filesystem_ace_permissions_format\x12Vpermissions must be the three-character POSIX form [r-][w-][x-], e.g. rwx, r-x, or ---\x1a\x1ethis.matches('^[r-][w-][x-]$')\xc8\x01\x01R\vpermissions:\xea\x01\xbaH\xe6\x01\x1a\xe3\x01\n" +
 	"(adls_filesystem_ace_object_id_entry_type\x12}object_id can only be set on USER and GROUP entries -- MASK and OTHER entries apply to every caller, not a specific principal\x1a8!has(this.object_id) || this.type == 1 || this.type == 2*\x88\x01\n" +

@@ -915,11 +915,11 @@ const file_dev_planton_provider_azure_azuremonitorscheduledqueryalert_v1_spec_pr
 	"#AzureMonitorScheduledQueryAlertSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12,\n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12,\n" +
 	"\n" +
 	"alert_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\talertName\x12t\n" +
-	"\x05scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x05scope\x12!\n" +
+	"\x05scope\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\x10\x92\xd4a\x1bstatus.outputs.workspace_idR\x05scope\x12!\n" +
 	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12'\n" +
 	"\aenabled\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12/\n" +
@@ -973,7 +973,7 @@ const file_dev_planton_provider_azure_azuremonitorscheduledqueryalert_v1_spec_pr
 	"\x1cnumber_of_evaluation_periods\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x06(\x01R\x19numberOfEvaluationPeriods:\x84\x02\xbaH\x80\x02\x1a\xfd\x01\n" +
 	",scheduled_query_alert_failing_periods_bounds\x12yminimum_failing_periods_to_trigger_alert cannot exceed number_of_evaluation_periods -- the alert can never fire otherwise\x1aRthis.minimum_failing_periods_to_trigger_alert <= this.number_of_evaluation_periods\"\xc3\x03\n" +
 	"%AzureMonitorScheduledQueryAlertAction\x12\x85\x01\n" +
-	"\x10action_group_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xc5\x03\x92\xd4a\x1estatus.outputs.action_group_idR\x0eactionGroupIds\x12\xa7\x01\n" +
+	"\x10action_group_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x85\x10\x92\xd4a\x1estatus.outputs.action_group_idR\x0eactionGroupIds\x12\xa7\x01\n" +
 	"\x11custom_properties\x18\x02 \x03(\v2z.dev.planton.provider.azure.azuremonitorscheduledqueryalert.v1.AzureMonitorScheduledQueryAlertAction.CustomPropertiesEntryR\x10customProperties\x12#\n" +
 	"\remail_subject\x18\x03 \x01(\tR\femailSubject\x1aC\n" +
 	"\x15CustomPropertiesEntry\x12\x10\n" +
@@ -982,7 +982,7 @@ const file_dev_planton_provider_azure_azuremonitorscheduledqueryalert_v1_spec_pr
 	"'AzureMonitorScheduledQueryAlertIdentity\x12\x8a\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2j.dev.planton.provider.azure.azuremonitorscheduledqueryalert.v1.AzureMonitorScheduledQueryAlertIdentityTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type\x12\x94\x01\n" +
-	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\x9c\x02\xbaH\x98\x02\x1a\x95\x02\n" +
+	"\x1auser_assigned_identity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds:\x9c\x02\xbaH\x98\x02\x1a\x95\x02\n" +
 	"-scheduled_query_alert_identity_ids_match_type\x12`user_assigned_identity_ids is required with USER_ASSIGNED and must be empty with SYSTEM_ASSIGNED\x1a\x81\x01(this.type == 2 && this.user_assigned_identity_ids.size() > 0) || (this.type == 1 && this.user_assigned_identity_ids.size() == 0)*\x98\x01\n" +
 	"+AzureMonitorScheduledQueryAlertIdentityType\x12A\n" +
 	"=azure_monitor_scheduled_query_alert_identity_type_unspecified\x10\x00\x12\x13\n" +

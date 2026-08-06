@@ -914,7 +914,7 @@ const file_dev_planton_provider_scaleway_scalewaykapsulecluster_v1_spec_proto_ra
 	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x125\n" +
 	"\x12kubernetes_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11kubernetesVersion\x12\"\n" +
 	"\x03cni\x18\x03 \x01(\tB\x10\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x06ciliumR\x03cni\x12\x92\x01\n" +
-	"\x12private_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\x1f\n" +
+	"\x12private_network_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\x1f\n" +
 	"\x04type\x18\x05 \x01(\tB\v\x92\xa6\x1d\akapsuleR\x04type\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12H\n" +
 	"\x1bdelete_additional_resources\x18\a \x01(\bB\b\x92\xa6\x1d\x04trueR\x19deleteAdditionalResources\x12v\n" +

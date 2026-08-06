@@ -470,7 +470,7 @@ const file_dev_planton_provider_gcp_gcpregionnetworkendpointgroup_v1_spec_proto_
 	"Ddev/planton/provider/gcp/gcpregionnetworkendpointgroup/v1/spec.proto\x129dev.planton.provider.gcp.gcpregionnetworkendpointgroup.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x94!\n" +
 	"!GcpRegionNetworkEndpointGroupSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xc9\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xc9\x02\n" +
 	"\x1bnetwork_endpoint_group_name\x18\x02 \x01(\tB\x89\x02\xbaH\x85\x02\xba\x01\x81\x02\n" +
 	"!valid_network_endpoint_group_name\x12\x9a\x01network_endpoint_group_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x18networkEndpointGroupName\x12\xb7\x01\n" +
 	"\x06region\x18\x03 \x01(\tB\x9e\x01\xbaH\x9a\x01\xba\x01\x96\x01\n" +
@@ -479,9 +479,9 @@ const file_dev_planton_provider_gcp_gcpregionnetworkendpointgroup_v1_spec_proto_
 	"\x1bvalid_network_endpoint_type\x12\x84\x01network_endpoint_type must be one of SERVERLESS, PRIVATE_SERVICE_CONNECT, INTERNET_IP_PORT, INTERNET_FQDN_PORT, or GCE_VM_IP_PORTMAP\x1a~this == '' || this in ['SERVERLESS', 'PRIVATE_SERVICE_CONNECT', 'INTERNET_IP_PORT', 'INTERNET_FQDN_PORT', 'GCE_VM_IP_PORTMAP']\x8a\xa6\x1d\n" +
 	"SERVERLESSH\x00R\x13networkEndpointType\x88\x01\x01\x12*\n" +
 	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12w\n" +
-	"\anetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
+	"\anetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
-	"subnetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x126\n" +
 	"\x12psc_target_service\x18\b \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\x10pscTargetService\x12z\n" +
 	"\bpsc_data\x18\t \x01(\v2_.dev.planton.provider.gcp.gcpregionnetworkendpointgroup.v1.GcpRegionNetworkEndpointGroupPscDataR\apscData\x12}\n" +
@@ -499,12 +499,12 @@ const file_dev_planton_provider_gcp_gcpregionnetworkendpointgroup_v1_spec_proto_
 	"\x1anetwork_not_for_serverless\x12dnetwork applies only to non-serverless network endpoint groups (PSC, INTERNET, or GCE_VM_IP_PORTMAP)\x1a\x97\x01!has(this.network) || (has(this.network_endpoint_type) && this.network_endpoint_type != '' ? this.network_endpoint_type : 'SERVERLESS') != 'SERVERLESS'B\x18\n" +
 	"\x16_network_endpoint_type\"\xe9\x02\n" +
 	"%GcpRegionNetworkEndpointGroupCloudRun\x12r\n" +
-	"\aservice\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xdb\x04\x92\xd4a\x1bstatus.outputs.service_nameR\aservice\x12\x1a\n" +
+	"\aservice\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xbb\x17\x92\xd4a\x1bstatus.outputs.service_nameR\aservice\x12\x1a\n" +
 	"\x03tag\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x03tag\x12#\n" +
 	"\burl_mask\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\aurlMask:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
 	"\x1dcloud_run_service_or_url_mask\x128a cloud_run block must set service or url_mask (or both)\x1a(has(this.service) || this.url_mask != ''\"\xd9\x02\n" +
 	"*GcpRegionNetworkEndpointGroupCloudFunction\x12l\n" +
-	"\bfunction\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xda\x04\x92\xd4a\x13status.outputs.nameR\bfunction\x12#\n" +
+	"\bfunction\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xba\x17\x92\xd4a\x13status.outputs.nameR\bfunction\x12#\n" +
 	"\burl_mask\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\aurlMask:\x97\x01\xbaH\x93\x01\x1a\x90\x01\n" +
 	"#cloud_function_function_or_url_mask\x12>a cloud_function block must set function or url_mask (or both)\x1a)has(this.function) || this.url_mask != ''\"\x95\x01\n" +
 	"&GcpRegionNetworkEndpointGroupAppEngine\x12\"\n" +

@@ -191,7 +191,7 @@ const file_dev_planton_provider_gcp_gcpserviceaccount_v1_spec_proto_rawDesc = ""
 	"\x15GcpServiceAccountSpec\x12X\n" +
 	"\x12service_account_id\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x06\x18\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x10serviceAccountId\x12u\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12!\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12*\n" +
 	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12-\n" +

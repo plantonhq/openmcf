@@ -307,9 +307,9 @@ const file_dev_planton_provider_alicloud_alicloudnatgateway_v1_spec_proto_rawDes
 	"\x16AliCloudNatGatewaySpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12{\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf4]\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12{\n" +
 	"\n" +
-	"vswitch_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x127\n" +
+	"vswitch_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_idR\tvswitchId\x127\n" +
 	"\x10nat_gateway_name\x18\x04 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x02\x18\x80\x01R\x0enatGatewayName\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x9b\x01\n" +
@@ -325,7 +325,7 @@ const file_dev_planton_provider_alicloud_alicloudnatgateway_v1_spec_proto_rawDes
 	"\x13deletion_protection\x18\n" +
 	" \x01(\bH\x04R\x12deletionProtection\x88\x01\x01\x12i\n" +
 	"\x04tags\x18\v \x03(\v2U.dev.planton.provider.alicloud.alicloudnatgateway.v1.AliCloudNatGatewaySpec.TagsEntryR\x04tags\x12o\n" +
-	"\x06eip_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x17\x92\xd4a\x15status.outputs.eip_idR\x05eipId\x12i\n" +
+	"\x06eip_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf7]\x92\xd4a\x15status.outputs.eip_idR\x05eipId\x12i\n" +
 	"\fsnat_entries\x18\r \x03(\v2F.dev.planton.provider.alicloud.alicloudnatgateway.v1.AliCloudSnatEntryR\vsnatEntries\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -336,7 +336,7 @@ const file_dev_planton_provider_alicloud_alicloudnatgateway_v1_spec_proto_rawDes
 	"\x0e_specificationB\x16\n" +
 	"\x14_deletion_protection\"\xe5\x01\n" +
 	"\x11AliCloudSnatEntry\x12\x86\x01\n" +
-	"\x11source_vswitch_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_id\x98\xd4a\x01R\x0fsourceVswitchId\x12\x1f\n" +
+	"\x11source_vswitch_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xf5]\x92\xd4a\x19status.outputs.vswitch_id\x98\xd4a\x01R\x0fsourceVswitchId\x12\x1f\n" +
 	"\vsource_cidr\x18\x02 \x01(\tR\n" +
 	"sourceCidr\x12&\n" +
 	"\x0fsnat_entry_name\x18\x03 \x01(\tR\rsnatEntryNameB\xa3\x03\n" +

@@ -383,7 +383,7 @@ const file_dev_planton_provider_kubernetes_istio_api_proto_rawDesc = "" +
 	"'KubernetesIstioApiPolicyTargetReference\x12d\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x05group\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12r\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12\xb7\x01\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x1f\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12\xb7\x01\n" +
 	"\tnamespace\x18\x04 \x01(\tB\x98\x01\xbaH\x94\x01\xba\x01\x90\x01\n" +
 	"0istio_policy_target_reference.no_cross_namespace\x12Jcross-namespace target references are not supported; leave namespace empty\x1a\x10this.size() == 0R\tnamespaceB\x97\x02\n" +
 	"#com.dev.planton.provider.kubernetesB\rIstioApiProtoP\x01ZAgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes\xa2\x02\x04DPPK\xaa\x02\x1fDev.Planton.Provider.Kubernetes\xca\x02\x1fDev\\Planton\\Provider\\Kubernetes\xe2\x02+Dev\\Planton\\Provider\\Kubernetes\\GPBMetadata\xea\x02\"Dev::Planton::Provider::Kubernetesb\x06proto3"

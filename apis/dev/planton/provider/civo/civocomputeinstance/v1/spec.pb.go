@@ -170,12 +170,12 @@ const file_dev_planton_provider_civo_civocomputeinstance_v1_spec_proto_rawDesc =
 	"\x06region\x18\x02 \x01(\x0e2%.dev.planton.provider.civo.CivoRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12@\n" +
 	"\x04size\x18\x03 \x01(\tB,\xbaH)\xc8\x01\x01r$2\"^[a-z0-9]([a-z0-9\\.\\-]*[a-z0-9])?$R\x04size\x12?\n" +
 	"\x05image\x18\x04 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x05image\x12v\n" +
-	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\v\x92\xd4a\x19status.outputs.network_idR\anetwork\x12\x1e\n" +
+	"\anetwork\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xfa.\x92\xd4a\x19status.outputs.network_idR\anetwork\x12\x1e\n" +
 	"\vssh_key_ids\x18\x06 \x03(\tR\tsshKeyIds\x12z\n" +
-	"\ffirewall_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe1\v\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12t\n" +
+	"\ffirewall_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf5.\x92\xd4a\x1astatus.outputs.firewall_idR\vfirewallIds\x12t\n" +
 	"\n" +
-	"volume_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe5\v\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12\x80\x01\n" +
-	"\x0ereserved_ip_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe2\v\x92\xd4a\x1dstatus.outputs.reserved_ip_idR\freservedIpId\x12\x1c\n" +
+	"volume_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf9.\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12\x80\x01\n" +
+	"\x0ereserved_ip_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xf6.\x92\xd4a\x1dstatus.outputs.reserved_ip_idR\freservedIpId\x12\x1c\n" +
 	"\x04tags\x18\n" +
 	" \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tags\x12&\n" +
 	"\tuser_data\x18\v \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x02R\buserDataB\x92\x03\n" +

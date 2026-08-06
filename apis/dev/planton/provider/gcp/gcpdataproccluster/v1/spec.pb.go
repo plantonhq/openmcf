@@ -2893,11 +2893,11 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	"#GcpDataprocClusterNodeGroupAffinity\x12,\n" +
 	"\x0enode_group_uri\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodeGroupUri\"\xa3\v\n" +
 	"\x1bGcpDataprocClusterGceConfig\x12w\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
-	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12z\n" +
-	"\x0fservice_account\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x124\n" +
+	"\x0fservice_account\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x124\n" +
 	"\x16service_account_scopes\x18\x04 \x03(\tR\x14serviceAccountScopes\x12\x12\n" +
 	"\x04zone\x18\x05 \x01(\tR\x04zone\x12(\n" +
 	"\x10internal_ip_only\x18\x06 \x01(\bR\x0einternalIpOnly\x12\x12\n" +
@@ -2961,7 +2961,7 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	" GcpDataprocClusterKerberosConfig\x12'\n" +
 	"\x0fenable_kerberos\x18\x01 \x01(\bR\x0eenableKerberos\x12E\n" +
 	"\x1broot_principal_password_uri\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x18rootPrincipalPasswordUri\x12x\n" +
-	"\vkms_key_uri\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\tkmsKeyUri\x12\x14\n" +
+	"\vkms_key_uri\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\tkmsKeyUri\x12\x14\n" +
 	"\x05realm\x18\x04 \x01(\tR\x05realm\x12,\n" +
 	"\x12tgt_lifetime_hours\x18\x05 \x01(\x05R\x10tgtLifetimeHours\x12#\n" +
 	"\x0ekdc_db_key_uri\x18\x06 \x01(\tR\vkdcDbKeyUri\x12!\n" +
@@ -3011,8 +3011,8 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	"\rnode_group_id\x18\x03 \x01(\tBx\xbaHu\xba\x01r\n" +
 	"\x14node_group_id_length\x12%node_group_id must be 3-33 characters\x1a3this == '' || (size(this) >= 3 && size(this) <= 33)R\vnodeGroupId\"\xe8\x11\n" +
 	"\x18GcpDataprocClusterConfig\x12|\n" +
-	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12v\n" +
-	"\vtemp_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\n" +
+	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12v\n" +
+	"\vtemp_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\n" +
 	"tempBucket\x12\xd3\x01\n" +
 	"\fcluster_tier\x18\x03 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
 	"\x18cluster_tier_valid_value\x12Bcluster_tier must be CLUSTER_TIER_STANDARD or CLUSTER_TIER_PREMIUM\x1aGthis == '' || this in ['CLUSTER_TIER_STANDARD', 'CLUSTER_TIER_PREMIUM']R\vclusterTier\x12j\n" +
@@ -3024,8 +3024,8 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	"\x0fsoftware_config\x18\b \x01(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterSoftwareConfigR\x0esoftwareConfig\x12\x83\x01\n" +
 	"\x16initialization_actions\x18\t \x03(\v2L.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterInitActionR\x15initializationActions\x12\x86\x01\n" +
 	"\x16autoscaling_policy_uri\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\x8c\x05\x92\xd4a\x13status.outputs.nameR\x14autoscalingPolicyUri\x12\x89\x01\n" +
-	"\x17encryption_kms_key_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName\x12y\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xec\x17\x92\xd4a\x13status.outputs.nameR\x14autoscalingPolicyUri\x12\x89\x01\n" +
+	"\x17encryption_kms_key_name\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x14encryptionKmsKeyName\x12y\n" +
 	"\x0fsecurity_config\x18\f \x01(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterSecurityConfigR\x0esecurityConfig\x12y\n" +
 	"\x0fendpoint_config\x18\r \x01(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterEndpointConfigR\x0eendpointConfig\x12|\n" +
 	"\x10lifecycle_config\x18\x0e \x01(\v2Q.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterLifecycleConfigR\x0flifecycleConfig\x12|\n" +
@@ -3057,29 +3057,29 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	"\x04spot\x18\a \x01(\bR\x04spot:w\xbaHt\x1ar\n" +
 	"!preemptible_spot_mutual_exclusion\x12+preemptible and spot are mutually exclusive\x1a !(this.preemptible && this.spot)\"\xf3\x03\n" +
 	" GcpDataprocClusterNodePoolTarget\x12{\n" +
-	"\tnode_pool\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x04\x92\xd4a\x1bstatus.outputs.node_pool_idR\bnodePool\x12\xd5\x01\n" +
+	"\tnode_pool\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x17\x92\xd4a\x1bstatus.outputs.node_pool_idR\bnodePool\x12\xd5\x01\n" +
 	"\x05roles\x18\x02 \x03(\tB\xbe\x01\xbaH\xba\x01\x92\x01\xb6\x01\b\x01\"\xb1\x01\xba\x01\xad\x01\n" +
 	"\x1anode_pool_role_valid_value\x12Jeach role must be one of DEFAULT, CONTROLLER, SPARK_DRIVER, SPARK_EXECUTOR\x1aCthis in ['DEFAULT', 'CONTROLLER', 'SPARK_DRIVER', 'SPARK_EXECUTOR']R\x05roles\x12z\n" +
 	"\x10node_pool_config\x18\x03 \x01(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterNodePoolConfigR\x0enodePoolConfig\"\xad\x02\n" +
 	"\"GcpDataprocClusterGkeClusterConfig\x12\x8a\x01\n" +
-	"\x12gke_cluster_target\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x19status.outputs.cluster_idR\x10gkeClusterTarget\x12z\n" +
+	"\x12gke_cluster_target\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x17\x92\xd4a\x19status.outputs.cluster_idR\x10gkeClusterTarget\x12z\n" +
 	"\x10node_pool_target\x18\x02 \x03(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterNodePoolTargetR\x0enodePoolTarget\"\xd8\x03\n" +
 	")GcpDataprocClusterKubernetesClusterConfig\x12}\n" +
-	"\x14kubernetes_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x06\x92\xd4a\tspec.name\x98\xd4a\x01R\x13kubernetesNamespace\x12\x88\x01\n" +
+	"\x14kubernetes_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x1f\x92\xd4a\tspec.name\x98\xd4a\x01R\x13kubernetesNamespace\x12\x88\x01\n" +
 	"\x12gke_cluster_config\x18\x02 \x01(\v2R.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterGkeClusterConfigB\x06\xbaH\x03\xc8\x01\x01R\x10gkeClusterConfig\x12\xa0\x01\n" +
 	"\x1akubernetes_software_config\x18\x03 \x01(\v2Z.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterKubernetesSoftwareConfigB\x06\xbaH\x03\xc8\x01\x01R\x18kubernetesSoftwareConfig\"\xb0\x01\n" +
 	"*GcpDataprocClusterSparkHistoryServerConfig\x12\x81\x01\n" +
-	"\x10dataproc_cluster\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8b\x05\x92\xd4a\x19status.outputs.cluster_idR\x0fdataprocCluster\"\xc5\x02\n" +
+	"\x10dataproc_cluster\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xeb\x17\x92\xd4a\x19status.outputs.cluster_idR\x0fdataprocCluster\"\xc5\x02\n" +
 	")GcpDataprocClusterAuxiliaryServicesConfig\x12|\n" +
 	"\x10metastore_config\x18\x01 \x01(\v2Q.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterMetastoreConfigR\x0fmetastoreConfig\x12\x99\x01\n" +
 	"\x1bspark_history_server_config\x18\x02 \x01(\v2Z.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterSparkHistoryServerConfigR\x18sparkHistoryServerConfig\"\xde\x03\n" +
 	"&GcpDataprocClusterVirtualClusterConfig\x12|\n" +
-	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12\x9d\x01\n" +
+	"\x0estaging_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstagingBucket\x12\x9d\x01\n" +
 	"\x19kubernetes_cluster_config\x18\x02 \x01(\v2Y.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterKubernetesClusterConfigB\x06\xbaH\x03\xc8\x01\x01R\x17kubernetesClusterConfig\x12\x95\x01\n" +
 	"\x19auxiliary_services_config\x18\x03 \x01(\v2Y.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterAuxiliaryServicesConfigR\x17auxiliaryServicesConfig\"\xfc\t\n" +
 	"\x16GcpDataprocClusterSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12O\n" +
 	"\fcluster_name\x18\x03 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x1872\x1e^[a-z][a-z0-9-]{0,53}[a-z0-9]$R\vclusterName\x12o\n" +
 	"\x0ecluster_config\x18\x04 \x01(\v2H.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterConfigR\rclusterConfig\x12\x8c\x01\n" +

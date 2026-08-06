@@ -819,8 +819,8 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\x13numberOfBrokerNodes\x12+\n" +
 	"\rinstance_type\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\finstanceType\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12W\n" +
+	"subnet_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12W\n" +
 	"\x12public_access_type\x18\a \x01(\tB)\xbaH&\xd8\x01\x01r!R\bDISABLEDR\x15SERVICE_PROVIDED_EIPSR\x10publicAccessType\x12r\n" +
 	"\x10vpc_connectivity\x18\b \x01(\v2G.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterVpcConnectivityR\x0fvpcConnectivity\x127\n" +
 	"\fnetwork_type\x18\t \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x04IPV4R\x04DUALR\vnetworkType\x12?\n" +
@@ -829,7 +829,7 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\x1eprovisioned_throughput_enabled\x18\v \x01(\bR\x1cprovisionedThroughputEnabled\x12L\n" +
 	"\x1aprovisioned_throughput_mbs\x18\f \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\xc7\x12(\xfa\x01R\x18provisionedThroughputMbs\x12:\n" +
 	"\fstorage_mode\x18\r \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\x05LOCALR\x06TIEREDR\vstorageMode\x12s\n" +
-	"\vkms_key_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12j\n" +
+	"\vkms_key_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12j\n" +
 	"\x18client_broker_encryption\x18\x0f \x01(\tB+\xbaH!r\x1fR\x03TLSR\rTLS_PLAINTEXTR\tPLAINTEXT\x8a\xa6\x1d\x03TLSH\x01R\x16clientBrokerEncryption\x88\x01\x01\x12A\n" +
 	"\x15in_cluster_encryption\x18\x10 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x13inClusterEncryption\x88\x01\x01\x12n\n" +
 	"\x0eauthentication\x18\x11 \x01(\v2F.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterAuthenticationR\x0eauthentication\x12\xed\x01\n" +
@@ -878,15 +878,15 @@ const file_dev_planton_provider_aws_awsmskcluster_v1_spec_proto_rawDesc = "" +
 	"\x02s3\x18\x03 \x01(\v2A.dev.planton.provider.aws.awsmskcluster.v1.AwsMskClusterS3LoggingR\x02s3\"\xc3\x02\n" +
 	"\x1eAwsMskClusterCloudwatchLogging\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12w\n" +
-	"\tlog_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xb6\x02\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup:\x8d\x01\xbaH\x89\x01\x1a\x86\x01\n" +
+	"\tlog_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\blogGroup:\x8d\x01\xbaH\x89\x01\x1a\x86\x01\n" +
 	"\x1flog_group_required_when_enabled\x128log_group is required when CloudWatch logging is enabled\x1a)this.enabled ? has(this.log_group) : true\"\xe4\x02\n" +
 	"\x1cAwsMskClusterFirehoseLogging\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x89\x01\n" +
-	"\x0fdelivery_stream\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x85\x02\x92\xd4a#status.outputs.delivery_stream_nameR\x0edeliveryStream:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
+	"\x0fdelivery_stream\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xa5\b\x92\xd4a#status.outputs.delivery_stream_nameR\x0edeliveryStream:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
 	"%delivery_stream_required_when_enabled\x12<delivery_stream is required when Firehose logging is enabled\x1a/this.enabled ? has(this.delivery_stream) : true\"\xb5\x02\n" +
 	"\x16AwsMskClusterS3Logging\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12m\n" +
-	"\x06bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
+	"\x06bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix:z\xbaHw\x1au\n" +
 	"\x1cbucket_required_when_enabled\x12-bucket is required when S3 logging is enabled\x1a&this.enabled ? has(this.bucket) : trueB\xe2\x02\n" +
 	"-com.dev.planton.provider.aws.awsmskcluster.v1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsmskcluster/v1;awsmskclusterv1\xa2\x02\x05DPPAA\xaa\x02)Dev.Planton.Provider.Aws.Awsmskcluster.V1\xca\x02)Dev\\Planton\\Provider\\Aws\\Awsmskcluster\\V1\xe2\x025Dev\\Planton\\Provider\\Aws\\Awsmskcluster\\V1\\GPBMetadata\xea\x02.Dev::Planton::Provider::Aws::Awsmskcluster::V1b\x06proto3"

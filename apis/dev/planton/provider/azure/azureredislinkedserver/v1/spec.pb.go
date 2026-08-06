@@ -195,9 +195,9 @@ const file_dev_planton_provider_azure_azureredislinkedserver_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/azure/azureredislinkedserver/v1/spec.proto\x124dev.planton.provider.azure.azureredislinkedserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe1\x04\n" +
 	"\x1aAzureRedisLinkedServerSpec\x12\x93\x01\n" +
-	"\x15target_redis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaf\x03\x92\xd4a\x1dstatus.outputs.redis_cache_idR\x12targetRedisCacheId\x12\x93\x01\n" +
-	"\x15linked_redis_cache_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaf\x03\x92\xd4a\x1dstatus.outputs.redis_cache_idR\x12linkedRedisCacheId\x12\x97\x01\n" +
-	"\x1blinked_redis_cache_location\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xaf\x03\x92\xd4a\x15status.outputs.regionR\x18linkedRedisCacheLocation\x12}\n" +
+	"\x15target_redis_cache_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x0f\x92\xd4a\x1dstatus.outputs.redis_cache_idR\x12targetRedisCacheId\x12\x93\x01\n" +
+	"\x15linked_redis_cache_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x0f\x92\xd4a\x1dstatus.outputs.redis_cache_idR\x12linkedRedisCacheId\x12\x97\x01\n" +
+	"\x1blinked_redis_cache_location\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\x0f\x92\xd4a\x15status.outputs.regionR\x18linkedRedisCacheLocation\x12}\n" +
 	"\vserver_role\x18\x04 \x01(\x0e2P.dev.planton.provider.azure.azureredislinkedserver.v1.AzureRedisLinkedServerRoleB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\n" +
 	"serverRole*h\n" +

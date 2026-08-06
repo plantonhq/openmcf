@@ -511,12 +511,12 @@ const file_dev_planton_provider_azure_azureapplicationinsightsstandardwebtest_v1
 	"\n" +
 	"Pdev/planton/provider/azure/azureapplicationinsightsstandardwebtest/v1/spec.proto\x12Edev.planton.provider.azure.azureapplicationinsightsstandardwebtest.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa8\r\n" +
 	"+AzureApplicationInsightsStandardWebTestSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\"\n" +
 	"\x06region\x18\x03 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\xa1\x01\n" +
-	"\x17application_insights_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\xc3\x03\x92\xd4a&status.outputs.application_insights_idR\x15applicationInsightsId\x12\x96\x01\n" +
+	"\x17application_insights_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x03\xc8\x01\x01\x88\xd4a\x83\x10\x92\xd4a&status.outputs.application_insights_idR\x15applicationInsightsId\x12\x96\x01\n" +
 	"\tfrequency\x18\x05 \x01(\x05Bs\xbaHp\xba\x01m\n" +
 	"\x19web_test_frequency_values\x12*frequency must be 300, 600, or 900 seconds\x1a$this == 0 || this in [300, 600, 900]H\x00R\tfrequency\x88\x01\x01\x12&\n" +
 	"\atimeout\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\atimeout\x88\x01\x01\x12\x1d\n" +

@@ -666,11 +666,11 @@ const file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDes
 	"\fstorage_type\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03SSDH\x02R\vstorageType\x88\x01\x01\x128\n" +
 	"\x13throughput_capacity\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12throughputCapacity\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
+	"subnet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x85\x01\n" +
+	"\x13preferred_subnet_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"kms_key_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
 	"\tbackup_id\x18\x14 \x01(\tR\bbackupId\x12b\n" +
 	"\x13active_directory_id\x18\n" +
 	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11activeDirectoryId\x12\xa9\x01\n" +
@@ -722,7 +722,7 @@ const file_dev_planton_provider_aws_awsfsxwindowsfilesystem_v1_spec_proto_rawDes
 	",AwsFsxWindowsFileSystemAuditLogConfiguration\x12O\n" +
 	"\x1bfile_access_audit_log_level\x18\x01 \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x00R\x17fileAccessAuditLogLevel\x88\x01\x01\x12Z\n" +
 	"!file_share_access_audit_log_level\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x01R\x1cfileShareAccessAuditLogLevel\x88\x01\x01\x12\x8d\x01\n" +
-	"\x15audit_log_destination\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb6\x02\x92\xd4a\x1cstatus.outputs.log_group_arnR\x13auditLogDestination:\xd0\x04\xbaH\xcc\x04\x1a\x97\x02\n" +
+	"\x15audit_log_destination\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x13auditLogDestination:\xd0\x04\xbaH\xcc\x04\x1a\x97\x02\n" +
 	"\x17file_access_level_valid\x12hfile_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x91\x01this.file_access_audit_log_level == '' || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']\x1a\xaf\x02\n" +
 	"\x1dfile_share_access_level_valid\x12nfile_share_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x9d\x01this.file_share_access_audit_log_level == '' || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']B\x1e\n" +
 	"\x1c_file_access_audit_log_levelB$\n" +

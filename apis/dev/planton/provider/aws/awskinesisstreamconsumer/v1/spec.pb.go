@@ -140,7 +140,7 @@ const file_dev_planton_provider_aws_awskinesisstreamconsumer_v1_spec_proto_rawDe
 	"\x1cAwsKinesisStreamConsumerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12{\n" +
 	"\n" +
-	"stream_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x84\x02\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12@\n" +
+	"stream_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12@\n" +
 	"\x0fresource_policy\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicyB\xaf\x03\n" +
 	"8com.dev.planton.provider.aws.awskinesisstreamconsumer.v1B\tSpecProtoP\x01Zqgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awskinesisstreamconsumer/v1;awskinesisstreamconsumerv1\xa2\x02\x05DPPAA\xaa\x024Dev.Planton.Provider.Aws.Awskinesisstreamconsumer.V1\xca\x024Dev\\Planton\\Provider\\Aws\\Awskinesisstreamconsumer\\V1\xe2\x02@Dev\\Planton\\Provider\\Aws\\Awskinesisstreamconsumer\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Aws::Awskinesisstreamconsumer::V1b\x06proto3"
 

@@ -151,12 +151,12 @@ const file_dev_planton_provider_azure_azurefrontdoorsecuritypolicy_v1_spec_proto
 	"Edev/planton/provider/azure/azurefrontdoorsecuritypolicy/v1/spec.proto\x12:dev.planton.provider.azure.azurefrontdoorsecuritypolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd1\x05\n" +
 	" AzureFrontDoorSecurityPolicySpec\x12{\n" +
 	"\n" +
-	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe0\x03\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x92\x02\n" +
+	"profile_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x10\x92\xd4a\x19status.outputs.profile_idR\tprofileId\x12\x92\x02\n" +
 	"\x14security_policy_name\x18\x02 \x01(\tB\xdf\x01\xbaH\xdb\x01\xba\x01\xd4\x01\n" +
 	"&front_door_security_policy_name_format\x12psecurity_policy_name must begin and end with a letter or digit and may contain only letters, digits, and hyphens\x1a8this.matches('^[0-9a-zA-Z]([-0-9a-zA-Z]*[0-9a-zA-Z])?$')\xc8\x01\x01R\x12securityPolicyName\x12\x92\x01\n" +
-	"\x12firewall_policy_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\x03\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\x85\x01\n" +
+	"\x12firewall_policy_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa8\x10\x92\xd4a!status.outputs.firewall_policy_idR\x10firewallPolicyId\x12\x85\x01\n" +
 	"\n" +
-	"domain_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\b\x92\x01\x05\b\x01\x10\xf4\x03\x88\xd4a\xe1\x03\x92\xd4a\x1astatus.outputs.endpoint_id\x98\xd4a\x01R\tdomainIdsB\xd7\x03\n" +
+	"domain_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\b\x92\x01\x05\b\x01\x10\xf4\x03\x88\xd4a\xa1\x10\x92\xd4a\x1astatus.outputs.endpoint_id\x98\xd4a\x01R\tdomainIdsB\xd7\x03\n" +
 	">com.dev.planton.provider.azure.azurefrontdoorsecuritypolicy.v1B\tSpecProtoP\x01Z{github.com/plantonhq/planton/apis/dev/planton/provider/azure/azurefrontdoorsecuritypolicy/v1;azurefrontdoorsecuritypolicyv1\xa2\x02\x05DPPAA\xaa\x02:Dev.Planton.Provider.Azure.Azurefrontdoorsecuritypolicy.V1\xca\x02:Dev\\Planton\\Provider\\Azure\\Azurefrontdoorsecuritypolicy\\V1\xe2\x02FDev\\Planton\\Provider\\Azure\\Azurefrontdoorsecuritypolicy\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Azure::Azurefrontdoorsecuritypolicy::V1b\x06proto3"
 
 var (

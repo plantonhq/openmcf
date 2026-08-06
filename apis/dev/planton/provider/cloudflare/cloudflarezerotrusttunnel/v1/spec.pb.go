@@ -560,7 +560,7 @@ const file_dev_planton_provider_cloudflare_cloudflarezerotrusttunnel_v1_spec_pro
 	"&origin_request_tls_timeout.valid_range\x12.tls_timeout must be between 0 and 3600 seconds\x1a\x19this >= 0 && this <= 3600R\n" +
 	"tlsTimeout\"\xde\x01\n" +
 	"%CloudflareZeroTrustTunnelAccessConfig\x12p\n" +
-	"\aaud_tag\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x8e\x0e\x92\xd4a\x12status.outputs.audR\x06audTag\x12'\n" +
+	"\aaud_tag\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xde6\x92\xd4a\x12status.outputs.audR\x06audTag\x12'\n" +
 	"\tteam_name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\bteamName\x12\x1a\n" +
 	"\brequired\x18\x03 \x01(\bR\brequired*~\n" +

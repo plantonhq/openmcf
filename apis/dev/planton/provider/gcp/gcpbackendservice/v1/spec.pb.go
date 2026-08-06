@@ -2453,7 +2453,7 @@ const file_dev_planton_provider_gcp_gcpbackendservice_v1_spec_proto_rawDesc = ""
 	"8dev/planton/provider/gcp/gcpbackendservice/v1/spec.proto\x12-dev.planton.provider.gcp.gcpbackendservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x92G\n" +
 	"\x15GcpBackendServiceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xae\x02\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xae\x02\n" +
 	"\x14backend_service_name\x18\x02 \x01(\tB\xfb\x01\xbaH\xf7\x01\xba\x01\xf3\x01\n" +
 	"\x1avalid_backend_service_name\x12\x93\x01backend_service_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x12backendServiceName\x12*\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xe1\x01\n" +
@@ -2466,7 +2466,7 @@ const file_dev_planton_provider_gcp_gcpbackendservice_v1_spec_proto_rawDesc = ""
 	"\vtimeout_sec\x18\a \x01(\x05B\r\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x0230H\x02R\n" +
 	"timeoutSec\x88\x01\x01\x12Z\n" +
 	"\x1fconnection_draining_timeout_sec\x18\b \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x03300H\x03R\x1cconnectionDrainingTimeoutSec\x88\x01\x01\x12x\n" +
-	"\fhealth_check\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xef\x04\x92\xd4a\x18status.outputs.self_linkR\vhealthCheck\x12c\n" +
+	"\fhealth_check\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xcf\x17\x92\xd4a\x18status.outputs.self_linkR\vhealthCheck\x12c\n" +
 	"\bbackends\x18\n" +
 	" \x03(\v2G.dev.planton.provider.gcp.gcpbackendservice.v1.GcpBackendServiceBackendR\bbackends\x12\xa0\x03\n" +
 	"\x10session_affinity\x18\v \x01(\tB\xef\x02\xbaH\xe3\x02\xba\x01\xdf\x02\n" +
@@ -2482,8 +2482,8 @@ const file_dev_planton_provider_gcp_gcpbackendservice_v1_spec_proto_rawDesc = ""
 	"enable_cdn\x18\x11 \x01(\bR\tenableCdn\x12h\n" +
 	"\n" +
 	"cdn_policy\x18\x12 \x01(\v2I.dev.planton.provider.gcp.gcpbackendservice.v1.GcpBackendServiceCdnPolicyR\tcdnPolicy\x12\x85\x01\n" +
-	"\x0fsecurity_policy\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xee\x04\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x0esecurityPolicy\x12\x8e\x01\n" +
-	"\x14edge_security_policy\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xee\x04\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x12edgeSecurityPolicy\x12U\n" +
+	"\x0fsecurity_policy\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xce\x17\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x0esecurityPolicy\x12\x8e\x01\n" +
+	"\x14edge_security_policy\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xce\x17\x92\xd4a\x1fstatus.outputs.policy_self_linkR\x12edgeSecurityPolicy\x12U\n" +
 	"\x03iap\x18\x15 \x01(\v2C.dev.planton.provider.gcp.gcpbackendservice.v1.GcpBackendServiceIapR\x03iap\x12h\n" +
 	"\n" +
 	"log_config\x18\x16 \x01(\v2I.dev.planton.provider.gcp.gcpbackendservice.v1.GcpBackendServiceLogConfigR\tlogConfig\x12N\n" +
@@ -2525,7 +2525,7 @@ const file_dev_planton_provider_gcp_gcpbackendservice_v1_spec_proto_rawDesc = ""
 	" _connection_draining_timeout_secB\x13\n" +
 	"\x11_session_affinity\"\x8e\x11\n" +
 	"\x18GcpBackendServiceBackend\x12q\n" +
-	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf2\x04\x92\xd4a\x18status.outputs.self_linkR\x05group\x12\xf9\x01\n" +
+	"\x05group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd2\x17\x92\xd4a\x18status.outputs.self_linkR\x05group\x12\xf9\x01\n" +
 	"\x0ebalancing_mode\x18\x02 \x01(\tB\xcc\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
 	"\x14valid_balancing_mode\x12Nbalancing_mode must be one of UTILIZATION, RATE, CONNECTION, or CUSTOM_METRICS\x1aMthis == '' || this in ['UTILIZATION', 'RATE', 'CONNECTION', 'CUSTOM_METRICS']\x8a\xa6\x1d\vUTILIZATIONH\x00R\rbalancingMode\x88\x01\x01\x12L\n" +
 	"\x0fcapacity_scaler\x18\x03 \x01(\x01B\x1e\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00\x8a\xa6\x1d\x031.0H\x01R\x0ecapacityScaler\x88\x01\x01\x12*\n" +

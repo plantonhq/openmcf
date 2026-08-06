@@ -1861,7 +1861,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskubeprometheusstack_v1_spec
 	"\n" +
 	"Kdev/planton/provider/kubernetes/kuberneteskubeprometheusstack/v1/spec.proto\x12@dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf9\v\n" +
 	"!KubernetesKubePrometheusStackSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x125\n" +
 	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\a87.19.1H\x00R\fchartVersion\x88\x01\x01\x12\x1b\n" +
 	"\tskip_crds\x18\x04 \x01(\bR\bskipCrds\x12&\n" +
@@ -1887,7 +1887,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskubeprometheusstack_v1_spec
 	"\x0eretention_size\x18\x03 \x01(\tB\x91\x02\xbaH\x8d\x02\xba\x01\x89\x02\n" +
 	"\x1espec.prometheus.retention_size\x12\x85\x01retention_size must be a Prometheus byte size like '45GiB' or '500MB' (units B, KB, MB, GB, TB, PB, EB, KiB, MiB, GiB, TiB, PiB, EiB)\x1a_this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(B|KB|MB|GB|TB|PB|EB|KiB|MiB|GiB|TiB|PiB|EiB)$')R\rretentionSize\x12`\n" +
 	"\tdisk_size\x18\x04 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0450GiH\x02R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
+	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
 	"\tephemeral\x18\x06 \x01(\bR\tephemeral\x12Q\n" +
 	"\tresources\x18\a \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xa6\x01\n" +
 	"\x0fexternal_labels\x18\b \x03(\v2}.dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1.KubernetesKubePrometheusStackPrometheus.ExternalLabelsEntryR\x0eexternalLabels\x12\xcd\x01\n" +
@@ -1943,7 +1943,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskubeprometheusstack_v1_spec
 	"\breplicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12J\n" +
 	"\tretention\x18\x03 \x01(\tB'\xbaH\x1cr\x1a2\x18^[0-9]+(ms|s|m|h|d|w|y)$\x8a\xa6\x1d\x04120hH\x02R\tretention\x88\x01\x01\x12_\n" +
 	"\tdisk_size\x18\x04 \x01(\tB=\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x032GiH\x03R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
+	"\rstorage_class\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12\x1c\n" +
 	"\tephemeral\x18\x06 \x01(\bR\tephemeral\x12Q\n" +
 	"\tresources\x18\a \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x1f\n" +
 	"\vconfig_yaml\x18\b \x01(\tR\n" +
@@ -1977,7 +1977,7 @@ const file_dev_planton_provider_kubernetes_kuberneteskubeprometheusstack_v1_spec
 	"\r_password_key\"\x80\x02\n" +
 	"+KubernetesKubePrometheusStackGrafanaStorage\x12W\n" +
 	"\x04size\x18\x01 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x00R\x04size\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClassB\a\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClassB\a\n" +
 	"\x05_size\"\xa8\x03\n" +
 	"%KubernetesKubePrometheusStackOperator\x12Q\n" +
 	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x9f\x01\n" +

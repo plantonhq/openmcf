@@ -969,7 +969,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_p
 	"\n" +
 	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\r\n" +
 	"\x1fKubernetesGhaRunnerScaleSetSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x060.14.2H\x00R\fchartVersion\x88\x01\x01\x12\xe1\x01\n" +
@@ -1016,7 +1016,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_p
 	"\x16kubernetes_work_volume\x18\x02 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeR\x14kubernetesWorkVolume:\xf8\x01\xbaH\xf4\x01\x1a\xf1\x01\n" +
 	"\x1fspec.container_mode.work_volume\x12lkubernetes container mode requires kubernetes_work_volume (dind and kubernetes-novolume must not declare it)\x1a`this.mode == 'kubernetes' ? has(this.kubernetes_work_volume) : !has(this.kubernetes_work_volume)\"\xf3\x01\n" +
 	"%KubernetesGhaRunnerScaleSetWorkVolume\x12u\n" +
-	"\rstorage_class\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12S\n" +
+	"\rstorage_class\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12S\n" +
 	"\x04size\x18\x02 \x01(\tB?\xbaH<\xc8\x01\x01r725^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$R\x04size\"\x8c\x01\n" +
 	"!KubernetesGhaRunnerScaleSetRunner\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12Q\n" +
@@ -1029,7 +1029,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_p
 	"\x03url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03url\x124\n" +
 	"\x16credential_secret_name\x18\x02 \x01(\tR\x14credentialSecretName\"\xfd\x01\n" +
 	"*KubernetesGhaRunnerScaleSetGithubServerTls\x12x\n" +
-	"\x0fconfig_map_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\rmetadata.nameR\rconfigMapName\x12!\n" +
+	"\x0fconfig_map_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x1f\x92\xd4a\rmetadata.nameR\rconfigMapName\x12!\n" +
 	"\x03key\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06ca.crtH\x00R\x03key\x88\x01\x01\x12*\n" +
 	"\x11runner_mount_path\x18\x03 \x01(\tR\x0frunnerMountPathB\x06\n" +

@@ -317,11 +317,11 @@ const file_dev_planton_provider_azure_azurecosmosdbsqlroledefinition_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/azure/azurecosmosdbsqlroledefinition/v1/spec.proto\x12<dev.planton.provider.azure.azurecosmosdbsqlroledefinition.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc2\x05\n" +
 	"\"AzureCosmosdbSqlRoleDefinitionSpec\x12\x95\x01\n" +
-	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x03\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x12'\n" +
+	"\x13cosmosdb_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\x0f\x92\xd4a\"status.outputs.cosmosdb_account_idR\x11cosmosdbAccountId\x12'\n" +
 	"\trole_name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\broleName\x12t\n" +
 	"\x04type\x18\x03 \x01(\x0e2`.dev.planton.provider.azure.azurecosmosdbsqlroledefinition.v1.AzureCosmosdbSqlRoleDefinitionTypeR\x04type\x12\x94\x01\n" +
-	"\x11assignable_scopes\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xb0\x03\x92\xd4a\"status.outputs.cosmosdb_account_idR\x10assignableScopes\x12\x92\x01\n" +
+	"\x11assignable_scopes\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf0\x0f\x92\xd4a\"status.outputs.cosmosdb_account_idR\x10assignableScopes\x12\x92\x01\n" +
 	"\vpermissions\x18\x05 \x03(\v2f.dev.planton.provider.azure.azurecosmosdbsqlroledefinition.v1.AzureCosmosdbSqlRoleDefinitionPermissionB\b\xbaH\x05\x92\x01\x02\b\x01R\vpermissions\x129\n" +
 	"\x12role_definition_id\x18\x06 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\x10roleDefinitionId\"]\n" +
 	"(AzureCosmosdbSqlRoleDefinitionPermission\x121\n" +

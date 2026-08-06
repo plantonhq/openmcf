@@ -457,15 +457,15 @@ const file_dev_planton_provider_aws_awsvpcendpoint_v1_spec_proto_rawDesc = "" +
 	"5dev/planton/provider/aws/awsvpcendpoint/v1/spec.proto\x12*dev.planton.provider.aws.awsvpcendpoint.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd7\x19\n" +
 	"\x12AwsVpcEndpointSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12#\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12#\n" +
 	"\rendpoint_type\x18\x03 \x01(\tR\fendpointType\x12!\n" +
 	"\fservice_name\x18\x04 \x01(\tR\vserviceName\x12<\n" +
 	"\x1aresource_configuration_arn\x18\x05 \x01(\tR\x18resourceConfigurationArn\x12.\n" +
 	"\x13service_network_arn\x18\x06 \x01(\tR\x11serviceNetworkArn\x12\x86\x01\n" +
-	"\x0froute_table_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12t\n" +
+	"\x0froute_table_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xbc\b\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12t\n" +
 	"\n" +
-	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
+	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
 	"\x13private_dns_enabled\x18\n" +
 	" \x01(\bR\x11privateDnsEnabled\x12e\n" +
 	"\vdns_options\x18\v \x01(\v2D.dev.planton.provider.aws.awsvpcendpoint.v1.AwsVpcEndpointDnsOptionsR\n" +
@@ -494,7 +494,7 @@ const file_dev_planton_provider_aws_awsvpcendpoint_v1_spec_proto_rawDesc = "" +
 	"\x1cprivate_dns_preference_valid\x12\x95\x01private_dns_preference must be 'ALL_DOMAINS', 'VERIFIED_DOMAINS_ONLY', 'VERIFIED_DOMAINS_AND_SPECIFIED_DOMAINS', or 'SPECIFIED_DOMAINS_ONLY' when set\x1a\xb0\x01this.private_dns_preference == '' || this.private_dns_preference in ['ALL_DOMAINS', 'VERIFIED_DOMAINS_ONLY', 'VERIFIED_DOMAINS_AND_SPECIFIED_DOMAINS', 'SPECIFIED_DOMAINS_ONLY']\x1a\xbd\x02\n" +
 	"\"specified_domains_match_preference\x12}private_dns_specified_domains is required when private_dns_preference includes specified domains, and must be empty otherwise\x1a\x97\x01(this.private_dns_preference in ['VERIFIED_DOMAINS_AND_SPECIFIED_DOMAINS', 'SPECIFIED_DOMAINS_ONLY']) == (size(this.private_dns_specified_domains) > 0)\"\xc5\x01\n" +
 	"!AwsVpcEndpointSubnetConfiguration\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x12\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x12\n" +
 	"\x04ipv4\x18\x02 \x01(\tR\x04ipv4\x12\x12\n" +
 	"\x04ipv6\x18\x03 \x01(\tR\x04ipv6B\xe9\x02\n" +
 	".com.dev.planton.provider.aws.awsvpcendpoint.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsvpcendpoint/v1;awsvpcendpointv1\xa2\x02\x05DPPAA\xaa\x02*Dev.Planton.Provider.Aws.Awsvpcendpoint.V1\xca\x02*Dev\\Planton\\Provider\\Aws\\Awsvpcendpoint\\V1\xe2\x026Dev\\Planton\\Provider\\Aws\\Awsvpcendpoint\\V1\\GPBMetadata\xea\x02/Dev::Planton::Provider::Aws::Awsvpcendpoint::V1b\x06proto3"

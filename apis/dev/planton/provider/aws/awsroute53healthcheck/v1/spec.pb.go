@@ -329,7 +329,7 @@ const file_dev_planton_provider_aws_awsroute53healthcheck_v1_spec_proto_rawDesc 
 	"\aregions\x18\f \x03(\tBq\xbaHn\x92\x01k\"irgR\tus-east-1R\tus-west-1R\tus-west-2R\teu-west-1R\x0eap-southeast-1R\x0eap-southeast-2R\x0eap-northeast-1R\tsa-east-1R\aregions\x12-\n" +
 	"\x12invert_healthcheck\x18\r \x01(\bR\x11invertHealthcheck\x12\x1a\n" +
 	"\bdisabled\x18\x0e \x01(\bR\bdisabled\x12\x94\x01\n" +
-	"\x13child_health_checks\x18\x0f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x06\x92\x01\x03\x10\x80\x02\x88\xd4a\xf8\x02\x92\xd4a\x1estatus.outputs.health_check_idR\x11childHealthChecks\x12@\n" +
+	"\x13child_health_checks\x18\x0f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x06\x92\x01\x03\x10\x80\x02\x88\xd4a\x98\t\x92\xd4a\x1estatus.outputs.health_check_idR\x11childHealthChecks\x12@\n" +
 	"\x16child_health_threshold\x18\x10 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\x80\x02(\x00R\x14childHealthThreshold\x122\n" +
 	"\x15cloudwatch_alarm_name\x18\x11 \x01(\tR\x13cloudwatchAlarmName\x126\n" +

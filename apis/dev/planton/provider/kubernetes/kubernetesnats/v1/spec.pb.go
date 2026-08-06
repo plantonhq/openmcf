@@ -1332,7 +1332,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc 
 	"\n" +
 	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xba\x0e\n" +
 	"\x12KubernetesNatsSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x062.14.2H\x00R\fchartVersion\x88\x01\x01\x12b\n" +
@@ -1365,7 +1365,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc 
 	"\x17KubernetesNatsJetStream\x12'\n" +
 	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12`\n" +
 	"\tdisk_size\x18\x02 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
-	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12a\n" +
+	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x1f\x92\xd4a\rmetadata.nameR\fstorageClass\x12a\n" +
 	"\x0emax_file_store\x18\x04 \x01(\tB6\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$H\x02R\fmaxFileStore\x88\x01\x01\x12n\n" +
 	"\x15memory_store_max_size\x18\x05 \x01(\tB6\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$H\x03R\x12memoryStoreMaxSize\x88\x01\x01B\n" +
 	"\n" +
@@ -1396,7 +1396,7 @@ const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc 
 	"\x05users\x18\x02 \x03(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUserB\b\xbaH\x05\x92\x01\x02\b\x01R\x05users\x12,\n" +
 	"\x12jet_stream_enabled\x18\x03 \x01(\bR\x10jetStreamEnabled\"\xba\x01\n" +
 	"\x11KubernetesNatsTls\x12~\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x1f\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12%\n" +
 	"\x0everify_clients\x18\x02 \x01(\bR\rverifyClients\"j\n" +
 	"\x17KubernetesNatsWebsocket\x12\x18\n" +

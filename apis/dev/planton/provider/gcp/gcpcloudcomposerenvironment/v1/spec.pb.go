@@ -1553,7 +1553,7 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"Bdev/planton/provider/gcp/gcpcloudcomposerenvironment/v1/spec.proto\x127dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe9\x12\n" +
 	"\x1fGcpCloudComposerEnvironmentSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12V\n" +
 	"\x10environment_name\x18\x03 \x01(\tB+\xbaH(r&2$^([a-z]([a-z0-9-]{0,62}[a-z0-9])?)?$R\x0fenvironmentName\x12t\n" +
 	"\vnode_config\x18\x04 \x01(\v2S.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerNodeConfigR\n" +
@@ -1564,14 +1564,14 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x10environment_size\x18\b \x01(\tBn\xbaHkriR\x00R\x16ENVIRONMENT_SIZE_SMALLR\x17ENVIRONMENT_SIZE_MEDIUMR\x16ENVIRONMENT_SIZE_LARGER\x1cENVIRONMENT_SIZE_EXTRA_LARGER\x0fenvironmentSize\x12V\n" +
 	"\x0fresilience_mode\x18\t \x01(\tB-\xbaH*r(R\x00R\x13STANDARD_RESILIENCER\x0fHIGH_RESILIENCER\x0eresilienceMode\x12t\n" +
 	"\fkms_key_name\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\x89\x01\n" +
 	"\x12maintenance_window\x18\v \x01(\v2Z.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMaintenanceWindowR\x11maintenanceWindow\x12\x80\x01\n" +
 	"\x0frecovery_config\x18\f \x01(\v2W.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerRecoveryConfigR\x0erecoveryConfig\x12\xa9\x01\n" +
 	"!web_server_network_access_control\x18\r \x01(\v2_.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerWebServerAccessControlR\x1dwebServerNetworkAccessControl\x12\xb2\x01\n" +
 	"!master_authorized_networks_config\x18\x0e \x01(\v2g.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerMasterAuthorizedNetworksConfigR\x1emasterAuthorizedNetworksConfig\x12\x90\x01\n" +
 	"\x15data_retention_config\x18\x0f \x01(\v2\\.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerDataRetentionConfigR\x13dataRetentionConfig\x12|\n" +
-	"\x0estorage_bucket\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\rstorageBucket\x12<\n" +
+	"\x0estorage_bucket\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\rstorageBucket\x12<\n" +
 	"\x1aenable_private_environment\x18\x11 \x01(\bR\x18enablePrivateEnvironment\x12;\n" +
 	"\x1aenable_private_builds_only\x18\x12 \x01(\bR\x17enablePrivateBuildsOnly\x12|\n" +
 	"\x06labels\x18\x13 \x03(\v2d.dev.planton.provider.gcp.gcpcloudcomposerenvironment.v1.GcpCloudComposerEnvironmentSpec.LabelsEntryR\x06labels\x1a9\n" +
@@ -1579,11 +1579,11 @@ const file_dev_planton_provider_gcp_gcpcloudcomposerenvironment_v1_spec_proto_ra
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf3\x05\n" +
 	"\x1aGcpCloudComposerNodeConfig\x12w\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
-	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xc3\x17\x92\xd4a#status.outputs.subnetwork_self_linkR\n" +
 	"subnetwork\x12z\n" +
-	"\x0fservice_account\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
+	"\x0fservice_account\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12\x12\n" +
 	"\x04tags\x18\x04 \x03(\tR\x04tags\x12>\n" +
 	"\x1bcomposer_network_attachment\x18\x05 \x01(\tR\x19composerNetworkAttachment\x12H\n" +
 	"!composer_internal_ipv4_cidr_block\x18\x06 \x01(\tR\x1dcomposerInternalIpv4CidrBlock\x12/\n" +

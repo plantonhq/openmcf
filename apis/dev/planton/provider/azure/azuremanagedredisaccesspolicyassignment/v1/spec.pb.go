@@ -111,8 +111,8 @@ const file_dev_planton_provider_azure_azuremanagedredisaccesspolicyassignment_v1
 	"\n" +
 	"Pdev/planton/provider/azure/azuremanagedredisaccesspolicyassignment/v1/spec.proto\x12Edev.planton.provider.azure.azuremanagedredisaccesspolicyassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb9\x02\n" +
 	"+AzureManagedRedisAccessPolicyAssignmentSpec\x12\x8c\x01\n" +
-	"\x10managed_redis_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xfe\x03\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x0emanagedRedisId\x12{\n" +
-	"\tobject_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectIdB\xa5\x04\n" +
+	"\x10managed_redis_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x10\x92\xd4a\x1fstatus.outputs.managed_redis_idR\x0emanagedRedisId\x12{\n" +
+	"\tobject_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\x10\x92\xd4a\x1bstatus.outputs.principal_idR\bobjectIdB\xa5\x04\n" +
 	"Icom.dev.planton.provider.azure.azuremanagedredisaccesspolicyassignment.v1B\tSpecProtoP\x01Z\x91\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azuremanagedredisaccesspolicyassignment/v1;azuremanagedredisaccesspolicyassignmentv1\xa2\x02\x05DPPAA\xaa\x02EDev.Planton.Provider.Azure.Azuremanagedredisaccesspolicyassignment.V1\xca\x02EDev\\Planton\\Provider\\Azure\\Azuremanagedredisaccesspolicyassignment\\V1\xe2\x02QDev\\Planton\\Provider\\Azure\\Azuremanagedredisaccesspolicyassignment\\V1\\GPBMetadata\xea\x02JDev::Planton::Provider::Azure::Azuremanagedredisaccesspolicyassignment::V1b\x06proto3"
 
 var (

@@ -702,8 +702,8 @@ const file_dev_planton_provider_azure_azurednsrecord_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"7dev/planton/provider/azure/azurednsrecord/v1/spec.proto\x12,dev.planton.provider.azure.azurednsrecord.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd3\x0f\n" +
 	"\x12AzureDnsRecordSpec\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12x\n" +
-	"\tzone_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x94\x03\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\x9e\x03\n" +
+	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12x\n" +
+	"\tzone_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x0f\x92\xd4a\x18status.outputs.zone_nameR\bzoneName\x12\x9e\x03\n" +
 	"\x04name\x18\x03 \x01(\tB\x89\x03\xbaH\x85\x03\xba\x01\xfe\x02\n" +
 	"\x1cazure_dns_record_name_format\x12\xcb\x01Record name must be '@' for the zone apex, '*' (optionally '*.<name>') for wildcards, or dot-separated labels of lowercase letters, digits, hyphens, and underscores -- e.g. www, api.v1, _dmarc, _sip._tcp\x1a\x8f\x01this == '@' || this == '*' || this.matches('^(\\\\*\\\\.)?[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?(?:\\\\.[_a-z0-9](?:[_a-z0-9-]{0,61}[_a-z0-9])?)*$')\xc8\x01\x01R\x04name\x12:\n" +
 	"\vttl_seconds\x18\x04 \x01(\x05B\x14\xbaH\n" +

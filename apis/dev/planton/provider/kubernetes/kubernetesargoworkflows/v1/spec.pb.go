@@ -1483,7 +1483,7 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/kubernetes/kubernetesargoworkflows/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesargoworkflows.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb1\v\n" +
 	"\x1bKubernetesArgoWorkflowsSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x061.0.23H\x00R\fchartVersion\x88\x01\x01\x12}\n" +
@@ -1536,14 +1536,14 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\abackend\"\xd0\x05\n" +
 	"!KubernetesArgoWorkflowsArtifactS3\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12s\n" +
-	"\bendpoint\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x16\n" +
+	"\bendpoint\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b \x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x03 \x01(\tR\x06region\x12\x1a\n" +
 	"\binsecure\x18\x04 \x01(\bR\binsecure\x126\n" +
 	"\x17use_ambient_credentials\x18\x05 \x01(\bR\x15useAmbientCredentials\x12\x95\x01\n" +
 	"\x12credentials_secret\x18\x06 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsS3CredentialsSecretR\x11credentialsSecret:\x91\x02\xbaH\x8d\x02\x1a\x8a\x02\n" +
 	"'spec.artifact_repository.s3.credentials\x12\x81\x01declare exactly one credential path — credentials_secret for declared keys, or use_ambient_credentials for keyless pod identity\x1a[this.use_ambient_credentials ? !has(this.credentials_secret) : has(this.credentials_secret)\"\xd4\x03\n" +
 	"*KubernetesArgoWorkflowsS3CredentialsSecret\x12\x8d\x01\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b \x92\xd4a)status.outputs.s3_credentials_secret_nameR\n" +
 	"secretName\x12G\n" +
 	"\x11access_key_id_key\x18\x02 \x01(\tB\x17\x8a\xa6\x1d\x13admin_access_key_idH\x00R\x0eaccessKeyIdKey\x88\x01\x01\x12\x9c\x01\n" +
 	"\x15secret_access_key_key\x18\x03 \x01(\tBd\x8a\xa6\x1d\x17admin_secret_access_key\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x12secretAccessKeyKey\x88\x01\x01B\x14\n" +
@@ -1558,14 +1558,14 @@ const file_dev_planton_provider_kubernetes_kubernetesargoworkflows_v1_spec_proto
 	"\x17credentials_secret_name\x18\x03 \x01(\tR\x15credentialsSecretName\"\xda\x04\n" +
 	"\x1eKubernetesArgoWorkflowsArchive\x12\x85\x01\n" +
 	"\x06engine\x18\x01 \x01(\x0e2`.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveEngineB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x06engine\x12p\n" +
-	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12$\n" +
+	"\x04host\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12$\n" +
 	"\x04port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x04port\x88\x01\x01\x12\"\n" +
 	"\bdatabase\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12\x9c\x01\n" +
 	"\x12credentials_secret\x18\x05 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsArchiveCredentialsB\x06\xbaH\x03\xc8\x01\x01R\x11credentialsSecret\x12L\n" +
 	"\bssl_mode\x18\x06 \x01(\tB1\xbaH.r,R\x00R\adisableR\arequireR\tverify-caR\vverify-fullR\asslModeB\a\n" +
 	"\x05_port\"\xf5\x02\n" +
 	")KubernetesArgoWorkflowsArchiveCredentials\x12z\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x124\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85 \x92\xd4a#status.outputs.password_secret.nameR\x04name\x124\n" +
 	"\fusername_key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\busernameH\x00R\vusernameKey\x88\x01\x01\x12t\n" +
 	"\fpassword_key\x18\x03 \x01(\tBL\x8a\xa6\x1d\bpassword\xaa\xa6\x1d<Name of a key within an existing Secret, not secret materialH\x01R\vpasswordKey\x88\x01\x01B\x0f\n" +
 	"\r_username_keyB\x0f\n" +

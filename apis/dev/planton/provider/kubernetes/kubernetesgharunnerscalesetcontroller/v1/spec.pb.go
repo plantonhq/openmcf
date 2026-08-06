@@ -522,7 +522,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller
 	"\n" +
 	"Sdev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/spec.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\b\n" +
 	")KubernetesGhaRunnerScaleSetControllerSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
 	"\rchart_version\x18\x03 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x060.14.2H\x00R\fchartVersion\x88\x01\x01\x12-\n" +

@@ -528,7 +528,7 @@ const file_dev_planton_provider_aws_awsmwaaenvironment_v1_spec_proto_rawDesc = "
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12'\n" +
 	"\x0fairflow_version\x18\x02 \x01(\tR\x0eairflowVersion\x12\xab\x01\n" +
 	"\x1dairflow_configuration_options\x18\x03 \x03(\v2g.dev.planton.provider.aws.awsmwaaenvironment.v1.AwsMwaaEnvironmentSpec.AirflowConfigurationOptionsEntryR\x1bairflowConfigurationOptions\x12\x88\x01\n" +
-	"\x11source_bucket_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x19status.outputs.bucket_arnR\x0fsourceBucketArn\x12&\n" +
+	"\x11source_bucket_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\x0fsourceBucketArn\x12&\n" +
 	"\vdag_s3_path\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tdagS3Path\x12&\n" +
 	"\x0fplugins_s3_path\x18\x06 \x01(\tR\rpluginsS3Path\x129\n" +
 	"\x19plugins_s3_object_version\x18\a \x01(\tR\x16pluginsS3ObjectVersion\x120\n" +
@@ -537,11 +537,11 @@ const file_dev_planton_provider_aws_awsmwaaenvironment_v1_spec_proto_rawDesc = "
 	"\x16startup_script_s3_path\x18\n" +
 	" \x01(\tR\x13startupScriptS3Path\x12F\n" +
 	" startup_script_s3_object_version\x18\v \x01(\tR\x1cstartupScriptS3ObjectVersion\x12\x88\x01\n" +
-	"\x12execution_role_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12|\n" +
+	"\x12execution_role_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x02\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12s\n" +
-	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12{\n" +
+	"subnet_ids\x18\r \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12s\n" +
+	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12{\n" +
 	"\x11environment_class\x18\x10 \x01(\tBN\xbaHK\xd8\x01\x01rFR\tmw1.microR\tmw1.smallR\n" +
 	"mw1.mediumR\tmw1.largeR\n" +
 	"mw1.xlargeR\vmw1.2xlargeR\x10environmentClass\x12+\n" +

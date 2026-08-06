@@ -655,7 +655,7 @@ const file_dev_planton_provider_scaleway_scalewayserverlessfunction_v1_spec_prot
 	" \x01(\x0e2a.dev.planton.provider.scaleway.scalewayserverlessfunction.v1.ScalewayServerlessFunctionHttpOptionR\n" +
 	"httpOption\x12l\n" +
 	"\x03env\x18\v \x01(\v2Z.dev.planton.provider.scaleway.scalewayserverlessfunction.v1.ScalewayServerlessFunctionEnvR\x03env\x12\x90\x01\n" +
-	"\x12private_network_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_id\x98\xd4a\x01R\x10privateNetworkId\x12\x18\n" +
+	"\x12private_network_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xf9U\x92\xd4a!status.outputs.private_network_id\x98\xd4a\x01R\x10privateNetworkId\x12\x18\n" +
 	"\asandbox\x18\r \x01(\tR\asandbox\x12\x19\n" +
 	"\bzip_file\x18\x0e \x01(\tR\azipFile\x12\x19\n" +
 	"\bzip_hash\x18\x0f \x01(\tR\azipHash\x12\x87\x01\n" +

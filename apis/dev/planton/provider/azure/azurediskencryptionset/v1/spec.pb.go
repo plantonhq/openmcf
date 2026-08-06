@@ -376,9 +376,9 @@ const file_dev_planton_provider_azure_azurediskencryptionset_v1_spec_proto_rawDe
 	"\x1aAzureDiskEncryptionSetSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
-	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
+	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12 \n" +
 	"\x04name\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18PR\x04name\x12\x89\x01\n" +
-	"\x10key_vault_key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12>\n" +
+	"\x10key_vault_key_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\x0f\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12>\n" +
 	"\x19auto_key_rotation_enabled\x18\x05 \x01(\bH\x00R\x16autoKeyRotationEnabled\x88\x01\x01\x12\x83\x01\n" +
 	"\x0fencryption_type\x18\x06 \x01(\x0e2Z.dev.planton.provider.azure.azurediskencryptionset.v1.AzureDiskEncryptionSetEncryptionTypeR\x0eencryptionType\x12\xe4\x01\n" +
 	"\x13federated_client_id\x18\a \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\xab\x01\n" +
@@ -391,7 +391,7 @@ const file_dev_planton_provider_azure_azurediskencryptionset_v1_spec_proto_rawDe
 	"\x1a_auto_key_rotation_enabled\"\x8b\x04\n" +
 	"\x1eAzureDiskEncryptionSetIdentity\x12t\n" +
 	"\x04type\x18\x01 \x01(\x0e2X.dev.planton.provider.azure.azurediskencryptionset.v1.AzureDiskEncryptionSetIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
-	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +
+	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +
 	"\x1bdes_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0*\xf4\x01\n" +
 	"$AzureDiskEncryptionSetEncryptionType\x129\n" +
 	"5azure_disk_encryption_set_encryption_type_unspecified\x10\x00\x12(\n" +

@@ -123,7 +123,7 @@ const file_dev_planton_provider_cloudflare_cloudflareworkerskvpair_v1_spec_proto
 	"\x1bCloudflareWorkersKvPairSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12\x81\x01\n" +
-	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\x0e\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12(\n" +
+	"\fnamespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd96\x92\xd4a\x1bstatus.outputs.namespace_idR\vnamespaceId\x12(\n" +
 	"\bkey_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x04R\akeyName\x12\x1c\n" +
 	"\x05value\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12\x1a\n" +

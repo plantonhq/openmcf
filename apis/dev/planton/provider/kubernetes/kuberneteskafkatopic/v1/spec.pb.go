@@ -166,8 +166,8 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkatopic_v1_spec_proto_ra
 	"\n" +
 	"Bdev/planton/provider/kubernetes/kuberneteskafkatopic/v1/spec.proto\x127dev.planton.provider.kubernetes.kuberneteskafkatopic.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc7\x06\n" +
 	"\x18KubernetesKafkaTopicSpec\x12j\n" +
-	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x83\x01\n" +
-	"\rkafka_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a\x1bstatus.outputs.cluster_nameR\fkafkaCluster\x12\xd2\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\x83\x01\n" +
+	"\rkafka_cluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c \x92\xd4a\x1bstatus.outputs.cluster_nameR\fkafkaCluster\x12\xd2\x01\n" +
 	"\n" +
 	"topic_name\x18\x03 \x01(\tB\xb2\x01\xbaH\xae\x01\xba\x01\xaa\x01\n" +
 	"\x16spec.topic_name.format\x12Htopic name may use alphanumerics, '.', '_' and '-', up to 249 characters\x1aFthis == '' || (this.matches('^[a-zA-Z0-9._-]+$') && size(this) <= 249)R\ttopicName\x12,\n" +

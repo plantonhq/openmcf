@@ -3818,7 +3818,7 @@ const file_dev_planton_provider_cloudflare_cloudflareruleset_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/cloudflare/cloudflareruleset/v1/spec.proto\x124dev.planton.provider.cloudflare.cloudflareruleset.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xef\f\n" +
 	"\x15CloudflareRulesetSpec\x12l\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1d\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x02 \x01(\tR\taccountId\x12\x8e\x01\n" +
 	"\fruleset_kind\x18\x03 \x01(\x0e2W.dev.planton.provider.cloudflare.cloudflareruleset.v1.CloudflareRulesetSpec.RulesetKindB\r\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x011H\x00R\vrulesetKind\x88\x01\x01\x12\xb2\x01\n" +
@@ -4079,7 +4079,7 @@ const file_dev_planton_provider_cloudflare_cloudflareruleset_v1_spec_proto_rawDe
 	"expression\x18\x02 \x01(\tR\n" +
 	"expression\"\xa2\x01\n" +
 	"\x19CloudflareRulesetFromList\x12j\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x0e\x92\xd4a\x13status.outputs.nameR\x04name\x12\x19\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xec6\x92\xd4a\x13status.outputs.nameR\x04name\x12\x19\n" +
 	"\x03key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03key\"9\n" +
 	"\x1aCloudflareRulesetAlgorithm\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\"F\n" +

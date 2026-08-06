@@ -835,14 +835,14 @@ const file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDes
 	"\x13throughput_capacity\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\x12throughputCapacity\x12\x9c\x01\n" +
 	"\x18read_cache_configuration\x18\x06 \x01(\v2b.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemReadCacheConfigurationR\x16readCacheConfiguration\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
-	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
+	"subnet_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
+	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
 	"\x19endpoint_ip_address_range\x18\n" +
 	" \x01(\tR\x16endpointIpAddressRange\x12\x8e\x01\n" +
-	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
+	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xbc\b\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
+	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
 	"\tbackup_id\x18\r \x01(\tR\bbackupId\x12\x99\x01\n" +
 	"\x17disk_iops_configuration\x18\x0e \x01(\v2a.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemDiskIopsConfigurationR\x15diskIopsConfiguration\x12\x9f\x01\n" +
 	"\x19root_volume_configuration\x18\x0f \x01(\v2c.dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemRootVolumeConfigurationR\x17rootVolumeConfiguration\x12Z\n" +

@@ -506,7 +506,7 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12&\n" +
 	"\tencrypted\x18\x02 \x01(\bB\b\x92\xa6\x1d\x04trueR\tencrypted\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12)\n" +
+	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12)\n" +
 	"\x10performance_mode\x18\x04 \x01(\tR\x0fperformanceMode\x12'\n" +
 	"\x0fthroughput_mode\x18\x05 \x01(\tR\x0ethroughputMode\x12E\n" +
 	"\x1fprovisioned_throughput_in_mibps\x18\x06 \x01(\x01R\x1cprovisionedThroughputInMibps\x124\n" +
@@ -518,7 +518,7 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"\x0ebackup_enabled\x18\v \x01(\bR\rbackupEnabled\x12H\n" +
 	" replication_overwrite_protection\x18\f \x01(\tR\x1ereplicationOverwriteProtection\x12\x83\x01\n" +
 	"\rmount_targets\x18\r \x03(\v2Q.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTargetB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\fmountTargets\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12/\n" +
+	"\x12security_group_ids\x18\x0e \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12/\n" +
 	"\x06policy\x18\x0f \x01(\v2\x17.google.protobuf.StructR\x06policy\x12J\n" +
 	"\"bypass_policy_lockout_safety_check\x18\x10 \x01(\bR\x1ebypassPolicyLockoutSafetyCheck\x12s\n" +
 	"\vreplication\x18\x11 \x01(\v2Q.dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplicationR\vreplication:\xaa\x16\xbaH\xa6\x16\x1a\xac\x01\n" +
@@ -535,7 +535,7 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"&replication_overwrite_protection_valid\x12Ireplication_overwrite_protection must be 'ENABLED' or 'DISABLED' when set\x1aothis.replication_overwrite_protection == '' || this.replication_overwrite_protection in ['ENABLED', 'DISABLED']\x1a\xc5\x01\n" +
 	"\x16bypass_requires_policy\x12mbypass_policy_lockout_safety_check requires policy to be set (there is no policy put to bypass the check for)\x1a<!this.bypass_policy_lockout_safety_check || has(this.policy)\"\xd4\x06\n" +
 	"\x1fAwsElasticFileSystemMountTarget\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x1d\n" +
 	"\n" +
 	"ip_address\x18\x02 \x01(\tR\tipAddress\x12&\n" +
 	"\x0fip_address_type\x18\x03 \x01(\tR\ripAddressType\x12!\n" +
@@ -546,8 +546,8 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"\x1fAwsElasticFileSystemReplication\x12-\n" +
 	"\x12destination_region\x18\x01 \x01(\tR\x11destinationRegion\x12K\n" +
 	"\"destination_availability_zone_name\x18\x02 \x01(\tR\x1fdestinationAvailabilityZoneName\x12\x88\x01\n" +
-	"\x16destination_kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x13destinationKmsKeyId\x12\x9b\x01\n" +
-	"\x1adestination_file_system_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\x17destinationFileSystemId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	"\x16destination_kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x13destinationKmsKeyId\x12\x9b\x01\n" +
+	"\x1adestination_file_system_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\x17destinationFileSystemId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
 	" replication_destination_required\x12Tat least one of destination_region or destination_availability_zone_name is required\x1aNthis.destination_region != '' || this.destination_availability_zone_name != ''B\x93\x03\n" +
 	"4com.dev.planton.provider.aws.awselasticfilesystem.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1;awselasticfilesystemv1\xa2\x02\x05DPPAA\xaa\x020Dev.Planton.Provider.Aws.Awselasticfilesystem.V1\xca\x020Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\xe2\x02<Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Aws::Awselasticfilesystem::V1b\x06proto3"
 

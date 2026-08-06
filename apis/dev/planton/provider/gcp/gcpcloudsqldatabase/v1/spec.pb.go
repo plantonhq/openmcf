@@ -134,8 +134,8 @@ const file_dev_planton_provider_gcp_gcpcloudsqldatabase_v1_spec_proto_rawDesc = 
 	":dev/planton/provider/gcp/gcpcloudsqldatabase/v1/spec.proto\x12/dev.planton.provider.gcp.gcpcloudsqldatabase.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf9\x02\n" +
 	"\x17GcpCloudSqlDatabaseSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
-	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x04\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x122\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
+	"\binstance\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\x17\x92\xd4a\x1cstatus.outputs.instance_nameR\binstance\x122\n" +
 	"\rdatabase_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\fdatabaseName\x12\x18\n" +
 	"\acharset\x18\x04 \x01(\tR\acharset\x12\x1c\n" +

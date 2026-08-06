@@ -1206,9 +1206,9 @@ const file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDesc 
 	"\x17ExternalSecretsStoreAws\x12j\n" +
 	"\aservice\x18\x01 \x01(\tBK\xbaH6r4R\x0eSecretsManagerR\x0eParameterStoreR\x12CertificateManager\x8a\xa6\x1d\x0eSecretsManagerH\x00R\aservice\x88\x01\x01\x12\x1e\n" +
 	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12h\n" +
-	"\x04role\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x04role\x12\x16\n" +
+	"\x04role\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x04role\x12\x16\n" +
 	"\x06prefix\x18\x04 \x01(\tR\x06prefix\x12\x92\x01\n" +
-	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
+	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
 	"\x19service_account_namespace\x18\x06 \x01(\tR\x17serviceAccountNamespace\x12\"\n" +
 	"\raccess_key_id\x18\a \x01(\tR\vaccessKeyId\x120\n" +
 	"\x11secret_access_key\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey:\xfe\x02\xbaH\xfa\x02\x1a\xb0\x01\n" +
@@ -1218,19 +1218,19 @@ const file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDesc 
 	"\b_service\"\xa2\x05\n" +
 	"\x17ExternalSecretsStoreGcp\x12\x7f\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\tprojectId\x12\x1a\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\tprojectId\x12\x1a\n" +
 	"\blocation\x18\x02 \x01(\tR\blocation\x12\x92\x01\n" +
-	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
+	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
 	"\x19service_account_namespace\x18\x04 \x01(\tR\x17serviceAccountNamespace\x12=\n" +
 	"\x18service_account_key_json\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJson:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
 	"\x1aesostore.gcp.one_auth_mode\x12jChoose ONE authentication mode: a ServiceAccount reference (keyless) or a service-account key — not both\x1aH!(has(this.service_account_name) && this.service_account_key_json != '')\"\xf9\a\n" +
 	"\x19ExternalSecretsStoreAzure\x12|\n" +
-	"\tvault_url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x18status.outputs.vault_uri\x98\xd4a\x01R\bvaultUrl\x12\x1b\n" +
+	"\tvault_url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x0f\x92\xd4a\x18status.outputs.vault_uri\x98\xd4a\x01R\bvaultUrl\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12p\n" +
 	"\tauth_type\x18\x03 \x01(\tBN\xbaH7r5R\x10ServicePrincipalR\x0fManagedIdentityR\x10WorkloadIdentity\x8a\xa6\x1d\x10WorkloadIdentityH\x00R\bauthType\x88\x01\x01\x12\x1f\n" +
 	"\videntity_id\x18\x04 \x01(\tR\n" +
 	"identityId\x12\x92\x01\n" +
-	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
+	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
 	"\x19service_account_namespace\x18\x06 \x01(\tR\x17serviceAccountNamespace\x12\x1b\n" +
 	"\tclient_id\x18\a \x01(\tR\bclientId\x12)\n" +
 	"\rclient_secret\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret:\x86\x03\xbaH\x82\x03\x1a\xab\x01\n" +
@@ -1266,14 +1266,14 @@ const file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDesc 
 	"\n" +
 	"mount_path\x18\x01 \x01(\tR\tmountPath\x12\x1a\n" +
 	"\x04role\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12\x92\x01\n" +
-	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\"\xf7\x03\n" +
+	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\"\xf7\x03\n" +
 	"\x1eExternalSecretsStoreKubernetes\x12\x1d\n" +
 	"\n" +
 	"server_url\x18\x01 \x01(\tR\tserverUrl\x12\x1b\n" +
 	"\tca_bundle\x18\x02 \x01(\tR\bcaBundle\x12)\n" +
 	"\x10remote_namespace\x18\x03 \x01(\tR\x0fremoteNamespace\x12\x1a\n" +
 	"\x05token\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x05token\x12\x92\x01\n" +
-	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
+	"\x14service_account_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
 	"!esostore.kubernetes.one_auth_mode\x12YChoose ONE authentication mode: a bearer token or a ServiceAccount reference — not both\x1a5!(this.token != '' && has(this.service_account_name))\"x\n" +
 	"\x18ExternalSecretsStoreFake\x12\\\n" +
 	"\x04data\x18\x01 \x03(\v2>.dev.planton.provider.kubernetes.ExternalSecretsStoreFakeEntryB\b\xbaH\x05\x92\x01\x02\b\x01R\x04data\"q\n" +

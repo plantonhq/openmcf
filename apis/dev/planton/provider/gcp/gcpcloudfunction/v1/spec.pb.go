@@ -1501,12 +1501,12 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"7dev/planton/provider/gcp/gcpcloudfunction/v1/spec.proto\x12,dev.planton.provider.gcp.gcpcloudfunction.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\a\n" +
 	"\x14GcpCloudFunctionSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
 	"\x06region\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\x06region\x12R\n" +
 	"\rfunction_name\x18\x03 \x01(\tB-\xbaH*\xd8\x01\x01r%\x18?2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\ffunctionName\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12f\n" +
 	"\x06labels\x18\x05 \x03(\v2N.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSpec.LabelsEntryR\x06labels\x12t\n" +
-	"\fkms_key_name\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12t\n" +
 	"\fbuild_config\x18\a \x01(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfigB\x06\xbaH\x03\xc8\x01\x01R\vbuildConfig\x12r\n" +
 	"\x0eservice_config\x18\b \x01(\v2K.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfigR\rserviceConfig\x12_\n" +
@@ -1521,10 +1521,10 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"entryPoint\x12d\n" +
 	"\x06source\x18\x03 \x01(\v2D.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSourceB\x06\xbaH\x03\xc8\x01\x01R\x06source\x12\xa8\x01\n" +
 	"\x1bbuild_environment_variables\x18\x04 \x03(\v2h.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntryR\x19buildEnvironmentVariables\x12y\n" +
-	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xe6\x04\x92\xd4a\x13status.outputs.nameR\x0eserviceAccount\x12\x1f\n" +
+	"\x0fservice_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xc6\x17\x92\xd4a\x13status.outputs.nameR\x0eserviceAccount\x12\x1f\n" +
 	"\vworker_pool\x18\x06 \x01(\tR\n" +
 	"workerPool\x12\x88\x01\n" +
-	"\x11docker_repository\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xd8\x04\x92\xd4a\x1estatus.outputs.repository_pathR\x10dockerRepository\x12\x83\x01\n" +
+	"\x11docker_repository\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xb8\x17\x92\xd4a\x1estatus.outputs.repository_pathR\x10dockerRepository\x12\x83\x01\n" +
 	"\rupdate_policy\x18\b \x01(\x0e2O.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionBuildUpdatePolicyB\r\x92\xa6\x1d\tAUTOMATICR\fupdatePolicy\x1aL\n" +
 	"\x1eBuildEnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -1535,7 +1535,7 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"repoSource:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
 	"\x12source.exactly_one\x12qchoose exactly one source: storageSource (a GCS zip archive) or repoSource (a Cloud Source Repositories revision)\x1aI(has(this.storage_source) ? 1 : 0) + (has(this.repo_source) ? 1 : 0) == 1\"\xec\x01\n" +
 	"\x1dGcpCloudFunctionStorageSource\x12s\n" +
-	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xde\x04\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\"\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x17\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\"\n" +
 	"\x06object\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06object\x12#\n" +
 	"\n" +
@@ -1556,7 +1556,7 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"project_id\x18\a \x01(\tR\tprojectId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
 	" repo_source.exactly_one_revision\x12Ipin the source to exactly one revision: branchName, tagName, or commitSha\x1ag(this.branch_name != '' ? 1 : 0) + (this.tag_name != '' ? 1 : 0) + (this.commit_sha != '' ? 1 : 0) == 1\"\xdd\r\n" +
 	"\x1dGcpCloudFunctionServiceConfig\x12\x85\x01\n" +
-	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12^\n" +
+	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12^\n" +
 	"\x10available_memory\x18\x02 \x01(\tB3\xbaH(\xd8\x01\x01r#2!^[0-9]+(\\.[0-9]+)?(k|M|G|Mi|Gi)?$\x92\xa6\x1d\x04256MR\x0favailableMemory\x12B\n" +
 	"\ravailable_cpu\x18\x03 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x152\x13^[0-9]+(\\.[0-9]+)?$R\favailableCpu\x12<\n" +
 	"\x0ftimeout_seconds\x18\x04 \x01(\x05B\x13\xbaH\n" +
@@ -1566,7 +1566,7 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"\x15environment_variables\x18\x06 \x03(\v2e.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntryR\x14environmentVariables\x12\x8c\x01\n" +
 	"\x1csecret_environment_variables\x18\a \x03(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretEnvVarR\x1asecretEnvironmentVariables\x12q\n" +
 	"\x0esecret_volumes\x18\b \x03(\v2J.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionSecretVolumeR\rsecretVolumes\x12z\n" +
-	"\rvpc_connector\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xd1\x05\x92\xd4a\x18status.outputs.self_linkR\fvpcConnector\x12\xaa\x01\n" +
+	"\rvpc_connector\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xb1\x18\x92\xd4a\x18status.outputs.self_linkR\fvpcConnector\x12\xaa\x01\n" +
 	"\x1dvpc_connector_egress_settings\x18\n" +
 	" \x01(\x0e2N.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionVpcEgressSettingB\x17\x92\xa6\x1d\x13PRIVATE_RANGES_ONLYR\x1avpcConnectorEgressSettings\x12\x86\x01\n" +
 	"\x10ingress_settings\x18\v \x01(\x0e2L.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionIngressSettingB\r\x92\xa6\x1d\tALLOW_ALLR\x0fingressSettings\x12e\n" +
@@ -1610,11 +1610,11 @@ const file_dev_planton_provider_gcp_gcpcloudfunction_v1_spec_proto_rawDesc = "" 
 	"\n" +
 	"event_type\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\teventType\x12w\n" +
-	"\fpubsub_topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x94\x05\x92\xd4a\x17status.outputs.topic_idR\vpubsubTopic\x12n\n" +
+	"\fpubsub_topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf4\x17\x92\xd4a\x17status.outputs.topic_idR\vpubsubTopic\x12n\n" +
 	"\revent_filters\x18\x03 \x03(\v2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionEventFilterR\feventFilters\x12I\n" +
 	"\x0etrigger_region\x18\x04 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a2\x18^[a-z]+(-[a-z]+[0-9]+)?$R\rtriggerRegion\x12\x8b\x01\n" +
 	"\fretry_policy\x18\x05 \x01(\x0e2I.dev.planton.provider.gcp.gcpcloudfunction.v1.GcpCloudFunctionRetryPolicyB\x1d\x92\xa6\x1d\x19RETRY_POLICY_DO_NOT_RETRYR\vretryPolicy\x12\x85\x01\n" +
-	"\x15service_account_email\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"\x97\x01\n" +
+	"\x15service_account_email\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\"\x97\x01\n" +
 	"\x1bGcpCloudFunctionEventFilter\x12(\n" +
 	"\tattribute\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tattribute\x12 \n" +

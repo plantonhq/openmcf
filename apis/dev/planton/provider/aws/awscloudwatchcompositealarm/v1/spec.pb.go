@@ -263,17 +263,17 @@ const file_dev_planton_provider_aws_awscloudwatchcompositealarm_v1_spec_proto_ra
 	"alarm_rule\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80PR\talarmRule\x125\n" +
 	"\x11alarm_description\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\x10alarmDescription\x12,\n" +
 	"\x0factions_enabled\x18\x04 \x01(\bH\x00R\x0eactionsEnabled\x88\x01\x01\x12z\n" +
-	"\ralarm_actions\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\falarmActions\x12t\n" +
+	"\ralarm_actions\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\falarmActions\x12t\n" +
 	"\n" +
-	"ok_actions\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\tokActions\x12\x91\x01\n" +
-	"\x19insufficient_data_actions\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\x17insufficientDataActions\x12\x94\x01\n" +
+	"ok_actions\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\tokActions\x12\x91\x01\n" +
+	"\x19insufficient_data_actions\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x17insufficientDataActions\x12\x94\x01\n" +
 	"\x12actions_suppressor\x18\b \x01(\v2e.dev.planton.provider.aws.awscloudwatchcompositealarm.v1.AwsCloudwatchCompositeAlarmActionsSuppressorR\x11actionsSuppressor:\xa4\x02\xbaH\xa0\x02\x1aU\n" +
 	"\x13alarm_actions_max_5\x12\x1fmaximum 5 alarm_actions allowed\x1a\x1dsize(this.alarm_actions) <= 5\x1aL\n" +
 	"\x10ok_actions_max_5\x12\x1cmaximum 5 ok_actions allowed\x1a\x1asize(this.ok_actions) <= 5\x1ay\n" +
 	"\x1finsufficient_data_actions_max_5\x12+maximum 5 insufficient_data_actions allowed\x1a)size(this.insufficient_data_actions) <= 5B\x12\n" +
 	"\x10_actions_enabled\"\x80\x02\n" +
 	",AwsCloudwatchCompositeAlarmActionsSuppressor\x12r\n" +
-	"\x05alarm\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xb7\x02\x92\xd4a\x19status.outputs.alarm_nameR\x05alarm\x12(\n" +
+	"\x05alarm\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\b\x92\xd4a\x19status.outputs.alarm_nameR\x05alarm\x12(\n" +
 	"\vwait_period\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
 	"waitPeriod\x122\n" +
 	"\x10extension_period\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0fextensionPeriodB\xc4\x03\n" +

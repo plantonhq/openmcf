@@ -421,7 +421,7 @@ const file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc = 
 	"\tnum_nodes\x18\x03 \x01(\x05R\bnumNodes\x12\x96\x01\n" +
 	"\fstorage_type\x18\x04 \x01(\tBn\xbaHd\xba\x01a\n" +
 	"\x18storage_type_valid_value\x12\x1fstorage_type must be SSD or HDD\x1a$this == '' || this in ['SSD', 'HDD']\x8a\xa6\x1d\x03SSDH\x00R\vstorageType\x88\x01\x01\x12t\n" +
-	"\fkms_key_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\n" +
+	"\fkms_key_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12\xe8\x01\n" +
 	"\x13node_scaling_factor\x18\x06 \x01(\tB\xb7\x01\xbaH\xb3\x01\xba\x01\xaf\x01\n" +
 	"\x1fnode_scaling_factor_valid_value\x12Fnode_scaling_factor must be NodeScalingFactor1X or NodeScalingFactor2X\x1aDthis == '' || this in ['NodeScalingFactor1X', 'NodeScalingFactor2X']R\x11nodeScalingFactor\x12\x8b\x01\n" +
@@ -430,7 +430,7 @@ const file_dev_planton_provider_gcp_gcpbigtableinstance_v1_spec_proto_rawDesc = 
 	"\r_storage_type\"\x9f\x05\n" +
 	"\x17GcpBigtableInstanceSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
 	"\rinstance_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x06\x18!2\x1e^[a-z][a-z0-9-]{4,31}[a-z0-9]$R\finstanceName\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12>\n" +
 	"\x13deletion_protection\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01\x12#\n" +

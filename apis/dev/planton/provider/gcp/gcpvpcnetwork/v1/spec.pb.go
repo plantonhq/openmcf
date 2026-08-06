@@ -317,7 +317,7 @@ const file_dev_planton_provider_gcp_gcpvpcnetwork_v1_spec_proto_rawDesc = "" +
 	"\x17valid_inter_region_cost\x124inter_region_cost must be DEFAULT or ADD_COST_TO_MED\x1a4this == '' || this in ['DEFAULT', 'ADD_COST_TO_MED']R\x0finterRegionCost\"\x82\t\n" +
 	"\x11GcpVpcNetworkSpec\x12u\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x126\n" +
 	"\x17auto_create_subnetworks\x18\x02 \x01(\bR\x15autoCreateSubnetworks\x12y\n" +
 	"\frouting_mode\x18\x03 \x01(\x0e2C.dev.planton.provider.gcp.gcpvpcnetwork.v1.GcpVpcNetworkRoutingModeB\f\x8a\xa6\x1d\bREGIONALH\x00R\vroutingMode\x88\x01\x01\x12N\n" +
 	"\fnetwork_name\x18\x04 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$R\vnetworkName\x12*\n" +
