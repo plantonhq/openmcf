@@ -19,6 +19,19 @@
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/definitions/{file}
 # Public URL:  https://downloads.planton.dev/releases/{tag}/definitions/{file}
 #
+# Channel pointer (written LAST, after every artifact is uploaded, so the
+# pointer never names a release whose artifacts are not yet retrievable):
+#   s3://downloads-dot-planton-dot-dev-bucket/definitions/stable/version.txt
+#   https://downloads.planton.dev/definitions/stable/version.txt
+# Runtime consumers (the desktop daemon's definitions roll-forward) resolve
+# this pointer to discover the current definitions release, then fetch the
+# manifest at that tag and verify every artifact checksum. ROLLBACK is a
+# pointer rewrite -- point it back at a previous good tag and every install
+# re-adopts that version on its next seed:
+#   echo "v0.X.Y" | aws s3 cp - \
+#     s3://downloads-dot-planton-dot-dev-bucket/definitions/stable/version.txt \
+#     --endpoint-url "$CLOUDFLARE_R2_ENDPOINT" --content-type text/plain
+#
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
 
@@ -72,3 +85,18 @@ jobs:
               --endpoint-url "${AWS_ENDPOINT_URL}"
             echo "  uploaded: https://downloads.planton.dev/${R2_KEY}"
           done
+
+      # The stable channel pointer moves only after every artifact above is
+      # uploaded, so no consumer can resolve a tag whose content is missing.
+      - name: Move the stable channel pointer
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "$TAG" | aws s3 cp - "s3://${R2_BUCKET}/definitions/stable/version.txt" \
+            --endpoint-url "${AWS_ENDPOINT_URL}" \
+            --content-type text/plain \
+            --cache-control "no-cache"
+          echo "  stable channel -> ${TAG} (https://downloads.planton.dev/definitions/stable/version.txt)"
