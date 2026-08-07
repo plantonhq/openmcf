@@ -41,6 +41,7 @@ go_library(
 go_test(
     name = "tofumodule_test",
     srcs = [
+        "module_directory_test.go",
         "reapable_command_test.go",
         "stream_output_test.go",
     ],

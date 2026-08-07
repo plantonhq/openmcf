@@ -3,9 +3,7 @@ package root
 import (
 	"github.com/plantonhq/planton/cmd/planton/root/tofu"
 	"github.com/plantonhq/planton/internal/cli/flag"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var Tofu = &cobra.Command{
@@ -14,11 +12,6 @@ var Tofu = &cobra.Command{
 }
 
 func init() {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current working directory")
-	}
-
 	Tofu.PersistentFlags().String(string(flag.Manifest), "", "path of the deployment-component manifest file")
 
 	// The shared manifest resolver reads this flag on every source-resolution
@@ -29,7 +22,11 @@ func init() {
 	Tofu.PersistentFlags().String(string(flag.InputDir), "", "directory containing target.yaml and credential yaml files")
 	Tofu.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
 	Tofu.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
-	Tofu.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the terraform module")
+	// The flag default is EMPTY, not the current directory: an empty value
+	// means "no explicit choice", which lets the module resolver distinguish
+	// a user-chosen directory (validated loudly) from the implicit
+	// current-directory probe (falls through quietly to download/staging).
+	Tofu.PersistentFlags().String(string(flag.ModuleDir), "", "directory containing the terraform module (defaults to the current directory when it contains a valid module)")
 	Tofu.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
 
 	// Provider config flag (unified)

@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "pulumimodule",
@@ -15,4 +15,10 @@ go_library(
         "//pkg/iac/pulumi/pulumibinary",
         "@com_github_pkg_errors//:errors",
     ],
+)
+
+go_test(
+    name = "pulumimodule_test",
+    srcs = ["module_directory_test.go"],
+    embed = [":pulumimodule"],
 )

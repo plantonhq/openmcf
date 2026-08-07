@@ -14,7 +14,7 @@
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/{version}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/{version}.zip
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1alpha1/iac/tf
+# Path pattern: apis/dev/planton/provider/{provider}/{component}/{version}/iac/tf
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -155,6 +155,7 @@ jobs:
               if aws s3 cp "${ARTIFACT_NAME}" "s3://${R2_BUCKET}/${R2_KEY}" \
                 --endpoint-url "${AWS_ENDPOINT_URL}"; then
                 echo "✓ Uploaded: https://downloads.planton.dev/${R2_KEY}"
+                LAST_UPLOADED_KEY="${R2_KEY}"
               else
                 echo "✗ ERROR: Failed to upload ${ARTIFACT_NAME} to R2"
                 FAILED=$((FAILED + 1))
@@ -167,6 +168,23 @@ jobs:
               FAILED=$((FAILED + 1))
             fi
           done
+          
+          # Probe one uploaded artifact through the public URL. The CLI
+          # composes these URLs from a shape it pins in its own tests
+          # (pkg/downloads); this probe pins the OTHER half of the contract —
+          # that what CI just uploaded actually serves at that shape. Without
+          # it, a key-shape change here ships silently and every released CLI
+          # degrades module fetches into full git clones.
+          if [ -n "${LAST_UPLOADED_KEY:-}" ]; then
+            PROBE_URL="https://downloads.planton.dev/${LAST_UPLOADED_KEY}"
+            PROBE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -I "${PROBE_URL}")
+            if [ "${PROBE_CODE}" = "200" ]; then
+              echo "✓ Public URL probe passed: ${PROBE_URL}"
+            else
+              echo "✗ ERROR: uploaded artifact does not serve at its public URL (HTTP ${PROBE_CODE}): ${PROBE_URL}"
+              FAILED=$((FAILED + 1))
+            fi
+          fi
           
           echo ""
           echo "========================================"

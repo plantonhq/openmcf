@@ -27,22 +27,22 @@ type GetPathResult struct {
 }
 
 // GetPath returns the path to the Pulumi module directory.
-// If moduleDir is provided and is a valid Pulumi module directory, it returns that.
-// Otherwise, it tries to use pre-built binaries (faster, no compilation needed).
+// Local resolution comes first (see resolveLocalModuleDir for the explicit
+// vs implicit semantics). Otherwise, it tries to use pre-built binaries
+// (faster, no compilation needed).
 // If binary download fails, it falls back to the staging approach (clone + compile).
 // If moduleVersion is provided, it checks out that version (tag, branch, or commit SHA) in the workspace copy.
 // The returned GetPathResult includes a cleanup function that should be called after execution
 // unless noCleanup is true.
 func GetPath(moduleDir string, stackFqdn, kindName string, moduleVersion string, noCleanup bool) (*GetPathResult, error) {
-	isPulumiModuleDir, err := IsPulumiModuleDirectory(moduleDir)
+	localModuleDir, err := resolveLocalModuleDir(moduleDir)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to check if %s is a valid pulumi module directory", moduleDir)
+		return nil, err
 	}
-	if isPulumiModuleDir {
-		// User provided a valid module directory, use it directly
+	if localModuleDir != "" {
 		return &GetPathResult{
-			ModulePath:    moduleDir,
-			RepoPath:      moduleDir,
+			ModulePath:    localModuleDir,
+			RepoPath:      localModuleDir,
 			CleanupFunc:   func() error { return nil },
 			ShouldCleanup: false,
 			UseBinary:     false,
@@ -167,6 +167,56 @@ func getPathFromStaging(stackFqdn, kindName, targetVersion, moduleVersion string
 		ShouldCleanup: !noCleanup,
 		UseBinary:     false,
 	}, nil
+}
+
+// resolveLocalModuleDir decides whether execution runs from a local module
+// directory. The two inputs get opposite failure behavior on purpose:
+//
+//   - moduleDir empty means the user made no explicit choice, so the current
+//     directory is probed as a convenience — running the CLI from inside a
+//     module just works — and anything else falls through quietly to the
+//     binary/staging paths.
+//   - moduleDir non-empty is a user decision (--module-dir, or a directory
+//     derived by --local-module); a directory that is not a usable module
+//     must fail loudly here, because falling through would silently deploy
+//     the official module in place of the one the user pointed at.
+//
+// Returns the absolute module directory, or "" when resolution should fall
+// through to binary/staging.
+func resolveLocalModuleDir(moduleDir string) (string, error) {
+	explicit := moduleDir != ""
+	if !explicit {
+		pwd, err := os.Getwd()
+		if err != nil {
+			return "", nil
+		}
+		moduleDir = pwd
+	}
+
+	isPulumiModuleDir, err := IsPulumiModuleDirectory(moduleDir)
+	if err != nil {
+		if !explicit {
+			return "", nil
+		}
+		return "", errors.Wrapf(err,
+			"cannot read the module directory %s — check that it exists and is readable, or drop --module-dir to use the official module", moduleDir)
+	}
+	if !isPulumiModuleDir {
+		if !explicit {
+			return "", nil
+		}
+		return "", errors.Errorf(
+			"the module directory %s contains no Pulumi.yaml — a Pulumi module needs its project file at the root; point --module-dir at the folder holding Pulumi.yaml, or drop the flag to use the official module", moduleDir)
+	}
+
+	// Normalize to an absolute path: the directory becomes the automation
+	// API's workspace working directory, so an absolute path keeps execution
+	// independent of the caller's CWD.
+	absModuleDir, err := filepath.Abs(moduleDir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to resolve absolute path for module directory %s", moduleDir)
+	}
+	return absModuleDir, nil
 }
 
 // GetPathLegacy is the legacy function signature for backward compatibility.

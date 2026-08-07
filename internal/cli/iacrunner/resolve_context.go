@@ -24,13 +24,12 @@ import (
 func ResolveContext(cmd *cobra.Command) (*Context, error) {
 	ctx := &Context{}
 
-	// Get module directory
+	// Get module directory. Empty is a legal value: it means the user made no
+	// explicit choice, and the module resolvers quietly probe the current
+	// directory before falling through to the download/staging paths.
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get module-dir flag")
-	}
-	if moduleDir == "" {
-		return nil, errors.New("module-dir is required")
 	}
 	ctx.ModuleDir = moduleDir
 

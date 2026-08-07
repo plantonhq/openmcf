@@ -3,9 +3,7 @@ package root
 import (
 	"github.com/plantonhq/planton/cmd/planton/root/pulumi"
 	"github.com/plantonhq/planton/internal/cli/flag"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var Pulumi = &cobra.Command{
@@ -14,17 +12,16 @@ var Pulumi = &cobra.Command{
 }
 
 func init() {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current working directory")
-	}
-
 	Pulumi.PersistentFlags().String(string(flag.Manifest), "", "path of the deployment-component manifest file")
 
 	Pulumi.PersistentFlags().String(string(flag.InputDir), "", "directory containing target.yaml and credential yaml files")
 	Pulumi.PersistentFlags().String(string(flag.KustomizeDir), "", "directory containing kustomize configuration")
 	Pulumi.PersistentFlags().String(string(flag.Overlay), "", "kustomize overlay to use (e.g., prod, dev, staging)")
-	Pulumi.PersistentFlags().String(string(flag.ModuleDir), pwd, "directory containing the pulumi module")
+	// The flag default is EMPTY, not the current directory: an empty value
+	// means "no explicit choice", which lets the module resolver distinguish
+	// a user-chosen directory (validated loudly) from the implicit
+	// current-directory probe (falls through quietly to download/staging).
+	Pulumi.PersistentFlags().String(string(flag.ModuleDir), "", "directory containing the pulumi module (defaults to the current directory when it contains a valid module)")
 	Pulumi.PersistentFlags().StringToString(string(flag.Set), map[string]string{}, "override resource manifest values using key=value pairs")
 
 	Pulumi.PersistentFlags().String(string(flag.Stack), "", "pulumi stack fqdn in the format of <org>/<project>/<stack>")

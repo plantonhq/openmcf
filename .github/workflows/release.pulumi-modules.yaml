@@ -11,10 +11,11 @@
 #   - Clear progress logging with component counts
 #   - No hardcoded component paths - auto-discovers from filesystem
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}_{platform}.gz
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}_{platform}.gz
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
+#              (windows artifacts carry the executable suffix: {version}_{platform}.exe.gz)
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
 #
-# Path pattern: apis/dev/planton/provider/{provider}/{component}/v1alpha1/iac/pulumi
+# Path pattern: apis/dev/planton/provider/{provider}/{component}/{version}/iac/pulumi
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -200,6 +201,7 @@ jobs:
               if aws s3 cp "${ARTIFACT_NAME}" "s3://${R2_BUCKET}/${R2_KEY}" \
                 --endpoint-url "${AWS_ENDPOINT_URL}"; then
                 echo "✓ Uploaded: https://downloads.planton.dev/${R2_KEY}"
+                LAST_UPLOADED_KEY="${R2_KEY}"
               else
                 echo "✗ ERROR: Failed to upload ${ARTIFACT_NAME} to R2"
                 FAILED=$((FAILED + 1))
@@ -212,6 +214,23 @@ jobs:
               FAILED=$((FAILED + 1))
             fi
           done
+          
+          # Probe one uploaded artifact through the public URL. The CLI
+          # composes these URLs from a shape it pins in its own tests
+          # (pkg/downloads); this probe pins the OTHER half of the contract —
+          # that what CI just uploaded actually serves at that shape. Without
+          # it, a key-shape change here ships silently and every released CLI
+          # degrades module fetches into full git clones.
+          if [ -n "${LAST_UPLOADED_KEY:-}" ]; then
+            PROBE_URL="https://downloads.planton.dev/${LAST_UPLOADED_KEY}"
+            PROBE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -I "${PROBE_URL}")
+            if [ "${PROBE_CODE}" = "200" ]; then
+              echo "✓ Public URL probe passed: ${PROBE_URL}"
+            else
+              echo "✗ ERROR: uploaded artifact does not serve at its public URL (HTTP ${PROBE_CODE}): ${PROBE_URL}"
+              FAILED=$((FAILED + 1))
+            fi
+          fi
           
           echo ""
           echo "========================================"

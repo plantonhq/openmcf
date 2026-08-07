@@ -175,16 +175,16 @@ brew install plantonhq/tap/planton
 
 ```bash
 # Validate a manifest (optional but recommended)
-planton validate --manifest postgres.yaml
+planton validate-manifest postgres.yaml
 
 # Deploy with Pulumi
-planton pulumi up --manifest postgres.yaml --stack org/project/env
+planton pulumi update --manifest postgres.yaml --stack org/project/env
 
 # Deploy with Terraform/OpenTofu
 planton tofu apply --manifest postgres.yaml
 
 # Override specific values (useful for CI/CD)
-planton pulumi up \
+planton pulumi update \
   --manifest postgres.yaml \
   --set spec.container.cpu=500m \
   --stack org/project/env
@@ -388,10 +388,10 @@ YAML Manifest → Parse → Unmarshal to Proto → Validate Rules → Deploy or 
 - **Language:** Go
 - **Binary Distribution:** GitHub Release assets (self-updating via `planton upgrade`)
 - **Configuration:** Environment variables and flags
-- **Module Caching:** `~/.planton/modules/` (Git-based)
+- **Module Caching:** released artifacts under `~/.planton/terraform/modules/` and `~/.planton/pulumi/binaries/`, keyed by release; staging git clone under `~/.planton/staging/` as fallback
 
 **Dependencies:**
-- Git (required for cloning modules)
+- Git (required only for the staging fallback and `--local-module`)
 - Pulumi CLI (for `pulumi` commands)
 - Terraform/OpenTofu CLI (for `tofu` commands)
 
@@ -678,7 +678,7 @@ message PostgresKubernetesSpec {
 
 2. **Pre-deployment validation** (CLI):
 ```bash
-planton validate --manifest config.yaml
+planton validate-manifest config.yaml
 # Catches errors before calling cloud APIs
 ```
 
@@ -732,7 +732,7 @@ Each has provider-specific configuration:
 **What's consistent:**
 - YAML structure (KRM)
 - Validation approach (proto-validate)
-- CLI commands (`planton pulumi up`)
+- CLI commands (`planton pulumi update`, `planton tofu apply`)
 - Deployment workflow (validate → deploy → outputs)
 
 **What's different:**
@@ -830,24 +830,28 @@ Even in Pulumi (Go), use familiar names:
 
 This reduces cognitive friction for engineers familiar with Terraform.
 
-#### 3. Environment Variable-Based Input
+#### 3. Typed Stack Input, Not Ad-Hoc Parsing
 
-The CLI exports the manifest as an environment variable:
-```bash
-export PLANTON_MANIFEST="$(cat manifest.yaml)"
-```
+The CLI hands each module a **stack input** — a typed document carrying the
+manifest (`target`) plus provisioner and provider configuration — and the
+module loads it through generated types, never by hand-parsing YAML.
 
-Modules read this variable:
+**Pulumi (Go):** the module calls the SDK loader, which reads the
+`planton:stack-input` Pulumi config key or, when unset, the
+`STACK_INPUT_YAML` (inline content) / `STACK_INPUT_YAML_FILE` (file path)
+environment variables — and validates the spec before any resource is
+created:
 
-**Pulumi (Go):**
 ```go
-manifestYaml := os.Getenv("PLANTON_MANIFEST")
-config := &PostgresKubernetes{}
-yaml.Unmarshal([]byte(manifestYaml), config)
+stackInput := &postgreskubernetesv1.PostgresKubernetesStackInput{}
+if err := stackinput.LoadStackInput(ctx, stackInput); err != nil {
+    return err
+}
 ```
 
-**Terraform (HCL):**
-The CLI transforms YAML to `.tfvars` format and passes as variables.
+**Terraform/OpenTofu (HCL):** the CLI generates a `.tfvars` file from the
+manifest (spec fields become variables), so the module consumes plain
+Terraform variables — no environment parsing at all.
 
 #### 4. Battle-Tested Defaults
 
@@ -884,17 +888,22 @@ Users override only what they need to customize.
 
 ```
 planton
-├── validate           # Validate manifest (proto-validate)
-├── pulumi            # Pulumi commands
-│   ├── up            # Deploy/update
-│   ├── destroy       # Tear down
-│   ├── preview       # Preview changes
-│   └── outputs       # Show outputs
-├── tofu              # Terraform/OpenTofu commands
-│   ├── apply         # Deploy/update
-│   ├── destroy       # Tear down
-│   └── plan          # Preview changes
-└── version           # Show version
+├── validate-manifest   # Validate manifest (proto-validate)
+├── validate-outputs    # Validate a module's output transformation overrides
+├── apply / init / refresh  # Auto-routed: picks the engine from the manifest's provisioner annotation
+├── pulumi              # Pulumi commands
+│   ├── init            # Initialize the stack
+│   ├── preview         # Preview changes
+│   ├── update          # Deploy/update
+│   ├── refresh         # Sync state with reality
+│   └── destroy         # Tear down
+├── tofu                # OpenTofu commands (terraform group mirrors it)
+│   ├── init            # Initialize backend/providers
+│   ├── plan            # Preview changes
+│   ├── apply           # Deploy/update
+│   ├── refresh         # Sync state with reality
+│   └── destroy         # Tear down
+└── version             # Show version
 ```
 
 ### Execution Flow
@@ -902,7 +911,7 @@ planton
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   User runs CLI command                     │
-│     planton pulumi up --manifest config.yaml        │
+│       planton pulumi update --manifest config.yaml          │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
@@ -922,31 +931,32 @@ planton
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. Map kind → Module                                        │
-│    - Lookup: PostgresKubernetes → kubernetes/postgres/v1    │
-│    - Determine module URL                                   │
+│ 3. Map kind → Module (kind registry)                        │
+│    - Provider, component, and declared version all derive   │
+│      from the kind's registry metadata — no lookup tables   │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 4. Clone/Pull Module                                        │
-│    - Check cache: ~/.planton/modules/               │
-│    - Git clone (if not cached)                              │
-│    - Git pull (if cached)                                   │
+│ 4. Resolve Module (first match wins)                        │
+│    - Explicit --module-dir (validated, fails loudly)        │
+│    - Current directory, when it contains a valid module     │
+│    - Released artifact from downloads.planton.dev (cached)  │
+│    - Staging clone of the git repo (fallback)               │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 5. Setup Environment                                        │
-│    - Export PLANTON_MANIFEST=<yaml>                 │
-│    - CD to module directory                                 │
+│ 5. Build Inputs                                             │
+│    - Tofu/Terraform: generate .tfvars from the manifest     │
+│    - Pulumi: write the stack input, point the module at it  │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 6. Delegate to IaC Engine                                   │
-│    - Pulumi: exec "pulumi up"                               │
-│    - Terraform: exec "terraform apply"                      │
+│    - Pulumi: automation API drives the module               │
+│    - Tofu/Terraform: exec plan/apply against the module     │
 │    - Stream output to user                                  │
 └────────────────────────┬────────────────────────────────────┘
                          │
@@ -960,39 +970,51 @@ planton
 
 ### Module Resolution
 
-**Mapping kind to module URL:**
+There is no hand-maintained kind→module table. The kind registry (proto
+metadata compiled into the CLI) declares each kind's provider, component
+name, and served API version, and every module path or artifact URL derives
+from those three facts.
 
-```go
-// Internal registry
-var moduleRegistry = map[string]string{
-  "PostgresKubernetes": "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/postgreskubernetes/v1alpha1/iac",
-  "MongodbAtlas": "github.com/plantonhq/planton/apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac",
-  "AwsRdsInstance": "github.com/plantonhq/planton/apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/iac",
-  // ... 100+ components
-}
-```
+**Resolution order (first match wins):**
 
-**Override with custom modules:**
+1. **`--module-dir <path>`** — an explicitly chosen local module. The
+   directory must actually be a module (`*.tf` files for tofu/terraform,
+   `Pulumi.yaml` for pulumi); anything else fails with an error naming the
+   path and what was missing. An explicit choice never falls through
+   silently.
+2. **The current directory** — probed as a convenience when no explicit
+   choice was made; running the CLI from inside a module just works.
+3. **Released artifact download (fast path)** — terraform module zips and
+   pre-built pulumi binaries from `downloads.planton.dev`, keyed by release
+   tag, component, and the kind's declared version. Released CLIs use this
+   path; dev builds skip it.
+4. **Staging clone (fallback)** — a git checkout of the modules repository
+   under `~/.planton/staging/`, used when no released artifact is available.
+
+**Custom modules:**
+
 ```bash
-planton pulumi up \
-  --manifest config.yaml \
-  --module-url github.com/myorg/custom-postgres-module
+# Point a deployment at any local module directory:
+planton tofu apply --manifest config.yaml --module-dir ./my-custom-module
+
+# Or run against a local checkout/fork of the modules repository:
+planton pulumi update --manifest config.yaml --local-module
+# (the checkout is found via --planton-git-repo or $PLANTON_GIT_REPO)
 ```
 
 ### Module Caching
 
-**Location:** `~/.planton/modules/<kind>/`
+**Locations:**
 
-**Flow:**
-1. CLI checks if module cached
-2. If not cached: `git clone <module-url>`
-3. If cached: `git pull` (update to latest)
-4. Use cached module
+| Content | Path |
+|---------|------|
+| Terraform module zips | `~/.planton/terraform/modules/{release}/` |
+| Pulumi pre-built binaries | `~/.planton/pulumi/binaries/{release}/` |
+| Staging git clone | `~/.planton/staging/` |
 
 **Benefits:**
-- Fast repeat deployments
-- Offline support (after first clone)
-- Version control (Git tags)
+- Fast repeat deployments (artifacts download once per release)
+- Cache keyed by release version — upgrading the CLI never serves stale modules
 
 ### Validation Integration
 
@@ -1070,11 +1092,10 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 5. **Local Testing**
    ```bash
    cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
-   export PLANTON_MANIFEST="$(cat ../hack/manifest.yaml)"
-   pulumi up
+   planton pulumi update --manifest ../hack/manifest.yaml --module-dir .
    ```
-   - Test Pulumi module locally
-   - Repeat for Terraform module
+   - Test Pulumi module locally (the CLI builds the stack input and drives the module)
+   - Repeat for the Terraform module with `planton tofu apply --manifest ../hack/manifest.yaml --module-dir ../tf`
 
 6. **Validation**
    ```bash
@@ -1201,27 +1222,40 @@ git push origin main
 **Scenario:** Your organization has specific security policies (always encrypt, always multi-AZ, specific tagging).
 
 **Approach:**
-1. Fork default module to private repository
+1. Copy the default module out of a repo checkout (or maintain a fork)
 2. Add organizational defaults
-3. Point CLI to custom module
+3. Deploy with the CLI pointed at your module
+4. Prove the outputs contract still holds
 
 **Example:**
 
 ```bash
-# Fork
+# Start from the default module
 git clone https://github.com/plantonhq/planton
-cd planton/apis/dev/planton/provider/aws/awsrdsinstance/v1alpha1/iac/pulumi
-# Edit main.go to add organizational defaults
+cp -R planton/apis/dev/planton/provider/aws/awsrdsinstance/*/iac/tf my-rds-module
+cd my-rds-module
+# Edit to add organizational defaults, then version it in your own repository
 
-# Push to your private repo
-git remote add myorg git@github.com:myorg/custom-aws-rds-module.git
-git push myorg main
-
-# Use custom module
-planton pulumi up \
+# Deploy with your module (same manifest, your deployment logic)
+planton tofu apply \
   --manifest rds.yaml \
-  --module-url github.com/myorg/custom-aws-rds-module
+  --module-dir ./my-rds-module
+
+# Prove the module still satisfies the component's outputs contract
+planton validate-outputs --kind AwsRdsInstance --module-dir ./my-rds-module
 ```
+
+When a custom module's raw outputs use different names than the official
+one, ship an output transformation alongside it — a declarative
+`output_transform.yaml` mapping raw output names to the component's outputs
+schema, or a `transform-outputs` executable for logic a mapping cannot
+express. The CLI discovers either automatically in the module directory, and
+`planton validate-outputs` checks it (add `--sample-outputs` for a full
+dry-run).
+
+**Working directly in a repo checkout instead:** pass `--local-module` and
+point `--planton-git-repo` (or `$PLANTON_GIT_REPO`) at the checkout — the CLI
+derives the module directory for the manifest's kind from the tree.
 
 ### Pattern 2: Reusing APIs for Internal Tooling
 
@@ -1306,13 +1340,13 @@ jobs:
       - name: Validate Manifests
         run: |
           for manifest in infrastructure/*.yaml; do
-            planton validate --manifest $manifest
+            planton validate-manifest $manifest
           done
       
       - name: Deploy
         run: |
           for manifest in infrastructure/*.yaml; do
-            planton pulumi up \
+            planton pulumi update \
               --manifest $manifest \
               --stack prod \
               --yes  # Non-interactive
@@ -1328,33 +1362,38 @@ jobs:
 **Scenario:** Your team prefers Python/TypeScript over Go for IaC.
 
 **Approach:**
-1. Install proto SDKs in your preferred language
-2. Write custom module consuming the APIs
-3. Point CLI to your module
+1. Write a Pulumi module in any language Pulumi supports
+2. Read the stack input the CLI hands every pulumi module — the
+   `planton:stack-input` Pulumi config key, or the `STACK_INPUT_YAML` /
+   `STACK_INPUT_YAML_FILE` environment variables when the config key is
+   unset; the manifest is its `target` field
+3. Deploy with `--module-dir` pointed at your module
 
 **Example (Python Pulumi module):**
 
 ```python
-# custom_postgres_module.py
+# __main__.py — deployed with:
+#   planton pulumi update --manifest postgres.yaml --module-dir ./my-postgres-module
 import os
 import yaml
 import pulumi
 import pulumi_kubernetes as k8s
-from planton.apis.dev.planton.provider.kubernetes.workload.postgreskubernetes.v1 import api_pb2
 
-# Read manifest from environment
-manifest_yaml = os.getenv("PLANTON_MANIFEST")
-manifest_dict = yaml.safe_load(manifest_yaml)
+# Load the stack input; the manifest is its `target` field
+config = pulumi.Config("planton")
+stack_input_yaml = config.get("stack-input") or os.getenv("STACK_INPUT_YAML")
+if not stack_input_yaml:
+    with open(os.environ["STACK_INPUT_YAML_FILE"]) as f:
+        stack_input_yaml = f.read()
 
-# Parse into proto
-config = api_pb2.PostgresKubernetes()
-# ... populate from manifest_dict ...
+stack_input = yaml.safe_load(stack_input_yaml)
+target = stack_input["target"]
 
 # Deploy using Pulumi (Python style)
 namespace = k8s.core.v1.Namespace(
-    config.metadata.name,
+    target["metadata"]["name"],
     metadata=k8s.meta.v1.ObjectMetaArgs(
-        name=config.metadata.name
+        name=target["metadata"]["name"]
     )
 )
 
@@ -1366,16 +1405,22 @@ postgres = k8s.helm.v3.Release(
     ),
     namespace=namespace.metadata.name,
     values={
-        "replicas": config.spec.container.replicas,
+        "replicas": target["spec"]["container"]["replicas"],
         "resources": {
             "limits": {
-                "cpu": config.spec.container.resources.limits.cpu,
-                "memory": config.spec.container.resources.limits.memory
+                "cpu": target["spec"]["container"]["resources"]["limits"]["cpu"],
+                "memory": target["spec"]["container"]["resources"]["limits"]["memory"]
             }
         }
     }
 )
 ```
+
+The manifest inside the stack input is already validated by the CLI before
+the module runs. For Terraform-preferring teams the same pattern needs no
+code at all: the CLI generates `.tfvars` from the manifest, so any HCL module
+whose variables match the component's generated `variables.tf` works with
+`--module-dir`.
 
 ---
 
@@ -1509,16 +1554,15 @@ go test -v
 Test IaC modules locally:
 ```bash
 cd apis/dev/planton/provider/atlas/mongodbatlas/v1alpha1/iac/pulumi
-export PLANTON_MANIFEST="$(cat ../hack/manifest.yaml)"
-pulumi preview
+planton pulumi preview --manifest ../hack/manifest.yaml --module-dir .
 ```
 
 **3. End-to-End Tests**
 
 Test full deployment workflow:
 ```bash
-planton validate --manifest test.yaml
-planton pulumi up --manifest test.yaml --stack test
+planton validate-manifest test.yaml
+planton pulumi update --manifest test.yaml --stack test
 planton pulumi destroy --manifest test.yaml --stack test
 ```
 

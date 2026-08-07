@@ -14,6 +14,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/version"
 	"github.com/plantonhq/planton/internal/cli/workspace"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/downloads"
 	"github.com/plantonhq/planton/pkg/fileutil"
 )
@@ -97,12 +98,22 @@ func BuildBinaryName(componentName string) string {
 
 // BuildDownloadURL constructs the Cloudflare R2 download URL for a platform-specific component binary.
 //
+// The version segment of the artifact key follows the kind's declared version
+// in the registry — never a literal. Known skew edge: when releaseVersion is
+// an OLDER tag whose registry declared a different version for this kind, the
+// derived segment misses that tag's artifact; the download 404s and the caller
+// falls back to staging (a git checkout of that tag), which self-corrects.
+//
 // Examples (on darwin/arm64):
 //
 //	BuildDownloadURL("AwsEcsService", "v0.3.50")
-//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/pulumi/awsecsservice_darwin_arm64.gz
-func BuildDownloadURL(componentName, releaseVersion string) string {
-	return downloads.BuildPulumiDownloadURL(componentName, releaseVersion, GetPlatformSuffix())
+//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/pulumi/awsecsservice/v1alpha1_darwin_arm64.gz
+func BuildDownloadURL(componentName, releaseVersion string) (string, error) {
+	versionDir, err := crkreflect.ComponentVersionDir(componentName)
+	if err != nil {
+		return "", errors.Wrapf(err, "cannot build the download URL for the %s pulumi module", componentName)
+	}
+	return downloads.BuildPulumiDownloadURL(componentName, versionDir, releaseVersion, GetPlatformSuffix()), nil
 }
 
 // IsBinaryCached checks if a binary is already cached
@@ -180,7 +191,10 @@ func DownloadBinary(componentName, releaseVersion string) error {
 	}
 
 	// Build download URL - the release version IS the tag
-	downloadURL := BuildDownloadURL(componentName, releaseVersion)
+	downloadURL, err := BuildDownloadURL(componentName, releaseVersion)
+	if err != nil {
+		return err
+	}
 
 	cliprint.PrintInfo(fmt.Sprintf("Downloading from: %s", downloadURL))
 

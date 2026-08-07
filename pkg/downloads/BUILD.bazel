@@ -1,8 +1,14 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "downloads",
     srcs = ["downloads.go"],
     importpath = "github.com/plantonhq/planton/pkg/downloads",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "downloads_test",
+    srcs = ["downloads_test.go"],
+    embed = [":downloads"],
 )

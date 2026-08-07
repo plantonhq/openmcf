@@ -59,8 +59,11 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		ui.BackendConfigSummary(backendCfg)
 	}
 
-	// Display module path
-	cliprint.PrintModulePath(ctx.ModuleDir)
+	// Display module path (empty means no explicit choice — the resolver
+	// decides between the current directory, download, and staging)
+	if ctx.ModuleDir != "" {
+		cliprint.PrintModulePath(ctx.ModuleDir)
+	}
 
 	cliprint.PrintHandoff(binary.DisplayName())
 

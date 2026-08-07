@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "pulumibinary",
@@ -12,8 +12,19 @@ go_library(
         "//internal/cli/cliprint",
         "//internal/cli/version",
         "//internal/cli/workspace",
+        "//pkg/crkreflect",
         "//pkg/downloads",
         "//pkg/fileutil",
         "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "pulumibinary_test",
+    srcs = ["binary_test.go"],
+    embed = [":pulumibinary"],
+    deps = [
+        "//pkg/crkreflect",
+        "//pkg/downloads",
     ],
 )

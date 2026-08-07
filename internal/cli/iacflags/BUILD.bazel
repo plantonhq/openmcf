@@ -14,7 +14,6 @@ go_library(
     deps = [
         "//apis/dev/planton/shared/iac/terraform",
         "//internal/cli/flag",
-        "@com_github_sirupsen_logrus//:logrus",
         "@com_github_spf13_cobra//:cobra",
     ],
 )

@@ -13,6 +13,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/version"
 	"github.com/plantonhq/planton/internal/cli/workspace"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/downloads"
 	"github.com/plantonhq/planton/pkg/fileutil"
 )
@@ -69,12 +70,22 @@ func GetModulePath(componentName, releaseVersion string) (string, error) {
 
 // BuildDownloadURL constructs the Cloudflare R2 download URL for a Terraform module zip.
 //
+// The version segment of the artifact key follows the kind's declared version
+// in the registry — never a literal. Known skew edge: when releaseVersion is
+// an OLDER tag whose registry declared a different version for this kind, the
+// derived segment misses that tag's artifact; the download 404s and the caller
+// falls back to staging (a git checkout of that tag), which self-corrects.
+//
 // Examples:
 //
 //	BuildDownloadURL("AwsEcsService", "v0.3.50")
-//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/terraform/awsecsservice.zip
-func BuildDownloadURL(componentName, releaseVersion string) string {
-	return downloads.BuildTerraformDownloadURL(componentName, releaseVersion)
+//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/terraform/awsecsservice/v1alpha1.zip
+func BuildDownloadURL(componentName, releaseVersion string) (string, error) {
+	versionDir, err := crkreflect.ComponentVersionDir(componentName)
+	if err != nil {
+		return "", errors.Wrapf(err, "cannot build the download URL for the %s terraform module", componentName)
+	}
+	return downloads.BuildTerraformDownloadURL(componentName, versionDir, releaseVersion), nil
 }
 
 // IsModuleCached checks if a module is already cached and has .tf files
@@ -152,7 +163,10 @@ func DownloadAndExtractZip(componentName, releaseVersion string) error {
 	}
 
 	// Build download URL - the release version IS the tag
-	downloadURL := BuildDownloadURL(componentName, releaseVersion)
+	downloadURL, err := BuildDownloadURL(componentName, releaseVersion)
+	if err != nil {
+		return err
+	}
 
 	cliprint.PrintInfo(fmt.Sprintf("Downloading from: %s", downloadURL))
 

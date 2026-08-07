@@ -1,22 +1,18 @@
 package iacflags
 
 import (
-	"os"
-
 	"github.com/plantonhq/planton/internal/cli/flag"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 // AddExecutionFlags adds common execution-related flags for IaC commands.
 func AddExecutionFlags(cmd *cobra.Command) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current working directory")
-	}
-
-	cmd.PersistentFlags().String(string(flag.ModuleDir), pwd,
-		"directory containing the provisioner module")
+	// The flag default is EMPTY, not the current directory: an empty value
+	// means "no explicit choice", which lets the module resolver distinguish
+	// a user-chosen directory (validated loudly) from the implicit
+	// current-directory probe (falls through quietly to download/staging).
+	cmd.PersistentFlags().String(string(flag.ModuleDir), "",
+		"directory containing the provisioner module (defaults to the current directory when it contains a valid module)")
 
 	cmd.PersistentFlags().String(string(flag.ModuleVersion), "",
 		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+

@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "tofuzip",
@@ -9,8 +9,20 @@ go_library(
         "//internal/cli/cliprint",
         "//internal/cli/version",
         "//internal/cli/workspace",
+        "//pkg/crkreflect",
         "//pkg/downloads",
         "//pkg/fileutil",
         "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "tofuzip_test",
+    srcs = ["zip_test.go"],
+    embed = [":tofuzip"],
+    deps = [
+        "//internal/cli/version",
+        "//pkg/crkreflect",
+        "//pkg/downloads",
     ],
 )

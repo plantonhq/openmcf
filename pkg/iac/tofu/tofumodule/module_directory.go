@@ -26,39 +26,25 @@ type GetModulePathResult struct {
 }
 
 // GetModulePath returns the path to the Terraform/OpenTofu module directory.
-// If moduleDir is provided and is a valid Terraform module directory, it returns that.
-// Otherwise, it tries to download the module zip from GitHub releases (fast path).
-// If zip download fails or is unavailable, it falls back to the staging area (clone repo).
+// Local resolution comes first (see resolveLocalModuleDir for the explicit
+// vs implicit semantics). Otherwise, it tries to download the module zip from
+// the release artifacts (fast path). If zip download fails or is unavailable,
+// it falls back to the staging area (clone repo).
 // If moduleVersion is provided, it uses that version for the download/checkout.
 // The returned GetModulePathResult includes a cleanup function that should be called after execution
 // unless noCleanup is true.
 func GetModulePath(moduleDir, kindName, moduleVersion string, noCleanup bool) (*GetModulePathResult, error) {
-
-	// If the module directory is provided, check if it is a valid terraform module directory
-	if moduleDir != "" {
-		isTerraformModuleDir, err := isTerraformModuleDirectory(moduleDir)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to check if %s is a valid terraform module directory", moduleDir)
-		}
-
-		// If the module directory is a valid terraform module directory, return the module directory.
-		// Normalize to an absolute path: downstream steps build the generated var-file path by
-		// joining this directory, then execute tofu with its working directory SET to this
-		// directory -- so a caller-relative path would make the child process resolve the
-		// var-file argument against the module dir instead of the caller's CWD and fail with
-		// "variables file does not exist".
-		if isTerraformModuleDir {
-			absModuleDir, err := filepath.Abs(moduleDir)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to resolve absolute path for module directory %s", moduleDir)
-			}
-			return &GetModulePathResult{
-				ModulePath:    absModuleDir,
-				RepoPath:      absModuleDir,
-				CleanupFunc:   func() error { return nil },
-				ShouldCleanup: false,
-			}, nil
-		}
+	localModuleDir, err := resolveLocalModuleDir(moduleDir)
+	if err != nil {
+		return nil, err
+	}
+	if localModuleDir != "" {
+		return &GetModulePathResult{
+			ModulePath:    localModuleDir,
+			RepoPath:      localModuleDir,
+			CleanupFunc:   func() error { return nil },
+			ShouldCleanup: false,
+		}, nil
 	}
 
 	// Determine target version - use moduleVersion if provided, otherwise CLI version
@@ -178,6 +164,59 @@ func getModulePathFromStaging(kindName, moduleVersion string, noCleanup bool) (*
 		CleanupFunc:   cleanupFunc,
 		ShouldCleanup: !noCleanup,
 	}, nil
+}
+
+// resolveLocalModuleDir decides whether execution runs from a local module
+// directory. The two inputs get opposite failure behavior on purpose:
+//
+//   - moduleDir empty means the user made no explicit choice, so the current
+//     directory is probed as a convenience — running the CLI from inside a
+//     module just works — and anything else falls through quietly to the
+//     download/staging paths.
+//   - moduleDir non-empty is a user decision (--module-dir, or a directory
+//     derived by --local-module); a directory that is not a usable module
+//     must fail loudly here, because falling through would silently deploy
+//     the official module in place of the one the user pointed at.
+//
+// Returns the absolute module directory, or "" when resolution should fall
+// through to download/staging.
+func resolveLocalModuleDir(moduleDir string) (string, error) {
+	explicit := moduleDir != ""
+	if !explicit {
+		pwd, err := os.Getwd()
+		if err != nil {
+			return "", nil
+		}
+		moduleDir = pwd
+	}
+
+	isTerraformModuleDir, err := isTerraformModuleDirectory(moduleDir)
+	if err != nil {
+		if !explicit {
+			return "", nil
+		}
+		return "", errors.Wrapf(err,
+			"cannot read the module directory %s — check that it exists and is readable, or drop --module-dir to use the official module", moduleDir)
+	}
+	if !isTerraformModuleDir {
+		if !explicit {
+			return "", nil
+		}
+		return "", errors.Errorf(
+			"the module directory %s contains no .tf files — an OpenTofu/Terraform module needs at least one; point --module-dir at the folder holding the module's .tf files, or drop the flag to use the official module", moduleDir)
+	}
+
+	// Normalize to an absolute path: downstream steps build the generated
+	// var-file path by joining this directory, then execute tofu with its
+	// working directory SET to this directory -- so a caller-relative path
+	// would make the child process resolve the var-file argument against the
+	// module dir instead of the caller's CWD and fail with "variables file
+	// does not exist".
+	absModuleDir, err := filepath.Abs(moduleDir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to resolve absolute path for module directory %s", moduleDir)
+	}
+	return absModuleDir, nil
 }
 
 // GetModulePathLegacy is the legacy function signature for backward compatibility.
