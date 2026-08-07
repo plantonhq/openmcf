@@ -112,10 +112,10 @@ message AzureStorageAccountSpec {
   optional bool https_traffic_only_enabled = 10 [(dev.planton.shared.options.default) = "true"];
 
   // The minimum TLS version the account accepts. Unspecified applies
-  // TLS1_2 (Azure's default since 2024 and the compliance floor); the
-  // older versions exist only for legacy clients that cannot negotiate
-  // TLS 1.2.
-  AzureStorageAccountMinTlsVersion min_tls_version = 11;
+  // TLS1_2 (Azure's default since 2024, the compliance floor, and the
+  // only floor still provisionable -- the legacy 1.0/1.1 floors are
+  // retired; see the enum).
+  AzureStorageAccountMinTlsVersion min_tls_version = 11 [(buf.validate.field).enum.defined_only = true];
 
   // Whether the account's shared access keys (and SAS tokens signed by
   // them) are accepted for authorization. Azure's default is true.
@@ -131,12 +131,13 @@ message AzureStorageAccountSpec {
   bool default_to_oauth_authentication = 13;
 
   // Whether individual containers may opt into public (anonymous) read
-  // access. Azure's (and the provider's) current default is true --
-  // which only PERMITS per-container public access; each container is
-  // still private unless its own access type says otherwise. Set false
-  // to make anonymous access unrepresentable account-wide, the
-  // recommended posture for anything that isn't a public website/CDN
-  // origin.
+  // access. This only PERMITS per-container public access; each
+  // container is still private unless its own access type says
+  // otherwise. Azure and the provider default to false; this spec
+  // deliberately defaults to true so a container-level access type
+  // works without a second account-level switch. Set false to make
+  // anonymous access unrepresentable account-wide, the recommended
+  // posture for anything that isn't a public website/CDN origin.
   optional bool allow_nested_items_to_be_public = 14 [(dev.planton.shared.options.default) = "true"];
 
   // Whether the account's public endpoints accept traffic at all.
@@ -168,7 +169,7 @@ message AzureStorageAccountSpec {
   bool sftp_enabled = 19;
 
   // Whether object replication may cross Microsoft Entra tenants.
-  // Azure's (and the provider's v4) default is false; enable only when
+  // Azure's (and the provider's) default is false; enable only when
   // an object-replication policy genuinely spans tenants.
   bool cross_tenant_replication_enabled = 20;
 
@@ -1229,16 +1230,16 @@ enum AzureStorageAccountAccessTier {
 
 // The minimum TLS version for incoming requests.
 enum AzureStorageAccountMinTlsVersion {
+  // Azure retired the TLS 1.0 and 1.1 floors; the values that carried
+  // them are permanently reserved so the slots are never reused.
+  reserved 1, 2;
+  reserved "TLS1_0", "TLS1_1";
+
   // Not specified: TLS1_2 (Azure's default and the compliance floor).
   azure_storage_account_min_tls_version_unspecified = 0;
 
-  // TLS 1.0 -- legacy clients only; fails most compliance scans.
-  TLS1_0 = 1;
-
-  // TLS 1.1 -- legacy clients only; fails most compliance scans.
-  TLS1_1 = 2;
-
-  // TLS 1.2 -- the floor for new deployments.
+  // TLS 1.2 -- the floor for new deployments and the only floor Azure
+  // still accepts.
   TLS1_2 = 3;
 }
 

@@ -86,14 +86,8 @@ type AzureCosmosdbAccountMinimalTlsVersion int32
 const (
 	// Not specified: TLS 1.2 -- Azure's default since April 2023.
 	AzureCosmosdbAccountMinimalTlsVersion_azure_cosmosdb_account_minimal_tls_version_unspecified AzureCosmosdbAccountMinimalTlsVersion = 0
-	// Accept TLS 1.0 and above -- legacy clients only; Azure is retiring
-	// this floor. Azure wire value: "Tls".
-	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_0 AzureCosmosdbAccountMinimalTlsVersion = 1
-	// Accept TLS 1.1 and above -- legacy clients only; Azure is retiring
-	// this floor. Azure wire value: "Tls11".
-	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_1 AzureCosmosdbAccountMinimalTlsVersion = 2
-	// Accept TLS 1.2 and above -- the default and recommended floor.
-	// Azure wire value: "Tls12".
+	// Accept TLS 1.2 and above -- the default and the only floor Azure
+	// still accepts. Azure wire value: "Tls12".
 	AzureCosmosdbAccountMinimalTlsVersion_TLS_1_2 AzureCosmosdbAccountMinimalTlsVersion = 3
 )
 
@@ -101,14 +95,10 @@ const (
 var (
 	AzureCosmosdbAccountMinimalTlsVersion_name = map[int32]string{
 		0: "azure_cosmosdb_account_minimal_tls_version_unspecified",
-		1: "TLS_1_0",
-		2: "TLS_1_1",
 		3: "TLS_1_2",
 	}
 	AzureCosmosdbAccountMinimalTlsVersion_value = map[string]int32{
 		"azure_cosmosdb_account_minimal_tls_version_unspecified": 0,
-		"TLS_1_0": 1,
-		"TLS_1_1": 2,
 		"TLS_1_2": 3,
 	}
 )
@@ -984,8 +974,8 @@ type AzureCosmosdbAccountSpec struct {
 	LocalAuthenticationEnabled *bool `protobuf:"varint,24,opt,name=local_authentication_enabled,json=localAuthenticationEnabled,proto3,oneof" json:"local_authentication_enabled,omitempty"`
 	// The minimum TLS version the account's endpoints accept. Unset means
 	// TLS 1.2 -- Azure's own default for all accounts since April 2023 and
-	// the recommended floor. The 1.0/1.1 values exist only to keep legacy
-	// clients connecting during a migration; Azure is retiring them.
+	// the only floor Azure still provisions (the legacy 1.0/1.1 floors are
+	// retired; see the enum).
 	MinimalTlsVersion AzureCosmosdbAccountMinimalTlsVersion `protobuf:"varint,25,opt,name=minimal_tls_version,json=minimalTlsVersion,proto3,enum=dev.planton.azure.azurecosmosdbaccount.v1alpha1.AzureCosmosdbAccountMinimalTlsVersion" json:"minimal_tls_version,omitempty"`
 	// Let trusted Azure services (e.g. Azure Synapse, Azure Data Factory)
 	// bypass the account's network rules.
@@ -2224,12 +2214,10 @@ const file_catalog_azure_azurecosmosdbaccount_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18AzureCosmosdbAccountKind\x12+\n" +
 	"'azure_cosmosdb_account_kind_unspecified\x10\x00\x12\x16\n" +
 	"\x12GLOBAL_DOCUMENT_DB\x10\x01\x12\f\n" +
-	"\bMONGO_DB\x10\x02*\x8a\x01\n" +
+	"\bMONGO_DB\x10\x02*\x8e\x01\n" +
 	"%AzureCosmosdbAccountMinimalTlsVersion\x12:\n" +
 	"6azure_cosmosdb_account_minimal_tls_version_unspecified\x10\x00\x12\v\n" +
-	"\aTLS_1_0\x10\x01\x12\v\n" +
-	"\aTLS_1_1\x10\x02\x12\v\n" +
-	"\aTLS_1_2\x10\x03*\xb5\x01\n" +
+	"\aTLS_1_2\x10\x03\"\x04\b\x01\x10\x01\"\x04\b\x02\x10\x02*\aTLS_1_0*\aTLS_1_1*\xb5\x01\n" +
 	"$AzureCosmosdbAccountConsistencyLevel\x128\n" +
 	"4azure_cosmosdb_account_consistency_level_unspecified\x10\x00\x12\n" +
 	"\n" +

@@ -13,7 +13,7 @@ composable `AzureAksNodePool` resource referencing this cluster's
 
 ## Key Features
 
-- **Full azurerm v4.80 surface** — network profile, AAD RBAC, API-server
+- **Full azurerm v5 surface** — network profile, AAD RBAC, API-server
   access controls, maintenance windows, upgrade channels, OIDC issuer,
   workload identity, add-ons (OMS, Key Vault CSI, Defender, Istio, CSI
   storage drivers, KEDA/VPA, etcd CMK), bootstrap/NAP profiles, and more

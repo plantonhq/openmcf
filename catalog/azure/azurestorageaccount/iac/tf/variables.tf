@@ -51,8 +51,8 @@ variable "spec" {
     # Whether plaintext HTTP is rejected (Azure's default is true).
     https_traffic_only_enabled = optional(bool, true)
 
-    # The minimum TLS version (TLS1_0, TLS1_1, TLS1_2). Unset means
-    # TLS1_2.
+    # The minimum TLS version (TLS1_2 -- the only floor Azure still
+    # accepts). Unset means TLS1_2.
     min_tls_version = optional(string)
 
     # Whether shared access keys authorize requests (Azure's default is
@@ -63,8 +63,9 @@ variable "spec" {
     # data (Azure's default is false).
     default_to_oauth_authentication = optional(bool, false)
 
-    # Whether containers may opt into anonymous public access (Azure's
-    # current default is true; this only PERMITS it per container).
+    # Whether containers may opt into anonymous public access (this only
+    # PERMITS it per container; the spec deliberately defaults to true
+    # while Azure and the provider default to false).
     allow_nested_items_to_be_public = optional(bool, true)
 
     # Whether the account's public endpoints accept traffic at all.

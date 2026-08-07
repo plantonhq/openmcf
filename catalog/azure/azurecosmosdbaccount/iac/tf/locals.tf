@@ -159,9 +159,9 @@ locals {
     "FULL_FIDELITY" = "FullFidelity"
   }
 
+  # Tls12 is the only floor Azure still provisions; the legacy Tls/Tls11
+  # floors are retired and no longer exist on the spec enum.
   minimal_tls_version_map = {
-    "TLS_1_0" = "Tls"
-    "TLS_1_1" = "Tls11"
     "TLS_1_2" = "Tls12"
   }
 

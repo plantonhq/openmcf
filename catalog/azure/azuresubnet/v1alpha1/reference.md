@@ -168,6 +168,13 @@ Common values: "Microsoft.Storage", "Microsoft.Sql",
 "Microsoft.AzureActiveDirectory". ("Microsoft.Storage.Global" extends
 storage endpoints across regions but is subscription-feature-gated.)
 
+The provider's per-endpoint network_identifier (associating a
+NetworkIdentifier resource with an individual endpoint) is
+deliberately not modeled: it would turn this list of service names
+into a list of objects for a niche preview capability, and the
+Pulumi engine's SDK cannot express it. Revisit when the capability
+matures and both engines carry it.
+
 ### spec.serviceEndpointPolicyIds
 
 `[]string`
@@ -298,6 +305,11 @@ table's user-defined routes for everything in the subnet -- the
 firewall-egress and forced-tunneling seam. Omit for Azure's default
 routing. The attachment is declared here (not on the table) because
 one table serves many subnets; detaching is just removing this field.
+The modules realize this attachment (and the NSG's) through the
+dedicated association resources; the provider's write-only
+route_table_id_wo / network_security_group_id_wo arguments on the
+subnet itself are deliberately not modeled -- they are an
+alternative set-path for the same attachments, not extra capability.
 
 - references: AzureRouteTable (`status.outputs.route_table_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureRouteTable, name: <that resource's name>, fieldPath: status.outputs.route_table_id}} -- a bare string does not parse

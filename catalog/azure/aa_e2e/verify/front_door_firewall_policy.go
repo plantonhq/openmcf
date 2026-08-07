@@ -11,7 +11,7 @@ import (
 // policy. The policy is a Microsoft.Network type
 // (frontDoorWebApplicationFirewallPolicies) -- NOT a Microsoft.Cdn
 // profile child -- so the CDN family version does not apply; this is
-// the GA version line the azurerm v4.80 provider builds against.
+// a stable GA version line for that type.
 const frontDoorWafAPIVersion = "2025-03-01"
 
 // frontDoorFirewallPolicyVerifier verifies an

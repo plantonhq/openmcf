@@ -268,7 +268,11 @@ login. The login is fixed once set.
 The administrator password (8-128 characters, from at least three of:
 uppercase, lowercase, digits, special characters). Can be a literal
 value or a reference to another resource's output. Required for a
-fresh (DEFAULT) server; updatable in place.
+fresh (DEFAULT) server; updatable in place. The provider's write-only
+variant (administrator_password_wo + its version counter) is
+deliberately not modeled: it is an ephemeral input that duplicates
+this field, and secret values here are already reference-resolved at
+deploy time rather than stored in the manifest.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 

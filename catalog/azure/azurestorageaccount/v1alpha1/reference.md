@@ -470,16 +470,16 @@ this setting by design).
 `enum`
 
 The minimum TLS version the account accepts. Unspecified applies
-TLS1_2 (Azure's default since 2024 and the compliance floor); the
-older versions exist only for legacy clients that cannot negotiate
-TLS 1.2.
+TLS1_2 (Azure's default since 2024, the compliance floor, and the
+only floor still provisionable -- the legacy 1.0/1.1 floors are
+retired; see the enum).
+
+- rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
 - `azure_storage_account_min_tls_version_unspecified` -- Not specified: TLS1_2 (Azure's default and the compliance floor).
-- `TLS1_0` -- TLS 1.0 -- legacy clients only; fails most compliance scans.
-- `TLS1_1` -- TLS 1.1 -- legacy clients only; fails most compliance scans.
-- `TLS1_2` -- TLS 1.2 -- the floor for new deployments.
+- `TLS1_2` -- TLS 1.2 -- the floor for new deployments and the only floor Azure still accepts.
 
 ### spec.sharedAccessKeyEnabled
 
@@ -507,12 +507,13 @@ it does not disable keys (that is shared_access_key_enabled).
 `bool` · optional (explicit presence)
 
 Whether individual containers may opt into public (anonymous) read
-access. Azure's (and the provider's) current default is true --
-which only PERMITS per-container public access; each container is
-still private unless its own access type says otherwise. Set false
-to make anonymous access unrepresentable account-wide, the
-recommended posture for anything that isn't a public website/CDN
-origin.
+access. This only PERMITS per-container public access; each
+container is still private unless its own access type says
+otherwise. Azure and the provider default to false; this spec
+deliberately defaults to true so a container-level access type
+works without a second account-level switch. Set false to make
+anonymous access unrepresentable account-wide, the recommended
+posture for anything that isn't a public website/CDN origin.
 
 - default: `true`
 
@@ -596,7 +597,7 @@ Lake Gen2 feature) and bills per enabled hour.
 `bool`
 
 Whether object replication may cross Microsoft Entra tenants.
-Azure's (and the provider's v4) default is false; enable only when
+Azure's (and the provider's) default is false; enable only when
 an object-replication policy genuinely spans tenants.
 
 ### spec.isHnsEnabled

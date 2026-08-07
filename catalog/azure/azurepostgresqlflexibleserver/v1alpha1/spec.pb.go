@@ -483,7 +483,11 @@ type AzurePostgresqlFlexibleServerSpec struct {
 	// uppercase, lowercase, digits, special characters). Can be a literal
 	// value or a reference to another resource's output. Required for a
 	// fresh server with password auth enabled; must be OMITTED when
-	// password auth is disabled. Updatable in place.
+	// password auth is disabled. Updatable in place. The provider's
+	// write-only variant (administrator_password_wo + its version counter)
+	// is deliberately not modeled: it is an ephemeral input that duplicates
+	// this field, and secret values here are already reference-resolved at
+	// deploy time rather than stored in the manifest.
 	AdministratorPassword *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=administrator_password,json=administratorPassword,proto3" json:"administrator_password,omitempty"`
 	// The PostgreSQL major version. Unspecified applies "16" (the current
 	// production standard). In-place upgrades to a HIGHER major version are

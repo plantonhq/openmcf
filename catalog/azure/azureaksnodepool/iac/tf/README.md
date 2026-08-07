@@ -5,7 +5,7 @@
 This Terraform module provisions an AKS node pool using the `azurerm`
 provider (`~> 5.0`). It creates a single
 `azurerm_kubernetes_cluster_node_pool` attached to an existing cluster by
-ARM ID -- the full azurerm v4.80 surface: mode, OS, spot economics,
+ARM ID -- the full azurerm v5 surface: mode, OS, spot economics,
 autoscaling, disks, GPU, kubelet/Linux OS tuning, and upgrade rollout
 control.
 

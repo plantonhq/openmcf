@@ -773,17 +773,15 @@ in the stack outputs stop authenticating when this is false.
 
 The minimum TLS version the account's endpoints accept. Unset means
 TLS 1.2 -- Azure's own default for all accounts since April 2023 and
-the recommended floor. The 1.0/1.1 values exist only to keep legacy
-clients connecting during a migration; Azure is retiring them.
+the only floor Azure still provisions (the legacy 1.0/1.1 floors are
+retired; see the enum).
 
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
 - `azure_cosmosdb_account_minimal_tls_version_unspecified` -- Not specified: TLS 1.2 -- Azure's default since April 2023.
-- `TLS_1_0` -- Accept TLS 1.0 and above -- legacy clients only; Azure is retiring this floor. Azure wire value: "Tls".
-- `TLS_1_1` -- Accept TLS 1.1 and above -- legacy clients only; Azure is retiring this floor. Azure wire value: "Tls11".
-- `TLS_1_2` -- Accept TLS 1.2 and above -- the default and recommended floor. Azure wire value: "Tls12".
+- `TLS_1_2` -- Accept TLS 1.2 and above -- the default and the only floor Azure still accepts. Azure wire value: "Tls12".
 
 ### spec.networkAclBypassForAzureServices
 

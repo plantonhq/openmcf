@@ -105,8 +105,8 @@ variable "spec" {
     access_key_metadata_writes_enabled = optional(bool, true)
     local_authentication_enabled       = optional(bool, true)
 
-    # The minimum TLS version enum name (TLS_1_0 / TLS_1_1 / TLS_1_2);
-    # empty means Azure's TLS 1.2 default.
+    # The minimum TLS version enum name (TLS_1_2 -- the only floor Azure
+    # still accepts); empty means Azure's TLS 1.2 default.
     minimal_tls_version = optional(string, "")
 
     network_acl_bypass_for_azure_services = optional(bool, false)

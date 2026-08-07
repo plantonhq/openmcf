@@ -541,9 +541,9 @@ func Resources(ctx *pulumi.Context, stackInput *azurestorageaccountv1alpha1.Azur
 		}
 	}
 
-	// Static website hosting, via the standalone resource (the inline
-	// static_website block is deprecated for removal in azurerm v5). The
-	// service auto-creates the $web container; upload site content there.
+	// Static website hosting, via the standalone resource (azurerm
+	// removed the inline static_website block in v5). The service
+	// auto-creates the $web container; upload site content there.
 	if spec.StaticWebsite != nil {
 		staticWebsiteArgs := &storage.AccountStaticWebsiteArgs{
 			StorageAccountId: createdAccount.ID(),
