@@ -128,8 +128,8 @@ variable "spec" {
     # resolved user-assigned-identity ARM ID (must be attached via
     # identity).
     customer_managed_key = optional(object({
-      key_vault_key_id           = string
-      user_assigned_identity_id  = string
+      key_vault_key_id          = string
+      user_assigned_identity_id = string
     }))
 
     # Data-plane network access control. default_action arrives as the
@@ -206,8 +206,8 @@ variable "spec" {
     # string (MICROSOFT_ROUTING, INTERNET_ROUTING); unset means
     # Microsoft routing.
     routing = optional(object({
-      choice                     = optional(string)
-      publish_internet_endpoints = optional(bool, false)
+      choice                      = optional(string)
+      publish_internet_endpoints  = optional(bool, false)
       publish_microsoft_endpoints = optional(bool, false)
     }))
 
@@ -236,9 +236,9 @@ variable "spec" {
     # Account-level immutability (WORM) policy. state arrives as the
     # spec enum's name string (DISABLED, UNLOCKED, LOCKED).
     immutability_policy = optional(object({
-      state                          = string
-      period_since_creation_in_days  = number
-      allow_protected_append_writes  = optional(bool, false)
+      state                         = string
+      period_since_creation_in_days = number
+      allow_protected_append_writes = optional(bool, false)
     }))
 
     # Blob lifecycle management rules (realized as the singleton

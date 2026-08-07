@@ -37,6 +37,6 @@ resource "azurerm_cdn_frontdoor_origin_group" "main" {
 
   # Sent only when explicitly set: Azure's defaults are session affinity
   # on and a 10-minute traffic-restore ramp.
-  session_affinity_enabled                                   = var.spec.session_affinity_enabled
+  session_affinity_enabled                                  = var.spec.session_affinity_enabled
   restore_traffic_time_to_healed_or_new_endpoint_in_minutes = var.spec.restore_traffic_time_to_healed_or_new_endpoint_in_minutes
 }

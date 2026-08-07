@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Managed Disk using the `azurerm`
-provider (`~> 4.0`). It creates a single `azurerm_managed_disk` -- the
+provider (`~> 5.0`). It creates a single `azurerm_managed_disk` -- the
 standalone block storage volume whose data outlives any one virtual
 machine -- with the configured SKU, origin (create option), size,
 performance dials, encryption, and network posture.

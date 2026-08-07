@@ -1,6 +1,6 @@
 # AzureFrontDoorSecurityPolicy -- Terraform Module
 
-Creates an `azurerm_cdn_frontdoor_security_policy` (azurerm ~> 4.0) on
+Creates an `azurerm_cdn_frontdoor_security_policy` (azurerm ~> 5.0) on
 the referenced Front Door profile. Credentials arrive as ARM_*
 environment variables (service principal or keyless OIDC); the provider
 block stays empty.

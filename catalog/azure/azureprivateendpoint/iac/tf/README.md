@@ -63,4 +63,4 @@ module "pg_private_endpoint" {
 
 ## Provider
 
-Requires `hashicorp/azurerm` ~> 4.0.
+Requires `hashicorp/azurerm` ~> 5.0.

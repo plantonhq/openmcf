@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Container Registry using the
-`azurerm` provider (`~> 4.0`). It creates an `azurerm_container_registry`
+`azurerm` provider (`~> 5.0`). It creates an `azurerm_container_registry`
 -- the managed, private OCI registry the platform's workloads pull their
 images from -- covering the full surface: SKU, admin account, network
 posture (public access, IP rule set, bypass option, data endpoints),

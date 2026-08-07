@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Kubernetes Service managed
-cluster using the `azurerm` provider (`~> 4.0`). It creates a single
+cluster using the `azurerm` provider (`~> 5.0`). It creates a single
 `azurerm_kubernetes_cluster` carrying the control plane, the mandatory
 default (system) node pool, the cluster identity, the network fabric, and
 the Azure-managed add-ons -- the full azurerm v4.80 surface.

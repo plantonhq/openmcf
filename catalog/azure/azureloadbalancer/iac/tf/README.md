@@ -3,7 +3,7 @@
 ## Overview
 
 This Terraform module provisions an Azure Load Balancer using the
-`azurerm` provider (`~> 4.0`). It creates the `azurerm_lb` composite --
+`azurerm` provider (`~> 5.0`). It creates the `azurerm_lb` composite --
 frontends, backend address pools, health probes, load-balancing rules,
 inbound NAT rules, and outbound (SNAT) rules -- as one unit, because
 every sub-resource shares the load balancer's lifecycle.

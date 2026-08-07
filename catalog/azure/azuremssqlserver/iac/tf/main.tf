@@ -102,13 +102,13 @@ resource "azurerm_mssql_outbound_firewall_rule" "main" {
 }
 
 # Server-level SQL auditing: audit events for every database on the
-# server go to blob storage (storage_endpoint + key) and/or Azure Monitor
-# (log_monitoring_enabled, consumed through diagnostic settings).
+# server go to blob storage (blob_storage_endpoint + key) and/or Azure
+# Monitor (log_monitoring_enabled, consumed through diagnostic settings).
 resource "azurerm_mssql_server_extended_auditing_policy" "main" {
   count = var.spec.extended_auditing != null ? 1 : 0
 
   server_id                               = azurerm_mssql_server.main.id
-  storage_endpoint                        = var.spec.extended_auditing.storage_endpoint
+  blob_storage_endpoint                   = var.spec.extended_auditing.storage_endpoint
   storage_account_access_key              = var.spec.extended_auditing.storage_account_access_key
   storage_account_access_key_is_secondary = var.spec.extended_auditing.storage_account_access_key_is_secondary
   retention_in_days                       = var.spec.extended_auditing.retention_in_days
@@ -124,13 +124,13 @@ resource "azurerm_mssql_server_extended_auditing_policy" "main" {
 resource "azurerm_mssql_server_security_alert_policy" "main" {
   count = var.spec.security_alert_policy != null ? 1 : 0
 
-  resource_group_name        = var.spec.resource_group
-  server_name                = azurerm_mssql_server.main.name
-  state                      = local.alert_policy_state_map[var.spec.security_alert_policy.state]
-  disabled_alerts            = [for alert in var.spec.security_alert_policy.disabled_alerts : local.alert_type_map[alert]]
-  email_account_admins       = var.spec.security_alert_policy.email_account_admins
-  email_addresses            = var.spec.security_alert_policy.email_addresses
-  retention_days             = var.spec.security_alert_policy.retention_days
-  storage_endpoint           = var.spec.security_alert_policy.storage_endpoint
-  storage_account_access_key = var.spec.security_alert_policy.storage_account_access_key
+  resource_group_name          = var.spec.resource_group
+  server_name                  = azurerm_mssql_server.main.name
+  state                        = local.alert_policy_state_map[var.spec.security_alert_policy.state]
+  disabled_alerts              = [for alert in var.spec.security_alert_policy.disabled_alerts : local.alert_type_map[alert]]
+  email_account_admins_enabled = var.spec.security_alert_policy.email_account_admins
+  email_addresses              = var.spec.security_alert_policy.email_addresses
+  retention_days               = var.spec.security_alert_policy.retention_days
+  storage_endpoint             = var.spec.security_alert_policy.storage_endpoint
+  storage_account_access_key   = var.spec.security_alert_policy.storage_account_access_key
 }

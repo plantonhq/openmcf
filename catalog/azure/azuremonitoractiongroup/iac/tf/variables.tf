@@ -78,11 +78,11 @@ variable "spec" {
     })), [])
 
     azure_function_receivers = optional(list(object({
-      name                    = string
+      name                     = string
       function_app_resource_id = string
-      function_name           = string
-      http_trigger_url        = string
-      use_common_alert_schema = optional(bool, false)
+      function_name            = string
+      http_trigger_url         = string
+      use_common_alert_schema  = optional(bool, false)
     })), [])
 
     arm_role_receivers = optional(list(object({

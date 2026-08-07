@@ -72,23 +72,23 @@ resource "azurerm_linux_function_app" "main" {
     elastic_instance_minimum  = var.spec.site_config.elastic_instance_minimum
     pre_warmed_instance_count = var.spec.site_config.pre_warmed_instance_count
 
-    worker_count                                   = var.spec.site_config.worker_count
-    http2_enabled                                  = var.spec.site_config.http2_enabled
-    websockets_enabled                             = var.spec.site_config.websockets_enabled
-    use_32_bit_worker                              = var.spec.site_config.use_32_bit_worker
-    vnet_route_all_enabled                         = var.spec.site_config.vnet_route_all_enabled
-    ftps_state                                     = local.ftps_state
-    load_balancing_mode                            = local.load_balancing_mode
-    managed_pipeline_mode                          = local.managed_pipeline_mode
-    remote_debugging_enabled                       = var.spec.site_config.remote_debugging_enabled
-    runtime_scale_monitoring_enabled               = var.spec.site_config.runtime_scale_monitoring_enabled
-    ip_restriction_default_action                  = local.ip_restriction_default_action
-    scm_use_main_ip_restriction                    = var.spec.site_config.scm_use_main_ip_restriction
-    scm_ip_restriction_default_action              = local.scm_ip_restriction_default_action
-    container_registry_use_managed_identity        = var.spec.site_config.container_registry_use_managed_identity
-    container_registry_managed_identity_client_id  = var.spec.site_config.container_registry_managed_identity_client_id
-    application_insights_key                       = var.spec.site_config.application_insights_key
-    application_insights_connection_string         = var.spec.application_insights_connection_string
+    worker_count                                  = var.spec.site_config.worker_count
+    http2_enabled                                 = var.spec.site_config.http2_enabled
+    websockets_enabled                            = var.spec.site_config.websockets_enabled
+    use_32_bit_worker                             = var.spec.site_config.use_32_bit_worker
+    vnet_route_all_enabled                        = var.spec.site_config.vnet_route_all_enabled
+    ftps_state                                    = local.ftps_state
+    load_balancing_mode                           = local.load_balancing_mode
+    managed_pipeline_mode                         = local.managed_pipeline_mode
+    remote_debugging_enabled                      = var.spec.site_config.remote_debugging_enabled
+    runtime_scale_monitoring_enabled              = var.spec.site_config.runtime_scale_monitoring_enabled
+    ip_restriction_default_action                 = local.ip_restriction_default_action
+    scm_use_main_ip_restriction                   = var.spec.site_config.scm_use_main_ip_restriction
+    scm_ip_restriction_default_action             = local.scm_ip_restriction_default_action
+    container_registry_use_managed_identity       = var.spec.site_config.container_registry_use_managed_identity
+    container_registry_managed_identity_client_id = var.spec.site_config.container_registry_managed_identity_client_id
+    application_insights_key                      = var.spec.site_config.application_insights_key
+    application_insights_connection_string        = var.spec.application_insights_connection_string
 
     # --- Application Stack ---
     dynamic "application_stack" {

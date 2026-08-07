@@ -556,12 +556,12 @@ resource "azurerm_kubernetes_cluster" "main" {
     }
   }
 
-  dynamic "node_provisioning_profile" {
-    for_each = var.spec.node_provisioning_profile != null ? [var.spec.node_provisioning_profile] : []
-    content {
-      mode               = local.node_provisioning_mode != null ? local.node_provisioning_mode : "Manual"
-      default_node_pools = local.node_provisioning_default_pools != null ? local.node_provisioning_default_pools : "Auto"
-    }
+  # The provider requires this block even when the spec leaves node
+  # provisioning unset; Manual/Auto are ARM's own defaults, so an absent
+  # spec block and this explicit one deploy identically.
+  node_provisioning_profile {
+    mode               = local.node_provisioning_mode != null ? local.node_provisioning_mode : "Manual"
+    default_node_pools = local.node_provisioning_default_pools != null ? local.node_provisioning_default_pools : "Auto"
   }
 
   dynamic "upgrade_override" {

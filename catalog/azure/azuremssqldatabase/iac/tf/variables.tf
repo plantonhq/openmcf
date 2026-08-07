@@ -98,8 +98,8 @@ variable "spec" {
     # Transparent data encryption: the on/off dial (Azure default true),
     # the database-scoped CMK (VERSIONED Key Vault key id), and automatic
     # re-encryption on key rotation.
-    transparent_data_encryption_enabled                         = optional(bool, true)
-    transparent_data_encryption_key_vault_key_id                = optional(string)
+    transparent_data_encryption_enabled                        = optional(bool, true)
+    transparent_data_encryption_key_vault_key_id               = optional(string)
     transparent_data_encryption_key_automatic_rotation_enabled = optional(bool, false)
 
     # A bacpac import applied right after creation. storage_key_type and
