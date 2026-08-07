@@ -8,6 +8,20 @@
 
 CivoVpcSpec defines the specification for an isolated private network on Civo.
 
+## Example
+
+```yaml
+apiVersion: civo.planton.dev/v1alpha1
+kind: CivoVpc
+metadata:
+  name: example-vpc
+spec:
+  network_name: example-vpc
+  region: lon1
+  ip_range_cidr: "10.10.1.0/24"
+  description: "Example VPC network"
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -89,5 +103,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

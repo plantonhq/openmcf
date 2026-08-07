@@ -6,7 +6,7 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1alpha1`
 
-**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
 **KubernetesOpenSearchOperatorSpec** installs the OpenSearch
 Kubernetes Operator — the opensearch-project's operator for running
@@ -407,5 +407,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

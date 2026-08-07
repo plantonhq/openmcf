@@ -36,7 +36,7 @@ GcpDnsRecord.
 # (sidecar with startup ordering, secret env, Cloud SQL volume, probes,
 # scaling, traffic split, direct VPC egress) for offline plan verification.
 #
-# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrun/v1alpha1/iac/hack/manifest.yaml
+# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrun/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRun
 metadata:
@@ -1370,5 +1370,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

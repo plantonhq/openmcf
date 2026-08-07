@@ -15,9 +15,10 @@ import (
 var versionGrammar = regexp.MustCompile(`^v\d+((alpha|beta)\d+)?$`)
 
 // KindVersion returns the kind's declared API version — the version half of
-// the manifest apiVersion (e.g. "aws.planton.dev/v1alpha1" carries "v1") and the
-// version segment of the kind's component directory
-// (catalog/<provider>/<kind>/<version>/).
+// the manifest apiVersion (e.g. "aws.planton.dev/v1alpha1") and the name of
+// the version directory holding the kind's versioned contract
+// (catalog/<provider>/<kind>/<version>/ — protos, stubs, spec test,
+// reference page; the living component sits at the component root above it).
 func KindVersion(kind cloudresourcekind.CloudResourceKind) (string, error) {
 	kindMeta, err := KindMeta(kind)
 	if err != nil {

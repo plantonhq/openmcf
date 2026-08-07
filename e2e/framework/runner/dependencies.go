@@ -295,34 +295,31 @@ func installManifestPrerequisites(repoRoot, componentProvider, consumer string, 
 }
 
 // prerequisiteManifestPath returns the manifest used to install a prerequisite,
-// in order of preference (each component's version segment follows its
-// declared version in the kind registry):
-//   - <consumer>/<version>/e2e/prerequisites/<dep>.yaml — a consumer-scoped
+// in order of preference (e2e assets live at each component's root):
+//   - <consumer>/e2e/prerequisites/<dep>.yaml — a consumer-scoped
 //     override, for when the same prerequisite kind needs a different install
 //     shape for different consumers (e.g. GcpGlobalAddress as an EXTERNAL VIP
 //     for a forwarding rule vs an INTERNAL VPC_PEERING range for a service
 //     networking connection);
-//   - <dep>/<version>/e2e/prerequisite.yaml — the dependency's published install profile;
-//   - <dep>/<version>/e2e/scenarios/minimal.yaml — fallback to its minimal scenario.
+//   - <dep>/e2e/prerequisite.yaml — the dependency's published install profile;
+//   - <dep>/e2e/scenarios/minimal.yaml — fallback to its minimal scenario.
 //
 // Errors if none exist, so a missing install profile fails loudly rather than
 // silently skipping a required dependency.
 func prerequisiteManifestPath(repoRoot, componentProvider, consumer, slug string) (string, error) {
 	if consumer != "" {
-		consumerVersionDir, err := crkreflect.ComponentVersionDir(consumer)
-		if err != nil {
+		if _, err := crkreflect.ComponentVersionDir(consumer); err != nil {
 			return "", err
 		}
-		consumerPrereq := filepath.Join(repoRoot, "catalog", componentProvider, consumer, consumerVersionDir, "e2e", "prerequisites", slug+".yaml")
+		consumerPrereq := filepath.Join(repoRoot, "catalog", componentProvider, consumer, "e2e", "prerequisites", slug+".yaml")
 		if pathExists(consumerPrereq) {
 			return consumerPrereq, nil
 		}
 	}
-	slugVersionDir, err := crkreflect.ComponentVersionDir(slug)
-	if err != nil {
+	if _, err := crkreflect.ComponentVersionDir(slug); err != nil {
 		return "", err
 	}
-	base := filepath.Join(repoRoot, "catalog", componentProvider, slug, slugVersionDir, "e2e")
+	base := filepath.Join(repoRoot, "catalog", componentProvider, slug, "e2e")
 	prereq := filepath.Join(base, "prerequisite.yaml")
 	if pathExists(prereq) {
 		return prereq, nil
@@ -411,11 +408,10 @@ func DeployDependencies(ctx context.Context, repoRoot, componentProvider, compon
 // Terraform). docIndex disambiguates the stack name when an install profile
 // deploys several instances of the same kind.
 func deployDependency(ctx context.Context, repoRoot, componentProvider string, dep Dependency, backendURL, runID string, harness provider.Harness, docIndex int) (DependencyState, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(dep.KindSlug)
-	if err != nil {
+	if _, err := crkreflect.ComponentVersionDir(dep.KindSlug); err != nil {
 		return DependencyState{}, err
 	}
-	moduleDir := filepath.Join(repoRoot, "catalog", componentProvider, dep.KindSlug, versionDir, "iac", "pulumi")
+	moduleDir := filepath.Join(repoRoot, "catalog", componentProvider, dep.KindSlug, "iac", "pulumi")
 	if !pathExists(moduleDir) {
 		return DependencyState{}, errors.Errorf("dependency %q pulumi module not found at %s", dep.KindSlug, moduleDir)
 	}

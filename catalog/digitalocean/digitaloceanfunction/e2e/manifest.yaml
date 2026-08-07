@@ -1,0 +1,15 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFunction
+metadata:
+  name: test-function
+spec:
+  functionName: test-function
+  region: blr1
+  runtime: nodejs_20
+  githubSource:
+    repo: example-org/functions
+    branch: main
+    deployOnPush: true
+  sourceDirectory: packages/test-function
+  memoryMb: 256
+  isWeb: true

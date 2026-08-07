@@ -6,7 +6,7 @@
 # `entrypoint/` subdirectory.
 #
 # This enforces the exact contract the release pipeline uses
-# (`go build ./<...>/v1/iac/pulumi`), catching missing/misplaced entrypoints at PR
+# (`go build ./<...>/iac/pulumi`), catching missing/misplaced entrypoints at PR
 # time instead of at release time. See hack/guards/ensure_pulumi_entrypoints.sh.
 # =============================================================================
 

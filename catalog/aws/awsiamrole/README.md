@@ -1,0 +1,52 @@
+# AwsIamRole
+
+AWS IAM roles enable secure delegation of permissions to AWS services, applications, or users through temporary credentials without embedding long-lived access keys. This resource defines an IAM role with its trust policy (who can assume it), managed policy references, inline policies, session-duration ceiling, and optional permissions boundary, providing a production-ready abstraction for role-based access control.
+
+## Spec fields (summary)
+- description: Optional human-readable description of the role's purpose (updatable in place)
+- path: IAM path for organizational grouping (defaults to "/"; immutable)
+- trust_policy: JSON document defining who can assume this role (principals, actions, conditions) — exactly one of trust_policy / oidc_trust
+- oidc_trust: Typed federated trust against an IAM OIDC provider — the modules compose the sts:AssumeRoleWithWebIdentity document from the provider's ARN and issuer URL (referenced from an AwsIamOidcProvider, so provider, role, and consumer can deploy in one run) plus exact and/or wildcard `sub` subjects and `aud` audiences
+- managed_policy_arns: Managed policies to attach — references to AwsIamPolicy resources or literal ARNs (how AWS-managed policies attach)
+- inline_policies: Map of policy name to JSON document for permissions unique to this role
+- max_session_duration: Ceiling for assumed-session duration in seconds (3600–43200; AWS defaults to 3600)
+- permissions_boundary: Managed policy (reference or literal ARN) capping the role's maximum permissions
+- force_detach_policies: Force-detach remaining attachments on deletion instead of failing
+
+## Stack outputs
+- role_arn: Amazon Resource Name (ARN) of the created IAM role
+- role_name: Name of the IAM role in AWS (what an AwsIamInstanceProfile references)
+- role_id: Stable unique ID AWS assigns to the role
+
+## How it works
+This resource is orchestrated by the Planton CLI as part of a stack-update. The CLI validates your manifest, generates stack inputs, and invokes IaC backends in this repo:
+- Pulumi (Go modules under iac/pulumi)
+- Terraform (modules under iac/tf)
+
+The trust policy controls **who** can assume the role, while permissions policies (managed or inline) control **what** the role can do once assumed.
+
+## Common use cases
+- **Lambda execution roles**: Allow Lambda functions to access AWS services (S3, DynamoDB, etc.)
+- **ECS task roles**: Grant containerized applications permissions to AWS resources
+- **EC2 instance roles**: Enable EC2 instances to securely access AWS APIs (wrap the role in an AwsIamInstanceProfile — EC2 can only carry a role through a profile)
+- **Cross-account access**: Allow principals from another AWS account to access resources
+- **Service-to-service delegation**: Let one AWS service act on behalf of another
+- **Workload identity (EKS IRSA / CI federation)**: Use `oidc_trust` to trust a cluster's or CI provider's OIDC issuer — reference an AwsIamOidcProvider and name the Kubernetes service account (exact subject) or repository pattern (wildcard subject) allowed to assume the role, keylessly
+
+## Security best practices
+- **Least privilege**: Grant only the minimum permissions required
+- **Specific trust policies**: Never use wildcard principals; always specify exact service principals or account ARNs
+- **Add conditions**: Use `aws:SourceAccount`, `aws:SourceArn`, or `sts:ExternalId` to prevent confused deputy attacks
+- **Prefer managed policies**: For reusability and centralized version control
+- **Monitor usage**: Use CloudTrail to track AssumeRole calls and Access Advisor to identify unused permissions
+
+## References
+- AWS IAM Roles: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+- Trust policies: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html
+- AssumeRole: https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html
+- Policy evaluation logic: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html
+- Confused deputy problem: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

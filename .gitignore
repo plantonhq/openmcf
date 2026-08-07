@@ -28,6 +28,7 @@ site/!.yarn/cache
 *.tfstate.*
 terraform.tfplan
 *.tfplan
+*.tfvars
 # Bazel output symlinks. Bazel names the convenience symlink after the workspace
 # directory (bazel-<dirname>), so a per-clone-name list can never be complete --
 # the glob covers every clone name. The tracked wrapper `bazelw` has no hyphen and

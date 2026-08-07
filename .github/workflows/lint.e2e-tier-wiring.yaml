@@ -18,7 +18,7 @@ on:
     paths:
       - 'e2e/kubernetes_test.go'
       - 'Makefile'
-      - 'catalog/kubernetes/**/v*/e2e/profile.yaml'
+      - 'catalog/kubernetes/*/e2e/profile.yaml'
       - 'hack/guards/ensure_e2e_tier_wiring.sh'
       - '.github/workflows/lint.e2e-tier-wiring.yaml'
   push:
@@ -27,7 +27,7 @@ on:
     paths:
       - 'e2e/kubernetes_test.go'
       - 'Makefile'
-      - 'catalog/kubernetes/**/v*/e2e/profile.yaml'
+      - 'catalog/kubernetes/*/e2e/profile.yaml'
       - 'hack/guards/ensure_e2e_tier_wiring.sh'
       - '.github/workflows/lint.e2e-tier-wiring.yaml'
 

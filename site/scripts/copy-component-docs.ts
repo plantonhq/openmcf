@@ -6,8 +6,8 @@ import * as path from 'path';
 /**
  * Build script to copy deployment component documentation from catalog/ to site/public/docs/catalog/
  *
- * Scans: catalog/{provider}/{component}/v1/catalog-page.md (or docs/README.md)
- * Also:  catalog/{provider}/{component}/v1/presets/*.yaml + *.md
+ * Scans: catalog/{provider}/{component}/{version}/catalog-page.md
+ * Also:  catalog/{provider}/{component}/presets/*.yaml + *.md
  *
  * Outputs:
  *   site/public/docs/catalog/{provider}/{slug}/index.md          (catalog page)
@@ -369,15 +369,15 @@ function resolveVersionDir(componentPath: string): string | null {
 }
 
 /**
- * Scan a component's <version>/presets/ directory for preset YAML/MD pairs.
- * Returns an array of PresetFile objects sorted by rank.
+ * Scan a component's presets/ directory (at the component root -- presets are
+ * part of the living component, not the versioned contract) for preset
+ * YAML/MD pairs. Returns an array of PresetFile objects sorted by rank.
  */
 function scanPresets(componentPath: string): PresetFile[] {
-  const versionDir = resolveVersionDir(componentPath);
-  if (!versionDir) {
-    return [];
+  if (!resolveVersionDir(componentPath)) {
+    return []; // not a component
   }
-  const presetsDir = path.join(componentPath, versionDir, 'presets');
+  const presetsDir = path.join(componentPath, 'presets');
   if (!fs.existsSync(presetsDir)) {
     return [];
   }
@@ -508,11 +508,10 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
       continue;
     }
 
-    // Prefer catalog-page.md (hand-written), fall back to docs/README.md (legacy)
+    // catalog-page.md is version-resident (a RETIRING class: it becomes the
+    // kind-root catalog.md); resolveVersionDir locates the served version.
     const versionDir = resolveVersionDir(componentPath) ?? 'v1alpha1';
-    const catalogPath = path.join(componentPath, versionDir, 'catalog-page.md');
-    const legacyPath = path.join(componentPath, versionDir, 'docs', 'README.md');
-    const docPath = fs.existsSync(catalogPath) ? catalogPath : legacyPath;
+    const docPath = path.join(componentPath, versionDir, 'catalog-page.md');
 
     if (fs.existsSync(docPath)) {
       const content = fs.readFileSync(docPath, 'utf-8');
@@ -542,9 +541,7 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
         }
 
         const subVersionDir = resolveVersionDir(subComponentPath) ?? 'v1alpha1';
-        const subCatalogPath = path.join(subComponentPath, subVersionDir, 'catalog-page.md');
-        const subLegacyPath = path.join(subComponentPath, subVersionDir, 'docs', 'README.md');
-        const subDocPath = fs.existsSync(subCatalogPath) ? subCatalogPath : subLegacyPath;
+        const subDocPath = path.join(subComponentPath, subVersionDir, 'catalog-page.md');
 
         if (fs.existsSync(subDocPath)) {
           const content = fs.readFileSync(subDocPath, 'utf-8');

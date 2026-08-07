@@ -24,7 +24,6 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
-	"github.com/plantonhq/planton/pkg/crkreflect"
 	gcpstorage "google.golang.org/api/storage/v1"
 )
 
@@ -868,12 +867,8 @@ func stageCloudFunctionSource(t *testing.T, engine string) {
 		t.Fatal("GOOGLE_PROJECT not set — harness Setup should have exported it")
 	}
 
-	fixtureVersionDir, err := crkreflect.ComponentVersionDir("gcpcloudfunction")
-	if err != nil {
-		t.Fatalf("failed to resolve gcpcloudfunction version dir: %v", err)
-	}
 	fixtureDir := filepath.Join(repoRoot, "catalog", "gcp",
-		"gcpcloudfunction", fixtureVersionDir, "e2e", "fixtures", "function-source")
+		"gcpcloudfunction", "e2e", "fixtures", "function-source")
 	zipBytes, err := zipDirectory(fixtureDir)
 	if err != nil {
 		t.Fatalf("failed to zip function source fixture: %v", err)

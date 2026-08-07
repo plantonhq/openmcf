@@ -218,5 +218,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

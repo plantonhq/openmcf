@@ -6,7 +6,7 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1alpha1`
 
-**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
 **KubernetesSecretStoreSpec** creates a NAMESPACED External Secrets
 Operator store — one backend connection (AWS Secrets Manager, GCP Secret
@@ -656,5 +656,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

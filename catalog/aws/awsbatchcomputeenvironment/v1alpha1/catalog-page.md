@@ -106,9 +106,9 @@ The spec rejects EC2-only fields on Fargate environments at validation time (AWS
 
 | Name | Description |
 |------|-------------|
-| [01-fargate-batch](presets/01-fargate-batch.yaml) | Serverless Fargate — zero instance management |
-| [02-ec2-managed-batch](presets/02-ec2-managed-batch.yaml) | EC2 with optimal instances and an update policy |
-| [03-spot-cost-optimized-batch](presets/03-spot-cost-optimized-batch.yaml) | Spot with the price-capacity-optimized strategy |
+| [01-fargate-batch](../presets/01-fargate-batch.yaml) | Serverless Fargate — zero instance management |
+| [02-ec2-managed-batch](../presets/02-ec2-managed-batch.yaml) | EC2 with optimal instances and an update policy |
+| [03-spot-cost-optimized-batch](../presets/03-spot-cost-optimized-batch.yaml) | Spot with the price-capacity-optimized strategy |
 
 ## Related Components
 

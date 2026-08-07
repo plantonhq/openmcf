@@ -395,4 +395,4 @@ Reference an output from another manifest as `valueFrom: {kind: ScalewayObjectBu
 
 ## See Also
 
-- [Overview](./README.md)
+- [Overview](../README.md)

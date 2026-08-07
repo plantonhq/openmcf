@@ -1,0 +1,60 @@
+# Development manifest for GcpCloudFunction — exercises the full service
+# surface (secret env + volumes, VPC connector egress, scaling, labels,
+# build identity) for offline plan verification.
+#
+# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudfunction/e2e/manifest.yaml
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudFunction
+metadata:
+  name: hack-cloud-function
+  id: cldfunc-hack-001
+  org: planton-dev
+  env: dev
+spec:
+  region: us-central1
+  functionName: hack-api
+  description: Development function exercising the deep service surface
+  labels:
+    team: platform
+  buildConfig:
+    runtime: python312
+    entryPoint: handle_request
+    source:
+      storageSource:
+        bucket:
+          value: hack-source-bucket
+        object: functions/hack-api-v1.zip
+    buildEnvironmentVariables:
+      GOOGLE_VENDOR_PIP_DEPENDENCIES: "1"
+    serviceAccount:
+      value: projects/hack-project/serviceAccounts/build-sa@hack-project.iam.gserviceaccount.com
+    updatePolicy: ON_DEPLOY
+  serviceConfig:
+    serviceAccountEmail:
+      value: fn-runtime@hack-project.iam.gserviceaccount.com
+    availableMemory: 512M
+    availableCpu: "1"
+    timeoutSeconds: 120
+    maxInstanceRequestConcurrency: 20
+    environmentVariables:
+      LOG_LEVEL: info
+    secretEnvironmentVariables:
+      - key: DATABASE_PASSWORD
+        secret: hack-db-password
+        version: latest
+    secretVolumes:
+      - mountPath: /etc/secrets
+        secret: hack-tls-cert
+        versions:
+          - version: latest
+            path: cert.pem
+    vpcConnector:
+      value: projects/hack-project/locations/us-central1/connectors/hack-egress
+    vpcConnectorEgressSettings: ALL_TRAFFIC
+    ingressSettings: ALLOW_INTERNAL_AND_GCLB
+    scaling:
+      minInstanceCount: 1
+      maxInstanceCount: 50
+    allowUnauthenticated: false
+  trigger:
+    triggerType: HTTP

@@ -12,6 +12,35 @@ and an optional set of DNS records managed alongside the zone. Records may also
 be managed independently as first-class CloudflareDnsRecord resources; the
 embedded list is a convenience for records whose lifecycle tracks the zone.
 
+## Example
+
+```yaml
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsZone
+metadata:
+  name: dns-zone-hack
+spec:
+  zoneName: planton-example.com
+  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+  paused: false
+  records:
+    - name: www
+      type: A
+      content: "192.0.2.1"
+      proxied: true
+      ttl: 1
+    - name: "@"
+      type: MX
+      content: mail.planton-example.com
+      ttl: 1
+      priority: 10
+  dnsSettings:
+    flattenAllCnames: true
+    zoneMode: standard
+  dnssec:
+    enabled: true
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -419,5 +448,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

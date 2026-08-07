@@ -8,6 +8,34 @@
 
 DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFirewall
+metadata:
+  name: first-firewall                 # Kubernetes object name
+spec:
+  name: first-firewall                 # DigitalOcean firewall name
+  inboundRules:
+    - protocol: tcp
+      portRange: "80"
+      sourceAddresses:
+        - "0.0.0.0/0"                # allow HTTP from anywhere
+    - protocol: tcp
+      portRange: "443"
+      sourceAddresses:
+        - "0.0.0.0/0"                # allow HTTPS from anywhere
+  outboundRules:
+    - protocol: tcp
+      portRange: "1-65535"
+      destinationAddresses:
+        - "0.0.0.0/0"                # allow all outbound traffic
+  dropletIds: []
+  tags:
+    - planton
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -166,5 +194,4 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanFire
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

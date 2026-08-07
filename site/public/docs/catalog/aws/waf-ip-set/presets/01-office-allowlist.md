@@ -35,7 +35,7 @@ A REGIONAL IPv4 set carrying a /24 office range and a /32 single-host entry — 
 
 ## Common Pairing
 
-Reference from [AwsWafWebAcl](../../awswafwebacl/v1alpha1/README.md):
+Reference from [AwsWafWebAcl](../../awswafwebacl/README.md):
 
 ```yaml
 rules:

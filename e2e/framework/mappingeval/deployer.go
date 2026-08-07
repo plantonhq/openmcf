@@ -68,11 +68,10 @@ func DeploySuite(t testing.TB, repoRoot, provider string, suite *mappingeval.Loa
 		fmt.Printf("  [eval-seed] deploying %s %q\n", member.Component, member.Name)
 		start := time.Now()
 
-		versionDir, err := crkreflect.ComponentVersionDir(member.Component)
-		if err != nil {
+		if _, err := crkreflect.ComponentVersionDir(member.Component); err != nil {
 			return deployed, nil, err
 		}
-		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, versionDir, "iac", "tf")
+		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, "iac", "tf")
 		workDir, cleanup, err := runner.PrepareWorkDir(moduleDir)
 		if err != nil {
 			return deployed, nil, errors.Wrapf(err, "preparing workdir for %s", member.Component)
@@ -228,11 +227,10 @@ func ScanTypeNames(repoRoot, provider string, suite *mappingeval.LoadedSuite) ([
 	seen := map[string]bool{}
 	var typeNames []string
 	for _, member := range suite.Members {
-		versionDir, err := crkreflect.ComponentVersionDir(member.Component)
-		if err != nil {
+		if _, err := crkreflect.ComponentVersionDir(member.Component); err != nil {
 			return nil, err
 		}
-		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, versionDir, "iac", "tf")
+		moduleDir := filepath.Join(repoRoot, "catalog", provider, member.Component, "iac", "tf")
 		moduleTypes, err := moduleResourceTypes(moduleDir)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module resource types of %s", member.Component)

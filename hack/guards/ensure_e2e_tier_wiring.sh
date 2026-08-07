@@ -57,8 +57,9 @@ if [[ -z "$makefile_terraform_regexes" ]]; then
   exit 1
 fi
 
-for profile in "$provider_dir"/*/v*/e2e/profile.yaml; do
-  component="$(basename "$(dirname "$(dirname "$(dirname "$profile")")")")"
+# Component e2e assets live at the component root: {component}/e2e/profile.yaml.
+for profile in "$provider_dir"/*/e2e/profile.yaml; do
+  component="$(basename "$(dirname "$(dirname "$profile")")")"
 
   # Profiles that can never RUN need no tier wiring: deferred/skip/stub
   # kinds are honest placeholders (their wiring lands with the session

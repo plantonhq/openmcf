@@ -1,0 +1,47 @@
+# Minimal AzureEventHub scenario: a hub with the hour-granular DELETE
+# retention model and the full capture block on a scenario-local
+# namespace + storage chain -- proving the parent-by-ARM-id reference,
+# the retention dispatch, the capture destination FKs (container name +
+# account id), and the partition_ids output on both engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHub
+metadata:
+  name: planton-oss-e2e-azureeventhub-smoke
+  id: planton-oss-e2e-azureeventhub-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhub
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local parents instead of registry prerequisites:
+    # namespace and storage-account names are globally unique, and
+    # sequential subtests that destroy and recreate the same name hang
+    # on the post-delete hold. Deploy order: namespace, account,
+    # container (the container rides the account).
+    planton.dev/e2e-prerequisites: "catalog/azure/azureeventhub/e2e/fixture-namespace.yaml,catalog/azure/azureeventhub/e2e/fixture-capture-account.yaml,catalog/azure/azureeventhub/e2e/fixture-capture-container.yaml"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-ehub-fixture-namespace
+  eventHubName: e2e-telemetry
+  partitionCount: 4
+  retentionDescription:
+    cleanupPolicy: DELETE
+    retentionTimeInHours: 48
+  captureDescription:
+    enabled: true
+    encoding: AVRO
+    intervalInSeconds: 300
+    skipEmptyArchives: true
+    destination:
+      archiveNameFormat: "{Namespace}/{EventHub}/{PartitionId}/{Year}/{Month}/{Day}/{Hour}/{Minute}/{Second}"
+      blobContainerName:
+        valueFrom:
+          name: planton-oss-e2e-ehub-capture-container
+      storageAccountId:
+        valueFrom:
+          name: planton-oss-e2e-ehub-capture-account

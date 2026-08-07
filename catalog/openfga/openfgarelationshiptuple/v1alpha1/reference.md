@@ -333,4 +333,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
+- [Overview](../README.md)

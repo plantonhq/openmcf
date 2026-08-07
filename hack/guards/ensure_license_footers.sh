@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Guard: every component README (catalog/**/<component>/v1/README.md),
+# Guard: every component README (catalog/<provider>/<component>/README.md),
 # every infra chart README (the README.md beside a chart's Chart.yaml, at any
 # nesting depth), and every helm chart README (helm/<chart>/README.md) must end
 # with the canonical license footer.
@@ -17,9 +17,9 @@ set -euo pipefail
 # SCOPE
 # A last-line PRESENCE check (mirroring the sibling grep-based guards, no
 # toolchain beyond find + awk): README files that are the DIRECT child of a
-# component's v1/ folder, plus infra chart READMEs. Deeper READMEs (v1/docs/,
-# v1/iac/**) are inner documentation whose shipped artifacts carry LICENSE and
-# NOTICE files instead of footers.
+# component root, plus infra chart READMEs. Deeper READMEs (iac/**) are inner
+# documentation whose shipped artifacts carry LICENSE and NOTICE files instead
+# of footers; provider-infrastructure dirs (aa_*) are not components.
 
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
@@ -36,12 +36,12 @@ while IFS= read -r readme; do
     missing+=("$readme")
   fi
 done < <(
-  # Component READMEs: direct child of a v1/ folder anywhere under the APIs
-  # tree (path-shaped, so future domains are covered without editing this
-  # guard). The pattern cannot match v1/docs/README.md or v1/iac/**/README.md.
-  # find -path globs cross slashes ('v*' would also span 'v1alpha1/docs'),
-  # so the api-version segment is constrained with a grep grammar filter.
-  find catalog -name 'README.md' 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/README\.md$'
+  # Component READMEs: the direct child of a component root -- exactly
+  # catalog/<provider>/<component>/README.md, depth-anchored so it can never
+  # match iac/**/README.md or deeper docs. Provider-infrastructure dirs
+  # (aa_e2e/, aa_eval/, aa_import/) are excluded by name: they sit at the
+  # same depth but are not components.
+  find catalog -mindepth 3 -maxdepth 3 -name 'README.md' 2>/dev/null | grep -Ev '^catalog/[^/]+/aa_[^/]+/'
   # Helm chart READMEs: helm/<chart>/README.md — published distribution surfaces.
   find helm -mindepth 2 -maxdepth 2 -name README.md 2>/dev/null
 )

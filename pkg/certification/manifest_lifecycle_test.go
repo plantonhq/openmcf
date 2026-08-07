@@ -87,16 +87,23 @@ func TestCertify_UnknownFieldRejectedAtLoad(t *testing.T) {
 // Case: the torture kind keeps its full catalog shape. The kind only proves
 // what it exercises -- if a pipeline artifact quietly disappears, every
 // certification case that depends on it degrades to vacuous, so the shape
-// itself is certified.
+// itself is certified. Version dirs hold the versioned contract; the
+// component root holds the living component (one IaC set, presets, README).
 func TestCertify_TortureKindKeepsFullCatalogShape(t *testing.T) {
-	dir := TortureKindDir(t)
+	versionDir := TortureKindDir(t)
 	for _, required := range []string{
 		"api.proto",
 		"spec.proto",
 		"stack_input.proto",
 		"stack_outputs.proto",
+	} {
+		if _, err := os.Stat(filepath.Join(versionDir, required)); err != nil {
+			t.Errorf("torture kind lost part of its versioned contract: %s (%v)", required, err)
+		}
+	}
+	root := TortureKindRoot(t)
+	for _, required := range []string{
 		"README.md",
-		"docs/README.md",
 		filepath.Join("presets", "01-default.yaml"),
 		filepath.Join("iac", "tf", "main.tf"),
 		filepath.Join("iac", "tf", "variables.tf"),
@@ -104,8 +111,8 @@ func TestCertify_TortureKindKeepsFullCatalogShape(t *testing.T) {
 		filepath.Join("iac", "pulumi", "main.go"),
 		filepath.Join("iac", "pulumi", "module", "main.go"),
 	} {
-		if _, err := os.Stat(filepath.Join(dir, required)); err != nil {
-			t.Errorf("torture kind lost part of its catalog shape: %s (%v)", required, err)
+		if _, err := os.Stat(filepath.Join(root, required)); err != nil {
+			t.Errorf("torture kind lost part of its living-component shape: %s (%v)", required, err)
 		}
 	}
 }

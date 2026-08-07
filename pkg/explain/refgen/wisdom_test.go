@@ -58,10 +58,11 @@ func wisdomFiles(t *testing.T, root string) []wisdomFile {
 	return files
 }
 
-// registryKindDirs derives every registered kind's directory the same way
-// the generator does (from the proto descriptor's source path) -- the single
-// source of truth for where a kind-level GUIDE.md may live.
-func registryKindDirs(t *testing.T) map[string]bool {
+// registryComponentDirs derives every registered kind's component root the
+// same way the generator does (the parent of the proto descriptor's source
+// directory) -- the single source of truth for where a kind-level GUIDE.md
+// may live.
+func registryComponentDirs(t *testing.T) map[string]bool {
 	t.Helper()
 	dirs := map[string]bool{}
 	for _, name := range explain.KindNames() {
@@ -71,19 +72,19 @@ func registryKindDirs(t *testing.T) map[string]bool {
 		}
 		protoDir := filepath.Dir(res.Message.ParentFile().Path())
 		if strings.HasPrefix(protoDir, catalogPathPrefix) {
-			dirs[protoDir] = true
+			dirs[filepath.Dir(protoDir)] = true
 		}
 	}
 	return dirs
 }
 
-// TestWisdomGuidePlacement pins where authored guides may live: beside a
-// registered kind's protos (where the generated page links them) or at the
-// catalog root. A guide anywhere else is invisible to every reader -- a
-// misplaced file, usually a typo'd directory or a kind that was renamed.
+// TestWisdomGuidePlacement pins where authored guides may live: at a
+// registered kind's component root (where the generated page links them) or
+// at the catalog root. A guide anywhere else is invisible to every reader --
+// a misplaced file, usually a typo'd directory or a kind that was renamed.
 func TestWisdomGuidePlacement(t *testing.T) {
 	root := repoRoot(t)
-	kindDirs := registryKindDirs(t)
+	componentDirs := registryComponentDirs(t)
 	catalogRootGuide := filepath.Join(catalogPathPrefix, "_docs", "GUIDE.md")
 
 	for _, file := range wisdomFiles(t, root) {
@@ -93,8 +94,8 @@ func TestWisdomGuidePlacement(t *testing.T) {
 		if file.relPath == catalogRootGuide {
 			continue
 		}
-		if !kindDirs[filepath.Dir(file.relPath)] {
-			t.Errorf("%s is not beside a registered kind's protos (and not the catalog-root guide) -- no generated page will ever link it", file.relPath)
+		if !componentDirs[filepath.Dir(file.relPath)] {
+			t.Errorf("%s is not at a registered kind's component root (and not the catalog-root guide) -- no generated page will ever link it", file.relPath)
 		}
 	}
 }

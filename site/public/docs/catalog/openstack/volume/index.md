@@ -35,15 +35,15 @@ metadata:
   name: my-volume
   annotations:
     planton.dev/stack.jobId: prod.OpenstackVolume.managed-boot
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackVolume.db-restore
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackVolume.boot-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolume.app-data
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackVolume.my-volume
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolume/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   size: 20

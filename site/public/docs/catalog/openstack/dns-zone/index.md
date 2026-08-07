@@ -35,15 +35,15 @@ metadata:
   name: my-zone
   annotations:
     planton.dev/stack.jobId: prod.OpenstackDnsZone.replica-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsZone.mail-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.app-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.example-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsZone.my-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   domainName: example.com

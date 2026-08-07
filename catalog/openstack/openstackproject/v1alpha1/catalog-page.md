@@ -24,13 +24,13 @@ metadata:
   name: my-project
   annotations:
     planton.dev/stack.jobId: prod.OpenstackProject.backend-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackProject.engineering
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackProject.dev-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackProject.my-project
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec: {}
 ```

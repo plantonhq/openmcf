@@ -61,6 +61,6 @@ spec:
 
 ## See Also
 
-- [README](README.md) — full configuration reference
+- [README](../README.md) — full configuration reference
 - [GcpServerlessVpcConnector](/docs/catalog/gcp/serverless-vpc-access-connector) — the private-egress bridge
-- Presets: [HTTP API](presets/01-http-api.yaml), [Pub/Sub processor](presets/02-pubsub-event.yaml), [private VPC egress](presets/03-private-vpc-egress.yaml)
+- Presets: [HTTP API](../presets/01-http-api.yaml), [Pub/Sub processor](../presets/02-pubsub-event.yaml), [private VPC egress](../presets/03-private-vpc-egress.yaml)

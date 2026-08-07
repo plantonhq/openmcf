@@ -32,7 +32,7 @@ provider-resource module pattern instead).`,
 	Example: `
   # Write the module into the component's iac/tf directory
   planton tofu generate-module KubernetesDestinationRule \
-    --output-dir catalog/kubernetes/kubernetesdestinationrule/v1alpha1/iac/tf
+    --output-dir catalog/kubernetes/kubernetesdestinationrule/iac/tf
 `,
 	Args: cobra.ExactArgs(1),
 	Run:  generateModuleHandler,

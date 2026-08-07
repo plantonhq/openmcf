@@ -25,7 +25,7 @@ Eventarc; this resource owns the job definition, not individual runs.
 # (multi-task parallelism, secret env, Cloud SQL volume, direct VPC egress)
 # for offline plan verification.
 #
-# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrunjob/v1alpha1/iac/hack/manifest.yaml
+# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrunjob/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRunJob
 metadata:
@@ -743,5 +743,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

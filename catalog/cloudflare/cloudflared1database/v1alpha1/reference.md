@@ -12,6 +12,21 @@ creation by an optional region hint or a data-residency jurisdiction; schema
 (tables, indexes) is managed by the application via Wrangler migrations, not at
 this layer.
 
+## Example
+
+```yaml
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareD1Database
+metadata:
+  name: d1-hack-database
+spec:
+  databaseName: planton-d1-hack
+  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+  region: wnam
+  readReplication:
+    mode: disabled
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -118,5 +133,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

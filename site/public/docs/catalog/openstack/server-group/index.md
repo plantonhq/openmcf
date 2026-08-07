@@ -35,13 +35,13 @@ metadata:
   name: my-server-group
   annotations:
     planton.dev/stack.jobId: prod.OpenstackServerGroup.regional-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackServerGroup.worker-soft-spread
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackServerGroup.app-cache-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackServerGroup.db-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

@@ -6,7 +6,7 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1alpha1`
 
-**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
 **KubernetesPriorityClassSpec** defines one rung of the cluster's workload
 importance ladder. Pods reference the class by name (the shared workload
@@ -142,5 +142,4 @@ Reference an output from another manifest as `valueFrom: {kind: KubernetesPriori
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

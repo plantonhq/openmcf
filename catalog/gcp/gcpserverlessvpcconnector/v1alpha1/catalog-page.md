@@ -46,6 +46,6 @@ spec:
 
 ## See Also
 
-- [README](README.md) — full configuration reference
+- [README](../README.md) — full configuration reference
 - [GcpCloudFunction](/docs/catalog/gcp/gcpcloudfunction) — the primary consumer
-- Presets: [basic](presets/01-private-egress-basic.yaml), [high throughput](presets/02-high-throughput.yaml), [Shared VPC](presets/03-shared-vpc-subnet.yaml)
+- Presets: [basic](../presets/01-private-egress-basic.yaml), [high throughput](../presets/02-high-throughput.yaml), [Shared VPC](../presets/03-shared-vpc-subnet.yaml)

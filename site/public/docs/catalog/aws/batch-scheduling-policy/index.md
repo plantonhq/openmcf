@@ -84,7 +84,7 @@ Every dial updates in place on a live policy.
 
 | Name | Description |
 |------|-------------|
-| [01-team-fair-share](presets/01-team-fair-share.yaml) | Weighted team shares with decay and new-submitter headroom |
+| [01-team-fair-share](../presets/01-team-fair-share.yaml) | Weighted team shares with decay and new-submitter headroom |
 
 ## Related Components
 

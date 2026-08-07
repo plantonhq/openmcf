@@ -9,6 +9,36 @@
 DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean.
 This allows you to manage DNS records for a given domain via DigitalOcean's DNS service, focusing on the essential parameters (80/20 principle).
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsZone
+metadata:
+  name: first-dns-zone
+spec:
+  domainName: planton.com                # fully‑qualified domain
+  records:
+    # Root A record – points the zone apex to an IP address
+    - name: "@"
+      type: A
+      values:
+        - value: "203.0.113.10"
+      ttlSeconds: 3600                   # optional; defaults to 3600
+
+    # www CNAME record – redirects www.example.com to the apex
+    - name: www
+      type: CNAME
+      values:
+        - value: "@"
+
+    # TXT record – typical SPF configuration (quotes required in YAML)
+    - name: "@"
+      type: TXT
+      values:
+        - value: "v=spf1 include:mail.example.com ~all"
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -180,5 +210,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

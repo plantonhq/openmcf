@@ -25,15 +25,15 @@ metadata:
   name: my-a-record
   annotations:
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.api-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.mail-mx
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackDnsRecord.docs-cname
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsRecord.web-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackDnsRecord.my-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d

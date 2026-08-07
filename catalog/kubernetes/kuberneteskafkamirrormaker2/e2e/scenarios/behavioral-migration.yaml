@@ -1,0 +1,64 @@
+# The migration proof: markers produced on the SOURCE cluster must be
+# consumable from the TARGET cluster on the mirrored topic
+# ("src.e2e-migrate" under the default replication policy). The verifier
+# drives the produce/consume; the checkpoint connector runs too so the
+# consumer-offset translation path deploys. The source alias, fixture
+# names and topic are PAIRED with the verifier's constants — change them
+# together.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKafkaMirrorMaker2
+metadata:
+  name: e2e-mm2-migration
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kuberneteskafkamirrormaker2/e2e/fixtures/kafka-source.yaml"
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  replicas: 1
+  target:
+    alias: target
+    bootstrap_servers:
+      valueFrom:
+        name: e2e-kaf-fix
+    group_id: e2e-mm2-migration-group
+    config_storage_topic: e2e-mm2-migration-configs
+    status_storage_topic: e2e-mm2-migration-status
+    offset_storage_topic: e2e-mm2-migration-offsets
+    config:
+      config.storage.replication.factor: "-1"
+      offset.storage.replication.factor: "-1"
+      status.storage.replication.factor: "-1"
+  mirrors:
+    - source:
+        alias: src
+        bootstrap_servers:
+          valueFrom:
+            name: e2e-kaf-src
+      topics_pattern: "e2e-.*"
+      groups_pattern: ".*"
+      source_connector:
+        tasks_max: 1
+        config:
+          # Tight refresh so the proof's freshly created topic is
+          # discovered within the lane's budget (default: 10 minutes).
+          refresh.topics.interval.seconds: "30"
+        auto_restart:
+          enabled: true
+      checkpoint_connector:
+        tasks_max: 1
+        config:
+          refresh.groups.interval.seconds: "30"
+        auto_restart:
+          enabled: true
+  jvm:
+    xms: 512m
+    xmx: 512m
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+  metrics:
+    enabled: true

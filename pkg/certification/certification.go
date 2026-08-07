@@ -65,7 +65,9 @@ func TortureKindDir(t *testing.T) string {
 
 // TortureManifestPath returns the canonical known-good torture manifest (the
 // kind's default preset -- one source of truth for "a valid manifest").
+// Presets live at the component root: the living component is version-agnostic,
+// authored against the served (hub) version.
 func TortureManifestPath(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(TortureKindDir(t), "presets", "01-default.yaml")
+	return filepath.Join(TortureKindRoot(t), "presets", "01-default.yaml")
 }

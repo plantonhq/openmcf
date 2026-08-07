@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0EventStreamSpec defines the configuration for an Auth0 Event Stream.
 Event Streams enable real-time delivery of Auth0 events to external systems,
 supporting both AWS EventBridge and Webhook destinations.
@@ -246,5 +248,4 @@ Reference an output from another manifest as `valueFrom: {kind: Auth0EventStream
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

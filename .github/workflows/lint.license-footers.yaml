@@ -1,7 +1,7 @@
 # =============================================================================
 # License Footer Guard
 # =============================================================================
-# Fails the PR if any component README (catalog/**/<component>/v1/
+# Fails the PR if any component README (catalog/<provider>/<component>/
 # README.md), infra chart README (charts/<provider>/<name>/README.md), or helm
 # chart README (helm/<chart>/README.md) does not end with the canonical
 # license footer:

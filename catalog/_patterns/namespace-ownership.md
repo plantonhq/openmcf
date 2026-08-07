@@ -117,7 +117,7 @@ violation of this pattern.
 ## See also
 
 - [KubernetesNamespace reference](../kubernetes/kubernetesnamespace/v1alpha1/reference.md)
-  and [guide](../kubernetes/kubernetesnamespace/v1alpha1/GUIDE.md)
+  and [guide](../kubernetes/kubernetesnamespace/GUIDE.md)
 - [KubernetesPostgres reference](../kubernetes/kubernetespostgres/v1alpha1/reference.md)
-  and [guide](../kubernetes/kubernetespostgres/v1alpha1/GUIDE.md)
+  and [guide](../kubernetes/kubernetespostgres/GUIDE.md)
 - [KubernetesValkey reference](../kubernetes/kubernetesvalkey/v1alpha1/reference.md)

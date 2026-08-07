@@ -1,0 +1,39 @@
+# The tuned operator shape: a namespace-fence watch, non-default
+# reconciliation timing, debug logging, and explicit policy-generation
+# opt-outs — every typed field that can run on the kind cluster
+# exercised. feature_gates stays empty deliberately (an unknown gate name
+# fails operator startup, and the pinned release needs no gate flips);
+# the image override rides the offline plan proofs (a mirror registry
+# would make the install unpullable here).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesStrimziKafkaOperator
+metadata:
+  name: e2e-stz-op-tuned
+  annotations:
+    # The watched namespaces must EXIST before the install (the chart
+    # templates RoleBindings into them — verified live); the fixture
+    # creates the two the fence names.
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kubernetesstrimzikafkaoperator/e2e/fixture-watched-namespaces.yaml"
+spec:
+  namespace:
+    value: e2e-stz-op-tuned
+  create_namespace: true
+  chart_version: 1.1.0
+  replicas: 1
+  watch:
+    namespaces:
+      - e2e-stz-watched-a
+      - e2e-stz-watched-b
+  full_reconciliation_interval_ms: 180000
+  operation_timeout_ms: 420000
+  log_level: DEBUG
+  leader_election_enabled: true
+  generate_network_policy: false
+  generate_pod_disruption_budget: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

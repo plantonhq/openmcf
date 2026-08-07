@@ -202,7 +202,7 @@ gh workflow run auto-release.pulumi-modules.yaml \
   -f tag=v0.3.5-pulumi.awsecsservice.20260108.0 \
   -f component=awsecsservice \
   -f provider=aws \
-  -f path=catalog/aws/awsecsservice/v1alpha1/iac/pulumi
+  -f path=catalog/aws/awsecsservice/iac/pulumi
 ```
 
 ## Release artifacts by component

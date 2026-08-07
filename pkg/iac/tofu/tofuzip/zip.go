@@ -70,22 +70,23 @@ func GetModulePath(componentName, releaseVersion string) (string, error) {
 
 // BuildDownloadURL constructs the Cloudflare R2 download URL for a Terraform module zip.
 //
-// The version segment of the artifact key follows the kind's declared version
-// in the registry — never a literal. Known skew edge: when releaseVersion is
-// an OLDER tag whose registry declared a different version for this kind, the
-// derived segment misses that tag's artifact; the download 404s and the caller
-// falls back to staging (a git checkout of that tag), which self-corrects.
+// The key is versionless (one live module set per component); the release tag
+// segment versions the artifact. Known skew edge: when releaseVersion is an
+// OLDER tag whose lanes uploaded the pre-anatomy key shape, the download 404s
+// and the caller falls back to staging (a git checkout of that tag), which
+// self-corrects.
 //
 // Examples:
 //
 //	BuildDownloadURL("AwsEcsService", "v0.3.50")
-//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/terraform/awsecsservice/v1alpha1.zip
+//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/terraform/awsecsservice/module.zip
 func BuildDownloadURL(componentName, releaseVersion string) (string, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(componentName)
-	if err != nil {
+	// Validate against the registry before composing: an unknown kind must
+	// fail plainly here, not as a 404 the fallback path silently absorbs.
+	if _, err := crkreflect.ComponentVersionDir(componentName); err != nil {
 		return "", errors.Wrapf(err, "cannot build the download URL for the %s terraform module", componentName)
 	}
-	return downloads.BuildTerraformDownloadURL(componentName, versionDir, releaseVersion), nil
+	return downloads.BuildTerraformDownloadURL(componentName, releaseVersion), nil
 }
 
 // IsModuleCached checks if a module is already cached and has .tf files

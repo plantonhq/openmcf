@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0ActionSpec defines the configuration for an Auth0 Action.
 Actions are secure, tenant-specific, versioned functions written in Node.js
 that execute at certain points during the Auth0 runtime. They are used to
@@ -301,5 +303,4 @@ Reference an output from another manifest as `valueFrom: {kind: Auth0Action, nam
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

@@ -255,13 +255,8 @@ func getPulumiModulePath(moduleRepoDir, kindName string) (string, error) {
 		return "", errors.New("failed to get kind provider")
 	}
 
-	// The version segment of a component directory follows the kind's
-	// declared version in the registry — never a literal.
-	versionDir, err := crkreflect.KindVersion(kind)
-	if err != nil {
-		return "", errors.Wrapf(err, "cannot locate the %s module directory", kindName)
-	}
-
+	// One live module set per component: modules live at the component root
+	// (catalog/{provider}/{kind}/iac/pulumi), fully derivable from the registry.
 	kindDirPath := filepath.Join(
 		moduleRepoDir,
 		"catalog",
@@ -270,7 +265,7 @@ func getPulumiModulePath(moduleRepoDir, kindName string) (string, error) {
 	pulumiModulePath := filepath.Join(
 		kindDirPath,
 		strings.ToLower(kindName),
-		versionDir, "iac/pulumi",
+		"iac/pulumi",
 	)
 
 	if _, err := os.Stat(pulumiModulePath); os.IsNotExist(err) {

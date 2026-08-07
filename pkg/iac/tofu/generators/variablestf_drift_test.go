@@ -247,12 +247,13 @@ func TestVariablesTFDrift(t *testing.T) {
 }
 
 // moduleVariablesPath derives a kind's module variables.tf path from its proto
-// descriptor's source file: catalog/<p>/<kind>/v1/api.proto ->
-// <repo>/catalog/<p>/<kind>/v1/iac/tf/variables.tf.
+// descriptor's source file: catalog/<p>/<kind>/<version>/api.proto ->
+// <repo>/catalog/<p>/<kind>/iac/tf/variables.tf (the module lives at the
+// component root, one level above the versioned contract).
 func moduleVariablesPath(root string, msg proto.Message) string {
 	protoPath := msg.ProtoReflect().Descriptor().ParentFile().Path()
-	dir := filepath.Dir(protoPath)
-	return filepath.Join(root, dir, "iac", "tf", "variables.tf")
+	componentDir := filepath.Dir(filepath.Dir(protoPath))
+	return filepath.Join(root, componentDir, "iac", "tf", "variables.tf")
 }
 
 // repoRoot walks up from this test file to the directory containing go.mod.

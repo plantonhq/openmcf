@@ -29,7 +29,7 @@ Regexes for internal admin and debug URL prefixes — the shape for applications
 
 - Replace `<aws-region>` with your target region
 - Adjust patterns to your application's actual admin URL structure
-- Combine with [AwsWafIpSet](../../awswafipset/v1alpha1/presets/01-office-allowlist.yaml) for allow-list + block-probes layering
+- Combine with [AwsWafIpSet](../../awswafipset/presets/01-office-allowlist.yaml) for allow-list + block-probes layering
 
 ## Layering Example
 

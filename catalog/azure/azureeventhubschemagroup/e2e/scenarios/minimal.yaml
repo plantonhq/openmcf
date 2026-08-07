@@ -1,0 +1,25 @@
+# Minimal AzureEventHubSchemaGroup scenario: an Avro group with BACKWARD
+# compatibility on a scenario-local namespace -- proving the
+# parent-by-ARM-id reference and both enum wire maps on both engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventHubSchemaGroup
+metadata:
+  name: planton-oss-e2e-azureeventhubschemagroup-smoke
+  id: planton-oss-e2e-azureeventhubschemagroup-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventhubschemagroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/azure/azureeventhubschemagroup/e2e/fixture-namespace.yaml"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-ehsg-fixture-namespace
+  schemaGroupName: e2e-telemetry-schemas
+  schemaCompatibility: BACKWARD
+  schemaType: AVRO

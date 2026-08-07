@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0ClientSpec defines the configuration for an Auth0 Application (Client).
 In Auth0, "Applications" represent the clients that interact with Auth0 for authentication.
 Applications are the entry point for users to authenticate and authorize access to APIs.
@@ -685,5 +687,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

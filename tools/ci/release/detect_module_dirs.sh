@@ -5,16 +5,16 @@
 # Reads changed file paths on stdin and emits the unique IaC module
 # directories they belong to, one per line:
 #
-#   --pulumi     catalog/{p}/{k}/{version}/iac/pulumi
-#   --terraform  catalog/{p}/{k}/{version}/iac/tf
+#   --pulumi     catalog/{p}/{k}/iac/pulumi
+#   --terraform  catalog/{p}/{k}/iac/tf
 #
-# The version segment matches the full maturity grammar
-# (v<N>[alpha<N>|beta<N>]), never a bare v<N> assumption: a pattern that
-# matched only "v1" once made module auto-tagging silently stop firing after
-# an api-version directory rename -- no error, releases just stopped. This
-# script is that lesson made structural: auto-tag.yaml consumes it instead of
-# carrying inline patterns, and the --self-test fixtures prove the detection
-# fires for every channel the grammar allows.
+# Modules live at the component root -- exactly two path segments between
+# catalog/ and iac/ (provider, kind). The anchor is strict on BOTH sides: a
+# looser pattern would match provider-infrastructure Go under aa_e2e/ or
+# nested non-module iac dirs, and a stale pattern makes module auto-tagging
+# silently stop firing -- no error, releases just stop (this script exists
+# because that happened once). auto-tag.yaml consumes it instead of carrying
+# inline patterns, and the --self-test fixtures prove the detection fires.
 #
 # Usage:
 #   git diff --name-only A B | detect_module_dirs.sh --pulumi
@@ -22,15 +22,11 @@
 # =============================================================================
 set -euo pipefail
 
-VERSION_ERE='v[0-9]+((alpha|beta)[0-9]+)?'
-
 detect() {
   # detect <flavor-dir>  (pulumi|tf), paths on stdin
   local flavor="$1"
-  # NOTE: the sed delimiter must not be '|' -- the grammar's alternation
-  # pipes inside (alpha|beta) would split the expression.
-  grep -E "^catalog/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor}/" \
-    | sed -E "s#(catalog/[^/]+/[^/]+/${VERSION_ERE}/iac/${flavor})/.*#\1#" \
+  grep -E "^catalog/[^/]+/[^/]+/iac/${flavor}/" \
+    | sed -E "s#(catalog/[^/]+/[^/]+/iac/${flavor})/.*#\1#" \
     | sort -u \
     || true
 }
@@ -46,30 +42,33 @@ self_test() {
       fail=1
     fi
   }
-  # Every maturity channel must fire.
-  check tf "catalog/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
-           "catalog/aws/awsvpc/v1alpha1/iac/tf"
-  check tf "catalog/aws/awsvpc/v1beta1/iac/tf/main.tf" \
-           "catalog/aws/awsvpc/v1beta1/iac/tf"
-  check tf "catalog/aws/awsvpc/v1/iac/tf/main.tf" \
-           "catalog/aws/awsvpc/v1/iac/tf"
-  check pulumi "catalog/gcp/gcpgkecluster/v1alpha1/iac/pulumi/main.go" \
-               "catalog/gcp/gcpgkecluster/v1alpha1/iac/pulumi"
+  # Component-root modules fire.
+  check tf "catalog/aws/awsvpc/iac/tf/main.tf" \
+           "catalog/aws/awsvpc/iac/tf"
+  check tf "catalog/aws/awsvpc/iac/tf/variables.tf" \
+           "catalog/aws/awsvpc/iac/tf"
+  check pulumi "catalog/gcp/gcpgkecluster/iac/pulumi/main.go" \
+               "catalog/gcp/gcpgkecluster/iac/pulumi"
+  check pulumi "catalog/gcp/gcpgkecluster/iac/pulumi/module/main.go" \
+               "catalog/gcp/gcpgkecluster/iac/pulumi"
   # Non-module changes must NOT fire.
   check tf "catalog/aws/awsvpc/v1alpha1/spec.proto" ""
-  check tf "catalog/aws/awsvpc/v1alpha1/iac/pulumi/main.go" ""
+  check tf "catalog/aws/awsvpc/iac/pulumi/main.go" ""
   check pulumi "pkg/iac/pulumi/pulumimodule/module_directory.go" ""
+  # A version-resident path (the pre-anatomy shape) must NOT fire: modules
+  # have exactly provider/kind between catalog/ and iac/.
+  check tf "catalog/aws/awsvpc/v1alpha1/iac/tf/main.tf" ""
   # Two files in one module collapse to one dir.
   local got
   got=$(printf '%s\n%s\n' \
-    "catalog/aws/awsvpc/v1alpha1/iac/tf/main.tf" \
-    "catalog/aws/awsvpc/v1alpha1/iac/tf/outputs.tf" | detect tf | wc -l | tr -d ' ')
+    "catalog/aws/awsvpc/iac/tf/main.tf" \
+    "catalog/aws/awsvpc/iac/tf/outputs.tf" | detect tf | wc -l | tr -d ' ')
   if [ "$got" != "1" ]; then
     echo "SELF-TEST FAIL: two files in one module produced ${got} dirs, want 1"
     fail=1
   fi
   if [ $fail -eq 0 ]; then
-    echo "self-test: module change detection fires for every grammar channel"
+    echo "self-test: module change detection fires for component-root modules only"
   fi
   return $fail
 }

@@ -9,6 +9,31 @@
 DigitalOceanAppPlatformServiceSpec defines the specification required to deploy a containerized service or application on DigitalOcean App Platform.
 It focuses on essential fields (following the 80/20 principle) such as the service's source (either a git repository or a container image from DigitalOcean Container Registry), resource sizing, scaling, and optional custom domain configuration.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanAppPlatformService
+metadata:
+  name: first-service                       # Kubernetes object name
+spec:
+  serviceName: first-service               # must be unique in your DO account
+  region: blr1                             # DigitalOceanRegion enum value
+  serviceType: web_service                 # web_service | worker | job
+  imageSource:
+    registry:
+      value: "docker-hub"              # literal, or valueFrom a DigitalOceanContainerRegistry
+    repository: "nginx"
+    tag: "latest"
+  instanceSizeSlug: basic_xxs              # basic_xxs | basic_xs | … | professional_xl
+  instanceCount: 1                         # default is 1 if omitted
+  enableAutoscale: false                   # set true and add min/max to autoscale
+  env:
+    NODE_ENV: "production"
+    APP_VERSION: "v1.0.0"
+  # customDomain: "myapp.example.com"      # value or StringValueOrRef to a DigitalOceanDnsZone
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -244,5 +269,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

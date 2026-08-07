@@ -120,20 +120,22 @@ create_zip() {
 }
 
 # ─── Presets ─────────────────────────────────────────────────────────────────
+# Presets live at the component root (catalog/{provider}/{kind}/presets/).
 if wants presets; then
   echo "Presets..."
   {
-    find "$CATALOG_ROOT" \( -path '*/v1alpha1/presets/*.yaml' -o -path '*/v1alpha1/presets/*.md' \) ! -path '*/_test/*'
+    find "$CATALOG_ROOT" \( -path '*/presets/*.yaml' -o -path '*/presets/*.md' \) ! -path '*/_test/*'
     echo "shared/cloudresourcekind/cloud_resource_kind.proto"
   } | create_zip "presets.zip" "presets"
 fi
 
 # ─── IaC Source ──────────────────────────────────────────────────────────────
+# IaC modules live at the component root (catalog/{provider}/{kind}/iac/).
 # Mirrors the ALLOWED_EXTENSIONS in iac-bundler.ts: .go, .tf, .md, .yaml
 # Excludes hidden dirs, vendor, and node_modules (same as iac-bundler.ts).
 if wants iac-source; then
   echo "IaC source..."
-  find "$CATALOG_ROOT" -path '*/v1alpha1/iac/*' ! -path '*/_test/*' \
+  find "$CATALOG_ROOT" -path '*/iac/*' ! -path '*/_test/*' \
       \( -name '*.go' -o -name '*.tf' -o -name '*.md' -o -name '*.yaml' \) \
       ! -path '*/vendor/*' \
       ! -path '*/node_modules/*' \
@@ -143,21 +145,28 @@ if wants iac-source; then
 fi
 
 # ─── Catalog Pages ───────────────────────────────────────────────────────────
+# catalog-page.md is version-resident (RETIRING class: replaced by the
+# kind-root catalog.md); the grammar matches any maturity channel.
 if wants catalog-pages; then
   echo "Catalog pages..."
-  find "$CATALOG_ROOT" -path '*/v1alpha1/catalog-page.md' ! -path '*/_test/*' \
+  find "$CATALOG_ROOT" -type f -name 'catalog-page.md' ! -path '*/_test/*' \
+    | grep -E "/v[0-9]+((alpha|beta)[0-9]+)?/catalog-page\.md$" \
     | create_zip "catalog-pages.zip" "catalog pages"
 fi
 
 # ─── Proto Source ────────────────────────────────────────────────────────────
+# Protos are the versioned contract and stay in version dirs; the grammar
+# matches any maturity channel (v1alpha1, v1beta1, v1, ...).
 if wants proto-source; then
   echo "Proto source..."
-  find "$CATALOG_ROOT" \( \
-      -path '*/v1alpha1/spec.proto' \
-      -o -path '*/v1alpha1/api.proto' \
-      -o -path '*/v1alpha1/stack_input.proto' \
-      -o -path '*/v1alpha1/stack_outputs.proto' \
-    \) ! -path '*/_test/*' | create_zip "proto-source.zip" "proto source"
+  find "$CATALOG_ROOT" -type f \( \
+      -name 'spec.proto' \
+      -o -name 'api.proto' \
+      -o -name 'stack_input.proto' \
+      -o -name 'stack_outputs.proto' \
+    \) ! -path '*/_test/*' \
+    | grep -E "/v[0-9]+((alpha|beta)[0-9]+)?/[a-z_]+\.proto$" \
+    | create_zip "proto-source.zip" "proto source"
 fi
 
 # ─── Reference Pack ──────────────────────────────────────────────────────────

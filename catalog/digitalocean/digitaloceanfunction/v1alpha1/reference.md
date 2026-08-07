@@ -9,6 +9,26 @@
 DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean.
 Functions are deployed via DigitalOcean App Platform for production-ready VPC integration, monitoring, and IaC support.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFunction
+metadata:
+  name: test-function
+spec:
+  functionName: test-function
+  region: blr1
+  runtime: nodejs_20
+  githubSource:
+    repo: example-org/functions
+    branch: main
+    deployOnPush: true
+  sourceDirectory: packages/test-function
+  memoryMb: 256
+  isWeb: true
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -186,5 +206,4 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanFunc
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

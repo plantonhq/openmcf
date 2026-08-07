@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0RoleSpec defines the configuration for an Auth0 Role.
 In Auth0, a Role is a named collection of permissions (scopes) that can be
 assigned to users. Roles are the building block of Auth0's role-based access
@@ -157,5 +159,4 @@ Reference an output from another manifest as `valueFrom: {kind: Auth0Role, name:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

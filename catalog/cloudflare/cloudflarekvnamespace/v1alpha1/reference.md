@@ -11,6 +11,18 @@ eventually-consistent key-value store readable from Workers at the edge. The
 namespace is the container; individual entries are seeded as
 CloudflareWorkersKvPair resources (or written by the application at runtime).
 
+## Example
+
+```yaml
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareKvNamespace
+metadata:
+  name: example-kv-namespace
+spec:
+  namespaceName: myapp-config-prod
+  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -59,5 +71,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

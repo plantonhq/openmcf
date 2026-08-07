@@ -1,0 +1,35 @@
+# Composed AzureStorageContainer scenario: the tenant-key-isolation
+# chain. A scenario-local account carries an encryption scope, and the
+# container pins that scope as its default with overrides disabled --
+# live-proving the default_encryption_scope reference resolves through
+# the scope's name output, the override flag applies, and the whole
+# chain tears down cleanly (the scope by soft-disable, the account by
+# delete).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-azurestoragecontainer-scopechain
+  id: planton-oss-e2e-azurestoragecontainer-scopechain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account + scope, in deploy order (the scope
+    # references the account by name). Path-form fixtures live outside
+    # e2e/scenarios/, which the discoverer treats as test cases.
+    planton.dev/e2e-prerequisites: "catalog/azure/azurestoragecontainer/e2e/scope-chain-account.yaml, catalog/azure/azurestoragecontainer/e2e/scope-chain-scope.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storagecontainer-scopechain-account
+  containerName: tenant-data
+  defaultEncryptionScope:
+    valueFrom:
+      name: planton-oss-e2e-storagecontainer-scopechain-scope
+  # Make the scope mandatory: blob writes cannot override it.
+  encryptionScopeOverrideEnabled: false

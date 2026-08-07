@@ -11,6 +11,36 @@ It focuses on essential parameters following the 80/20 principle, including regi
 target Droplets (by IDs or tag), forwarding rules for traffic, and health checks for backend service health.
 Note: Either `droplet_ids` or `droplet_tag` may be provided (mutually exclusive). The load balancer must be associated with a VPC.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanLoadBalancer
+metadata:
+  name: first-lb
+spec:
+  loadBalancerName: first-lb       # Must be unique per DigitalOcean account
+  region: blr1                    # Any valid DigitalOceanRegion slug (e.g., nyc3, sfo3, fra1)
+  vpc:
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                        # UUID or StringValueOrRef to DigitalOceanVpc
+  forwardingRules: # One or more rules
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 80
+      targetProtocol: http
+#    - entryPort: 443
+#      entryProtocol: https
+#      targetPort: 443
+#      targetProtocol: https
+  healthCheck: # Optional; recommended for HTTP/HTTPS traffic
+    port: 80
+    protocol: http
+    path: /health
+    checkIntervalSec: 10          # Defaults to 10 s if omitted (per proto hint)
+  dropletTag: web                 # Attach all Droplets with this tag (mutually exclusive with dropletIds)
+  enableStickySessions: false     # Set true to enable cookie‑based session affinity
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -233,5 +263,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

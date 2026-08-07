@@ -71,26 +71,20 @@ for entry in "${probe_components[@]}"; do
     echo "ERROR: component directory not found: $component_dir (update probe_components)" >&2
     exit 1
   fi
-
-  version_dir=""
-  for candidate in "$component_dir"/*/; do
-    vname=$(basename "$candidate")
-    if echo "$vname" | grep -qE '^v[0-9]+((alpha|beta)[0-9]+)?$'; then
-      version_dir="$vname"
-      break
-    fi
-  done
-  if [ -z "$version_dir" ]; then
-    echo "ERROR: no version directory found under $component_dir" >&2
+  if [ ! -d "$component_dir/iac" ]; then
+    echo "ERROR: no iac/ module set under $component_dir (modules live at the component root)" >&2
     exit 1
   fi
 
+  # Keys are versionless (one live module set per component); the release tag
+  # segment versions the artifact. These shapes are pinned by pkg/downloads'
+  # tests and uploaded by the release lanes -- three homes, one contract.
   echo ""
-  echo "${component} (${version_dir}):"
-  probe "${base_url}/${tag}/modules/terraform/${component}/${version_dir}.zip"
-  probe "${base_url}/${tag}/modules/pulumi/${component}/${version_dir}_darwin_arm64.gz"
-  probe "${base_url}/${tag}/modules/pulumi/${component}/${version_dir}_linux_amd64.gz"
-  probe "${base_url}/${tag}/modules/pulumi/${component}/${version_dir}_windows_amd64.exe.gz"
+  echo "${component}:"
+  probe "${base_url}/${tag}/modules/terraform/${component}/module.zip"
+  probe "${base_url}/${tag}/modules/pulumi/${component}/darwin_arm64.gz"
+  probe "${base_url}/${tag}/modules/pulumi/${component}/linux_amd64.gz"
+  probe "${base_url}/${tag}/modules/pulumi/${component}/windows_amd64.exe.gz"
 done
 
 echo ""

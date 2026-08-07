@@ -26,17 +26,17 @@ metadata:
   name: web-backend-1
   annotations:
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.ref-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.maintenance-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-secondary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-primary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project

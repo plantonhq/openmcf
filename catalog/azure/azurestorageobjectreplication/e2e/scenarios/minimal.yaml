@@ -1,0 +1,43 @@
+# Minimal AzureStorageObjectReplication scenario: one rule replicating a
+# container pair across two scenario-local accounts (fixture RG ->
+# source account + destination account -> a container on each -> this
+# policy). Proves the two-sided policy materialization, both account
+# FKs, both container-name FKs resolving against the RIGHT instance of
+# a twice-deployed kind (name-aware resolution), the Everything
+# backfill value, and a prefix filter.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageObjectReplication
+metadata:
+  name: planton-oss-e2e-azurestorageobjectreplication-smoke
+  id: planton-oss-e2e-azurestorageobjectreplication-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageobjectreplication
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local accounts + containers (in deploy order) instead of
+    # registry prerequisites: storage-account names are globally unique
+    # and sequential subtests that destroy and recreate the same name
+    # hang on recreate.
+    planton.dev/e2e-prerequisites: "catalog/azure/azurestorageobjectreplication/e2e/source-account.yaml,catalog/azure/azurestorageobjectreplication/e2e/destination-account.yaml,catalog/azure/azurestorageobjectreplication/e2e/source-container.yaml,catalog/azure/azurestorageobjectreplication/e2e/destination-container.yaml"
+  tags:
+    - planton-e2e
+spec:
+  sourceStorageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-orsrc-fixture-account
+  destinationStorageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-ordst-fixture-account
+  rules:
+    - sourceContainerName:
+        valueFrom:
+          name: planton-oss-e2e-orsrc-fixture-container
+      destinationContainerName:
+        valueFrom:
+          name: planton-oss-e2e-ordst-fixture-container
+      copyBlobsCreatedAfter: Everything
+      prefixMatch:
+        - invoices/

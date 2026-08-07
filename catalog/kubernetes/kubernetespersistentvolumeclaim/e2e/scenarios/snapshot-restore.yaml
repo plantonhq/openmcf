@@ -1,0 +1,32 @@
+# The snapshot-restore provisioning proof on the aws-eks profile: this
+# claim restores a VolumeSnapshot through the typed data_source arm. Deploy
+# succeeds while the snapshot does not yet exist — neither engine waits for
+# bind (the documented posture), and a WaitForFirstConsumer claim referencing
+# a future snapshot is simply Pending. The behavioral verifier then drives
+# the whole path: waits for the fixture's writer Job, cuts the
+# verifier-owned VolumeSnapshot, schedules a reader pod against THIS claim,
+# and asserts the marker data provisioned into the restored volume.
+#
+# Pulumi-only by documented design: the Terraform provider cannot express
+# PVC data sources (PARITY-EXCEPTION with a plan-time precondition), so the
+# terraform lane skips rather than failing on its own designed rejection.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPersistentVolumeClaim
+metadata:
+  name: e2e-pvc-snapshot-restore
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+    planton.dev/e2e-engines: "pulumi"
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kubernetespersistentvolumeclaim/e2e/fixture-data-source.yaml"
+spec:
+  namespace:
+    value: e2e-pvc-ds
+  name: e2e-pvc-snapshot-restore
+  access_modes:
+    - ReadWriteOnce
+  storage_request: 1Gi
+  storage_class_name:
+    value: e2e-gp3
+  data_source:
+    kind: volume_snapshot
+    name: e2e-pvc-ds-snapshot

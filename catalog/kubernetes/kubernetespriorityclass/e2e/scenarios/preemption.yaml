@@ -1,0 +1,20 @@
+# The preemption behavioral proof on the aws-eks profile: preemption needs
+# genuine scheduling pressure (a full node), which an idle kind cluster
+# cannot produce. The fixture saturates the batch's tainted ca-scale-free
+# capacity with low-priority pad pods; the behavioral verifier (switched on
+# by this scenario's name) then creates a pod at THIS class's priority that
+# cannot fit without evicting a pad pod, and asserts the scheduler emits a
+# Preempted eviction and the high-priority pod schedules — the class's
+# entire reason to exist, proven live.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPriorityClass
+metadata:
+  name: e2e-pc-preemptor
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kubernetespriorityclass/e2e/fixture-pressure.yaml"
+spec:
+  name: e2e-pc-preemptor
+  value: 100000
+  preemption_policy: preempt_lower_priority
+  description: E2E preemption-proof class — high priority, preempting.

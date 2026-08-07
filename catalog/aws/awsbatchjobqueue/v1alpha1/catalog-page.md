@@ -81,8 +81,8 @@ All associated environments must be one family: EC2-based (`EC2`/`SPOT`) or Farg
 
 | Name | Description |
 |------|-------------|
-| [01-single-environment](presets/01-single-environment.yaml) | One queue on one environment with stuck-job protection |
-| [02-spot-overflow](presets/02-spot-overflow.yaml) | Spot-first with On-Demand overflow — the canonical cost pattern |
+| [01-single-environment](../presets/01-single-environment.yaml) | One queue on one environment with stuck-job protection |
+| [02-spot-overflow](../presets/02-spot-overflow.yaml) | Spot-first with On-Demand overflow — the canonical cost pattern |
 
 ## Related Components
 

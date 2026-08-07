@@ -1,0 +1,87 @@
+# GcpBigQueryTable
+
+A GcpBigQueryTable provisions a BigQuery table — a native table, a logical
+view, a materialized view, or an external/BigLake table. All four shapes are
+arms of one GCP resource (`google_bigquery_table`); the spec enforces mutual
+exclusivity pre-deploy.
+
+## When to Use
+
+Use GcpBigQueryTable when infrastructure should own:
+
+- **Partitioned fact tables** for analytics pipelines (day/hour partitions,
+  clustering, partition-filter guards)
+- **Authorized views** that expose filtered slices of sensitive data (pair
+  with authorized-view entries on the source dataset's ACL)
+- **Materialized views** for hot aggregations with incremental refresh
+- **External tables** over GCS, BigQuery Omni connections, or other
+  federated sources
+
+Application-owned schemas (dbt models, migration scripts) can keep managing
+their own tables inside the same dataset without conflict.
+
+## Prerequisites
+
+- A [GcpBigQueryDataset](../gcpbigquerydataset/) (referenced via
+  `datasetId`)
+- A GCP project (the module enables the BigQuery API automatically)
+- For CMEK: a [GcpKmsKey](../gcpkmskey/) with the BigQuery service agent
+  granted `roles/cloudkms.cryptoKeyEncrypterDecrypter`
+
+## Quick Start
+
+```yaml
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpBigQueryTable
+metadata:
+  name: my-events-table
+spec:
+  datasetId:
+    valueFrom:
+      kind: GcpBigQueryDataset
+      name: my-analytics-dataset
+      fieldPath: status.outputs.dataset_id
+  tableId: events_raw
+  schema: '[{"name":"event_time","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"payload","type":"JSON"}]'
+  timePartitioning:
+    type: DAY
+    field: event_time
+```
+
+## Configuration Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `datasetId` | `StringValueOrRef` | Yes | Parent dataset (ref → GcpBigQueryDataset `dataset_id`). Immutable. |
+| `tableId` | `string` | Yes | Table identifier within the dataset. Immutable. |
+| `projectId` | `StringValueOrRef` | No | GCP project; defaults to provider project. |
+| `schema` | `string` | Native tables | JSON array of field definitions. |
+| `timePartitioning` / `rangePartitioning` | object | No | Mutually exclusive partition strategies. |
+| `clustering` | `string[]` | No | Up to four clustering columns. |
+| `view` / `materializedView` / `externalDataConfiguration` | object | No | At most one non-native arm. |
+| `deletionProtection` | `bool` | No (default `true`) | Client-side destroy guard on both engines. |
+
+See presets under `presets/` for partitioned analytics, authorized views,
+and external GCS tables.
+
+## Stack Outputs
+
+| Output | Description |
+|--------|-------------|
+| `table_id` | Short table ID for SQL and foreign keys |
+| `self_link` | Fully qualified BigQuery API URI |
+| `project` | Resolved GCP project |
+| `dataset_id` | Parent dataset ID |
+| `type` | `TABLE`, `VIEW`, `MATERIALIZED_VIEW`, or `EXTERNAL` |
+| `location` | Geographic location (inherited from dataset) |
+| `creation_time` | Creation time in milliseconds since epoch |
+| `qualified_name` | Dotted `{project}.{dataset}.{table}` handle (what Pub/Sub BigQuery delivery and query tooling consume) |
+
+## Related Components
+
+- [GcpBigQueryDataset](../gcpbigquerydataset/) — parent container (location, ACL, defaults)
+- [GcpKmsKey](../gcpkmskey/) — CMEK encryption key reference
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

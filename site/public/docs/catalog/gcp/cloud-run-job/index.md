@@ -58,6 +58,6 @@ spec:
 
 ## See Also
 
-- [README](README.md) — full configuration reference
+- [README](../README.md) — full configuration reference
 - [GcpCloudRun](/docs/catalog/gcp/cloud-run) — HTTP services
-- Presets: [basic ETL](presets/01-batch-etl-basic.yaml), [VPC cleanup](presets/02-parallel-vpc-cleanup.yaml), [GPU batch](presets/03-gpu-batch-inference.yaml)
+- Presets: [basic ETL](../presets/01-batch-etl-basic.yaml), [VPC cleanup](../presets/02-parallel-vpc-cleanup.yaml), [GPU batch](../presets/03-gpu-batch-inference.yaml)

@@ -72,5 +72,4 @@ Reference an output from another manifest as `valueFrom: {kind: CivoBucket, name
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

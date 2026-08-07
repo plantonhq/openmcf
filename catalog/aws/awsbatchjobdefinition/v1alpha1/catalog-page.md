@@ -97,8 +97,8 @@ Submit jobs against the definition (with a queue) via SubmitJob or an EventBridg
 
 | Name | Description |
 |------|-------------|
-| [01-fargate-container-job](presets/01-fargate-container-job.yaml) | Fargate job with execution role and Spot-safe retries |
-| [02-ec2-gpu-job](presets/02-ec2-gpu-job.yaml) | EC2 GPU job with ulimits and shared memory |
+| [01-fargate-container-job](../presets/01-fargate-container-job.yaml) | Fargate job with execution role and Spot-safe retries |
+| [02-ec2-gpu-job](../presets/02-ec2-gpu-job.yaml) | EC2 GPU job with ulimits and shared memory |
 
 ## Related Components
 

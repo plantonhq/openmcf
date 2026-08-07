@@ -11,10 +11,12 @@
 #   - Clear progress logging with component counts
 #   - No hardcoded component paths - auto-discovers from filesystem
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/{version}.zip
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/{version}.zip
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/module.zip
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/module.zip
 #
-# Path pattern: catalog/{provider}/{component}/{version}/iac/tf
+# Path pattern: catalog/{provider}/{component}/iac/tf (one live module set per
+# component -- the key carries no API version segment; the release tag
+# versions the artifact)
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -88,21 +90,15 @@ jobs:
             exit 0
           fi
           
-          # Get all component/version entries that have a tf module. A version
-          # directory is any name matching the maturity grammar; a component
-          # can ship modules for more than one served version, and each gets
-          # its own artifact (the version segment in the R2 key keeps them
-          # from colliding).
+          # Get all components that have a tf module. Modules live at the
+          # component root (one live module set per component), so discovery
+          # is a single-level walk with no version segment.
           COMPONENTS=()
           for component_dir in "$PROVIDER_PATH"/*/; do
             component=$(basename "$component_dir")
-            for version_dir in "$component_dir"*/; do
-              vname=$(basename "$version_dir")
-              if echo "$vname" | grep -qE '^v[0-9]+((alpha|beta)[0-9]+)?$' \
-                && [ -d "${version_dir}iac/tf" ]; then
-                COMPONENTS+=("${component}/${vname}")
-              fi
-            done
+            if [ -d "${component_dir}iac/tf" ]; then
+              COMPONENTS+=("${component}")
+            fi
           done
           
           TOTAL=${#COMPONENTS[@]}
@@ -125,19 +121,17 @@ jobs:
           COMPLETED=0
           FAILED=0
           
-          for entry in "${COMPONENTS[@]}"; do
+          for component in "${COMPONENTS[@]}"; do
             COMPLETED=$((COMPLETED + 1))
             REMAINING=$((TOTAL - COMPLETED))
             
-            component="${entry%%/*}"
-            vname="${entry##*/}"
-            TF_PATH="${PROVIDER_PATH}/${entry}/iac/tf"
-            ARTIFACT_NAME="${component}_${vname}.zip"
-            R2_KEY="releases/${TAG}/modules/terraform/${component}/${vname}.zip"
+            TF_PATH="${PROVIDER_PATH}/${component}/iac/tf"
+            ARTIFACT_NAME="${component}_module.zip"
+            R2_KEY="releases/${TAG}/modules/terraform/${component}/module.zip"
             
             echo ""
             echo "----------------------------------------"
-            echo "ZIPPING: ${entry}"
+            echo "ZIPPING: ${component}"
             echo "Progress: ${COMPLETED}/${TOTAL} (${REMAINING} remaining)"
             echo "----------------------------------------"
             

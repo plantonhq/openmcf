@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0ResourceServerSpec defines the configuration for an Auth0 Resource Server (API).
 In Auth0, Resource Servers represent APIs that your applications can request access to.
 They define the audience parameter used in authorization requests and the scopes (permissions)
@@ -263,5 +265,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

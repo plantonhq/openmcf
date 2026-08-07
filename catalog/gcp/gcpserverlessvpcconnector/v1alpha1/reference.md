@@ -35,7 +35,7 @@ per-workload.
 # Development manifest for GcpServerlessVpcConnector — exercises network
 # placement with explicit scaling for offline plan verification.
 #
-# Usage: planton tofu plan --manifest catalog/gcp/gcpserverlessvpcconnector/v1alpha1/iac/hack/manifest.yaml
+# Usage: planton tofu plan --manifest catalog/gcp/gcpserverlessvpcconnector/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServerlessVpcConnector
 metadata:
@@ -231,5 +231,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

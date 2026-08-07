@@ -1,0 +1,20 @@
+# Development manifest for GcpServerlessVpcConnector — exercises network
+# placement with explicit scaling for offline plan verification.
+#
+# Usage: planton tofu plan --manifest catalog/gcp/gcpserverlessvpcconnector/e2e/manifest.yaml
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServerlessVpcConnector
+metadata:
+  name: hack-vpc-connector
+  id: gcpvpcconn-hack-001
+  org: planton-dev
+  env: dev
+spec:
+  region: us-central1
+  connectorName: hack-egress
+  network:
+    value: hack-vpc
+  ipCidrRange: 10.8.0.0/28
+  machineType: e2-micro
+  minInstances: 2
+  maxInstances: 4

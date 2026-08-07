@@ -8,6 +8,22 @@
 
 DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanBucket
+metadata:
+  name: first-bucket          # K8s resource name
+spec:
+  bucketName: first-bucket-planton    # DNS‑compatible, 3‑63 chars
+  region: blr1                   # any valid DigitalOceanRegion enum (e.g., NYC3, FRA1)
+  accessControl: PRIVATE         # PRIVATE | PUBLIC_READ
+  versioningEnabled: true        # set to false if not needed
+  tags:
+    - planton
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -84,5 +100,4 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanBuck
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

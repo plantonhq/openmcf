@@ -120,5 +120,4 @@ Reference an output from another manifest as `valueFrom: {kind: CivoCertificate,
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

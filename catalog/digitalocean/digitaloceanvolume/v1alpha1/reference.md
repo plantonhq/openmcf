@@ -10,6 +10,25 @@ DigitalOceanVolumeSpec defines the specification required to create a DigitalOce
 A block storage volume provides expandable storage that can be attached to Droplets.
 This specification focuses on essential parameters for volume creation, adhering to the 80/20 principle.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: first-volume
+spec:
+  volumeName: data-volume-01          # lowercase letters, numbers, hyphens
+  description: "Block storage for PostgreSQL"
+  region: nyc3                        # any valid DigitalOceanRegion enum value
+  sizeGib: 100                        # 1 – 16000 GiB
+  filesystemType: ext4                # EXT4 | XFS | NONE
+  snapshotId: ""                      # leave blank if not using a snapshot
+  tags:
+    - planton
+    - env-staging
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -119,5 +138,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

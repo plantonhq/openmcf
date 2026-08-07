@@ -11,11 +11,13 @@
 #   - Clear progress logging with component counts
 #   - No hardcoded component paths - auto-discovers from filesystem
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
-#              (windows artifacts carry the executable suffix: {version}_{platform}.exe.gz)
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{platform}.gz
+#              (windows artifacts carry the executable suffix: {platform}.exe.gz)
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{platform}.gz
 #
-# Path pattern: catalog/{provider}/{component}/{version}/iac/pulumi
+# Path pattern: catalog/{provider}/{component}/iac/pulumi (one live module set
+# per component -- the key carries no API version segment; the release tag
+# versions the artifact)
 #
 # Called by: .github/workflows/release.yaml (after CLI release creates the release)
 # =============================================================================
@@ -44,7 +46,7 @@ jobs:
   # ============================================================================
   # Pre-flight: reject missing/misplaced Pulumi entrypoints before the long matrix
   # ============================================================================
-  # The matrix build below runs `go build ./<...>/v1alpha1/iac/pulumi` per component, which
+  # The matrix build below runs `go build ./<...>/iac/pulumi` per component, which
   # requires a `package main` at the entrypoint root. Catch a broken entrypoint ONCE here
   # (seconds) instead of failing dozens of expensive matrix legs after long compiles.
   preflight:
@@ -125,20 +127,15 @@ jobs:
             exit 0
           fi
           
-          # Get all component/version entries that have a pulumi module. A
-          # version directory is any name matching the maturity grammar; each
-          # served version releases its own binary (the version segment in
-          # the R2 key keeps them from colliding).
+          # Get all components that have a pulumi module. Modules live at the
+          # component root (one live module set per component), so discovery
+          # is a single-level walk with no version segment.
           COMPONENTS=()
           for component_dir in "$PROVIDER_PATH"/*/; do
             component=$(basename "$component_dir")
-            for version_dir in "$component_dir"*/; do
-              vname=$(basename "$version_dir")
-              if echo "$vname" | grep -qE '^v[0-9]+((alpha|beta)[0-9]+)?$' \
-                && [ -d "${version_dir}iac/pulumi" ]; then
-                COMPONENTS+=("${component}/${vname}")
-              fi
-            done
+            if [ -d "${component_dir}iac/pulumi" ]; then
+              COMPONENTS+=("${component}")
+            fi
           done
           
           TOTAL=${#COMPONENTS[@]}
@@ -162,28 +159,26 @@ jobs:
           COMPLETED=0
           FAILED=0
           
-          for entry in "${COMPONENTS[@]}"; do
+          for component in "${COMPONENTS[@]}"; do
             COMPLETED=$((COMPLETED + 1))
             REMAINING=$((TOTAL - COMPLETED))
             
-            component="${entry%%/*}"
-            vname="${entry##*/}"
-            COMPONENT_PATH="${PROVIDER_PATH}/${entry}/iac/pulumi"
+            COMPONENT_PATH="${PROVIDER_PATH}/${component}/iac/pulumi"
             
             # Handle Windows .exe extension
             if [ "$GOOS" = "windows" ]; then
               BINARY_NAME="${component}.exe"
-              ARTIFACT_NAME="${vname}_${PLATFORM_LABEL}.exe.gz"
+              ARTIFACT_NAME="${PLATFORM_LABEL}.exe.gz"
             else
               BINARY_NAME="${component}"
-              ARTIFACT_NAME="${vname}_${PLATFORM_LABEL}.gz"
+              ARTIFACT_NAME="${PLATFORM_LABEL}.gz"
             fi
             
             R2_KEY="releases/${TAG}/modules/pulumi/${component}/${ARTIFACT_NAME}"
             
             echo ""
             echo "----------------------------------------"
-            echo "BUILDING: ${entry} (${PLATFORM_LABEL})"
+            echo "BUILDING: ${component} (${PLATFORM_LABEL})"
             echo "Progress: ${COMPLETED}/${TOTAL} (${REMAINING} remaining)"
             echo "----------------------------------------"
             

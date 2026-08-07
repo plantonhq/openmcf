@@ -22,7 +22,6 @@ go_test(
     embed = [":tofuzip"],
     deps = [
         "//internal/cli/version",
-        "//pkg/crkreflect",
         "//pkg/downloads",
     ],
 )

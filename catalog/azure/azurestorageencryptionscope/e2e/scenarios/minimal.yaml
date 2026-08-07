@@ -1,0 +1,36 @@
+# Minimal AzureStorageEncryptionScope scenario: a platform-managed-key
+# scope with infrastructure (double) encryption on the scenario-local
+# fixture account -- proving both spec dials that need no external key
+# infrastructure, plus the state-aware destroy verification (ARM
+# soft-disables scopes instead of deleting them).
+#
+# The account reference resolves against the extra fixture's captured
+# outputs through the field's default kind (fixture RG -> scenario-local
+# account -> this scope). The MICROSOFT_KEY_VAULT source is deliberately
+# not exercised live (see profile.yaml).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageEncryptionScope
+metadata:
+  name: planton-oss-e2e-azurestorageencryptionscope-smoke
+  id: planton-oss-e2e-azurestorageencryptionscope-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageencryptionscope
+  annotations:
+    planton.dev/e2e: "true"
+    # Scenario-local account (minimal-account.yaml) instead of a registry
+    # prerequisite: storage-account names are globally unique and
+    # sequential subtests that destroy and recreate the same name hang on
+    # recreate.
+    planton.dev/e2e-prerequisites: "catalog/azure/azurestorageencryptionscope/e2e/minimal-account.yaml"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-storagescope-fixture-account
+  scopeName: smokeTenantScope
+  source: MICROSOFT_STORAGE
+  infrastructureEncryptionRequired: true

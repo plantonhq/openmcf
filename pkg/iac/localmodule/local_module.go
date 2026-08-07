@@ -111,21 +111,17 @@ func GetModuleDir(targetManifestPath string, cmd *cobra.Command, prov shared.Iac
 }
 
 // buildExpectedModulePath constructs the expected module path for error
-// messages, resolving the provider and version segments from the kind
-// registry — the same derivation the real resolvers use, so the hint can
-// never name a path the resolvers would not have tried.
+// messages, resolving the provider segment from the kind registry — the same
+// derivation the real resolvers use, so the hint can never name a path the
+// resolvers would not have tried.
 func buildExpectedModulePath(repoPath, kindName, provName string) string {
 	kind := crkreflect.KindFromString(kindName)
 
-	// Error path: an unresolvable kind falls back to plausible segments purely
+	// Error path: an unresolvable kind falls back to a plausible segment purely
 	// to render the hint; the real resolution has already failed with the cause.
 	provider := strings.ToLower(kindName)
 	if p := crkreflect.GetProvider(kind); p != cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified {
 		provider = strings.ReplaceAll(p.String(), "_", "")
-	}
-	versionDir, err := crkreflect.KindVersion(kind)
-	if err != nil {
-		versionDir = "v1alpha1"
 	}
 
 	subdir := "pulumi"
@@ -134,7 +130,7 @@ func buildExpectedModulePath(repoPath, kindName, provName string) string {
 	}
 
 	return filepath.Join(repoPath, "catalog", provider,
-		strings.ToLower(kindName), versionDir, "iac", subdir)
+		strings.ToLower(kindName), "iac", subdir)
 }
 
 // Error provides structured error information for better UX

@@ -112,9 +112,12 @@ func Generate(repoRoot string) (*Summary, error) {
 		}
 
 		entry := kindEntry{name: name, protoDir: protoDir, provider: provider, report: report}
-		kindDir := filepath.Join(repoRoot, protoDir)
-		entry.hasGuide = hasGuide(kindDir)
-		switch example, err := loadValidatedExample(res, kindDir); {
+		// protoDir is the version directory (the versioned contract);
+		// the living component -- GUIDE.md, README.md, e2e/, iac/ -- sits
+		// one level up at the component root.
+		componentDir := filepath.Dir(filepath.Join(repoRoot, protoDir))
+		entry.hasGuide = hasGuide(componentDir)
+		switch example, err := loadValidatedExample(res, componentDir); {
 		case err != nil:
 			summary.InvalidManifests = append(summary.InvalidManifests, InvalidManifest{Kind: name, Err: err})
 		case example == "":
@@ -147,11 +150,11 @@ func Generate(repoRoot string) (*Summary, error) {
 
 	// Pass 3: render every page and the catalog-level files.
 	for _, entry := range entries {
-		kindDir := filepath.Join(repoRoot, entry.protoDir)
+		componentDir := filepath.Dir(filepath.Join(repoRoot, entry.protoDir))
 		opts := explain.MarkdownOptions{
 			ExampleYAML:  entry.example,
 			ReferencedBy: inbound[entry.name],
-			SeeAlso:      seeAlso(kindDir),
+			SeeAlso:      seeAlso(componentDir),
 			HasGuide:     entry.hasGuide,
 		}
 		summary.Files[filepath.Join(entry.protoDir, "reference.md")] = explain.RenderMarkdown(entry.report, opts)
@@ -292,12 +295,14 @@ func indexCell(text string) string {
 	return strings.ReplaceAll(text, "|", "\\|")
 }
 
-// loadValidatedExample reads the kind's hack manifest and admits it as the
-// page's example only after it round-trips into the typed message and passes
-// protovalidate. An empty string with nil error means no manifest exists
-// (graceful degradation); an error means the manifest exists and is broken.
-func loadValidatedExample(res explain.Resource, kindDir string) (string, error) {
-	path := filepath.Join(kindDir, "iac", "hack", "manifest.yaml")
+// loadValidatedExample reads the component's base test manifest
+// (e2e/manifest.yaml at the component root -- the same manifest the E2E
+// framework deploys) and admits it as the page's example only after it
+// round-trips into the typed message and passes protovalidate. An empty
+// string with nil error means no manifest exists (graceful degradation); an
+// error means the manifest exists and is broken.
+func loadValidatedExample(res explain.Resource, componentDir string) (string, error) {
+	path := filepath.Join(componentDir, "e2e", "manifest.yaml")
 	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return "", nil
@@ -318,24 +323,22 @@ func loadValidatedExample(res explain.Resource, kindDir string) (string, error) 
 	return string(raw), nil
 }
 
-// hasGuide reports whether an authored GUIDE.md sits beside the kind's
-// protos. Guide presence flows into the page head and the indexes; the
-// freshness gate makes adding or removing a guide without regenerating a
-// visible failure instead of silent staleness.
-func hasGuide(kindDir string) bool {
-	_, err := os.Stat(filepath.Join(kindDir, "GUIDE.md"))
+// hasGuide reports whether an authored GUIDE.md sits at the component root.
+// Guide presence flows into the page head and the indexes; the freshness gate
+// makes adding or removing a guide without regenerating a visible failure
+// instead of silent staleness.
+func hasGuide(componentDir string) bool {
+	_, err := os.Stat(filepath.Join(componentDir, "GUIDE.md"))
 	return err == nil
 }
 
 // seeAlso links the page to the kind's hand-written prose when it exists.
-// Reference pages link to essays, never duplicate them.
-func seeAlso(kindDir string) []explain.MarkdownLink {
+// Reference pages link to essays, never duplicate them. The README sits at
+// the component root, one level above the version dir that holds the page.
+func seeAlso(componentDir string) []explain.MarkdownLink {
 	var links []explain.MarkdownLink
-	if _, err := os.Stat(filepath.Join(kindDir, "README.md")); err == nil {
-		links = append(links, explain.MarkdownLink{Title: "Overview", Path: "./README.md"})
-	}
-	if _, err := os.Stat(filepath.Join(kindDir, "docs", "README.md")); err == nil {
-		links = append(links, explain.MarkdownLink{Title: "Design notes", Path: "./docs/README.md"})
+	if _, err := os.Stat(filepath.Join(componentDir, "README.md")); err == nil {
+		links = append(links, explain.MarkdownLink{Title: "Overview", Path: "../README.md"})
 	}
 	return links
 }

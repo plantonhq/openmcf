@@ -1,5 +1,5 @@
 // Package discovery scans the planton repository to find testable components
-// and their associated IaC modules and hack manifests.
+// and their associated IaC modules and test manifests.
 package discovery
 
 import (
@@ -19,7 +19,8 @@ type Component struct {
 	// Provider is the cloud provider (e.g., "kubernetes", "aws", "gcp").
 	Provider string
 
-	// ManifestPath is the absolute path to iac/hack/manifest.yaml.
+	// ManifestPath is the absolute path to the component's base test manifest
+	// (e2e/manifest.yaml at the component root).
 	ManifestPath string
 
 	// PulumiDir is the absolute path to iac/pulumi/ (empty if not present).
@@ -30,7 +31,7 @@ type Component struct {
 }
 
 // DiscoverComponents scans the catalog tree to find all components
-// that have an iac/hack/manifest.yaml file (meaning they're testable).
+// that have an e2e/manifest.yaml file (meaning they're testable).
 func DiscoverComponents(repoRoot string) ([]Component, error) {
 	catalogDir := filepath.Join(repoRoot, "catalog")
 
@@ -61,17 +62,15 @@ func DiscoverComponents(repoRoot string) ([]Component, error) {
 
 			// A directory that does not resolve to a registered kind is not
 			// a component (e.g. a provider's aa_e2e/ folder) — skip it,
-			// exactly as a directory without a hack manifest is skipped.
-			versionDir, err := crkreflect.ComponentVersionDir(componentName)
-			if err != nil {
+			// exactly as a directory without a test manifest is skipped.
+			if _, err := crkreflect.ComponentVersionDir(componentName); err != nil {
 				continue
 			}
 
-			// Components live at provider/{component}/{version}/iac/, where
-			// the version segment follows the kind's declared version in the
-			// registry — never a literal.
-			iacBase := filepath.Join(providerPath, componentName, versionDir, "iac")
-			manifestPath := filepath.Join(iacBase, "hack", "manifest.yaml")
+			// The living component sits at the component root:
+			// iac/ modules beside the e2e/ assets, no version segment.
+			iacBase := filepath.Join(providerPath, componentName, "iac")
+			manifestPath := filepath.Join(providerPath, componentName, "e2e", "manifest.yaml")
 
 			if _, err := os.Stat(manifestPath); err != nil {
 				continue
@@ -147,11 +146,11 @@ type TestScenario struct {
 }
 
 // ModuleDir returns a component's IaC module directory for the given engine
-// ("pulumi" or "terraform"). The version segment follows the kind's declared
-// version in the registry — never a literal.
+// ("pulumi" or "terraform"). Modules live at the component root — the path is
+// fully derivable from provider and component; the registry check only guards
+// against unregistered names.
 func ModuleDir(repoRoot, provider, component, engine string) (string, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(component)
-	if err != nil {
+	if _, err := crkreflect.ComponentVersionDir(component); err != nil {
 		return "", err
 	}
 	var engineDir string
@@ -163,17 +162,16 @@ func ModuleDir(repoRoot, provider, component, engine string) (string, error) {
 	default:
 		return "", errors.Errorf("unsupported engine %q: want pulumi or terraform", engine)
 	}
-	return filepath.Join(repoRoot, "catalog", provider, component, versionDir, "iac", engineDir), nil
+	return filepath.Join(repoRoot, "catalog", provider, component, "iac", engineDir), nil
 }
 
 // DiscoverTestScenarios scans the component's colocated e2e/scenarios/ directory for YAML manifests.
-// Path: catalog/{provider}/{component}/{version}/e2e/scenarios/
+// Path: catalog/{provider}/{component}/e2e/scenarios/
 func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(component)
-	if err != nil {
+	if _, err := crkreflect.ComponentVersionDir(component); err != nil {
 		return nil, err
 	}
-	scenarioDir := filepath.Join(repoRoot, "catalog", provider, component, versionDir, "e2e", "scenarios")
+	scenarioDir := filepath.Join(repoRoot, "catalog", provider, component, "e2e", "scenarios")
 
 	entries, err := os.ReadDir(scenarioDir)
 	if err != nil {

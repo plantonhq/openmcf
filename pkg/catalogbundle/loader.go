@@ -101,7 +101,7 @@ func (b *Bundle) ConversionSpecs() map[string][]byte {
 }
 
 // Presets returns the bundle's preset contents keyed by entry name
-// (presets/<provider>/<kind>/<version>/<file>), sorted.
+// (presets/<provider>/<kind>/<file>), sorted.
 func (b *Bundle) Presets() map[string][]byte {
 	return b.subtree("presets/")
 }

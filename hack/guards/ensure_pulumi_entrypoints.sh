@@ -7,7 +7,7 @@ set -euo pipefail
 #
 # WHY THIS EXISTS
 # The release pipeline (.github/workflows/release.pulumi-modules.yaml) builds each component
-# NON-RECURSIVELY: `go build -o <bin> ./catalog/<p>/<c>/v1/iac/pulumi`.
+# NON-RECURSIVELY: `go build -o <bin> ./catalog/<p>/<c>/iac/pulumi`.
 # That command REQUIRES a `package main` at the directory root and fails with
 # `no Go files in .../iac/pulumi` when the entrypoint is missing or misplaced. A recursive
 # `go build ./.../v1/...` would mask this by compiling only the `module/` library. This guard
@@ -46,7 +46,7 @@ if [[ -d "$catalog_root" ]]; then
         misplaced_subdir+=("$subdir")
       fi
     done
-  done < <(find "$catalog_root" -type d -path "*/iac/pulumi" 2>/dev/null | grep -E '/v[0-9]+((alpha|beta)[0-9]+)?/iac/pulumi$' | sort)
+  done < <(find "$catalog_root" -type d -path "*/iac/pulumi" 2>/dev/null | grep -E '^catalog/[^/]+/[^/]+/iac/pulumi$' | sort)
 fi
 
 status=0
@@ -54,7 +54,7 @@ status=0
 if [[ ${#missing_root_main[@]} -gt 0 ]]; then
   status=1
   echo "ERROR: ${#missing_root_main[@]} Pulumi component(s) have NO 'package main' at the iac/pulumi root." >&2
-  echo "The release build (go build ./<...>/v1/iac/pulumi) will fail with 'no Go files'." >&2
+  echo "The release build (go build ./<...>/iac/pulumi) will fail with 'no Go files'." >&2
   echo "Create iac/pulumi/main.go (package main) per forge rule 010-pulumi-entrypoint:" >&2
   printf '  - %s\n' "${missing_root_main[@]}" >&2
   echo >&2

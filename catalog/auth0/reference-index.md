@@ -8,9 +8,9 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [Auth0Action](auth0action/v1alpha1/reference.md) | Auth0ActionSpec defines the configuration for an Auth0 Action. | yes |  |
-| [Auth0Client](auth0client/v1alpha1/reference.md) | Auth0ClientSpec defines the configuration for an Auth0 Application (Client). | yes |  |
-| [Auth0Connection](auth0connection/v1alpha1/reference.md) | Auth0ConnectionSpec defines the configuration for an Auth0 Connection. | yes |  |
-| [Auth0EventStream](auth0eventstream/v1alpha1/reference.md) | Auth0EventStreamSpec defines the configuration for an Auth0 Event Stream. | yes |  |
-| [Auth0ResourceServer](auth0resourceserver/v1alpha1/reference.md) | Auth0ResourceServerSpec defines the configuration for an Auth0 Resource Server (API). | yes |  |
-| [Auth0Role](auth0role/v1alpha1/reference.md) | Auth0RoleSpec defines the configuration for an Auth0 Role. | yes |  |
+| [Auth0Action](auth0action/v1alpha1/reference.md) | Auth0ActionSpec defines the configuration for an Auth0 Action. | yes | yes |
+| [Auth0Client](auth0client/v1alpha1/reference.md) | Auth0ClientSpec defines the configuration for an Auth0 Application (Client). | yes | yes |
+| [Auth0Connection](auth0connection/v1alpha1/reference.md) | Auth0ConnectionSpec defines the configuration for an Auth0 Connection. | yes | yes |
+| [Auth0EventStream](auth0eventstream/v1alpha1/reference.md) | Auth0EventStreamSpec defines the configuration for an Auth0 Event Stream. | yes | yes |
+| [Auth0ResourceServer](auth0resourceserver/v1alpha1/reference.md) | Auth0ResourceServerSpec defines the configuration for an Auth0 Resource Server (API). | yes | yes |
+| [Auth0Role](auth0role/v1alpha1/reference.md) | Auth0RoleSpec defines the configuration for an Auth0 Role. | yes | yes |

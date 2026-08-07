@@ -23,8 +23,5 @@ go_test(
     name = "pulumibinary_test",
     srcs = ["binary_test.go"],
     embed = [":pulumibinary"],
-    deps = [
-        "//pkg/crkreflect",
-        "//pkg/downloads",
-    ],
+    deps = ["//pkg/downloads"],
 )

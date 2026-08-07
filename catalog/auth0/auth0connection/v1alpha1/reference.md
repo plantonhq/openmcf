@@ -6,6 +6,8 @@
 
 **apiVersion**: `auth0.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 Auth0ConnectionSpec defines the configuration for an Auth0 Connection.
 A connection in Auth0 represents an identity provider - either a user database,
 social identity provider (Google, Facebook, GitHub), or enterprise identity provider (SAML, OIDC, LDAP).
@@ -650,5 +652,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

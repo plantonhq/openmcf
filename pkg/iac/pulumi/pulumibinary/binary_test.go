@@ -4,34 +4,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/downloads"
 )
 
-// Pins the wiring, not the shape (pkg/downloads owns the shape): the URL this
-// package builds must carry the version segment the kind registry declares —
-// the drift that once broke every released download was exactly this segment
-// going stale against CI.
-func TestBuildDownloadURLDerivesVersionSegmentFromRegistry(t *testing.T) {
+// Pins the wiring, not the shape (pkg/downloads owns the shape): this package
+// must compose exactly the key the release lanes upload, for a kind the
+// registry knows.
+func TestBuildDownloadURLMatchesDownloadsGrammar(t *testing.T) {
 	const component = "AwsS3Bucket"
 	const release = "v0.3.50"
-
-	versionDir, err := crkreflect.ComponentVersionDir(component)
-	if err != nil {
-		t.Fatalf("registry has no version for %s: %v", component, err)
-	}
 
 	got, err := BuildDownloadURL(component, release)
 	if err != nil {
 		t.Fatalf("BuildDownloadURL() error: %v", err)
 	}
 
-	want := downloads.BuildPulumiDownloadURL(component, versionDir, release, GetPlatformSuffix())
+	want := downloads.BuildPulumiDownloadURL(component, release, GetPlatformSuffix())
 	if got != want {
 		t.Errorf("BuildDownloadURL() = %q, want %q", got, want)
-	}
-	if !strings.Contains(got, "/"+versionDir+"_") {
-		t.Errorf("BuildDownloadURL() = %q does not carry the registry version segment %q", got, versionDir)
 	}
 }
 

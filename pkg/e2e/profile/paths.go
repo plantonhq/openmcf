@@ -25,43 +25,38 @@ func ProviderProfilePath(repoRoot, provider string) string {
 	return filepath.Join(repoRoot, catalogRoot, provider, ProviderProfileRelPath)
 }
 
-// componentVersionDir resolves a component directory name to its version
-// segment via the kind registry. Component E2E assets live under the kind's
-// declared version directory (e.g. kubernetesvalkey/v1alpha1/e2e/...), so the
-// segment follows the registry — never a literal. A directory that does not
-// resolve to a registered kind is not a component.
-func componentVersionDir(component string) (string, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(component)
-	if err != nil {
-		return "", errors.Wrapf(err, "cannot locate E2E assets for component %q", component)
+// validateComponent checks a component directory name against the kind
+// registry. Component E2E assets live at the component root
+// (e.g. kubernetesvalkey/e2e/...); a directory that does not resolve to a
+// registered kind is not a component.
+func validateComponent(component string) error {
+	if _, err := crkreflect.ComponentVersionDir(component); err != nil {
+		return errors.Wrapf(err, "cannot locate E2E assets for component %q", component)
 	}
-	return versionDir, nil
+	return nil
 }
 
 // ComponentProfilePath returns the absolute path to a component's E2E profile
-// (e.g. kubernetesvalkey/v1alpha1/e2e/profile.yaml).
+// (e.g. kubernetesvalkey/e2e/profile.yaml).
 func ComponentProfilePath(repoRoot, provider, component string) (string, error) {
-	versionDir, err := componentVersionDir(component)
-	if err != nil {
+	if err := validateComponent(component); err != nil {
 		return "", err
 	}
-	return filepath.Join(repoRoot, catalogRoot, provider, component, versionDir, "e2e", "profile.yaml"), nil
+	return filepath.Join(repoRoot, catalogRoot, provider, component, "e2e", "profile.yaml"), nil
 }
 
 // ComponentScenariosDir returns the absolute path to a component's test scenarios directory.
 func ComponentScenariosDir(repoRoot, provider, component string) (string, error) {
-	versionDir, err := componentVersionDir(component)
-	if err != nil {
+	if err := validateComponent(component); err != nil {
 		return "", err
 	}
-	return filepath.Join(repoRoot, catalogRoot, provider, component, versionDir, "e2e", "scenarios"), nil
+	return filepath.Join(repoRoot, catalogRoot, provider, component, "e2e", "scenarios"), nil
 }
 
 // ComponentFixturesDir returns the absolute path to a component's fixture manifests directory.
 func ComponentFixturesDir(repoRoot, provider, component string) (string, error) {
-	versionDir, err := componentVersionDir(component)
-	if err != nil {
+	if err := validateComponent(component); err != nil {
 		return "", err
 	}
-	return filepath.Join(repoRoot, catalogRoot, provider, component, versionDir, "e2e", "fixtures"), nil
+	return filepath.Join(repoRoot, catalogRoot, provider, component, "e2e", "fixtures"), nil
 }

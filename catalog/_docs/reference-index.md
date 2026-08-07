@@ -25,13 +25,13 @@ Start with:
 |---|---|---|---|
 | [alicloud](../alicloud/reference-index.md) | 30 | 30 | 0 |
 | [atlas](../atlas/reference-index.md) | 1 | 1 | 0 |
-| [auth0](../auth0/reference-index.md) | 6 | 6 | 0 |
+| [auth0](../auth0/reference-index.md) | 6 | 6 | 6 |
 | [aws](../aws/reference-index.md) | 112 | 112 | 0 |
 | [azure](../azure/reference-index.md) | 109 | 109 | 0 |
-| [civo](../civo/reference-index.md) | 12 | 1 | 0 |
-| [cloudflare](../cloudflare/reference-index.md) | 30 | 26 | 0 |
+| [civo](../civo/reference-index.md) | 12 | 2 | 0 |
+| [cloudflare](../cloudflare/reference-index.md) | 30 | 30 | 0 |
 | [confluent](../confluent/reference-index.md) | 1 | 1 | 0 |
-| [digitalocean](../digitalocean/reference-index.md) | 15 | 1 | 0 |
+| [digitalocean](../digitalocean/reference-index.md) | 15 | 14 | 0 |
 | [gcp](../gcp/reference-index.md) | 79 | 79 | 0 |
 | [hetznercloud](../hetznercloud/reference-index.md) | 12 | 12 | 0 |
 | [kubernetes](../kubernetes/reference-index.md) | 120 | 120 | 71 |

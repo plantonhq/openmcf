@@ -22,16 +22,15 @@ func ProviderCatalogPath(repoRoot, provider string) string {
 }
 
 // ComponentImportMapPath returns the absolute path to a component's import
-// map (e.g. awss3bucket/v1alpha1/iac/import-map.yaml — it sits next to the module
-// it maps). The version segment follows the kind's declared version in the
+// map (e.g. awss3bucket/iac/import-map.yaml — it sits next to the module it
+// maps, at the component root). The component is validated against the kind
 // registry, so an unregistered component name fails here rather than
 // composing a path that does not exist.
 func ComponentImportMapPath(repoRoot, provider, component string) (string, error) {
-	versionDir, err := crkreflect.ComponentVersionDir(component)
-	if err != nil {
+	if _, err := crkreflect.ComponentVersionDir(component); err != nil {
 		return "", errors.Wrapf(err, "cannot locate the import map for %s/%s", provider, component)
 	}
-	return filepath.Join(repoRoot, catalogRoot, provider, component, versionDir, "iac", "import-map.yaml"), nil
+	return filepath.Join(repoRoot, catalogRoot, provider, component, "iac", "import-map.yaml"), nil
 }
 
 // SplitAttributePath splits a declared attribute sub-path (a provider

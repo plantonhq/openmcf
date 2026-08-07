@@ -25,15 +25,15 @@ metadata:
   name: http-listener
   annotations:
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.app-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.admin-api-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/iac/pulumi/module
     planton.dev/stack.jobId: prod.OpenstackLoadBalancerListener.https-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackLoadBalancerListener.http-listener
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancerlistener/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec:
   loadbalancerId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c

@@ -38,7 +38,7 @@ func renderKindMarkdown(t *testing.T, kind string, opts MarkdownOptions) string 
 func TestRenderMarkdownRootView(t *testing.T) {
 	text := renderKindMarkdown(t, "AwsVpc", MarkdownOptions{
 		ExampleYAML: "apiVersion: aws.planton.dev/v1alpha1\nkind: AwsVpc\n",
-		SeeAlso:     []MarkdownLink{{Title: "Overview", Path: "./README.md"}},
+		SeeAlso:     []MarkdownLink{{Title: "Overview", Path: "../README.md"}},
 	})
 
 	for _, want := range []string{
@@ -55,7 +55,7 @@ func TestRenderMarkdownRootView(t *testing.T) {
 		// canonical valueFrom fieldPath spelling the control plane stores.
 		"| `status.outputs.vpc_id` |",
 		"## See Also",
-		"[Overview](./README.md)",
+		"[Overview](../README.md)",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("markdown missing %q\n---\n%s", want, text)
@@ -173,10 +173,10 @@ func TestReferenceEdges(t *testing.T) {
 func TestRenderMarkdownGuideLine(t *testing.T) {
 	// The `**Guide**:` prefix is stable grammar like the headings: agents
 	// grep it to discover which kinds carry authored wisdom, and the target
-	// is always the sibling file named exactly GUIDE.md (never renamed
-	// between source and artifact).
+	// is always the component root's file named exactly GUIDE.md, one level
+	// above the page (never renamed between source and artifact).
 	text := renderKindMarkdown(t, "kubernetes-namespace", MarkdownOptions{HasGuide: true})
-	if !strings.Contains(text, "**Guide**: [GUIDE.md](GUIDE.md)") {
+	if !strings.Contains(text, "**Guide**: [GUIDE.md](../GUIDE.md)") {
 		t.Errorf("guide head line missing when HasGuide is set:\n%s", text)
 	}
 	// The line belongs to the page head: it must appear before the first H2.

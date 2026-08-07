@@ -30,7 +30,7 @@ attached by reference via service_config.vpc_connector.
 # surface (secret env + volumes, VPC connector egress, scaling, labels,
 # build identity) for offline plan verification.
 #
-# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudfunction/v1alpha1/iac/hack/manifest.yaml
+# Usage: planton tofu plan --manifest catalog/gcp/gcpcloudfunction/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudFunction
 metadata:
@@ -839,5 +839,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

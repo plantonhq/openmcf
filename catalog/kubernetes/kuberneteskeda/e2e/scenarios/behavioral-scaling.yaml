@@ -1,0 +1,37 @@
+# The behavioral proof: KEDA must actually SCALE something. The scenario
+# deploys a plain 1-replica target Deployment as a manifest-path fixture;
+# the verifier (switched by that fixture's presence) then applies a
+# deterministic cron-trigger ScaledObject, asserts KEDA drives the target to
+# 2 ready replicas, and removes the ScaledObject. The spec exercises the
+# meaningful install surface alongside: sized components, strict webhooks,
+# a tuned scaler HTTP timeout, and KEDA's own telemetry endpoints (no
+# ServiceMonitor — the kind cluster has no Prometheus operator CRDs).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesKeda
+metadata:
+  name: e2e-keda-behavioral
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kuberneteskeda/e2e/fixture-scale-target.yaml"
+spec:
+  namespace:
+    value: keda
+  create_namespace: true
+  watch_namespace: ""
+  operator:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+  metrics_server:
+    replicas: 1
+  webhooks:
+    enabled: true
+    failure_policy: Fail
+    replicas: 1
+  http_timeout_ms: 5000
+  prometheus:
+    enabled: true

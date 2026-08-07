@@ -11,6 +11,20 @@ A DigitalOcean VPC allows you to create a private, isolated network for your Dro
 enabling secure communication within your infrastructure.
 This specification focuses on the essential parameters for creating a VPC, adhering to the 80/20 principle.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpc
+metadata:
+  name: first-vpc
+spec:
+  description: "Primary VPC for Planton staging environment"
+  region: blr1
+  ipRangeCidr: "10.10.0.0/16"
+  isDefaultForRegion: false
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -97,5 +111,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

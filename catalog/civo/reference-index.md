@@ -19,4 +19,4 @@
 | [CivoKubernetesCluster](civokubernetescluster/v1alpha1/reference.md) | CivoKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on Civo Cloud (K3s). |  |  |
 | [CivoKubernetesNodePool](civokubernetesnodepool/v1alpha1/reference.md) | CivoKubernetesNodePoolSpec defines the specification for creating a node pool in an existing Civo Kubernetes cluster. |  |  |
 | [CivoVolume](civovolume/v1alpha1/reference.md) | CivoVolumeSpec defines the specification required to create a Civo block storage volume. |  |  |
-| [CivoVpc](civovpc/v1alpha1/reference.md) | CivoVpcSpec defines the specification for an isolated private network on Civo. |  |  |
+| [CivoVpc](civovpc/v1alpha1/reference.md) | CivoVpcSpec defines the specification for an isolated private network on Civo. | yes |  |

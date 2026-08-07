@@ -46,17 +46,18 @@ func Build(input BuildInput) (*Manifest, error) {
 		"descriptors.binpb": descriptors,
 	}
 
-	// Conversions live beside the kind (<provider>/<kind>/conversions/*);
-	// presets live inside each served version (<provider>/<kind>/<version>/presets/*).
+	// Conversions and presets both live beside the kind
+	// (<provider>/<kind>/conversions/*, <provider>/<kind>/presets/*): the
+	// living component is version-agnostic, so bundle keys carry no version.
 	if err := collectFiles(entries, input.CatalogDir, "*/*/conversions/*", 4,
 		func(parts []string) string {
 			return "conversions/" + parts[0] + "/" + parts[1] + "/" + parts[3]
 		}); err != nil {
 		return nil, err
 	}
-	if err := collectFiles(entries, input.CatalogDir, "*/*/*/presets/*", 5,
+	if err := collectFiles(entries, input.CatalogDir, "*/*/presets/*", 4,
 		func(parts []string) string {
-			return "presets/" + parts[0] + "/" + parts[1] + "/" + parts[2] + "/" + parts[4]
+			return "presets/" + parts[0] + "/" + parts[1] + "/" + parts[3]
 		}); err != nil {
 		return nil, err
 	}

@@ -12,6 +12,59 @@ object lifecycle, and object lock). These sub-resources have no independent
 lifecycle and exist only as configuration of this bucket, so they are modeled
 as nested fields rather than separate resources.
 
+## Example
+
+```yaml
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareR2Bucket
+metadata:
+  name: r2-hack-bucket
+spec:
+  bucketName: planton-r2-hack-bucket
+  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+  location: weur
+  jurisdiction: default
+  storageClass: Standard
+  publicAccess: true
+  customDomains:
+    - enabled: true
+      zoneId:
+        value: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+      domain: media.example.com
+      minTls: "1.2"
+  cors:
+    rules:
+      - allowed:
+          methods: [GET, HEAD]
+          origins:
+            - https://app.example.com
+        maxAgeSeconds: 3600
+  lifecycle:
+    rules:
+      - id: expire-temp
+        enabled: true
+        conditions:
+          prefix: tmp/
+        abortMultipartUploadsTransition:
+          maxAgeSeconds: 604800
+        deleteObjectsTransition:
+          condition:
+            type: Age
+            maxAgeSeconds: 2592000
+        storageClassTransitions:
+          - condition:
+              type: Age
+              maxAgeSeconds: 86400
+  lock:
+    rules:
+      - id: retain-logs
+        enabled: true
+        prefix: logs/
+        condition:
+          type: Age
+          maxAgeSeconds: 2592000
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -585,5 +638,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

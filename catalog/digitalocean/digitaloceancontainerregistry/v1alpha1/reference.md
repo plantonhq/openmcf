@@ -9,6 +9,20 @@
 **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean
 Container Registry (DOCR). It exposes only the essential fields needed for the common 80 % use case.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanContainerRegistry
+metadata:
+  name: first-container-registry          # K8s resource name (must be unique in the namespace)
+spec:
+  name: first-container-registry-planton          # Registry name, 1‑63 chars, lowercase, numbers, hyphens
+  subscriptionTier: basic      # starter | basic | professional
+  region: blr1                 # Any valid DigitalOceanRegion enum slug (e.g., nyc3, sfo3)
+  garbageCollectionEnabled: false   # Enable automated GC of untagged images
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -93,5 +107,4 @@ Fields on other kinds that can point at this resource:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

@@ -9,6 +9,26 @@
 DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS).
 It focuses on essential parameters, following the 80/20 principle to expose only the most commonly used settings.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: first-node-pool                   # K8s resource name (unique per namespace)
+spec:
+  nodePoolName: first-node-pool           # Must be unique within the target DOKS cluster
+  cluster:
+    value: fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd
+  size: s-4vcpu-8gb           # Any valid Droplet size slug
+  nodeCount: 1                    # Desired nodes (initial count when autoScale true)
+  autoScale: false                 # Enable autoscaling
+  minNodes: 1                     # Lower bound when autoscaling
+  maxNodes: 2                     # Upper bound when autoscaling
+  tags:
+    - planton
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -155,5 +175,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

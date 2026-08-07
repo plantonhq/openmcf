@@ -7,8 +7,8 @@
 # Tag Format: v{semver}-terraform.{component}.{YYYYMMDD}.{N}
 # Example: v0.3.5-terraform.awsecsservice.20260108.0
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/{version}.zip
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/{version}.zip
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/terraform/{component}/module.zip
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/terraform/{component}/module.zip
 #
 # Triggered by: auto-tag.yaml via workflow_dispatch (one call per component)
 # =============================================================================
@@ -32,7 +32,7 @@ on:
         required: true
         type: string
       path:
-        description: 'Path to the Terraform module (e.g., catalog/aws/awsecsservice/v1alpha1/iac/tf)'
+        description: 'Path to the Terraform module (e.g., catalog/aws/awsecsservice/iac/tf)'
         required: true
         type: string
 
@@ -53,14 +53,12 @@ jobs:
         run: |
           COMPONENT="${{ inputs.component }}"
           MODULE_PATH="${{ inputs.path }}"
-          # The api-version segment is part of module identity
-          # (.../{component}/{version}/iac/tf), so the artifact carries it --
-          # same layout the full release workflow writes.
-          VNAME=$(basename "$(dirname "$(dirname "${MODULE_PATH}")")")
-          ARTIFACT_NAME="${COMPONENT}_${VNAME}.zip"
+          # One live module set per component: the artifact carries no API
+          # version segment -- same layout the full release workflow writes.
+          ARTIFACT_NAME="${COMPONENT}_module.zip"
           
           echo "========================================"
-          echo "ZIPPING: ${COMPONENT}/${VNAME}"
+          echo "ZIPPING: ${COMPONENT}"
           echo "Path: ${MODULE_PATH}"
           echo "========================================"
           
@@ -77,10 +75,8 @@ jobs:
         run: |
           TAG="${{ inputs.tag }}"
           COMPONENT="${{ inputs.component }}"
-          MODULE_PATH="${{ inputs.path }}"
-          VNAME=$(basename "$(dirname "$(dirname "${MODULE_PATH}")")")
-          ARTIFACT_NAME="${COMPONENT}_${VNAME}.zip"
-          R2_KEY="releases/${TAG}/modules/terraform/${COMPONENT}/${VNAME}.zip"
+          ARTIFACT_NAME="${COMPONENT}_module.zip"
+          R2_KEY="releases/${TAG}/modules/terraform/${COMPONENT}/module.zip"
           
           aws s3 cp "${ARTIFACT_NAME}" "s3://${R2_BUCKET}/${R2_KEY}" \
             --endpoint-url "${AWS_ENDPOINT_URL}"
@@ -94,8 +90,7 @@ jobs:
           COMPONENT="${{ inputs.component }}"
           PROVIDER="${{ inputs.provider }}"
           MODULE_PATH="${{ inputs.path }}"
-          VNAME=$(basename "$(dirname "$(dirname "${MODULE_PATH}")")")
-          DOWNLOAD_URL="https://downloads.planton.dev/releases/${TAG}/modules/terraform/${COMPONENT}/${VNAME}.zip"
+          DOWNLOAD_URL="https://downloads.planton.dev/releases/${TAG}/modules/terraform/${COMPONENT}/module.zip"
 
           cat > release-notes.md << 'EOF'
           ## Terraform Module Auto-Release
@@ -122,7 +117,7 @@ jobs:
           ```bash
           # Download and extract
           curl -LO DOWNLOAD_URL_PLACEHOLDER
-          unzip VERSION_PLACEHOLDER.zip -d COMPONENT_PLACEHOLDER
+          unzip module.zip -d COMPONENT_PLACEHOLDER
           cd COMPONENT_PLACEHOLDER
 
           # Initialize and apply
@@ -151,7 +146,7 @@ jobs:
 
           | Artifact | Download |
           |----------|----------|
-          | `COMPONENT_PLACEHOLDER/VERSION_PLACEHOLDER.zip` | [Download](DOWNLOAD_URL_PLACEHOLDER) |
+          | `COMPONENT_PLACEHOLDER/module.zip` | [Download](DOWNLOAD_URL_PLACEHOLDER) |
 
           ---
 
@@ -168,7 +163,6 @@ jobs:
           sed -i "s|PATH_PLACEHOLDER|${MODULE_PATH}|g" release-notes.md
           sed -i "s|COMMIT_PLACEHOLDER|${{ github.sha }}|g" release-notes.md
           sed -i "s|DOWNLOAD_URL_PLACEHOLDER|${DOWNLOAD_URL}|g" release-notes.md
-          sed -i "s|VERSION_PLACEHOLDER|${VNAME}|g" release-notes.md
 
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists"
@@ -195,9 +189,7 @@ jobs:
           TAG="${{ inputs.tag }}"
           COMPONENT="${{ inputs.component }}"
           PROVIDER="${{ inputs.provider }}"
-          MODULE_PATH="${{ inputs.path }}"
-          VNAME=$(basename "$(dirname "$(dirname "${MODULE_PATH}")")")
-          DOWNLOAD_URL="https://downloads.planton.dev/releases/${TAG}/modules/terraform/${COMPONENT}/${VNAME}.zip"
+          DOWNLOAD_URL="https://downloads.planton.dev/releases/${TAG}/modules/terraform/${COMPONENT}/module.zip"
           
           echo "## Terraform Module Auto-Release Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -208,7 +200,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifact" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- [${COMPONENT}/${VNAME}.zip](${DOWNLOAD_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "- [${COMPONENT}/module.zip](${DOWNLOAD_URL})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

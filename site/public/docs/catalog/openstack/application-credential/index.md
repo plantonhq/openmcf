@@ -33,13 +33,13 @@ metadata:
   name: my-app-cred
   annotations:
     planton.dev/stack.jobId: prod.OpenstackApplicationCredential.monitoring-agent
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
     planton.dev/stack.jobId: staging.OpenstackApplicationCredential.temp-reader
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackApplicationCredential.dev-automation
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
     planton.dev/stack.jobId: dev.OpenstackApplicationCredential.my-app-cred
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/v1alpha1/iac/pulumi/module
+    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
     planton.dev/provisioner: pulumi
 spec: {}
 ```

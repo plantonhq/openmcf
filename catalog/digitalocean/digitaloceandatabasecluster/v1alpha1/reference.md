@@ -9,6 +9,26 @@
 DigitalOceanDatabaseClusterSpec defines the essential configuration for creating a managed database cluster on DigitalOcean.
 This follows the 80/20 principle: only the most commonly used fields are exposed to keep the API simple.
 
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: first-db
+spec:
+  clusterName: first-db                 # human‑readable identifier
+  engine: pg                                # pg | mysql | redis | mongodb
+  engineVersion: "14"                       # major or major.minor
+  region: blr1                              # DigitalOceanRegion enum value
+  sizeSlug: db-s-2vcpu-4gb                  # any valid managed‑DB size slug
+  nodeCount: 1                         # 1‑3
+  vpc:
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                        # UUID or StringValueOrRef to DigitalOceanVpc
+  storageGib: 10                           # optional custom storage
+  enablePublicConnectivity: true           # true to allow public access
+```
+
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
@@ -147,5 +167,4 @@ Fields that can point at another resource's outputs:
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

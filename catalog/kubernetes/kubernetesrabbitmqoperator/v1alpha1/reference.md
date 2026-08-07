@@ -6,7 +6,7 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1alpha1`
 
-**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
 **KubernetesRabbitMqOperatorSpec** installs the RabbitMQ Cluster
 Operator — the MPL-2.0 operator maintained by the RabbitMQ team —
@@ -291,5 +291,4 @@ Reference an output from another manifest as `valueFrom: {kind: KubernetesRabbit
 
 ## See Also
 
-- [Overview](./README.md)
-- [Design notes](./docs/README.md)
+- [Overview](../README.md)

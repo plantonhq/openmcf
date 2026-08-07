@@ -154,4 +154,4 @@ Reference an output from another manifest as `valueFrom: {kind: ScalewayBlockVol
 
 ## See Also
 
-- [Overview](./README.md)
+- [Overview](../README.md)
