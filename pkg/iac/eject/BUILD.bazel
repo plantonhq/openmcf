@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "eject",
+    srcs = [
+        "eject.go",
+        "license.go",
+        "notes.go",
+        "pulumi.go",
+        "source.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/iac/eject",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/cli/cliprint",
+        "//internal/cli/staging",
+        "//internal/cli/version",
+        "//pkg/crkreflect",
+        "//pkg/fileutil",
+        "//pkg/iac/provisioner",
+        "//pkg/iac/pulumi/pulumimodule",
+        "//pkg/iac/pulumi/pulumisource",
+        "//pkg/iac/tofu/tofumodule",
+        "//pkg/iac/tofu/tofuzip",
+        "//shared/cloudresourcekind",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "eject_test",
+    srcs = ["eject_test.go"],
+    embed = [":eject"],
+    deps = ["//pkg/iac/provisioner"],
+)

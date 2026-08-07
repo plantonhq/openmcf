@@ -46,6 +46,7 @@ func RegisterCommands(parent *cobra.Command, opts Options) {
 		Init,
 		Kustomize,
 		LoadManifest,
+		Module,
 		ModulesVersion,
 		Plan,
 		Pull,

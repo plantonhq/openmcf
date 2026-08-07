@@ -47,6 +47,21 @@ func BuildPulumiDownloadURL(component, releaseVersion, platform string) string {
 	return fmt.Sprintf("%s/%s/modules/pulumi/%s/%s%s", BaseURL, releaseVersion, strings.ToLower(component), platform, suffix)
 }
 
+// BuildPulumiSourceDownloadURL constructs the R2 download URL for a Pulumi
+// component's source zip — the module's Go source tree, as opposed to the
+// compiled per-platform binaries served by BuildPulumiDownloadURL. Source is
+// platform-independent, so the key carries no platform segment.
+//
+// URL format: https://downloads.planton.dev/releases/{version}/modules/pulumi/{component}/source.zip
+//
+// Examples:
+//
+//	BuildPulumiSourceDownloadURL("AwsEcsService", "v0.3.50")
+//	  -> https://downloads.planton.dev/releases/v0.3.50/modules/pulumi/awsecsservice/source.zip
+func BuildPulumiSourceDownloadURL(component, releaseVersion string) string {
+	return fmt.Sprintf("%s/%s/modules/pulumi/%s/source.zip", BaseURL, releaseVersion, strings.ToLower(component))
+}
+
 // BuildTerraformDownloadURL constructs the R2 download URL for a Terraform module zip.
 //
 // URL format: https://downloads.planton.dev/releases/{version}/modules/terraform/{component}/module.zip

@@ -16,7 +16,7 @@ func TestRegisterCommands_EngineSet(t *testing.T) {
 
 	want := []string{
 		"apply", "checkout", "destroy", "init", "kustomize", "load-manifest",
-		"modules-version", "plan", "pull", "pulumi", "refresh",
+		"module", "modules-version", "plan", "pull", "pulumi", "refresh",
 		"secret-coverage", "terraform", "tofu", "validate-manifest",
 		"validate-outputs", "validate-refs",
 	}

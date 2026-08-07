@@ -10,6 +10,7 @@ set -euo pipefail
 # of one contract: the R2 key shape
 #   modules/terraform/{component}/module.zip
 #   modules/pulumi/{component}/{platform}.gz (.exe.gz on windows)
+#   modules/pulumi/{component}/source.zip
 # When the two halves drift, nothing fails loudly — every released CLI
 # silently degrades each module fetch into a full git clone. Unit tests in
 # pkg/downloads pin the CLI half and a post-upload probe in the release lanes
@@ -85,6 +86,9 @@ for entry in "${probe_components[@]}"; do
   probe "${base_url}/${tag}/modules/pulumi/${component}/darwin_arm64.gz"
   probe "${base_url}/${tag}/modules/pulumi/${component}/linux_amd64.gz"
   probe "${base_url}/${tag}/modules/pulumi/${component}/windows_amd64.exe.gz"
+  # A 404 here at an old tag is expected: source.zip ships only with releases
+  # cut after the pulumi source lane joined the workflow. Probe a newer tag.
+  probe "${base_url}/${tag}/modules/pulumi/${component}/source.zip"
 done
 
 echo ""

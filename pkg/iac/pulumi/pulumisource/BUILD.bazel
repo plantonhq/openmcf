@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "pulumisource",
+    srcs = ["source.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumisource",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/cli/cliprint",
+        "//internal/cli/version",
+        "//pkg/crkreflect",
+        "//pkg/downloads",
+        "//pkg/fileutil",
+        "//pkg/iac/pulumi/pulumibinary",
+        "@com_github_pkg_errors//:errors",
+    ],
+)

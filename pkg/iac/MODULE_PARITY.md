@@ -22,7 +22,9 @@ touch a module on either side (or add a new kind).
   kind -- "this representative output set fully populates the `StackOutputs` proto with
   nothing left unmapped" -- enforces cross-engine output parity. Add a case for each
   kind whose outputs you care about. You can also dry-run a module ad hoc:
-  `planton validate-outputs --kind <Kind> --module-dir <dir> --sample-outputs <json>`.
+  `planton validate-outputs --kind <Kind> --module-dir <dir> --sample-outputs <json>`,
+  or run the full contract check (input surface + outputs + engine validation):
+  `planton module verify --kind <Kind> --module-dir <dir>`.
 - **Output transform convention** -- emit outputs that flatten to the proto field
   paths. Scalars are plain outputs; nested proto messages (e.g. `KubernetesSecretKey`)
   are emitted as nested objects (`output "password_secret" { value = { name = ..., key = ... } }`),
@@ -98,18 +100,23 @@ matching `pulumi/module/*.go`), confirm both sides agree on:
 - **Outputs shape.** Both engines export the same `StackOutputs` field set (see the
   automated conformance guard above).
 
-## variables.tf (a generated *scaffold*, curated in practice)
+## variables.tf (generator-owned where migrated, curated elsewhere)
 
-`planton tofu generate-variables <Kind>` (`pkg/iac/tofu/generators`) renders a starting
-`variables.tf` from the spec proto, but the committed convention is the curated
-`optional()` form (used by the large majority of modules, e.g. `kubernetesnamespace`,
-`kubernetescronjob`). The generator's raw output makes every field required, which is not
-runtime-compatible with the generated `terraform.tfvars` (it omits unset fields). So:
+`planton tofu generate-variables <Kind>` (`pkg/iac/tofu/generators`) renders
+`variables.tf` from the spec proto in the committed `optional()` convention: every
+attribute the tfvars renderer may omit (it emits populated fields only) is `optional()`
+with a zero-value default, and an attribute stays required only when the proto marks the
+field required (see the generators package doc for the full contract).
 
-- Treat the generator as a reference for *coverage*, not a file to commit verbatim.
-- When a spec field is added, add the matching `variable` (in the curated `optional()`
-  style) so partial tfvars still apply. Diffing against `generate-variables` output is a
-  quick way to spot a missing field.
+- For kinds in the drift gate's migrated set (`TestVariablesTFDrift` in
+  `pkg/iac/tofu/generators`), the committed `variables.tf` IS the generator output —
+  regenerate with `PLANTON_REGEN_VARIABLES=1`, never hand-edit.
+- For the rest, the file is still hand-curated: when a spec field is added, add the
+  matching attribute (in the `optional()` style) so partial tfvars still apply. Diffing
+  against `generate-variables` output is a quick way to spot a missing field.
+- `planton module verify --kind <Kind> --module-dir <dir>` checks any module's declared
+  input surface against the kind's schema, with severities tied to what actually breaks
+  a deployment.
 
 ## Worked example
 

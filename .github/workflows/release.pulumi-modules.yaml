@@ -15,6 +15,12 @@
 #              (windows artifacts carry the executable suffix: {platform}.exe.gz)
 # Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{platform}.gz
 #
+# Each component also publishes its module SOURCE alongside the binaries:
+#   releases/{tag}/modules/pulumi/{component}/source.zip
+# Source is platform-independent, so the zip uploads from exactly one matrix
+# leg (linux_amd64) instead of four redundant writes. Consumers: the CLI's
+# module-eject flow and source-rendering surfaces.
+#
 # Path pattern: catalog/{provider}/{component}/iac/pulumi (one live module set
 # per component -- the key carries no API version segment; the release tag
 # versions the artifact)
@@ -208,6 +214,34 @@ jobs:
               echo "✗ ERROR: Failed to build ${component} for ${PLATFORM_LABEL}"
               FAILED=$((FAILED + 1))
             fi
+            
+            # Publish the module source once per component (source is
+            # platform-independent; the linux_amd64 leg is the designated
+            # writer). Apache-2.0 §4(d): LICENSE and NOTICE must accompany
+            # every redistribution, and a source zip is a standalone
+            # redistribution of that component — both land at the zip root,
+            # mirroring the terraform module lane.
+            if [ "${PLATFORM_LABEL}" = "linux_amd64" ]; then
+              SOURCE_ARTIFACT="${component}_source.zip"
+              SOURCE_R2_KEY="releases/${TAG}/modules/pulumi/${component}/source.zip"
+              
+              if (cd "${COMPONENT_PATH}" && zip -q -r "${GITHUB_WORKSPACE}/${SOURCE_ARTIFACT}" .) \
+                && zip -q -j "${SOURCE_ARTIFACT}" LICENSE NOTICE; then
+                
+                if aws s3 cp "${SOURCE_ARTIFACT}" "s3://${R2_BUCKET}/${SOURCE_R2_KEY}" \
+                  --endpoint-url "${AWS_ENDPOINT_URL}"; then
+                  echo "✓ Uploaded: https://downloads.planton.dev/${SOURCE_R2_KEY}"
+                  LAST_UPLOADED_SOURCE_KEY="${SOURCE_R2_KEY}"
+                else
+                  echo "✗ ERROR: Failed to upload ${SOURCE_ARTIFACT} to R2"
+                  FAILED=$((FAILED + 1))
+                fi
+                rm -f "${SOURCE_ARTIFACT}"
+              else
+                echo "✗ ERROR: Failed to zip source for ${component}"
+                FAILED=$((FAILED + 1))
+              fi
+            fi
           done
           
           # Probe one uploaded artifact through the public URL. The CLI
@@ -223,6 +257,20 @@ jobs:
               echo "✓ Public URL probe passed: ${PROBE_URL}"
             else
               echo "✗ ERROR: uploaded artifact does not serve at its public URL (HTTP ${PROBE_CODE}): ${PROBE_URL}"
+              FAILED=$((FAILED + 1))
+            fi
+          fi
+          
+          # Same probe for the source artifact (only the linux_amd64 leg
+          # uploads one). The CLI's eject flow composes this URL from a shape
+          # pinned in pkg/downloads — this pins the CI half of that contract.
+          if [ -n "${LAST_UPLOADED_SOURCE_KEY:-}" ]; then
+            PROBE_URL="https://downloads.planton.dev/${LAST_UPLOADED_SOURCE_KEY}"
+            PROBE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -I "${PROBE_URL}")
+            if [ "${PROBE_CODE}" = "200" ]; then
+              echo "✓ Public URL probe passed: ${PROBE_URL}"
+            else
+              echo "✗ ERROR: uploaded source zip does not serve at its public URL (HTTP ${PROBE_CODE}): ${PROBE_URL}"
               FAILED=$((FAILED + 1))
             fi
           fi

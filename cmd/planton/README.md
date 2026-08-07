@@ -76,6 +76,10 @@ cmd/planton/
 │   │   ├── refresh.go           # tofu refresh
 │   │   ├── destroy.go           # tofu destroy
 │   │   └── README.md            # OpenTofu commands docs
+│   ├── module.go                # module command group (customization)
+│   ├── module/
+│   │   ├── eject.go             # module eject (copy an official module out)
+│   │   └── verify.go            # module verify (prove contract conformance)
 │   ├── load_manifest.go         # load-manifest command
 │   ├── validate_manifest.go     # validate command
 │   └── version.go               # version command
@@ -97,8 +101,9 @@ function, so the two surfaces cannot drift. The seam:
 
 - registers every user-facing engine command (`apply`, `plan`, `destroy`,
   `refresh`, `init`, `pulumi`, `tofu`, `terraform`, `kustomize`,
-  `load-manifest`, `validate-manifest`, `validate-refs`, `validate-outputs`,
-  `secret-coverage`, `checkout`, `pull`, `modules-version`);
+  `load-manifest`, `module`, `validate-manifest`, `validate-refs`,
+  `validate-outputs`, `secret-coverage`, `checkout`, `pull`,
+  `modules-version`);
 - registers the persistent flags those commands resolve through cobra flag
   inheritance (`--local-module`, `--planton-git-repo`);
 - accepts `Options.ModulesVersion` so a host can pin module artifact downloads

@@ -1,7 +1,6 @@
 package tofuzip
 
 import (
-	"archive/zip"
 	"fmt"
 	"io"
 	"net/http"
@@ -212,70 +211,10 @@ func DownloadAndExtractZip(componentName, releaseVersion string) error {
 	}
 
 	// Extract zip to module directory
-	if err := extractZip(tmpPath, modulePath); err != nil {
+	if err := fileutil.ExtractZip(tmpPath, modulePath); err != nil {
 		// Clean up partial extraction
 		os.RemoveAll(modulePath)
 		return errors.Wrap(err, "failed to extract zip file")
-	}
-
-	return nil
-}
-
-// extractZip extracts a zip file to the destination directory
-func extractZip(zipPath, destDir string) error {
-	r, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return errors.Wrapf(err, "failed to open zip file %s", zipPath)
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		// Construct the destination path
-		destPath := filepath.Join(destDir, f.Name)
-
-		// Check for zip slip vulnerability
-		if !strings.HasPrefix(destPath, filepath.Clean(destDir)+string(os.PathSeparator)) {
-			return errors.Errorf("illegal file path in zip: %s", f.Name)
-		}
-
-		if f.FileInfo().IsDir() {
-			// Create directory
-			if err := os.MkdirAll(destPath, f.Mode()); err != nil {
-				return errors.Wrapf(err, "failed to create directory %s", destPath)
-			}
-			continue
-		}
-
-		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return errors.Wrapf(err, "failed to create parent directory for %s", destPath)
-		}
-
-		// Extract file
-		if err := extractFile(f, destPath); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// extractFile extracts a single file from a zip archive
-func extractFile(f *zip.File, destPath string) error {
-	rc, err := f.Open()
-	if err != nil {
-		return errors.Wrapf(err, "failed to open file in zip: %s", f.Name)
-	}
-	defer rc.Close()
-
-	outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-	if err != nil {
-		return errors.Wrapf(err, "failed to create file %s", destPath)
-	}
-	defer outFile.Close()
-
-	if _, err := io.Copy(outFile, rc); err != nil {
-		return errors.Wrapf(err, "failed to write file %s", destPath)
 	}
 
 	return nil

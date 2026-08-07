@@ -996,6 +996,13 @@ from those three facts.
 **Custom modules:**
 
 ```bash
+# Start from the official module: eject a customizable copy you own
+# (a generated CONTRACT.md inside explains the contract it must keep)
+planton module eject AwsS3Bucket --provisioner tofu --output-dir ./my-custom-module
+
+# Prove a customization still conforms to the kind's contract
+planton module verify --kind AwsS3Bucket --module-dir ./my-custom-module
+
 # Point a deployment at any local module directory:
 planton tofu apply --manifest config.yaml --module-dir ./my-custom-module
 
@@ -1224,36 +1231,43 @@ git push origin main
 **Scenario:** Your organization has specific security policies (always encrypt, always multi-AZ, specific tagging).
 
 **Approach:**
-1. Copy the default module out of a repo checkout (or maintain a fork)
+1. Eject the official module into a directory you own
 2. Add organizational defaults
-3. Deploy with the CLI pointed at your module
-4. Prove the outputs contract still holds
+3. Prove the module still conforms to the kind's contract
+4. Deploy with the CLI pointed at your module
 
 **Example:**
 
 ```bash
-# Start from the default module
-git clone https://github.com/plantonhq/planton
-cp -R planton/catalog/aws/awsrdsinstance/*/iac/tf my-rds-module
-cd my-rds-module
+# Eject a customizable copy of the official module (the generated
+# CONTRACT.md inside explains the contract it must keep honoring)
+planton module eject AwsRdsInstance --provisioner tofu --output-dir ./my-rds-module
 # Edit to add organizational defaults, then version it in your own repository
+
+# Prove the module still conforms — the input surface against the kind's
+# schema, the outputs contract, and (when tofu is on PATH) engine validation
+planton module verify --kind AwsRdsInstance --module-dir ./my-rds-module
 
 # Deploy with your module (same manifest, your deployment logic)
 planton tofu apply \
   --manifest rds.yaml \
   --module-dir ./my-rds-module
-
-# Prove the module still satisfies the component's outputs contract
-planton validate-outputs --kind AwsRdsInstance --module-dir ./my-rds-module
 ```
+
+For pulumi modules, `module eject` additionally makes the copy a standalone
+Go module: it generates a `go.mod` pinned to the release the module was
+ejected from and rewrites the module's self-imports onto a module path you
+choose with `--go-module` — the copy compiles and deploys outside this
+repository from the moment it lands.
 
 When a custom module's raw outputs use different names than the official
 one, ship an output transformation alongside it — a declarative
 `output_transform.yaml` mapping raw output names to the component's outputs
 schema, or a `transform-outputs` executable for logic a mapping cannot
 express. The CLI discovers either automatically in the module directory, and
-`planton validate-outputs` checks it (add `--sample-outputs` for a full
-dry-run).
+`planton module verify` checks it as part of the full contract check
+(`planton validate-outputs` remains the focused low-level tool; add
+`--sample-outputs` to either for a full dry-run).
 
 **Working directly in a repo checkout instead:** pass `--local-module` and
 point `--planton-git-repo` (or `$PLANTON_GIT_REPO`) at the checkout — the CLI

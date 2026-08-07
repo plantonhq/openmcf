@@ -14,8 +14,13 @@
 #   - darwin_amd64   - Intel Macs
 #   - windows_amd64  - Windows
 #
-# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
-# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{version}_{platform}.gz
+# Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/modules/pulumi/{component}/{platform}.gz
+#              (windows artifacts carry the executable suffix: {platform}.exe.gz)
+# Public URL:  https://downloads.planton.dev/releases/{tag}/modules/pulumi/{component}/{platform}.gz
+#
+# The component's module SOURCE is also published alongside the binaries
+# (source.zip, uploaded once from the linux_amd64 leg) — same layout the full
+# release workflow writes.
 #
 # Triggered by: auto-tag.yaml via workflow_dispatch (one call per component)
 # =============================================================================
@@ -211,6 +216,22 @@ jobs:
           aws s3 cp "${ARTIFACT_NAME}" "s3://${R2_BUCKET}/${R2_KEY}" \
             --endpoint-url "${AWS_ENDPOINT_URL}"
           echo "✓ Uploaded: https://downloads.planton.dev/${R2_KEY}"
+          
+          # Publish the module source once (source is platform-independent;
+          # the linux_amd64 leg is the designated writer). Apache-2.0 §4(d):
+          # LICENSE and NOTICE accompany every redistribution, at the zip
+          # root — mirroring the terraform module lane.
+          if [ "${PLATFORM}" = "linux_amd64" ]; then
+            SOURCE_ARTIFACT="${COMPONENT}_source.zip"
+            SOURCE_R2_KEY="releases/${TAG}/modules/pulumi/${COMPONENT}/source.zip"
+            
+            (cd "${COMPONENT_PATH}" && zip -q -r "${GITHUB_WORKSPACE}/${SOURCE_ARTIFACT}" .)
+            zip -q -j "${SOURCE_ARTIFACT}" LICENSE NOTICE
+            
+            aws s3 cp "${SOURCE_ARTIFACT}" "s3://${R2_BUCKET}/${SOURCE_R2_KEY}" \
+              --endpoint-url "${AWS_ENDPOINT_URL}"
+            echo "✓ Uploaded: https://downloads.planton.dev/${SOURCE_R2_KEY}"
+          fi
 
   # ===========================================================================
   # Summary

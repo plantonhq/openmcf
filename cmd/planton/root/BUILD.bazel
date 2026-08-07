@@ -13,6 +13,7 @@ go_library(
         "init.go",
         "kustomize.go",
         "load_manifest.go",
+        "module.go",
         "modules_version.go",
         "plan.go",
         "pull.go",
@@ -34,6 +35,7 @@ go_library(
     deps = [
         "//cmd/planton/root/e2e",
         "//cmd/planton/root/kustomize",
+        "//cmd/planton/root/module",
         "//cmd/planton/root/pulumi",
         "//cmd/planton/root/terraform",
         "//cmd/planton/root/tofu",

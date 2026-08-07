@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "module",
+    srcs = [
+        "eject.go",
+        "verify.go",
+    ],
+    importpath = "github.com/plantonhq/planton/cmd/planton/root/module",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/cli/cliprint",
+        "//internal/cli/ui/moduleverify",
+        "//internal/cli/ui/validateoutputs",
+        "//pkg/crkreflect",
+        "//pkg/iac/eject",
+        "//pkg/iac/moduleverify",
+        "//pkg/iac/provisioner",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_spf13_cobra//:cobra",
+    ],
+)

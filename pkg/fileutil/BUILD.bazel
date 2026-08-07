@@ -1,8 +1,12 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "fileutil",
-    srcs = ["file_util.go"],
+    srcs = [
+        "copy.go",
+        "file_util.go",
+        "zip.go",
+    ],
     importpath = "github.com/plantonhq/planton/pkg/fileutil",
     visibility = ["//visibility:public"],
     deps = [
@@ -10,4 +14,10 @@ go_library(
         "@com_github_pkg_errors//:errors",
         "@com_github_sirupsen_logrus//:logrus",
     ],
+)
+
+go_test(
+    name = "fileutil_test",
+    srcs = ["copy_test.go"],
+    embed = [":fileutil"],
 )
