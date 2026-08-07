@@ -206,8 +206,8 @@ spec:
 | `spec.additionalOptions` | `[]KubernetesKeycloakAdditionalOption` |  |  |  |
 | `spec.additionalOptions[].name` | `string` | yes |  |  |
 | `spec.additionalOptions[].value` | `string` |  |  |  |
-| `spec.additionalOptions[].secret` | `KubernetesKeycloakSecretSelector` |  |  |  |
-| `spec.additionalOptions[].secret.name` | `string \| valueFrom` | yes |  | KubernetesPostgres (`status.outputs.password_secret.name`) |
+| `spec.additionalOptions[].secret` | `KubernetesKeycloakOptionSecretSelector` |  |  |  |
+| `spec.additionalOptions[].secret.name` | `string \| valueFrom` | yes |  |  |
 | `spec.additionalOptions[].secret.key` | `string` | yes |  |  |
 | `spec.bootstrapAdminSecretName` | `string` |  |  |  |
 | `spec.resources` | `ContainerResources` |  |  |  |
@@ -644,7 +644,7 @@ Inline value. Use secret for credential-bearing options.
 
 ### spec.additionalOptions[].secret
 
-`KubernetesKeycloakSecretSelector`
+`KubernetesKeycloakOptionSecretSelector`
 
 Value from a Secret (mutually exclusive with value).
 
@@ -652,19 +652,12 @@ Value from a Secret (mutually exclusive with value).
 
 `string | valueFrom` · required
 
-Secret name. Accepts a literal or a reference to a
-KubernetesPostgres resource (its `<cluster>-app` credential
-Secret, maintained by the operator across failovers).
-
-- references: KubernetesPostgres (`status.outputs.password_secret.name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesPostgres, name: <that resource's name>, fieldPath: status.outputs.password_secret.name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.additionalOptions[].secret.key
 
 `string` · required
-
-Key within the Secret.
 
 - rule: {"required":true}
 
@@ -970,7 +963,6 @@ Fields that can point at another resource's outputs:
 | `spec.db.usernameSecret.name` | KubernetesPostgres | `status.outputs.password_secret.name` |
 | `spec.db.passwordSecret.name` | KubernetesPostgres | `status.outputs.password_secret.name` |
 | `spec.http.tlsSecretName` | KubernetesCertificate | `status.outputs.secret_name` |
-| `spec.additionalOptions[].secret.name` | KubernetesPostgres | `status.outputs.password_secret.name` |
 
 ## See Also
 

@@ -2405,7 +2405,7 @@ type KubernetesAirflowLogSearchBackend struct {
 	// The Secret holding the user's password (composed into the
 	// connection Secret at apply time). Required when `username` is
 	// set. Same-namespace constraint applies.
-	PasswordSecret *KubernetesAirflowPasswordSecret `protobuf:"bytes,5,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	PasswordSecret *KubernetesAirflowLogBackendPasswordSecret `protobuf:"bytes,5,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2468,11 +2468,79 @@ func (x *KubernetesAirflowLogSearchBackend) GetUsername() string {
 	return ""
 }
 
-func (x *KubernetesAirflowLogSearchBackend) GetPasswordSecret() *KubernetesAirflowPasswordSecret {
+func (x *KubernetesAirflowLogSearchBackend) GetPasswordSecret() *KubernetesAirflowLogBackendPasswordSecret {
 	if x != nil {
 		return x.PasswordSecret
 	}
 	return nil
+}
+
+// *
+// A reference to the Secret holding the log search backend's
+// password.
+type KubernetesAirflowLogBackendPasswordSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of the Secret. Defaults compose a KubernetesOpenSearch
+	// resource's operator-generated admin-credentials Secret (keys
+	// `username`/`password`); that output is EMPTY when a custom
+	// security config replaces the operator bootstrap — point at your
+	// custom credential Secret then. The elasticsearch arm has no
+	// in-catalog kind: set an explicit Secret name for an external
+	// Elasticsearch. Same-namespace constraint (a Kubernetes rule, not
+	// a chart one): the Secret must live in the namespace Airflow
+	// installs into.
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key inside the Secret holding the password. Empty = "password"
+	// (the KubernetesOpenSearch admin-Secret convention).
+	SecretKey     *string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3,oneof" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesAirflowLogBackendPasswordSecret) Reset() {
+	*x = KubernetesAirflowLogBackendPasswordSecret{}
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesAirflowLogBackendPasswordSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesAirflowLogBackendPasswordSecret) ProtoMessage() {}
+
+func (x *KubernetesAirflowLogBackendPasswordSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesAirflowLogBackendPasswordSecret.ProtoReflect.Descriptor instead.
+func (*KubernetesAirflowLogBackendPasswordSecret) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *KubernetesAirflowLogBackendPasswordSecret) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesAirflowLogBackendPasswordSecret) GetSecretKey() string {
+	if x != nil && x.SecretKey != nil {
+		return *x.SecretKey
+	}
+	return ""
 }
 
 // *
@@ -2504,7 +2572,7 @@ type KubernetesAirflowAdminUser struct {
 
 func (x *KubernetesAirflowAdminUser) Reset() {
 	*x = KubernetesAirflowAdminUser{}
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2516,7 +2584,7 @@ func (x *KubernetesAirflowAdminUser) String() string {
 func (*KubernetesAirflowAdminUser) ProtoMessage() {}
 
 func (x *KubernetesAirflowAdminUser) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2529,7 +2597,7 @@ func (x *KubernetesAirflowAdminUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesAirflowAdminUser.ProtoReflect.Descriptor instead.
 func (*KubernetesAirflowAdminUser) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *KubernetesAirflowAdminUser) GetCreate() bool {
@@ -2576,7 +2644,7 @@ type KubernetesAirflowExistingSecretRef struct {
 
 func (x *KubernetesAirflowExistingSecretRef) Reset() {
 	*x = KubernetesAirflowExistingSecretRef{}
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2588,7 +2656,7 @@ func (x *KubernetesAirflowExistingSecretRef) String() string {
 func (*KubernetesAirflowExistingSecretRef) ProtoMessage() {}
 
 func (x *KubernetesAirflowExistingSecretRef) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2601,7 +2669,7 @@ func (x *KubernetesAirflowExistingSecretRef) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesAirflowExistingSecretRef.ProtoReflect.Descriptor instead.
 func (*KubernetesAirflowExistingSecretRef) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *KubernetesAirflowExistingSecretRef) GetSecretName() string {
@@ -2653,7 +2721,7 @@ type KubernetesAirflowSecurity struct {
 
 func (x *KubernetesAirflowSecurity) Reset() {
 	*x = KubernetesAirflowSecurity{}
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2665,7 +2733,7 @@ func (x *KubernetesAirflowSecurity) String() string {
 func (*KubernetesAirflowSecurity) ProtoMessage() {}
 
 func (x *KubernetesAirflowSecurity) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2678,7 +2746,7 @@ func (x *KubernetesAirflowSecurity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesAirflowSecurity.ProtoReflect.Descriptor instead.
 func (*KubernetesAirflowSecurity) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *KubernetesAirflowSecurity) GetFernetKeySecretName() string {
@@ -2718,7 +2786,7 @@ type KubernetesAirflowScheduling struct {
 
 func (x *KubernetesAirflowScheduling) Reset() {
 	*x = KubernetesAirflowScheduling{}
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2730,7 +2798,7 @@ func (x *KubernetesAirflowScheduling) String() string {
 func (*KubernetesAirflowScheduling) ProtoMessage() {}
 
 func (x *KubernetesAirflowScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2743,7 +2811,7 @@ func (x *KubernetesAirflowScheduling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesAirflowScheduling.ProtoReflect.Descriptor instead.
 func (*KubernetesAirflowScheduling) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *KubernetesAirflowScheduling) GetNodeSelector() map[string]string {
@@ -2804,7 +2872,7 @@ type KubernetesAirflowImages struct {
 
 func (x *KubernetesAirflowImages) Reset() {
 	*x = KubernetesAirflowImages{}
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[29]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2816,7 +2884,7 @@ func (x *KubernetesAirflowImages) String() string {
 func (*KubernetesAirflowImages) ProtoMessage() {}
 
 func (x *KubernetesAirflowImages) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[29]
+	mi := &file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2829,7 +2897,7 @@ func (x *KubernetesAirflowImages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesAirflowImages.ProtoReflect.Descriptor instead.
 func (*KubernetesAirflowImages) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
+	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *KubernetesAirflowImages) GetAirflowRepository() string {
@@ -3080,16 +3148,22 @@ const file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDesc = ""
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12^\n" +
 	"\x04size\x18\x02 \x01(\tBE\xbaH9r725^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$\x8a\xa6\x1d\x05100GiH\x00R\x04size\x88\x01\x01\x12#\n" +
 	"\rstorage_class\x18\x03 \x01(\tR\fstorageClassB\a\n" +
-	"\x05_size\"\xb2\x05\n" +
+	"\x05_size\"\xbd\x05\n" +
 	"!KubernetesAirflowLogSearchBackend\x12r\n" +
 	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95 \x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x049200H\x00R\x04port\x88\x01\x01\x127\n" +
 	"\x06scheme\x18\x03 \x01(\tB\x1a\xbaH\x0fr\rR\x04httpR\x05https\x8a\xa6\x1d\x04httpH\x01R\x06scheme\x88\x01\x01\x12\x1a\n" +
-	"\busername\x18\x04 \x01(\tR\busername\x12{\n" +
-	"\x0fpassword_secret\x18\x05 \x01(\v2R.dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecretR\x0epasswordSecret:\x84\x02\xbaH\x80\x02\x1a\xfd\x01\n" +
+	"\busername\x18\x04 \x01(\tR\busername\x12\x85\x01\n" +
+	"\x0fpassword_secret\x18\x05 \x01(\v2\\.dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogBackendPasswordSecretR\x0epasswordSecret:\x84\x02\xbaH\x80\x02\x1a\xfd\x01\n" +
 	"#log_backend.username_needs_password\x12\xa3\x01A username without a password_secret cannot authenticate — declare the Secret holding this user's password, or clear username for an unauthenticated dev backend.\x1a0this.username == '' || has(this.password_secret)B\a\n" +
 	"\x05_portB\t\n" +
-	"\a_scheme\"\xc3\x02\n" +
+	"\a_scheme\"\xc8\x02\n" +
+	")KubernetesAirflowLogBackendPasswordSecret\x12\x90\x01\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB;\xbaH\x03\xc8\x01\x01\x88\xd4a\x95 \x92\xd4a,status.outputs.admin_credentials_secret_nameR\n" +
+	"secretName\x12y\n" +
+	"\n" +
+	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
+	"\v_secret_key\"\xc3\x02\n" +
 	"\x1aKubernetesAirflowAdminUser\x12%\n" +
 	"\x06create\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x06create\x88\x01\x01\x12*\n" +
 	"\busername\x18\x02 \x01(\tB\t\x8a\xa6\x1d\x05adminH\x01R\busername\x88\x01\x01\x120\n" +
@@ -3137,98 +3211,100 @@ func file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescGZIP()
 	return file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_goTypes = []any{
-	(*KubernetesAirflowSpec)(nil),                 // 0: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec
-	(*KubernetesAirflowDatabase)(nil),             // 1: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDatabase
-	(*KubernetesAirflowPostgres)(nil),             // 2: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres
-	(*KubernetesAirflowMysql)(nil),                // 3: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql
-	(*KubernetesAirflowMysqlPasswordSecret)(nil),  // 4: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysqlPasswordSecret
-	(*KubernetesAirflowPasswordSecret)(nil),       // 5: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret
-	(*KubernetesAirflowBroker)(nil),               // 6: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker
-	(*KubernetesAirflowBundledRedis)(nil),         // 7: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBundledRedis
-	(*KubernetesAirflowValkeyBroker)(nil),         // 8: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker
-	(*KubernetesAirflowBrokerPasswordSecret)(nil), // 9: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerPasswordSecret
-	(*KubernetesAirflowBrokerUrlSecret)(nil),      // 10: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerUrlSecret
-	(*KubernetesAirflowDags)(nil),                 // 11: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDags
-	(*KubernetesAirflowGitSync)(nil),              // 12: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowGitSync
-	(*KubernetesAirflowDagsPersistence)(nil),      // 13: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagsPersistence
-	(*KubernetesAirflowComponents)(nil),           // 14: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents
-	(*KubernetesAirflowApiServer)(nil),            // 15: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowApiServer
-	(*KubernetesAirflowScheduler)(nil),            // 16: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduler
-	(*KubernetesAirflowDagProcessor)(nil),         // 17: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagProcessor
-	(*KubernetesAirflowTriggerer)(nil),            // 18: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowTriggerer
-	(*KubernetesAirflowWorkers)(nil),              // 19: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers
-	(*KubernetesAirflowWorkersKeda)(nil),          // 20: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkersKeda
-	(*KubernetesAirflowPgBouncer)(nil),            // 21: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPgBouncer
-	(*KubernetesAirflowLogging)(nil),              // 22: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging
-	(*KubernetesAirflowLogsPersistence)(nil),      // 23: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogsPersistence
-	(*KubernetesAirflowLogSearchBackend)(nil),     // 24: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend
-	(*KubernetesAirflowAdminUser)(nil),            // 25: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser
-	(*KubernetesAirflowExistingSecretRef)(nil),    // 26: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowExistingSecretRef
-	(*KubernetesAirflowSecurity)(nil),             // 27: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSecurity
-	(*KubernetesAirflowScheduling)(nil),           // 28: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling
-	(*KubernetesAirflowImages)(nil),               // 29: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowImages
-	nil,                                           // 30: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),                   // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),         // 32: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),         // 33: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesAirflowSpec)(nil),                     // 0: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec
+	(*KubernetesAirflowDatabase)(nil),                 // 1: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDatabase
+	(*KubernetesAirflowPostgres)(nil),                 // 2: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres
+	(*KubernetesAirflowMysql)(nil),                    // 3: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql
+	(*KubernetesAirflowMysqlPasswordSecret)(nil),      // 4: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysqlPasswordSecret
+	(*KubernetesAirflowPasswordSecret)(nil),           // 5: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret
+	(*KubernetesAirflowBroker)(nil),                   // 6: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker
+	(*KubernetesAirflowBundledRedis)(nil),             // 7: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBundledRedis
+	(*KubernetesAirflowValkeyBroker)(nil),             // 8: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker
+	(*KubernetesAirflowBrokerPasswordSecret)(nil),     // 9: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerPasswordSecret
+	(*KubernetesAirflowBrokerUrlSecret)(nil),          // 10: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerUrlSecret
+	(*KubernetesAirflowDags)(nil),                     // 11: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDags
+	(*KubernetesAirflowGitSync)(nil),                  // 12: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowGitSync
+	(*KubernetesAirflowDagsPersistence)(nil),          // 13: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagsPersistence
+	(*KubernetesAirflowComponents)(nil),               // 14: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents
+	(*KubernetesAirflowApiServer)(nil),                // 15: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowApiServer
+	(*KubernetesAirflowScheduler)(nil),                // 16: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduler
+	(*KubernetesAirflowDagProcessor)(nil),             // 17: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagProcessor
+	(*KubernetesAirflowTriggerer)(nil),                // 18: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowTriggerer
+	(*KubernetesAirflowWorkers)(nil),                  // 19: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers
+	(*KubernetesAirflowWorkersKeda)(nil),              // 20: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkersKeda
+	(*KubernetesAirflowPgBouncer)(nil),                // 21: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPgBouncer
+	(*KubernetesAirflowLogging)(nil),                  // 22: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging
+	(*KubernetesAirflowLogsPersistence)(nil),          // 23: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogsPersistence
+	(*KubernetesAirflowLogSearchBackend)(nil),         // 24: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend
+	(*KubernetesAirflowLogBackendPasswordSecret)(nil), // 25: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogBackendPasswordSecret
+	(*KubernetesAirflowAdminUser)(nil),                // 26: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser
+	(*KubernetesAirflowExistingSecretRef)(nil),        // 27: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowExistingSecretRef
+	(*KubernetesAirflowSecurity)(nil),                 // 28: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSecurity
+	(*KubernetesAirflowScheduling)(nil),               // 29: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling
+	(*KubernetesAirflowImages)(nil),                   // 30: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowImages
+	nil,                                               // 31: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                       // 32: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),             // 33: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),             // 34: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_depIdxs = []int32{
-	31, // 0: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 0: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.database:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDatabase
 	6,  // 2: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.broker:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker
 	11, // 3: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.dags:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDags
 	14, // 4: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.components:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents
 	21, // 5: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.pgbouncer:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPgBouncer
 	22, // 6: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.logging:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging
-	25, // 7: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.admin_user:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser
-	27, // 8: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.security:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSecurity
-	28, // 9: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.scheduling:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling
-	29, // 10: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.images:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowImages
+	26, // 7: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.admin_user:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser
+	28, // 8: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.security:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSecurity
+	29, // 9: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.scheduling:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling
+	30, // 10: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowSpec.images:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowImages
 	2,  // 11: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDatabase.postgres:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres
 	3,  // 12: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDatabase.mysql:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql
-	31, // 13: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 13: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5,  // 14: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPostgres.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret
-	31, // 15: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 15: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	4,  // 16: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysql.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysqlPasswordSecret
-	31, // 17: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysqlPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	31, // 18: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 17: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowMysqlPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 18: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	7,  // 19: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker.bundled_redis:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBundledRedis
 	8,  // 20: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker.valkey:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker
 	10, // 21: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBroker.existing_broker_url_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerUrlSecret
-	32, // 22: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBundledRedis.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	31, // 23: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	33, // 22: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBundledRedis.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	32, // 23: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	9,  // 24: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowValkeyBroker.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerPasswordSecret
-	31, // 25: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	32, // 25: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowBrokerPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	12, // 26: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDags.git_sync:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowGitSync
 	13, // 27: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDags.persistence:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagsPersistence
-	32, // 28: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowGitSync.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 28: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowGitSync.resources:type_name -> dev.planton.kubernetes.ContainerResources
 	15, // 29: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents.api_server:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowApiServer
 	16, // 30: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents.scheduler:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduler
 	17, // 31: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents.dag_processor:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagProcessor
 	18, // 32: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents.triggerer:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowTriggerer
 	19, // 33: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowComponents.workers:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers
-	32, // 34: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowApiServer.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	32, // 35: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduler.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	32, // 36: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagProcessor.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	32, // 37: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowTriggerer.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	32, // 38: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 34: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowApiServer.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 35: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduler.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 36: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowDagProcessor.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 37: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowTriggerer.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 38: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers.resources:type_name -> dev.planton.kubernetes.ContainerResources
 	20, // 39: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkers.keda:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowWorkersKeda
-	32, // 40: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPgBouncer.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	33, // 40: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPgBouncer.resources:type_name -> dev.planton.kubernetes.ContainerResources
 	23, // 41: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging.persistence:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogsPersistence
 	24, // 42: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging.elasticsearch:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend
 	24, // 43: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogging.opensearch:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend
-	31, // 44: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 45: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowPasswordSecret
-	26, // 46: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowExistingSecretRef
-	30, // 47: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.node_selector:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.NodeSelectorEntry
-	33, // 48: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	49, // [49:49] is the sub-list for method output_type
-	49, // [49:49] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	32, // 44: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 45: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogSearchBackend.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogBackendPasswordSecret
+	32, // 46: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowLogBackendPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	27, // 47: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowAdminUser.password_secret:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowExistingSecretRef
+	31, // 48: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.node_selector:type_name -> dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.NodeSelectorEntry
+	34, // 49: dev.planton.kubernetes.kubernetesairflow.v1alpha1.KubernetesAirflowScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_init() }
@@ -3274,13 +3350,14 @@ func file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_init() {
 	file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[24].OneofWrappers = []any{}
 	file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[25].OneofWrappers = []any{}
 	file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[26].OneofWrappers = []any{}
+	file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_msgTypes[27].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kubernetesairflow_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

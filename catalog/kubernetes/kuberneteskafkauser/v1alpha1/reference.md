@@ -316,8 +316,6 @@ Fields on other kinds that can point at this resource:
 | KubernetesKafkaMirrorMaker2 | `spec.mirrors[].source.authentication.certificateAndKey.secretName` | `status.outputs.secret_name` |
 | KubernetesKafkaMirrorMaker2 | `spec.mirrors[].source.authentication.passwordSecret.secretName` | `status.outputs.secret_name` |
 | KubernetesKafkaUi | `spec.clusters[].sasl.passwordSecret.secretName` | `status.outputs.secret_name` |
-| KubernetesKafkaUi | `spec.clusters[].schemaRegistry.passwordSecret.secretName` | `status.outputs.secret_name` |
-| KubernetesKafkaUi | `spec.clusters[].kafkaConnect[].passwordSecret.secretName` | `status.outputs.secret_name` |
 | KubernetesKarapace | `spec.kafka.tls.clientCertSecretName` | `status.outputs.secret_name` |
 | KubernetesKarapace | `spec.kafka.sasl.passwordSecret.secretName` | `status.outputs.secret_name` |
 

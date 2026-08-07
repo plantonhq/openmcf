@@ -1246,7 +1246,9 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | KubernetesAirflow | `spec.logging.elasticsearch.host` | `status.outputs.service_name` |
+| KubernetesAirflow | `spec.logging.elasticsearch.passwordSecret.secretName` | `status.outputs.admin_credentials_secret_name` |
 | KubernetesAirflow | `spec.logging.opensearch.host` | `status.outputs.service_name` |
+| KubernetesAirflow | `spec.logging.opensearch.passwordSecret.secretName` | `status.outputs.admin_credentials_secret_name` |
 
 ## See Also
 

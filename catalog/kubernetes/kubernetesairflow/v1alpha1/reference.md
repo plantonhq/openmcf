@@ -307,16 +307,16 @@ spec:
 | `spec.logging.elasticsearch.port` | `int32` |  | `9200` |  |
 | `spec.logging.elasticsearch.scheme` | `string` |  | `http` |  |
 | `spec.logging.elasticsearch.username` | `string` |  |  |  |
-| `spec.logging.elasticsearch.passwordSecret` | `KubernetesAirflowPasswordSecret` |  |  |  |
-| `spec.logging.elasticsearch.passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesPostgres (`status.outputs.password_secret.name`) |
+| `spec.logging.elasticsearch.passwordSecret` | `KubernetesAirflowLogBackendPasswordSecret` |  |  |  |
+| `spec.logging.elasticsearch.passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`) |
 | `spec.logging.elasticsearch.passwordSecret.secretKey` | `string` |  | `password` |  |
 | `spec.logging.opensearch` | `KubernetesAirflowLogSearchBackend` |  |  |  |
 | `spec.logging.opensearch.host` | `string \| valueFrom` | yes |  | KubernetesOpenSearch (`status.outputs.service_name`) |
 | `spec.logging.opensearch.port` | `int32` |  | `9200` |  |
 | `spec.logging.opensearch.scheme` | `string` |  | `http` |  |
 | `spec.logging.opensearch.username` | `string` |  |  |  |
-| `spec.logging.opensearch.passwordSecret` | `KubernetesAirflowPasswordSecret` |  |  |  |
-| `spec.logging.opensearch.passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesPostgres (`status.outputs.password_secret.name`) |
+| `spec.logging.opensearch.passwordSecret` | `KubernetesAirflowLogBackendPasswordSecret` |  |  |  |
+| `spec.logging.opensearch.passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`) |
 | `spec.logging.opensearch.passwordSecret.secretKey` | `string` |  | `password` |  |
 | `spec.adminUser` | `KubernetesAirflowAdminUser` |  |  |  |
 | `spec.adminUser.create` | `bool` |  | `true` |  |
@@ -1511,7 +1511,7 @@ Username for the backend. Empty = unauthenticated (dev only).
 
 ### spec.logging.elasticsearch.passwordSecret
 
-`KubernetesAirflowPasswordSecret`
+`KubernetesAirflowLogBackendPasswordSecret`
 
 The Secret holding the user's password (composed into the
 connection Secret at apply time). Required when `username` is
@@ -1521,22 +1521,13 @@ set. Same-namespace constraint applies.
 
 `string | valueFrom` · required
 
-Name of the Secret. Defaults compose a KubernetesPostgres
-resource's application-user Secret (`<cluster>-app`); set the
-matching Secret for other database kinds or external stores.
-Same-namespace constraint (a Kubernetes rule, not a chart one):
-the Secret must live in the namespace Airflow installs into.
-
-- references: KubernetesPostgres (`status.outputs.password_secret.name`)
+- references: KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesPostgres, name: <that resource's name>, fieldPath: status.outputs.password_secret.name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesOpenSearch, name: <that resource's name>, fieldPath: status.outputs.admin_credentials_secret_name}} -- a bare string does not parse
 
 ### spec.logging.elasticsearch.passwordSecret.secretKey
 
 `string` · optional (explicit presence)
-
-Key inside the Secret holding the password. Empty = "password"
-(the KubernetesPostgres application-Secret convention).
 
 - default: `password`
 
@@ -1586,7 +1577,7 @@ Username for the backend. Empty = unauthenticated (dev only).
 
 ### spec.logging.opensearch.passwordSecret
 
-`KubernetesAirflowPasswordSecret`
+`KubernetesAirflowLogBackendPasswordSecret`
 
 The Secret holding the user's password (composed into the
 connection Secret at apply time). Required when `username` is
@@ -1596,22 +1587,13 @@ set. Same-namespace constraint applies.
 
 `string | valueFrom` · required
 
-Name of the Secret. Defaults compose a KubernetesPostgres
-resource's application-user Secret (`<cluster>-app`); set the
-matching Secret for other database kinds or external stores.
-Same-namespace constraint (a Kubernetes rule, not a chart one):
-the Secret must live in the namespace Airflow installs into.
-
-- references: KubernetesPostgres (`status.outputs.password_secret.name`)
+- references: KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesPostgres, name: <that resource's name>, fieldPath: status.outputs.password_secret.name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesOpenSearch, name: <that resource's name>, fieldPath: status.outputs.admin_credentials_secret_name}} -- a bare string does not parse
 
 ### spec.logging.opensearch.passwordSecret.secretKey
 
 `string` · optional (explicit presence)
-
-Key inside the Secret holding the password. Empty = "password"
-(the KubernetesPostgres application-Secret convention).
 
 - default: `password`
 
@@ -1917,9 +1899,9 @@ Fields that can point at another resource's outputs:
 | `spec.broker.valkey.host` | KubernetesValkey | `status.outputs.service` |
 | `spec.broker.valkey.passwordSecret.secretName` | KubernetesValkey | `status.outputs.password_secret.name` |
 | `spec.logging.elasticsearch.host` | KubernetesOpenSearch | `status.outputs.service_name` |
-| `spec.logging.elasticsearch.passwordSecret.secretName` | KubernetesPostgres | `status.outputs.password_secret.name` |
+| `spec.logging.elasticsearch.passwordSecret.secretName` | KubernetesOpenSearch | `status.outputs.admin_credentials_secret_name` |
 | `spec.logging.opensearch.host` | KubernetesOpenSearch | `status.outputs.service_name` |
-| `spec.logging.opensearch.passwordSecret.secretName` | KubernetesPostgres | `status.outputs.password_secret.name` |
+| `spec.logging.opensearch.passwordSecret.secretName` | KubernetesOpenSearch | `status.outputs.admin_credentials_secret_name` |
 
 ## See Also
 

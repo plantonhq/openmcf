@@ -144,15 +144,15 @@ spec:
 | `spec.clusters[].schemaRegistry` | `KubernetesKafkaUiSchemaRegistry` |  |  |  |
 | `spec.clusters[].schemaRegistry.url` | `string \| valueFrom` | yes |  | KubernetesKarapace (`status.outputs.endpoint`) |
 | `spec.clusters[].schemaRegistry.username` | `string` |  |  |  |
-| `spec.clusters[].schemaRegistry.passwordSecret` | `KubernetesKafkaUiPasswordSecret` |  |  |  |
-| `spec.clusters[].schemaRegistry.passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesKafkaUser (`status.outputs.secret_name`) |
+| `spec.clusters[].schemaRegistry.passwordSecret` | `KubernetesKafkaUiBasicAuthPasswordSecret` |  |  |  |
+| `spec.clusters[].schemaRegistry.passwordSecret.secretName` | `string \| valueFrom` | yes |  |  |
 | `spec.clusters[].schemaRegistry.passwordSecret.key` | `string` |  | `password` |  |
 | `spec.clusters[].kafkaConnect` | `[]KubernetesKafkaUiConnectCluster` |  |  |  |
 | `spec.clusters[].kafkaConnect[].name` | `string` | yes |  |  |
 | `spec.clusters[].kafkaConnect[].address` | `string \| valueFrom` | yes |  | KubernetesKafkaConnect (`status.outputs.rest_api_endpoint`) |
 | `spec.clusters[].kafkaConnect[].username` | `string` |  |  |  |
-| `spec.clusters[].kafkaConnect[].passwordSecret` | `KubernetesKafkaUiPasswordSecret` |  |  |  |
-| `spec.clusters[].kafkaConnect[].passwordSecret.secretName` | `string \| valueFrom` | yes |  | KubernetesKafkaUser (`status.outputs.secret_name`) |
+| `spec.clusters[].kafkaConnect[].passwordSecret` | `KubernetesKafkaUiBasicAuthPasswordSecret` |  |  |  |
+| `spec.clusters[].kafkaConnect[].passwordSecret.secretName` | `string \| valueFrom` | yes |  |  |
 | `spec.clusters[].kafkaConnect[].passwordSecret.key` | `string` |  | `password` |  |
 | `spec.clusters[].properties` | `map<string, string>` |  |  |  |
 | `spec.auth` | `KubernetesKafkaUiAuth` |  |  |  |
@@ -375,7 +375,7 @@ HTTP Basic username, when the registry requires it.
 
 ### spec.clusters[].schemaRegistry.passwordSecret
 
-`KubernetesKafkaUiPasswordSecret`
+`KubernetesKafkaUiBasicAuthPasswordSecret`
 
 HTTP Basic password source, when the registry requires it.
 
@@ -383,21 +383,12 @@ HTTP Basic password source, when the registry requires it.
 
 `string | valueFrom` · required
 
-Name of the Secret. Accepts a literal Secret name or a reference
-to a KubernetesKafkaUser resource, which resolves to its
-credential Secret.
-
-- references: KubernetesKafkaUser (`status.outputs.secret_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesKafkaUser, name: <that resource's name>, fieldPath: status.outputs.secret_name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.clusters[].schemaRegistry.passwordSecret.key
 
 `string` · optional (explicit presence)
-
-The key within the Secret whose value is the password.
-KubernetesKafkaUser credential Secrets carry it under
-"password".
 
 - default: `password`
 
@@ -441,7 +432,7 @@ HTTP Basic username, when the Connect API sits behind one.
 
 ### spec.clusters[].kafkaConnect[].passwordSecret
 
-`KubernetesKafkaUiPasswordSecret`
+`KubernetesKafkaUiBasicAuthPasswordSecret`
 
 HTTP Basic password source, when the Connect API sits behind
 one.
@@ -450,21 +441,12 @@ one.
 
 `string | valueFrom` · required
 
-Name of the Secret. Accepts a literal Secret name or a reference
-to a KubernetesKafkaUser resource, which resolves to its
-credential Secret.
-
-- references: KubernetesKafkaUser (`status.outputs.secret_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesKafkaUser, name: <that resource's name>, fieldPath: status.outputs.secret_name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.clusters[].kafkaConnect[].passwordSecret.key
 
 `string` · optional (explicit presence)
-
-The key within the Secret whose value is the password.
-KubernetesKafkaUser credential Secrets carry it under
-"password".
 
 - default: `password`
 
@@ -680,9 +662,7 @@ Fields that can point at another resource's outputs:
 | `spec.clusters[].tls.caSecretName` | KubernetesKafka | `status.outputs.cluster_ca_cert_secret_name` |
 | `spec.clusters[].sasl.passwordSecret.secretName` | KubernetesKafkaUser | `status.outputs.secret_name` |
 | `spec.clusters[].schemaRegistry.url` | KubernetesKarapace | `status.outputs.endpoint` |
-| `spec.clusters[].schemaRegistry.passwordSecret.secretName` | KubernetesKafkaUser | `status.outputs.secret_name` |
 | `spec.clusters[].kafkaConnect[].address` | KubernetesKafkaConnect | `status.outputs.rest_api_endpoint` |
-| `spec.clusters[].kafkaConnect[].passwordSecret.secretName` | KubernetesKafkaUser | `status.outputs.secret_name` |
 
 ## See Also
 

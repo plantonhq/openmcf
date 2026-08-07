@@ -905,7 +905,7 @@ type KubernetesKeycloakAdditionalOption struct {
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// *
 	// Value from a Secret (mutually exclusive with value).
-	Secret        *KubernetesKeycloakSecretSelector `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
+	Secret        *KubernetesKeycloakOptionSecretSelector `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -954,11 +954,73 @@ func (x *KubernetesKeycloakAdditionalOption) GetValue() string {
 	return ""
 }
 
-func (x *KubernetesKeycloakAdditionalOption) GetSecret() *KubernetesKeycloakSecretSelector {
+func (x *KubernetesKeycloakAdditionalOption) GetSecret() *KubernetesKeycloakOptionSecretSelector {
 	if x != nil {
 		return x.Secret
 	}
 	return nil
+}
+
+// *
+// A value read from a Kubernetes Secret you created. Server options
+// are arbitrary, so there is deliberately no default reference
+// target — name the Secret holding the option's value.
+type KubernetesKeycloakOptionSecretSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Secret name. Same-namespace constraint (a Kubernetes rule, not
+	// an operator one): the Secret must live in the namespace Keycloak
+	// installs into.
+	Name *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Key within the Secret.
+	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKeycloakOptionSecretSelector) Reset() {
+	*x = KubernetesKeycloakOptionSecretSelector{}
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKeycloakOptionSecretSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKeycloakOptionSecretSelector) ProtoMessage() {}
+
+func (x *KubernetesKeycloakOptionSecretSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKeycloakOptionSecretSelector.ProtoReflect.Descriptor instead.
+func (*KubernetesKeycloakOptionSecretSelector) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesKeycloakOptionSecretSelector) GetName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Name
+	}
+	return nil
+}
+
+func (x *KubernetesKeycloakOptionSecretSelector) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
 }
 
 // * Pod scheduling constraints.
@@ -981,7 +1043,7 @@ type KubernetesKeycloakScheduling struct {
 
 func (x *KubernetesKeycloakScheduling) Reset() {
 	*x = KubernetesKeycloakScheduling{}
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -993,7 +1055,7 @@ func (x *KubernetesKeycloakScheduling) String() string {
 func (*KubernetesKeycloakScheduling) ProtoMessage() {}
 
 func (x *KubernetesKeycloakScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1006,7 +1068,7 @@ func (x *KubernetesKeycloakScheduling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKeycloakScheduling.ProtoReflect.Descriptor instead.
 func (*KubernetesKeycloakScheduling) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesKeycloakScheduling) GetNodeSelector() map[string]string {
@@ -1059,7 +1121,7 @@ type KubernetesKeycloakProbes struct {
 
 func (x *KubernetesKeycloakProbes) Reset() {
 	*x = KubernetesKeycloakProbes{}
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1071,7 +1133,7 @@ func (x *KubernetesKeycloakProbes) String() string {
 func (*KubernetesKeycloakProbes) ProtoMessage() {}
 
 func (x *KubernetesKeycloakProbes) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1084,7 +1146,7 @@ func (x *KubernetesKeycloakProbes) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKeycloakProbes.ProtoReflect.Descriptor instead.
 func (*KubernetesKeycloakProbes) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesKeycloakProbes) GetLivenessFailureThreshold() int32 {
@@ -1150,7 +1212,7 @@ type KubernetesKeycloakUpdate struct {
 
 func (x *KubernetesKeycloakUpdate) Reset() {
 	*x = KubernetesKeycloakUpdate{}
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1224,7 @@ func (x *KubernetesKeycloakUpdate) String() string {
 func (*KubernetesKeycloakUpdate) ProtoMessage() {}
 
 func (x *KubernetesKeycloakUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1237,7 @@ func (x *KubernetesKeycloakUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKeycloakUpdate.ProtoReflect.Descriptor instead.
 func (*KubernetesKeycloakUpdate) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesKeycloakUpdate) GetStrategy() string {
@@ -1214,7 +1276,7 @@ type KubernetesKeycloakTracing struct {
 
 func (x *KubernetesKeycloakTracing) Reset() {
 	*x = KubernetesKeycloakTracing{}
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1226,7 +1288,7 @@ func (x *KubernetesKeycloakTracing) String() string {
 func (*KubernetesKeycloakTracing) ProtoMessage() {}
 
 func (x *KubernetesKeycloakTracing) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1239,7 +1301,7 @@ func (x *KubernetesKeycloakTracing) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKeycloakTracing.ProtoReflect.Descriptor instead.
 func (*KubernetesKeycloakTracing) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesKeycloakTracing) GetEnabled() bool {
@@ -1357,12 +1419,15 @@ const file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDesc = "
 	"\x1dKubernetesKeycloakCacheConfig\x12.\n" +
 	"\x0fconfig_map_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rconfigMapName\x12)\n" +
 	"\x03key\x18\x02 \x01(\tB\x12\x8a\xa6\x1d\x0ecache-ispn.xmlH\x00R\x03key\x88\x01\x01B\x06\n" +
-	"\x04_key\"\xef\x02\n" +
+	"\x04_key\"\xf5\x02\n" +
 	"\"KubernetesKeycloakAdditionalOption\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12l\n" +
-	"\x06secret\x18\x03 \x01(\v2T.dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelectorR\x06secret:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
-	"\"spec.additional_options.one_source\x12NGive the option's value exactly one way — inline OR from a Secret, not both.\x1a+!(size(this.value) > 0 && has(this.secret))\"\xe7\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12r\n" +
+	"\x06secret\x18\x03 \x01(\v2Z.dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakOptionSecretSelectorR\x06secret:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
+	"\"spec.additional_options.one_source\x12NGive the option's value exactly one way — inline OR from a Secret, not both.\x1a+!(size(this.value) > 0 && has(this.secret))\"\x92\x01\n" +
+	"&KubernetesKeycloakOptionSecretSelector\x12N\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x18\n" +
+	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\xe7\x02\n" +
 	"\x1cKubernetesKeycloakScheduling\x12\x87\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2b.dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.NodeSelectorEntryR\fnodeSelector\x12L\n" +
 	"\vtolerations\x18\x02 \x03(\v2*.dev.planton.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +
@@ -1412,51 +1477,53 @@ func file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescGZIP(
 	return file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_goTypes = []any{
-	(*KubernetesKeycloakSpec)(nil),             // 0: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec
-	(*KubernetesKeycloakDb)(nil),               // 1: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb
-	(*KubernetesKeycloakSecretSelector)(nil),   // 2: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector
-	(*KubernetesKeycloakHttp)(nil),             // 3: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHttp
-	(*KubernetesKeycloakHostname)(nil),         // 4: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHostname
-	(*KubernetesKeycloakFeatures)(nil),         // 5: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakFeatures
-	(*KubernetesKeycloakCacheConfig)(nil),      // 6: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakCacheConfig
-	(*KubernetesKeycloakAdditionalOption)(nil), // 7: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakAdditionalOption
-	(*KubernetesKeycloakScheduling)(nil),       // 8: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling
-	(*KubernetesKeycloakProbes)(nil),           // 9: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakProbes
-	(*KubernetesKeycloakUpdate)(nil),           // 10: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakUpdate
-	(*KubernetesKeycloakTracing)(nil),          // 11: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakTracing
-	nil,                                        // 12: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),                // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),      // 14: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),      // 15: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesKeycloakSpec)(nil),                 // 0: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec
+	(*KubernetesKeycloakDb)(nil),                   // 1: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb
+	(*KubernetesKeycloakSecretSelector)(nil),       // 2: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector
+	(*KubernetesKeycloakHttp)(nil),                 // 3: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHttp
+	(*KubernetesKeycloakHostname)(nil),             // 4: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHostname
+	(*KubernetesKeycloakFeatures)(nil),             // 5: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakFeatures
+	(*KubernetesKeycloakCacheConfig)(nil),          // 6: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakCacheConfig
+	(*KubernetesKeycloakAdditionalOption)(nil),     // 7: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakAdditionalOption
+	(*KubernetesKeycloakOptionSecretSelector)(nil), // 8: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakOptionSecretSelector
+	(*KubernetesKeycloakScheduling)(nil),           // 9: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling
+	(*KubernetesKeycloakProbes)(nil),               // 10: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakProbes
+	(*KubernetesKeycloakUpdate)(nil),               // 11: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakUpdate
+	(*KubernetesKeycloakTracing)(nil),              // 12: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakTracing
+	nil,                                            // 13: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                    // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),          // 15: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),          // 16: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 0: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.db:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb
 	3,  // 2: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.http:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHttp
 	4,  // 3: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.hostname:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHostname
 	5,  // 4: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.features:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakFeatures
 	6,  // 5: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.cache_config:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakCacheConfig
 	7,  // 6: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.additional_options:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakAdditionalOption
-	14, // 7: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	8,  // 8: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.scheduling:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling
-	9,  // 9: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.probes:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakProbes
-	10, // 10: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.update:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakUpdate
-	11, // 11: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.tracing:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakTracing
-	13, // 12: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 7: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	9,  // 8: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.scheduling:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling
+	10, // 9: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.probes:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakProbes
+	11, // 10: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.update:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakUpdate
+	12, // 11: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSpec.tracing:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakTracing
+	14, // 12: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 13: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb.username_secret:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector
 	2,  // 14: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakDb.password_secret:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector
-	13, // 15: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 16: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHttp.tls_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 17: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakAdditionalOption.secret:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector
-	12, // 18: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.node_selector:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.NodeSelectorEntry
-	15, // 19: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	14, // 15: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakSecretSelector.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 16: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakHttp.tls_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 17: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakAdditionalOption.secret:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakOptionSecretSelector
+	14, // 18: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakOptionSecretSelector.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 19: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.node_selector:type_name -> dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.NodeSelectorEntry
+	16, // 20: dev.planton.kubernetes.kuberneteskeycloak.v1alpha1.KubernetesKeycloakScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_init() }
@@ -1469,16 +1536,16 @@ func file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_init() {
 	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
-	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kuberneteskeycloak_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

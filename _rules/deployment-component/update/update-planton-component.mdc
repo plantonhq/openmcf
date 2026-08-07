@@ -1349,3 +1349,52 @@ conventions). A rename keeps the enum **number** — only the name changes every
 **Use when:**
 - A kind's name diverges from the provider's own naming format
 - A kind is being consolidated under a family naming convention
+
+#### Scenario 10: Fix a Foreign-Key Default Annotation
+
+**When:** A field's `(dev.planton.shared.foreignkey.v1.default_kind)` /
+`default_kind_field_path` pair points at a kind that is not the natural producer of the
+referenced value. The console's reference quick-picks derive SOLELY from these
+annotations, so a wrong default is a user-facing wrong suggestion on every deploy wizard
+that renders the field.
+
+```
+@update-planton-component KubernetesAirflow --scenario fix-fk-default --explain "logging password secret points at Postgres"
+```
+
+**The class to check first — shared-message reuse.** A `default_kind` lives on a MESSAGE
+field, and messages get reused. A shared FK-defaulting message may be reused ONLY where
+its default kind is the natural source in EVERY consuming context; the moment a second
+context needs a different (or no) producer, SPLIT the message instead of letting the
+default leak. Annotation inventories cannot see this defect — it hides in the message
+reuse, not in any single annotation — so sweep by message: for every message carrying a
+`default_kind`, list every field typed with it and judge each context independently.
+
+**What it does:**
+1. Establishes the correct target from the producing kind's `outputs.proto` (never from
+   memory): the output field must exist and hold the referenced value's name. When NO
+   catalog kind produces the value (e.g. a bring-your-own HTTP Basic credential), the
+   honest fix is a message with NO default annotation — a bare `StringValueOrRef` is an
+   established shape; never point a default at a kind that merely lives nearby.
+2. Splits the shared message: the context whose default is correct keeps the existing
+   message; each mismatched context gets its own message (same field numbers and shapes —
+   the retype is wire-compatible) with comments teaching the target Secret's key layout
+   and when the default output is empty.
+3. Sweeps Go type literals the retype breaks: spec tests, and any module helper that
+   names the message type in a signature. Shared helpers serving multiple contexts take a
+   small local interface over the generated getters (mind the typed-nil-in-interface
+   trap: probe emptiness through the nil-safe getters, not `== nil`).
+4. Regenerates stubs (chunked `buf generate --path` under the proto-build lock), then
+   `make generate-reference` and `make generate-proto-docs` — the FK tables and the
+   referenced kinds' "referenced by" sections must follow.
+5. Gates: component spec tests, targeted package + Pulumi entrypoint builds,
+   `planton validate-refs --check` (machine-verifies the new path against the target's
+   outputs), `planton secret-coverage --check`.
+6. Sweeps presets and e2e manifests for the affected fields: explicit `value:` shapes are
+   unaffected; a bare `valueFrom` relying on the removed/changed default must be updated
+   in the same change.
+
+**Use when:**
+- A reference quick-pick offers a kind that cannot produce the value
+- A platform FK-annotation inventory reports a suspect default
+- An audit finds one FK-defaulting message consumed by unrelated contexts

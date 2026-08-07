@@ -125,7 +125,7 @@ var _ = ginkgo.Describe("KubernetesKeycloak Validation Tests", func() {
 			input.Spec.TruststoreSecretNames = []string{"private-ca-bundle"}
 			input.Spec.AdditionalOptions = []*KubernetesKeycloakAdditionalOption{
 				{Name: "log-level", Value: "INFO"},
-				{Name: "spi-connections-http-client-default-connection-pool-size", Secret: &KubernetesKeycloakSecretSelector{
+				{Name: "spi-connections-http-client-default-connection-pool-size", Secret: &KubernetesKeycloakOptionSecretSelector{
 					Name: literal("keycloak-extra-options"),
 					Key:  "pool-size",
 				}},
@@ -393,7 +393,7 @@ var _ = ginkgo.Describe("KubernetesKeycloak Validation Tests", func() {
 				{
 					Name:  "log-level",
 					Value: "INFO",
-					Secret: &KubernetesKeycloakSecretSelector{
+					Secret: &KubernetesKeycloakOptionSecretSelector{
 						Name: literal("keycloak-extra-options"),
 						Key:  "log-level",
 					},

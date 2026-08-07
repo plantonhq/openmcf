@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	kuberneteskeycloakv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kuberneteskeycloak/v1alpha1"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	kubernetesmeta "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -240,6 +241,10 @@ type secretSelectorSource interface {
 }
 
 func secretSelectorBody(selector secretSelectorSource) map[string]interface{} {
+	// An absent selector arrives as a TYPED nil pointer inside the
+	// interface, which `selector == nil` cannot catch — probe through the
+	// nil-safe generated getters instead (an existing selector always has
+	// a name; the field is required).
 	if selector == nil || (selector.GetName() == nil && selector.GetKey() == "") {
 		return nil
 	}

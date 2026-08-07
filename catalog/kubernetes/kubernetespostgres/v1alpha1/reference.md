@@ -1800,8 +1800,6 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | KubernetesAirflow | `spec.database.postgres.host` | `status.outputs.rw_service` |
 | KubernetesAirflow | `spec.database.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
-| KubernetesAirflow | `spec.logging.elasticsearch.passwordSecret.secretName` | `status.outputs.password_secret.name` |
-| KubernetesAirflow | `spec.logging.opensearch.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 | KubernetesArgoWorkflows | `spec.archive.host` | `status.outputs.rw_service` |
 | KubernetesArgoWorkflows | `spec.archive.credentialsSecret.name` | `status.outputs.password_secret.name` |
 | KubernetesGrafana | `spec.database.host` | `status.outputs.kube_endpoint` |
@@ -1812,7 +1810,6 @@ Fields on other kinds that can point at this resource:
 | KubernetesKeycloak | `spec.db.host` | `status.outputs.rw_service` |
 | KubernetesKeycloak | `spec.db.usernameSecret.name` | `status.outputs.password_secret.name` |
 | KubernetesKeycloak | `spec.db.passwordSecret.name` | `status.outputs.password_secret.name` |
-| KubernetesKeycloak | `spec.additionalOptions[].secret.name` | `status.outputs.password_secret.name` |
 | KubernetesMlflow | `spec.backendStore.postgres.host` | `status.outputs.rw_service` |
 | KubernetesMlflow | `spec.backendStore.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 | KubernetesOpenFga | `spec.datastore.postgres.host` | `status.outputs.rw_service` |

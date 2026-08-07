@@ -567,6 +567,71 @@ func (x *KubernetesKafkaUiPasswordSecret) GetKey() string {
 }
 
 // *
+// An HTTP Basic password source — one key within a Secret you
+// created. No catalog kind produces these credentials (Karapace and
+// KafkaConnect export endpoints, not auth Secrets), so there is
+// deliberately no default reference target: name the Secret holding
+// the password you configured on the registry/Connect API.
+type KubernetesKafkaUiBasicAuthPasswordSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of the Secret. Same-namespace constraint (a Kubernetes
+	// rule, not a chart one): the Secret must live in the namespace
+	// the console installs into.
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// The key within the Secret whose value is the password. Empty =
+	// "password".
+	Key           *string `protobuf:"bytes,2,opt,name=key,proto3,oneof" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaUiBasicAuthPasswordSecret) Reset() {
+	*x = KubernetesKafkaUiBasicAuthPasswordSecret{}
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaUiBasicAuthPasswordSecret) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaUiBasicAuthPasswordSecret) ProtoMessage() {}
+
+func (x *KubernetesKafkaUiBasicAuthPasswordSecret) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaUiBasicAuthPasswordSecret.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaUiBasicAuthPasswordSecret) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesKafkaUiBasicAuthPasswordSecret) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaUiBasicAuthPasswordSecret) GetKey() string {
+	if x != nil && x.Key != nil {
+		return *x.Key
+	}
+	return ""
+}
+
+// *
 // A schema registry connection.
 type KubernetesKafkaUiSchemaRegistry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -580,14 +645,14 @@ type KubernetesKafkaUiSchemaRegistry struct {
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// *
 	// HTTP Basic password source, when the registry requires it.
-	PasswordSecret *KubernetesKafkaUiPasswordSecret `protobuf:"bytes,3,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	PasswordSecret *KubernetesKafkaUiBasicAuthPasswordSecret `protobuf:"bytes,3,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesKafkaUiSchemaRegistry) Reset() {
 	*x = KubernetesKafkaUiSchemaRegistry{}
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -599,7 +664,7 @@ func (x *KubernetesKafkaUiSchemaRegistry) String() string {
 func (*KubernetesKafkaUiSchemaRegistry) ProtoMessage() {}
 
 func (x *KubernetesKafkaUiSchemaRegistry) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -612,7 +677,7 @@ func (x *KubernetesKafkaUiSchemaRegistry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKafkaUiSchemaRegistry.ProtoReflect.Descriptor instead.
 func (*KubernetesKafkaUiSchemaRegistry) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesKafkaUiSchemaRegistry) GetUrl() *v1.StringValueOrRef {
@@ -629,7 +694,7 @@ func (x *KubernetesKafkaUiSchemaRegistry) GetUsername() string {
 	return ""
 }
 
-func (x *KubernetesKafkaUiSchemaRegistry) GetPasswordSecret() *KubernetesKafkaUiPasswordSecret {
+func (x *KubernetesKafkaUiSchemaRegistry) GetPasswordSecret() *KubernetesKafkaUiBasicAuthPasswordSecret {
 	if x != nil {
 		return x.PasswordSecret
 	}
@@ -657,14 +722,14 @@ type KubernetesKafkaUiConnectCluster struct {
 	// *
 	// HTTP Basic password source, when the Connect API sits behind
 	// one.
-	PasswordSecret *KubernetesKafkaUiPasswordSecret `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	PasswordSecret *KubernetesKafkaUiBasicAuthPasswordSecret `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesKafkaUiConnectCluster) Reset() {
 	*x = KubernetesKafkaUiConnectCluster{}
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -676,7 +741,7 @@ func (x *KubernetesKafkaUiConnectCluster) String() string {
 func (*KubernetesKafkaUiConnectCluster) ProtoMessage() {}
 
 func (x *KubernetesKafkaUiConnectCluster) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -689,7 +754,7 @@ func (x *KubernetesKafkaUiConnectCluster) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKafkaUiConnectCluster.ProtoReflect.Descriptor instead.
 func (*KubernetesKafkaUiConnectCluster) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesKafkaUiConnectCluster) GetName() string {
@@ -713,7 +778,7 @@ func (x *KubernetesKafkaUiConnectCluster) GetUsername() string {
 	return ""
 }
 
-func (x *KubernetesKafkaUiConnectCluster) GetPasswordSecret() *KubernetesKafkaUiPasswordSecret {
+func (x *KubernetesKafkaUiConnectCluster) GetPasswordSecret() *KubernetesKafkaUiBasicAuthPasswordSecret {
 	if x != nil {
 		return x.PasswordSecret
 	}
@@ -741,7 +806,7 @@ type KubernetesKafkaUiAuth struct {
 
 func (x *KubernetesKafkaUiAuth) Reset() {
 	*x = KubernetesKafkaUiAuth{}
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -753,7 +818,7 @@ func (x *KubernetesKafkaUiAuth) String() string {
 func (*KubernetesKafkaUiAuth) ProtoMessage() {}
 
 func (x *KubernetesKafkaUiAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -766,7 +831,7 @@ func (x *KubernetesKafkaUiAuth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKafkaUiAuth.ProtoReflect.Descriptor instead.
 func (*KubernetesKafkaUiAuth) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesKafkaUiAuth) GetType() string {
@@ -801,7 +866,7 @@ type KubernetesKafkaUiUser struct {
 
 func (x *KubernetesKafkaUiUser) Reset() {
 	*x = KubernetesKafkaUiUser{}
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -813,7 +878,7 @@ func (x *KubernetesKafkaUiUser) String() string {
 func (*KubernetesKafkaUiUser) ProtoMessage() {}
 
 func (x *KubernetesKafkaUiUser) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -826,7 +891,7 @@ func (x *KubernetesKafkaUiUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesKafkaUiUser.ProtoReflect.Descriptor instead.
 func (*KubernetesKafkaUiUser) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesKafkaUiUser) GetUsername() string {
@@ -903,16 +968,21 @@ const file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDesc = ""
 	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x8e \x92\xd4a\x1astatus.outputs.secret_nameR\n" +
 	"secretName\x12#\n" +
 	"\x03key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bpasswordH\x00R\x03key\x88\x01\x01B\x06\n" +
-	"\x04_key\"\xa8\x02\n" +
+	"\x04_key\"\xb4\x01\n" +
+	"(KubernetesKafkaUiBasicAuthPasswordSecret\x12[\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"secretName\x12#\n" +
+	"\x03key\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bpasswordH\x00R\x03key\x88\x01\x01B\x06\n" +
+	"\x04_key\"\xb2\x02\n" +
 	"\x1fKubernetesKafkaUiSchemaRegistry\x12l\n" +
 	"\x03url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x92 \x92\xd4a\x17status.outputs.endpointR\x03url\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12{\n" +
-	"\x0fpassword_secret\x18\x03 \x01(\v2R.dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\xe5\x02\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x84\x01\n" +
+	"\x0fpassword_secret\x18\x03 \x01(\v2[.dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecretR\x0epasswordSecret\"\xef\x02\n" +
 	"\x1fKubernetesKafkaUiConnectCluster\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x8c\x01\n" +
 	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\amanages\x88\xd4a\x8f \x92\xd4a status.outputs.rest_api_endpoint\x98\xd4a\x01R\aaddress\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12{\n" +
-	"\x0fpassword_secret\x18\x04 \x01(\v2R.dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\x90\x02\n" +
+	"\busername\x18\x03 \x01(\tR\busername\x12\x84\x01\n" +
+	"\x0fpassword_secret\x18\x04 \x01(\v2[.dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecretR\x0epasswordSecret\"\x90\x02\n" +
 	"\x15KubernetesKafkaUiAuth\x12\x90\x01\n" +
 	"\x04type\x18\x01 \x01(\tB|\xbaHy\xba\x01s\n" +
 	"\x13spec.auth.type_enum\x12Fauth type must be login_form (OAuth2/LDAP compose through helm_values)\x1a\x14this == 'login_form'\xc8\x01\x01R\x04type\x12d\n" +
@@ -935,49 +1005,51 @@ func file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescGZIP()
 	return file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_goTypes = []any{
-	(*KubernetesKafkaUiSpec)(nil),           // 0: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec
-	(*KubernetesKafkaUiCluster)(nil),        // 1: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster
-	(*KubernetesKafkaUiClusterTls)(nil),     // 2: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterTls
-	(*KubernetesKafkaUiClusterSasl)(nil),    // 3: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterSasl
-	(*KubernetesKafkaUiPasswordSecret)(nil), // 4: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret
-	(*KubernetesKafkaUiSchemaRegistry)(nil), // 5: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry
-	(*KubernetesKafkaUiConnectCluster)(nil), // 6: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster
-	(*KubernetesKafkaUiAuth)(nil),           // 7: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth
-	(*KubernetesKafkaUiUser)(nil),           // 8: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiUser
-	nil,                                     // 9: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.NodeSelectorEntry
-	nil,                                     // 10: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.PropertiesEntry
-	(*v1.StringValueOrRef)(nil),             // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),   // 12: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),   // 13: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesKafkaUiSpec)(nil),                    // 0: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec
+	(*KubernetesKafkaUiCluster)(nil),                 // 1: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster
+	(*KubernetesKafkaUiClusterTls)(nil),              // 2: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterTls
+	(*KubernetesKafkaUiClusterSasl)(nil),             // 3: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterSasl
+	(*KubernetesKafkaUiPasswordSecret)(nil),          // 4: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret
+	(*KubernetesKafkaUiBasicAuthPasswordSecret)(nil), // 5: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecret
+	(*KubernetesKafkaUiSchemaRegistry)(nil),          // 6: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry
+	(*KubernetesKafkaUiConnectCluster)(nil),          // 7: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster
+	(*KubernetesKafkaUiAuth)(nil),                    // 8: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth
+	(*KubernetesKafkaUiUser)(nil),                    // 9: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiUser
+	nil,                                              // 10: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.NodeSelectorEntry
+	nil,                                              // 11: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.PropertiesEntry
+	(*v1.StringValueOrRef)(nil),                      // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),            // 13: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),            // 14: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 0: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.clusters:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster
-	7,  // 2: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.auth:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth
-	12, // 3: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	9,  // 4: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.node_selector:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.NodeSelectorEntry
-	13, // 5: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	11, // 6: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.bootstrap_servers:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 2: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.auth:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth
+	13, // 3: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	10, // 4: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.node_selector:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.NodeSelectorEntry
+	14, // 5: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	12, // 6: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.bootstrap_servers:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 7: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.tls:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterTls
 	3,  // 8: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.sasl:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterSasl
-	5,  // 9: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.schema_registry:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry
-	6,  // 10: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.kafka_connect:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster
-	10, // 11: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.properties:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.PropertiesEntry
-	11, // 12: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterTls.ca_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 9: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.schema_registry:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry
+	7,  // 10: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.kafka_connect:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster
+	11, // 11: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.properties:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiCluster.PropertiesEntry
+	12, // 12: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterTls.ca_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	4,  // 13: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiClusterSasl.password_secret:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret
-	11, // 14: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 15: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry.url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 16: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry.password_secret:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret
-	11, // 17: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster.address:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 18: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster.password_secret:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret
-	8,  // 19: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth.user:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiUser
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	12, // 14: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 15: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 16: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry.url:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 17: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiSchemaRegistry.password_secret:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecret
+	12, // 18: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster.address:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 19: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiConnectCluster.password_secret:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiBasicAuthPasswordSecret
+	9,  // 20: dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiAuth.user:type_name -> dev.planton.kubernetes.kuberneteskafkaui.v1alpha1.KubernetesKafkaUiUser
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_init() }
@@ -988,13 +1060,14 @@ func file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_init() {
 	file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kuberneteskafkaui_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
