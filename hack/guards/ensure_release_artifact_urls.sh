@@ -8,8 +8,8 @@ set -euo pipefail
 # The CLI's URL builders (pkg/downloads) and the release lanes
 # (release.terraform-modules.yaml, release.pulumi-modules.yaml) each own half
 # of one contract: the R2 key shape
-#   modules/terraform/{component}/{versionDir}.zip
-#   modules/pulumi/{component}/{versionDir}_{platform}.gz (.exe.gz on windows)
+#   modules/terraform/{component}/module.zip
+#   modules/pulumi/{component}/{platform}.gz (.exe.gz on windows)
 # When the two halves drift, nothing fails loudly — every released CLI
 # silently degrades each module fetch into a full git clone. Unit tests in
 # pkg/downloads pin the CLI half and a post-upload probe in the release lanes
