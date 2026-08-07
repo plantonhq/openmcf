@@ -383,12 +383,19 @@ HTTP Basic password source, when the registry requires it.
 
 `string | valueFrom` · required
 
+Name of the Secret. Same-namespace constraint (a Kubernetes
+rule, not a chart one): the Secret must live in the namespace
+the console installs into.
+
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.clusters[].schemaRegistry.passwordSecret.key
 
 `string` · optional (explicit presence)
+
+The key within the Secret whose value is the password. Empty =
+"password".
 
 - default: `password`
 
@@ -441,12 +448,19 @@ one.
 
 `string | valueFrom` · required
 
+Name of the Secret. Same-namespace constraint (a Kubernetes
+rule, not a chart one): the Secret must live in the namespace
+the console installs into.
+
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.clusters[].kafkaConnect[].passwordSecret.key
 
 `string` · optional (explicit presence)
+
+The key within the Secret whose value is the password. Empty =
+"password".
 
 - default: `password`
 

@@ -1521,6 +1521,16 @@ set. Same-namespace constraint applies.
 
 `string | valueFrom` · required
 
+Name of the Secret. Defaults compose a KubernetesOpenSearch
+resource's operator-generated admin-credentials Secret (keys
+`username`/`password`); that output is EMPTY when a custom
+security config replaces the operator bootstrap — point at your
+custom credential Secret then. The elasticsearch arm has no
+in-catalog kind: set an explicit Secret name for an external
+Elasticsearch. Same-namespace constraint (a Kubernetes rule, not
+a chart one): the Secret must live in the namespace Airflow
+installs into.
+
 - references: KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesOpenSearch, name: <that resource's name>, fieldPath: status.outputs.admin_credentials_secret_name}} -- a bare string does not parse
@@ -1528,6 +1538,9 @@ set. Same-namespace constraint applies.
 ### spec.logging.elasticsearch.passwordSecret.secretKey
 
 `string` · optional (explicit presence)
+
+Key inside the Secret holding the password. Empty = "password"
+(the KubernetesOpenSearch admin-Secret convention).
 
 - default: `password`
 
@@ -1587,6 +1600,16 @@ set. Same-namespace constraint applies.
 
 `string | valueFrom` · required
 
+Name of the Secret. Defaults compose a KubernetesOpenSearch
+resource's operator-generated admin-credentials Secret (keys
+`username`/`password`); that output is EMPTY when a custom
+security config replaces the operator bootstrap — point at your
+custom credential Secret then. The elasticsearch arm has no
+in-catalog kind: set an explicit Secret name for an external
+Elasticsearch. Same-namespace constraint (a Kubernetes rule, not
+a chart one): the Secret must live in the namespace Airflow
+installs into.
+
 - references: KubernetesOpenSearch (`status.outputs.admin_credentials_secret_name`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesOpenSearch, name: <that resource's name>, fieldPath: status.outputs.admin_credentials_secret_name}} -- a bare string does not parse
@@ -1594,6 +1617,9 @@ set. Same-namespace constraint applies.
 ### spec.logging.opensearch.passwordSecret.secretKey
 
 `string` · optional (explicit presence)
+
+Key inside the Secret holding the password. Empty = "password"
+(the KubernetesOpenSearch admin-Secret convention).
 
 - default: `password`
 

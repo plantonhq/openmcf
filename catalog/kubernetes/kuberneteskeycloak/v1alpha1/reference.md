@@ -652,12 +652,18 @@ Value from a Secret (mutually exclusive with value).
 
 `string | valueFrom` · required
 
+Secret name. Same-namespace constraint (a Kubernetes rule, not
+an operator one): the Secret must live in the namespace Keycloak
+installs into.
+
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.additionalOptions[].secret.key
 
 `string` · required
+
+Key within the Secret.
 
 - rule: {"required":true}
 
