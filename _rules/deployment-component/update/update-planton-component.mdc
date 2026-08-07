@@ -873,11 +873,23 @@ After all updates, **execute validation commands in sequence**:
    guard (`TestImportMapConformance`, rides `make test`) fails on any module
    resource type the catalog does not cover -- treat that failure as this step's
    tripwire, not a nuisance. Full discipline: `pkg/iac/importmap/README.md`.
-7. **If any docs/catalog.md changed**: Run `yarn copy-docs && yarn generate-structure`
+7. **If the spec surface or the Terraform module's resource set changed, and the
+   provider is instrumented for provider parity** (committed artifacts under
+   `pkg/providerparity/schemas/`): re-run the accounting and refresh the component's
+   recorded judgment (`iac/provider-parity.yaml`) for added/renamed/removed fields
+   and resources:
+   ```bash
+   planton provider-parity --provider <provider> --ga-schema <ga-schema> --kind <Kind>
+   ```
+   New arguments are matched, mapped, or excluded WITH a reason; removed surface is
+   pruned (stale manifest entries fail the gate). If the kind was at total accounting
+   before the update, it must still be after -- never re-baseline a kind that was
+   clean. The `lint.provider-parity` CI lane is this step's tripwire.
+8. **If any docs/catalog.md changed**: Run `yarn copy-docs && yarn generate-structure`
    in `site/` so the built catalog reflects the update (the copy script self-cleans
    provider directories; the site build does NOT pick up doc changes on its own)
-8. Generate update report
-9. Recommend running audit to verify improvements
+9. Generate update report
+10. Recommend running audit to verify improvements
 
 ### Step 5: Report Results
 

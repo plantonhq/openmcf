@@ -1,0 +1,17 @@
+# Breadth dispositions ledger for the google (GA) provider -- the recorded
+# judgment for GA resources the computed classes do not cover. Two classes
+# never appear here because they are computed: modeled (the module census
+# proves consumption) and iam-covered (the *_iam_member/binding/policy
+# pattern); schema-flagged deprecations are computed too.
+#
+# Entries record judgment, one disposition per resource, reason mandatory:
+#   composed            -- covered by fields of an existing kind (name it)
+#   model-planned       -- deserves a kind of its own, not built yet
+#   deferred            -- deliberately not offered, with the reason
+#   excluded-deprecated -- deprecated in docs but not flagged in the schema
+#
+# A GA resource with no computed class and no entry here is a finding; the
+# not-yet-judged remainder is carried loudly in baseline.yaml and burns down
+# as judgments are recorded.
+provider: google
+resources: []

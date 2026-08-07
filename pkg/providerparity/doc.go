@@ -28,7 +28,17 @@
 //
 // Parity is always measured against a NAMED provider version -- the pin --
 // never against "latest"; that is what makes a freshness promise
-// well-defined. The total-accounting check that joins these censuses with
-// per-kind recorded judgment (mapping manifests) and gates the result sits
-// on top of these primitives.
+// well-defined.
+//
+// On top of the measurement sits the total-accounting layer (accounting.go):
+// every configurable, non-deprecated argument of every consumed resource is
+// exact-matched to a spec field, mapped by the kind's recorded judgment
+// (manifest.go -- catalog/<provider>/<kind>/iac/provider-parity.yaml), or
+// excluded there with a reason; in reverse, every spec leaf reaches provider
+// surface or carries an exclusion (the reverse-drift check); and every GA
+// resource carries exactly one breadth disposition (dispositions.go). The
+// matcher carries zero name heuristics -- divergence is recorded, never
+// guessed. Gaps gate through the burn-down baseline (baseline.go) in the
+// pkg/anatomy / pkg/secretcoverage grain, surfaced by the `planton
+// provider-parity` developer command and the lint.provider-parity CI lane.
 package providerparity

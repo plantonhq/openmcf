@@ -361,6 +361,32 @@ conditional satellite that no scenario exercises is a recipe that has never
 been proven). When a resource cannot be composed live, say so in the profile
 header and treat its recipe as offline-validated only.
 
+### Phase 6d: Provider-parity manifest (orchestrator step -- no flow-rule file)
+
+For providers instrumented with committed schema artifacts
+(`pkg/providerparity/schemas/`), author the component's
+`iac/provider-parity.yaml` NOW, while the modeling judgment is fresh --
+retrofitting it later means re-deriving every naming decision:
+
+1. Run the accounting for the new kind from the repository root:
+   ```bash
+   planton provider-parity --provider <provider> --ga-schema <ga-schema> --kind <Kind>
+   ```
+2. For every unaccounted argument, record the judgment in the manifest:
+   a `mappings` entry (rename or subtree; e.g. plural repeated field vs the
+   provider's singular block), an `exclusions` entry with the REASON, or --
+   for a plumbing resource whose arguments are module decisions (API
+   enablement, module-wired parent linkage) -- the resource-level `internal`
+   disposition. For every uncovered spec field, either fix the mapping or
+   record a `specExclusions` entry (platform-level fields).
+3. Re-run with `--check`; the kind must be at total accounting and OUT of
+   `pkg/providerparity/baseline.yaml` (a new kind never ships pre-baselined
+   debt). File presence IS enrollment -- the `lint.provider-parity` CI lane
+   holds the kind to the manifest from this commit on.
+
+For a provider without schema artifacts, skip silently -- the gate reports
+NOT INSTRUMENTED there.
+
 ### Phase 7: Presets (Rule 018)
 
 16. **018-presets** - Generate initial presets (2-3 common configuration templates)

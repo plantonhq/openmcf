@@ -3,7 +3,11 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "providerparity",
     srcs = [
+        "accounting.go",
+        "baseline.go",
+        "dispositions.go",
         "doc.go",
+        "manifest.go",
         "module_census.go",
         "report.go",
         "schema.go",
@@ -15,6 +19,7 @@ go_library(
         "//pkg/crkreflect",
         "//shared/cloudresourcekind",
         "@com_github_pkg_errors//:errors",
+        "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_google_protobuf//reflect/protoreflect",
     ],
 )
@@ -22,6 +27,8 @@ go_library(
 go_test(
     name = "providerparity_test",
     srcs = [
+        "accounting_test.go",
+        "manifest_test.go",
         "module_census_test.go",
         "report_test.go",
         "schema_test.go",

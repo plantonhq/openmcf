@@ -9,7 +9,7 @@ import (
 
 // The engine set is the embedding contract: every user-facing engine command
 // must be present, and binary self-management (version/upgrade/downgrade) and
-// developer tools (e2e) must not be.
+// developer tools (e2e, provider-parity) must not be.
 func TestRegisterCommands_EngineSet(t *testing.T) {
 	parent := &cobra.Command{Use: "host"}
 	RegisterCommands(parent, Options{})
@@ -29,7 +29,7 @@ func TestRegisterCommands_EngineSet(t *testing.T) {
 			t.Errorf("engine command %q not registered", name)
 		}
 	}
-	for _, excluded := range []string{"version", "upgrade", "downgrade", "e2e"} {
+	for _, excluded := range []string{"version", "upgrade", "downgrade", "e2e", "provider-parity"} {
 		if got[excluded] {
 			t.Errorf("command %q must not be part of the engine set", excluded)
 		}

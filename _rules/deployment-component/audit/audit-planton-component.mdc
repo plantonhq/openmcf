@@ -45,6 +45,15 @@ User: @audit-planton-component <ComponentName>
   and the field-by-field divergence list. Use this when the goal of the session is to bring a
   specific component to parity (the common case when sweeping the catalog).
 
+**Provider-parity-focused run (optional flag):**
+- `@audit-planton-component GcpGcsBucket --provider-parity` — run the FULL audit but lead
+  with Category 5c (Provider Parity), foregrounding the total-accounting verdict against the
+  pinned Terraform provider: unaccounted arguments, uncovered spec fields (reverse drift),
+  and stale manifest entries. This is a DIFFERENT axis from `--parity`: `--parity` compares
+  the component's two IaC engines to each other; `--provider-parity` compares the component's
+  spec surface to the provider's. Use this when the goal of the session is to bring a
+  component to full configuration depth.
+
 ## Workflow
 
 ### Step 1: Validate Input and Locate Component
@@ -75,23 +84,13 @@ For each category, check files and record results. Use the following structure t
 
 **Checks:**
 - [ ] Enum entry exists in `cloud_resource_kind.proto`
-- [ ] Enum value is within correct provider range:
-  - Test/dev/custom: 1-49
-  - SaaS platforms: 50-199
-  - AWS: 200-399
-  - Azure: 400-599
-  - GCP: 600-799
-  - Kubernetes: 800-999
-  - DigitalOcean: 1200-1499
-  - Civo: 1500-1799
-  - Cloudflare: 1800-2099
-  - Auth0: 2100-2299
-  - OpenFGA: 2300-2499
-  - OpenStack: 2500-2799
-  - Scaleway: 2800-2999
-  - Alibaba Cloud: 3000-3299
-  - OCI: 3300-3499
-  - Hetzner Cloud: 3500-3699
+- [ ] Enum value is within its provider's band. Do NOT enumerate bands here:
+      the authoritative allocation is the numbering-scheme comment at the top
+      of the `CloudResourceKind` enum in `cloud_resource_kind.proto`
+      (1,000-wide bands per provider, family sub-bands within), and numbers
+      are pinned by the snapshot gate at
+      `pkg/crkreflect/testdata/registry_numbers.txt`
+      (`go test ./pkg/crkreflect/ -run TestRegistryNumberSnapshot`)
 - [ ] `id_prefix` is unique (no other component uses it)
 - [ ] `kind_meta` includes provider, version, id_prefix
 - [ ] For Kubernetes: `kubernetes_meta` includes category and namespace_prefix (if workload)
@@ -273,6 +272,35 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 - **PARITY ❌** — at least one divergence that would misdeploy (wrong namespace/selector,
   missing feature, or an unpopulated stack-output field). Report as a Critical Gap and mark
   Categories 4 & 5 ❌.
+
+#### Category 5c: Provider Parity (Critical GATE — no separate weight)
+
+A second gate, on a DIFFERENT axis from 5b: not "do the two engines agree with each
+other" but "does the component expose the full configurable surface of the pinned
+Terraform provider". Detection is fully mechanical (`pkg/providerparity`); the component's
+recorded judgment lives in its `iac/provider-parity.yaml` (renames, subtree mappings,
+exclusions with reasons, internal plumbing resources).
+
+**How to evaluate (mechanical — never re-derive by hand):**
+
+```bash
+# From the repository root (GA schema per provider, e.g. google for gcp):
+planton provider-parity --provider <provider> --ga-schema <ga-schema> --kind <Kind>
+```
+
+This only applies to providers with committed schema artifacts under
+`pkg/providerparity/schemas/`; for a provider without artifacts, record the gate as
+NOT INSTRUMENTED (not a defect of the component).
+
+**Gate outcome (record this explicitly):**
+- **PROVIDER PARITY ✅** — the kind is at total accounting: every configurable argument
+  matched/mapped/excluded, every spec field reaches provider surface, no stale manifest
+  entries.
+- **PROVIDER PARITY ⚠️** — in debt (unaccounted arguments and/or uncovered spec fields)
+  but inside the accepted baseline (`pkg/providerparity/baseline.yaml`). Report the debt
+  counts under "Improvement Opportunities" — this is the depth-closure work list.
+- **PROVIDER PARITY ❌** — stale manifest entries, or debt OUTSIDE the baseline (the
+  `lint.provider-parity` CI lane would fail). Report as a Critical Gap.
 
 #### Category 6: Documentation - Authored Judgment (Important - 13.34% total)
 

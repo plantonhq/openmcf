@@ -84,12 +84,14 @@ func TestCheck_HermeticFixture(t *testing.T) {
 	write("catalog/aws/awss3bucket/README.md")
 	write("catalog/aws/awss3bucket/docs/README.md") // -> unexpected-entry
 	write("catalog/aws/awss3bucket/iac/pulumi/main.go")
-	write("catalog/aws/awss3bucket/iac/pulumi/Makefile")   // -> forbidden-file
-	write("catalog/aws/awss3bucket/iac/tf/.gitignore")     // -> forbidden-file
-	write("catalog/aws/awss3bucket/iac/hack/x.sh")         // -> unexpected-entry
-	write("catalog/aws/awss3bucket/presets/01-basic.yaml") // no sidecar -> missing-preset-sidecar
-	write("catalog/aws/notakinddir/spec.proto")            // -> unregistered-component-dir
-	write("catalog/stray-file.txt")                        // -> unexpected-entry (catalog root)
+	write("catalog/aws/awss3bucket/iac/pulumi/Makefile")      // -> forbidden-file
+	write("catalog/aws/awss3bucket/iac/tf/.gitignore")        // -> forbidden-file
+	write("catalog/aws/awss3bucket/iac/hack/x.sh")            // -> unexpected-entry
+	write("catalog/aws/awss3bucket/iac/provider-parity.yaml") // allowed: recorded parity judgment
+	write("catalog/aws/awss3bucket/iac/provider-parity.md")   // -> unexpected-entry (only the .yaml is declared)
+	write("catalog/aws/awss3bucket/presets/01-basic.yaml")    // no sidecar -> missing-preset-sidecar
+	write("catalog/aws/notakinddir/spec.proto")               // -> unregistered-component-dir
+	write("catalog/stray-file.txt")                           // -> unexpected-entry (catalog root)
 
 	violations, err := Check(root)
 	if err != nil {
@@ -110,6 +112,7 @@ func TestCheck_HermeticFixture(t *testing.T) {
 		"catalog/aws/awss3bucket/iac/pulumi/Makefile:forbidden-file",
 		"catalog/aws/awss3bucket/iac/tf/.gitignore:forbidden-file",
 		"catalog/aws/awss3bucket/iac/hack:unexpected-entry",
+		"catalog/aws/awss3bucket/iac/provider-parity.md:unexpected-entry",
 		"catalog/aws/awss3bucket/iac/pulumi:missing-iac-readme",
 		"catalog/aws/awss3bucket/iac/tf:missing-iac-readme",
 		"catalog/aws/awss3bucket/presets/01-basic.yaml:missing-preset-sidecar",
@@ -129,6 +132,7 @@ func TestCheck_HermeticFixture(t *testing.T) {
 		"catalog/aws/awss3bucket:missing-readme",
 		"catalog/aws/awss3bucket:missing-iac",
 		"catalog/aws/awss3bucket/v1alpha1/api.proto:unexpected-entry",
+		"catalog/aws/awss3bucket/iac/provider-parity.yaml:unexpected-entry",
 	} {
 		if got[wrong] {
 			t.Errorf("violation %s must not fire on the well-formed part", wrong)
