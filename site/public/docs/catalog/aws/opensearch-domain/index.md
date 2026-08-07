@@ -8,327 +8,169 @@ componentName: "awsopensearchdomain"
 
 # AWS OpenSearch Domain
 
-Deploys an Amazon OpenSearch Service domain with configurable cluster topology, EBS storage, encryption at rest and in transit, optional VPC placement, fine-grained access control, UltraWarm and cold storage tiers, log publishing to CloudWatch, and Auto-Tune optimization.
+Deploys a managed Amazon OpenSearch Service domain with configurable cluster topology (data nodes, dedicated masters, coordinator node pools, UltraWarm, cold storage), EBS volume configuration, VPC or public deployment modes, fine-grained access control with JWT bearer authentication, Cognito and IAM Identity Center sign-in for Dashboards, KMS encryption, Auto-Tune with maintenance scheduling, AI/ML capabilities (natural-language query generation, the S3 vectors engine, GPU vector acceleration), and CloudWatch log publishing. The domain integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, IAM roles, Cognito user pools, CloudWatch log groups, and ACM certificates.
 
 ## What Gets Created
 
-When you deploy an AwsOpenSearchDomain resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **OpenSearch Domain** — an `opensearch.Domain` with the specified engine version, cluster configuration, and tags derived from metadata (organization, environment, resource kind, resource ID)
-- **EBS Volumes** — attached to each data node for index storage, with configurable volume type, size, IOPS, and throughput
-- **Encryption at Rest** — optional KMS-based encryption of indices and automated snapshots, using the AWS-managed `aws/es` key or a customer-managed key
-- **Node-to-Node Encryption** — optional TLS encryption for all inter-node traffic within the cluster
-- **VPC Endpoints** (when `vpcOptions` is set) — ENIs deployed into specified subnets with security groups controlling inbound/outbound traffic on port 443; the domain is not publicly accessible
-- **Fine-Grained Access Control** (when `advancedSecurityOptions.enabled` is true) — internal user database or IAM-based authentication with role-based index-level permissions
-- **Log Publishing** (when `logPublishingOptions` is set) — CloudWatch Logs delivery for index slow logs, search slow logs, application logs, and audit logs
-- **Auto-Tune** (when `autoTuneOptions.desiredState` is `ENABLED`) — automatic JVM heap, disk I/O, and performance setting optimization based on cluster metrics, with optional maintenance schedules or off-peak-window alignment
+- **OpenSearch Domain** -- a managed search and analytics domain running the specified engine version (OpenSearch or Elasticsearch), with configurable data node count, instance type, and EBS storage
+- **Dedicated Master Nodes** -- created only when `clusterConfig.dedicatedMasterEnabled` is `true`; separate nodes that handle cluster management without competing with data workloads
+- **Coordinator Node Pools** -- created only when `clusterConfig.nodeOptions` entries are configured; dedicated nodes that take over request routing, query fan-out, and response aggregation for high-concurrency workloads
+- **UltraWarm Storage Tier** -- created only when `clusterConfig.warmEnabled` is `true`; S3-backed nodes for infrequently accessed read-only data at lower cost
+- **Cold Storage Tier** -- created only when `clusterConfig.coldStorageEnabled` is `true`; lowest-cost S3-backed tier for rarely queried data (requires UltraWarm)
+- **VPC Endpoints** -- created only when `vpcOptions` is configured; places the domain into VPC subnets with security group controls instead of public internet access
+- **Fine-Grained Access Control** -- configured only when `advancedSecurityOptions.enabled` is `true`; enables internal user database or IAM master-user authentication, optional anonymous access, JWT bearer authentication (`jwtOptions`, OpenSearch 2.11+), and role-based index permissions
+- **Cognito Dashboards Sign-in** -- configured only when `cognitoOptions.enabled` is `true`; users sign in to OpenSearch Dashboards through a Cognito user pool and are authorized through a Cognito identity pool
+- **IAM Identity Center Integration** -- configured only when `identityCenterOptions.enabledApiAccess` is `true`; workforce users reach Dashboards and the domain APIs with their Identity Center identity
+- **Auto-Tune** -- configured through `autoTuneOptions`; AWS optimizes JVM heap, disk I/O, and queue sizes from live metrics, with blue/green optimizations scheduled through explicit maintenance windows or the domain's off-peak window (`offPeakWindowOptions`)
+- **AI/ML Capabilities** -- configured through `aimlOptions`; natural-language query generation in Dashboards (OpenSearch 2.13+), the S3 vectors engine, and GPU-accelerated vector search
+- **Log Publishing Pipelines** -- created only when `logPublishingOptions` entries are configured; streams index slow logs, search slow logs, application logs, or audit logs (requires fine-grained access control) to CloudWatch Logs
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An OpenSearch or Elasticsearch engine version** string (e.g., `OpenSearch_2.11` or `Elasticsearch_7.10`)
-- **(Optional) VPC subnets and security groups** for VPC-based deployment
-- **(Optional) A KMS key ARN** for customer-managed encryption at rest
-- **(Optional) CloudWatch Logs log group ARNs** for log publishing
-- **(Optional) An ACM certificate ARN** for custom domain endpoints
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `opensearch-domain.yaml`:
+### AWS Account
+
+- **Subnets** (optional, for VPC mode) in 2 or 3 Availability Zones matching the cluster's `availabilityZoneCount`. Private subnets are recommended. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Security groups** (optional, for VPC mode) allowing HTTPS (port 443) inbound from clients that need to access the domain. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource.
+- **A KMS key** (optional) for at-rest encryption beyond the default AWS-managed `aws/es` key. The KMS key choice is ForceNew and cannot be changed after domain creation. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
+- **CloudWatch log groups** (optional) for publishing domain logs. Each log type requires a dedicated log group. Provide log group ARNs directly or reference AwsCloudwatchLogGroup Cloud Resources.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS OpenSearch Domain**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Node Dev** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsOpenSearchDomain
 metadata:
-  name: my-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsOpenSearchDomain.my-search
+  name: app-search
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   engineVersion: "OpenSearch_2.11"
   clusterConfig:
-    instanceType: t3.small.search
+    instanceType: r6g.large.search
+    instanceCount: 2
   ebsOptions:
     ebsEnabled: true
     volumeType: gp3
-    volumeSize: 20
+    volumeSize: 100
   encryptAtRestEnabled: true
   nodeToNodeEncryptionEnabled: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f opensearch-domain.yaml
 ```
 
-This creates a single-node OpenSearch 2.11 domain with 20 GB gp3 storage, encryption at rest, and node-to-node encryption.
+This creates a two-node OpenSearch domain with gp3 EBS volumes, encryption at rest and in transit using default AWS-managed keys, and no VPC placement (publicly accessible). A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the OpenSearch domain will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `engineVersion` | `string` | Engine version. Format: `OpenSearch_X.Y` or `Elasticsearch_X.Y`. Changing to an incompatible version forces domain recreation. | Must match `OpenSearch_X.Y` or `Elasticsearch_X.Y`. |
-| `clusterConfig` | `object` | Cluster topology configuration. | Required. |
-| `clusterConfig.instanceType` | `string` | Instance type for data nodes. Uses the `.search` suffix. | Must be set. Examples: `t3.small.search`, `r6g.large.search`. |
-| `ebsOptions` | `object` | EBS volume configuration for data node storage. | Required. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `clusterConfig.instanceCount` | `int32` | `1` | Number of data node instances. For zone-aware deployments, use a multiple of the availability zone count. |
-| `clusterConfig.dedicatedMasterEnabled` | `bool` | `false` | Enable dedicated master nodes for cluster management. Recommended for production. |
-| `clusterConfig.dedicatedMasterType` | `string` | — | Instance type for dedicated master nodes. Only used when `dedicatedMasterEnabled` is true. |
-| `clusterConfig.dedicatedMasterCount` | `int32` | — | Number of dedicated master nodes. AWS recommends 3 for production. Only used when `dedicatedMasterEnabled` is true. |
-| `clusterConfig.zoneAwarenessEnabled` | `bool` | `false` | Distribute data nodes and replicas across multiple Availability Zones. |
-| `clusterConfig.availabilityZoneCount` | `int32` | — | Number of AZs (2 or 3). Only used when `zoneAwarenessEnabled` is true. |
-| `clusterConfig.warmEnabled` | `bool` | `false` | Enable UltraWarm storage tier for infrequently accessed, read-only data. |
-| `clusterConfig.warmType` | `string` | — | Instance type for UltraWarm nodes (e.g., `ultrawarm1.medium.search`). Only used when `warmEnabled` is true. |
-| `clusterConfig.warmCount` | `int32` | — | Number of UltraWarm nodes (2–150). Only used when `warmEnabled` is true. |
-| `clusterConfig.coldStorageEnabled` | `bool` | `false` | Enable cold storage backed by S3. Requires `warmEnabled` to be true. |
-| `clusterConfig.multiAzWithStandbyEnabled` | `bool` | `false` | Enable Multi-AZ with Standby for 99.99% SLA. Requires 3 AZs and at least 3 data nodes. |
-| `ebsOptions.ebsEnabled` | `bool` | `false` | Attach EBS volumes to data nodes. Required for most instance types. |
-| `ebsOptions.volumeType` | `string` | — | EBS volume type: `gp3` (recommended), `gp2`, `io1`, or `standard`. |
-| `ebsOptions.volumeSize` | `int32` | — | Size of each EBS volume in GB. Total storage = `volumeSize` × `instanceCount`. |
-| `ebsOptions.iops` | `int32` | — | Provisioned IOPS. Only valid for `gp3` and `io1`. gp3 baseline: 3000. |
-| `ebsOptions.throughput` | `int32` | — | Provisioned throughput in MiB/s. Only valid for `gp3`. Minimum: 125. |
-| `encryptAtRestEnabled` | `bool` | `false` | Enable encryption at rest for indices and automated snapshots. |
-| `kmsKeyId` | `string` | — | Customer-managed KMS key ARN or ID for at-rest encryption. ForceNew. Can reference `AwsKmsKey` via `valueFrom`. |
-| `nodeToNodeEncryptionEnabled` | `bool` | `false` | Enable TLS encryption for all inter-node traffic. |
-| `vpcOptions.subnetIds` | `string[]` | `[]` | Subnet IDs where OpenSearch deploys ENIs. For zone-aware domains, provide subnets in 2 or 3 AZs. ForceNew. Can reference `AwsVpc` via `valueFrom`. |
-| `vpcOptions.securityGroupIds` | `string[]` | `[]` | Security group IDs controlling traffic to the domain. Must allow HTTPS (port 443). Can reference `AwsSecurityGroup` via `valueFrom`. |
-| `domainEndpointOptions.enforceHttps` | `bool` | `true` | Require HTTPS for all traffic to the domain endpoint. |
-| `domainEndpointOptions.tlsSecurityPolicy` | `string` | — | TLS policy for the HTTPS endpoint (e.g., `Policy-Min-TLS-1-2-PFS-2023-10`). |
-| `domainEndpointOptions.customEndpointEnabled` | `bool` | `false` | Enable a custom domain endpoint instead of the AWS-generated endpoint. |
-| `domainEndpointOptions.customEndpoint` | `string` | — | FQDN for the custom endpoint (e.g., `search.example.com`). Only used when `customEndpointEnabled` is true. |
-| `domainEndpointOptions.customEndpointCertificateArn` | `string` | — | ACM certificate ARN for the custom endpoint. Can reference `AwsCertManagerCert` via `valueFrom`. |
-| `advancedSecurityOptions.enabled` | `bool` | `false` | Enable fine-grained access control. ForceNew if disabling. |
-| `advancedSecurityOptions.internalUserDatabaseEnabled` | `bool` | `false` | Enable the internal user database for managing users and roles in OpenSearch Dashboards. |
-| `advancedSecurityOptions.masterUserArn` | `string` | — | IAM entity ARN designated as master user. Mutually exclusive with `masterUserName`. Can reference via `valueFrom`. |
-| `advancedSecurityOptions.masterUserName` | `string` | — | Username for internal user database master user. Mutually exclusive with `masterUserArn`. |
-| `advancedSecurityOptions.masterUserPassword` | `string` | — | Password for internal user database master user. Must be 8+ characters with uppercase, lowercase, digit, and special character. Can reference via `valueFrom`. |
-| `logPublishingOptions` | `list` | `[]` | Up to 4 log publishing configurations, one per log type. |
-| `logPublishingOptions[].logType` | `string` | — | Log type: `INDEX_SLOW_LOGS`, `SEARCH_SLOW_LOGS`, `ES_APPLICATION_LOGS`, or `AUDIT_LOGS`. |
-| `logPublishingOptions[].cloudwatchLogGroupArn` | `string` | — | CloudWatch Logs log group ARN. Can reference via `valueFrom`. |
-| `logPublishingOptions[].enabled` | `bool` | `true` | Whether this log publishing option is active. |
-| `accessPolicies` | `object` | — | IAM-based access policy document (JSON object). Controls who can access the domain and its indices. |
-| `autoTuneOptions` | `object` | — | Auto-Tune configuration: `desiredState` (`ENABLED`/`DISABLED`), `maintenanceSchedules`, `rollbackOnDisable`, `useOffPeakWindow`. Not supported on t2/t3 instance types. |
-| `autoSoftwareUpdateEnabled` | `bool` | `false` | Enable automatic service software updates during the off-peak window. |
-| `ipAddressType` | `string` | `ipv4` | IP address type: `ipv4` or `dualstack`. Changing from `dualstack` to `ipv4` forces recreation. |
-| `advancedOptions` | `map<string,string>` | `{}` | Low-level key-value configuration options (e.g., `rest.action.multi.allow_explicit_index`). |
-
-## Examples
-
-### Production VPC Deployment with Dedicated Masters
-
-A multi-AZ domain deployed into a VPC with dedicated master nodes, zone awareness across 3 AZs, and encryption enabled:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the OpenSearch domain to a VPC and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsOpenSearchDomain
-metadata:
-  name: prod-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsOpenSearchDomain.prod-search
 spec:
-  region: us-east-1
-  engineVersion: "OpenSearch_2.11"
-  clusterConfig:
-    instanceType: r6g.large.search
-    instanceCount: 3
-    dedicatedMasterEnabled: true
-    dedicatedMasterType: r6g.large.search
-    dedicatedMasterCount: 3
-    zoneAwarenessEnabled: true
-    availabilityZoneCount: 3
-  ebsOptions:
-    ebsEnabled: true
-    volumeType: gp3
-    volumeSize: 100
-    iops: 3000
-    throughput: 125
-  encryptAtRestEnabled: true
-  nodeToNodeEncryptionEnabled: true
-  vpcOptions:
-    subnetIds:
-      - subnet-az1
-      - subnet-az2
-      - subnet-az3
-    securityGroupIds:
-      - sg-opensearch
-  domainEndpointOptions:
-    enforceHttps: true
-    tlsSecurityPolicy: Policy-Min-TLS-1-2-PFS-2023-10
-  autoTuneOptions:
-    desiredState: ENABLED
-```
-
-### Fine-Grained Access Control with Internal User Database
-
-A domain with FGAC enabled using the internal user database for authentication:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsOpenSearchDomain
-metadata:
-  name: fgac-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsOpenSearchDomain.fgac-search
-spec:
-  region: us-east-1
-  engineVersion: "OpenSearch_2.11"
-  clusterConfig:
-    instanceType: r6g.large.search
-    instanceCount: 2
-  ebsOptions:
-    ebsEnabled: true
-    volumeType: gp3
-    volumeSize: 50
-  encryptAtRestEnabled: true
-  nodeToNodeEncryptionEnabled: true
-  advancedSecurityOptions:
-    enabled: true
-    internalUserDatabaseEnabled: true
-    masterUserName: admin
-    masterUserPassword: "MyStr0ng!Pass"
-  domainEndpointOptions:
-    enforceHttps: true
-```
-
-### Analytics Domain with UltraWarm and Cold Storage
-
-A domain with hot, warm, and cold storage tiers for cost-effective log analytics:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsOpenSearchDomain
-metadata:
-  name: analytics-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsOpenSearchDomain.analytics-search
-spec:
-  region: us-east-1
-  engineVersion: "OpenSearch_2.11"
-  clusterConfig:
-    instanceType: r6g.xlarge.search
-    instanceCount: 3
-    dedicatedMasterEnabled: true
-    dedicatedMasterType: r6g.large.search
-    dedicatedMasterCount: 3
-    zoneAwarenessEnabled: true
-    availabilityZoneCount: 3
-    warmEnabled: true
-    warmType: ultrawarm1.medium.search
-    warmCount: 2
-    coldStorageEnabled: true
-  ebsOptions:
-    ebsEnabled: true
-    volumeType: gp3
-    volumeSize: 200
-    iops: 6000
-    throughput: 250
-  encryptAtRestEnabled: true
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-5678
-  nodeToNodeEncryptionEnabled: true
-  autoTuneOptions:
-    desiredState: ENABLED
-  autoSoftwareUpdateEnabled: true
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsOpenSearchDomain
-metadata:
-  name: ref-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsOpenSearchDomain.ref-search
-spec:
-  region: us-west-2
-  engineVersion: "OpenSearch_2.11"
-  clusterConfig:
-    instanceType: r6g.large.search
-    instanceCount: 2
-    zoneAwarenessEnabled: true
-    availabilityZoneCount: 2
-  ebsOptions:
-    ebsEnabled: true
-    volumeType: gp3
-    volumeSize: 80
-  encryptAtRestEnabled: true
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
-      name: search-key
-      field: status.outputs.key_arn
-  nodeToNodeEncryptionEnabled: true
+      name: search-encryption-key
+      fieldPath: status.outputs.key_arn
   vpcOptions:
     subnetIds:
       - valueFrom:
           kind: AwsSubnet
-          name: main-private-subnet-a
+          name: private-az1
           fieldPath: status.outputs.subnet_id
       - valueFrom:
           kind: AwsSubnet
-          name: main-private-subnet-b
+          name: private-az2
           fieldPath: status.outputs.subnet_id
     securityGroupIds:
       - valueFrom:
           kind: AwsSecurityGroup
-          name: opensearch-sg
-          field: status.outputs.security_group_id
-  domainEndpointOptions:
-    enforceHttps: true
-    customEndpointEnabled: true
-    customEndpoint: search.example.com
-    customEndpointCertificateArn:
-      valueFrom:
-        kind: AwsCertManagerCert
-        name: search-cert
-        fieldPath: status.outputs.cert_arn
+          name: search-sg
+          fieldPath: status.outputs.security_group_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and KMS key first, then provisions the OpenSearch domain with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `domain_id` | `string` | Unique identifier assigned to the domain by AWS |
-| `domain_name` | `string` | Name of the domain (matches the ID derived from metadata) |
-| `domain_arn` | `string` | Amazon Resource Name of the domain, used in IAM policies and cross-service permissions |
-| `endpoint` | `string` | Domain endpoint for index, search, and data upload requests. For VPC domains this is a VPC endpoint; for public domains it is internet-accessible |
-| `dashboard_endpoint` | `string` | OpenSearch Dashboards UI endpoint (`endpoint/_dashboards`) |
-| `endpoint_v2` | `string` | Dual-stack (IPv4 + IPv6) V2 domain endpoint |
-| `dashboard_endpoint_v2` | `string` | Dashboards endpoint on the dual-stack V2 domain endpoint |
-| `domain_endpoint_v2_hosted_zone_id` | `string` | Route 53 hosted zone ID for aliasing DNS records at the V2 endpoint |
+These are the most important decisions when configuring an OpenSearch domain. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Public vs. VPC deployment** -- By default, the domain is publicly accessible (no `vpcOptions`). Set `vpcOptions` with subnet and security group IDs to deploy into a VPC for production workloads. VPC configuration is ForceNew -- adding or removing VPC options destroys and recreates the domain.
 
-- [AwsVpc](/docs/catalog/aws/vpc) — provides subnets for VPC deployment
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network access to the domain
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides KMS keys for at-rest encryption
-- [AwsCertManagerCert](/docs/catalog/aws/certificate) — provides ACM certificates for custom endpoints
-- [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — hosts DNS zones for CNAME records pointing to the domain
+**Cluster topology** -- Configure `clusterConfig` with `instanceType` and `instanceCount` for data nodes. Enable `dedicatedMasterEnabled` with 3 master nodes for production cluster stability. Enable `zoneAwarenessEnabled` with 2 or 3 AZs for resilience. Use `multiAzWithStandbyEnabled` for 99.99% availability SLA (requires 3 AZs).
+
+**Storage tiers** -- EBS is the primary storage (`ebsOptions`). Enable `warmEnabled` for UltraWarm (S3-backed, lower cost for infrequently accessed data). Enable `coldStorageEnabled` for the lowest-cost tier (requires UltraWarm). This tiered approach optimizes cost for mixed hot/warm/cold data patterns.
+
+**Encryption and access control** -- Enable `encryptAtRestEnabled` and `nodeToNodeEncryptionEnabled` for production. Enable `advancedSecurityOptions` for fine-grained access control with the internal user database or an IAM master user (mutually exclusive), optionally adding JWT bearer authentication for token-based service access. Once enabled, fine-grained access control cannot be disabled without recreating the domain. `accessPolicies` carries the domain's resource-based IAM policy -- the primary perimeter for public domains.
+
+**Dashboards sign-in** -- Choose the sign-in story by audience: `cognitoOptions` puts a Cognito user pool login in front of Dashboards (all three integration inputs are required together), while `identityCenterOptions` extends workforce single sign-on to Dashboards and the domain APIs. Either can combine with fine-grained access control -- sign-in authenticates, FGAC authorizes.
+
+**Self-maintenance** -- `autoTuneOptions` lets AWS continuously optimize the cluster (not supported on t2/t3 instance types); its blue/green optimizations run inside explicit maintenance schedules or the domain's daily 10-hour off-peak window (`offPeakWindowOptions`), never both. `autoSoftwareUpdateEnabled` applies service software updates in the same window, and `deploymentStrategy` controls how AWS provisions capacity for blue/green migrations.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+| **AwsSubnet** (optional) | `vpcOptions.subnetIds` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `vpcOptions.securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsIamRole** (optional) | `advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |
+| **AwsCognitoUserPool** (optional) | `cognitoOptions.userPoolId` | `status.outputs.user_pool_id` |
+| **AwsIamRole** (optional) | `cognitoOptions.roleArn` | `status.outputs.role_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `logPublishingOptions[*].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| **AwsCertManagerCert** (optional) | `domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `domain_id` | AWS-assigned domain identifier | Monitoring dashboards, operational scripts |
+| `domain_name` | Domain name matching the metadata | API calls, connection configuration |
+| `domain_arn` | Amazon Resource Name of the domain | IAM policies, cross-service permissions |
+| `endpoint` | Domain endpoint for index and search requests | Application connection strings, API gateway targets |
+| `dashboard_endpoint` | OpenSearch Dashboards URL | Browser access for visualization and management |
+| `endpoint_v2` | Dual-stack (IPv4 + IPv6) V2 domain endpoint | Clients on IPv6 networks; works with both `ipAddressType` settings |
+| `dashboard_endpoint_v2` | Dashboards URL on the dual-stack V2 endpoint | Browser access over IPv6 |
+| `domain_endpoint_v2_hosted_zone_id` | Route 53 hosted zone ID for the V2 endpoint | Route53 alias records pointing DNS at the domain |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single-node development** -- A single t3.small.search node with gp3 storage for development and testing. No VPC, no dedicated masters; encryption at rest and node-to-node stay on. Start from the **Single Node Dev** preset.
+
+**Production VPC** -- Multi-node domain deployed into a VPC with dedicated master nodes, zone awareness across 2 AZs, encryption at rest and in transit, and fine-grained access control enabled. Start from the **Production VPC** preset.
+
+**Analytics with warm and cold storage** -- Production domain with UltraWarm and cold storage tiers enabled for cost-optimized retention of time-series or log data. Suitable for observability and analytics workloads with mixed hot/warm/cold access patterns. Start from the **Analytics Warm Cold** preset.
+
+## Works With
+
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides subnets for VPC-mode domain placement
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for VPC-mode domains
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for at-rest encryption
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the FGAC master user and the Cognito service role
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- provides the sign-in directory for Dashboards
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- provides log destinations for domain log publishing
+- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- provides a TLS certificate for custom domain endpoints

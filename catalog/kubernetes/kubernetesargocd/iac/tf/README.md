@@ -14,7 +14,7 @@ This Terraform module deploys Argo CD on a Kubernetes cluster using the official
 ### Initialize Terraform
 
 ```shell
-planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
+planton tofu init --manifest e2e/manifest.yaml --backend-type s3 \
   --backend-config="bucket=planton-tf-state-backend" \
   --backend-config="dynamodb_table=planton-tf-state-backend-lock" \
   --backend-config="region=us-east-1" \
@@ -24,19 +24,19 @@ planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
 ### Plan Deployment
 
 ```shell
-planton tofu plan --manifest hack/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
 ```
 
 ### Apply Deployment
 
 ```shell
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
 ```
 
 ### Destroy Deployment
 
 ```shell
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 ## What Gets Deployed

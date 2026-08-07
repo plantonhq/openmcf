@@ -45,6 +45,6 @@ make deps     # Tidy Go modules
 ## Local Development
 
 ```bash
-./debug.sh                           # Uses default manifest (iac/hack/manifest.yaml)
+./debug.sh                           # Uses default manifest (../../e2e/manifest.yaml)
 ./debug.sh path/to/manifest.yaml     # Uses custom manifest
 ```

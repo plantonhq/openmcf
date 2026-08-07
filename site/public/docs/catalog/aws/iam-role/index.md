@@ -8,225 +8,114 @@ componentName: "awsiamrole"
 
 # AWS IAM Role
 
-Deploys an IAM role: an assumable identity with temporary credentials, the
-backbone of every service-to-service permission on AWS. The trust policy
-controls who may assume the role; managed-policy references and inline
-documents control what it can do; an optional permissions boundary caps the
-maximum it can ever do.
+Deploys an IAM role with a configurable trust policy, managed policy attachments, and inline policies. The role integrates with Planton's Provider Connections for AWS credential management and provides `role_arn` and `role_name` outputs that downstream Cloud Resources consume via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AwsIamRole resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **IAM Role** — an `aws_iam_role` / `iam.Role` named from `metadata.name`,
-  with the trust (assume-role) policy, optional description, IAM path, session
-  duration ceiling, and permissions boundary
-- **Managed Policy Attachments** — one `aws_iam_role_policy_attachment` /
-  `iam.RolePolicyAttachment` per entry in `managedPolicyArns`, each reconciled
-  individually so adding or removing an entry never touches the role
-- **Inline Policies** — one `aws_iam_role_policy` / `iam.RolePolicy` per entry
-  in `inlinePolicies`, embedding role-specific documents directly on the role
+- **IAM Role** -- created with the specified trust policy (assume-role document), description, and IAM path
+- **Managed Policy Attachments** -- one attachment per entry in `managedPolicyArns`, linking AWS-managed or customer-managed policies to the role
+- **Inline Policies** -- one inline policy per entry in `inlinePolicies`, embedded directly on the role with the specified policy name and JSON document
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the role
 
-An instance profile is **not** created here — EC2 needs one to carry a role,
-so wrap this role in an `AwsIamInstanceProfile` component when EC2 instances
-will use it. Every other AWS service assumes the role directly.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A trust policy document** defining which principals (services, accounts,
-  or federated identities) may assume this role.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `iam-role.yaml`:
+- **IAM permissions** -- the credentials used by the Provider Connection must have `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PutRolePolicy`, and related IAM permissions.
+- **Managed policy ARNs** -- any AWS-managed or customer-managed policy ARNs listed in `managedPolicyArns` must exist in the account before deployment.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS IAM Role**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Lambda Execution** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsIamRole
 metadata:
-  name: my-ecs-task-role
+  name: eks-service-role
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
+  description: "Service role for EKS cluster management"
+  path: "/"
   trustPolicy:
     Version: "2012-10-17"
     Statement:
       - Effect: Allow
         Principal:
-          Service: ecs-tasks.amazonaws.com
-        Action: sts:AssumeRole
+          Service: eks.amazonaws.com
+        Action: "sts:AssumeRole"
+  managedPolicyArns:
+    - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f iam-role.yaml
 ```
 
-This creates an IAM role that can be assumed by ECS tasks, with no additional
-policies attached.
+This creates an IAM role that EKS can assume, with the `AmazonEKSClusterPolicy` managed policy attached. No inline policies are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an IAM role. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region for the provider's API calls. IAM is global — the role is assumable in every region. | Required |
-| `trustPolicy` | `object` | JSON trust policy document defining which principals may assume this role. Updatable in place. | Required |
+**Trust policy** -- The `trustPolicy` field defines which AWS services, accounts, or identity providers can assume this role. It is a required JSON structure following the IAM policy grammar. Common trust principals include `eks.amazonaws.com`, `lambda.amazonaws.com`, `ecs-tasks.amazonaws.com`, and cross-account root ARNs.
 
-### Optional Fields
+**Managed vs. inline policies** -- Use `managedPolicyArns` for reusable, centrally maintained policies (both AWS-managed and customer-managed). Use `inlinePolicies` for role-specific permissions that should not be shared. Managed policies are easier to audit and update across roles; inline policies are deleted when the role is deleted.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable purpose, shown in the IAM console. Updatable in place. Max 1000 characters. |
-| `path` | `string` | `"/"` | IAM path for organizing and wildcard-matching roles (e.g. `/service-roles/`). Immutable. |
-| `managedPolicyArns` | `StringValueOrRef[]` | `[]` | Managed policies to attach — `valueFrom` references to `AwsIamPolicy` resources, or literal ARNs for AWS-managed policies. |
-| `inlinePolicies` | `map<string, object>` | `{}` | Map of policy name to JSON document for permissions unique to this role. |
-| `maxSessionDuration` | `int` | `3600` | Ceiling for assumed-session duration, in seconds (3600–43200). |
-| `permissionsBoundary` | `StringValueOrRef` | — | Managed policy whose grants cap this role's maximum permissions (intersection semantics). Reference an `AwsIamPolicy` or pass a literal ARN. |
-| `forceDetachPolicies` | `bool` | `false` | Force-detach remaining policy attachments (including out-of-band ones) on deletion instead of failing. |
+**IAM path** -- The `path` field defaults to `/`. Use IAM paths like `/service-roles/` or `/application/` to organize roles and enable path-based IAM conditions in permission boundaries. The path is create-only: it is part of the role's ARN, so changing it replaces the role.
 
-## Examples
+**Session duration** -- `maxSessionDuration` caps how long AssumeRole sessions on this role may last. Unset keeps AWS's 1-hour default (right for service roles); raise it up to 43200 seconds (12 hours) for long-running human SSO or CI sessions. Updates in place.
 
-### EC2 instance role (wrapped in an instance profile)
+**Permissions boundary** -- `permissionsBoundary` optionally caps the role's maximum permissions: effective permissions are the INTERSECTION of the boundary and the role's attached policies. Reference an AwsIamPolicy's `policy_arn` output or pass a literal policy ARN — the standard guardrail when teams mint their own roles.
 
-The role EC2 instances receive through an `AwsIamInstanceProfile`:
+**Deletion posture** -- `forceDetachPolicies` is off by default: deleting the role fails if out-of-band policy attachments exist, surfacing them instead of silently severing another owner's wiring. Turn it on for ephemeral or CI-owned roles where teardown must always succeed.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamRole
-metadata:
-  name: ec2-instance-role
-spec:
-  region: us-east-1
-  description: Allows EC2 instances to call AWS services
-  trustPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          Service: ec2.amazonaws.com
-        Action: sts:AssumeRole
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
----
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamInstanceProfile
-metadata:
-  name: ec2-instance-profile
-spec:
-  region: us-east-1
-  role:
-    valueFrom:
-      kind: AwsIamRole
-      name: ec2-instance-role
-      fieldPath: status.outputs.role_name
-```
+## Outputs and Dependencies
 
-### Lambda execution role attaching a Planton-defined policy
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamRole
-metadata:
-  name: lambda-exec-role
-spec:
-  region: us-east-1
-  description: Execution role for order-processing Lambda
-  path: /service-roles/
-  trustPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          Service: lambda.amazonaws.com
-        Action: sts:AssumeRole
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-    - valueFrom:
-        kind: AwsIamPolicy
-        name: orders-table-access
-        fieldPath: status.outputs.policy_arn
-```
+| Field | References | Via |
+|-------|-----------|-----|
+| `managedPolicyArns[]` | AwsIamPolicy | `status.outputs.policy_arn` (literal ARNs also accepted — how AWS-managed policies attach) |
+| `permissionsBoundary` | AwsIamPolicy | `status.outputs.policy_arn` |
 
-### Cross-account role with a boundary and a longer session
+### What This Component Provides
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamRole
-metadata:
-  name: cross-account-reader
-spec:
-  region: us-east-1
-  description: Allows account 111111111111 to read S3 buckets in this account
-  maxSessionDuration: 14400
-  trustPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          AWS: arn:aws:iam::111111111111:root
-        Action: sts:AssumeRole
-        Condition:
-          StringEquals:
-            sts:ExternalId: unique-external-id-abc123
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-  permissionsBoundary:
-    valueFrom:
-      kind: AwsIamPolicy
-      name: external-access-boundary
-      fieldPath: status.outputs.policy_arn
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### Worker role mixing shared and role-specific permissions
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `role_arn` | Amazon Resource Name of the IAM role | EKS cluster service role, Lambda execution role, ECS task role, S3 replication role |
+| `role_name` | IAM role name | Policy attachment, instance profile association |
+| `role_id` | The role's unique ID (never reused, unlike names) | Trust and resource policies that must survive role re-creation |
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamRole
-metadata:
-  name: ecs-worker-role
-spec:
-  region: us-east-1
-  description: Worker task role with SQS and S3 permissions
-  trustPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          Service: ecs-tasks.amazonaws.com
-        Action: sts:AssumeRole
-  managedPolicyArns:
-    - valueFrom:
-        kind: AwsIamPolicy
-        name: worker-shared-logging
-        fieldPath: status.outputs.policy_arn
-  inlinePolicies:
-    sqs-access:
-      Version: "2012-10-17"
-      Statement:
-        - Effect: Allow
-          Action:
-            - sqs:ReceiveMessage
-            - sqs:DeleteMessage
-            - sqs:GetQueueAttributes
-          Resource: arn:aws:sqs:us-east-1:123456789012:worker-queue
-```
+## Common Patterns
 
-## Stack Outputs
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Lambda execution role** -- A role with `lambda.amazonaws.com` trust and the `AWSLambdaBasicExecutionRole` managed policy for CloudWatch Logs access. The standard starting point for Lambda functions. Start from the **Lambda Execution** preset.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `role_arn` | `string` | ARN of the IAM role — what service integrations reference |
-| `role_name` | `string` | Name of the role — what an `AwsIamInstanceProfile`'s `role` field references |
-| `role_id` | `string` | Stable unique ID AWS assigns to the role (`AROA...`) |
+**ECS task execution role** -- A role with `ecs-tasks.amazonaws.com` trust and the `AmazonECSTaskExecutionRolePolicy` managed policy for pulling container images and writing logs. Start from the **ECS Task Execution** preset.
 
-## Related Components
+**EC2 SSM role** -- A role with `ec2.amazonaws.com` trust and the `AmazonSSMManagedInstanceCore` managed policy for Systems Manager Session Manager access. Eliminates the need for SSH bastion hosts. Start from the **EC2 SSM** preset.
 
-- [AwsIamPolicy](/docs/catalog/aws/iam-policy) — reusable managed policies attached via `managedPolicyArns` or used as the permissions boundary
-- [AwsIamInstanceProfile](/docs/catalog/aws/iam-instance-profile) — wraps this role to deliver it to EC2 instances
-- [AwsIamUser](/docs/catalog/aws/iam-user) — long-lived IAM users for programmatic access
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — EKS clusters use IAM roles for the control plane and node groups
+## Works With
+
+- **AwsIamPolicy** -- customer-managed policies attached via `managedPolicyArns` or used as the `permissionsBoundary`.
+- **AwsIamInstanceProfile** -- wraps this role for delivery to EC2 instances (the only service that needs the wrapper).
+- **AwsEksCluster / AwsEksNodeGroup / AwsEksAccessEntry / AwsEksFargateProfile / AwsLambda / AwsEcsService** -- downstream components that consume the `role_arn` output.

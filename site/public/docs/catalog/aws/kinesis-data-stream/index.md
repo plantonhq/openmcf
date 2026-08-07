@@ -8,190 +8,118 @@ componentName: "awskinesisstream"
 
 # AWS Kinesis Data Stream
 
-Deploys an Amazon Kinesis Data Stream with configurable capacity mode (provisioned or on-demand), optional KMS encryption, extended data retention, and shard-level CloudWatch monitoring. The stream name is derived from `metadata.name` and cannot be changed after creation.
+Deploys a Kinesis Data Stream in either On-Demand or Provisioned capacity mode, with configurable data retention, KMS encryption, enhanced shard-level CloudWatch metrics, and consumer deletion behavior. The stream integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys for customer-managed encryption.
 
 ## What Gets Created
 
-When you deploy an AwsKinesisStream resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kinesis Data Stream** — an `aws_kinesis_stream` resource with the specified capacity mode, shard count (provisioned only), retention period, and encryption settings
-- **KMS Encryption** — enabled automatically when `kmsKeyId` is specified, using encryption type `KMS`
-- **Enhanced Shard-Level Metrics** — per-shard CloudWatch metrics enabled when `shardLevelMetrics` entries are provided
+- **Kinesis Data Stream** -- a real-time data stream named from your manifest's `metadata.name`, configured with the specified capacity mode (On-Demand or Provisioned)
+- **Stream Mode Configuration** -- On-Demand mode auto-scales shards to match throughput (up to 200 MB/s write); Provisioned mode creates the exact number of shards specified in `shardCount`
+- **KMS Encryption** -- configured only when `kmsKeyId` is provided; encrypts data records at rest using the specified KMS key. When absent, encryption is disabled
+- **Enhanced Shard-Level Metrics** -- enabled only when `shardLevelMetrics` entries are provided; publishes per-shard CloudWatch metrics for monitoring individual shard performance
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A KMS key** if enabling server-side encryption (can use the Kinesis-owned key `alias/aws/kinesis` at no additional KMS cost)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `kinesis-stream.yaml`:
+### AWS Account
+
+- **A KMS key** (optional) -- required when encrypting data at rest. Accepts a key ID, key ARN, or alias (e.g., `alias/aws/kinesis` for the AWS-managed Kinesis key). Provide the value directly or reference an AwsKmsKey Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Kinesis Data Stream**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **On-Demand Minimal** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStream
 metadata:
-  name: my-stream
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsKinesisStream.my-stream
+  name: clickstream-events
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   streamMode: ON_DEMAND
 ```
-
-Deploy:
 
 ```shell
 planton apply -f kinesis-stream.yaml
 ```
 
-This creates an on-demand Kinesis stream with 24-hour default retention, no encryption, and stream-level metrics only.
+This creates an On-Demand stream with AWS-managed shard scaling, default 24-hour retention, and no encryption. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the Kinesis stream will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `streamMode` | `string` | Capacity mode: `"PROVISIONED"` or `"ON_DEMAND"`. Provisioned requires explicit shard count; on-demand auto-scales up to 200 MB/s write. | Must be one of the two valid values |
-| `shardCount` | `int` | Number of shards. Each shard provides 1 MB/s write and 2 MB/s read. | Required when `streamMode` is `"PROVISIONED"` (>= 1). Must be 0 when `"ON_DEMAND"`. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `retentionPeriodHours` | `int` | `24` | Hours that data remains accessible. Range: 24–8760 (1 day to 365 days). Extended retention incurs additional cost. |
-| `kmsKeyId` | `string` | — | KMS key for server-side encryption. Accepts a key ID, key ARN, or alias (e.g., `alias/aws/kinesis`). Can reference an AwsKmsKey resource via `valueFrom`. |
-| `maxRecordSizeInKib` | `int` | `1024` | Maximum single record size in KiB. Range: 1024–10240 (1–10 MiB). Requires the `kinesis:UpdateMaxRecordSize` IAM permission on the deploying principal. |
-| `warmThroughputMibPs` | `int` | — | Pre-provisioned warm write throughput (MiB/s) for ON_DEMAND streams — absorbs known bursts without throttling while auto-scaling catches up. Mutually exclusive with `shardCount`; billed per MiB/s-hour; requires `kinesis:UpdateStreamWarmThroughput`. |
-| `shardLevelMetrics` | `string[]` | `[]` | Shard-level CloudWatch metrics to enable. Valid values: `IncomingBytes`, `IncomingRecords`, `OutgoingBytes`, `OutgoingRecords`, `WriteProvisionedThroughputExceeded`, `ReadProvisionedThroughputExceeded`, `IteratorAgeMilliseconds`, or `ALL`. |
-| `enforceConsumerDeletion` | `bool` | `false` | When `true`, deregisters all enhanced fan-out consumers before deleting the stream. |
-| `resourcePolicy` | `object` | — | Resource-based access policy as a native YAML structure. Primary use: cross-account producer/consumer grants (PutRecord, GetRecords) without role assumption. |
-
-## Examples
-
-### Provisioned Stream with Encryption
-
-A provisioned stream with 4 shards, KMS encryption via the Kinesis-owned key, and 48-hour retention:
+When using KMS encryption, use ValueFromRef to wire the stream to a KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStream
-metadata:
-  name: order-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsKinesisStream.order-events
 spec:
-  region: us-east-1
-  streamMode: PROVISIONED
-  shardCount: 4
-  retentionPeriodHours: 48
-  kmsKeyId:
-    value: alias/aws/kinesis
-```
-
-### On-Demand with Enhanced Monitoring
-
-Production on-demand stream with 7-day retention, encryption, and all shard-level metrics for full observability:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStream
-metadata:
-  name: analytics-pipeline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKinesisStream.analytics-pipeline
-spec:
-  region: us-east-1
-  streamMode: ON_DEMAND
-  retentionPeriodHours: 168
-  kmsKeyId:
-    value: arn:aws:kms:us-east-1:123456789012:key/mrk-abc123
-  shardLevelMetrics:
-    - IncomingBytes
-    - IncomingRecords
-    - OutgoingBytes
-    - OutgoingRecords
-    - WriteProvisionedThroughputExceeded
-    - ReadProvisionedThroughputExceeded
-    - IteratorAgeMilliseconds
-  enforceConsumerDeletion: true
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed KMS key instead of hardcoding the ARN:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStream
-metadata:
-  name: audit-stream
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKinesisStream.audit-stream
-spec:
-  region: us-east-1
-  streamMode: ON_DEMAND
-  retentionPeriodHours: 8760
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
-      name: data-encryption-key
+      name: streaming-encryption-key
       fieldPath: status.outputs.key_arn
 ```
 
-### Cross-Account Access via Resource Policy
+The InfraPipeline resolves the dependency graph, deploys the KMS key first, then provisions the Kinesis stream with KMS encryption using the resolved key ARN.
 
-Grant another account's principals read access without role assumption:
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStream
-metadata:
-  name: shared-events
-spec:
-  region: us-east-1
-  streamMode: ON_DEMAND
-  resourcePolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Sid: CrossAccountRead
-        Effect: Allow
-        Principal:
-          AWS: arn:aws:iam::210987654321:root
-        Action:
-          - kinesis:DescribeStreamSummary
-          - kinesis:ListShards
-          - kinesis:GetRecords
-          - kinesis:GetShardIterator
-        Resource: "*"
-```
+These are the most important decisions when configuring a Kinesis Data Stream. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Capacity mode** -- Set `streamMode` to `ON_DEMAND` for automatic shard management (up to 200 MB/s write, 400 MB/s read) with pay-per-GB pricing. Set to `PROVISIONED` with a specific `shardCount` for predictable throughput (1 MB/s write and 2 MB/s read per shard) with pay-per-shard-hour pricing. This is a required field with no default.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Warm throughput** -- On-Demand streams scale reactively; set `warmThroughputMibPs` to keep write capacity for a known burst (a launch, a scheduled batch) pre-provisioned so scaling lag never throttles it. Billed per MiB/s-hour on top of on-demand charges. Mutually exclusive with `shardCount` -- warm throughput applies to On-Demand streams only.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `stream_arn` | `string` | ARN of the Kinesis stream, used for IAM policies, Firehose source configuration, and Lambda event source mappings |
-| `stream_name` | `string` | Name of the Kinesis stream, used for Kinesis API calls (PutRecord, GetRecords) |
+**Data retention** -- Set `retentionPeriodHours` between 24 and 8760 (1 day to 365 days), or leave it unset for the AWS default of 24 hours. Extended retention enables reprocessing scenarios and late-arriving consumers but incurs additional cost.
 
-## Related Components
+**Record size** -- Set `maxRecordSizeInKib` between 1024 and 10240 (1 MiB to 10 MiB), or leave it unset for the AWS default of 1 MiB. Larger records suit aggregated events and rich payloads but consume proportionally more shard capacity per write.
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides the encryption key referenced by `kmsKeyId`
-- [AwsCloudwatchAlarm](/docs/catalog/aws/cloudwatch-alarm) — monitor `IteratorAgeMilliseconds` for consumer lag alerts
-- [AwsLambda](/docs/catalog/aws/lambda) — commonly configured with Kinesis as an event source
-- [AwsIamRole](/docs/catalog/aws/iam-role) — provides read/write permissions for producers and consumers
+**Encryption** -- Provide `kmsKeyId` to encrypt data records at rest. Use `alias/aws/kinesis` for the AWS-managed key (no additional cost beyond KMS API calls) or a customer-managed key ARN for key rotation control and CloudTrail audit trails.
+
+**Enhanced monitoring** -- Configure `shardLevelMetrics` with specific metric names (e.g., `IteratorAgeMilliseconds`, `WriteProvisionedThroughputExceeded`) to identify hot shards and capacity bottlenecks, or the `ALL` shorthand for every metric. Enhanced metrics incur additional CloudWatch cost per metric per shard.
+
+**Cross-account access** -- The optional `resourcePolicy` field attaches a resource-based IAM policy keyed by the stream ARN, granting another account's principals PutRecord/GetRecords without role assumption. Consumer-scoped grants (SubscribeToShard) belong on the AwsKinesisStreamConsumer's own `resourcePolicy`.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `stream_arn` | Amazon Resource Name of the stream | Firehose source configuration, Lambda event source mappings, IAM policies |
+| `stream_name` | Kinesis stream name | Application SDK calls (PutRecord, GetRecords), CloudWatch alarm dimensions |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**On-Demand minimal** -- Auto-scaling capacity with no encryption and default retention. The simplest starting point for variable or unpredictable workloads. Start from the **On-Demand Minimal** preset.
+
+**Provisioned with encryption** -- Fixed shard count with 48-hour retention and AWS-managed Kinesis key encryption. Suitable for steady workloads where throughput is predictable and cost optimization matters. Start from the **Provisioned Encrypted** preset.
+
+**Production analytics** -- On-Demand mode with 7-day retention, KMS encryption, and all shard-level metrics enabled. Designed for production analytics pipelines where reprocessing, compliance, and per-shard observability are required. Start from the **Production Analytics** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for data-at-rest encryption
+- [**AWS Kinesis Stream Consumer**](/cloud-catalog/aws-kinesis-stream-consumer) -- registers an enhanced fan-out consumer with a dedicated 2 MB/s read pipe per shard on this stream

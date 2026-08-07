@@ -230,8 +230,17 @@ func dbBody(db *kuberneteskeycloakv1alpha1.KubernetesKeycloakDb) map[string]inte
 	return out
 }
 
-func secretSelectorBody(selector *kuberneteskeycloakv1alpha1.KubernetesKeycloakSecretSelector) map[string]interface{} {
-	if selector == nil {
+// secretSelectorSource abstracts the spec's two Secret-selector shapes —
+// the db selector (KubernetesPostgres-referencing) and the
+// additional-option selector (plain Secret reference) — which share the
+// same {name, key} surface. Both generated types satisfy it.
+type secretSelectorSource interface {
+	GetName() *foreignkeyv1.StringValueOrRef
+	GetKey() string
+}
+
+func secretSelectorBody(selector secretSelectorSource) map[string]interface{} {
+	if selector == nil || (selector.GetName() == nil && selector.GetKey() == "") {
 		return nil
 	}
 	return map[string]interface{}{

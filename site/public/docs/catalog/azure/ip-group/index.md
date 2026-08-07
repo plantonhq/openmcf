@@ -8,129 +8,117 @@ componentName: "azureipgroup"
 
 # Azure IP Group
 
-Creates an Azure IP Group -- a named, reusable set of IP addresses and CIDR ranges that Azure Firewall and Firewall Policy rules reference by ARM id instead of repeating literal address lists. Update the group once and every rule that references it follows.
+Deploys an Azure IP Group — a named SET of IP addresses and CIDR ranges that Azure Firewall rules reference by name instead of repeating address lists rule by rule. Manage the set once, reference it from many rules across many firewall policies: adding or removing an address immediately retargets every rule that references the group, so the address plan changes in one place and the policy never moves. Like all of Planton's composition anchors, the referencing is inverted — the group holds only addresses; firewall policy rules point at it (`source_ip_groups` / `destination_ip_groups`).
 
 ## What Gets Created
 
-When you deploy an AzureIpGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **IP Group** — an `azurerm_ip_group` in the specified region and resource group, carrying the address set
+- **IP Group** -- the named address set with its entries (single IPs and CIDR blocks, up to 5,000 per group)
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-The group is passive. Consumption is declared from the rule's side: `AzureFirewallPolicyRuleCollectionGroup` rules list source/destination IP Groups, and `AzureFirewallPolicy` intrusion-detection traffic bypasses reference them the same way.
+The rules that reference the group are NOT created here — they live on firewall policies and rule collection groups, each with its own lifecycle. An **empty group is legal**: a placeholder anchor rules can reference before the address plan is final.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the group in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/ipGroups/write` (Network Contributor, Contributor, or Owner)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `ip-group.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the group will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **An address-set plan by INTENT**: one group per policy meaning ("branch-offices", "on-prem-datacenter", "blocked-scanners") — the names become the vocabulary your firewall rules read as.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure IP Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Branch Offices** preset in the [Presets](#presets) tab for the classic trusted-ranges set.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureIpGroup
 metadata:
   name: branch-offices
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureIpGroup.branch-offices
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
+    value: "rg-network-hub"
   name: branch-offices
   cidrs:
     - "198.51.100.0/24"
     - "203.0.113.0/24"
+  tags:
+    cost-center: network-security
 ```
-
-Deploy:
 
 ```shell
 planton apply -f ip-group.yaml
 ```
 
-After deployment, read `status.outputs.ip_group_id` for the ARM ID to reference from firewall policy rules.
+Every firewall rule referencing `branch-offices` now matches these two ranges — and a new branch joins by adding one address here, with no policy edit.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region. IP Groups are regional but referable from policies in any region. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Group name, unique within the resource group. | Required, 1-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `cidrs` | `list(string)` | `[]` | IP addresses ("203.0.113.7") and CIDR blocks ("10.10.0.0/16"), up to 5,000 entries. Updates in place. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Branch-Office Address Set
-
-Curate the addresses once; reference them from every rule that means
-"the branches":
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the group to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureIpGroup
-metadata:
-  name: branch-offices
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureIpGroup.branch-offices
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: branch-offices
-  cidrs:
-    - "198.51.100.0/24"
-    - "203.0.113.0/24"
+      kind: AzureResourceGroup
+      name: network-hub
+      fieldPath: status.outputs.resource_group_name
 ```
 
-Reference it from a firewall policy network rule:
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the group — and the firewall policy rules that use it reference this group's `ip_group_id`.
 
-```yaml
-spec:
-  networkRuleCollections:
-    - name: allow-branches-to-dc
-      priority: 200
-      action: ALLOW
-      rules:
-        - name: branches-to-dc-any
-          protocols: [ANY]
-          sourceIpGroups:
-            - valueFrom:
-                name: branch-offices
-          destinationAddresses: ["10.0.0.0/8"]
-          destinationPorts: ["*"]
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring an IP Group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Addresses** -- `cidrs` accepts single addresses ("203.0.113.7") and CIDR blocks ("10.10.0.0/16"), up to 5,000 entries per group. Entries update in place — the group's designed day-two operation. An **empty list is valid**: create the anchor now, land the address plan later; until then rules referencing it match nothing.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `ip_group_id` | `string` | Full ARM ID -- referenced by `AzureFirewallPolicyRuleCollectionGroup` rules and `AzureFirewallPolicy` IDPS bypasses |
-| `ip_group_name` | `string` | The group's name as deployed |
+**Name** -- the address set's INTENT ("branch-offices", "on-prem-ranges", "blocked-scanners"), unique within the resource group, up to 80 characters following ARM's Microsoft.Network naming contract. Renaming replaces the group, and every referencing rule must be re-pointed.
 
-## Related Components
+**Region** -- the group is a regional resource, but firewall policies in ANY region can reference it — one set can serve every regional firewall. Azure caps sharing at 100 firewall policies per group.
 
-- [AzureFirewallPolicyRuleCollectionGroup](/docs/catalog/azure/firewall-policy-rule-collection-group) — references IP Groups in rule source/destination fields
-- [AzureFirewallPolicy](/docs/catalog/azure/firewall-policy) — references IP Groups in intrusion-detection traffic bypasses
-- [AzureFirewall](/docs/catalog/azure/firewall) — enforces the policies whose rules target IP Groups
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for placement
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `ip_group_id` | Azure Resource Manager ID of the group | Firewall policy rules (`source_ip_groups` / `destination_ip_groups`) and intrusion-detection traffic bypasses |
+| `ip_group_name` | Name of the group | Automation scripts, inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Branch offices** -- the trusted branch egress ranges every allow-rule references; a new branch is one address added here. Start from the **Branch Offices** preset.
+
+**On-premises datacenter** -- the ExpressRoute/VPN-reachable ranges rules treat as internal — the hybrid-network trust anchor. Start from the **On-Prem Datacenter** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the IP Group is created
+- [**Azure Firewall**](/cloud-catalog/azure-firewall) -- the enforcement point whose policies reference this group's address set
+- [**Azure Firewall Policy**](/cloud-catalog/azure-firewall-policy) -- carries the rule collections whose rules reference this group by `ip_group_id`
+- [**Azure Route Table**](/cloud-catalog/azure-route-table) -- the complementary steering layer that sends traffic through the firewall these rules run on

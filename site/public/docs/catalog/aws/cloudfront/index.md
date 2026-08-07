@@ -8,122 +8,144 @@ componentName: "awscloudfront"
 
 # AWS CloudFront
 
-Deploys an Amazon CloudFront distribution — the global CDN front door that terminates TLS at the edge, caches responses close to viewers, and routes requests to one or more origins: S3 buckets (kept fully private via Origin Access Control), load balancers, API endpoints, or resources inside your VPC.
+Deploys an Amazon CloudFront distribution — the global CDN front door that terminates TLS at the edge, caches responses close to viewers, and routes requests to one or more origins (S3 buckets, load balancers, API endpoints, or anything HTTP-addressable). The model mirrors CloudFront's own composition: origins declare WHERE content comes from, origin groups compose failover pairs, cache behaviors declare HOW requests are matched and cached, and the viewer certificate plus aliases put the distribution on your own domain. The distribution integrates with Planton's Provider Connections for AWS credential management and ValueFromRef for wiring to ACM certificates and WAF web ACLs.
 
 ## What Gets Created
 
-- **CloudFront Distribution** — origins, primary/failover origin groups, the default cache behavior plus path-matched ordered behaviors, custom domains with your certificate, custom error pages, geo restrictions, access logs, and WAF attachment.
-- **Origin Access Controls** (for S3 origins that ask for one) — CloudFront signs origin requests with SigV4 so buckets stay private; one OAC per requesting origin.
-- **Monitoring Subscription** (when `enableAdditionalMetrics` is set) — CloudWatch additional metrics: cache hit rate, origin latency, per-status error rates.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **CloudFront Distribution** -- the global distribution; identity is the AWS-generated ID (metadata.name drives the Name tag)
+- **Origins** -- one per `origins[]` entry, each with its type arm: an S3 REST origin (optionally with a module-created Origin Access Control so the bucket stays fully private), a custom/HTTP origin (load balancers, API endpoints, S3 *website* endpoints), or a provisioned VPC origin reaching private resources
+- **Origin Groups** -- primary/failover pairs created only for `originGroups[]` entries; behaviors targeting a group's ID get automatic per-request failover
+- **Cache Behaviors** -- the required default behavior plus one path-matched behavior per `orderedCacheBehaviors[]` entry, each on the modern cache-policy generation or the legacy forwarded-values generation
+- **Viewer Certificate wiring** -- the default *.cloudfront.net certificate, or your ACM/IAM certificate with SNI and a minimum TLS version when custom domains are configured
+- **Custom Error Responses, Geo Restriction, Access Logging** -- created only when configured
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-- **AWS credentials** configured via a Planton provider config
-- For custom domains: an **ACM certificate in us-east-1** covering every alias (reference an `AwsCertManagerCert`)
-- For private S3 origins: a **bucket policy** allowing the distribution's ARN (the `distribution_arn` output)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `cdn.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **An origin** -- the content source CloudFront fetches from. For S3 use the REGIONAL bucket endpoint (the `bucket_regional_domain_name` output of AwsS3Bucket) with an Origin Access Control; for load balancers the LB DNS name; S3 *website* endpoints join as custom origins (they speak plain HTTP only).
+- **An ACM certificate** (required for custom domains) -- MUST live in `us-east-1` regardless of where anything else lives. Provide the ARN directly or reference an AwsCertManagerCert Cloud Resource.
+- **A WAF web ACL** (optional) -- CLOUDFRONT scope, which must also live in `us-east-1`. Reference an AwsWafWebAcl Cloud Resource or pass the ARN.
+- **Bucket policy for OAC origins** -- allow the distribution's ARN on the `cloudfront.amazonaws.com` principal (an `AWS:SourceArn` condition) so the private bucket serves CloudFront alone.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS CloudFront**, and click **Deploy**. The creation wizard walks you through origins (with the private-bucket access control), the default and path-matched cache behaviors (with AWS managed-policy quick-picks), custom domains and the certificate, error pages, protections, and logging. Start from the **S3 Static Website** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCloudFront
 metadata:
-  name: my-website-cdn
+  name: app-cdn
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   origins:
     - originId: s3-site
-      domainName: my-site.s3.us-east-1.amazonaws.com
+      domainName: app-assets.s3.us-east-1.amazonaws.com
       s3Origin:
         createOriginAccessControl: true
   defaultCacheBehavior:
     targetOriginId: s3-site
     viewerProtocolPolicy: redirect-to-https
     compress: true
-    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+    # Managed-CachingOptimized — the AWS managed cache policy for static content.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
   defaultRootObject: index.html
 ```
 
-Deploy:
-
 ```shell
-planton apply -f cdn.yaml
+planton apply -f cloudfront.yaml
 ```
 
-This serves the private bucket on the distribution's `*.cloudfront.net` domain with HTTPS redirect and the AWS-managed static-content cache policy.
+This creates a distribution serving a fully private S3 bucket through a module-created Origin Access Control, redirecting viewers to HTTPS, compressing at the edge, and caching with the AWS managed static-content policy. Deploys take 5-15 minutes — CloudFront pushes configuration to every edge location. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying with a custom domain, use ValueFromRef to wire the distribution to an ACM certificate (and optionally a WAF ACL) deployed in the same InfraPipeline:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | `string` | Provider-connection region. CloudFront is global; its certificates and CLOUDFRONT-scope WAF ACLs live in `us-east-1`. |
-| `origins` | `list` | At least one content source; each with a unique `originId` and at most one type arm (`s3Origin` / `customOrigin` / `vpcOrigin`). |
-| `defaultCacheBehavior` | `object` | How unmatched requests are cached and forwarded; targets an origin or origin group by ID. |
+```yaml
+spec:
+  aliases:
+    - cdn.example.com
+  viewerCertificate:
+    acmCertificateArn:
+      valueFrom:
+        kind: AwsCertManagerCert
+        name: cdn-cert
+        fieldPath: status.outputs.cert_arn
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: cdn-waf
+      fieldPath: status.outputs.web_acl_arn
+```
 
-### Cache Behaviors
+The InfraPipeline resolves the dependency graph, deploys the certificate and WAF first, then provisions the distribution with the resolved ARNs.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `defaultCacheBehavior.targetOriginId` | `string` | The `originId` or `originGroupId` this behavior routes to (validated to resolve). |
-| `defaultCacheBehavior.viewerProtocolPolicy` | `string` | `redirect-to-https` (websites), `https-only` (APIs), or `allow-all`. |
-| `defaultCacheBehavior.cachePolicyId` | `string` | Modern caching: a managed or custom cache policy ID. Mutually exclusive with `forwardedValues`. |
-| `defaultCacheBehavior.forwardedValues` | `object` | Legacy caching: inline query/header/cookie forwarding with per-behavior TTLs. |
-| `defaultCacheBehavior.functionAssociations` | `list` | CloudFront Functions on viewer events (max 2). |
-| `defaultCacheBehavior.lambdaFunctionAssociations` | `list` | Lambda@Edge version ARNs on any of the four events (max 4). |
-| `orderedCacheBehaviors` | `list` | Path-matched behaviors (`pathPattern` + `behavior`), evaluated in order before the default. |
+## Key Configuration
 
-### Origins
+These are the most important decisions when configuring a CloudFront distribution. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `origins[].originId` | `string` | Your stable handle, unique across origins and groups. |
-| `origins[].domainName` | `string` | The DNS name CloudFront connects to (regional S3 endpoint, LB DNS name, ...). |
-| `origins[].s3Origin.createOriginAccessControl` | `bool` | Provision + attach an OAC (the recommended private-bucket shape). |
-| `origins[].customOrigin.protocolPolicy` | `string` | `https-only` (recommended), `http-only` (S3 website endpoints), `match-viewer`. |
-| `origins[].vpcOrigin.vpcOriginId` | `string` | Route to a provisioned CloudFront VPC origin. |
-| `origins[].originShield` | `object` | Extra regional caching layer that collapses edge requests to the origin. |
-| `originGroups[]` | `list` | Two-member primary/failover pairs with the status codes that trigger failover. |
+**Origins and behaviors compose by ID** -- Each origin's `originId` is your stable handle; the default behavior and every path-matched behavior route to a declared origin (or origin group) by that ID, and validation proves every reference resolves at manifest time instead of at deploy time.
 
-### Custom Domains
+**The caching generation** -- The modern generation (`cachePolicyId` + `originRequestPolicyId`) is recommended: AWS ships managed policies covering most cases (`Managed-CachingOptimized` for static content, `Managed-CachingDisabled` plus `Managed-AllViewer` for APIs). The legacy generation (inline `forwardedValues` with per-behavior TTLs) is kept for existing configurations — the two are mutually exclusive per behavior.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `aliases` | `list(string)` | The CNAMEs the distribution answers for; require a custom certificate covering them. |
-| `viewerCertificate.acmCertificateArn` | `ref` | ACM certificate in us-east-1 (references `AwsCertManagerCert.status.outputs.cert_arn`). |
-| `viewerCertificate.minimumProtocolVersion` | `string` | TLS floor; defaults to `TLSv1.2_2021`. |
+**Path-matched routing** -- `orderedCacheBehaviors[]` are evaluated in order before the default; first match wins. The classic split routes `/api/*` to a load balancer with caching disabled while everything else serves from S3.
 
-### Distribution Knobs
+**Custom domains** -- Add `aliases` and set `viewerCertificate` with the ACM arm (the certificate must live in `us-east-1` and cover every alias). Without aliases the distribution serves on its generated `*.cloudfront.net` domain. Point Route53 alias records at the `domain_name` output — and with `isIpv6Enabled`, add the AAAA record too.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `enabled` | `bool` | Default `true`; `false` keeps the distribution deployed-but-dark. |
-| `priceClass` | `string` | `PriceClass_All` (default), `PriceClass_200`, `PriceClass_100`. |
-| `httpVersion` | `string` | `http2` (default), `http2and3`, `http3`, `http1.1`. |
-| `isIpv6Enabled` | `bool` | Free dual-stack serving. |
-| `webAclArn` | `ref` | CLOUDFRONT-scope WAF Web ACL ARN (references `AwsWafWebAcl`). |
-| `customErrorResponses` | `list` | Map origin errors to custom pages with error-caching control. |
-| `geoRestriction` | `object` | Country whitelist/blacklist. |
-| `logging` | `object` | Standard access logs to an S3 bucket domain name. |
-| `enableAdditionalMetrics` | `bool` | CloudWatch additional metrics (billed per CloudWatch rates). |
-| `waitForDeployment` | `bool` | Default `true`; block until propagated to every edge (typically 5-15 min). |
+**Private buckets via OAC** -- `s3Origin.createOriginAccessControl: true` provisions an Origin Access Control (SigV4 request signing) so the bucket stays fully private. An existing OAC or a legacy Origin Access Identity can be attached instead — the three access arms are mutually exclusive.
 
-## Stack Outputs
+**Operational posture** -- `enabled: false` keeps a distribution deployed-but-dark for staging a configuration; `waitForDeployment` decides whether deploys block on edge propagation (5-15 minutes); `retainOnDelete` disables instead of deleting on destroy; `enableAdditionalMetrics` turns on the cache-hit-rate/origin-latency dashboard.
 
-| Output | Description |
-|--------|-------------|
-| `distribution_id` | The distribution ID — invalidations and monitoring key on it |
-| `distribution_arn` | The ARN — WAF associations and S3 bucket policies reference it |
-| `domain_name` | The `*.cloudfront.net` domain — the DNS alias target |
-| `hosted_zone_id` | CloudFront's global Route53 zone ID for alias records |
-| `status` | `Deployed` once propagated to every edge location |
+## Outputs and Dependencies
 
-## Composition
+### What This Component Consumes
 
-- Point DNS with an `AwsRoute53DnsRecord` alias record built from `domain_name` + `hosted_zone_id`.
-- Front a private `AwsS3Bucket` (regional endpoint + OAC + bucket policy on `distribution_arn`).
-- Attach an `AwsCertManagerCert` (us-east-1) for custom domains and an `AwsWafWebAcl` (CLOUDFRONT scope) for edge protection.
-- Route `/api/*` to an `AwsAlb` through an ordered behavior with `Managed-CachingDisabled` while static paths serve from S3.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsCertManagerCert** (optional) | `viewerCertificate.acmCertificateArn` | `status.outputs.cert_arn` |
+| **AwsWafWebAcl** (optional) | `webAclArn` | `status.outputs.web_acl_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `distribution_id` | The distribution ID (e.g. E2ABCDEF123456) | Cache invalidations, monitoring subscriptions |
+| `distribution_arn` | The distribution ARN | WAF associations, resource policies, OAC bucket policies |
+| `domain_name` | The CloudFront domain (e.g. d123.cloudfront.net) | Route53 alias record target, application asset URL base |
+| `hosted_zone_id` | The Route53 hosted zone ID for CloudFront aliases | Alias records without hardcoding CloudFront's global zone |
+| `status` | The deployment status (`Deployed` / `InProgress`) | Gating downstream steps on edge propagation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**S3 static website** -- A private bucket behind a created Origin Access Control, redirect-to-https with edge compression and `Managed-CachingOptimized`, `index.html` as the root object, and the single-page-app error mapping (S3's 403-for-missing-object served as `/index.html` with a 200). Start from the **S3 Static Website** preset.
+
+**Custom domain CDN** -- The static-site shape plus `aliases`, the ACM certificate reference, and dual-stack IPv6. Start from the **Custom Domain CDN** preset.
+
+## Works With
+
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the regional bucket endpoint origins serve from
+- [**AWS Certificate Manager Certificate**](/cloud-catalog/aws-cert-manager-cert) -- provides the us-east-1 certificate for custom domain HTTPS
+- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- points custom domains at the distribution via alias records
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- provides Lambda@Edge versions for behavior-attached edge logic

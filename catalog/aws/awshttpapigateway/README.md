@@ -395,7 +395,7 @@ spec:
 ## Additional Resources
 
 - [AWS API Gateway HTTP API Documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
-- See `docs/README.md` for architecture deep-dive
+- See `GUIDE.md` for architecture deep-dive
 
 ---
 

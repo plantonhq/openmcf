@@ -8,194 +8,107 @@ componentName: "openstackroleassignment"
 
 # OpenStack Role Assignment
 
-Deploys an OpenStack Identity (Keystone) role assignment, binding a role to a principal (user or group) on a scope (project or domain). This is the fundamental authorization mechanism in OpenStack, controlling what actions a user or group can perform on a given project or domain.
+Deploys a Keystone role assignment on OpenStack -- binding a role to a user or group on a project or domain. This is the fundamental authorization mechanism that determines what actions a principal can perform on a specific scope. The assignment supports ValueFromRef wiring for project references in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackRoleAssignment resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Identity Role Assignment** — an `openstack_identity_role_assignment_v3` resource that binds the specified role to either a user or group on either a project or domain scope
+- **Role Assignment** -- a Keystone identity binding that grants a specified role to a user or group on a project or domain scope
 
-All fields are ForceNew — changing any field causes the assignment to be destroyed and recreated.
+## Before You Deploy
 
-## Prerequisites
+### OpenStack Account
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Admin privileges** — role assignments are an admin-level Keystone operation
-- **Existing role** — the role UUID must reference a role already created in Keystone (use `openstack role list` to find available roles)
-- **Existing principal** — the user or group UUID must reference an existing Keystone user or group
-- **Existing scope** — the project or domain must already exist in Keystone
+- **Admin privileges** -- assigning roles is an admin-level operation. The OpenStack credentials must have sufficient permissions to create role assignments in Keystone.
+- **Role UUID** -- the `roleId` must reference an existing Keystone role. Run `openstack role list` to find available role UUIDs (e.g., `admin`, `member`, `reader`).
+- **Scope** -- exactly one of `projectId` or `domainId` must be set. For project-scoped assignments, the project must exist. For domain-scoped assignments, provide the domain UUID directly.
+- **Principal** -- exactly one of `userId` or `groupId` must be set. The user or group must exist in Keystone. Run `openstack user list` or `openstack group list` to find UUIDs.
+- **Immutability** -- all fields are ForceNew. Any change to role, scope, or principal destroys and recreates the assignment.
 
-## Quick Start
+## Deploy
 
-Create a file `role-assignment.yaml`:
+### Console
+
+Open the deployment store, find **OpenStack Role Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Project User Member** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackRoleAssignment
 metadata:
-  name: my-role-assignment
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackRoleAssignment.my-role-assignment
+  name: platform-member
+  org: acme-corp
+  env: prod
 spec:
-  roleId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  roleId: "<member-role-id>"
   projectId:
-    value: "f0e1d2c3-b4a5-6789-0abc-def123456789"
-  userId: "11223344-5566-7788-99aa-bbccddeeff00"
+    value: "<project-id>"
+  userId: "<user-id>"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f role-assignment.yaml
 ```
 
-This assigns the specified role to the user on the given project.
+This assigns the `member` role to a user on a project. The user can create and manage cloud resources within that project. No domain scope or group assignment is configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `roleId` | `string` | UUID of the role to assign. Roles are admin-managed Keystone objects (e.g., "admin", "member", "reader"). Use `openstack role list` to find available role UUIDs. ForceNew. |
-
-Additionally, exactly one field from each of the following two pairs must be set:
-
-**Scope (exactly one required):**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `projectId` | `StringValueOrRef` | Project to assign the role on. Can reference an OpenStackProject resource via `valueFrom`. Mutually exclusive with `domainId`. ForceNew. |
-| `domainId` | `string` | Domain to assign the role on. Mutually exclusive with `projectId`. ForceNew. |
-
-**Principal (exactly one required):**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `userId` | `string` | UUID of the user to assign the role to. Mutually exclusive with `groupId`. ForceNew. |
-| `groupId` | `string` | UUID of the group to assign the role to. Mutually exclusive with `userId`. ForceNew. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `region` | `string` | provider default | Overrides the region from the provider config for this role assignment. |
-
-### Mutual Exclusion Constraints
-
-This resource enforces two mutual exclusion constraints validated at submission time:
-
-1. **Scope**: exactly one of `projectId` or `domainId` must be set. They define the scope of the role assignment. Setting both or neither is rejected.
-2. **Principal**: exactly one of `userId` or `groupId` must be set. They define who receives the role. Setting both or neither is rejected.
-
-## Examples
-
-### User Role on a Project (literal IDs)
-
-Assigns the "member" role to a user on a specific project using literal UUIDs:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the role assignment to a project deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRoleAssignment
-metadata:
-  name: alice-member-on-webteam
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackRoleAssignment.alice-member-on-webteam
 spec:
-  roleId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-  projectId:
-    value: "f0e1d2c3-b4a5-6789-0abc-def123456789"
-  userId: "11223344-5566-7788-99aa-bbccddeeff00"
-```
-
-### User Role on a Project (referencing OpenStackProject)
-
-Assigns a role to a user on a project managed by an OpenStackProject resource, using `valueFrom` to reference the project ID output:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRoleAssignment
-metadata:
-  name: bob-admin-on-dataplatform
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackRoleAssignment.bob-admin-on-dataplatform
-spec:
-  roleId: "deadbeef-1234-5678-9abc-def012345678"
   projectId:
     valueFrom:
       kind: OpenStackProject
-      name: data-platform
+      name: team-platform
       fieldPath: status.outputs.project_id
-  userId: "aabbccdd-eeff-0011-2233-445566778899"
 ```
 
-### Group Role on a Domain
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the role assignment with the resolved project ID.
 
-Assigns the "reader" role to a group on a domain, granting read access across the entire domain:
+## Key Configuration
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRoleAssignment
-metadata:
-  name: auditors-reader-on-corp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackRoleAssignment.auditors-reader-on-corp
-spec:
-  roleId: "12345678-abcd-ef01-2345-6789abcdef01"
-  domainId: "99887766-5544-3322-1100-ffeeddccbbaa"
-  groupId: "abcdef01-2345-6789-abcd-ef0123456789"
-```
+These are the most important decisions when configuring a role assignment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Group Role on a Project with Region Override
+**Scope selection** -- Choose between project scope (`projectId`) and domain scope (`domainId`). Project-scoped assignments are the most common -- they grant access within a single tenant. Domain-scoped assignments grant access across all projects in a domain and are typically reserved for cloud administrators.
 
-Assigns a role to a group on a project in a specific region:
+**Principal type** -- Choose between user (`userId`) and group (`groupId`). User assignments are direct and simple. Group assignments are preferred for teams -- all members of the Keystone group inherit the role, and adding/removing group members updates access without modifying the assignment.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRoleAssignment
-metadata:
-  name: devs-member-on-staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackRoleAssignment.devs-member-on-staging
-spec:
-  roleId: "a1a2a3a4-b1b2-c1c2-d1d2-e1e2e3e4e5e6"
-  projectId:
-    value: "f1f2f3f4-a1a2-b1b2-c1c2-d1d2d3d4d5d6"
-  groupId: "01020304-0506-0708-090a-0b0c0d0e0f10"
-  region: RegionOne
-```
+**Role selection** -- The `roleId` determines the privilege level. Common roles are `admin` (full control), `member` (standard operations), and `reader` (read-only access). Custom roles may exist in your deployment for fine-grained access control.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Consumes
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Composite identifier of the role assignment (combination of role, scope, and principal IDs) |
-| `role_id` | `string` | UUID of the assigned role |
-| `project_id` | `string` | Project scope UUID (empty if domain-scoped) |
-| `domain_id` | `string` | Domain scope UUID (empty if project-scoped) |
-| `user_id` | `string` | User principal UUID (empty if group assignment) |
-| `group_id` | `string` | Group principal UUID (empty if user assignment) |
-| `region` | `string` | OpenStack region where the assignment was created |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackProject** (optional) | `projectId` | `status.outputs.project_id` |
 
-## Related Components
+### What This Component Provides
 
-- [OpenStackProject](/docs/catalog/openstack/project) — manages the projects that role assignments can scope to
-- [OpenStackSecurityGroup](/docs/catalog/openstack/security-group) — controls network-level access for resources within a project
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | Composite identifier of the role assignment | Audit trails, automation reference |
+| `role_id` | UUID of the assigned role | Verifying role alignment |
+| `project_id` | Project scope of the assignment (if project-scoped) | Downstream resources scoped to the same project |
+| `domain_id` | Domain scope of the assignment (if domain-scoped) | Downstream resources scoped to the same domain |
+| `user_id` | User principal (if user assignment) | Audit trails |
+| `group_id` | Group principal (if group assignment) | Audit trails |
+| `region` | OpenStack region where the assignment was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Project user member** -- Assigns the `member` role to a user on a project. The standard pattern for granting day-to-day cloud operations access to a team member. Start from the **Project User Member** preset.
+
+## Works With
+
+- [**OpenStack Project**](/cloud-catalog/openstack-project) -- provides the project ID as the scope for project-level role assignments

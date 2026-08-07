@@ -21,26 +21,26 @@ until the worker polls), never ECS task liveness.
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 ```

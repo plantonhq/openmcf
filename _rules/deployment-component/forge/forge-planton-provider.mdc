@@ -212,7 +212,7 @@ Run from the repo root:
 make protos
 ```
 
-This executes: `buf generate` (in `apis/`), copies Go stubs into `apis/`, compiles the generated Java stubs via Bazel as an early-failure gate (catching reserved-keyword conflicts like `public` or `class`), and runs gazelle.
+This executes: `buf generate` (from the repo root), copies the generated Go stubs into place, compiles the generated Java stubs via Bazel as an early-failure gate (catching reserved-keyword conflicts like `public` or `class`), and runs gazelle.
 
 **Verify:**
 
@@ -362,9 +362,9 @@ Use `default.svg` for `<icon_filename>` if no provider-specific icon was provide
 
 Run the following build commands and fix any errors (retry up to 3 times per command):
 
-1. **Proto stubs compile:**
+1. **Proto stubs compile** (from the repo root):
    ```bash
-   cd apis && go build ./catalog/<provider_package>/...
+   go build ./catalog/<provider_package>/...
    ```
 
 2. **Stack input compiles:**

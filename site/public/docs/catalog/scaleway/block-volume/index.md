@@ -8,140 +8,88 @@ componentName: "scalewayblockvolume"
 
 # Scaleway Block Volume
 
-Deploys a Scaleway Block Storage volume as a standalone, network-attached SSD block device in a specified Availability Zone with a configurable performance tier and size. The volume persists independently of any Instance lifecycle and can be moved between Instances in the same zone.
+Deploys a network-attached NVMe block storage volume on Scaleway with configurable performance tier (5K or 15K IOPS) and size. Block volumes persist independently of Instance lifecycle and can be moved between Instances in the same Availability Zone. Supports snapshot-based provisioning for cloning data from existing volumes.
 
 ## What Gets Created
 
-When you deploy a ScalewayBlockVolume resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Block Volume** — a `block.Volume` resource providing a raw, network-attached NVMe-backed block device with the specified size and IOPS tier
-- **Scaleway Tags** — standard Planton resource tags applied to the volume for organization, environment, and resource identification
+- **Block Volume** -- a `scaleway_block_volume` in the specified Availability Zone with the configured performance tier (SBS 5K or SBS 15K) and size
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **An Availability Zone** that matches the zone of the Instance to which the volume will be attached (block volumes are zonal resources)
-- **OS-level formatting** — Scaleway block volumes are raw block devices; after attaching to an Instance you must format (`mkfs.ext4`, `mkfs.xfs`, etc.) and mount the volume
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway account** with an active project and API access key pair (Access Key + Secret Key). The IaC module authenticates through the Scaleway provider configuration.
+- **Choose an Availability Zone** -- block volumes are zonal resources (`fr-par-1`, `nl-ams-1`, `pl-waw-2`). The volume can only attach to Instances in the same zone. Cannot be changed after creation.
+- **Snapshot ID** (optional) -- if creating a volume from a snapshot, the snapshot must exist in the same zone and the volume `sizeGb` must be >= the snapshot's source volume size.
 
-Create a file `block-volume.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Block Volume**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a 20 GB volume with the 5K IOPS tier.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayBlockVolume
 metadata:
-  name: my-volume
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayBlockVolume.my-volume
+  name: app-data
+  org: acme-corp
+  env: prod
 spec:
   zone: fr-par-1
-  sizeGb: 20
+  sizeGb: 50
   performanceTier: sbs_5k
 ```
-
-Deploy:
 
 ```shell
-planton apply -f block-volume.yaml
+planton apply -f scaleway-block-volume.yaml
 ```
 
-This creates a 20 GB block volume with standard performance (5,000 IOPS) in the `fr-par-1` Availability Zone.
+This creates a 50 GB block volume with standard 5K IOPS in the Paris-1 zone. No snapshot source is configured. The volume is a raw block device -- format it (`mkfs.ext4`, `mkfs.xfs`) and mount it after attaching to an Instance. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a block volume. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zone` | `string` | Scaleway Availability Zone where the volume is created (e.g., `"fr-par-1"`, `"nl-ams-1"`, `"pl-waw-2"`). Cannot be changed after creation. | Required |
-| `sizeGb` | `uint32` | Volume size in gigabytes. Can be increased in-place after creation but cannot be shrunk. After increasing via IaC, grow the partition and filesystem inside the OS. | Required, 5–10240 |
-| `performanceTier` | `enum` | IOPS performance tier. Options: `sbs_5k` (5,000 IOPS, standard) or `sbs_15k` (15,000 IOPS, high performance). Can be changed in-place after creation. | Required, must be `sbs_5k` or `sbs_15k` |
+**Performance tier** -- The `performanceTier` field selects between `sbs_5k` (5,000 IOPS) for general-purpose workloads and `sbs_15k` (15,000 IOPS) for databases and latency-sensitive applications. The tier can be changed in-place after creation without recreating the volume. Instances using `sbs_15k` volumes need at least 3 GiB/s of block bandwidth to utilize the full IOPS capacity.
 
-### Optional Fields
+**Size** -- The `sizeGb` field accepts values from 5 to 10,240 GB. Volumes can be increased in-place (hot resize) but cannot be shrunk -- the Scaleway provider rejects any plan that decreases size. After increasing via IaC, grow the filesystem inside the OS using `growpart` and `resize2fs` or `xfs_growfs`.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `snapshotId` | `string` | — | Block Storage snapshot UUID to clone the volume from. Must be in the same zone. When set, `sizeGb` must be >= the snapshot's source volume size. If omitted, a blank volume is created. |
+**Zone** -- The `zone` field sets the Availability Zone (`fr-par-1`, `nl-ams-1`, `pl-waw-2`). Cannot be changed after creation. Must match the zone of the Instance the volume will attach to.
 
-## Examples
+**Snapshot source** -- Set `snapshotId` to clone an existing Block Storage snapshot into a new volume. The snapshot must be in the same zone. When omitted, a blank volume is created.
 
-### Development Data Volume
+## Outputs and Dependencies
 
-A minimal 10 GB volume for a development Instance in Paris:
+### What This Component Consumes
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayBlockVolume
-metadata:
-  name: dev-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayBlockVolume.dev-data
-spec:
-  zone: fr-par-1
-  sizeGb: 10
-  performanceTier: sbs_5k
-```
+This component has no foreign key dependencies.
 
-### High-Performance Database Volume
+### What This Component Provides
 
-A 500 GB volume with the high-performance tier for a database workload in Amsterdam. The `sbs_15k` tier provides 15,000 IOPS suitable for PostgreSQL, MySQL, or MongoDB data directories:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayBlockVolume
-metadata:
-  name: prod-db-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayBlockVolume.prod-db-data
-spec:
-  zone: nl-ams-1
-  sizeGb: 500
-  performanceTier: sbs_15k
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `volume_id` | Zoned ID of the created volume (`{zone}/{uuid}`) | Instance additional volume attachment, monitoring dashboards |
+| `volume_name` | Name of the volume in Scaleway Block Storage | Observability labels, alert routing |
+| `zone` | Availability Zone where the volume is deployed | Zone co-location verification for Instance attachment |
 
-### Volume from Snapshot
+## Common Patterns
 
-A volume restored from an existing Block Storage snapshot. The size must be at least as large as the snapshot's source volume:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayBlockVolume
-metadata:
-  name: restored-volume
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.ScalewayBlockVolume.restored-volume
-spec:
-  zone: fr-par-1
-  sizeGb: 100
-  performanceTier: sbs_5k
-  snapshotId: 11111111-1111-1111-1111-111111111111
-```
+**Standard storage** -- A 20 GB volume with 5,000 IOPS for general-purpose persistent storage. Suitable for application data, logs, uploads, and development environments. Start from the **Standard** preset.
 
-## Stack Outputs
+**High-performance storage** -- A 100 GB volume with 15,000 IOPS for databases, search engines, and I/O-intensive workloads that require low-latency access to persistent data. Start from the **High-Performance** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Works With
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `volume_id` | `string` | Zoned identifier of the created volume (format: `"{zone}/{uuid}"`). Primary output for downstream cross-resource references. |
-| `volume_name` | `string` | Name of the volume as it exists in Scaleway Block Storage. Derived from `metadata.name`. |
-| `zone` | `string` | Availability Zone where the volume is deployed. Used by downstream resources to verify zone co-location. |
-
-## Related Components
-
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — provides private connectivity between Instances and other Scaleway resources in the same region
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — deploys Kubernetes clusters whose nodes can use block volumes for persistent storage
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — deploys managed databases that can use block storage volume types for data persistence
+This component operates independently and does not reference other deployment components.

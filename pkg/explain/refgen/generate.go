@@ -35,7 +35,7 @@ type Summary struct {
 	// Files maps repo-relative output paths (catalog/.../reference.md and the
 	// catalog-level index/graph/commons files) to rendered content.
 	Files map[string]string
-	// MissingManifests lists kinds with no iac/hack/manifest.yaml; their
+	// MissingManifests lists kinds with no e2e/manifest.yaml; their
 	// pages render without an Example section.
 	MissingManifests []string
 	// InvalidManifests lists kinds whose hack manifest failed loading or

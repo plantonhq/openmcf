@@ -62,7 +62,7 @@ operator-CR kind.
 ## Usage
 
 ```shell
-planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
+planton pulumi up --manifest e2e/manifest.yaml --module-dir <path-to-this-module>
 ```
 
 ## Outputs

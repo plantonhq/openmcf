@@ -111,7 +111,7 @@ spec:
           fieldPath: status.outputs.compute_environment_arn
 ```
 
-See docs/README.md for the family architecture and update-semantics deep dive.
+See GUIDE.md for the family architecture and update-semantics deep dive.
 
 ---
 

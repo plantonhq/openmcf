@@ -8,220 +8,109 @@ componentName: "hetznercloudnetwork"
 
 # Hetzner Cloud Network
 
-Creates a private network in Hetzner Cloud with subnets and optional static routes. The network provides isolated IPv4 connectivity between cloud resources using RFC 1918 addresses. Subnets are declared inline and can span multiple network zones for cross-region private connectivity. At least one subnet is required because servers and load balancers attach to subnets, not directly to the network.
+Deploys a private network with subnets and optional static routes on Hetzner Cloud. A network provides isolated IPv4 connectivity between servers, load balancers, and other Hetzner Cloud resources using RFC 1918 private address space. Subnets carve the network into smaller blocks assigned to specific network zones, enabling multi-region private connectivity. At least one subnet is required because Hetzner Cloud resources attach to subnets, not directly to the network.
 
 ## What Gets Created
 
-- **Network** — an `hcloud_network` resource with a top-level CIDR block, standard labels computed from resource metadata, optional delete protection, and optional vSwitch route exposure.
-- **Subnets** (1 per entry in `subnets`) — `hcloud_network_subnet` resources, each assigned to a network zone with a CIDR range carved from the network's address space. Three types are supported: `cloud` (standard), `server` (Robot dedicated servers), and `vswitch` (Robot vSwitch bridge).
-- **Routes** (1 per entry in `routes`, optional) — `hcloud_network_route` resources defining static routing within the network. Created only when `routes` is non-empty.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Network** -- an `hcloud_network` resource with the specified private IP range
+- **Subnets** -- one or more `hcloud_network_subnet` resources, each assigned to a network zone with a CIDR block carved from the network's IP range
+- **Routes** (optional) -- `hcloud_network_route` resources defining static routing for VPN gateways, NAT instances, or inter-network traffic
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **A Hetzner Robot vSwitch** if using `vswitch`-type subnets (requires the vSwitch numeric ID)
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `network.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **IP range planning** -- choose a private CIDR block (10.0.0.0/8, 172.16.0.0/12, or 192.168.0.0/16) and plan subnet allocations within it.
+- **Network zone selection** -- decide which zones (eu-central, us-east, us-west, ap-southeast) your subnets will span.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including IP range, subnets, and routes.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudNetwork
 metadata:
-  name: my-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudNetwork.my-network
+  name: main-network
+  org: acme-corp
+  env: prod
 spec:
   ipRange: "10.0.0.0/16"
   subnets:
     - type: cloud
       networkZone: eu-central
       ipRange: "10.0.1.0/24"
+    - type: cloud
+      networkZone: eu-central
+      ipRange: "10.0.2.0/24"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f network.yaml
+planton apply -f hetznercloud-network.yaml
 ```
 
-This creates a private network with a single cloud subnet in the `eu-central` zone. Servers can be attached to this network to communicate over private IPs.
+This creates a /16 network with two /24 subnets in the eu-central zone. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `ipRange` | `string` | CIDR block for the network. Must be one of the RFC 1918 private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`). All subnet ranges must fall within this block. | `min_len: 1` |
-| `subnets` | `repeated Subnet` | Subnets within the network. At least one is required. | `min_items: 1` |
-| `subnets[].type` | `enum` (`cloud`, `server`, `vswitch`) | Subnet type. `cloud` for standard cloud servers, `server` for Robot dedicated servers, `vswitch` for Robot vSwitch bridge. | Required, defined values only |
-| `subnets[].networkZone` | `string` | Hetzner Cloud network zone. Known zones: `eu-central`, `us-east`, `us-west`, `ap-southeast`. | `min_len: 1` |
-| `subnets[].ipRange` | `string` | CIDR range for the subnet. Must be a subset of the network's `ipRange` and must not overlap with other subnets or route destinations. | `min_len: 1` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `routes` | `repeated Route` | empty | Static routes within the network. Each route specifies a destination CIDR and a gateway IP within one of the network's subnets. |
-| `routes[].destination` | `string` | — | Destination CIDR for the route. Must not overlap with subnet ranges. |
-| `routes[].gateway` | `string` | — | Gateway IP address within one of the network's subnets. Cannot be the first IP of the network range or `172.31.1.1`. |
-| `deleteProtection` | `bool` | `false` | Prevent accidental deletion of the network via the Hetzner Cloud API. |
-| `exposeRoutesToVswitch` | `bool` | `false` | Expose the network's routes to vSwitch connections. Only takes effect when a vSwitch subnet is active. |
-| `subnets[].vswitchId` | `int64` | — | Hetzner Robot vSwitch ID. Required when subnet type is `vswitch`, ignored otherwise. |
-
-### Cross-Field Validation (CEL Rules)
-
-| Constraint | Message |
-|-----------|---------|
-| `vswitchId` required for vswitch type | "vswitch_id is required when subnet type is vswitch" |
-
-## Examples
-
-### Minimal Single-Subnet Network
-
-A single cloud subnet in `eu-central` — the simplest working network configuration.
+When deploying as part of a server environment, servers and load balancers reference this network via ValueFromRef:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudNetwork
-metadata:
-  name: simple-net
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudNetwork.simple-net
+# In the HetznerCloudServer manifest:
 spec:
-  ipRange: "10.0.0.0/16"
-  subnets:
-    - type: cloud
-      networkZone: eu-central
-      ipRange: "10.0.1.0/24"
-```
-
-### Multi-Zone Production Network
-
-Two subnets in different zones for geographic redundancy, with delete protection enabled.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudNetwork
-metadata:
-  name: multi-zone
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudNetwork.multi-zone
-spec:
-  ipRange: "10.0.0.0/16"
-  subnets:
-    - type: cloud
-      networkZone: eu-central
-      ipRange: "10.0.1.0/24"
-    - type: cloud
-      networkZone: us-east
-      ipRange: "10.0.2.0/24"
-  deleteProtection: true
-```
-
-### Network with Static Routes
-
-A network with custom routes directing traffic for a remote network through a VPN gateway server.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudNetwork
-metadata:
-  name: routed-net
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudNetwork.routed-net
-spec:
-  ipRange: "10.0.0.0/16"
-  subnets:
-    - type: cloud
-      networkZone: eu-central
-      ipRange: "10.0.1.0/24"
-    - type: cloud
-      networkZone: eu-central
-      ipRange: "10.0.2.0/24"
-  routes:
-    - destination: "172.16.0.0/12"
-      gateway: "10.0.1.1"
-  deleteProtection: true
-```
-
-### Server Composition via valueFrom
-
-A network referenced by a HetznerCloudServer using `valueFrom`. The server receives the network's numeric ID from the network's stack outputs, establishing a dependency edge in the deployment DAG.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudNetwork
-metadata:
-  name: app-network
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudNetwork.app-network
-spec:
-  ipRange: "10.0.0.0/16"
-  subnets:
-    - type: cloud
-      networkZone: eu-central
-      ipRange: "10.0.1.0/24"
-  deleteProtection: true
-```
-
-The server references this network:
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: app-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.app-01
-spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
   networkId:
     valueFrom:
       kind: HetznerCloudNetwork
-      name: app-network
+      name: main-network
       fieldPath: status.outputs.network_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, creates the network and subnets first, then provisions servers attached to the network.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `network_id` | `string` | Hetzner Cloud numeric ID of the created network. Referenced by HetznerCloudServer and HetznerCloudLoadBalancer via `StringValueOrRef`. |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a network. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — Attaches to the network for private connectivity between servers
-- [HetznerCloudLoadBalancer](/docs/catalog/hetznercloud/load-balancer) — Attaches to the network to reach backend servers over private IPs
-- [HetznerCloudFirewall](/docs/catalog/hetznercloud/firewall) — Controls inbound/outbound traffic for servers on the network
-- [HetznerCloudSshKey](/docs/catalog/hetznercloud/ssh-key) — Foundation resource commonly deployed alongside networks for server provisioning
+**IP range** -- The `ipRange` field sets the top-level CIDR block. Must be from RFC 1918 private space (10.0.0.0/8, 172.16.0.0/12, or 192.168.0.0/16). All subnet IP ranges must fall within this block. Changing this value forces replacement of the network.
+
+**Subnets** -- The `subnets` field defines one or more subdivisions of the network. Each subnet specifies a `type` (cloud for standard servers, server for dedicated Robot servers, vswitch for hybrid connectivity), a `networkZone`, and an `ipRange` that must not overlap with other subnets. At least one subnet is required.
+
+**Routes** -- The `routes` field adds optional static routes. Each route specifies a `destination` CIDR and a `gateway` IP within one of the network's subnets. Useful for VPN gateways, NAT instances, or routing between networks.
+
+**Delete protection** -- The `deleteProtection` field prevents accidental deletion via the Hetzner Cloud API.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `network_id` | Hetzner Cloud numeric ID of the network | HetznerCloudServer `networkId`, HetznerCloudLoadBalancer `networkId` |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single-zone network** -- A /16 network with one /24 subnet in eu-central. Suitable for single-region deployments where all servers share one private network.
+
+**Multi-zone network** -- A /16 network with subnets in multiple zones for cross-region private connectivity between servers.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- servers attach to this network via `networkId`
+- [**Hetzner Cloud Load Balancer**](/cloud-catalog/hetznercloud-load-balancer) -- load balancers connect to this network for private backend communication

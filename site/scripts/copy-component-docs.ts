@@ -6,7 +6,7 @@ import * as path from 'path';
 /**
  * Build script to copy deployment component documentation from catalog/ to site/public/docs/catalog/
  *
- * Scans: catalog/{provider}/{component}/{version}/catalog-page.md
+ * Scans: catalog/{provider}/{component}/catalog.md
  * Also:  catalog/{provider}/{component}/presets/*.yaml + *.md
  *
  * Outputs:
@@ -106,14 +106,23 @@ function extractTitleFromContent(content: string): string | null {
 }
 
 /**
- * Strip the provider prefix from a title for use as a sidebar label.
+ * Strip the provider affixes from a title for use as a sidebar label and
+ * slug source. Titles name the provider either as a prefix ("AWS Route53
+ * DNS Record") or as an "on <provider>" suffix ("D1 Database on
+ * Cloudflare"); pages render under their provider directory, so the
+ * provider name is redundant in both positions.
  * e.g., "AWS Route53 DNS Record" -> "Route53 DNS Record"
+ *       "D1 Database on Cloudflare" -> "D1 Database"
  */
 function stripProviderPrefix(title: string, provider: string): string {
   const prefixes = PROVIDER_PREFIXES[provider.toLowerCase()] || [];
   for (const prefix of prefixes) {
     if (title.startsWith(prefix)) {
       return title.substring(prefix.length);
+    }
+    const suffix = ` on ${prefix.trim()}`;
+    if (title.endsWith(suffix)) {
+      return title.substring(0, title.length - suffix.length);
     }
   }
   return title;
@@ -508,10 +517,9 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
       continue;
     }
 
-    // catalog-page.md is version-resident (a RETIRING class: it becomes the
-    // kind-root catalog.md); resolveVersionDir locates the served version.
-    const versionDir = resolveVersionDir(componentPath) ?? 'v1alpha1';
-    const docPath = path.join(componentPath, versionDir, 'catalog-page.md');
+    // The catalog page lives at the kind root: it is part of the living
+    // component, beside README.md and logo.svg, never inside a version dir.
+    const docPath = path.join(componentPath, 'catalog.md');
 
     if (fs.existsSync(docPath)) {
       const content = fs.readFileSync(docPath, 'utf-8');
@@ -528,38 +536,6 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
         title,
         presets,
       });
-    } else {
-      // If no docs at this level, check subdirectories
-      // Only scan one level deeper to avoid infinite recursion
-      const subitems = fs.readdirSync(componentPath);
-      for (const subitem of subitems) {
-        const subComponentPath = path.join(componentPath, subitem);
-        const subStat = fs.statSync(subComponentPath);
-
-        if (!subStat.isDirectory()) {
-          continue;
-        }
-
-        const subVersionDir = resolveVersionDir(subComponentPath) ?? 'v1alpha1';
-        const subDocPath = path.join(subComponentPath, subVersionDir, 'catalog-page.md');
-
-        if (fs.existsSync(subDocPath)) {
-          const content = fs.readFileSync(subDocPath, 'utf-8');
-          const title = resolveTitle(content, subitem, provider);
-          const slug = generateSlug(title);
-          const presets = scanPresets(subComponentPath);
-
-          docs.push({
-            provider,
-            component: subitem,
-            slug,
-            sourcePath: subDocPath,
-            content,
-            title,
-            presets,
-          });
-        }
-      }
     }
   }
 
@@ -568,7 +544,7 @@ function scanProvider(providerPath: string, provider: string): ComponentDoc[] {
 
 /**
  * Rewrite internal catalog links so that component directory names are replaced
- * with URL-friendly slugs. Source catalog-page.md files use stable directory names
+ * with URL-friendly slugs. Source catalog.md files use stable directory names
  * (e.g., /docs/catalog/aws/awsvpc) but the built site uses title-derived slugs
  * (e.g., /docs/catalog/aws/vpc). This function translates one to the other.
  */
@@ -720,26 +696,6 @@ ${componentList}
 }
 
 /**
- * Get provider icon path
- */
-function getProviderIcon(provider: string): string {
-  const iconMap: Record<string, string> = {
-    'aws': '/images/providers/aws.svg',
-    'gcp': '/images/providers/gcp.svg',
-    'azure': '/images/providers/azure.svg',
-    'cloudflare': '/images/providers/cloudflare.svg',
-    'civo': '/images/providers/civo.svg',
-    'digitalocean': '/images/providers/digital-ocean.svg',
-    'atlas': '/images/providers/mongodb-atlas.svg',
-    'confluent': '/images/providers/confluent.svg',
-    'kubernetes': '/images/providers/kubernetes.svg',
-    'snowflake': '/images/providers/snowflake.svg',
-    'openstack': '/images/providers/openstack.svg',
-  };
-  return iconMap[provider] || '/images/providers/default.svg';
-}
-
-/**
  * Get component count for a provider
  */
 function getProviderComponentCount(provider: string, allDocs: Map<string, ComponentDoc[]>): number {
@@ -865,9 +821,8 @@ async function copyComponentDocs(): Promise<void> {
         writeComponentDoc(doc, siteDocsRoot);
         stats.copied++;
         stats.presetsCopied += doc.presets.length;
-        const sourceType = doc.sourcePath.endsWith('catalog-page.md') ? 'catalog-page' : 'legacy';
         const presetInfo = doc.presets.length > 0 ? ` + ${doc.presets.length} presets` : '';
-        console.log(`   ${doc.component} -> ${doc.slug}/index.md (${sourceType}${presetInfo})`);
+        console.log(`   ${doc.component} -> ${doc.slug}/index.md${presetInfo}`);
       } catch (error) {
         console.error(`   FAIL ${doc.component}: ${error}`);
         stats.skipped++;

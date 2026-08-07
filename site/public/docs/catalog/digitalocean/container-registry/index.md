@@ -6,124 +6,48 @@ order: 100
 componentName: "digitaloceancontainerregistry"
 ---
 
-# DigitalOcean Container Registry
+# Container Registry on DigitalOcean
 
-Deploys a private, OCI-compliant container registry on DigitalOcean for storing Docker images and Helm charts. The component configures the registry name, subscription tier, and region, then exposes the server URL and Docker credentials as stack outputs for use by downstream workloads.
+Deploys a private, OCI-compliant container registry on DigitalOcean for storing Docker images and Helm charts. Configures the registry name, subscription tier, and region, then exposes the server URL as a stack output for downstream workloads to pull images. Integrates with Planton's Provider Connections for DigitalOcean credential management.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanContainerRegistry resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Container Registry** — a `digitalocean_container_registry` resource with the specified name, subscription tier, and region
-- **Docker Credentials** (Terraform only) — a `digitalocean_container_registry_docker_credentials` resource that generates write-enabled credentials for pushing and pulling images
+- **Container Registry** -- a `digitalocean_container_registry` resource with the specified name, subscription tier, and region
+- **Docker Credentials** (Terraform only) -- a `digitalocean_container_registry_docker_credentials` resource that generates write-enabled credentials for pushing and pulling images
 
 DigitalOcean restricts each account to a single container registry. Deploying a second DigitalOceanContainerRegistry resource on the same account will fail.
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **No existing container registry** on the target DigitalOcean account (one registry per account)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `registry.yaml`:
+### DigitalOcean Account
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanContainerRegistry
-metadata:
-  name: my-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanContainerRegistry.my-registry
-spec:
-  name: my-registry
-  subscriptionTier: starter
-  region: nyc3
-```
+- **No existing container registry** on the target DigitalOcean account. DigitalOcean allows only one registry per account.
+- **A supported region** for container registry storage (e.g., `nyc3`, `sfo3`, `fra1`, `sgp1`). Choose the region nearest to your Kubernetes clusters or CI/CD pipelines for lowest pull latency.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f registry.yaml
-```
+### Console
 
-This creates a container registry named `my-registry` on the free starter tier in the NYC3 region.
+Open the deployment store, find **Container Registry on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Professional Container Registry** preset in the [Presets](#presets) tab for a production-ready configuration with garbage collection.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Registry name, unique within the DigitalOcean account. | Required, 1–63 characters, lowercase letters/numbers/hyphens, must start and end with an alphanumeric character. Pattern: `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$` |
-| `subscriptionTier` | `enum` | Storage and pricing tier. Valid values: `starter` (free, limited storage), `basic` (paid, moderate storage), `professional` (paid, highest storage, production ready). | Required |
-| `region` | `enum` | DigitalOcean region where registry data is stored. Valid values: `nyc3`, `sfo3`, `fra1`, `sgp1`, `lon1`, `tor1`, `blr1`, `ams3`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `garbageCollectionEnabled` | `bool` | `false` | Enable automatic garbage collection of untagged images. Note: the Pulumi provisioner logs a warning and ignores this field because the upstream DigitalOcean provider does not yet support it. The Terraform provisioner handles GC via a custom controller. |
-
-## Examples
-
-### Starter Registry for Development
-
-A free-tier registry for personal or development use:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanContainerRegistry
-metadata:
-  name: dev-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanContainerRegistry.dev-registry
-spec:
-  name: dev-registry
-  subscriptionTier: starter
-  region: sfo3
-```
-
-### Basic Registry in Europe
-
-A paid-tier registry in Frankfurt for teams that need more storage than the starter tier provides:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanContainerRegistry
-metadata:
-  name: team-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.DigitalOceanContainerRegistry.team-registry
-spec:
-  name: team-registry
-  subscriptionTier: basic
-  region: fra1
-```
-
-### Professional Registry for Production
-
-A production-grade registry with the highest storage allocation and garbage collection enabled:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanContainerRegistry
 metadata:
   name: prod-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanContainerRegistry.prod-registry
+  org: acme-corp
+  env: prod
 spec:
   name: prod-registry
   subscriptionTier: professional
@@ -131,17 +55,46 @@ spec:
   garbageCollectionEnabled: true
 ```
 
-## Stack Outputs
+```shell
+planton apply -f registry.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+This creates a professional-tier container registry in NYC3 with garbage collection enabled. Images are accessible at `registry.digitalocean.com/prod-registry/<repository>:<tag>`.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `registryName` | `string` | Name of the created container registry |
-| `serverUrl` | `string` | Full registry URL for Docker login (e.g., `registry.digitalocean.com/prod-registry`) |
-| `region` | `string` | Region slug where the registry is hosted |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a container registry. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [DigitalOceanKubernetesCluster](/docs/catalog/digitalocean/kubernetes-cluster) — integrates with the container registry to pull images without additional credentials
-- [DigitalOceanAppPlatformService](/docs/catalog/digitalocean/app-platform-service) — can deploy containers directly from the registry
+**Subscription tier** -- The `subscriptionTier` field controls storage limits and pricing. `starter` is free with limited storage for development. `basic` provides moderate storage for small teams. `professional` offers the highest storage limits and is recommended for production teams pushing many images.
+
+**Region** -- The `region` field determines where registry data is stored. Choose the region closest to your DigitalOcean Kubernetes clusters or build pipelines to minimize image pull latency.
+
+**Garbage collection** -- Set `garbageCollectionEnabled` to `true` to automatically remove untagged images and reduce storage costs. Note that the Pulumi provisioner logs a warning for this field because the upstream DigitalOcean provider does not yet support it natively.
+
+**Registry naming** -- The `name` field must be unique within your DigitalOcean account and is used in image paths (`registry.digitalocean.com/<name>/<image>:<tag>`). Choose a stable name since changing it requires re-tagging and re-pushing all images.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `registry_name` | Name of the created container registry | Image path construction, Kubernetes `imagePullSecret` configuration |
+| `server_url` | Full registry URL (e.g., `registry.digitalocean.com/prod-registry`) | Docker login, CI/CD pipeline push targets, App Platform image source |
+| `region` | Region slug where the registry is hosted | Verifying data locality alignment with clusters |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Professional registry for production** -- Professional tier with garbage collection enabled, suitable for teams pushing images frequently from CI/CD pipelines. Provides the highest storage limits and automatic cleanup of untagged images. Start from the **Professional Container Registry** preset.
+
+## Works With
+
+This component operates independently and does not reference other deployment components.

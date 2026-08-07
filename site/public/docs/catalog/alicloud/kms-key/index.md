@@ -8,131 +8,115 @@ componentName: "alicloudkmskey"
 
 # AliCloud KMS Key
 
-Deploys an Alibaba Cloud Key Management Service (KMS) customer-managed key (CMK). The component provisions a cryptographic key that can be used for data encryption across Alibaba Cloud services (RDS, OSS, ECS, PolarDB) or for digital signing and verification with asymmetric key types.
+Deploys an Alibaba Cloud Key Management Service (KMS) customer-managed key (CMK) for encrypting data across Alibaba Cloud services. KMS keys are used by RDS (Transparent Data Encryption), OSS (Server-Side Encryption), ECS (disk encryption), PolarDB, and NAS. Keys can also be configured for asymmetric signing when using RSA or EC key specs.
 
 ## What Gets Created
 
-When you deploy an AliCloudKmsKey resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **KMS Key** -- an `alicloud_kms_key` resource in the specified region with configurable algorithm, rotation policy, and deletion protection
+- **KMS Key** -- an `alicloud_kms_key` resource with configurable key spec, usage, protection level, rotation policy, and deletion protection
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `kms-key.yaml`:
+### Alibaba Cloud Account
+
+- **Immutable decisions** -- `keySpec`, `keyUsage`, and `protectionLevel` cannot be changed after creation. Choose carefully based on your encryption and compliance requirements.
+- **Deletion risk** -- losing a KMS key means permanent, irrecoverable data loss for any data encrypted with it. Enable `deletionProtection` for production keys.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including key spec, rotation, and deletion protection.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudKmsKey
 metadata:
-  name: my-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudKmsKey.my-key
+  name: platform-encryption-key
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  description: Encryption key for development resources
-```
-
-Deploy:
-
-```shell
-planton apply -f kms-key.yaml
-```
-
-This creates an AES-256 symmetric encryption key with software-based protection.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for the key (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable key description. |
-| `keySpec` | `string` | `"Aliyun_AES_256"` | Cryptographic algorithm. Symmetric: `Aliyun_AES_256`, `Aliyun_AES_128`, `Aliyun_AES_192`, `Aliyun_SM4`. Asymmetric: `RSA_2048`, `RSA_3072`, `EC_P256`, `EC_P256K`, `EC_SM2`. Immutable after creation. |
-| `keyUsage` | `string` | `"ENCRYPT/DECRYPT"` | Usage type. `ENCRYPT/DECRYPT` for symmetric encryption. `SIGN/VERIFY` for asymmetric signing. Immutable after creation. |
-| `protectionLevel` | `string` | `"SOFTWARE"` | Protection level. `SOFTWARE` or `HSM`. Immutable after creation. |
-| `automaticRotation` | `bool` | `false` | Enable automatic key rotation. Only for symmetric keys. |
-| `rotationInterval` | `string` | `""` | Rotation period (e.g., `365d`). Required when `automaticRotation` is true. |
-| `pendingWindowInDays` | `int32` | `30` | Deletion grace period in days (7-366). |
-| `deletionProtection` | `bool` | `false` | Prevent accidental key deletion. Recommended for production. |
-| `deletionProtectionDescription` | `string` | `""` | Reason for deletion protection. |
-| `tags` | `map<string, string>` | `{}` | Tags applied to the key. Merged with standard Planton tags. |
-
-## Examples
-
-### Minimal KMS Key
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudKmsKey
-metadata:
-  name: my-key
-spec:
-  region: cn-hangzhou
-```
-
-### Production Encryption Key with Rotation
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudKmsKey
-metadata:
-  name: prod-encryption-key
-  org: my-org
-  env: production
-spec:
-  region: cn-shanghai
-  description: Production master encryption key for RDS TDE and OSS SSE
-  keySpec: Aliyun_AES_256
+  description: Platform encryption key for RDS and OSS
   automaticRotation: true
   rotationInterval: "365d"
   deletionProtection: true
-  deletionProtectionDescription: Protects production database and storage encryption keys
-  pendingWindowInDays: 30
+  deletionProtectionDescription: Protects production data encryption key
   tags:
-    team: security
-    compliance: pci-dss
+    team: platform
+    compliance: soc2
 ```
 
-### Asymmetric Signing Key
+```shell
+planton apply -f alicloud-kms-key.yaml
+```
+
+This creates an AES-256 key with annual rotation and deletion protection. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+KMS keys are standalone resources with no upstream dependencies. Downstream components reference the key via ValueFromRef:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudKmsKey
-metadata:
-  name: signing-key
 spec:
-  region: cn-hangzhou
-  description: RSA signing key for API payload verification
-  keySpec: RSA_2048
-  keyUsage: SIGN/VERIFY
-  tags:
-    purpose: signing
+  encryption:
+    kmsMasterKeyId:
+      valueFrom:
+        kind: AliCloudKmsKey
+        name: platform-encryption-key
+        fieldPath: status.outputs.key_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph and creates the KMS key before any dependent resources.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `key_id` | `string` | The KMS key ID assigned by Alibaba Cloud |
-| `arn` | `string` | The key ARN for use in RAM policies |
+These are the most important decisions when configuring a KMS key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Key spec** -- The `keySpec` field selects the cryptographic algorithm. "Aliyun_AES_256" (default) for symmetric encryption. "RSA_2048" or "EC_P256" for asymmetric signing. Immutable after creation.
 
-- [AliCloudRdsInstance](/docs/catalog/alicloud/alicloudrdsinsstance) -- uses a KMS key for Transparent Data Encryption
-- [AliCloudStorageBucket](/docs/catalog/alicloud/oss-bucket) -- uses a KMS key for Server-Side Encryption
-- [AliCloudEcsInstance](/docs/catalog/alicloud/ecsinstance) -- uses a KMS key for disk encryption
+**Key usage** -- The `keyUsage` field must match the key spec. "ENCRYPT/DECRYPT" for symmetric keys (AES/SM4). "SIGN/VERIFY" for asymmetric keys (RSA/EC). Immutable after creation.
+
+**Automatic rotation** -- The `automaticRotation` field enables periodic key material rotation. Previous versions remain available for decryption. Only supported for symmetric keys. Set `rotationInterval` (e.g., "365d") when enabled.
+
+**Deletion protection** -- The `deletionProtection` field prevents accidental deletion. Strongly recommended for production keys.
+
+**Pending deletion window** -- The `pendingWindowInDays` field (7-366 days, default 30) controls how long a deleted key can be recovered before permanent destruction.
+
+## Outputs and Dependencies
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `key_id` | KMS key ID assigned by Alibaba Cloud | AliCloudRdsInstance TDE, AliCloudStorageBucket SSE, AliCloudNasFileSystem encryption |
+| `arn` | Key ARN (acs:kms:{region}:{account}:key/{id}) | RAM policies for encrypt/decrypt permissions |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard** -- A default AES-256 encryption key with no rotation. Suitable for development and non-critical workloads. Start from the **Standard** preset.
+
+**Production with rotation** -- A key with annual automatic rotation, deletion protection, and compliance tags. Start from the **Production With Rotation** preset.
+
+**Asymmetric signing** -- An RSA-2048 key configured for SIGN/VERIFY operations. Start from the **Asymmetric Signing** preset.
+
+## Works With
+
+- [**AliCloud RDS Instance**](/cloud-catalog/ali-cloud-rds-instance) -- Transparent Data Encryption with customer-managed key
+- [**AliCloud Storage Bucket**](/cloud-catalog/ali-cloud-storage-bucket) -- KMS-based server-side encryption
+- [**AliCloud NAS File System**](/cloud-catalog/ali-cloud-nas-file-system) -- customer-managed encryption for NAS
+- [**AliCloud PolarDB Cluster**](/cloud-catalog/ali-cloud-polardb-cluster) -- TDE encryption

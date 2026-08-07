@@ -5,7 +5,7 @@ type: "preset"
 rank: "03"
 presetSlug: "03-production-sized"
 componentSlug: "kube-prometheus-stack"
-componentTitle: "Kube Prometheus Stack"
+componentTitle: "kube-prometheus-stack"
 provider: "kubernetes"
 icon: "package"
 order: 3

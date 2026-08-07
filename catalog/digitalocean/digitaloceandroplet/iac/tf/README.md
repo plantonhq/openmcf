@@ -678,8 +678,8 @@ terraform apply  # Recreate from scratch
 - **Terraform DigitalOcean Provider**: https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs
 - **DigitalOcean Droplets API**: https://docs.digitalocean.com/reference/api/api-reference/#tag/Droplets
 - **Terraform Documentation**: https://www.terraform.io/docs
-- **Planton Docs**: ../../docs/README.md
-- **Examples**: ../../examples.md
+- **Planton Docs**: ../../GUIDE.md
+- **Examples**: ../../e2e/manifest.yaml
 
 ## Best Practices
 

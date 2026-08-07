@@ -6,218 +6,128 @@ order: 100
 componentName: "kubernetesingress"
 ---
 
-# Kubernetes Ingress
+# Ingress on Kubernetes
 
-Deploys a Kubernetes `networking/v1` Ingress to a target cluster through a single declarative manifest, covering the complete IngressSpec surface: ingress class selection, a default backend, TLS termination blocks, and host/path rules with all three path types. The IaC module handles label merging, namespace resolution, and reference resolution automatically — and deliberately never blocks waiting for an ingress controller.
+Creates a namespaced Kubernetes `networking/v1` Ingress -- the object that declares HTTP(S) exposure for in-cluster Services: host rules and path matches routing to Service backends, with optional TLS termination from certificate Secrets. Exposure in Planton is composed, never embedded: a workload exports its Service, this kind routes a hostname to it, and a certificate Secret (often issued by cert-manager) terminates TLS -- every piece a visible, independently managed node in the resource graph. This component covers the complete `networking/v1` IngressSpec surface with proto validation, typed SDKs, and InfraChart composability.
 
 ## What Gets Created
 
-When you deploy a KubernetesIngress resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Ingress** — a `networking/v1` Ingress with the given class, default backend, TLS blocks, and rules
-- **Labels** — standard Planton tracking labels merged with any user-provided labels
-- **Annotations** — user-provided annotations applied to the Ingress metadata; this is where controller-specific behavior (rewrites, body sizes, cert-manager issuers, external-dns hostnames) is configured
+- **A namespaced Ingress** named `spec.name` in `spec.namespace`, carrying the host/path rules, the optional default backend, the TLS blocks, and your annotations (merged with the standard governance labels).
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking.
 
-The Ingress is created **without waiting for a controller** (Terraform `wait_for_load_balancer = false`, Pulumi `skipAwait`). An Ingress is inert until an ingress controller claims it via `ingress_class_name` or the cluster's default class — the `load_balancer_ip`/`load_balancer_hostname` outputs stay empty until then and fill in once a controller reconciles the object.
+Both IaC modules deliberately create the object **without waiting for an ingress controller** (Terraform sets `wait_for_load_balancer = false`; Pulumi sets the `pulumi.com/skipAwait` annotation). An Ingress is inert until a controller claims it -- creating it first is valid, and its load-balancer address fills in once a controller reconciles it.
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **Backend Services** in the same namespace as the Ingress — a Kubernetes API constraint; backends can never reference Services in other namespaces
-- **An ingress controller** (ingress-nginx, ALB, GCE, ...) for the Ingress to actually serve traffic — not required at creation time
-- For TLS: either **cert-manager** installed (issuer annotation + a Secret name for it to create) or an existing `kubernetes.io/tls` **Secret**
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `ingress.yaml`:
+### Kubernetes Cluster
+
+- **An ingress controller** -- ingress-nginx (deployable as `KubernetesIngressNginx`), a cloud L7 controller (ALB on EKS, GCE on GKE), or any other. Without one the Ingress is accepted but never served; `kubectl get ingressclass` lists what the cluster offers.
+- **The namespace and backend Services exist** -- the Ingress can only route to Services in its own namespace (a Kubernetes API constraint). When `spec.namespace` is omitted, the Ingress lands in the cluster's `default` namespace.
+- **For TLS with cert-manager** -- cert-manager installed (deployable as `KubernetesCertManager`) with a `KubernetesClusterIssuer`; the certificate Secret named in the `tls` block need not exist yet.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Ingress on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and six spec steps: **Namespace** (optional -- must be the backend Services' namespace), **Name & Controller** (the in-cluster object name and the IngressClass), **Routing Rules** (hosts, paths, and backends), **Default Backend** (the catch-all, and the single-Service mode), **TLS** (certificate Secrets per host set), and **Labels & Annotations** (the controller-behavior contract). Start from the **Single Host** or **TLS with cert-manager** preset in the [Presets](#presets) tab for a directly deployable configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngress
 metadata:
   name: web-ingress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesIngress.web-ingress
+  org: acme-corp
+  env: prod
 spec:
-  name: web-ingress
   namespace:
-    value: web
-  ingress_class_name: nginx
+    value: payments
+  name: web-app
+  ingressClassName: nginx
   rules:
     - host: app.example.com
       paths:
         - path: /
-          path_type: prefix
           backend:
-            service_name:
+            serviceName:
               value: web-svc
-            port_number: 8080
+            portNumber: 80
+  tls:
+    - hosts:
+        - app.example.com
+      secretName:
+        value: app-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 ```
-
-Deploy:
 
 ```shell
 planton apply -f ingress.yaml
 ```
 
-This creates an Ingress named `web-ingress` in the `web` namespace, routing `app.example.com` to port 8080 of the `web-svc` Service.
+This creates an Ingress in `payments` served by the `nginx` controller: requests for `app.example.com` route to the `web-svc` Service on port 80 over HTTPS, with cert-manager issuing the certificate into the `app-tls` Secret.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an Ingress. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.name` | `string` | Name of the Ingress (`metadata.name` in the cluster). | 1–253 characters, DNS subdomain |
-| `spec.rules` or `spec.default_backend` | — | At least one of the two must be present — an Ingress with neither routes no traffic. | Cross-field rule, rejected at validation |
+**Namespace** -- Where the Ingress lives, and therefore where ALL its backends must live: Ingress backends cannot cross namespaces. Optional -- omitted means the cluster's `default` namespace. Reference an existing `KubernetesNamespace` or type the name directly.
 
-### Optional Fields
+**Ingress class** -- Which controller serves this Ingress (`nginx`, `alb`, `gce`, ...). A plain name, not a reference: IngressClass objects ship with their controllers. Omitted, the cluster's default class applies -- and on clusters without a default, an unclassed Ingress is served by nothing.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.namespace` | `StringValueOrRef` | `default` | Namespace of the Ingress — must be the namespace of the backend Services. Literal name (`{ value: web }`) or a `KubernetesNamespace` reference. |
-| `spec.ingress_class_name` | `string` | cluster default | Which controller serves this Ingress (`nginx`, `alb`, `gce`). `kubectl get ingressclass` lists what the cluster offers. On clusters without a default class, a class-less Ingress is not served. |
-| `spec.default_backend` | `object` | — | Backend for requests no rule matches; set it alone (no rules) to expose one Service on all traffic. |
-| `spec.tls` | `list` | `[]` | TLS blocks — each names the `hosts` served under one certificate and the `secret_name` of the `kubernetes.io/tls` Secret (literal or KubernetesSecret reference). Multiplexed on 443 via SNI. |
-| `spec.rules` | `list` | `[]` | Host rules: requests match on Host header, then on `paths`. Hosts are precise (`app.example.com`) or single-label wildcards (`*.example.com`); omit to match every host. |
-| `spec.labels` / `spec.annotations` | `map<string,string>` | `{}` | Merged with standard Planton labels; annotations carry controller-specific behavior. |
+**Rules** -- The routing table: a request is matched first on its Host header (precise or single-label wildcard like `*.example.com`), then on the rule's HTTP paths (`prefix` matching per path element by default; `exact` byte-for-byte; `implementation_specific` delegated to the controller). Each path forwards to one backend Service, by port number or -- surviving port renumbering -- by port name. Validation enforces exactly one of the two, and at least one rule or a default backend.
 
-### Backends
+**Default backend** -- The catch-all for unmatched requests, and the whole configuration for single-Service exposure (default backend set, zero rules). Left unset, most controllers fall back to their own global default.
 
-Every backend (in `default_backend` and in each path) references a Service in the Ingress's own namespace:
+**TLS** -- Each entry terminates HTTPS for a set of hosts under one `kubernetes.io/tls` certificate Secret, multiplexed via SNI. The Secret is a name reference; with cert-manager it is created for you, named exactly as written.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `service_name` | `StringValueOrRef` | Literal Service name or a `KubernetesService` reference — where a workload's exported `service` output is wired in. Required. |
-| `port_number` | `int32` | Service port by number (1–65535). Exactly one of `port_number`/`port_name`. |
-| `port_name` | `string` | Service port by name (e.g. `http`) — survives port-number changes. Exactly one of the two. |
+**Annotations** -- The upstream contract for controller-specific behavior: rewrites (`nginx.ingress.kubernetes.io/rewrite-target`), body-size limits, SSL redirects -- plus the composition hooks `cert-manager.io/cluster-issuer` and `external-dns.alpha.kubernetes.io/hostname`.
 
-### Path Types
+## Outputs and Dependencies
 
-| Value | Semantics |
-|-------|-----------|
-| `prefix` (default) | Match per path element: `/api` matches `/api` and `/api/users`, not `/apiary`. Longest match wins. Portable across all controllers. |
-| `exact` | Exact, case-sensitive match. |
-| `implementation_specific` | Delegated to the IngressClass (e.g. regex in ingress-nginx). Non-portable. Only type allowed to omit `path`. |
+### What This Component Consumes
 
-## Examples
+Three foreign-key edges wire this kind into the resource graph: `spec.namespace` references a `KubernetesNamespace`, each backend's `service_name` references a `KubernetesService` (or takes a workload's exported service output in an InfraChart), and each TLS entry's `secret_name` references a `KubernetesSecret`. All three also accept plain literals for resources managed outside Planton.
 
-### TLS with cert-manager
+### What This Component Provides
 
-The Secret named in `tls` does not exist yet — the issuer annotation instructs cert-manager to create it under exactly that name:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume:
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesIngress
-metadata:
-  name: secure-web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesIngress.secure-web
-spec:
-  name: secure-web
-  namespace:
-    value: web
-  ingress_class_name: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  tls:
-    - hosts:
-        - app.example.com
-      secret_name:
-        value: app-example-com-tls
-  rules:
-    - host: app.example.com
-      paths:
-        - path: /
-          path_type: prefix
-          backend:
-            service_name:
-              value: web-svc
-            port_number: 8080
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `ingress_name` | Name of the created Ingress object | Ordering and reference in InfraCharts |
+| `namespace` | The namespace the Ingress was created in | Co-locating companion resources |
+| `load_balancer_ip` | The controller's load-balancer IP (IP-based controllers) | DNS A records; empty until a controller reconciles |
+| `load_balancer_hostname` | The controller's load-balancer hostname (AWS ALB/ELB-class) | DNS CNAME records; empty until a controller reconciles |
+| `first_host` | The first host declared in the rules -- the primary public FQDN | Dashboards, smoke tests, DNS automation |
 
-### Path Fan-Out
+## Common Patterns
 
-One host, multiple backends — frontend on `/`, API on `/api` (by named port):
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesIngress
-metadata:
-  name: app-fanout
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesIngress.app-fanout
-spec:
-  name: app-fanout
-  namespace:
-    value: app
-  ingress_class_name: nginx
-  rules:
-    - host: app.example.com
-      paths:
-        - path: /
-          path_type: prefix
-          backend:
-            service_name:
-              value: frontend-svc
-            port_number: 3000
-        - path: /api
-          path_type: prefix
-          backend:
-            service_name:
-              value: api-svc
-            port_name: http
-```
+**Single host** -- One hostname, one Service, everything under `/`. Start from the **Single Host** preset.
 
-### Default Backend Only
+**HTTPS with cert-manager** -- One host served over TLS with the certificate issued and renewed automatically. Start from the **TLS with cert-manager** preset.
 
-Everything the controller routes here goes to one Service — no host or path matching:
+**Path fan-out** -- One domain, several Services: `/` to the frontend, `/api` to the API. Start from the **Path Fan-Out** preset.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesIngress
-metadata:
-  name: catch-all
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesIngress.catch-all
-spec:
-  name: catch-all
-  namespace:
-    value: web
-  ingress_class_name: nginx
-  default_backend:
-    service_name:
-      value: web-svc
-    port_number: 8080
-```
+**Catch-all** -- No rules, just a default backend: every request the controller routes here reaches one Service. Start from the **Default Backend Only** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `ingressName` | `string` | Name of the Ingress object as created in the cluster |
-| `namespace` | `string` | Namespace the Ingress was created in |
-| `loadBalancerIp` | `string` | IP the controller's load balancer exposes (IP-based controllers: GCE, ingress-nginx on most clouds); empty until a controller reconciles the Ingress |
-| `loadBalancerHostname` | `string` | DNS hostname the controller's load balancer exposes (hostname-based controllers: AWS ALB/ELB); empty until a controller reconciles the Ingress |
-| `firstHost` | `string` | First host declared in the rules — the primary public FQDN, ready for DNS records and smoke tests; empty for host-less or default-backend-only Ingresses |
-
-## Related Components
-
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — workloads export a `service` output that Ingress backends route to
-- [KubernetesService](/docs/catalog/kubernetes/service) — the default reference kind for backend `service_name`
-- [KubernetesSecret](/docs/catalog/kubernetes/secret) — the default reference kind for `tls[].secret_name`; holds the certificate when cert-manager is not in play
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace; reference it from `spec.namespace` to deploy both in one run
+- **KubernetesIngressNginx** -- installs the ingress-nginx controller (and its `nginx` IngressClass) that serves this Ingress.
+- **KubernetesService** -- the backend Services (`rules` / `default_backend`) receiving the routed traffic; workload kinds (KubernetesDeployment, KubernetesStatefulSet) export the Service this Ingress references.
+- **KubernetesNamespace** -- the namespace (`spec.namespace`) the Ingress and its backends run in.
+- **KubernetesCertManager** + **KubernetesClusterIssuer** -- issue and renew the TLS certificates into the Secrets the `tls` block names.
+- **KubernetesExternalDns** -- creates DNS records pointing at this Ingress's load-balancer address automatically.
+- **KubernetesSecret** -- pre-existing certificate Secrets referenced by `tls.secret_name`.

@@ -8,200 +8,156 @@ componentName: "alicloudnatgateway"
 
 # AliCloud NAT Gateway
 
-Deploys an Alibaba Cloud Enhanced NAT Gateway with bundled EIP association and SNAT entries. The component provisions all three resources as a single atomic unit, enabling private VSwitch traffic to reach the internet through a managed NAT service.
+Deploys an Alibaba Cloud Enhanced NAT Gateway with bundled EIP association and SNAT entries. The component provisions all three resources as a single atomic unit, enabling private VSwitch traffic to reach the internet through a managed NAT service. The NAT Gateway, EIP binding, and SNAT rules are deployed together because a NAT Gateway without an EIP and at least one SNAT entry is non-functional.
 
 ## What Gets Created
 
-When you deploy an AliCloudNatGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **NAT Gateway** -- an `alicloud_nat_gateway` resource placed in the specified VPC and VSwitch
+- **NAT Gateway** -- an `alicloud_nat_gateway` resource placed in the specified VPC and VSwitch with configurable type, billing, and deletion protection
 - **EIP Association** -- an `alicloud_eip_association` binding the provided Elastic IP to the NAT Gateway
-- **SNAT Entries** -- one `alicloud_snat_entry` per entry in `snatEntries`, mapping private VSwitch or CIDR traffic to the EIP
+- **SNAT Entries** -- one `alicloud_snat_entry` per entry in `snatEntries`, mapping private VSwitch or CIDR traffic to the associated EIP for outbound internet access
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **An Alibaba Cloud VPC** -- the NAT Gateway must belong to a VPC (create one with AliCloudVpc)
-- **A VSwitch** -- the Enhanced NAT Gateway requires placement in a VSwitch (create with AliCloudVswitch)
-- **An Elastic IP** -- the NAT Gateway needs an EIP for outbound traffic (create with AliCloudEipAddress)
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `nat-gateway.yaml`:
+### Alibaba Cloud Account
+
+- **An existing VPC** -- the NAT Gateway must belong to a VPC. Create one with AliCloudVpc.
+- **A VSwitch for NAT placement** -- the Enhanced NAT Gateway requires placement in a VSwitch within the VPC. Create one with AliCloudVswitch.
+- **An Elastic IP** -- the NAT Gateway needs an EIP for outbound traffic. Create one with AliCloudEipAddress. The EIP must be in the same region.
+- **VSwitch(es) for SNAT** -- identify which VSwitches need outbound internet access. Each becomes a SNAT entry.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud NAT Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including VPC, VSwitch, EIP, and SNAT entries.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudNatGateway
 metadata:
-  name: my-nat
+  name: platform-nat
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   vpcId:
-    valueFrom:
-      name: my-vpc
+    value: vpc-bp1234567890
   vswitchId:
-    valueFrom:
-      name: my-nat-vswitch
-  natGatewayName: my-nat-gateway
-  eipId:
-    valueFrom:
-      name: my-eip
-  snatEntries:
-    - sourceVswitchId:
-        valueFrom:
-          name: my-app-vswitch
-      snatEntryName: app-zone-a
-```
-
-Deploy:
-
-```shell
-planton apply -f nat-gateway.yaml
-```
-
-This creates an Enhanced NAT Gateway with one SNAT entry, enabling the specified VSwitch's traffic to reach the internet through the associated EIP.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | string | Alibaba Cloud region (e.g., `cn-hangzhou`, `cn-shanghai`) | Required; non-empty |
-| `vpcId` | StringValueOrRef | VPC ID for the NAT Gateway. Can reference AliCloudVpc via `valueFrom`. | Required |
-| `vswitchId` | StringValueOrRef | VSwitch ID for Enhanced NAT Gateway placement. Can reference AliCloudVswitch via `valueFrom`. | Required |
-| `natGatewayName` | string | NAT Gateway name | Required; 2-128 characters |
-| `eipId` | StringValueOrRef | EIP allocation ID to associate with the NAT Gateway. Can reference AliCloudEipAddress via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | string | | Human-readable description |
-| `natType` | string | `Enhanced` | NAT Gateway type: `Enhanced` or `Normal` |
-| `paymentType` | string | `PayAsYouGo` | Billing method: `PayAsYouGo` or `Subscription` |
-| `internetChargeType` | string | `PayByLcu` | Metering: `PayByLcu` (capacity units) or `PayBySpec` (fixed tier) |
-| `specification` | string | | Fixed tier when `internetChargeType` is `PayBySpec`: `Small`, `Middle`, `Large`, `XLarge.1` |
-| `deletionProtection` | bool | `false` | Prevent accidental deletion |
-| `tags` | map | | Key-value tags for the NAT Gateway |
-| `snatEntries` | list | | SNAT entries for outbound internet access (see below) |
-
-### SNAT Entry Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `sourceVswitchId` | StringValueOrRef | VSwitch to NAT. Can reference AliCloudVswitch via `valueFrom`. Mutually exclusive with `sourceCidr`. |
-| `sourceCidr` | string | CIDR block to NAT (e.g., `10.0.1.0/24`). Mutually exclusive with `sourceVswitchId`. |
-| `snatEntryName` | string | Name for this SNAT entry (2-128 characters) |
-
-## Examples
-
-### Minimal NAT Gateway with Single SNAT
-
-The simplest NAT configuration: one gateway, one EIP, one SNAT entry.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNatGateway
-metadata:
-  name: simple-nat
-spec:
-  region: cn-hangzhou
-  vpcId:
-    value: vpc-abc123
-  vswitchId:
-    value: vsw-nat-zone
-  natGatewayName: simple-nat
+    value: vsw-nat-zone-a
+  natGatewayName: platform-nat
   eipId:
     value: eip-abc123
   snatEntries:
     - sourceVswitchId:
-        value: vsw-app-zone
-      snatEntryName: app-internet-access
+        value: vsw-app-zone-a
+      snatEntryName: app-zone-a
 ```
 
-### Multi-AZ NAT with CIDR-based SNAT
-
-Production NAT Gateway with deletion protection, VSwitch-based and CIDR-based SNAT entries, and foreign key references.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNatGateway
-metadata:
-  name: prod-nat
-  org: my-org
-  env: production
-spec:
-  region: cn-shanghai
-  vpcId:
-    valueFrom:
-      name: prod-vpc
-  vswitchId:
-    valueFrom:
-      name: nat-vswitch
-  natGatewayName: prod-nat-gateway
-  description: Production NAT for multi-AZ outbound traffic
-  deletionProtection: true
-  tags:
-    team: infrastructure
-    cost-center: networking
-  eipId:
-    valueFrom:
-      name: prod-nat-eip
-  snatEntries:
-    - sourceVswitchId:
-        valueFrom:
-          name: app-vswitch-a
-      snatEntryName: zone-a-apps
-    - sourceVswitchId:
-        valueFrom:
-          name: app-vswitch-b
-      snatEntryName: zone-b-apps
-    - sourceCidr: "10.0.100.0/24"
-      snatEntryName: management-subnet
+```shell
+planton apply -f alicloud-nat-gateway.yaml
 ```
 
-### Fixed-Spec NAT Gateway
+This creates an Enhanced NAT Gateway with one SNAT entry enabling the app VSwitch to reach the internet. A Stack Job tracks the provisioning in real time.
 
-NAT Gateway with fixed specification tier for predictable performance billing.
+### InfraChart
+
+When deploying as part of a network stack, use ValueFromRef to wire VPC, VSwitch, and EIP dependencies:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNatGateway
-metadata:
-  name: fixed-spec-nat
 spec:
   region: cn-hangzhou
   vpcId:
-    value: vpc-fixed
+    valueFrom:
+      kind: AliCloudVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
   vswitchId:
-    value: vsw-fixed
-  natGatewayName: fixed-spec-nat
-  internetChargeType: PayBySpec
-  specification: Large
+    valueFrom:
+      kind: AliCloudVswitch
+      name: nat-vswitch
+      fieldPath: status.outputs.vswitch_id
+  natGatewayName: platform-nat
   eipId:
-    value: eip-fixed
+    valueFrom:
+      kind: AliCloudEipAddress
+      name: nat-eip
+      fieldPath: status.outputs.eip_id
   snatEntries:
     - sourceVswitchId:
-        value: vsw-workload
-      snatEntryName: workload-nat
+        valueFrom:
+          kind: AliCloudVswitch
+          name: app-vswitch-a
+          fieldPath: status.outputs.vswitch_id
+      snatEntryName: app-zone-a
+    - sourceVswitchId:
+        valueFrom:
+          kind: AliCloudVswitch
+          name: app-vswitch-b
+          fieldPath: status.outputs.vswitch_id
+      snatEntryName: app-zone-b
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph and provisions VPC, VSwitches, and EIP before the NAT Gateway.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `nat_gateway_id` | string | NAT Gateway resource ID (e.g., `ngw-xxxxx`) |
-| `nat_gateway_name` | string | NAT Gateway name as created |
-| `snat_table_id` | string | SNAT table ID, for adding SNAT entries outside Planton |
-| `forward_table_id` | string | Forward (DNAT) table ID, for adding DNAT entries outside Planton |
+These are the most important decisions when configuring a NAT Gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**NAT type** -- The `natType` field defaults to "Enhanced", which supports VSwitch placement and higher performance. "Normal" is legacy and not recommended.
 
-- **AliCloudVpc** -- VPC that the NAT Gateway belongs to
-- **AliCloudVswitch** -- VSwitch for NAT Gateway placement and SNAT source
-- **AliCloudEipAddress** -- Elastic IP associated with the NAT Gateway
-- **AliCloudSecurityGroup** -- Network security rules for instances using NAT
-- **AliCloudAckManagedCluster** -- Kubernetes cluster nodes often use NAT for outbound access
+**SNAT source** -- Each SNAT entry accepts either `sourceVswitchId` (NAT an entire VSwitch, the common case) or `sourceCidr` (NAT a specific CIDR for fine-grained control). These are mutually exclusive per entry.
+
+**Billing** -- The `internetChargeType` field defaults to "PayByLcu" (capacity units, scales automatically). "PayBySpec" uses a fixed tier (Small/Middle/Large/XLarge.1) with predictable pricing.
+
+**Deletion protection** -- The `deletionProtection` field prevents accidental deletion. Enable this for production NAT Gateways.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AliCloudVswitch** | `vswitchId` | `status.outputs.vswitch_id` |
+| **AliCloudEipAddress** | `eipId` | `status.outputs.eip_id` |
+| **AliCloudVswitch** | `snatEntries[].sourceVswitchId` | `status.outputs.vswitch_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `nat_gateway_id` | NAT Gateway ID (e.g., ngw-xxxxx) | Monitoring, advanced routing |
+| `nat_gateway_name` | NAT Gateway name as created | Display and tagging |
+| `snat_table_id` | SNAT table ID | Adding SNAT entries outside Planton |
+| `forward_table_id` | Forward (DNAT) table ID | Adding DNAT entries outside Planton |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single VSwitch NAT** -- One NAT Gateway with one SNAT entry for a single VSwitch. The simplest configuration for development or single-zone deployments. Start from the **Single VSwitch** preset.
+
+**Multi-AZ production** -- A NAT Gateway with deletion protection and SNAT entries for multiple VSwitches across Availability Zones. Start from the **Multi AZ Production** preset.
+
+**CIDR-based SNAT** -- Fine-grained SNAT using CIDR blocks instead of whole VSwitches, useful when only a subset of addresses in a VSwitch needs internet access. Start from the **CIDR Based SNAT** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- the VPC this NAT Gateway belongs to
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- placement VSwitch for the NAT Gateway and SNAT sources
+- [**AliCloud EIP Address**](/cloud-catalog/ali-cloud-eip-address) -- provides the public IP for outbound traffic
+- [**AliCloud Security Group**](/cloud-catalog/ali-cloud-security-group) -- network security rules for instances using NAT
+- [**AliCloud Kubernetes Cluster**](/cloud-catalog/ali-cloud-kubernetes-cluster) -- Kubernetes worker nodes often use NAT for outbound access

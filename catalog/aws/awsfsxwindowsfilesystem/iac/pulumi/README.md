@@ -1,32 +1,32 @@
 # Pulumi Module to Deploy AwsFsxWindowsFileSystem
 
-This Pulumi module provisions an Amazon FSx for Windows File Server file system using the Planton CLI. Use the hack manifest at `../hack/manifest.yaml` as a quick starting point.
+This Pulumi module provisions an Amazon FSx for Windows File Server file system using the Planton CLI. Use the hack manifest at `../../e2e/manifest.yaml` as a quick starting point.
 
 ## CLI
 
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -61,7 +61,7 @@ iac/pulumi/
 
 ## Examples
 
-See `./examples.md` for sample manifests tailored to FSx for Windows File Server.
+See `./../../e2e/manifest.yaml` for sample manifests tailored to FSx for Windows File Server.
 
 ## Debugging
 

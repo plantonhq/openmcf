@@ -10,7 +10,7 @@ spec:
   # IAM-compatibility mode AWS itself defaults to).
   #
   # Excluded from live lanes with reasons (proven by spec tests + the
-  # offline plan gate against iac/hack/manifest.yaml):
+  # offline plan gate against e2e/manifest.yaml):
   # - target_database (resource link): needs a database shared from another
   #   account/region via AWS RAM -- external infrastructure the e2e account
   #   does not have (the cross-account handshake class).

@@ -8,43 +8,50 @@ componentName: "awslbtargetgroup"
 
 # AWS LB Target Group
 
-Deploys an ELBv2 target group: the routing destination that load balancer
-listeners and listener rules forward traffic to. One kind serves both
-Application and Network Load Balancers -- the protocol decides the family --
-with health checks, stickiness, draining, and static target registration
-managed together.
+Deploys an ELBv2 target group — the routing destination that listeners and listener rules forward traffic to, and the composition point of AWS load balancing. A target group has its own lifecycle and its own ARN: one group can receive traffic from several listeners, one listener can spread traffic across several weighted groups, ECS services take a group's ARN as their deployment target, and auto-scaling groups register instances into it. The same kind serves both Application and Network Load Balancers, exactly as AWS models it — the protocol decides the family, and the family decides which tuning fields apply.
 
 ## What Gets Created
 
-When you deploy an AwsLbTargetGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Target group** — an `aws_lb_target_group` / `lb.TargetGroup` with the name
-  taken from `metadata.name` (truncated to AWS's 32-character limit when
-  necessary), the specified target type, port/protocol, health check,
-  stickiness, and connection-handling attributes
-- **Target registrations** — one target-group attachment per entry in
-  `targets`, for statically registered EC2 instances, IP addresses, a Lambda
-  function, or an inner ALB
+- **Target Group** -- with its target type, port/protocol, health check, stickiness, and family-specific traffic attributes
+- **Static target registrations** -- only for rows listed in `targets`; dynamic registrars (ECS, auto-scaling, Kubernetes controllers) manage their own membership
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the group
 
-Dynamic registrars are **not** configured here — ECS services, auto-scaling
-groups, and Kubernetes controllers register their own targets against this
-group's `target_group_arn` output.
+The load balancer and listeners are **not** created here — an AwsLbListener forwards to this group's `target_group_arn` output.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A VPC** for `instance`, `ip`, and `alb` target types (not needed for `lambda`).
-- **A load balancer** (`AwsAlb` or `AwsNlb`) whose listener will forward to this group — deployable before or after the group.
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **VPC** -- the AwsVpc the targets live in, referenced by its `vpc_id` output (required for every target type except lambda).
+- **Targets** -- optional AwsEc2Instance resources for static registrations, referenced by their `instance_id` outputs.
+
+### AWS Account
+
+- **ELB permissions** -- the credentials used by the Provider Connection must have `elasticloadbalancing:CreateTargetGroup`, `ModifyTargetGroup`, `ModifyTargetGroupAttributes`, `RegisterTargets`, `DeregisterTargets`, and `DeleteTargetGroup`.
+- **Same-region rule** -- the group, its VPC, and any load balancer forwarding to it must share one region.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS LB Target Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **ECS Service HTTP** preset in the [Presets](#presets) tab for the most common container pattern.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsLbTargetGroup
 metadata:
-  name: api
+  name: web-servers
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   vpcId:
     valueFrom:
       kind: AwsVpc
@@ -55,133 +62,64 @@ spec:
   protocol: HTTP
   healthCheck:
     path: /healthz
+    matcher: "200"
 ```
 
 ```shell
 planton apply -f target-group.yaml
 ```
 
-## Configuration Reference
+This creates an HTTP target group for IP targets (the shape ECS awsvpc services register into) with a real readiness probe. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region for the target group. Must match the VPC and the forwarding load balancer. | Required; non-empty |
-| `vpcId` | `string \| valueFrom` | VPC the targets live in. Defaults to referencing an `AwsVpc`'s `vpc_id` output. Immutable. | Required unless `targetType` is `lambda` |
-| `port` | `int` | Port targets receive traffic on. Individual registrations can override it. Immutable. | Required unless `targetType` is `lambda`; 1–65535 |
-| `protocol` | `string` | Protocol between the load balancer and targets; decides the family. Immutable. | Required unless `targetType` is `lambda`. One of: `HTTP`, `HTTPS` (ALB), `TCP`, `UDP`, `TCP_UDP`, `TLS` (NLB) |
+These are the most important decisions when configuring a target group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**The identity is create-only** -- name, VPC, target type, address family, port, protocol, and protocol version are fixed at creation. Changing any replaces the group, and the IaC engine re-creates dependent listener attachments.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `targetType` | `string` | `instance` | How targets register: `instance`, `ip`, `lambda`, or `alb`. Immutable. |
-| `protocolVersion` | `string` | `HTTP1` | ALB only: `HTTP1`, `HTTP2`, or `GRPC`. Immutable. |
-| `ipAddressType` | `string` | `ipv4` | Address family of targets: `ipv4` or `ipv6` (requires a dualstack load balancer). Immutable. |
-| `healthCheck` | `object` | protocol-appropriate AWS defaults | Probe protocol, port, path, thresholds, interval/timeout, and matcher. Health-check protocol is independent of the traffic protocol. |
-| `stickiness` | `object` | disabled | `lb_cookie` / `app_cookie` (ALB) or `source_ip` (NLB) session affinity. |
-| `deregistrationDelaySeconds` | `int` | `300` | Seconds a draining target keeps in-flight requests. Range: 0–3600. |
-| `slowStartSeconds` | `int` | `0` (disabled) | ALB only: ramp-up window for newly registered targets, 30–900. Incompatible with stickiness and `least_outstanding_requests`. |
-| `loadBalancingAlgorithmType` | `string` | `round_robin` | ALB only: `round_robin`, `least_outstanding_requests`, or `weighted_random`. |
-| `loadBalancingAnomalyMitigation` | `string` | `off` | ALB only: automatic anomaly mitigation; requires `weighted_random`. |
-| `loadBalancingCrossZoneEnabled` | `string` | `use_load_balancer_configuration` | Cross-zone override: `true`, `false`, or inherit from the load balancer. |
-| `preserveClientIp` | `bool` | AWS default per target type | NLB only: targets see the original client IP. |
-| `proxyProtocolV2` | `bool` | `false` | NLB only: send the Proxy Protocol v2 header. Targets must parse it — enabling against an unaware backend breaks connections. |
-| `connectionTermination` | `bool` | `false` | NLB only: close established connections when the deregistration delay expires. |
-| `lambdaMultiValueHeadersEnabled` | `bool` | `false` | Lambda targets only: deliver multi-value headers and query parameters as arrays. |
-| `targetGroupHealth` | `object` | — | Group-level DNS failover and unhealthy-state-routing thresholds. |
-| `targetHealthState` | `object` | — | NLB TCP/TLS only: established-connection handling for unhealthy targets. |
-| `targets` | `object[]` | `[]` | Static registrations: `targetId` (value or `valueFrom`), optional per-target `port`, optional `availabilityZone: all` for out-of-VPC IPs. |
+**The target type shapes everything** -- `instance` (EC2 fleets), `ip` (ECS awsvpc tasks, pod IPs, peered/on-premises addresses), `lambda` (the load balancer invokes the function — no port, protocol, or VPC), or `alb` (the NLB-in-front-of-ALB pattern combining static Layer-4 IPs with Layer-7 routing).
 
-## Examples
+**The protocol decides the family** -- HTTP/HTTPS groups attach to ALBs and unlock request-level tuning (routing algorithm, anomaly mitigation, slow start, cookie stickiness); TCP/UDP/TCP_UDP/TLS groups attach to NLBs and unlock connection-level tuning (client-IP preservation, Proxy Protocol v2, connection termination, source-IP stickiness).
 
-### NLB TCP target group with HTTP health checks
+**Health checks probe independently of traffic** -- an NLB TCP group can (and usually should) run HTTP probes against a readiness endpoint; a TCP probe only proves the port is open. AWS applies protocol-appropriate defaults when the block is omitted.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbTargetGroup
-metadata:
-  name: postgres-pool
-spec:
-  region: us-west-2
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: main-vpc
-      fieldPath: status.outputs.vpc_id
-  targetType: ip
-  port: 5432
-  protocol: TCP
-  preserveClientIp: true
-  connectionTermination: true
-  healthCheck:
-    protocol: HTTP
-    port: "8081"
-    path: /readyz
-```
+**Deregistration delay gates deploys** -- a draining target keeps serving in-flight requests for this window (default 300s); deploys cannot finish faster than it. Size it to the longest legitimate request.
 
-### Lambda function target
+**Static targets are usually empty** -- ECS services, auto-scaling groups, and Kubernetes controllers register targets dynamically. Registrations are folded into this kind (not a separate resource) because a registration is pure glue with no referenceable identity of its own.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbTargetGroup
-metadata:
-  name: webhook-handler
-spec:
-  region: us-west-2
-  targetType: lambda
-  targets:
-    - targetId:
-        valueFrom:
-          kind: AwsLambda
-          name: webhook-handler
-          fieldPath: status.outputs.function_arn
-```
+## Outputs and Dependencies
 
-### Statically registered EC2 instances
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbTargetGroup
-metadata:
-  name: legacy-web
-spec:
-  region: us-west-2
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: main-vpc
-      fieldPath: status.outputs.vpc_id
-  targetType: instance
-  port: 80
-  protocol: HTTP
-  targets:
-    - targetId:
-        valueFrom:
-          kind: AwsEc2Instance
-          name: web-1
-          fieldPath: status.outputs.instance_id
-    - targetId:
-        valueFrom:
-          kind: AwsEc2Instance
-          name: web-2
-          fieldPath: status.outputs.instance_id
-```
+| Field | References | Via |
+|-------|-----------|-----|
+| `vpcId` | AwsVpc | `status.outputs.vpc_id` |
+| `targets[].targetId` | AwsEc2Instance | `status.outputs.instance_id` |
 
-## Stack Outputs
+### What This Component Provides
 
-| Output | Description |
-| --- | --- |
-| `target_group_arn` | ARN of the target group — what listener forward actions, ECS services, and ASG attachments reference |
-| `target_group_name` | Friendly name of the group (`metadata.name`, truncated to the 32-character AWS limit when necessary) |
-| `arn_suffix` | ARN suffix used as the `TargetGroup` dimension in CloudWatch metrics |
+After provisioning, `status.outputs` contains:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `target_group_arn` | ARN of the target group | AwsLbListener forward actions, ECS service load-balancer bindings, auto-scaling group attachments |
+| `target_group_name` | The group's name (truncated to AWS's 32-character limit) | Console URLs and CLI queries |
+| `arn_suffix` | The ARN's final segment | The CloudWatch TargetGroup metric dimension |
 
-- [AwsLbListener](/docs/catalog/aws/lb-listener) — forwards listener traffic to this group via its default actions
-- [AwsLbListenerRule](/docs/catalog/aws/lb-listener-rule) — routes matching ALB requests to this group
-- [AwsAlb](/docs/catalog/aws/alb) — the Application Load Balancer in front of HTTP/HTTPS groups
-- [AwsNlb](/docs/catalog/aws/nlb) — the Network Load Balancer in front of TCP/UDP/TLS groups
-- [AwsEcsService](/docs/catalog/aws/ecs-service) — registers task IPs into this group as deployments roll
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the VPC targets live in
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**ECS service backend** -- an ip-type HTTP group ECS registers task IPs into. Start from the **ECS Service HTTP** preset.
+
+**NLB TCP passthrough** -- a TCP group behind an NLB for raw connection forwarding. Start from the **NLB TCP Passthrough** preset.
+
+**Lambda behind an ALB** -- a lambda group giving a function HTTP routing, WAF, and OIDC auth without API Gateway. Start from the **Lambda Function** preset.
+
+## Works With
+
+- **AwsLbListener** -- forwards traffic here via its default actions, referencing `target_group_arn`.
+- **AwsLbListenerRule** -- forwards matched requests here via rule actions.
+- **AwsAlb / AwsNlb** -- the load balancers whose listeners deliver the traffic.
+- **AwsVpc** -- the network the targets live in, referenced by `vpcId`.
+- **AwsEc2Instance** -- statically registered instance targets, referenced per row.

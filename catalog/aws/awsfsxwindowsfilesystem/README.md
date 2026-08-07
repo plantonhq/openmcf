@@ -277,7 +277,7 @@ The following FSx for Windows features are not exposed in this API version:
 - **File share creation** — managed via PowerShell or Windows administrative tools.
 - **Cross-account access** — VPC peering or Transit Gateway-based access from other accounts.
 
-See docs/README.md for architecture details and integration patterns.
+See GUIDE.md for architecture details and integration patterns.
 
 ---
 

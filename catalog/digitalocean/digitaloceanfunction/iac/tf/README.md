@@ -119,7 +119,7 @@ doctl serverless deploy .
 - ❌ Monitoring (no DigitalOcean Insights integration)
 - ❌ IaC support (no Terraform or Pulumi resources exist)
 
-See ../../docs/README.md for the comprehensive comparison of deployment methods.
+See ../../GUIDE.md for the comprehensive comparison of deployment methods.
 
 ## Summary
 

@@ -8,347 +8,159 @@ componentName: "awshttpapigateway"
 
 # AWS HTTP API Gateway
 
-Deploys an AWS API Gateway HTTP API (v2) with a bundled stage, routes with inline integrations, and optional JWT or Lambda authorizers. HTTP APIs offer lower latency and cost compared to REST APIs, with native support for Lambda proxy integration, HTTP proxy integration (public or private through a VPC link), first-class AWS service integrations (SQS, EventBridge, Step Functions, Kinesis, AppConfig), CORS, and automatic deployments.
+Deploys an HTTP API on Amazon API Gateway (v2) with route-to-integration wiring, JWT and Lambda authorizers, CORS configuration, and auto-deploying stages. The component bundles the API, stage, routes, integrations, and authorizers into a single declarative resource and integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsHttpApiGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **HTTP API** — an API Gateway v2 HTTP API with configured CORS, description, version label, IP address type, and endpoint settings
-- **Stage** — a deployment stage (defaults to `$default` with auto-deploy enabled), with optional access logging, stage-wide and per-route throttling, and detailed metrics
-- **Integrations** — deduplicated backend integrations (Lambda proxy, HTTP proxy, private VPC-link proxy, or AWS service action) shared across routes with identical configuration
-- **Routes** — API routes mapping request patterns (e.g., `GET /users`, `POST /orders/{id}`, `$default`) to their corresponding integrations
-- **Authorizers** — optional JWT or Lambda (REQUEST) authorizers referenced by routes for request authorization
+- **HTTP API** -- an API Gateway v2 HTTP API with optional CORS settings, description, version label, IP address type (IPv4 or dual-stack), and default-endpoint control
+- **Stage** -- a deployment stage (defaults to `$default` with auto-deploy enabled) with optional access logging, throttling, detailed CloudWatch metrics, per-route setting overrides, and stage variables
+- **Integrations** -- backend targets for each route: Lambda proxy, HTTP proxy (public, or private through a VPC link), or first-class AWS service actions (SQS, EventBridge, Step Functions, Kinesis, AppConfig) with no Lambda glue; routes sharing the same configuration are automatically deduplicated into a single integration resource
+- **Routes** -- request pattern mappings (e.g., `GET /users`, `$default`) wired to their backend integrations with optional authorization and OpenAPI operation names
+- **Authorizers** -- created only when authorizers are defined; supports JWT authorizers (Cognito, Auth0, OIDC) and Lambda REQUEST authorizers
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-Custom domains are the separate `AwsHttpApiDomain` component; VPC links for private integrations are the separate `AwsHttpApiVpcLink` component.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **AWS region** specified in provider config or environment
-- **Lambda functions** already deployed if using `AWS_PROXY` integrations
-- **HTTP endpoints** reachable if using `HTTP_PROXY` integrations
-- **Cognito User Pool or OIDC provider** if using JWT authorizers
-- **Lambda authorizer function** if using REQUEST authorizers
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `api.yaml`:
+- **A Lambda function or HTTP endpoint** for each route integration. For Lambda proxy integrations (`AWS_PROXY`), provide the function ARN. For HTTP proxy integrations (`HTTP_PROXY`), provide the upstream URL.
+- **A CloudWatch Log Group** (optional) for access logging. Provide the ARN directly or reference an AwsCloudwatchLogGroup Cloud Resource via ValueFromRef.
+- **A Lambda authorizer function** (optional) for REQUEST-type authorizers. Provide the function ARN directly or reference an AwsLambda Cloud Resource via ValueFromRef.
+- **An IAM role** (optional) for Lambda authorizer invocation. Required when using REQUEST authorizers. Provide the ARN directly or reference an AwsIamRole Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS HTTP API Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Route to Lambda** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsHttpApiGateway.my-api
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   routes:
     - routeKey: "$default"
       integration:
-        integrationType: "AWS_PROXY"
+        integrationType: AWS_PROXY
         integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:my-function"
+          value: "arn:aws:lambda:us-east-1:123456789012:function:my-handler"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f api.yaml
+planton apply -f http-api-gateway.yaml
 ```
 
-This creates an HTTP API with a single catch-all route (`$default`) that forwards all requests to the specified Lambda function. A `$default` stage with auto-deploy is created automatically.
+This creates an HTTP API with a single catch-all route forwarding all requests to a Lambda function, using the `$default` stage with auto-deploy. No CORS or authorization is configured. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the resource will be created (e.g., `"us-west-2"`, `"eu-west-1"`) | Non-empty |
-| `routes` | `AwsHttpApiGatewayRoute[]` | API routes mapping request patterns to backend integrations | Minimum 1 item |
-| `routes[].routeKey` | `string` | Route key defining the request pattern (e.g., `"GET /users"`, `"POST /orders/{id}"`, `"$default"`) | Non-empty |
-| `routes[].integration` | `object` | Backend integration that processes requests matching this route | Required |
-| `routes[].integration.integrationType` | `string` | Integration type: `"AWS_PROXY"` (Lambda or AWS service action) or `"HTTP_PROXY"` (HTTP endpoint) | Non-empty; must be `"AWS_PROXY"` or `"HTTP_PROXY"` |
-| `routes[].integration.integrationUri` | `StringValueOrRef` | Lambda function ARN for `AWS_PROXY`, upstream HTTP URL (or private ALB/NLB listener ARN) for `HTTP_PROXY`. Can reference `AwsLambda` via `valueFrom`. | Required for proxy integrations; must be omitted when `integrationSubtype` is set |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the API (max 1024 characters) |
-| `apiVersion` | `string` | — | Informational version label surfaced in the console and OpenAPI exports (max 64 characters) |
-| `disableExecuteApiEndpoint` | `bool` | `false` | Disable the default execute-api endpoint when an `AwsHttpApiDomain` fronts this API |
-| `ipAddressType` | `string` | — | `"ipv4"` or `"dualstack"` (AWS defaults new APIs to dualstack) |
-| `corsConfiguration.allowOrigins` | `string[]` | `[]` | Origins allowed to make cross-origin requests (e.g., `"https://example.com"`, `"*"`) |
-| `corsConfiguration.allowMethods` | `string[]` | `[]` | HTTP methods allowed for cross-origin requests (e.g., `"GET"`, `"POST"`, `"OPTIONS"`) |
-| `corsConfiguration.allowHeaders` | `string[]` | `[]` | Request headers allowed in cross-origin requests (e.g., `"Content-Type"`, `"Authorization"`) |
-| `corsConfiguration.exposeHeaders` | `string[]` | `[]` | Response headers exposed to the browser in cross-origin responses |
-| `corsConfiguration.maxAgeSeconds` | `int` | `0` | Maximum time in seconds that browsers cache CORS preflight results (0–86400) |
-| `corsConfiguration.allowCredentials` | `bool` | `false` | Whether the API supports credentials (cookies, authorization headers) in cross-origin requests |
-| `stage.name` | `string` | `"$default"` | Stage name. Named stages (e.g., `"prod"`) append the name to the invoke URL path. |
-| `stage.autoDeploy` | `bool` | `true` | Automatic deployment when routes, integrations, or authorizers change. Defaults to true whenever omitted; set explicitly to `false` to manage deployments externally. |
-| `stage.description` | `string` | — | Human-readable stage description (max 1024 characters) |
-| `stage.accessLog.destinationArn` | `StringValueOrRef` | — | CloudWatch Log Group ARN for access log delivery. Can reference `AwsCloudwatchLogGroup` via `valueFrom`. |
-| `stage.accessLog.format` | `string` | — | Log format template using API Gateway access log variables (e.g., `$context.requestId`) |
-| `stage.defaultThrottle.burstLimit` | `int` | `0` | Maximum concurrent requests (token bucket size) |
-| `stage.defaultThrottle.rateLimit` | `double` | `0` | Steady-state request rate limit in requests per second |
-| `stage.detailedMetricsEnabled` | `bool` | `false` | Emit per-route CloudWatch metrics as the stage default (extra CloudWatch cost) |
-| `stage.routeSettings[].routeKey` | `string` | — | Route to override (must match a defined route key) |
-| `stage.routeSettings[].throttlingBurstLimit` | `int` | `0` | Burst limit override for this route (zero inherits the stage default) |
-| `stage.routeSettings[].throttlingRateLimit` | `double` | `0` | Rate limit override for this route (zero inherits the stage default) |
-| `stage.routeSettings[].detailedMetricsEnabled` | `bool` | `false` | Detailed metrics override for this route |
-| `stage.stageVariables` | `map<string, string>` | `{}` | Stage variables passed to integrations as environment-specific configuration |
-| `routes[].authorizationType` | `string` | `"NONE"` | Authorization type: `"NONE"`, `"JWT"`, `"AWS_IAM"`, or `"CUSTOM"` (Lambda authorizer) |
-| `routes[].authorizerName` | `string` | — | Name of the authorizer to bind. Required for `"JWT"` (JWT authorizer) and `"CUSTOM"` (REQUEST authorizer). |
-| `routes[].authorizationScopes` | `string[]` | `[]` | OAuth 2.0 scopes required for JWT authorization |
-| `routes[].operationName` | `string` | — | Stable operationId for OpenAPI exports and generated clients (max 64 characters) |
-| `routes[].integration.integrationSubtype` | `string` | — | AWS service action (e.g., `"SQS-SendMessage"`, `"EventBridge-PutEvents"`, `"StepFunctions-StartExecution"`). Requires `AWS_PROXY` and `credentialsArn`; action parameters go in `requestParameters`. |
-| `routes[].integration.payloadFormatVersion` | `string` | `"2.0"` | Payload format version: `"2.0"` (Lambda only, recommended) or `"1.0"`. Service integrations are fixed at `"1.0"` by AWS. |
-| `routes[].integration.integrationMethod` | `string` | — | HTTP method for the integration request. Defaults to the route method for `HTTP_PROXY`. Always `POST` for `AWS_PROXY`. |
-| `routes[].integration.timeoutMilliseconds` | `int` | `30000` | Integration timeout in milliseconds (50–30000). Returns 504 if the backend does not respond in time. |
-| `routes[].integration.connectionType` | `string` | `"INTERNET"` | `"INTERNET"` or `"VPC_LINK"` for private integrations (requires `connectionId` and `HTTP_PROXY`) |
-| `routes[].integration.connectionId` | `StringValueOrRef` | — | The VPC link to route through. Can reference `AwsHttpApiVpcLink` via `valueFrom`. Required with `"VPC_LINK"`. |
-| `routes[].integration.credentialsArn` | `StringValueOrRef` | — | IAM role API Gateway assumes to call the target. Required for service integrations. Can reference `AwsIamRole` via `valueFrom`. |
-| `routes[].integration.requestParameters` | `map<string, string>` | `{}` | Parameter mappings (proxy) or service-action parameters (subtype integrations) |
-| `routes[].integration.responseParameters[].statusCode` | `string` | — | Backend status code the response mappings apply to (e.g., `"500"`) |
-| `routes[].integration.responseParameters[].mappings` | `map<string, string>` | — | Response mapping instructions (e.g., `"overwrite:statuscode"` → `"503"`) |
-| `routes[].integration.tlsServerNameToVerify` | `string` | — | SNI override for private integrations whose internal ALB serves a public-domain certificate |
-| `routes[].integration.description` | `string` | — | Human-readable integration description (max 1024 characters) |
-| `authorizers[].name` | `string` | — | Unique authorizer name (1–128 characters). Routes reference authorizers by this name. |
-| `authorizers[].authorizerType` | `string` | — | Authorizer type: `"JWT"` or `"REQUEST"` |
-| `authorizers[].jwtConfiguration.issuer` | `string` | — | Token issuer URL. Required for JWT authorizers. (e.g., `"https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ABC123"`) |
-| `authorizers[].jwtConfiguration.audiences` | `string[]` | — | Expected JWT audiences (e.g., Cognito app client ID). At least one is required for JWT authorizers. |
-| `authorizers[].authorizerUri` | `StringValueOrRef` | — | Lambda function invoke ARN for REQUEST authorizers. Can reference `AwsLambda` via `valueFrom`. |
-| `authorizers[].authorizerCredentialsArn` | `StringValueOrRef` | — | IAM role ARN that API Gateway assumes to invoke the Lambda authorizer. Can reference `AwsIamRole` via `valueFrom`. |
-| `authorizers[].identitySources` | `string[]` | `[]` | Identity sources for token extraction (e.g., `"$request.header.Authorization"`) |
-| `authorizers[].resultTtlSeconds` | `int` | `0` | Time in seconds that API Gateway caches the authorizer result (0–3600) |
-| `authorizers[].enableSimpleResponses` | `bool` | `false` | Enable simple `{"isAuthorized": true/false}` responses from Lambda authorizers. Only for REQUEST authorizers. |
-| `authorizers[].authorizerPayloadFormatVersion` | `string` | — | Payload format version for the Lambda authorizer event: `"2.0"` (recommended) or `"1.0"`. Only for REQUEST authorizers. |
-
-## Examples
-
-### Multi-Route API with CORS
-
-Multiple routes to different Lambda functions with cross-origin support:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire authorizers and access logging to resources deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiGateway
-metadata:
-  name: users-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsHttpApiGateway.users-api
 spec:
-  region: us-east-1
-  description: "Users service API"
-  corsConfiguration:
-    allowOrigins:
-      - "https://app.example.com"
-    allowMethods:
-      - "GET"
-      - "POST"
-      - "PUT"
-      - "DELETE"
-      - "OPTIONS"
-    allowHeaders:
-      - "Content-Type"
-      - "Authorization"
-    maxAgeSeconds: 3600
-    allowCredentials: true
-  routes:
-    - routeKey: "GET /users"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:list-users"
-    - routeKey: "POST /users"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:create-user"
-    - routeKey: "GET /users/{id}"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:get-user"
-```
-
-### JWT-Protected API with Cognito
-
-Routes guarded by a JWT authorizer backed by Amazon Cognito:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiGateway
-metadata:
-  name: secure-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsHttpApiGateway.secure-api
-spec:
-  region: us-east-1
-  description: "Secured API with Cognito JWT authorization"
-  corsConfiguration:
-    allowOrigins:
-      - "https://app.example.com"
-    allowMethods:
-      - "GET"
-      - "POST"
-    allowHeaders:
-      - "Content-Type"
-      - "Authorization"
-  routes:
-    - routeKey: "GET /profile"
-      authorizationType: "JWT"
-      authorizerName: "cognito-auth"
-      authorizationScopes:
-        - "openid"
-        - "profile"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:get-profile"
-    - routeKey: "POST /orders"
-      authorizationType: "JWT"
-      authorizerName: "cognito-auth"
-      authorizationScopes:
-        - "openid"
-        - "orders:write"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:create-order"
-    - routeKey: "GET /health"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          value: "arn:aws:lambda:us-east-1:123456789012:function:healthcheck"
-  authorizers:
-    - name: "cognito-auth"
-      authorizerType: "JWT"
-      jwtConfiguration:
-        issuer: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ABC123XYZ"
-        audiences:
-          - "1a2b3c4d5e6f7g8h9i0j"
-      identitySources:
-        - "$request.header.Authorization"
-```
-
-### HTTP Proxy with Stage Configuration and Throttling
-
-An HTTP proxy API with access logging and default throttle settings:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiGateway
-metadata:
-  name: proxy-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsHttpApiGateway.proxy-api
-spec:
-  region: us-east-1
-  description: "HTTP proxy to internal microservices"
   stage:
-    name: "$default"
-    autoDeploy: true
     accessLog:
       destinationArn:
-        value: "arn:aws:logs:us-east-1:123456789012:log-group:/aws/apigateway/proxy-api"
-      format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod","path":"$context.routeKey","status":"$context.status","latency":"$context.responseLatency"}'
-    defaultThrottle:
-      burstLimit: 500
-      rateLimit: 1000
-    stageVariables:
-      backendHost: "internal.example.com"
-  routes:
-    - routeKey: "$default"
-      integration:
-        integrationType: "HTTP_PROXY"
-        integrationUri:
-          value: "https://internal.example.com"
-        integrationMethod: "ANY"
-        timeoutMilliseconds: 10000
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding ARNs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiGateway
-metadata:
-  name: ref-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsHttpApiGateway.ref-api
-spec:
-  region: us-east-1
-  routes:
-    - routeKey: "GET /items"
-      authorizationType: "JWT"
-      authorizerName: "lambda-auth"
-      integration:
-        integrationType: "AWS_PROXY"
-        integrationUri:
-          valueFrom:
-            kind: AwsLambda
-            name: get-items-fn
-            fieldPath: "status.outputs.function_arn"
+        valueFrom:
+          kind: AwsCloudwatchLogGroup
+          name: api-access-logs
+          fieldPath: status.outputs.log_group_arn
+      format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod","status":"$context.status"}'
   authorizers:
-    - name: "lambda-auth"
-      authorizerType: "REQUEST"
+    - name: lambda-auth
+      authorizerType: REQUEST
       authorizerUri:
         valueFrom:
           kind: AwsLambda
-          name: auth-fn
-          fieldPath: "status.outputs.function_arn"
+          name: auth-function
+          fieldPath: status.outputs.function_arn
       authorizerCredentialsArn:
         valueFrom:
           kind: AwsIamRole
-          name: apigw-invoke-role
-          fieldPath: "status.outputs.role_arn"
-      identitySources:
-        - "$request.header.Authorization"
-      enableSimpleResponses: true
-      authorizerPayloadFormatVersion: "2.0"
-      resultTtlSeconds: 300
+          name: api-authorizer-role
+          fieldPath: status.outputs.role_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the log group, Lambda function, and IAM role first, then provisions the HTTP API with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `api_id` | `string` | The API Gateway API identifier, used for constructing resource ARNs |
-| `api_endpoint` | `string` | The default endpoint URL: `https://{api-id}.execute-api.{region}.amazonaws.com` |
-| `api_arn` | `string` | The Amazon Resource Name (ARN) of the API |
-| `execution_arn` | `string` | The execution ARN prefix used in Lambda resource-based policies: `arn:aws:execute-api:{region}:{account-id}:{api-id}` |
-| `stage_invoke_url` | `string` | The invoke URL for the deployed stage (includes stage name for named stages) |
-| `stage_name` | `string` | The name of the deployed stage (e.g., `"$default"`, `"prod"`) |
+These are the most important decisions when configuring an HTTP API Gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Route design** -- Each route maps a request pattern (`GET /users`, `POST /orders/{id}`, `$default`) to a backend integration. Use specific routes for API Gateway-level routing, or a single `$default` catch-all to delegate routing to the Lambda function. At least one route is required.
 
-- [AwsLambda](/docs/catalog/aws/lambda) — Lambda functions used as backend integrations via AWS_PROXY
-- [AwsHttpApiVpcLink](/docs/catalog/aws/http-api-vpc-link) — VPC links for private integrations to internal ALB/NLB/Cloud Map backends
-- [AwsHttpApiDomain](/docs/catalog/aws/http-api-domain) — Custom domains mapping one or more APIs under an owned DNS name
-- [AwsStepFunction](/docs/catalog/aws/step-functions) — State machines started directly via StepFunctions-StartExecution service integrations
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) — Queues fed directly via SQS-SendMessage service integrations
-- [AwsIamRole](/docs/catalog/aws/iam-role) — IAM roles for Lambda authorizer invocation and service-integration credentials
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — CloudWatch Log Groups for API access logging
+**Integration type** -- `AWS_PROXY` forwards requests to a Lambda function as a proxy event (the `payloadFormatVersion` defaults to `2.0`; `1.0` is legacy and the only format for non-Lambda backends). `HTTP_PROXY` forwards requests to an upstream HTTP endpoint. Setting `integrationSubtype` (e.g. `SQS-SendMessage`, `StepFunctions-StartExecution`) turns an `AWS_PROXY` integration into a direct AWS service action: the action's parameters go in `requestParameters`, `credentialsArn` names the IAM role API Gateway assumes, and no `integrationUri` is set.
+
+**Private integrations** -- Set `connectionType: VPC_LINK` with `connectionId` referencing an AwsHttpApiVpcLink to reach a private ALB, NLB, or Cloud Map service inside a VPC over `HTTP_PROXY`. `tlsServerNameToVerify` overrides certificate verification (SNI) when the private target terminates TLS with a public-domain certificate.
+
+**Authorization** -- Routes support `NONE` (public), `JWT` (Cognito, Auth0, or any OIDC provider), `AWS_IAM` (SigV4), and `CUSTOM` (a Lambda REQUEST authorizer decides per call). JWT authorizers validate tokens at the edge without invoking Lambda; their `issuer` can reference an AwsCognitoUserPool and each audience an AwsCognitoUserPoolClient. Routes bind authorizers by name, and the authorization type must match the authorizer's kind (JWT routes bind JWT authorizers, CUSTOM routes bind REQUEST authorizers).
+
+**CORS** -- Configure `corsConfiguration` when the API is called from web browsers on a different domain. Specify allowed origins, methods, headers, and credential support. Omit entirely for server-to-server APIs.
+
+**Throttling and metrics** -- Set `stage.defaultThrottle` with `burstLimit` and `rateLimit` to protect backend services from traffic spikes, and `stage.detailedMetricsEnabled` for per-route CloudWatch dimensions. `stage.routeSettings` overrides either per route (e.g. a lower rate on an expensive search route) — each entry must target a declared route key.
+
+**Response shaping** -- `responseParameters` on an integration transforms what callers receive per backend status code (overwrite the status, inject or strip headers); `requestParameters` on proxy integrations applies the same mapping instructions to the upstream request.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsLambda** | `routes[].integration.integrationUri` | `status.outputs.function_arn` |
+| **AwsHttpApiVpcLink** (optional) | `routes[].integration.connectionId` | `status.outputs.vpc_link_id` |
+| **AwsIamRole** (optional) | `routes[].integration.credentialsArn` | `status.outputs.role_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |
+| **AwsLambda** (optional) | `authorizers[].authorizerUri` | `status.outputs.function_arn` |
+| **AwsIamRole** (optional) | `authorizers[].authorizerCredentialsArn` | `status.outputs.role_arn` |
+| **AwsCognitoUserPool** (optional) | `authorizers[].jwtConfiguration.issuer` | `status.outputs.issuer` |
+| **AwsCognitoUserPoolClient** (optional) | `authorizers[].jwtConfiguration.audiences[]` | `status.outputs.client_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `api_id` | API Gateway API identifier | Resource ARN construction, CloudWatch metrics |
+| `api_endpoint` | Default invoke URL | Client configuration, DNS CNAME records |
+| `api_arn` | Amazon Resource Name | IAM policies, resource-based permissions |
+| `execution_arn` | Execution ARN prefix | Lambda resource-based policies for invoke permissions |
+| `stage_invoke_url` | Stage-specific invoke URL | Client configuration, CloudFront origins |
+| `stage_name` | Deployed stage name | Logging filters, stage-specific monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single Lambda catch-all** -- A `$default` route forwarding all requests to one Lambda function. The Lambda handles routing internally. Ideal for prototyping or frameworks like Express.js or FastAPI running in Lambda. Start from the **Default Route to Lambda** preset.
+
+**Multi-route REST API** -- Separate routes per HTTP method and path with CORS enabled for browser access. Each route targets a dedicated Lambda function. Suited for production APIs with clear endpoint separation. Start from the **Multi-Route Lambda** preset.
+
+**JWT-protected API** -- Routes secured with a JWT authorizer validating tokens from Cognito, Auth0, or any OIDC provider. Mix public and protected routes with OAuth scope requirements. Start from the **JWT Authorized API** preset.
+
+## Works With
+
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- provides backend functions for route integrations and REQUEST authorizers
+- [**AWS HTTP API VPC Link**](/cloud-catalog/aws-http-api-vpc-link) -- provides the network attachment for private integrations to ALB/NLB/Cloud Map targets inside a VPC
+- [**AWS HTTP API Domain**](/cloud-catalog/aws-http-api-domain) -- fronts this API with a custom domain; its API mappings reference this API's `api_id` and `stage_name` outputs
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- provides the JWT issuer for token validation
+- [**AWS Cognito User Pool Client**](/cloud-catalog/aws-cognito-user-pool-client) -- provides app client IDs as JWT audiences
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides invocation roles for Lambda authorizers and AWS service actions
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- provides the destination for API access logs

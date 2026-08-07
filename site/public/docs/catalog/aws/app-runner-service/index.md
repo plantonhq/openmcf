@@ -8,114 +8,82 @@ componentName: "awsapprunnerservice"
 
 # AWS App Runner Service
 
-Deploys an AWS App Runner service from a container image or a source repository with automatic HTTPS, concurrency-based auto scaling, custom domains, optional VPC egress, WAF protection, and customer-managed KMS encryption. The component supports two mutually exclusive source types: an ECR image or a connected code repository.
+Deploys an App Runner service — the shortest path from a container image or source repository to an HTTPS endpoint on AWS. App Runner handles build, deploy, TLS, load balancing, and concurrency-based auto scaling. The service composes with its shared, versioned companion resources by reference rather than embedding them: an [auto scaling configuration](/cloud-catalog/aws-app-runner-auto-scaling-configuration) tunes scaling for a fleet, a [VPC connector](/cloud-catalog/aws-app-runner-vpc-connector) routes outbound traffic into a VPC, and an [observability configuration](/cloud-catalog/aws-app-runner-observability-configuration) enables X-Ray tracing — each shared by any number of services. Custom domains with managed TLS and a REGIONAL WAF web ACL complete the public edge.
 
 ## What Gets Created
 
-When you deploy an AwsAppRunnerService resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **App Runner Service** — the runtime itself: source configuration (image or code), instance sizing, health checks, networking, encryption, and observability settings
-- **Custom Domain Associations** — one per `customDomains` entry; App Runner issues and renews each domain's TLS certificate, and the validation CNAME records surface as stack outputs
-- **WAF Web ACL Association** — created only when `webAclArn` references a REGIONAL web ACL, placing WAF inspection in front of every request
+- **App Runner Service** -- a fully managed container service with source configuration (image or code), instance sizing, port mapping, health checks, ingress settings, encryption, and the companion-resource attachments
+- **Custom Domain Associations** -- one per `customDomains` entry, each with an App Runner-managed TLS certificate whose validation records export in stack outputs
+- **WAF Association** -- when `webAclArn` is set, every request passes the referenced REGIONAL web ACL before reaching the application
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-The service's shared companions are separate first-class resources referenced by ARN, never created here: `AwsAppRunnerAutoScalingConfiguration` (scaling posture), `AwsAppRunnerVpcConnector` (VPC egress), and `AwsAppRunnerObservabilityConfiguration` (X-Ray tracing). Each is designed by AWS to be shared across services and tuned in one place.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via Planton provider config
-- **A container image in ECR or ECR Public** if using image-based deployment
-- **An IAM access role** assumable by `build.apprunner.amazonaws.com` with ECR pull permissions if using a private ECR image (`imageRepositoryType: ECR`)
-- **An App Runner connection** (created in the AWS console with a one-time OAuth handshake) if using code-based deployment
-- **An `AwsAppRunnerVpcConnector`** if the service needs to reach VPC resources
-- **A customer-managed KMS key** if encrypting with your own key (changing it replaces the service)
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Companion resources** (optional, declaration before reference) -- create the [AwsAppRunnerAutoScalingConfiguration](/cloud-catalog/aws-app-runner-auto-scaling-configuration), [AwsAppRunnerVpcConnector](/cloud-catalog/aws-app-runner-vpc-connector), and [AwsAppRunnerObservabilityConfiguration](/cloud-catalog/aws-app-runner-observability-configuration) resources first; the service references their ARN outputs.
 
-## Quick Start
+### AWS Account
 
-Create a file `app-runner.yaml`:
+- **A container image in ECR or ECR Public** if using image-based deployment. For private ECR, an IAM access role assumable by `build.apprunner.amazonaws.com` with ECR read permissions (the AWS-managed `AWSAppRunnerServicePolicyForECRAccess` policy covers it).
+- **An App Runner Connection** if using code-based deployment. Connections require a one-time OAuth handshake in the AWS Console and are referenced here by ARN; one connection is shared across services.
+- **A KMS key** (optional) for encrypting the stored deployment source beyond the AWS-managed key. ForceNew: changing it replaces the service.
+- **A REGIONAL WAF web ACL** (optional) in the service's region — CloudFront-scope ACLs cannot attach to App Runner.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS App Runner Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Public Image**, **Production VPC-Connected and Encrypted Service**, or **GitHub Code Source** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsAppRunnerService
 metadata:
   name: my-api
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   imageSource:
-    imageIdentifier: public.ecr.aws/aws-containers/hello-app-runner:latest
-    imageRepositoryType: ECR_PUBLIC
-  port: "8000"
+    imageIdentifier: "public.ecr.aws/nginx/nginx:latest"
+    imageRepositoryType: "ECR_PUBLIC"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f app-runner.yaml
 ```
 
-This creates a publicly accessible App Runner service with default settings: 1 vCPU, 2 GB memory, and the account's default auto scaling configuration.
+This creates a publicly accessible App Runner service running an ECR Public image with default settings: 1 vCPU, 2 GB memory, port 8080, and the account's default auto scaling posture. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region for the service (e.g., `us-east-1`). | Required; non-empty |
-| `imageSource` or `codeSource` | `object` | Deployment source. Exactly one must be provided. | CEL: `exactly_one_source` |
-| `imageSource.imageIdentifier` | `string` | Full container image URI including tag or digest. | Min length 1 |
-| `imageSource.imageRepositoryType` | `string` | `ECR` (private) or `ECR_PUBLIC`. | Closed set |
-| `imageSource.accessRoleArn` | `ref` | IAM role App Runner uses to pull from private ECR. Required when type is `ECR`. | CEL: `ecr_requires_access_role` |
-| `codeSource.repositoryUrl` | `string` | Repository URL (e.g., `https://github.com/owner/repo`). | Min length 1 |
-| `codeSource.branch` | `string` | Branch to deploy from. | Min length 1 |
-| `codeSource.connectionArn` | `ref` | ARN of the App Runner connection authorizing repository access. | Required |
-| `codeSource.configurationSource` | `string` | `API` (build config inline) or `REPOSITORY` (apprunner.yaml in the repo). | Closed set |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `port` | `string` | `8080` | Port the application listens on. |
-| `startCommand` | `string` | — | Override the container start command. |
-| `environmentVariables` | `map<string,string>` | `{}` | Plaintext environment variables. `AWSAPPRUNNER`-prefixed keys are reserved. |
-| `environmentSecrets` | `map<string,string>` | `{}` | Values are Secrets Manager / SSM Parameter Store ARNs; resolved at deploy time. The instance role must be allowed to read them. |
-| `cpu` | `string` | `1024` | `256`–`4096` or `0.25 vCPU`–`4 vCPU`. |
-| `memory` | `string` | `2048` | `512`–`12288` (MB) or `0.5 GB`–`12 GB`. Not all CPU/memory pairings are valid. |
-| `instanceRoleArn` | `ref` | — | IAM role instances assume at runtime (references `AwsIamRole`). |
-| `healthCheck.protocol` | `string` | `TCP` | `TCP` (port open) or `HTTP` (GET expecting success). |
-| `healthCheck.path` | `string` | `/` | Path for HTTP checks; ignored for TCP. |
-| `healthCheck.interval` | `int` | `5` | Seconds between checks (1–20). |
-| `healthCheck.timeout` | `int` | `2` | Seconds to wait for a response (1–20). |
-| `healthCheck.healthyThreshold` | `int` | `1` | Consecutive successes to mark healthy (1–20). |
-| `healthCheck.unhealthyThreshold` | `int` | `5` | Consecutive failures before replacement (1–20). |
-| `autoScalingConfigurationArn` | `ref` | account default | References `AwsAppRunnerAutoScalingConfiguration`. |
-| `vpcConnectorArn` | `ref` | — | References `AwsAppRunnerVpcConnector` for VPC egress. |
-| `observabilityConfigurationArn` | `ref` | — | References `AwsAppRunnerObservabilityConfiguration`; the reference enables tracing. |
-| `isPubliclyAccessible` | `bool` | `true` | When `false`, reachable only through a VPC Ingress Connection. |
-| `ipAddressType` | `string` | `IPV4` | `IPV4` or `DUAL_STACK`. |
-| `kmsKeyArn` | `ref` | AWS-managed key | Customer-managed encryption key (references `AwsKmsKey`). **ForceNew.** |
-| `autoDeploymentsEnabled` | `bool` | `false` | Auto-deploy on source changes. Private ECR and code repos only — **AWS rejects it for ECR_PUBLIC** (CEL-validated). |
-| `customDomains[]` | `list` | `[]` | Custom domains keyed by `domainName`; `enableWwwSubdomain` defaults true. |
-| `webAclArn` | `ref` | — | REGIONAL `AwsWafWebAcl` to associate. |
-
-## Stack Outputs
-
-| Output | Description |
-|--------|-------------|
-| `service_arn` | Full ARN — the join key for VPC Ingress Connections and deployment triggers. |
-| `service_id` | AWS-assigned service identifier. |
-| `service_url` | Default HTTPS endpoint (scheme-less). |
-| `service_name` | The service name (metadata.name). |
-| `service_status` | Lifecycle status at the end of deployment. |
-| `custom_domains` | Per-domain `dns_target` + certificate-validation CNAMEs — compose into `AwsRoute53DnsRecord`. |
-
-## Composing the Family
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the service to its companion resources and IAM roles deployed in the same InfraPipeline:
 
 ```yaml
 spec:
+  imageSource:
+    accessRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: ecr-access-role
+        fieldPath: status.outputs.role_arn
+  instanceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: api-instance-role
+      fieldPath: status.outputs.role_arn
   autoScalingConfigurationArn:
     valueFrom:
       kind: AwsAppRunnerAutoScalingConfiguration
-      name: prod-scaling
+      name: latency-sensitive-api
       fieldPath: status.outputs.configuration_arn
   vpcConnectorArn:
     valueFrom:
@@ -127,18 +95,74 @@ spec:
       kind: AwsAppRunnerObservabilityConfiguration
       name: xray-tracing
       fieldPath: status.outputs.configuration_arn
-  webAclArn:
+  kmsKeyArn:
     valueFrom:
-      kind: AwsWafWebAcl
-      name: prod-edge-acl
-      fieldPath: status.outputs.web_acl_arn
+      kind: AwsKmsKey
+      name: service-encryption-key
+      fieldPath: status.outputs.key_arn
 ```
 
-Because the companion ARNs carry revisions, registering a new configuration revision rolls every referencing service on its next deployment — fleet-wide tuning through the resource graph.
+The InfraPipeline resolves the dependency graph, deploys the companion resources and IAM roles first, then provisions the App Runner service with the resolved ARNs.
 
-## Deliberately Omitted
+## Key Configuration
 
-- **App Runner connections** (`aws_apprunner_connection`): require an out-of-band OAuth handshake in the console to become usable; compose by literal ARN.
-- **VPC Ingress Connections** (`aws_apprunner_vpc_ingress_connection`): the inbound private-access plane; composes against the exported `service_arn`.
-- **The deployment trigger** (`aws_apprunner_deployment`): a one-shot operation, not infrastructure.
-- **Per-kind tags**: identity tags derive from metadata.
+These are the most important decisions when configuring an App Runner service. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Image vs. code source** -- Choose `imageSource` to deploy a pre-built container image from ECR or ECR Public. Choose `codeSource` to deploy from a repository through an App Runner connection, with the build configured in the spec (`configurationSource: API`) or read from an `apprunner.yaml` in the repo. Exactly one must be provided.
+
+**Companions attach by reference, and presence IS the switch** -- `autoScalingConfigurationArn`, `vpcConnectorArn`, and `observabilityConfigurationArn` each reference a shared, versioned companion kind. Omitted: AWS's account default scaling applies, egress is public-internet-only, and tracing is off. There are no separate enable toggles to keep in sync.
+
+**Instance sizing** -- Defaults to 1 vCPU (`cpu: "1024"`) and 2 GB memory (`memory: "2048"`). AWS accepts specific CPU/memory pairings only (e.g. 4 vCPU requires 8–12 GB); the console derives the legal memory choices from the selected CPU.
+
+**Deterministic rollouts by default** -- `autoDeploymentsEnabled` is deliberately false: deployments happen when this resource is applied, so every rollout is recorded and graph-ordered. Enabling it makes App Runner watch the source (private ECR or code repositories only — AWS rejects it for ECR Public images).
+
+**Custom domains export their DNS story** -- each `customDomains` entry gets a managed TLS certificate; the validation CNAME records and the service's DNS target export per domain in stack outputs, ready to compose into [AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record) resources.
+
+**KMS encryption is the one-way door** -- `kmsKeyArn` is ForceNew: changing it replaces the service. Everything else updates in place; source changes roll a new deployment.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** (optional) | `instanceRoleArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (conditional) | `imageSource.accessRoleArn` | `status.outputs.role_arn` |
+| **AwsAppRunnerAutoScalingConfiguration** (optional) | `autoScalingConfigurationArn` | `status.outputs.configuration_arn` |
+| **AwsAppRunnerVpcConnector** (optional) | `vpcConnectorArn` | `status.outputs.vpc_connector_arn` |
+| **AwsAppRunnerObservabilityConfiguration** (optional) | `observabilityConfigurationArn` | `status.outputs.configuration_arn` |
+| **AwsKmsKey** (optional) | `kmsKeyArn` | `status.outputs.key_arn` |
+| **AwsWafWebAcl** (optional) | `webAclArn` | `status.outputs.web_acl_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `service_arn` | Full ARN of the App Runner Service | VPC Ingress Connections, IAM policies, CloudWatch alarms |
+| `service_id` | Unique identifier assigned by App Runner | Operational dashboards, event filtering |
+| `service_url` | HTTPS URL for the service | Application configuration, DNS CNAME records |
+| `service_name` | Computed name derived from metadata | Monitoring labels, log correlation |
+| `service_status` | Current operational status (e.g., `RUNNING`) | Health monitoring, deployment verification |
+| `custom_domains` | Per-domain DNS target, association status, and certificate-validation records | Route53 record composition for ownership proof |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic public image** -- ECR Public image with default instance sizing and TCP health checks. The simplest path to an HTTPS endpoint for prototyping and internal tools. Start from the **Basic Public Image** preset.
+
+**Production VPC-connected service** -- Private ECR image with a VPC connector for private egress, customer-managed KMS encryption, a tuned auto scaling configuration (warm instance pool), and HTTP health checks. The recommended production baseline. Start from the **Production VPC-Connected and Encrypted Service** preset.
+
+**GitHub code source** -- Deploys directly from a repository using a managed runtime (Node.js, Python, Go, and more). App Runner handles the build-to-deploy lifecycle with no container image or CI/CD pipeline required. Start from the **GitHub Code Source** preset.
+
+## Works With
+
+- [**AWS App Runner Auto Scaling Configuration**](/cloud-catalog/aws-app-runner-auto-scaling-configuration) -- the fleet's scaling posture, attached via `autoScalingConfigurationArn`
+- [**AWS App Runner VPC Connector**](/cloud-catalog/aws-app-runner-vpc-connector) -- private VPC egress, attached via `vpcConnectorArn`
+- [**AWS App Runner Observability Configuration**](/cloud-catalog/aws-app-runner-observability-configuration) -- X-Ray tracing, attached via `observabilityConfigurationArn`
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the ECR access role for image pulling and the instance role for runtime AWS API access
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- customer-managed encryption for the stored deployment source
+- [**AWS WAF Web ACL**](/cloud-catalog/aws-waf-web-acl) -- request inspection in front of the endpoint via `webAclArn`
+- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the exported domain-validation and alias records' natural home

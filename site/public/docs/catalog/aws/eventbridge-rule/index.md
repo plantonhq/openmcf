@@ -8,263 +8,141 @@ componentName: "awseventbridgerule"
 
 # AWS EventBridge Rule
 
-Deploys an AWS EventBridge rule with bundled targets for event-driven routing or scheduled execution. Rules match incoming events by pattern or fire on a cron/rate schedule, then route matched events to one or more targets (Lambda, SQS, SNS, Step Functions, etc.) with optional input transformation, retry policies, and dead letter queues.
+Deploys an EventBridge rule with bundled targets that matches events by pattern or schedule and routes them to one or more downstream services. Each target independently supports input transformation, retry policies, dead letter queues, and service-typed parameters (SQS FIFO message groups, Kinesis partition keys, API-destination path/query/header values, Batch job submission, ECS RunTask launches). The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring event bus, IAM role, target, and SQS dead letter queue dependencies.
 
 ## What Gets Created
 
-When you deploy an AwsEventBridgeRule resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **EventBridge Rule** — an `aws_cloudwatch_event_rule` attached to the specified event bus (or the default bus), configured with either an event pattern or a schedule expression
-- **EventBridge Targets** — one `aws_cloudwatch_event_target` per entry in `targets`, linked to the rule with optional input transformation, retry policy, and dead letter queue configuration
+- **EventBridge Rule** -- an event rule attached to the specified bus (or the default bus), configured with either a JSON event pattern for event matching or a schedule expression (cron/rate) for time-based triggering
+- **EventBridge Targets** -- one target resource per entry in the `targets` list, each wired to the rule with its own ARN, optional IAM role, input transformation, retry policy, and dead letter configuration
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An event bus** if targeting a custom bus — use AwsEventBridgeBus to create one, or omit `eventBusName` to use the default AWS bus
-- **Target resources** must exist — Lambda functions, SQS queues, SNS topics, Step Functions state machines, etc.
-- **An IAM role** if targeting Step Functions, ECS, Kinesis, Batch, CodeBuild, or CodePipeline — EventBridge needs a role to invoke these targets
-- **An SQS queue** if using dead letter queues — for catching events that fail delivery
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `rule.yaml`:
+### AWS Account
+
+- **A custom event bus** (optional) -- required when attaching the rule to a custom bus rather than the default AWS event bus. Provide the bus name directly or reference an AwsEventBridgeBus Cloud Resource via ValueFromRef.
+- **Target resources** -- at least one target (Lambda function, SQS queue, SNS topic, Step Functions state machine, etc.) must exist. Provide the target ARN directly or via ValueFromRef.
+- **An IAM role** (optional) -- required for targets where EventBridge must assume a role (Step Functions, ECS, Kinesis, Batch). Not needed for Lambda, SQS, or SNS targets that use resource-based policies. Provide the ARN directly or reference an AwsIamRole Cloud Resource via ValueFromRef.
+- **An SQS dead letter queue** (optional) -- required when configuring per-target dead letter queues. Provide the ARN directly or reference an AwsSqsQueue Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS EventBridge Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Scheduled Lambda** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeRule
 metadata:
   name: hourly-cleanup
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeRule.hourly-cleanup
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
-  description: Trigger cleanup function every hour
+  region: us-west-2
   scheduleExpression: "rate(1 hour)"
   targets:
     - name: cleanup-function
       arn:
-        value: arn:aws:lambda:us-east-1:123456789012:function:cleanup
+        value: "arn:aws:lambda:us-west-2:123456789012:function:cleanup"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f rule.yaml
+planton apply -f event-rule.yaml
 ```
 
-This creates a scheduled rule on the default event bus that triggers a Lambda function every hour.
+This creates a schedule-based rule on the default event bus that triggers a Lambda function every hour. No input transformation, retry policy, or dead letter queue is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the EventBridge rule will be created (e.g., `us-east-1`). | Required; non-empty |
-| `eventPattern` | `object` | JSON event pattern for matching incoming events. Expressed as a structured object in YAML. Mutually exclusive with `scheduleExpression`. | Exactly one of `eventPattern` or `scheduleExpression` must be set |
-| `scheduleExpression` | `string` | Cron or rate expression for time-based triggering (e.g., `rate(5 minutes)`, `cron(0 12 * * ? *)`). Mutually exclusive with `eventPattern`. | Exactly one of `eventPattern` or `scheduleExpression` must be set; max 256 chars |
-| `targets` | `AwsEventBridgeTarget[]` | Targets to invoke when the rule matches an event. | Minimum 1 item required; AWS limit 5 per rule |
-| `targets[].name` | `string` | Unique name for the target within the rule. Used as the EventBridge `target_id`. | Required; max 64 chars; pattern `[0-9A-Za-z_.-]+` |
-| `targets[].arn` | `StringValueOrRef` | ARN of the target resource (Lambda, SQS, SNS, Step Functions, etc.). | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `eventBusName` | `StringValueOrRef` | `"default"` | Event bus to attach the rule to. Changing this forces rule replacement. Can reference AwsEventBridgeBus via `valueFrom`. Schedule rules only work on the default bus (AWS constraint). |
-| `description` | `string` | — | Human-readable description. Max 512 characters. |
-| `state` | `string` | `"ENABLED"` | Rule state. Valid values: `"ENABLED"`, `"DISABLED"`, `"ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"` (additionally matches read-only CloudTrail management events). |
-| `roleArn` | `StringValueOrRef` | — | Rule-level IAM role EventBridge assumes when invoking targets. Per-target `roleArn` takes precedence for its own target. Can reference AwsIamRole via `valueFrom`. |
-| `forceDestroy` | `bool` | `false` | Force rule deletion even when out-of-band consumers attached extra targets. The module manages its own targets' teardown ordering either way. |
-| `targets[].roleArn` | `StringValueOrRef` | — | IAM role ARN for EventBridge to assume when invoking this target. Required for Step Functions, ECS, Kinesis, Batch, CodeBuild, and CodePipeline targets. Can reference AwsIamRole via `valueFrom`. |
-| `targets[].input` | `string` | — | Constant JSON input passed to the target instead of the matched event. Max 8192 chars. Mutually exclusive with `inputPath` and `inputTransformer`. |
-| `targets[].inputPath` | `string` | — | JSONPath expression to extract a portion of the matched event (e.g., `$.detail`). Max 256 chars. Mutually exclusive with `input` and `inputTransformer`. |
-| `targets[].inputTransformer.inputPaths` | `map<string, string>` | — | Map of variable names to JSONPath expressions that extract values from the event. Max 100 entries. |
-| `targets[].inputTransformer.inputTemplate` | `string` | — | Template producing the final input. References variables from `inputPaths` with `<variable>`. Max 8192 chars. Required when `inputTransformer` is set. |
-| `targets[].deadLetterConfig.arn` | `StringValueOrRef` | — | SQS queue ARN for events that fail delivery after all retries. Queue must be in the same account and region. Can reference AwsSqsQueue via `valueFrom`. |
-| `targets[].retryPolicy.maximumEventAgeInSeconds` | `int32` | `86400` | Max time in seconds EventBridge keeps retrying delivery. Range: 60–86400. |
-| `targets[].retryPolicy.maximumRetryAttempts` | `int32` | `185` | Max number of retry attempts. Range: 0–185. Set to 0 to send failures directly to DLQ. |
-
-### Service-Typed Target Blocks (at most one per target)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `targets[].sqsTarget.messageGroupId` | `string` | Message group ID for FIFO SQS queues. Required when targeting a FIFO queue. |
-| `targets[].kinesisTarget.partitionKeyPath` | `string` | JSONPath extracting the partition key from the event (shard routing). Max 256 chars. When unset, EventBridge uses the event ID. |
-| `targets[].httpTarget` | `object` | API destination parameters: `pathParameterValues` (path wildcards), `queryStringParameters`, and `headerParameters`. |
-| `targets[].batchTarget` | `object` | Batch job submission: `jobDefinition` (StringValueOrRef → AwsBatchJobDefinition's revision-carrying ARN) and `jobName` (required), `arraySize` (2–10000), `jobAttempts` (1–10). The target `arn` is the job queue. |
-| `targets[].ecsTarget` | `object` | ECS RunTask parameters — the target `arn` is the CLUSTER. Carries `taskDefinitionArn` (required, references AwsEcsTaskDefinition), `taskCount` (1–10), `launchType` XOR `capacityProviderStrategy`, `networkConfiguration` (subnets required, references AwsSubnet/AwsSecurityGroup), `orderedPlacementStrategy` (max 5), `placementConstraints` (max 10), `propagateTags`, `enableEcsManagedTags`, `enableExecuteCommand`. The target's `roleArn` is required for ECS. |
-
-## Examples
-
-### Event Pattern with Fan-Out
-
-Route order events from a custom bus to a Lambda processor and an SQS analytics queue:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the rule to a custom event bus and target resources deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeRule
-metadata:
-  name: order-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEventBridgeRule.order-router
 spec:
-  region: us-east-1
   eventBusName:
     valueFrom:
       kind: AwsEventBridgeBus
       name: order-events
-  description: Route order events to processor and analytics
-  eventPattern:
-    source:
-      - com.myapp.orders
-    detail-type:
-      - OrderCreated
+      fieldPath: status.outputs.bus_name
   targets:
-    - name: processor
+    - name: process-order
       arn:
-        valueFrom:
-          kind: AwsLambda
-          name: order-processor
-          fieldPath: status.outputs.function_arn
-      deadLetterConfig:
-        arn:
-          valueFrom:
-            kind: AwsSqsQueue
-            name: order-dlq
-            fieldPath: status.outputs.queue_arn
-    - name: analytics
-      arn:
-        valueFrom:
-          kind: AwsSqsQueue
-          name: order-analytics
-          fieldPath: status.outputs.queue_arn
-      inputPath: "$.detail"
-```
-
-### Scheduled Cron Job with Custom Retry
-
-Run a batch processor at 2 AM UTC daily with a constant JSON payload and reduced retry window:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeRule
-metadata:
-  name: nightly-batch
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEventBridgeRule.nightly-batch
-spec:
-  region: us-east-1
-  description: Run batch processing at 2 AM UTC daily
-  scheduleExpression: "cron(0 2 * * ? *)"
-  targets:
-    - name: batch-processor
-      arn:
-        value: arn:aws:lambda:us-east-1:123456789012:function:batch-processor
-      input: '{"mode": "full", "dryRun": false}'
-      retryPolicy:
-        maximumEventAgeInSeconds: 3600
-        maximumRetryAttempts: 3
-      deadLetterConfig:
-        arn:
-          value: arn:aws:sqs:us-east-1:123456789012:batch-dlq
-```
-
-### Input Transformer with Step Functions Target
-
-Match EC2 state-change events, reshape the payload, and invoke a Step Functions state machine:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeRule
-metadata:
-  name: ec2-state-handler
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEventBridgeRule.ec2-state-handler
-spec:
-  region: us-east-1
-  description: Handle EC2 instance state changes
-  eventPattern:
-    source:
-      - aws.ec2
-    detail-type:
-      - EC2 Instance State-change Notification
-    detail:
-      state:
-        - stopped
-        - terminated
-  targets:
-    - name: remediation-workflow
-      arn:
-        value: arn:aws:states:us-east-1:123456789012:stateMachine:ec2-remediation
+        value: "arn:aws:lambda:us-west-2:123456789012:function:process-order"
       roleArn:
         valueFrom:
           kind: AwsIamRole
-          name: eventbridge-sfn-role
+          name: eventbridge-invoke-role
           fieldPath: status.outputs.role_arn
-      inputTransformer:
-        inputPaths:
-          instance: "$.detail.instance-id"
-          state: "$.detail.state"
-          time: "$.time"
-        inputTemplate: '{"instanceId": "<instance>", "newState": "<state>", "eventTime": "<time>"}'
 ```
 
-### Disabled Rule for Staging
+The InfraPipeline resolves the dependency graph, deploys the event bus and IAM role first, then provisions the rule with the resolved values.
 
-A rule created in disabled state for pre-production testing:
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeRule
-metadata:
-  name: staging-order-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AwsEventBridgeRule.staging-order-router
-spec:
-  region: us-east-1
-  description: Order routing rule (disabled for staging validation)
-  state: DISABLED
-  eventPattern:
-    source:
-      - com.myapp.orders
-    detail-type:
-      - OrderCreated
-      - OrderUpdated
-  targets:
-    - name: order-handler
-      arn:
-        value: arn:aws:lambda:us-east-1:123456789012:function:staging-order-handler
-```
+These are the most important decisions when configuring an EventBridge rule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Event pattern vs. schedule** -- Use `eventPattern` to match events by structure (source, detail-type, detail fields) for reactive event routing. Use `scheduleExpression` with a rate or cron expression for time-based triggering. Exactly one must be set; they are mutually exclusive. Note: AWS supports schedule expressions only on the DEFAULT event bus -- a scheduled rule on a custom bus is rejected at deploy time.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Target input transformation** -- By default, the full event is passed to each target. Use `input` for a constant JSON payload, `inputPath` to extract a specific portion (e.g., `$.detail`), or `inputTransformer` to reshape the event using JSONPath extraction and a template. The three options are mutually exclusive per target.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `rule_arn` | `string` | ARN of the EventBridge rule, used in IAM policies and monitoring configurations |
-| `rule_name` | `string` | Name of the EventBridge rule, used in EventBridge API calls |
+**Service-typed target parameters** -- A target invoking SQS FIFO, Kinesis, an API destination, Batch, or ECS carries its service's parameter block (at most one per target): `sqsTarget.messageGroupId` for FIFO ordering, `kinesisTarget.partitionKeyPath` for shard routing, `httpTarget` path/query/header values, `batchTarget` naming the job definition and job each event submits (the target arn is the JOB QUEUE), and `ecsTarget` describing the RunTask launch (the target arn is the CLUSTER; task definition, launch type XOR capacity-provider strategy, VPC networking, and placement live in the block).
 
-## Related Components
+**Invocation identity** -- Targets on resource-based-policy services (Lambda, SQS, SNS) need no role. Step Functions, ECS, Kinesis, Batch, and cross-account bus targets require a role EventBridge assumes: set the rule-level `roleArn` to govern the whole rule, or a per-target `roleArn` (which takes precedence).
 
-- [AwsEventBridgeBus](/docs/catalog/aws/eventbridge-bus) — custom event bus for this rule to attach to
-- [AwsLambda](/docs/catalog/aws/lambda) — common target for event processing and scheduled tasks
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) — message queue target and dead letter queue for failed deliveries
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — fan-out notification target
-- [AwsIamRole](/docs/catalog/aws/iam-role) — IAM role for targets requiring assumed-role invocation (Step Functions, ECS, Kinesis, Batch)
+**Retry policy and dead letter queue** -- By default, EventBridge retries failed deliveries for up to 24 hours with 185 attempts. Customize `retryPolicy` to shorten the window for latency-sensitive targets (0 retries sends failures straight to the DLQ). Configure `deadLetterConfig` on each target to capture events that exhaust all retries, preventing silent event loss.
+
+**Rule state** -- Defaults to `ENABLED`. Set `state: DISABLED` to create the rule without activating it, useful for pre-deploying rules that should only activate during a rollout. `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS` additionally matches read-only CloudTrail management events (Describe*/List* API activity) that ENABLED rules never receive.
+
+**Teardown posture** -- AWS refuses to delete a rule that still has targets. `forceDestroy` defaults to false so an unexpectedly shared rule fails loudly instead of vanishing under an out-of-band consumer; the module manages its own targets' teardown ordering either way.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsEventBridgeBus** (optional) | `eventBusName` | `status.outputs.bus_name` |
+| **AwsIamRole** (optional) | `roleArn`, `targets[*].roleArn` | `status.outputs.role_arn` |
+| **AwsSqsQueue** (optional) | `targets[*].deadLetterConfig.arn` | `status.outputs.queue_arn` |
+| **AwsBatchJobDefinition** (optional) | `targets[*].batchTarget.jobDefinition` | `status.outputs.job_definition_arn` |
+| **AwsEcsTaskDefinition** (optional) | `targets[*].ecsTarget.taskDefinitionArn` | `status.outputs.task_definition_arn` |
+| **AwsSubnet** (optional) | `targets[*].ecsTarget.networkConfiguration.subnets` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `targets[*].ecsTarget.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
+
+The target `arn` itself carries no default kind (the destination varies) — reference any resource's ARN output via `valueFrom`, e.g. an AwsLambda's `function_arn`, an AwsSqsQueue's `queue_arn`, an AwsKinesisStream's `stream_arn`, an AwsStepFunction's `state_machine_arn`, an AwsEcsCluster's `cluster_arn`, or an AwsBatchJobQueue's `job_queue_arn`.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `rule_arn` | Amazon Resource Name of the rule | IAM policies, monitoring and alerting configurations |
+| `rule_name` | Name of the rule | EventBridge API calls, operational dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Scheduled Lambda** -- Rate-based schedule rule triggering a Lambda function on a recurring interval. The serverless replacement for cron jobs -- no servers to manage, no crontab files to maintain. Start from the **Scheduled Lambda** preset.
+
+**Event pattern to SQS** -- Pattern-based rule matching AWS service events (EC2 state changes, S3 operations) and routing them to an SQS queue with a dead letter queue for failed deliveries. The core event-driven routing pattern for decoupling producers and consumers. Start from the **Event Pattern to SQS** preset.
+
+**Multi-target fanout** -- Single rule routing matched events to multiple targets simultaneously (Lambda for real-time processing, SQS for audit trail, SNS for notifications). Each target has independent retry and DLQ configuration. Start from the **Multi-Target Fanout** preset.
+
+## Works With
+
+- [**AWS EventBridge Bus**](/cloud-catalog/aws-event-bridge-bus) -- provides the custom event bus to attach the rule to
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the invocation role for targets that require assumed credentials
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- provides dead letter queues for targets that need failed event capture

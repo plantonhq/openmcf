@@ -8,153 +8,91 @@ componentName: "openstackapplicationcredential"
 
 # OpenStack Application Credential
 
-Deploys an OpenStack Identity (Keystone) application credential, providing a scoped authentication token that allows applications to authenticate to OpenStack without using a user's password. This is an immutable resource -- any change to the spec destroys and recreates the credential, generating a new secret.
+Deploys a Keystone application credential on OpenStack -- a scoped authentication token that allows applications to authenticate without a user's password. The credential supports role restrictions, fine-grained API access rules, and optional expiration, with the secret generated once at creation time and captured in outputs.
 
 ## What Gets Created
 
-When you deploy an OpenStackApplicationCredential resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Identity Application Credential** — an `openstack_identity_application_credential_v3` resource scoped to the project that is active during creation, with optional role restrictions and fine-grained API access rules
+- **Application Credential** -- a Keystone identity credential bound to the creating user's project, with configurable roles, API access rules, unrestricted mode, and optional expiration
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Keystone v3 API** available in the target OpenStack deployment
-- **Appropriate roles** assigned to the authenticating user on the target project (the credential inherits from these roles)
+### OpenStack Account
 
-## Quick Start
+- **Project scope** -- the credential is created in the project associated with the current authentication scope. The creating user must have valid Keystone credentials on the target project.
+- **Roles** (optional) -- if restricting the credential to specific roles, confirm the role names exist in your Keystone deployment. Run `openstack role list` to find available roles. If omitted, the credential inherits all roles of the creating user.
+- **Access rules** (optional) -- if restricting the credential to specific API operations, confirm the service types (e.g., `compute`, `identity`, `block-storage`) match the services deployed in your OpenStack environment.
+- **Immutability** -- all fields are ForceNew. Any change to the spec destroys and recreates the credential, generating a new secret. Downstream consumers must update their authentication configuration.
 
-Create a file `app-credential.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Application Credential**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Restricted Read-Only** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackApplicationCredential
 metadata:
-  name: my-app-cred
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackApplicationCredential.monitoring-agent
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
-    planton.dev/stack.jobId: staging.OpenstackApplicationCredential.temp-reader
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackApplicationCredential.dev-automation
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackApplicationCredential.my-app-cred
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackapplicationcredential/iac/pulumi/module
-    planton.dev/provisioner: pulumi
-spec: {}
+  name: ci-readonly
+  org: acme-corp
+  env: prod
+spec:
+  roles:
+    - reader
 ```
-
-Deploy:
 
 ```shell
-planton apply -f app-credential.yaml
+planton apply -f application-credential.yaml
 ```
 
-This creates an application credential named `my-app-cred` with an auto-generated secret, inheriting all roles of the creating user on the current project. The secret is available in `status.outputs.secret` after deployment and cannot be retrieved again from the OpenStack API.
+This creates a restricted credential with the `reader` role, scoped to the current project, with an auto-generated secret and no expiration. No access rules, custom secret, or expiration are configured.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an application credential. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-All spec fields are optional. The credential name is derived from `metadata.name`.
+**Role scoping** -- `roles` restricts the credential to specific Keystone roles. If omitted, the credential inherits all roles of the creating user on the current project. For least-privilege access, explicitly list only the roles the application needs.
 
-### Optional Fields
+**Access rules** -- `accessRules` further restricts the credential to specific API operations by service type, HTTP method, and URL path pattern. Each rule specifies a service (e.g., `compute`), a method (e.g., `GET`), and a path (e.g., `/v2.1/servers/*`). Combine with role scoping for defense-in-depth.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the application credential. |
-| `unrestricted` | `bool` | `false` | When `true`, the credential can create additional application credentials or trusts. This is a security risk and should be used with caution. |
-| `secret` | `string` | auto-generated | User-provided secret for the credential. If omitted, OpenStack generates a random secret. Sensitive. |
-| `roles` | `string[]` | all user roles | List of role names to scope the credential. The credential can only perform actions allowed by these roles. If omitted, inherits all roles of the creating user on the current project. |
-| `accessRules` | `AccessRule[]` | — | Fine-grained API access restrictions. When set, the credential can only call the specified APIs. See Access Rule fields below. |
-| `expiresAt` | `string` | — | Expiration timestamp in RFC 3339 format (e.g., `2027-01-01T00:00:00Z`). After this time, the credential becomes invalid. If omitted, the credential does not expire. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this credential. |
+**Unrestricted mode** -- `unrestricted` defaults to `false`. When `true`, the credential can create additional application credentials or trusts. Leave `false` for automated workloads unless the credential explicitly needs to delegate access.
 
-**Access Rule fields** (each element in `accessRules`):
+**Secret management** -- `secret` accepts a user-provided secret string. If omitted, OpenStack generates a random secret. The secret appears in `status.outputs.secret` exactly once at creation time. Store it in a secret manager immediately -- it cannot be retrieved again from the OpenStack API.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `path` | `string` | yes | URL path pattern for the API endpoint. Supports wildcards (e.g., `/v2.1/servers/*`). |
-| `method` | `string` | yes | HTTP method allowed for this rule. Must be one of: `POST`, `GET`, `HEAD`, `PATCH`, `PUT`, `DELETE`. |
-| `service` | `string` | yes | OpenStack service type (e.g., `identity`, `compute`, `block-storage`, `image`, `network`). |
+**Expiration** -- `expiresAt` sets a hard expiration in RFC3339 format (e.g., `2027-01-01T00:00:00Z`). For long-running services, omit this field for a non-expiring credential. For CI/CD or temporary access, set a bounded expiration.
 
-## Examples
+## Outputs and Dependencies
 
-### Basic Application Credential
+### What This Component Consumes
 
-A credential with default settings, suitable for development automation:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackApplicationCredential
-metadata:
-  name: dev-automation
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: CI/CD automation credential for development
-```
+### What This Component Provides
 
-### Role-Scoped Credential with Expiration
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A credential restricted to specific roles with a defined lifetime, suitable for temporary access:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | UUID of the application credential in Keystone | Automation reference, audit trails |
+| `name` | Name of the credential | Monitoring labels, configuration references |
+| `secret` | Application credential secret (sensitive) | Authentication in downstream services and CI/CD pipelines |
+| `project_id` | UUID of the project this credential is scoped to | Verifying scope alignment with other resources |
+| `region` | OpenStack region where the credential was created | Region-aware downstream resources |
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackApplicationCredential
-metadata:
-  name: temp-reader
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: Temporary read-only credential for audit tooling
-  roles:
-    - reader
-    - load-balancer_member
-  expiresAt: "2027-06-01T00:00:00Z"
-```
+## Common Patterns
 
-### Fine-Grained Access Rules
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A credential locked down to specific API operations, allowing only compute server listing and identity project listing:
+**Read-only monitoring credential** -- A restricted credential with the `reader` role and GET-only access rules for compute, network, and block-storage APIs. Suitable for monitoring agents, dashboards, and audit tools that should never modify infrastructure. Start from the **Restricted Read-Only** preset.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackApplicationCredential
-metadata:
-  name: monitoring-agent
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: Monitoring agent with read-only access to compute and identity APIs
-  roles:
-    - reader
-  accessRules:
-    - service: compute
-      method: GET
-      path: /v2.1/servers/*
-    - service: identity
-      method: GET
-      path: /v3/projects
-    - service: compute
-      method: GET
-      path: /v2.1/flavors/*
-  expiresAt: "2027-12-31T23:59:59Z"
-```
+**Compute automation credential** -- A credential scoped to compute (Nova) operations with the `member` role. Allows creating, managing, and deleting instances without access to networking, storage, or identity APIs. Start from the **Compute-Scoped** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | UUID of the application credential in Keystone |
-| `name` | `string` | Name of the credential, derived from `metadata.name` |
-| `secret` | `string` | The credential secret (sensitive). Generated once at creation time and cannot be retrieved again from the OpenStack API. |
-| `projectId` | `string` | UUID of the project this credential is scoped to, computed from the authentication scope used during creation |
-| `region` | `string` | OpenStack region where the credential was created |
-
-## Related Components
-
-- [OpenStackProject](/docs/catalog/openstack/project) — the project scope that the application credential is bound to
-- [OpenStackRoleAssignment](/docs/catalog/openstack/role-assignment) — manages role assignments that determine what actions the credential can perform
+This component operates independently and does not reference other deployment components.

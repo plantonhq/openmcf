@@ -8,313 +8,147 @@ componentName: "awsfsxlustrefilesystem"
 
 # AWS FSx Lustre File System
 
-Deploys an Amazon FSx for Lustre file system with configurable deployment type, storage capacity, throughput tiers, optional S3 data integration, CloudWatch audit logging, and automatic backups. The component supports both ephemeral scratch file systems for temporary high-performance processing and persistent file systems with intra-AZ data replication and backup support.
+Deploys a high-performance parallel file system on Amazon FSx for Lustre with configurable deployment types (scratch or persistent), storage media, throughput tiers, optional S3 data repository integration, and CloudWatch audit logging. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, KMS keys, and CloudWatch log groups.
 
 ## What Gets Created
 
-When you deploy an AwsFsxLustreFileSystem resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **FSx for Lustre File System** — an `aws_fsx_lustre_file_system` resource placed in the specified subnet with the configured deployment type, storage capacity, encryption settings, and optional S3 import/export, CloudWatch log configuration, backup schedule, and metadata performance tuning
+- **FSx Lustre File System** -- a high-performance parallel file system placed in a single subnet, with configurable deployment type (SCRATCH_1, SCRATCH_2, PERSISTENT_1, PERSISTENT_2), storage media (SSD, HDD, or elastic Intelligent-Tiering), throughput tiers, and optional LZ4 data compression -- sized fresh or restored from an FSx backup via `backupId`
+- **Network Interface** -- an ENI in the specified subnet for Lustre client connectivity over TCP port 988 and data channels 1018-1023
+- **Log Configuration** -- created only when `logConfiguration` is provided; sends Lustre audit events (file access, creation, deletion) to a CloudWatch Logs log group
+- **Metadata Configuration** -- configured only when `metadataConfiguration` is provided on PERSISTENT_2 deployments; controls metadata IOPS for file creation and listing operations
+- **Automatic Backups** -- configured only on PERSISTENT deployments when `automaticBackupRetentionDays` is greater than 0
+- **S3 Data Repository** -- configured when `importPath` is provided (every deployment type except PERSISTENT_2); enables transparent access to S3 objects as files on the file system, with optional auto-import policies and export
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A subnet** in the target Availability Zone — Lustre file systems are single-AZ, exactly one subnet is required
-- **A security group** allowing Lustre traffic between the file system and its clients: TCP port 988 (Lustre protocol) and TCP ports 1018-1023 (data channels)
-- **A KMS key ARN** if using customer-managed encryption at rest (all Lustre file systems are encrypted by default with an AWS-managed key)
-- **A CloudWatch Logs log group** with an FSx resource policy if enabling audit logging
-- **An S3 bucket** if configuring import/export paths on scratch file systems
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `fsx-lustre.yaml`:
+### AWS Account
+
+- **One subnet** in the target VPC. Lustre file systems are single-AZ -- exactly one subnet is supported. All compute resources mounting this file system must have network connectivity to this subnet. Provide the subnet ID directly or reference an AwsSubnet Cloud Resource via ValueFromRef.
+- **A security group** that allows Lustre traffic between the file system and its clients: TCP port 988 (Lustre protocol) and TCP ports 1018-1023 (data channels). Provide the ID directly or reference an AwsSecurityGroup Cloud Resource.
+- **A KMS key** (optional) -- for customer-managed encryption at rest instead of the default AWS-managed FSx key. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
+- **A CloudWatch log group** (optional) -- required only when enabling audit logging. The log group must have a resource policy allowing FSx to write to it. Reference an AwsCloudwatchLogGroup Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS FSx Lustre File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Scratch Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsFsxLustreFileSystem
 metadata:
-  name: my-fsx-lustre
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsFsxLustreFileSystem.my-fsx-lustre
+  name: ml-training-scratch
+  org: acme-corp
+  env: dev
 spec:
+  region: us-west-2
+  deploymentType: SCRATCH_2
   storageCapacityGib: 1200
-  subnetId: subnet-0a1b2c3d4e5f00001
+  storageType: SSD
+  subnetId:
+    value: "subnet-0a1b2c3d4e5f00001"
+  securityGroupIds:
+    - value: "sg-0a1b2c3d4e5f00001"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f fsx-lustre.yaml
 ```
 
-This creates a SCRATCH_2 SSD file system with 1200 GiB in the specified subnet. No data replication, no backups — suitable for temporary processing workloads.
+This creates a SCRATCH_2 Lustre file system with 1.2 TiB of SSD storage, no backups, no S3 integration, and no audit logging. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the FSx Lustre file system will be created (e.g., `us-east-1`). | Required; non-empty |
-| `storageCapacityGib` | `int32` | Storage capacity in GiB. Valid increments depend on deployment type and storage type. Can be increased after creation but never decreased. Leave unset only when restoring from `backupId` or on `INTELLIGENT_TIERING`. | Minimum 1200 |
-| `subnetId` | `string` | Subnet ID for the file system's network interface. Lustre is single-AZ — exactly one subnet. ForceNew. | Required |
-| `subnetId.value` | `string` | Direct subnet ID value | — |
-| `subnetId.valueFrom` | `object` | Foreign key reference to an AwsSubnet resource | Default kind: `AwsSubnet` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `deploymentType` | `string` | `SCRATCH_2` | Deployment type controlling durability and performance. ForceNew. Valid: `SCRATCH_1`, `SCRATCH_2`, `PERSISTENT_1`, `PERSISTENT_2`. |
-| `storageType` | `string` | `SSD` | Storage class. ForceNew. `SSD` for sub-millisecond latency, `HDD` (PERSISTENT_1) for lower cost, `INTELLIGENT_TIERING` (PERSISTENT_2) for elastic pay-for-what-you-store capacity. |
-| `perUnitStorageThroughput` | `int32` | — | Throughput in MB/s/TiB for provisioned (SSD/HDD) PERSISTENT capacity. PERSISTENT_1 + SSD: 50, 100, 200. PERSISTENT_1 + HDD: 12, 40. PERSISTENT_2 + SSD: 125, 250, 500, 1000. In-place on PERSISTENT_2. |
-| `throughputCapacity` | `int32` | — | Absolute throughput in MB/s for `INTELLIGENT_TIERING` (multiples of 4000). Required there, invalid elsewhere. |
-| `dataCompressionType` | `string` | `NONE` | Data compression algorithm. `NONE` or `LZ4`. Can be changed after creation without impact to Lustre operations. |
-| `fileSystemTypeVersion` | `string` | — | Lustre version (e.g., `2.12`, `2.15`). Upgrades in place; downgrades replace. Leave empty for the latest version. |
-| `efaEnabled` | `bool` | `false` | Elastic Fabric Adapter + GPUDirect Storage. PERSISTENT_2 with `metadataConfiguration` only. ForceNew; pins `perUnitStorageThroughput` while enabled. |
-| `driveCacheType` | `string` | — | HDD read-cache decision: `READ` (SSD cache at 20% of capacity) or `NONE`. Required for HDD storage, invalid otherwise. ForceNew. |
-| `dataReadCacheConfiguration.sizingMode` | `string` | — | INTELLIGENT_TIERING read cache sizing: `PROPORTIONAL_TO_THROUGHPUT_CAPACITY`, `USER_PROVISIONED`, or `NO_CACHE`. Required for INTELLIGENT_TIERING. |
-| `dataReadCacheConfiguration.sizeGib` | `int32` | — | Cache size when `USER_PROVISIONED`: 32–131072 GiB per 4000 MB/s of throughput. |
-| `securityGroupIds` | `string[]` | `[]` | Security group IDs attached to the file system ENI. ForceNew. Must allow TCP 988 and 1018-1023. Can reference AwsSecurityGroup resources via `valueFrom`. Up to 50. |
-| `kmsKeyId` | `string` | — | Customer-managed KMS key ARN for encryption at rest. ForceNew. When omitted, uses the AWS-managed FSx key. Can reference AwsKmsKey resource via `valueFrom`. |
-| `backupId` | `string` | — | FSx backup to restore from (`backup-...`). ForceNew. Excludes `storageCapacityGib`. |
-| `importPath` | `string` | — | S3 URI for the legacy data repository link. ForceNew. Not PERSISTENT_2 — use `AwsFsxDataRepositoryAssociation` there. |
-| `exportPath` | `string` | — | S3 URI for exporting data back to S3 (same bucket). ForceNew. Requires `importPath`. |
-| `autoImportPolicy` | `string` | `NONE` | How the namespace tracks bucket changes: `NONE`, `NEW`, `NEW_CHANGED`, `NEW_CHANGED_DELETED`. Requires `importPath`. |
-| `importedFileChunkSize` | `int32` | `1024` | Stripe size in MiB for imported files (1–512000). Requires `importPath`. ForceNew. |
-| `rootSquashConfiguration.rootSquash` | `string` | — | UID:GID that root clients are squashed to (e.g., `65534:65534`). |
-| `rootSquashConfiguration.noSquashNids` | `string[]` | `[]` | Lustre NIDs exempt from squashing (e.g., `10.0.1.6@tcp`). |
-| `logConfiguration.destination` | `string` | — | CloudWatch Logs log group ARN for data repository events. Can reference AwsCloudwatchLogGroup resource via `valueFrom`. |
-| `logConfiguration.level` | `string` | `WARN_ERROR` | Log level. Valid: `DISABLED`, `WARN_ONLY`, `ERROR_ONLY`, `WARN_ERROR`. |
-| `automaticBackupRetentionDays` | `int32` | `0` | Days to retain automatic backups. Range: 0-90. Set to 0 to disable. PERSISTENT deployments only. |
-| `dailyAutomaticBackupStartTime` | `string` | — | UTC time to start daily backups in `HH:MM` format (e.g., `05:00`). |
-| `copyTagsToBackups` | `bool` | `false` | Copy file system tags to automatic backups. ForceNew. |
-| `skipFinalBackup` | `bool` | `true` | Skip creating a final backup on deletion. PERSISTENT deployments only. |
-| `finalBackupTags` | `map` | — | Tags applied to the final backup when one is taken. |
-| `weeklyMaintenanceStartTime` | `string` | — | Weekly UTC maintenance window in `d:HH:MM` format where d is 1=Monday through 7=Sunday (e.g., `1:05:00` for Monday 05:00 UTC). |
-| `metadataConfiguration.mode` | `string` | `AUTOMATIC` | Metadata IOPS mode. PERSISTENT_2 only. `AUTOMATIC` scales with storage capacity. `USER_PROVISIONED` allows explicit IOPS. |
-| `metadataConfiguration.iops` | `int32` | — | Metadata IOPS when mode is `USER_PROVISIONED`: 1500, 3000, 6000, then multiples of 12000 up to 192000. Grows in place; a decrease replaces the file system. |
-
-## Examples
-
-### Scratch File System with S3 Import
-
-A temporary file system that imports data from S3 for batch processing jobs:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the file system to a VPC and security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxLustreFileSystem
-metadata:
-  name: batch-fsx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsFsxLustreFileSystem.batch-fsx
 spec:
-  region: us-west-2
-  storageCapacityGib: 3600
-  subnetId: subnet-private-az1
-  securityGroupIds:
-    - sg-lustre-clients
-  dataCompressionType: LZ4
-  importPath: s3://my-data-bucket/training-data
-  exportPath: s3://my-data-bucket/results
-```
-
-### Persistent High-Throughput for ML Training
-
-PERSISTENT_2 with maximum throughput tier, LZ4 compression, automatic backups, and metadata IOPS scaling for production ML workloads:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxLustreFileSystem
-metadata:
-  name: ml-training-fsx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsFsxLustreFileSystem.ml-training-fsx
-spec:
-  region: us-east-1
-  deploymentType: PERSISTENT_2
-  storageCapacityGib: 4800
-  storageType: SSD
-  perUnitStorageThroughput: 1000
-  dataCompressionType: LZ4
-  subnetId: subnet-private-az1
-  securityGroupIds:
-    - sg-lustre-ml
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/mrk-example
-  automaticBackupRetentionDays: 7
-  dailyAutomaticBackupStartTime: "04:00"
-  copyTagsToBackups: true
-  weeklyMaintenanceStartTime: "7:03:00"
-  metadataConfiguration:
-    mode: AUTOMATIC
-```
-
-### HDD Data Lake with Cost-Optimized Storage
-
-PERSISTENT_1 HDD for large-capacity, sequential-throughput workloads where cost per GiB is the primary concern:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxLustreFileSystem
-metadata:
-  name: datalake-fsx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsFsxLustreFileSystem.datalake-fsx
-spec:
-  deploymentType: PERSISTENT_1
-  storageCapacityGib: 6000
-  storageType: HDD
-  perUnitStorageThroughput: 12
-  dataCompressionType: LZ4
-  subnetId: subnet-private-az1
-  securityGroupIds:
-    - sg-lustre-data
-  automaticBackupRetentionDays: 14
-  dailyAutomaticBackupStartTime: "02:00"
-  copyTagsToBackups: true
-  weeklyMaintenanceStartTime: "1:05:00"
-  logConfiguration:
-    destination: arn:aws:logs:us-east-1:123456789012:log-group:/aws/fsx/datalake
-    level: WARN_ERROR
-```
-
-### Full-Featured with Logging and Custom Metadata IOPS
-
-Production PERSISTENT_2 deployment with CloudWatch audit logging, customer-managed KMS encryption, explicit metadata IOPS, and final backup on deletion:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxLustreFileSystem
-metadata:
-  name: prod-fsx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsFsxLustreFileSystem.prod-fsx
-spec:
-  region: us-east-1
-  deploymentType: PERSISTENT_2
-  storageCapacityGib: 7200
-  storageType: SSD
-  perUnitStorageThroughput: 500
-  dataCompressionType: LZ4
-  fileSystemTypeVersion: "2.15"
-  subnetId: subnet-private-az1
-  securityGroupIds:
-    - sg-lustre-prod
-    - sg-lustre-admin
-  kmsKeyId: arn:aws:kms:us-east-1:123456789012:key/mrk-prod-key
-  automaticBackupRetentionDays: 30
-  dailyAutomaticBackupStartTime: "03:00"
-  copyTagsToBackups: true
-  skipFinalBackup: false
-  weeklyMaintenanceStartTime: "7:02:00"
-  logConfiguration:
-    destination: arn:aws:logs:us-east-1:123456789012:log-group:/aws/fsx/prod
-    level: WARN_ERROR
-  metadataConfiguration:
-    mode: USER_PROVISIONED
-    iops: 12000
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxLustreFileSystem
-metadata:
-  name: ref-fsx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsFsxLustreFileSystem.ref-fsx
-spec:
-  region: us-west-2
-  deploymentType: PERSISTENT_2
-  storageCapacityGib: 2400
-  storageType: SSD
-  perUnitStorageThroughput: 250
   subnetId:
     valueFrom:
       kind: AwsSubnet
-      name: my-private-subnet-a
+      name: private-subnet-a
       fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
         name: lustre-sg
-        field: status.outputs.security_group_id
+        fieldPath: status.outputs.security_group_id
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
-      name: fsx-key
-      field: status.outputs.key_arn
-  logConfiguration:
-    destination:
-      valueFrom:
-        kind: AwsCloudwatchLogGroup
-        name: fsx-logs
-        field: status.outputs.log_group_arn
-    level: WARN_ERROR
+      name: data-encryption-key
+      fieldPath: status.outputs.key_arn
 ```
 
-## Presets
+The InfraPipeline resolves the dependency graph, deploys the VPC, security group, and KMS key first, then provisions the FSx Lustre file system with the resolved values.
 
-Planton includes preset configurations for common FSx Lustre deployment patterns. Each preset is a ready-to-customize manifest with placeholder values for subnet and security group IDs.
+## Key Configuration
 
-### Scratch Development
+These are the most important decisions when configuring an FSx Lustre file system. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**File**: `presets/01-scratch-development.yaml`
+**Deployment type** -- SCRATCH_2 is the default for ephemeral processing jobs (no replication, no backups, lowest cost). PERSISTENT_2 is recommended for production workloads requiring data durability, automatic backups, and higher throughput tiers. PERSISTENT_1 supports HDD storage for cost-optimized capacity workloads. This is a ForceNew attribute.
 
-SCRATCH_2 SSD with 1200 GiB — the smallest and cheapest Lustre configuration. No data replication, no backups. Use for development and test environments, short-lived batch processing, CI/CD scratch space, and experiments where data loss is acceptable.
+**Storage capacity and type** -- Minimum 1200 GiB. SSD provides sub-millisecond latency for most workloads. HDD is only available with PERSISTENT_1 (with a READ/NONE `driveCacheType` arm) and offers lower cost at higher latency. INTELLIGENT_TIERING (PERSISTENT_2 only) is elastic -- no provisioned capacity at all; instead it requires `throughputCapacity` in multiples of 4000 MB/s, a `dataReadCacheConfiguration`, and a `metadataConfiguration`. Provisioned storage can be increased after creation but never decreased. Alternatively, restore from an FSx backup with `backupId` -- the file system inherits the backup's size, so capacity is not specified on a restore.
 
-### Persistent High Throughput
+**Per-unit storage throughput** -- Applies to PERSISTENT deployments on SSD/HDD. Controls throughput per TiB of storage. PERSISTENT_2 supports up to 1000 MB/s/TiB for maximum performance. PERSISTENT_1 with HDD supports 12 or 40 MB/s/TiB for capacity-optimized workloads.
 
-**File**: `presets/02-persistent-high-throughput.yaml`
+**Root squash and EFA** -- `rootSquashConfiguration` maps root users on client instances to an unprivileged UID:GID (with an exempt-NID list) -- the POSIX guardrail for shared multi-team clusters; it updates in place. `efaEnabled` (PERSISTENT_2 + metadata configuration required, ForceNew) enables OS-bypass networking and GPUDirect Storage for the most latency-sensitive HPC/ML fleets.
 
-PERSISTENT_2 SSD with 2400 GiB and 1000 MB/s/TiB throughput. LZ4 compression, 7-day automatic backups at 04:00 UTC, AUTOMATIC metadata IOPS, and Sunday 03:00 UTC maintenance window. Use for distributed ML training, HPC simulations, video rendering, and production workloads requiring maximum I/O performance with data durability.
+**S3 data repository** -- Two generations exist and cannot be mixed on one file system. The legacy in-spec `importPath`/`exportPath` arm works on SCRATCH_1/SCRATCH_2/PERSISTENT_1 and is immutable. The modern generation is the [AWS FSx Data Repository Association](/cloud-catalog/aws-fsx-data-repository-association) kind -- per-directory links with independent lifecycles and per-event sync policies, and the ONLY option on PERSISTENT_2.
 
-### Persistent Capacity Data Lake
+## Outputs and Dependencies
 
-**File**: `presets/03-persistent-capacity-datalake.yaml`
+### What This Component Consumes
 
-PERSISTENT_1 HDD with 6000 GiB and 12 MB/s/TiB throughput. LZ4 compression, 14-day automatic backups at 02:00 UTC, and Monday 05:00 UTC maintenance window. Use for data lake staging, genomics pipelines, log analysis, and workloads where cost per GiB matters more than latency.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnetId` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `logConfiguration.destination` | `status.outputs.log_group_arn` |
 
-## Stack Outputs
+### What This Component Provides
 
-After deployment, the following outputs are available in `status.outputs`:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `file_system_id` | `string` | ID of the file system (e.g., `fs-0123456789abcdef0`). Primary identifier for EKS PersistentVolumes, ECS task definitions, and AWS Batch compute environments. |
-| `file_system_arn` | `string` | ARN of the file system. Used in IAM policies and for creating data repository associations. |
-| `dns_name` | `string` | DNS name for the file system (e.g., `fs-0123456789abcdef0.fsx.us-east-1.amazonaws.com`). Used in mount commands with `mount_name`. |
-| `mount_name` | `string` | Lustre mount name (e.g., `fsx` or `2p5wpbwj`). Auto-generated by AWS. Mount command: `mount -t lustre <dns_name>@tcp:/<mount_name> /mnt/fsx`. |
-| `network_interface_ids` | `string[]` | Network interface IDs created for the file system. Lustre creates one ENI in the specified subnet. Useful for security group debugging and network troubleshooting. |
-| `vpc_id` | `string` | VPC ID in which the file system was created. Computed from the subnet. |
-| `file_system_type_version` | `string` | Actual Lustre version deployed (e.g., `2.12`, `2.15`). May differ from the requested version if the field was left empty. |
-| `owner_id` | `string` | AWS account ID of the file system owner. |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `file_system_id` | FSx file system identifier | EKS PersistentVolumes (FSx CSI driver), ECS task definitions, AWS Batch compute environments |
+| `file_system_arn` | Amazon Resource Name of the file system | IAM policies, data repository associations |
+| `dns_name` | FSx DNS name for mount commands | Lustre mount command: `mount -t lustre <dns_name>@tcp:/<mount_name> /mnt/fsx` |
+| `mount_name` | Lustre mount name (auto-generated) | Combined with `dns_name` to construct the full mount path |
+| `network_interface_ids` | ENI IDs created for the file system | Security group debugging, network troubleshooting |
+| `vpc_id` | VPC containing the file system | Security group rules, network placement verification |
+| `file_system_type_version` | Deployed Lustre version | Workload compatibility validation |
+| `owner_id` | AWS account ID of the file system owner | Cross-account access configuration |
 
-## Related Components
+## Common Patterns
 
-- [AwsElasticFileSystem](/docs/catalog/aws/elastic-file-system) — alternative managed file system for general-purpose NFS workloads
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the subnet for file system placement
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls Lustre protocol traffic (TCP 988, 1018-1023) to the file system
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed encryption key for data at rest
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — receives audit log events from the file system
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Scratch development** -- SCRATCH_2 with 1.2 TiB SSD storage. No data replication or backups. Ideal for short-lived ML training jobs, HPC simulations, and batch processing where data is sourced from S3 and results are written back. Start from the **Scratch Development** preset.
+
+**Persistent high throughput** -- PERSISTENT_2 with 2.4 TiB SSD, 1000 MB/s/TiB throughput, LZ4 compression, automatic backups, and automatic metadata IOPS. Designed for production ML training pipelines and HPC workloads that need durable, high-performance storage. Start from the **Persistent High Throughput** preset.
+
+**Persistent capacity datalake** -- PERSISTENT_1 with 6 TiB HDD, 12 MB/s/TiB throughput, LZ4 compression, and 14-day backup retention. Cost-optimized for large datasets accessed sequentially, such as data lake processing and genomics pipelines. Start from the **Persistent Capacity Datalake** preset.
+
+## Works With
+
+- [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides the subnet for the file system's network interface placement
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls Lustre traffic (TCP 988, 1018-1023) access to the file system
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encryption at rest
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- receives Lustre audit events for compliance and debugging
+- [**AWS FSx Data Repository Association**](/cloud-catalog/aws-fsx-data-repository-association) -- links directories to S3 buckets with bidirectional sync (consumes `file_system_id`)

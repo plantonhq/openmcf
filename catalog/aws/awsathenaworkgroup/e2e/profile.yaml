@@ -15,7 +15,7 @@ spec:
   # - managed-results: the AWS-managed storage arm (no bucket anywhere).
   #
   # Excluded from live lanes with reasons (proven by spec tests + the
-  # offline plan gate against iac/hack/manifest.yaml):
+  # offline plan gate against e2e/manifest.yaml):
   # - identity_center + s3_access_grants: require an IAM Identity Center
   #   instance the e2e account does not run (the AMP-workspace class).
   # - customer_content_encryption + cloud_watch_logging with a custom log

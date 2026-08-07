@@ -73,12 +73,12 @@ Use fix when you need to:
 
 **Fix documentation sync:**
 ```bash
-@fix-planton-component PostgresKubernetes --explain "presets show old field 'database_name' but current spec uses 'db_identifier', update all presets to match"
+@fix-planton-component KubernetesPostgres --explain "presets show old field 'database_name' but current spec uses 'db_identifier', update all presets to match"
 ```
 
 **Fix missing field:**
 ```bash
-@fix-planton-component MongodbAtlas --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
+@fix-planton-component AtlasMongodb --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
 ```
 
 **Fix test failures:**
@@ -97,7 +97,7 @@ Use fix when you need to:
    - Read Pulumi module to see current deployment logic
    - Read Terraform module to see current TF implementation
    - Read spec_test.go to see current test logic
-4. **Read documentation context** - Consult v1/docs/README.md for design philosophy
+4. **Read documentation context** - Consult GUIDE.md for design philosophy
 5. **Identify affected artifacts** - Determine what needs updating:
    - Proto files?
    - IaC modules?
@@ -114,19 +114,19 @@ Use fix when you need to:
    - Add/modify buf.validate rules
    - **Validation message quality**: Every CEL `message` must be a clear, actionable sentence a non-expert can act on. See rule `002-spec-validate` ("VALIDATION MESSAGE QUALITY"). No terse messages, no raw regex in user-facing text.
    - **Must execute**: `make protos` from project root to regenerate Go stubs
-   - **Must execute**: `go test ./catalog/<provider>/<component>/v1/` to validate spec tests
+   - **Must execute**: `go test ./catalog/<provider>/<component>/...` to validate spec tests
 
 2. **Fix IaC Modules** (if deployment logic change needed)
    - Update Pulumi module (main.go, locals.go, resource files)
    - Update Terraform module to maintain feature parity
    - Ensure both implement the same behavior
    - **Module comment quality**: keep the module code commented to the module-comment bar (explain *why*/trade-offs/provider quirks/non-obvious ordering, not narration -- `architecture/deployment-component.md` §4.1). A fix must never strip a module's comments.
-   - **Must execute**: `go build ./catalog/<provider>/<component>/v1/...` from project root to validate complete build
+   - **Must execute**: `go build ./catalog/<provider>/<component>/...` from project root to validate complete build
 
 3. **Fix Tests** (if test logic change needed)
    - Update spec_test.go to validate new behavior
    - Add tests for the fix
-   - Run component tests: `go test ./catalog/<provider>/<component>/v1/`
+   - Run component tests: `go test ./catalog/<provider>/<component>/...`
 
 **Validation After Source Code Fix (Execute in Sequence):**
 ```bash
@@ -134,13 +134,13 @@ Use fix when you need to:
 make protos
 
 # 2. Always: Validate component tests (validates buf.validate rules)
-go test ./catalog/<provider>/<component>/v1/
+go test ./catalog/<provider>/<component>/...
 
 # 3. If Go/Pulumi code changed: Verify complete build
-go build ./catalog/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/...
 
 # 4. Always: Verify all tests pass
-go test -v ./catalog/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/...
 ```
 
 ### Step 3: Propagate to Documentation (Match Source)
@@ -165,7 +165,7 @@ go test -v ./catalog/<provider>/<component>/v1/
    - Update "Key Features" if capabilities changed
    - Ensure README examples match current spec.proto
 
-3. **Update docs/README.md** (research document)
+3. **Update GUIDE.md** (authored judgment)
    - Update if fix changes deployment approach
    - Update if fix changes best practices
    - Update if fix affects the parity accounting (coverage, compositions, or recorded exclusions)
@@ -195,7 +195,7 @@ go test -v ./catalog/<provider>/<component>/v1/
 3. **Pulumi ↔ Terraform**
    - Both modules create same resources
    - Both use same fields from spec
-   - Both produce same outputs (stack_outputs)
+   - Both produce same outputs (the {Kind}StackOutputs message)
    - Feature parity maintained
 
 4. **Tests ↔ Validations**
@@ -206,7 +206,7 @@ go test -v ./catalog/<provider>/<component>/v1/
 5. **Docs ↔ Implementation**
    - README describes actual behavior
    - Examples demonstrate actual API
-   - Research docs explain actual approach
+   - GUIDE.md explains actual approach
    - No outdated information
 
 ### Step 5: Run Comprehensive Validation
@@ -219,15 +219,15 @@ make protos
 # Must succeed - ensures .pb.go files are up to date
 
 # 2. Component-specific tests (validates buf.validate rules)
-go test ./catalog/<provider>/<component>/v1/
+go test ./catalog/<provider>/<component>/...
 # Must pass - validates validation logic is correct in spec.proto
 
 # 3. If Pulumi/Go code changed: Build validation
-go build ./catalog/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/...
 # Must pass - validates no syntax/import/compilation errors
 
 # 4. Full test suite (validates all tests)
-go test -v ./catalog/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/...
 # Must pass - validates no regressions anywhere in the codebase
 ```
 
@@ -273,7 +273,7 @@ Documentation Updates:
      - Added wildcard support to key features
      - Updated example usage to show wildcard
      
-  ✅ v1/docs/README.md
+  ✅ GUIDE.md
      - Updated comparison table (wildcard support)
      - Updated best practices section
      - No architectural changes (just capability)
@@ -286,9 +286,9 @@ Consistency Verified:
   ✅ Docs ↔ Implementation (docs describe actual behavior)
 
 Validation Results:
-  ✅ Component tests passed (go test ./catalog/.../v1/)
-  ✅ Build passed (go build ./catalog/.../v1/...)
-  ✅ Component tests passed (go test -v ./catalog/.../v1/)
+  ✅ Component tests passed (go test ./catalog/...)
+  ✅ Build passed (go build ./catalog/...)
+  ✅ Component tests passed (go test -v ./catalog/...)
 
 Files Modified: 5
 Documentation Updated: 3
@@ -321,8 +321,8 @@ Next Steps:
 4. Update spec_test.go (test with large values)
 5. Update Terraform variables.tf (int → number)
 6. Update README.md (mention TB-scale support)
-8. Run build: `go build ./catalog/<provider>/<component>/v1/...`
-9. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
+8. Run build: `go build ./catalog/<provider>/<component>/...`
+9. Run all tests: `go test -v ./catalog/<provider>/<component>/...`
 10. Validate consistency
 
 ### Scenario 2: IaC Implementation Fix
@@ -337,11 +337,11 @@ Next Steps:
 **Actions:**
 1. Update Pulumi module/main.go (use spec.BackupRetentionPeriod)
 2. Update Terraform main.tf (ensure same logic)
-3. Run build: `go build ./catalog/<provider>/<component>/v1/...`
+3. Run build: `go build ./catalog/<provider>/<component>/...`
 4. Update spec_test.go (test backup retention values)
 5. Run component tests: `go test ./catalog/aws/awsrdsinstance/v1alpha1/`
 6. Run E2E tests to verify fix works
-7. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
+7. Run all tests: `go test -v ./catalog/<provider>/<component>/...`
 8. Validate consistency
 
 ### Scenario 3: Documentation Out of Sync
@@ -350,7 +350,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-planton-component PostgresKubernetes --explain "presets use deprecated field 'database_name' but spec.proto now uses 'db_identifier'"
+@fix-planton-component KubernetesPostgres --explain "presets use deprecated field 'database_name' but spec.proto now uses 'db_identifier'"
 ```
 
 **Actions:**
@@ -358,7 +358,7 @@ Next Steps:
 2. Read current spec.proto to understand actual fields
 3. Update README.md (fix any references to old field)
 4. Update presets (use db_identifier everywhere)
-5. Update docs/README.md (note the field name if discussed)
+5. Update GUIDE.md (note the field name if discussed)
 6. Validate examples against schema
 7. No test changes needed (code unchanged)
 
@@ -370,7 +370,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-planton-component MongodbAtlas --explain "spec_test.go validation test expects error when cluster_tier is empty but validation rule doesn't exist in spec.proto"
+@fix-planton-component AtlasMongodb --explain "spec_test.go validation test expects error when cluster_tier is empty but validation rule doesn't exist in spec.proto"
 ```
 
 **Actions:**
@@ -379,11 +379,11 @@ Next Steps:
    - If validation SHOULD exist: Add to spec.proto, fix test
    - If validation SHOULDN'T exist: Fix test to not expect error
 3. If proto changed: Run `make protos` to regenerate stubs
-4. Run component tests: `go test ./catalog/atlas/mongodbatlas/v1alpha1/`
-5. Run build: `go build ./catalog/<provider>/<component>/v1/...`
+4. Run component tests: `go test ./catalog/atlas/atlasmongodb/v1alpha1/`
+5. Run build: `go build ./catalog/<provider>/<component>/...`
 6. Update examples if validation behavior changed
 7. Update README if validation rules mentioned
-8. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
+8. Run all tests: `go test -v ./catalog/<provider>/<component>/...`
 
 ### Scenario 5: Feature Parity Fix
 
@@ -417,9 +417,9 @@ Next Steps:
 2. Regenerate stubs: `make protos`
 3. Run component tests: `go test ./catalog/aws/awsvpc/v1alpha1/`
 4. Update spec_test.go (test 10.0.0.0/8 is now valid)
-5. Update docs/README.md (document valid CIDR ranges)
-7. Run build: `go build ./catalog/<provider>/<component>/v1/...`
-8. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
+5. Update GUIDE.md (document valid CIDR ranges)
+7. Run build: `go build ./catalog/<provider>/<component>/...`
+8. Run all tests: `go test -v ./catalog/<provider>/<component>/...`
 9. Validate consistency
 
 ## Consistency Enforcement
@@ -531,7 +531,7 @@ Action: Adding test for region validation rule...
 ```bash
 # Check README describes actual behavior
 # Check examples demonstrate actual capabilities
-# Check docs/README.md explains actual approach
+# Check GUIDE.md explains actual approach
 ```
 
 **If mismatch found:**
@@ -569,7 +569,7 @@ Understanding current state:
   ✓ Reading Terraform module (how field is used)
   ✓ Reading spec_test.go (current test coverage)
   ✓ Reading presets/ (current preset configurations)
-  ✓ Reading v1/docs/README.md (design context)
+  ✓ Reading GUIDE.md (design context)
 
 Current behavior:
   - Pattern: ^[a-z0-9-]+\.[a-z]{2,}$ (no wildcards)
@@ -626,7 +626,7 @@ Source code fix complete!
   - Updated example usage to show wildcard
   - Added to "Key Features" list
   
-[3/4] ✅ Updated v1/docs/README.md
+[3/4] ✅ Updated GUIDE.md
   - Updated comparison table (wildcard column)
   - Updated "The Planton Choice" section
   - Added wildcard to best practices
@@ -679,12 +679,12 @@ Component Tests:
   Duration: 1.2s
 
 Build Validation:
-  Command: go build ./catalog/<provider>/<component>/v1/...
+  Command: go build ./catalog/<provider>/<component>/...
   Result: ✅ Success
   Duration: 2m 15s
 
 Component Tests:
-  Command: go test -v ./catalog/<provider>/<component>/v1/
+  Command: go test -v ./catalog/<provider>/<component>/...
   Result: ✅ All tests passed
   Tests run: 156
   Tests passed: 156
@@ -715,7 +715,7 @@ Documentation Updates:
      - Added wildcard certificate guidance
   📝 README.md (+12 lines)
      - Updated feature list
-  📝 docs/README.md (+25 lines)
+  📝 GUIDE.md (+25 lines)
      - Updated comparison and best practices
 
 Validation:
@@ -766,7 +766,7 @@ Git command:
 **Right:**
 1. Update validation rule in spec.proto
 2. Update spec_test.go to test the new rule
-3. Run tests to verify rule works: `go test ./catalog/.../v1/`
+3. Run tests to verify rule works: `go test ./catalog/...`
 
 **Wrong:**
 1. Update test to expect desired behavior
@@ -885,7 +885,7 @@ Action: Updating README to match actual validation...
 ### Before Fix
 
 1. ✅ **Understand the issue** - Read current code thoroughly
-2. ✅ **Consult research docs** - Read v1/docs/README.md for context
+2. ✅ **Consult the component guide** - Read GUIDE.md for context
 3. ✅ **Check related components** - See how similar components handle it
 4. ✅ **Plan the fix** - Know what needs changing
 5. ✅ **Commit current state** - Clean git state before fix
@@ -901,7 +901,7 @@ Action: Updating README to match actual validation...
 ### After Fix
 
 1. ✅ **Review all changes** - Check git diff
-2. ✅ **Test manually** - Deploy with hack manifest
+2. ✅ **Test manually** - Deploy with the e2e manifest
 3. ✅ **Run audit** - Verify score didn't decrease
 4. ✅ **Commit meaningfully** - Good commit message
 5. ✅ **Update changelog** - Document significant fixes
@@ -968,7 +968,7 @@ git restore .
 # 2. Update Terraform: use var.backup_retention_period
 # 3. Update tests: test different retention values
 # 4. Update examples: show various retention periods
-# 5. Update overview: document backup behavior
+# 5. Update the Pulumi module README: document backup behavior
 # 6. Run E2E tests
 
 # Result:
@@ -982,7 +982,7 @@ git restore .
 ### Example 3: Fix Documentation Drift
 
 ```bash
-@fix-planton-component PostgresKubernetes --explain "examples use 'database_name' field but spec uses 'db_identifier'"
+@fix-planton-component KubernetesPostgres --explain "examples use 'database_name' field but spec uses 'db_identifier'"
 
 # Fix executes:
 # 1. Read spec.proto (confirm db_identifier is correct)
@@ -1001,7 +1001,7 @@ git restore .
 ### Example 4: Fix Test Failures
 
 ```bash
-@fix-planton-component MongodbAtlas --explain "spec_test.go expects validation error for empty cluster_tier but validation rule is missing"
+@fix-planton-component AtlasMongodb --explain "spec_test.go expects validation error for empty cluster_tier but validation rule is missing"
 
 # Fix executes:
 # 1. Read spec.proto (check if validation exists)
@@ -1080,9 +1080,9 @@ After fix completes:
 ✅ Any changed module code stays at the module-comment bar (why/trade-offs/quirks/ordering, not narration)
 ✅ All related artifacts updated (examples, docs)
 ✅ Consistency verified (proto ↔ TF, Pulumi ↔ TF, etc.)
-✅ Component tests pass (`go test ./catalog/.../v1/`)
-✅ Build passes (`go build ./catalog/<provider>/<component>/v1/...`)
-✅ Full test suite passes (`go test -v ./catalog/<provider>/<component>/v1/`)
+✅ Component tests pass (`go test ./catalog/...`)
+✅ Build passes (`go build ./catalog/<provider>/<component>/...`)
+✅ Full test suite passes (`go test -v ./catalog/<provider>/<component>/...`)
 ✅ Examples validate against schema
 ✅ Documentation describes actual behavior
 ✅ No regressions introduced
@@ -1117,9 +1117,9 @@ After fix completes:
 4. Update spec_test.go to use pointers for optional fields
 5. Update IaC module to use getter methods: `GetFieldName()`
 6. Remove defensive default checks (framework applies defaults)
-7. Run component tests: `go test ./catalog/.../v1/`
-8. Run build: `go build ./catalog/<provider>/<component>/v1/...`
-9. Run all tests: `go test -v ./catalog/<provider>/<component>/v1/`
+7. Run component tests: `go test ./catalog/...`
+8. Run build: `go build ./catalog/<provider>/<component>/...`
+9. Run all tests: `go test -v ./catalog/<provider>/<component>/...`
 
 **Key Principle:** Don't just document defaults in comments - enforce them via:
 - `optional` keyword for presence tracking

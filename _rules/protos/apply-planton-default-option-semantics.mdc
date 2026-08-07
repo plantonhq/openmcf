@@ -85,7 +85,7 @@ make protos
 
 Ensure the IaC module compiles:
 ```bash
-go build ./catalog/kubernetes/<component>/v1/iac/pulumi/module/...
+go build ./catalog/kubernetes/<component>/iac/pulumi/module/...
 ```
 
 ## Fields to Skip

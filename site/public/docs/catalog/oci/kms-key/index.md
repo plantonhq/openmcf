@@ -6,37 +6,45 @@ order: 100
 componentName: "ocikmskey"
 ---
 
-# OCI KMS Key
+# KMS Key on OCI
 
-Deploys an Oracle Cloud Infrastructure Key Management Service encryption key inside a KMS vault. Supports AES, RSA, and ECDSA algorithms with configurable key length, HSM/software/external protection modes, and optional automatic key rotation.
+Deploys an Oracle Cloud Infrastructure Key Management Service encryption key inside a KMS vault. Supports AES, RSA, and ECDSA algorithms with configurable key length, HSM/software/external protection modes, and optional automatic key rotation. The key is tied to a specific vault via the `managementEndpoint` field. Downstream OCI services (Block Volume, Object Storage, Database, File Storage) consume the key OCID for customer-managed encryption. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to both compartments and vaults.
 
 ## What Gets Created
 
-When you deploy an OciKmsKey resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **KMS Key** — a `kms.Key` resource in the specified compartment and vault with configurable algorithm, key length, protection mode, and optional auto-rotation schedule. The key is created in ENABLED state and an initial key version is generated automatically.
+- **KMS Key** -- a `kms.Key` in the specified compartment and vault with configurable algorithm, key length, protection mode, and optional auto-rotation schedule. The key is created in ENABLED state and an initial key version is generated automatically.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the key
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the key will be created — either a literal value or a reference to an OciCompartment resource
-- **A vault management endpoint** — the `managementEndpoint` output from an OciKmsVault resource, either as a literal URL or via `valueFrom`
-- **An external key ID** (for external protection mode only) — the identifier of the key on the third-party key manager
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `key.yaml`:
+### OCI Tenancy
+
+- A compartment to place the key in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A KMS vault with its management endpoint. The `managementEndpoint` ties this key to a specific vault. Provide the endpoint URL directly or reference an OciKmsVault Cloud Resource via ValueFromRef using `status.outputs.managementEndpoint`.
+- For external protection mode only: an external key ID on the third-party key manager. The vault itself must also be of type `external`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **KMS Key on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **AES-256 HSM Auto-Rotation** preset in the [Presets](#presets) tab to pre-populate a standard data-at-rest encryption key with 90-day rotation.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciKmsKey
 metadata:
-  name: my-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciKmsKey.my-key
+  name: data-encryption-key
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
@@ -46,176 +54,72 @@ spec:
     algorithm: aes
     length: 32
 ```
-
-Deploy:
 
 ```shell
 planton apply -f key.yaml
 ```
 
-This creates a 256-bit AES key with HSM protection (the default). The key OCID and current key version OCID are exported as stack outputs.
+This creates a 256-bit AES key with HSM protection (the default). Auto-rotation is not enabled, and no display name is configured. The key OCID and current key version OCID are exported as stack outputs.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the key will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `managementEndpoint` | `StringValueOrRef` | Vault management endpoint URL. Can reference an OciKmsVault resource via `valueFrom` using `status.outputs.managementEndpoint`. | Required |
-| `keyShape` | `KeyShape` | Cryptographic properties of the key. Immutable after creation. | Required |
-| `keyShape.algorithm` | `enum` | Encryption algorithm. Values: `aes`, `rsa`, `ecdsa`. | Required, not `unspecified` |
-| `keyShape.length` | `int32` | Key length in bytes. AES: 16/24/32. RSA: 256/384/512. ECDSA: 32/48/66. | > 0 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | metadata name | Display name for the key in the OCI Console. |
-| `protectionMode` | `enum` | `hsm` | Where key material is stored. Values: `hsm` (FIPS 140-2 Level 3 HSM), `software` (software-based, lower cost), `external` (third-party key manager). Immutable. |
-| `keyShape.curveId` | `enum` | — | Elliptic curve for ECDSA keys. Values: `nist_p256`, `nist_p384`, `nist_p521`. Required for ECDSA; must not be set for AES or RSA. |
-| `isAutoRotationEnabled` | `bool` | `false` | Enables automatic key rotation on a schedule. |
-| `autoKeyRotationDetails` | `AutoKeyRotationDetails` | — | Schedule configuration for auto-rotation. Only valid when `isAutoRotationEnabled` is `true`. |
-| `externalKeyReference` | `ExternalKeyReference` | — | Reference to a key on an external key manager. Required when `protectionMode` is `external`; must not be set otherwise. |
-
-### AutoKeyRotationDetails
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `rotationIntervalInDays` | `int32` | Rotation interval in days. When omitted, OCI uses its default rotation interval. |
-| `timeOfScheduleStart` | `string` | RFC 3339 timestamp for when the first rotation should occur. When omitted, OCI schedules based on key creation time. |
-
-### ExternalKeyReference
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `externalKeyId` | `string` | Identifier of the key on the external key manager. |
-
-## Examples
-
-### AES-256 Key with HSM Protection
-
-A 256-bit AES symmetric key in an HSM — the most common choice for data-at-rest encryption:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the key to both a compartment and a vault deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciKmsKey
-metadata:
-  name: aes-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciKmsKey.aes-key
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  managementEndpoint:
-    value: "https://xxx-management.kms.us-ashburn-1.oraclecloud.com"
-  keyShape:
-    algorithm: aes
-    length: 32
-```
-
-### RSA-4096 Key with Auto-Rotation
-
-A 4096-bit RSA asymmetric key with automatic rotation every 90 days, using `valueFrom` to reference a vault:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciKmsKey
-metadata:
-  name: rsa-signing-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciKmsKey.rsa-signing-key
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-security
+      name: security-compartment
       fieldPath: status.outputs.compartmentId
   managementEndpoint:
     valueFrom:
       kind: OciKmsVault
-      name: prod-vault
+      name: platform-vault
       fieldPath: status.outputs.managementEndpoint
-  keyShape:
-    algorithm: rsa
-    length: 512
-  isAutoRotationEnabled: true
-  autoKeyRotationDetails:
-    rotationIntervalInDays: 90
 ```
 
-### ECDSA P-384 Key with Software Protection
+The InfraPipeline resolves the dependency graph, deploys the compartment and vault first, then provisions the key with the resolved values.
 
-An ECDSA P-384 key with software-based protection — lower cost for non-regulatory workloads:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciKmsKey
-metadata:
-  name: ecdsa-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OciKmsKey.ecdsa-key
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  managementEndpoint:
-    value: "https://xxx-management.kms.us-ashburn-1.oraclecloud.com"
-  keyShape:
-    algorithm: ecdsa
-    length: 48
-    curveId: nist_p384
-  protectionMode: software
-```
+These are the most important decisions when configuring a KMS key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### External Key (BYOK)
+**Key shape** -- The `keyShape` message defines the algorithm and length. All fields are immutable after creation. AES keys (symmetric) are used for data-at-rest encryption: 16 bytes (128-bit), 24 bytes (192-bit), or 32 bytes (256-bit). RSA keys (asymmetric) are used for signing and verification: 256 bytes (2048-bit), 384 bytes (3072-bit), or 512 bytes (4096-bit). ECDSA keys require a matching `curveId`: `nist_p256` with length 32, `nist_p384` with length 48, or `nist_p521` with length 66.
 
-A key backed by an external key manager for regulatory BYOK requirements:
+**Protection mode** -- The `protectionMode` field is immutable after creation. `hsm` (default) stores key material in a FIPS 140-2 Level 3 hardware security module -- the highest isolation level. `software` stores keys in software at lower cost. `external` references key material on a third-party key manager and requires an `externalKeyReference` with the external key ID.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciKmsKey
-metadata:
-  name: byok-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciKmsKey.byok-key
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  managementEndpoint:
-    value: "https://xxx-management.kms.us-ashburn-1.oraclecloud.com"
-  keyShape:
-    algorithm: aes
-    length: 32
-  protectionMode: external
-  externalKeyReference:
-    externalKeyId: "ekm-key-uuid-12345"
-```
+**Auto-rotation** -- Set `isAutoRotationEnabled: true` and configure `autoKeyRotationDetails.rotationIntervalInDays` to enable automatic key version rotation. OCI creates a new key version on schedule; existing data encrypted with older versions remains readable. Auto-rotation is appropriate for symmetric (AES) keys. For asymmetric keys (RSA, ECDSA), rotation requires coordinated consumer updates to distribute the new public key.
 
-## Stack Outputs
+**Vault binding** -- The `managementEndpoint` field ties this key to a specific vault. It must match the vault's management endpoint output. Use ValueFromRef to reference an OciKmsVault resource, ensuring the key is always created in the correct vault.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Outputs and Dependencies
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `key_id` | `string` | OCID of the KMS key |
-| `current_key_version` | `string` | OCID of the currently active key version |
+### What This Component Consumes
 
-## Related Components
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciKmsVault** | `managementEndpoint` | `status.outputs.managementEndpoint` |
 
-- [OciKmsVault](/docs/catalog/oci/kms-vault) — provides the `managementEndpoint` consumed by this component via `valueFrom`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciBlockVolume](/docs/catalog/oci/block-volume) — uses this key for volume encryption via `kmsKeyId`
-- [OciObjectStorageBucket](/docs/catalog/oci/object-storage-bucket) — uses this key for bucket encryption via `kmsKeyId`
-- [OciVaultSecret](/docs/catalog/oci/vault-secret) — uses this key to encrypt secrets via `keyId`
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `key_id` | OCID of the KMS key | OciBlockVolume, OciObjectStorageBucket, OciAutonomousDatabase, OciVaultSecret -- any resource supporting customer-managed encryption |
+| `current_key_version` | OCID of the currently active key version | Key version auditing, rotation tracking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**AES-256 HSM with auto-rotation** -- A 256-bit AES symmetric key in an HSM with 90-day automatic rotation. The standard key for encrypting data at rest across OCI services. Meets SOC 2, ISO 27001, HIPAA, and PCI-DSS requirements for HSM-backed encryption with periodic rotation. Start from the **AES-256 HSM Auto-Rotation** preset.
+
+**RSA-4096 HSM signing** -- A 4096-bit RSA asymmetric key in an HSM for digital signing and verification. Auto-rotation is disabled because asymmetric key rotation requires coordinated consumer updates. Used for container image signing, artifact verification, and API request signing. Start from the **RSA-4096 HSM Signing** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this key
+- [**KMS Vault on OCI**](/cloud-catalog/oci-kms-vault) -- provides the vault and management endpoint where this key is created

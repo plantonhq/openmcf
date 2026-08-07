@@ -9,14 +9,14 @@ This Terraform module provisions an Amazon FSx for Windows File Server file syst
 Run the module via the Planton CLI (tofu) using the default local backend.
 
 ```bash
-planton tofu init --manifest hack/manifest.yaml
-planton tofu plan --manifest hack/manifest.yaml
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest e2e/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 - Credentials are provided via stack input (by the CLI), not in the manifest `spec`.
-- Manifest file: `../hack/manifest.yaml`
+- Manifest file: `../../e2e/manifest.yaml`
 
 ## File Structure
 

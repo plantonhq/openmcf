@@ -79,7 +79,7 @@ At most one source (`image` / `sourceSnapshot` / `sourceDisk`) may be set — en
 | `size_gb` | Provisioned size in GB |
 | `type` | Disk type (plain type name, e.g. `pd-balanced`) |
 
-See the [presets](presets/) for remixable starting points and docs/README.md for the deep dive.
+See the [presets](presets/) for remixable starting points and GUIDE.md for the deep dive.
 
 ---
 

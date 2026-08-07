@@ -5,8 +5,8 @@ Terraform implementation of Planton `GcpAlloydbUser`. Enables `alloydb.googleapi
 ## Usage with Planton CLI
 
 ```shell
-planton tofu init --manifest ../hack/manifest.yaml
-planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
+planton tofu init --manifest ../../e2e/manifest.yaml
+planton tofu apply --manifest ../../e2e/manifest.yaml --auto-approve
 ```
 
 ## Outputs

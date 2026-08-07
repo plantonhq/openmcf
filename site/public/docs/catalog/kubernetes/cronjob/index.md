@@ -6,185 +6,133 @@ order: 100
 componentName: "kubernetescronjob"
 ---
 
-# Kubernetes CronJob
+# CronJob on Kubernetes
 
-Runs work on a recurring schedule as a batch/v1 CronJob through a single declarative manifest. Scheduling controls (cron expression, time zone, concurrency, history retention) live at the top level; the work itself — containers, pod configuration, and the full set of batch controls — lives in `jobTemplate`, which can express everything a standalone KubernetesJob can. The IaC module handles namespace resolution, secret materialization, and label merging automatically.
-
-CronJobs front no Service and create no ingress — each scheduled run creates a Job whose pods run to completion. Concurrency defaults to `Forbid` (skip a run while the previous one is still going), deliberately safer than the upstream `Allow` default.
+Runs work on a recurring schedule on any Kubernetes cluster as a batch/v1 CronJob: at each scheduled time the controller creates a Job from the job template, and that Job runs pods to completion. This is the kind for scheduled work — nightly backups, report generation, periodic cleanup. The spec splits cleanly in two: scheduling controls (a 5-field cron expression, an explicit IANA time zone, overlap handling that deliberately defaults SAFER than upstream, history retention) live at the top level, and everything about the work itself lives in the job template, which mirrors the complete KubernetesJob batch surface (parallelism, Indexed mode, per-index retries, pod failure and success policies, sidecars, probes, security contexts). Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
 ## What Gets Created
 
-When you deploy a KubernetesCronJob resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **CronJob** — a batch/v1 CronJob with the schedule, time zone, concurrency policy, starting deadline, suspension flag, and history limits
-- **Namespace** (optional) — created when `createNamespace` is true
-- **Env Secret** (conditional) — literal secret env values across all containers are materialized into one workload-scoped Secret named `<metadata.name>-env-secrets`
-- **Image Pull Secret** (conditional) — docker-registry credentials materialized as `<metadata.name>-image-pull`
-- **Labels** — standard Planton tracking labels merged with any user-provided pod labels
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Kubernetes CronJob** -- the scheduled workload resource; at each matching time it stamps a Job from the template, and the history limits bound how many finished Jobs survive
+- **Kubernetes Secret** -- created only when `jobTemplate.container.app.env.secrets` carry literal values; stores them and mounts them as environment variables
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that exists, is created via `createNamespace`, or is referenced as a `KubernetesNamespace` resource
-- **A container image** containing the scheduled workload; each run's pod succeeds when every container exits 0
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `cronjob.yaml`:
+### Kubernetes Cluster
+
+- **A container registry** accessible from the cluster for pulling the run's image. If the registry is private, provide image pull credentials in the container image configuration.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **CronJob on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Nightly Backup** preset for the classic 03:00 backup window, or **Frequent Sync** for a tight-interval schedule, in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCronJob
 metadata:
-  name: nightly-cleanup
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesCronJob.nightly-cleanup
+  name: nightly-backup
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: backend
+    value: "databases"
+  createNamespace: false
   schedule: "0 3 * * *"
-  timeZone: America/New_York
+  timeZone: "America/New_York"
   jobTemplate:
     container:
       app:
         image:
-          repo: ghcr.io/acme/cleanup
-          tag: v1.8.0
-        command: ["./cleanup.sh"]
-    restartPolicy: Never
+          repo: ghcr.io/acme-corp/pg-backup
+          tag: v2.1.0
+        command: ["/backup.sh"]
+    activeDeadlineSeconds: 5400
     backoffLimit: 2
 ```
-
-Deploy:
 
 ```shell
 planton apply -f cronjob.yaml
 ```
 
-This runs the cleanup every night at 03:00 New York time, never overlapping with a still-running previous run.
+This runs the backup daily at 03:00 New York time, skipping a run if the previous one is still going (the Forbid default), with a 90-minute deadline so a hung run can never block the schedule.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `spec.namespace` | `StringValueOrRef` | Namespace to run the CronJob in. Literal name or reference to a `KubernetesNamespace` resource. |
-| `spec.schedule` | `string` | Standard 5-field cron expression, e.g. `"0 3 * * *"` (daily at 03:00) or `"*/15 * * * *"` (every 15 minutes). |
-| `spec.jobTemplate.container.app` | `WorkloadContainer` | The main application container: image (repo + tag required), command/args, env, resources, volume mounts, security context. **Deploy-target contract:** pipelines inject built images at `spec.jobTemplate.container.app.image`. |
-
-### Scheduling Controls (optional)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.timeZone` | `string` | controller-local | IANA zone name (e.g. `Asia/Kolkata`) the schedule is evaluated in. Set it whenever wall-clock time matters. |
-| `spec.startingDeadlineSeconds` | `int64` | — | How late a missed run may start before it is skipped. Also keeps the controller's 100-consecutive-missed-runs cutoff bounded on frequent schedules. |
-| `spec.concurrencyPolicy` | `string` | `Forbid` | `Forbid` (skip the new run), `Allow` (run concurrently), or `Replace` (cancel the running Job, start fresh). |
-| `spec.suspend` | `bool` | `false` | Stop scheduling future runs; Jobs already running are unaffected. |
-| `spec.successfulJobsHistoryLimit` | `int32` | `3` | Completed successful Jobs retained for log inspection. |
-| `spec.failedJobsHistoryLimit` | `int32` | `1` | Failed Jobs retained; keep at least one so failure logs survive. |
-
-### Job Template (optional)
-
-Everything a standalone KubernetesJob expresses, minus `suspend` (which lives at the CronJob level):
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.jobTemplate.parallelism` / `completions` | `int32` | `1` / `1` | Pods in flight per run and successes required per run. |
-| `spec.jobTemplate.completionMode` | `string` | `NonIndexed` | `Indexed` gives each pod a completion index for partitioned work. |
-| `spec.jobTemplate.backoffLimit` | `int32` | `6` | Pod-failure retries before a run's Job fails. |
-| `spec.jobTemplate.backoffLimitPerIndex` / `maxFailedIndexes` | `uint32` | — | Per-index retry budgets (Indexed mode, `restartPolicy: Never`). |
-| `spec.jobTemplate.activeDeadlineSeconds` | `int64` | — | Hard wall-clock cap per run — essential with `Forbid`, where a hung run blocks all future runs. |
-| `spec.jobTemplate.ttlSecondsAfterFinished` | `int32` | — | Per-Job auto-delete; usually left unset in favor of the history limits. |
-| `spec.jobTemplate.restartPolicy` | `string` | `Never` | `Never` or `OnFailure`; `Always` is invalid for Jobs. |
-| `spec.jobTemplate.podFailurePolicy` | `object` | — | Ordered failure-classification rules (`FailJob`, `Ignore`, `Count`, `FailIndex`). |
-| `spec.jobTemplate.successPolicy` | `object` | — | Early-success rules for Indexed runs. |
-| `spec.jobTemplate.container.sidecars[]` | `WorkloadContainer` | — | Named sidecars. **Every sidecar must exit** or no run ever completes. |
-| `spec.jobTemplate.pod` | `WorkloadPod` | — | ServiceAccount reference, init containers, scheduling, security hardening, DNS, termination. |
-
-## Examples
-
-### Frequent Sync with Replace
-
-Every 15 minutes; a stale overrunning sync is cancelled in favor of the fresh one:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the CronJob to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesCronJob
-metadata:
-  name: index-sync
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesCronJob.index-sync
 spec:
   namespace:
-    value: search
-  schedule: "*/15 * * * *"
-  startingDeadlineSeconds: 300
-  concurrencyPolicy: Replace
-  jobTemplate:
-    container:
-      app:
-        image:
-          repo: ghcr.io/acme/index-sync
-          tag: v0.9.2
-    restartPolicy: Never
-    backoffLimit: 1
+    valueFrom:
+      kind: KubernetesNamespace
+      name: databases-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-### Indexed Parallel Runs
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the CronJob with the resolved values.
 
-Each monthly run fans out six numbered partitions, three at a time:
+## Key Configuration
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesCronJob
-metadata:
-  name: monthly-report
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesCronJob.monthly-report
-spec:
-  namespace:
-    value: reporting
-  schedule: "0 2 1 * *"
-  timeZone: Europe/Berlin
-  jobTemplate:
-    container:
-      app:
-        image:
-          repo: ghcr.io/acme/report-worker
-          tag: v4.1.0
-        command: ["/bin/sh", "-c", "render --section $JOB_COMPLETION_INDEX"]
-    completionMode: Indexed
-    completions: 6
-    parallelism: 3
-    restartPolicy: Never
-    backoffLimitPerIndex: 2
-    activeDeadlineSeconds: 14400
-```
+These are the most important decisions when configuring a Kubernetes CronJob. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Schedule and time zone** -- `schedule` is a standard 5-field cron expression: minute, hour, day of month, month, day of week (e.g. `"0 3 * * *"` daily at 03:00, `"*/15 * * * *"` every 15 minutes). Use standard cron only — @-style macros are not portable across controller versions. Set `timeZone` (an IANA name) whenever the wall-clock time matters: unset means the schedule runs in the cluster controller's LOCAL zone, usually UTC but not guaranteed.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Concurrency** -- `concurrencyPolicy` decides what happens when the next run comes due while the previous one is still going. The default here is `"Forbid"` (skip the new run) — deliberately SAFER than upstream Kubernetes, which defaults to Allow: overlapping cron runs are the classic scheduled-workload incident, two backups writing the same target. `"Replace"` cancels the running job and starts the new one; `"Allow"` runs them concurrently.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Namespace the CronJob was created in |
-| `cronJobName` | `string` | Name of the CronJob object in the cluster |
-| `schedule` | `string` | The effective cron expression — the deployed truth, for dependents and audits |
+**Missed runs and pausing** -- `startingDeadlineSeconds` bounds how late a missed run may start before it counts as failed and is skipped; the controller stops scheduling after 100 consecutive missed runs, so frequent schedules benefit from an explicit deadline. `suspend` pauses the SCHEDULE — running Jobs are unaffected.
 
-## Related Components
+**The job template** -- everything about the work mirrors KubernetesJob: `jobTemplate.container.app` carries the image and command (the exit code decides each run's success), the batch dials (parallelism, completions, Indexed mode, per-index retries), a pod failure policy (fail fast on unrecoverable exit codes, forgive node disruptions), and a success policy for Indexed runs. Set `jobTemplate.activeDeadlineSeconds` especially under Forbid — a hung run silently blocks every subsequent run without it.
 
-- [KubernetesJob](/docs/catalog/kubernetes/job) — the one-shot counterpart; each scheduled run stamps out a Job
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — for always-on services
-- [KubernetesServiceAccount](/docs/catalog/kubernetes/serviceaccount) — the identity run pods use; reference it from `spec.jobTemplate.pod.serviceAccount`
-- [KubernetesRbac](/docs/catalog/kubernetes/rbac) — grants permissions to that identity
-- [KubernetesSecret](/docs/catalog/kubernetes/secret) — holds credentials runs consume via `secretRef` env entries
+**History** -- `successfulJobsHistoryLimit` (default 3) and `failedJobsHistoryLimit` (default 1) bound how many finished Jobs survive for logs and post-mortems. Keep at least one failed Job.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `jobTemplate.pod.serviceAccount` | `status.outputs.service_account_name` |
+| **KubernetesSecret** | `jobTemplate.pod.imagePullSecrets` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Kubernetes namespace the CronJob was created in | Other workloads deploying into the same namespace |
+| `cron_job_name` | Name of the CronJob object as created in the cluster | Monitoring dashboards and run inspection |
+| `schedule` | The effective cron expression the CronJob runs on | Audits and dependents read the DEPLOYED truth, not the spec |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Nightly backup** -- Daily at 03:00 in an explicit time zone, Forbid concurrency untouched, a run deadline so a hung backup can never block the schedule, and failed-run history kept for post-mortems. Start from the **Nightly Backup** preset.
+
+**Frequent sync** -- A tight-interval schedule with a starting deadline (bounding the missed-run counter) and Replace concurrency — only the newest run matters. Start from the **Frequent Sync** preset.
+
+**Monthly report** -- A low-frequency schedule with generous history retention and a fan-out template for partitioned report generation. Start from the **Monthly Report** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the CronJob
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- keyless cloud access for each run via workload identity
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- image pull secrets and referenced credential material
+- [**Kubernetes Job**](/cloud-catalog/kubernetes-job) -- the one-shot twin: the same batch surface without the schedule

@@ -8,266 +8,119 @@ componentName: "gcpbigtableinstance"
 
 # GCP Bigtable Instance
 
-Deploys a Cloud Bigtable instance with one or more clusters, supporting SSD and HDD storage types, per-cluster autoscaling, CMEK encryption, and multi-cluster replication. Tables and app profiles are application-level concerns managed separately.
+Deploys a Cloud Bigtable instance with one or more clusters, configurable scaling (fixed nodes, autoscaling, or auto-allocated), SSD or HDD storage, optional CMEK encryption per cluster, and multi-zone replication for high availability. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
 
 ## What Gets Created
 
-When you deploy a GcpBigtableInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Bigtable Instance** — a `google_bigtable_instance` resource that serves as the logical container for data, with GCP labels applied automatically
-- **One or more Clusters** — inline cluster configurations within the instance, each placed in a specific zone with independent scaling (fixed or autoscaling) and storage type settings
-- **CMEK Encryption** — created only when `kmsKeyName` is set on a cluster, encrypts data at rest using the specified Cloud KMS key
+- **Bigtable Instance** -- a managed instance in the specified GCP project, serving as the logical container for data with deletion protection and optional display name
+- **Bigtable Clusters** -- one or more clusters within the instance, each placed in a specific zone with independent scaling configuration (fixed node count, autoscaling with CPU/storage targets, or auto-allocated)
+- **CMEK Encryption** -- created only when `kmsKeyName` is set on a cluster; encrypts data at rest with a customer-managed Cloud KMS key (immutable per cluster)
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied at the instance level for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the Bigtable instance will be created
-- **Zones** that support Bigtable instances (see [GCP Bigtable locations](https://cloud.google.com/bigtable/docs/locations))
-- **A Cloud KMS key** if enabling CMEK encryption (key region must match cluster zone region)
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `bigtable.yaml`:
+### GCP Project
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpBigtableInstance
-metadata:
-  name: my-bigtable
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpBigtableInstance.my-bigtable
-spec:
-  projectId:
-    value: my-gcp-project
-  instanceName: my-bigtable-instance
-  clusters:
-    - clusterId: my-cluster-01
-      zone: us-central1-a
-```
+- **A GCP project** where the Bigtable instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Bigtable API** (`bigtable.googleapis.com`) enabled in the target project.
+- **Cloud KMS key** (if using CMEK) -- the key region must match the cluster zone's region. The Bigtable service account must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f bigtable.yaml
-```
+### Console
 
-This creates a Bigtable instance with a single SSD cluster in `us-central1-a`. Bigtable auto-allocates nodes based on data footprint since neither `numNodes` nor `autoscalingConfig` is specified.
+Open the deployment store, find **GCP Bigtable Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Single Node** preset in the [Presets](#presets) tab to pre-populate a minimal development configuration.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `string` | GCP project ID. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `instanceName` | `string` | Instance name (also the Instance ID in GCP Console). | 6-33 chars, `^[a-z][a-z0-9-]{4,31}[a-z0-9]$` |
-| `clusters` | `object[]` | One or more cluster configurations. | Minimum 1 item |
-| `clusters[].clusterId` | `string` | Unique cluster identifier within the instance. | 6-30 chars, `^[a-z][a-z0-9-]{4,28}[a-z0-9]$` |
-| `clusters[].zone` | `string` | Zone where the cluster is deployed. Each cluster must be in a different zone. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | Instance name | Human-readable display name for the instance. |
-| `deletionProtection` | `bool` | `true` | Prevents accidental destruction. Set to `false` before destroying. |
-| `forceDestroy` | `bool` | `false` | Delete all backups when destroying the instance. |
-| `clusters[].numNodes` | `int` | auto | Fixed number of nodes. Mutually exclusive with `autoscalingConfig`. |
-| `clusters[].storageType` | `string` | `SSD` | Storage type: `SSD` (low latency) or `HDD` (lower cost, batch workloads). Immutable. |
-| `clusters[].kmsKeyName` | `string` | — | Cloud KMS key for CMEK encryption. Can reference a GcpKmsKey via `valueFrom`. Immutable. |
-| `clusters[].nodeScalingFactor` | `string` | `NodeScalingFactor1X` | Node scaling granularity: `NodeScalingFactor1X` or `NodeScalingFactor2X`. Immutable. |
-| `clusters[].autoscalingConfig.minNodes` | `int` | — | Minimum nodes for autoscaling. Required when autoscaling is configured. `>= 1` |
-| `clusters[].autoscalingConfig.maxNodes` | `int` | — | Maximum nodes for autoscaling. Must be `>= minNodes`. |
-| `clusters[].autoscalingConfig.cpuTarget` | `int` | — | Target CPU utilization percentage. Range: 10-80. |
-| `clusters[].autoscalingConfig.storageTarget` | `int` | — | Target storage per node in GB. SSD: 2560-5120, HDD: 8192-16384. |
-
-## Examples
-
-### Single Cluster with Fixed Nodes
-
-A Bigtable instance with a fixed 3-node SSD cluster for predictable workloads:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpBigtableInstance
 metadata:
-  name: analytics-bt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpBigtableInstance.analytics-bt
+  name: events-store
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
-  instanceName: analytics-bigtable
+    value: "acme-prod-12345"
+  instanceName: events-store-prod
   clusters:
-    - clusterId: analytics-cluster
+    - clusterId: events-cluster-a
       zone: us-central1-a
       numNodes: 3
 ```
 
-### Autoscaling Cluster
-
-A Bigtable instance that scales between 2 and 20 nodes based on CPU utilization:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpBigtableInstance
-metadata:
-  name: timeseries-bt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpBigtableInstance.timeseries-bt
-spec:
-  projectId:
-    value: my-gcp-project
-  instanceName: timeseries-bigtable
-  displayName: Time Series Production
-  deletionProtection: true
-  clusters:
-    - clusterId: timeseries-us-c1a
-      zone: us-central1-a
-      autoscalingConfig:
-        minNodes: 2
-        maxNodes: 20
-        cpuTarget: 65
+```shell
+planton apply -f bigtable-instance.yaml
 ```
 
-### Multi-Cluster Replication
+This creates a Bigtable instance with a single 3-node SSD cluster, Google-managed encryption, and deletion protection enabled (default). No autoscaling or multi-zone replication is configured.
 
-Two clusters in different zones for automatic replication and failover:
+### InfraChart
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpBigtableInstance
-metadata:
-  name: ha-bigtable
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpBigtableInstance.ha-bigtable
-spec:
-  projectId:
-    value: my-gcp-project
-  instanceName: ha-bigtable-prod
-  displayName: HA Production Bigtable
-  deletionProtection: true
-  clusters:
-    - clusterId: ha-cluster-zone-a
-      zone: us-central1-a
-      autoscalingConfig:
-        minNodes: 3
-        maxNodes: 30
-        cpuTarget: 60
-    - clusterId: ha-cluster-zone-b
-      zone: us-central1-b
-      autoscalingConfig:
-        minNodes: 3
-        maxNodes: 30
-        cpuTarget: 60
-```
-
-### CMEK Encrypted with Foreign Key Reference
-
-Clusters encrypted with a Cloud KMS key, referenced from a GcpKmsKey resource:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a GCP project deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpBigtableInstance
-metadata:
-  name: encrypted-bt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpBigtableInstance.encrypted-bt
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: prod-project
-      field: status.outputs.project_id
-  instanceName: encrypted-bigtable
-  deletionProtection: true
-  clusters:
-    - clusterId: encrypted-cluster-a
-      zone: us-central1-a
-      kmsKeyName:
-        valueFrom:
-          kind: GcpKmsKey
-          name: bigtable-cmek-key
-          field: status.outputs.key_id
-      autoscalingConfig:
-        minNodes: 3
-        maxNodes: 30
-        cpuTarget: 65
-        storageTarget: 4096
-
+      name: production-project
+      fieldPath: status.outputs.project_id
 ```
 
-### Full-Featured Production
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the Bigtable instance with the resolved project ID.
 
-All optional fields configured for an enterprise deployment:
+## Key Configuration
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpBigtableInstance
-metadata:
-  name: enterprise-bt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: data-platform
-    pulumi.planton.dev/stack.name: prod.GcpBigtableInstance.enterprise-bt
-spec:
-  projectId:
-    value: acme-data-prod
-  instanceName: enterprise-bigtable
-  displayName: Enterprise Data Platform
-  deletionProtection: true
-  forceDestroy: false
-  clusters:
-    - clusterId: enterprise-us-c1a
-      zone: us-central1-a
-      storageType: SSD
-      nodeScalingFactor: NodeScalingFactor1X
-      kmsKeyName: projects/acme-data-prod/locations/us-central1/keyRings/bigtable-kr/cryptoKeys/bigtable-key
-      autoscalingConfig:
-        minNodes: 5
-        maxNodes: 50
-        cpuTarget: 60
-        storageTarget: 4096
-    - clusterId: enterprise-us-c1b
-      zone: us-central1-b
-      storageType: SSD
-      nodeScalingFactor: NodeScalingFactor1X
-      kmsKeyName: projects/acme-data-prod/locations/us-central1/keyRings/bigtable-kr/cryptoKeys/bigtable-key
-      autoscalingConfig:
-        minNodes: 5
-        maxNodes: 50
-        cpuTarget: 60
-        storageTarget: 4096
-```
+These are the most important decisions when configuring a Bigtable instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Cluster scaling mode** -- Each cluster supports three scaling modes. Fixed (`numNodes`) provides predictable capacity. Autoscaling (`autoscalingConfig`) adjusts nodes between `minNodes` and `maxNodes` based on `cpuTarget` (10-80%) and optional `storageTarget`. Auto-allocated (neither set) lets Bigtable manage nodes based on data footprint. Autoscaling and fixed nodes are mutually exclusive per cluster.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Storage type** -- `storageType` defaults to `SSD` (lowest latency, recommended for most workloads). Use `HDD` for large batch-analytics workloads where latency is less critical and cost optimization is a priority. Immutable after cluster creation.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | `string` | Fully qualified instance resource name. Format: `projects/{project}/instances/{instance}` |
-| `instance_name` | `string` | Short instance name, same as the `instanceName` spec input. Used by Bigtable client libraries along with the project ID to connect. |
+**Multi-cluster replication** -- Add multiple clusters in different zones for automatic replication and failover. Bigtable client libraries handle routing transparently. Each cluster must be in a unique zone. Up to 8 clusters across regions are supported.
 
-## Related Components
+**Deletion protection** -- `deletionProtection` defaults to `true`, preventing accidental instance destruction. Set to `false` only for development instances that need easy teardown. Enable `forceDestroy` if the instance has backups that should be deleted during destroy.
 
-- [GcpProject](/docs/catalog/gcp/project) — project where the instance is created
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — encryption key for CMEK-protected clusters
-- [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — key ring containing the CMEK key
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — network infrastructure for Private Service Connect (if applicable)
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpKmsKey** (optional, per cluster) | `clusters[].kmsKeyName` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | Fully qualified instance resource name (`projects/{p}/instances/{i}`) | Monitoring dashboards, IAM bindings |
+| `instance_name` | Short instance name for Bigtable client library connections | Application connection configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development single node** -- Single auto-allocated cluster with SSD storage and deletion protection disabled. Minimal cost for development, CI/CD, and prototyping. Start from the **Dev Single Node** preset.
+
+**HA production** -- Two clusters in different zones with autoscaling (3-30 nodes, 65% CPU target). Automatic replication and failover for production workloads with variable traffic. Start from the **HA Production** preset.
+
+**Enterprise encrypted** -- Two CMEK-encrypted clusters with aggressive autoscaling (5-50 nodes, 60% CPU, explicit storage targets). Designed for regulated industries requiring customer-managed encryption and large-scale capacity. Start from the **Enterprise Encrypted** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the Bigtable instance is created
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the Cloud KMS key for per-cluster CMEK encryption

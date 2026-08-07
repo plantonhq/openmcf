@@ -82,7 +82,7 @@ For teams requiring DNSSEC, global Anycast performance, or advanced routing, con
 
 ## Getting Started
 
-See the `examples.md` file in this directory for practical configuration examples, including:
+See the `e2e/manifest.yaml` file in this directory for practical configuration examples, including:
 
 - Simple website (apex + www)
 - Email configuration (MX + SPF + DMARC)
@@ -92,7 +92,7 @@ See the `examples.md` file in this directory for practical configuration example
 
 For detailed implementation guidance, refer to:
 
-- `docs/README.md` - Comprehensive research and design decisions
+- `GUIDE.md` - Comprehensive research and design decisions
 - `iac/pulumi/README.md` - Pulumi-specific usage instructions
 - `iac/tf/README.md` - Terraform-specific usage instructions
 
@@ -137,8 +137,8 @@ For manual backups, use DigitalOcean's control panel to export a BIND-style zone
 
 ## Next Steps
 
-1. Review `examples.md` for practical DNS zone configurations
-2. Read `docs/README.md` for in-depth platform analysis and design rationale
+1. Review `e2e/manifest.yaml` for practical DNS zone configurations
+2. Read `GUIDE.md` for in-depth platform analysis and design rationale
 3. Choose your deployment method:
    - **Pulumi**: See `iac/pulumi/README.md`
    - **Terraform**: See `iac/tf/README.md`

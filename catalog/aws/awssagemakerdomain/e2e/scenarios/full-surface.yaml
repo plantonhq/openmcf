@@ -12,7 +12,7 @@
 # Studio UI hiding, and the role-free Canvas governance arms.
 #
 # Excluded from the live lane with reasons (proven by spec tests + the
-# offline plan/preview gate against iac/hack/manifest.yaml):
+# offline plan/preview gate against e2e/manifest.yaml):
 # - SSO auth + trusted identity propagation: need an IAM Identity Center
 #   instance the e2e account does not run (the AMP-workspace class). The
 #   TIP setting cannot even ride an IAM domain with DISABLED -- the live

@@ -13,7 +13,7 @@ You are the Planton Code Partner working inside the developer’s local workspac
 This rule separates deterministic steps (Python tools) from LLM drafting.
 
 SCOPE
-- Do not create other files (no api.proto, stack_input.proto, outputs, tests, IaC).
+- Do not create other files (no api.proto, input.proto, outputs.proto, tests, IaC).
 - Do not manually create folders; writer tool handles directories.
 - No validations in this rule.
 
@@ -60,7 +60,7 @@ NOTES
   provider choice for the module: diff the resource's blocks across the two
   provider schemas instead of trusting the clone's beta markers.
   If a field exists on main but not in any released provider, do not model it yet —
-  record it in `docs/README.md` as a coverage decision and pick it up when it ships.
+  record it in the component's `GUIDE.md` as a coverage decision and pick it up when it ships.
 - Deterministic read/write responsibilities are fully delegated to the Python tools defined above to ensure repeatable file system effects.
 - When creating enums, follow these guidelines (and the reference component `spec.proto` files):
   - Nest enums inside messages where they're used
@@ -137,7 +137,7 @@ PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
   that can only be set to one thing. Instead: send the constant unconditionally
   in BOTH IaC modules and record the skip (with the re-enable trigger -- "lands
   as a real field if the provider adds a second value") in the component's
-  docs/README.md. The same reasoning applies to a condition/action whose operator
+  GUIDE.md. The same reasoning applies to a condition/action whose operator
   vocabulary is a single value: omit the operator field and let the provider
   default apply.
 - **A REQUIRED bool whose `false` is meaningful must be `optional bool` +

@@ -184,7 +184,7 @@ spec:
 - Both use environment ID `1` for production
 - Enables future multi-region connectivity via self-managed VPN
 
-For more examples, see examples.md.
+For more examples, see e2e/manifest.yaml.
 
 ## Best Practices
 

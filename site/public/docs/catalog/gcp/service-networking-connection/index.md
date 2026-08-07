@@ -8,26 +8,65 @@ componentName: "gcpservicenetworkingconnection"
 
 # GCP Service Networking Connection
 
-Creates a private services access connection — the VPC peering between your network and a service producer's network. This is the prerequisite that lets Cloud SQL, AlloyDB, Memorystore (PRIVATE_SERVICE_ACCESS mode), and Filestore hand out private IPs from ranges reserved inside your VPC.
+Establishes **Private Services Access (PSA)** — the VPC peering join that makes AlloyDB, Cloud SQL, Memorystore, and Filestore private IP connectivity real. Without this connection, managed services cannot allocate private IPs from your network. Compose it after reserving a `VPC_PEERING` range on a GcpGlobalAddress and before deploying any private-IP database.
+
+Peers a VPC with a Google managed-services producer (default `servicenetworking.googleapis.com`) so those services allocate private IPs from ranges you reserve inside the network.
 
 ## What Gets Created
 
-One connection per (network, service) pair: a VPC peering on the network (e.g. `servicenetworking-googleapis-com`) from which the producer carves service subnets out of your reserved `VPC_PEERING` address ranges.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Service Networking API enablement** on the target project
+- **Private services access connection** — a VPC peering between your network and the producer, backed by one or more INTERNAL `VPC_PEERING` address ranges (`GcpGlobalAddress` resources referenced by name)
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A VPC network** — referenced via `network` (a `GcpVpcNetwork` resource or a literal self-link)
-- **At least one reserved range** — a `GcpGlobalAddress` with `addressType: INTERNAL` and `purpose: VPC_PEERING`
-- **IAM permissions** — `servicenetworking.services.addPeering` (e.g. `roles/servicenetworking.networksAdmin`)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **GCP Provider Connection** with credentials for the target project
+- **Planton Runner** when using Runner-based credential delivery
+
+### GCP Prerequisites
+
+- **GcpVpcNetwork** — the consumer VPC to peer
+- **GcpGlobalAddress** — at least one INTERNAL address with purpose `VPC_PEERING` (a /16 is the common default)
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Service Networking Connection**, and click **Deploy**. Start from the **Private Services Access** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpServiceNetworkingConnection
 metadata:
-  name: prod-vpc-psa
+  name: my-vpc-psa
+spec:
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: prod-vpc
+      fieldPath: status.outputs.network_self_link
+  service: servicenetworking.googleapis.com
+  reservedPeeringRanges:
+    - valueFrom:
+        kind: GcpGlobalAddress
+        name: prod-vpc-psa-range
+        fieldPath: status.outputs.name
+```
+
+```shell
+planton apply -f psa-connection.yaml
+```
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the connection to a VPC and reserved range deployed in the same InfraPipeline:
+
+```yaml
 spec:
   network:
     valueFrom:
@@ -41,29 +80,42 @@ spec:
         fieldPath: status.outputs.name
 ```
 
-```shell
-planton apply -f psa-connection.yaml
-```
+The InfraPipeline deploys the VPC and global address first, then establishes the PSA peering that downstream AlloyDB and Cloud SQL resources require.
 
-## Configuration Reference
+## Key Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `network` | `StringValueOrRef` | — (required) | VPC network to peer — name or self-link. Can reference a GcpVpcNetwork. Immutable. |
-| `reservedPeeringRanges` | `StringValueOrRef[]` | — (min 1) | Names of INTERNAL `VPC_PEERING` global address ranges. Mutable — append to grow capacity. |
-| `service` | `string` | `servicenetworking.googleapis.com` | The service producer to peer with. Immutable. |
-| `updateOnCreationFail` | `bool` | `false` | Adopt a pre-existing connection for the same pair instead of failing. |
-| `projectId` | `StringValueOrRef` | provider default | Project used for in-module API enablement. |
+**Network + service** — One connection per (network, service) pair. Both are create-time.
 
-## Stack Outputs
+**Reserved peering ranges** — Named `GcpGlobalAddress` resources (by NAME, not CIDR). Append ranges later when the producer runs out of space.
+
+**Adopt on creation conflict** — Recovery lever when a connection already exists outside Planton.
+
+## Outputs and Dependencies
+
+### Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** | `network` | `status.outputs.network_self_link` |
+| **GcpGlobalAddress** | `reservedPeeringRanges` | `status.outputs.name` |
+
+### Provides
 
 | Output | Description |
 |--------|-------------|
-| `peering` | Name of the VPC peering created on the network (e.g. `servicenetworking-googleapis-com`) |
-| `network` | The peered VPC network as the connection resolved it |
+| `peering` | VPC peering name on the network (e.g. servicenetworking-googleapis-com) |
+| `network` | Self-link of the peered network |
 
-## Related Components
+## Presets
 
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — the network being peered
-- [GcpGlobalAddress](/docs/catalog/gcp/global-address) — reserves the `VPC_PEERING` ranges handed to the producer
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — uses private IP through this connection
+**Private Services Access** — The canonical single-range PSA setup for managed services private IP. Start from the **Private Services Access** preset.
+
+**Multi Range Growth** — Two reserved ranges from the start — the shape for networks expecting heavy private-IP growth. Start from the **Multi Range Growth** preset.
+
+## Works With
+
+- [**GCP Global Address**](/cloud-catalog/gcp-global-address) — reserves VPC_PEERING space upstream
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) — the peered consumer network
+- [**GCP AlloyDB Cluster**](/cloud-catalog/gcp-alloydb-cluster) — private IP requires PSA
+- [**GCP Cloud SQL**](/cloud-catalog/gcp-cloud-sql) — private IP requires PSA

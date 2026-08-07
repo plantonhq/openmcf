@@ -92,7 +92,7 @@ This creates a 2.5 TiB SSD-backed NFS server named `my-nfs` (from `metadata.name
 | `reserved_ip_range` | The `/29` block as resolved by GCP (populated even when auto-picked) |
 | `etag` | Server-specified ETag guarding concurrent updates |
 
-See the [presets](presets/) for remixable starting points and docs/README.md for the deep dive.
+See the [presets](presets/) for remixable starting points and GUIDE.md for the deep dive.
 
 ---
 

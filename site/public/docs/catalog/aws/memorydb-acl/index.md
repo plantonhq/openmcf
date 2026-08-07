@@ -8,35 +8,45 @@ componentName: "awsmemorydbacl"
 
 # AWS MemoryDB ACL
 
-Creates a MemoryDB Access Control List — the set of users a cluster
-authenticates against, and the single place an application's cluster access
-is granted or revoked.
+Deploys a MemoryDB Access Control List — the single attachment point between identities and clusters in MemoryDB's only authentication model. Users ([AwsMemorydbUser](/cloud-catalog/aws-memorydb-user)) join the ACL, and a cluster ([AwsMemorydbCluster](/cloud-catalog/aws-memorydb-cluster)) attaches exactly one ACL. Granting or revoking an application's database access is an in-place membership edit here — the cluster and the users themselves never change. The ACL integrates with Planton's Provider Connections for AWS credential management and wires its membership from the resource graph via references.
 
 ## What Gets Created
 
-When you deploy an AwsMemorydbAcl resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **MemoryDB ACL** — an `aws_memorydb_acl` / `memorydb.Acl` whose AWS name
-  is `metadata.name` (create-time immutable, max 40 characters), with
-  membership referencing AwsMemorydbUser resources
+- **MemoryDB ACL** -- one access control list whose AWS name is the resource name (create-time immutable, max 40 characters)
+- **Membership** -- the user set this ACL grants access to; edits apply in place
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-Membership edits apply in place: AWS diffs the user set on update, so
-granting one application access never disturbs the others.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless
-  SSO/OIDC).
-- **MemoryDB users** (AwsMemorydbUser) for authenticated access — or deploy
-  an empty ACL first and add members later.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Member users (optional at create)** -- deploy [AwsMemorydbUser](/cloud-catalog/aws-memorydb-user) resources first to reference them in membership; an empty ACL is valid and can be populated later.
 
-## Quick Start
+### AWS Account
+
+- **A name within AWS's cap** -- the resource name IS the ACL name; AWS rejects names longer than 40 characters at create time.
+- **Same-region members** -- an ACL can only contain users from its own region, and only a cluster in its region can attach it.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS MemoryDB ACL**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Environment ACL** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbAcl
 metadata:
-  name: payments-env-acl
+  name: prod-services
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   userNames:
@@ -44,44 +54,65 @@ spec:
         kind: AwsMemorydbUser
         name: orders-service
         fieldPath: status.outputs.user_name
-    - valueFrom:
-        kind: AwsMemorydbUser
-        name: analytics-service
-        fieldPath: status.outputs.user_name
 ```
 
-Attach the ACL to a cluster:
+```shell
+planton apply -f memorydb-acl.yaml
+```
+
+This creates an ACL holding the orders-service user, ready for a cluster to attach. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, users deploy first, then this ACL, then the cluster that attaches it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsMemorydbCluster
-metadata:
-  name: payments-sessions
+# In the AwsMemorydbCluster manifest:
 spec:
-  region: us-west-2
-  engine: valkey
-  nodeType: db.r7g.large
   aclName:
     valueFrom:
       kind: AwsMemorydbAcl
-      name: payments-env-acl
+      name: prod-services
       fieldPath: status.outputs.acl_name
 ```
 
-## Notes
+## Key Configuration
 
-- **Empty ACLs are valid** — MemoryDB has no mandatory "default" member. A
-  cluster attached to an empty ACL accepts no authenticated connections, so
-  production ACLs carry one user per application.
-- **"open-access" is built in** — the allow-everything, no-authentication
-  ACL always exists in the account; clusters reference it by literal value
-  (`aclName: { value: open-access }`), never through this resource.
-- Every member user must live in the ACL's region (users are regional).
+These are the most important decisions when configuring a MemoryDB ACL. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**One name, one attachment** -- the resource name IS the AWS ACL name (create-time immutable): what a cluster's ACL field references. A cluster attaches exactly one ACL, so the ACL is the whole access story for that cluster.
 
-| Output | Description |
-|--------|-------------|
-| `acl_name` | What clusters attach via their `aclName` (same as `metadata.name`) |
-| `acl_arn` | The ACL's ARN, for IAM policies |
-| `minimum_engine_version` | The minimum engine version the ACL's combined user set requires |
+**Membership is the lever** -- every operational access change is a membership edit: onboarding a service adds its user, offboarding removes it. Edits apply in place — no user or cluster replacement, ever. Reference platform-managed users by their `user_name` output; users created outside the platform join by literal name.
+
+**Empty is legal, open-access is built in** -- unlike ElastiCache user groups (which demand a member named "default"), a MemoryDB ACL may be empty: it deploys but accepts no authenticated connections — the deploy-then-populate shape. For deliberately unauthenticated access, clusters reference AWS's built-in `open-access` ACL by name; it always exists and is never modeled as a resource.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Reference | Source Kind | Purpose |
+|-----------|-------------|---------|
+| `spec.userNames[]` | [AwsMemorydbUser](/cloud-catalog/aws-memorydb-user) `status.outputs.user_name` | The identities this ACL grants access to |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `acl_name` | The AWS ACL name | AwsMemorydbCluster attachment (`aclName`) |
+| `acl_arn` | Amazon Resource Name of the ACL | IAM policies scoping ACL management |
+| `minimum_engine_version` | The engine floor the combined member set requires | Verifying the attaching cluster's engine version |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Environment-scoped ACL** -- one ACL per environment (e.g. prod-services) holding each application's user; new services onboard with a membership edit. Start from the **Environment ACL** preset.
+
+**Deploy-then-populate** -- create the ACL empty alongside the cluster, then add users as applications come online — every step in place, no replacements.
+
+## Works With
+
+- [**AWS MemoryDB User**](/cloud-catalog/aws-memorydb-user) -- the identities this ACL collects (references `user_name`)
+- [**AWS MemoryDB Cluster**](/cloud-catalog/aws-memorydb-cluster) -- the durable database that attaches this ACL via `acl_name`

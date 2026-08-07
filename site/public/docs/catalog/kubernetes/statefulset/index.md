@@ -6,278 +6,146 @@ order: 100
 componentName: "kubernetesstatefulset"
 ---
 
-# Kubernetes StatefulSet
+# StatefulSet on Kubernetes
 
-Deploys a stateful application to a target Kubernetes cluster as an apps/v1 StatefulSet through a single declarative manifest: stable pod identity (`<name>-0`, `<name>-1`, ...), stable per-replica DNS through a derived headless governing Service, per-replica PersistentVolumeClaims from volume claim templates, quorum-aware disruption budgets, partition-based canary updates, and PVC retention policies. The IaC module derives the governing Service, selector labels, and label merging automatically.
+Deploys a stateful application on any Kubernetes cluster as an apps/v1 StatefulSet: every replica gets a stable name (`{name}-0`, `{name}-1`, ...), stable per-replica DNS through a headless governing Service, and its own PersistentVolumeClaim stamped from volume claim templates. This is the kind for databases, message brokers, and consensus systems — anything where replicas are NOT interchangeable. Supports the full shared workload surface (sidecars and init containers, all environment variable sources, probes, lifecycle hooks, scheduling, security contexts), plus StatefulSet-specific orchestration: update strategy with canary-by-partition, pod management policy, PVC retention policy, and ordinal numbering. Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
 ## What Gets Created
 
-When you deploy a KubernetesStatefulSet resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **StatefulSet** — the apps/v1 workload with the app container, sidecars, init containers, scheduling, and security configuration from the spec
-- **Headless governing Service** — shares the workload's name; provides each replica's stable DNS name and load-balanced client access on the declared ports
-- **PersistentVolumeClaims** — one per replica per entry in `volumeClaimTemplates`, named `<template>-<name>-<ordinal>`
-- **PodDisruptionBudget** — when `availability.podDisruptionBudget.enabled` is true; shares the workload's name
-- **Env Secret** — `<name>-env-secrets`, only when the spec carries literal secret env values
-- **Namespace** — only when `createNamespace` is true
-- **Labels** — standard Planton tracking labels merged with selector labels and any user-provided pod labels
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Headless Governing Service** -- provides stable DNS names for each pod (e.g., `{pod-name}.{service}.{namespace}.svc.cluster.local`); always created as required by the StatefulSet controller
+- **Kubernetes StatefulSet** -- the core workload resource with ordered pod management, persistent volume claim templates, container image, resources, environment, probes, and volume mounts
+- **ClusterIP Service** -- created only when `container.app.ports` are defined; provides load-balanced access to StatefulSet pods for client traffic
+- **Kubernetes Secret** -- created only when `container.app.env.secrets` carry literal values; stores them and mounts them as environment variables
+- **PodDisruptionBudget** -- created only when `availability.podDisruptionBudget.enabled` is `true`; enforces minimum availability during voluntary disruptions
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-External exposure is never created here: attach a first-class exposure kind (e.g. a Gateway API route like KubernetesHttpRoute) that references this workload's exported `service` output.
+External exposure is composed, never embedded: this kind exports its governing Service and selector labels, and first-class exposure kinds (KubernetesIngress, KubernetesHttpRoute and the other Gateway API route kinds, with certificates) reference them — so every piece of exposure infrastructure is a visible node in the resource graph.
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, a `KubernetesNamespace` resource referenced from `spec.namespace`, or `createNamespace: true`
-- **A StorageClass** able to serve the volume claim templates (the cluster default is used when `storageClass` is unset)
-- **A container image** for the stateful application, reachable from the cluster
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `statefulset.yaml`:
+### Kubernetes Cluster
+
+- **A storage class** available for persistent volumes when using `volumeClaimTemplates`. The cluster must support dynamic PV provisioning for the configured storage sizes; pick a class with volume expansion enabled if the data may grow.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **StatefulSet on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Database** preset for a single-replica database with persistent storage, or **HA Quorum Cluster** for a 3-member quorum system, in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
-  name: my-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesStatefulSet.my-db
+  name: cache-cluster
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: databases
+    value: "stateful-apps"
+  createNamespace: true
   container:
     app:
       image:
-        repo: postgres
-        tag: "16.3"
+        repo: ghcr.io/acme-corp/cache-node
+        tag: v2.0.0
       ports:
-        - name: db
-          containerPort: 5432
-          servicePort: 5432
-      volumeMounts:
-        - name: data
-          mountPath: /var/lib/postgresql/data
-          pvc:
-            claimName: data
-  volumeClaimTemplates:
-    - name: data
-      size: 10Gi
-      accessModes:
-        - ReadWriteOnce
+        - name: tcp
+          containerPort: 6379
+          networkProtocol: TCP
+          appProtocol: tcp
+          servicePort: 6379
+  availability:
+    replicas: 3
 ```
-
-Deploy:
 
 ```shell
 planton apply -f statefulset.yaml
 ```
 
-This creates a single-replica StatefulSet: pod `my-db-0` with its own 10Gi claim `data-my-db-0`, addressable in-cluster at `my-db-0.my-db.databases.svc.cluster.local`.
+This creates a 3-replica StatefulSet with a headless service for stable pod DNS and a ClusterIP service on port 6379. No persistent volumes or pod disruption budget are configured — members keep only in-memory state.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `spec.namespace` | `StringValueOrRef` | Target namespace — a literal name (`{ value: databases }`) or a reference to a `KubernetesNamespace` resource |
-| `spec.container.app` | `WorkloadContainer` | The main application container. `image.repo` and `image.tag` are required; this path is the deploy-pipeline image injection point |
-
-### Container Fields (`spec.container`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `app.ports` | `list` | `[]` | Container ports; `servicePort` publishes the port on the governing Service, named ports are referenced by probes |
-| `app.env` | `ContainerEnv` | — | Plain `variables`, `secrets` (literal values materialize a managed Secret), and bulk `envFrom` imports |
-| `app.livenessProbe` / `readinessProbe` / `startupProbe` | `Probe` | — | Health checks; readiness gates client traffic and update progression |
-| `app.volumeMounts` | `list` | `[]` | Mounts carrying their own volume source (`pvc`, `configMap`, `secret`, `emptyDir`, `hostPath`); a `pvc.claimName` matching a volume claim template name mounts the per-replica storage |
-| `app.lifecycle` | `WorkloadContainerLifecycle` | — | `postStart` / `preStop` hooks; `preStop` covers member handoff |
-| `app.securityContext` | `WorkloadContainerSecurityContext` | — | Container-level hardening (non-root, read-only root filesystem, capabilities, seccomp) |
-| `sidecars` | `list<WorkloadContainer>` | `[]` | Named sidecar containers with the full container surface |
-
-### Pod Fields (`spec.pod`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `serviceAccount` | `StringValueOrRef` | namespace default | Identity pods run as — literal name or reference to a `KubernetesServiceAccount` resource |
-| `initContainers` | `list<WorkloadContainer>` | `[]` | Run to completion, in order, before app containers start |
-| `scheduling` | `WorkloadScheduling` | — | Node selection, tolerations, affinity/anti-affinity, topology spread |
-| `securityContext` | `WorkloadPodSecurityContext` | — | Pod-level baseline including `fsGroup` for volume ownership |
-| `terminationGracePeriodSeconds` | `int64` | `30` | Time between SIGTERM and SIGKILL; size to a clean member handoff |
-| `dnsPolicy` / `dnsConfig` / `hostAliases` | — | — | DNS resolution controls |
-
-### StatefulSet Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.createNamespace` | `bool` | `false` | Create the namespace if it does not exist |
-| `spec.availability.replicas` | `int32` | `1` | Desired member count; no autoscaling by design |
-| `spec.availability.podDisruptionBudget` | `object` | disabled | `minAvailable` or `maxUnavailable` (exactly one); set `minAvailable` to the quorum size for consensus systems |
-| `spec.availability.minReadySeconds` | `int32` | `0` | Seconds a new pod must stay ready before the rollout proceeds |
-| `spec.availability.revisionHistoryLimit` | `int32` | `10` | Retained ControllerRevisions for rollback |
-| `spec.volumeClaimTemplates` | `list` | `[]` | Per-replica PVC templates: `name` (the claim name mounts reference), `size` (required), `storageClass`, `accessModes` (default `ReadWriteOnce`), `volumeMode` |
-| `spec.updateStrategy.type` | `string` | `RollingUpdate` | `RollingUpdate` (reverse ordinal, one at a time) or `OnDelete` (operator-driven) |
-| `spec.updateStrategy.partition` | `int32` | `0` | Canary-by-ordinal: only pods with ordinal >= partition update |
-| `spec.updateStrategy.maxUnavailable` | `string` | `1` | Parallel ordinal updates; requires the `MaxUnavailableStatefulSet` feature gate |
-| `spec.podManagementPolicy` | `string` | `OrderedReady` | `OrderedReady` (sequential scale operations) or `Parallel` (all at once) |
-| `spec.pvcRetentionPolicy.whenDeleted` | `string` | `Retain` | `Retain` keeps PVCs when the StatefulSet is deleted; `Delete` removes them |
-| `spec.pvcRetentionPolicy.whenScaled` | `string` | `Retain` | PVC fate for members removed by scale-down |
-| `spec.ordinals.start` | `int32` | `0` | First replica's ordinal |
-
-## Examples
-
-### Three-Member Quorum Cluster
-
-Anti-affinity across nodes, a quorum-guarding PDB, and parallel bootstrap:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the StatefulSet to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesStatefulSet
-metadata:
-  name: kraft-broker
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesStatefulSet.kraft-broker
 spec:
   namespace:
-    value: streaming
-  container:
-    app:
-      image:
-        repo: my-registry/kafka
-        tag: "3.7.0"
-      ports:
-        - name: client
-          containerPort: 9092
-          servicePort: 9092
-        - name: peer
-          containerPort: 9093
-          servicePort: 9093
-      volumeMounts:
-        - name: data
-          mountPath: /var/lib/kafka
-          pvc:
-            claimName: data
-  pod:
-    scheduling:
-      podAntiAffinity:
-        required:
-          - matchLabels:
-              app: kraft-broker
-            topologyKey: kubernetes.io/hostname
-    terminationGracePeriodSeconds: 120
-  availability:
-    replicas: 3
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: "2"
-  podManagementPolicy: Parallel
-  volumeClaimTemplates:
-    - name: data
-      size: 50Gi
-      accessModes:
-        - ReadWriteOnce
+    valueFrom:
+      kind: KubernetesNamespace
+      name: stateful-apps-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-### Canary Update by Partition
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the StatefulSet with the resolved values.
 
-Only the highest ordinal receives new templates until the partition is lowered:
+## Key Configuration
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesStatefulSet
-metadata:
-  name: search-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesStatefulSet.search-cluster
-spec:
-  namespace:
-    value: search
-  container:
-    app:
-      image:
-        repo: my-registry/search
-        tag: "2.4.1"
-      ports:
-        - name: http
-          containerPort: 9200
-          servicePort: 9200
-  availability:
-    replicas: 5
-  updateStrategy:
-    type: RollingUpdate
-    partition: 4
-```
+These are the most important decisions when configuring a Kubernetes StatefulSet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Ephemeral State with Automatic Cleanup
+**Persistent volume claim templates** -- Define `volumeClaimTemplates` to give each replica its own persistent volume. Each template specifies a `name`, `size` (e.g., `"10Gi"`), optional `storageClass`, `accessModes`, and `volumeMode`. Mount a template in `container.app.volumeMounts` with a PVC source whose claim name equals the template's name — replica 0's claim becomes `{template}-{statefulset}-0`. Templates are fixed at creation (the Kubernetes API rejects changing them on a live StatefulSet).
 
-A reproducible cache whose volumes are removed with the workload:
+**PVC retention** -- `pvcRetentionPolicy.whenDeleted` and `.whenScaled` control what happens to the stamped volumes. The Kubernetes default for both is `Retain`: data outlives the workload, re-creating the set with the same name re-adopts it, and scale-up rejoins members with their data. `Delete` trades that safety for automatic cleanup — right for reproducible caches, wrong for the only copy of a database.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesStatefulSet
-metadata:
-  name: render-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesStatefulSet.render-cache
-spec:
-  namespace:
-    value: rendering
-  container:
-    app:
-      image:
-        repo: my-registry/render-cache
-        tag: "1.2.0"
-      ports:
-        - name: cache
-          containerPort: 6379
-          servicePort: 6379
-      volumeMounts:
-        - name: cache-data
-          mountPath: /data
-          pvc:
-            claimName: cache-data
-  pvcRetentionPolicy:
-    whenDeleted: Delete
-    whenScaled: Delete
-  volumeClaimTemplates:
-    - name: cache-data
-      size: 5Gi
-      accessModes:
-        - ReadWriteOnce
-```
+**Replicas and pod management policy** -- Set `availability.replicas` for the member count. `podManagementPolicy` controls scale operations: `"OrderedReady"` (default) proceeds one pod at a time, waiting for readiness — what most clustered systems need for safe bootstrap; `"Parallel"` launches all pods at once for systems that coordinate membership themselves. There is deliberately no autoscaling: stateful members join and leave through application-aware procedures, not HPA.
 
-## Stack Outputs
+**Update strategy and canary** -- `updateStrategy.type` is `"RollingUpdate"` (default, one ordinal at a time from the highest down) or `"OnDelete"` (operator-driven). `updateStrategy.partition` canaries by ordinal: only members with ordinal ≥ partition receive the new template — validate one member, then lower the partition step by step.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Pod disruption budget** -- Enable `availability.podDisruptionBudget` with `minAvailable` or `maxUnavailable` to protect availability during node drains and cluster upgrades. For a 3-member quorum system, `minAvailable: "2"` ensures a drain can never break quorum.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Namespace the workload was deployed into |
-| `statefulSetName` | `string` | Name of the StatefulSet object in the cluster |
-| `service` | `string` | The headless governing Service — stable per-pod DNS and client access |
-| `selectorLabels` | `string` | Pod selector labels as `k=v,k=v`, for NetworkPolicies and `kubectl -l` |
-| `portForwardCommand` | `string` | Ready-to-run `kubectl port-forward` command for local access |
-| `kubeEndpoint` | `string` | In-cluster DNS endpoint of the Service |
-| `podDnsTemplate` | `string` | Template for each replica's stable DNS name — substitute the ordinal to address a specific member |
+**Environment variables and secrets** -- Use `container.app.env.variables` for configuration and `container.app.env.secrets` for sensitive values. Variables support every Kubernetes source: literals, ValueFromRef to other Cloud Resources, ConfigMap keys, pod fields (a member can learn its own identity from `metadata.name`), and container resources.
 
-## Related Components
+## Outputs and Dependencies
 
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — the stateless counterpart; use it when replicas are interchangeable
-- [KubernetesDaemonSet](/docs/catalog/kubernetes/daemonset) — one pod per node, for node agents
-- [KubernetesServiceAccount](/docs/catalog/kubernetes/serviceaccount) — the identity pods run as; reference it from `spec.pod.serviceAccount`
-- [KubernetesConfigMap](/docs/catalog/kubernetes/configmap) — configuration consumed via env or volume mounts
-- [KubernetesSecret](/docs/catalog/kubernetes/secret) — confidential values referenced from container env
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace; reference it from `spec.namespace`
-- [KubernetesStorageClass](/docs/catalog/kubernetes/storage-class) — pin volume performance characteristics for claim templates
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `pod.serviceAccount` | `status.outputs.service_account_name` |
+| **KubernetesSecret** | `pod.imagePullSecrets` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Kubernetes namespace the workload was deployed into | Other workloads deploying into the same namespace |
+| `stateful_set_name` | Name of the StatefulSet object as created in the cluster | Operational tooling and audits |
+| `service` | The headless governing Service — stable per-pod DNS and load-balanced access | Client applications connecting to the system |
+| `selector_labels` | Pod selector labels as a `k=v,k=v` string | NetworkPolicy podSelectors, `kubectl get pods -l`, pod-affinity terms |
+| `port_forward_command` | Ready-to-run `kubectl port-forward` command | Local development access without external exposure |
+| `kube_endpoint` | Cluster-internal FQDN (`{service}.{namespace}.svc.cluster.local`) | Application connection strings; exposure kinds reference it |
+| `pod_dns_template` | Per-member DNS template (`{name}-{ordinal}.{service}.{namespace}.svc.cluster.local`) | Clustered clients building member lists |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Database** -- A single-replica database: one pod with a stable name, one PersistentVolumeClaim stamped from the `data` template that survives restarts and rescheduling, and TCP probes so the pod only receives connections once the engine accepts them. Start from the **Database** preset.
+
+**HA quorum cluster** -- A 3-member quorum system with per-member storage, a pod disruption budget sized to the quorum, and zone spread. Start from the **HA Quorum Cluster** preset.
+
+**Hardened database** -- Passes the Kubernetes restricted Pod Security Standard while running persistent storage: non-root with a pinned UID, read-only root filesystem, all Linux capabilities dropped, the runtime-default seccomp filter, and no API token mount. Start from the **Hardened Database** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the StatefulSet
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the identity members run as; cloud access federates through its workload-identity configuration
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- image pull secrets and referenced credential material
+- [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) -- composes external exposure by referencing the exported Service (never embedded in the workload)

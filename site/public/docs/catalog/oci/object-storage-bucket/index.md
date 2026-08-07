@@ -6,252 +6,127 @@ order: 100
 componentName: "ociobjectstoragebucket"
 ---
 
-# OCI Object Storage Bucket
+# Object Storage Bucket on OCI
 
-Deploys an Oracle Cloud Infrastructure Object Storage bucket with optional retention rules, lifecycle policies for automatic object transitions and deletions, and cross-region replication. Versioning, auto-tiering, customer-managed encryption, and event emission are configurable at the bucket level.
+Deploys an Oracle Cloud Infrastructure Object Storage bucket -- a durable, scalable object store with configurable access controls, versioning, auto-tiering, retention rules, lifecycle management, and cross-region replication. Retention rules enforce minimum object lifetimes for compliance. Lifecycle rules automate tiering, archival, and deletion based on object age. Replication policies asynchronously copy objects to a destination bucket in another OCI region for disaster recovery. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments and encryption keys.
 
 ## What Gets Created
 
-When you deploy an OciObjectStorageBucket resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Object Storage Bucket** — an `oci_objectstorage_bucket` resource in the specified compartment and namespace with configurable access type, storage tier, versioning, auto-tiering, and optional KMS encryption. Retention rules are managed inline on the bucket (max 100).
-- **Lifecycle Policy** — created only when `lifecycleRules` is non-empty. A single `oci_objectstorage_object_lifecycle_policy` resource containing all lifecycle rules. Rules automate object archival, tiering transitions, deletion, and multipart upload cleanup based on age and name patterns.
-- **Replication Policies** — one `oci_objectstorage_replication_policy` per entry in `replicationPolicies`. Each policy asynchronously copies objects to a destination bucket in another OCI region for disaster recovery. All replication policy fields are immutable after creation.
+- **Object Storage Bucket** -- the bucket in the specified compartment and namespace with access type, storage tier, versioning, auto-tiering, event emission, optional KMS encryption, user metadata, and inline retention rules (up to 100)
+- **Object Lifecycle Policy** -- created only when `lifecycleRules` is non-empty; a single policy resource containing all lifecycle rules that automate object archival, tiering transitions, deletion, and multipart upload cleanup
+- **Replication Policies** -- one policy per entry in `replicationPolicies`; each asynchronously copies objects to a pre-existing destination bucket in another OCI region. All replication policy fields are immutable after creation.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the bucket
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the bucket will be created — either a literal value or a reference to an OciCompartment resource
-- **Object Storage namespace** — the tenancy-unique namespace string (retrieve via `oci os ns get` or from the OCI Console)
-- **Destination buckets** (for replication) — must already exist in the target region before creating replication policies
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `bucket.yaml`:
+### OCI Tenancy
+
+- A compartment to place the bucket in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- The Object Storage namespace for the tenancy (a unique string like `axe1234abc`). Retrieve it via `oci os ns get` or from the OCI Console.
+- For customer-managed encryption: an OCI KMS key. When omitted, Oracle-managed encryption is used.
+- For cross-region replication: destination buckets must already exist in the target regions before creating replication policies.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Object Storage Bucket on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Versioned** preset in the [Presets](#presets) tab to pre-populate a production bucket with KMS encryption, versioning, auto-tiering, and lifecycle rules for old versions and incomplete uploads.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciObjectStorageBucket
 metadata:
-  name: my-bucket
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciObjectStorageBucket.my-bucket
+  name: app-data
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
   namespace: "axe1234abc"
-  name: "my-bucket"
+  name: "acme-prod-app-data"
+  accessType: no_public_access
+  storageTier: standard
+  versioning: enabled
+  autoTiering: infrequent_access
 ```
-
-Deploy:
 
 ```shell
 planton apply -f bucket.yaml
 ```
 
-This creates a private bucket with Standard storage tier, no versioning, and Oracle-managed encryption. The bucket OCID is exported as a stack output.
+This creates a private bucket with Standard tier, versioning enabled, and auto-tiering to InfrequentAccess for cost optimization. Oracle-managed encryption is used. No retention rules, lifecycle policies, or replication are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the bucket will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `namespace` | `string` | Object Storage namespace for the tenancy. A unique identifier assigned to each tenancy (e.g. `"axe1234abc"`). Retrieve via `oci os ns get`. | Min length 1 |
-| `name` | `string` | Bucket name. Must be unique within the namespace. Valid characters: letters, numbers, hyphens, underscores, periods. Changing this forces recreation. | Min length 1 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `accessType` | `enum` | `no_public_access` | Public read access on the bucket. Values: `no_public_access`, `object_read`, `object_read_without_list`. |
-| `storageTier` | `enum` | `standard` | Storage class for the bucket. Values: `standard`, `archive`. Immutable after creation. |
-| `versioning` | `enum` | — | Object version history. On create: `enabled` or `disabled`. On update: `enabled` or `suspended`. |
-| `autoTiering` | `enum` | — | Automatic tier transitions based on access patterns. Values: `auto_tiering_disabled`, `infrequent_access`. |
-| `objectEventsEnabled` | `bool` | `false` | When `true`, emits events for object state changes via the OCI Events service. |
-| `kmsKeyId` | `StringValueOrRef` | — | OCID of a KMS master encryption key for server-side encryption. When unset, Oracle-managed keys are used. |
-| `metadata` | `map<string, string>` | — | User-defined metadata as key-value pairs. Keys must be lowercase. Total size limit is 4 KB. |
-| `retentionRules` | `RetentionRule[]` | — | Retention rules enforcing minimum retention periods. Max 100 per bucket. See below. |
-| `lifecycleRules` | `LifecycleRule[]` | — | Lifecycle rules automating object transitions and deletions based on age. See below. |
-| `replicationPolicies` | `ReplicationPolicy[]` | — | Cross-region replication policies. Each replicates objects to a destination bucket in another region. See below. |
-
-### RetentionRule
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `displayName` | `string` | Name for the retention rule. Must be unique within the bucket. Changing this forces recreation. |
-| `duration` | `Duration` | Retention duration. When omitted, the rule applies indefinitely. |
-| `timeRuleLocked` | `string` | RFC 3339 datetime after which this rule becomes locked. Once locked, only duration increases are allowed. |
-
-### Duration
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `timeAmount` | `int64` | Time amount (>= 1). |
-| `timeUnit` | `enum` | Unit for `timeAmount`. Values: `days`, `years`. |
-
-### LifecycleRule
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | Rule name. Must be unique within the lifecycle policy. |
-| `action` | `enum` | Action to perform. Values: `lifecycle_archive`, `lifecycle_infrequent_access`, `lifecycle_delete`, `lifecycle_abort`. |
-| `isEnabled` | `bool` | Whether this rule is active. |
-| `timeAmount` | `int64` | Age threshold (>= 1). Objects older than this are acted upon. |
-| `timeUnit` | `enum` | Unit for `timeAmount`. Values: `days`, `years`. |
-| `target` | `string` | Target object type. Values: `"objects"` (default), `"multipart-uploads"`, `"previous-object-versions"`. |
-| `objectNameFilter` | `ObjectNameFilter` | Filter by name pattern. Not valid when target is `"multipart-uploads"`. |
-
-### ObjectNameFilter
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `inclusionPatterns` | `string[]` | Glob patterns to include. Empty list includes all objects. |
-| `inclusionPrefixes` | `string[]` | Object name prefixes to include. Prefer `inclusionPatterns`. |
-| `exclusionPatterns` | `string[]` | Glob patterns to exclude. Takes precedence over inclusions. |
-
-### ReplicationPolicy
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | Policy name. Immutable after creation. |
-| `destinationBucketName` | `string` | Name of the destination bucket. Must already exist in the destination region. Immutable after creation. |
-| `destinationRegionName` | `string` | OCI region identifier for the destination (e.g. `"us-ashburn-1"`). Immutable after creation. |
-
-## Examples
-
-### Minimal Private Bucket
-
-A bucket with default settings — suitable for development or application data:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the bucket to a compartment and encryption key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciObjectStorageBucket
-metadata:
-  name: dev-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciObjectStorageBucket.dev-data
 spec:
   compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  namespace: "axe1234abc"
-  name: "dev-data"
-```
-
-### Versioned Bucket with Retention
-
-A bucket with versioning enabled and a 90-day retention rule for compliance:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciObjectStorageBucket
-metadata:
-  name: compliance-store
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OciObjectStorageBucket.compliance-store
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  namespace: "axe1234abc"
-  name: "compliance-store"
-  versioning: enabled
-  objectEventsEnabled: true
-  retentionRules:
-    - displayName: "90-day-hold"
-      duration:
-        timeAmount: 90
-        timeUnit: days
-```
-
-### Lifecycle and Auto-Tiering
-
-A bucket with auto-tiering for cost optimization and lifecycle rules to archive old data and clean up incomplete multipart uploads:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciObjectStorageBucket
-metadata:
-  name: data-lake
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciObjectStorageBucket.data-lake
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  namespace: "axe1234abc"
-  name: "data-lake"
-  autoTiering: infrequent_access
-  lifecycleRules:
-    - name: "archive-after-180-days"
-      action: lifecycle_archive
-      isEnabled: true
-      timeAmount: 180
-      timeUnit: days
-      target: "objects"
-    - name: "delete-old-versions"
-      action: lifecycle_delete
-      isEnabled: true
-      timeAmount: 365
-      timeUnit: days
-      target: "previous-object-versions"
-    - name: "abort-stale-uploads"
-      action: lifecycle_abort
-      isEnabled: true
-      timeAmount: 7
-      timeUnit: days
-      target: "multipart-uploads"
-```
-
-### Cross-Region Replication with KMS Encryption
-
-A production bucket with customer-managed encryption and cross-region disaster recovery:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciObjectStorageBucket
-metadata:
-  name: prod-artifacts
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciObjectStorageBucket.prod-artifacts
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  namespace: "axe1234abc"
-  name: "prod-artifacts"
-  versioning: enabled
-  objectEventsEnabled: true
+    valueFrom:
+      kind: OciCompartment
+      name: storage
+      fieldPath: status.outputs.compartmentId
   kmsKeyId:
-    value: "ocid1.key.oc1..example"
-  replicationPolicies:
-    - name: "dr-to-phoenix"
-      destinationBucketName: "prod-artifacts-dr"
-      destinationRegionName: "us-phoenix-1"
+    valueFrom:
+      kind: OciKmsKey
+      name: storage-key
+      fieldPath: status.outputs.keyId
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment and KMS key first, then provisions the bucket with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bucket_id` | `string` | OCID of the created Object Storage bucket |
+These are the most important decisions when configuring an Object Storage bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Storage tier** -- Set `storageTier` to `standard` for frequently accessed data or `archive` for cold storage with lower cost and higher retrieval latency. The storage tier is immutable after creation. Enable `autoTiering` with `infrequent_access` on Standard-tier buckets to automatically move infrequently accessed objects to a lower-cost tier.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciVcn](/docs/catalog/oci/vcn) — if using private endpoints for bucket access (future scope)
+**Versioning** -- Set `versioning` to `enabled` to protect objects from accidental overwrites and deletions by maintaining version history. Once enabled, versioning can be `suspended` (new versions stop being created) but cannot be reverted to `disabled`. Pair with lifecycle rules targeting `previous-object-versions` to archive or delete old versions after a retention period.
+
+**Retention rules** -- Add entries to `retentionRules` to enforce minimum object lifetimes. Each rule has a `displayName`, `duration` (amount + unit), and optional `timeRuleLocked` datetime. Once a rule is locked (past the lock time), it can only be deleted by deleting the bucket, and only duration increases are permitted.
+
+**Lifecycle rules** -- Add entries to `lifecycleRules` to automate object management. Actions include `lifecycle_archive` (move to Archive tier), `lifecycle_infrequent_access` (move to InfrequentAccess), `lifecycle_delete` (permanently remove), and `lifecycle_abort` (clean up incomplete multipart uploads). Each rule targets `objects`, `previous-object-versions`, or `multipart-uploads` with optional name filters.
+
+**Cross-region replication** -- Add entries to `replicationPolicies` to asynchronously replicate objects to destination buckets in other OCI regions. Destination buckets must exist before policy creation. All replication policy fields are immutable after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciKmsKey** (optional) | `kmsKeyId` | `status.outputs.keyId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bucket_id` | OCID of the Object Storage bucket | IAM policy scoping, replication destination references, monitoring alarms, application configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Private versioned** -- A production bucket with no public access, KMS encryption, versioning, auto-tiering, and lifecycle rules that archive old object versions after 90 days and abort incomplete multipart uploads after 7 days. Start from the **Private Versioned** preset.
+
+**Archive storage** -- A compliance-oriented bucket using the Archive storage tier with a 7-year retention rule. Versioning is disabled (Archive tier stores immutable objects). A lifecycle rule cleans up incomplete uploads. Start from the **Archive Storage** preset.
+
+**Public read** -- A bucket allowing individual object reads without directory listing (ObjectReadWithoutList). Event emission is enabled to track downloads via the OCI Events service. Suitable for public static assets. Start from the **Public Read** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this bucket
+- [**KMS Key on OCI**](/cloud-catalog/oci-kms-key) -- provides the customer-managed encryption key for server-side encryption

@@ -6,43 +6,59 @@ order: 100
 componentName: "digitaloceanfirewall"
 ---
 
-# DigitalOcean Firewall
+# Firewall on DigitalOcean
 
-Deploys a stateful, network-edge Cloud Firewall on DigitalOcean that enforces a default-deny security model for Droplets. The component supports inbound and outbound rules with IP-based, tag-based, Load Balancer, and Kubernetes cluster source/destination targeting, and can be applied to Droplets by ID or tag.
+Deploys a DigitalOcean Cloud Firewall with configurable inbound and outbound rules, applied to Droplets by ID or tag. Firewalls filter traffic at the network edge before it reaches the Droplet, providing stateful packet inspection without consuming Droplet resources. Integrates with Planton's Provider Connections for DigitalOcean API token management.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanFirewall resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DigitalOcean Firewall** — a `digitalocean_firewall` resource with the specified name, inbound rules, outbound rules, and Droplet targeting (by ID or tag)
+- **Cloud Firewall** -- a network firewall with the configured inbound and outbound rules, applied to the specified Droplets or Droplet tags
+- **Inbound Rules** -- traffic filtering rules that control which sources can reach Droplets on specific protocols and port ranges
+- **Outbound Rules** -- traffic filtering rules that control which destinations Droplets can reach on specific protocols and port ranges
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **Existing Droplets or Droplet tags** to which the firewall will be applied
-- **Knowledge of the network ports and protocols** your services require
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `firewall.yaml`:
+### DigitalOcean Account
+
+- **Existing Droplets or Droplet tags** -- the firewall targets Droplets by ID (via `dropletIds`) or by tag name (via `tags`). Tag-based targeting is recommended for dynamic environments where Droplets are created and destroyed frequently.
+- **Network planning** -- determine which protocols, ports, and source/destination addresses your application requires. Firewalls deny all traffic by default; only explicitly allowed traffic passes through.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Firewall on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier** preset in the [Presets](#presets) tab for a web-facing firewall with HTTP/HTTPS inbound and restricted SSH.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanFirewall
 metadata:
-  name: my-firewall
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanFirewall.my-firewall
+  name: web-firewall
+  org: acme-corp
+  env: prod
 spec:
-  name: my-firewall
+  name: web-firewall
   tags:
     - web
   inboundRules:
     - protocol: tcp
       portRange: "443"
+      sourceAddresses:
+        - "0.0.0.0/0"
+        - "::/0"
+    - protocol: tcp
+      portRange: "80"
       sourceAddresses:
         - "0.0.0.0/0"
         - "::/0"
@@ -52,272 +68,48 @@ spec:
       destinationAddresses:
         - "0.0.0.0/0"
         - "::/0"
-    - protocol: udp
-      portRange: "1-65535"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f firewall.yaml
+planton apply -f do-firewall.yaml
 ```
 
-This creates a firewall that allows inbound HTTPS from any address and permits all outbound traffic, applied to every Droplet tagged `web`.
+This creates a firewall allowing HTTPS and HTTP inbound from all addresses and all TCP outbound, applied to Droplets tagged `web`. SSH access is not included. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Cloud Firewall. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.name` | `string` | Name of the firewall in DigitalOcean. Must be unique per account. | Min length 1, max length 255 |
+**Targeting strategy** -- Use `tags` for dynamic targeting (any Droplet with the tag inherits the firewall) or `dropletIds` for explicit targeting. Tag-based targeting scales better in environments where Droplets are created and destroyed by automation. A maximum of 5 tags and 10 Droplet IDs can be specified per firewall.
 
-### Optional Fields
+**Inbound rules** -- Each rule specifies a `protocol` (tcp, udp, or icmp), a `portRange` (e.g., `"443"`, `"8000-9000"`, or `"1-65535"` for all), and source filters. Sources can be CIDR addresses, Droplet IDs, Droplet tags, Kubernetes cluster IDs, or load balancer UIDs. Restrict SSH (port 22) to a management CIDR rather than `0.0.0.0/0`.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.inboundRules` | `InboundRule[]` | `[]` | Rules defining traffic allowed to reach the targeted Droplets. See Inbound Rule fields below. |
-| `spec.outboundRules` | `OutboundRule[]` | `[]` | Rules defining traffic allowed to leave the targeted Droplets. See Outbound Rule fields below. |
-| `spec.dropletIds` | `int64[]` | `[]` | Specific Droplet IDs to which this firewall is applied (max 10). Use tags for production workloads. |
-| `spec.tags` | `string[]` | `[]` | Droplet tag names to which this firewall is applied. Any Droplet with a matching tag is protected by these rules. |
+**Outbound rules** -- Same structure as inbound but controls egress traffic. Most applications need all-TCP outbound for API calls and package downloads, plus UDP 53 for DNS resolution. Restrict outbound only when compliance or data-loss prevention requires it.
 
-#### Inbound Rule Fields
+**Multi-tier architecture** -- Use `sourceTags` in inbound rules to allow traffic only from specific tiers. For example, a database firewall can allow port 5432 only from Droplets tagged `web`, enforcing network segmentation without IP-based rules.
 
-Each entry in `inboundRules` accepts the following fields:
+## Outputs and Dependencies
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `protocol` | `string` | — | Required. One of `tcp`, `udp`, or `icmp`. |
-| `portRange` | `string` | `""` | Port or range to allow (e.g., `"80"`, `"8000-9000"`, `"1-65535"`). Leave empty for ICMP. |
-| `sourceAddresses` | `string[]` | `[]` | IPv4/IPv6 addresses or CIDR ranges (e.g., `"0.0.0.0/0"`, `"10.0.0.0/8"`). |
-| `sourceDropletIds` | `int64[]` | `[]` | IDs of Droplets from which traffic is allowed. |
-| `sourceTags` | `string[]` | `[]` | Droplet tag names; any Droplet with these tags is allowed as a source. |
-| `sourceKubernetesIds` | `string[]` | `[]` | IDs of DigitalOcean Kubernetes clusters from which traffic is allowed. |
-| `sourceLoadBalancerUids` | `string[]` | `[]` | IDs of DigitalOcean Load Balancers from which traffic is allowed. |
+### What This Component Consumes
 
-#### Outbound Rule Fields
+This component has no foreign key dependencies.
 
-Each entry in `outboundRules` accepts the following fields:
+### What This Component Provides
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `protocol` | `string` | — | Required. One of `tcp`, `udp`, or `icmp`. |
-| `portRange` | `string` | `""` | Port or range to allow (e.g., `"5432"`, `"1-65535"`). Leave empty for ICMP. |
-| `destinationAddresses` | `string[]` | `[]` | IPv4/IPv6 addresses or CIDR ranges to which traffic is allowed. |
-| `destinationDropletIds` | `int64[]` | `[]` | IDs of Droplets to which traffic is allowed. |
-| `destinationTags` | `string[]` | `[]` | Droplet tag names whose members are allowed destinations. |
-| `destinationKubernetesIds` | `string[]` | `[]` | IDs of DigitalOcean Kubernetes clusters to which traffic is allowed. |
-| `destinationLoadBalancerUids` | `string[]` | `[]` | IDs of DigitalOcean Load Balancers which are allowed as destinations. |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-## Examples
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `firewall_id` | Unique firewall identifier (UUID) | API operations, audit logs |
 
-### Basic Web Server
+## Common Patterns
 
-A firewall for a web server that accepts HTTP and HTTPS from any address and allows all outbound traffic:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFirewall
-metadata:
-  name: web-server-fw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanFirewall.web-server-fw
-spec:
-  name: web-server-firewall
-  tags:
-    - web
-  inboundRules:
-    - protocol: tcp
-      portRange: "80"
-      sourceAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: tcp
-      portRange: "443"
-      sourceAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: tcp
-      portRange: "22"
-      sourceAddresses:
-        - "203.0.113.0/24"
-  outboundRules:
-    - protocol: tcp
-      portRange: "1-65535"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: udp
-      portRange: "53"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-```
+**Web tier firewall** -- allows HTTP/HTTPS from all addresses, restricts SSH to a management CIDR, and permits all outbound traffic. Applied via tag to any Droplet tagged `web`. Start from the **Web Tier** preset.
 
-### Multi-Tier Application
+**Database tier firewall** -- restricts inbound to a database port (default 5432) from Droplets tagged `web` only, with SSH limited to a management CIDR. Prevents direct internet access to database servers. Start from the **Database Tier** preset.
 
-Separate firewalls for a web tier and a database tier. The web tier accepts HTTPS only from a Load Balancer and connects to the database tier via tags. The database tier accepts PostgreSQL connections only from the web tier:
+## Works With
 
-**Web tier firewall:**
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFirewall
-metadata:
-  name: app-web-fw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanFirewall.app-web-fw
-spec:
-  name: app-web-firewall
-  tags:
-    - web-tier
-  inboundRules:
-    - protocol: tcp
-      portRange: "443"
-      sourceLoadBalancerUids:
-        - "lb-abc-123"
-    - protocol: tcp
-      portRange: "80"
-      sourceLoadBalancerUids:
-        - "lb-abc-123"
-    - protocol: tcp
-      portRange: "22"
-      sourceAddresses:
-        - "203.0.113.10/32"
-  outboundRules:
-    - protocol: tcp
-      portRange: "5432"
-      destinationTags:
-        - db-tier
-    - protocol: tcp
-      portRange: "443"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: udp
-      portRange: "53"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-```
-
-**Database tier firewall:**
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFirewall
-metadata:
-  name: app-db-fw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanFirewall.app-db-fw
-spec:
-  name: app-db-firewall
-  tags:
-    - db-tier
-  inboundRules:
-    - protocol: tcp
-      portRange: "5432"
-      sourceTags:
-        - web-tier
-    - protocol: tcp
-      portRange: "22"
-      sourceAddresses:
-        - "203.0.113.10/32"
-  outboundRules:
-    - protocol: udp
-      portRange: "53"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: tcp
-      portRange: "443"
-      destinationAddresses:
-        - "91.189.88.0/21"
-```
-
-### Multiple Source Types with Kubernetes Integration
-
-A firewall that combines CIDR-based, tag-based, and Kubernetes cluster-based source rules, applied to specific Droplets by ID:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFirewall
-metadata:
-  name: mixed-sources-fw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.DigitalOceanFirewall.mixed-sources-fw
-spec:
-  name: mixed-sources-firewall
-  dropletIds:
-    - 386734086
-    - 386734087
-  tags:
-    - backend
-  inboundRules:
-    - protocol: tcp
-      portRange: "8080"
-      sourceAddresses:
-        - "10.0.0.0/8"
-      sourceTags:
-        - frontend
-      sourceKubernetesIds:
-        - "cluster-abc-123"
-    - protocol: tcp
-      portRange: "22"
-      sourceAddresses:
-        - "203.0.113.0/24"
-    - protocol: icmp
-      sourceAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-  outboundRules:
-    - protocol: tcp
-      portRange: "6379"
-      destinationTags:
-        - cache-tier
-    - protocol: tcp
-      portRange: "5432"
-      destinationTags:
-        - db-tier
-    - protocol: tcp
-      portRange: "443"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-    - protocol: udp
-      portRange: "53"
-      destinationAddresses:
-        - "0.0.0.0/0"
-        - "::/0"
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `firewallId` | `string` | The unique identifier (UUID) of the created DigitalOcean firewall |
-
-## Related Components
-
-- [DigitalOceanDroplet](/docs/catalog/digitalocean/droplet) — provisions the Droplets that the firewall protects
-- [DigitalOceanLoadBalancer](/docs/catalog/digitalocean/load-balancer) — can be referenced as a source or destination in firewall rules via Load Balancer UIDs
-- [DigitalOceanKubernetesCluster](/docs/catalog/digitalocean/kubernetes-cluster) — can be referenced as a source or destination in firewall rules via Kubernetes cluster IDs
-- [DigitalOceanVpc](/docs/catalog/digitalocean/vpc) — provides the network layer for Droplets protected by this firewall
-- [DigitalOceanDatabaseCluster](/docs/catalog/digitalocean/database-cluster) — commonly co-deployed with firewall rules restricting database port access
+This component operates independently and does not reference other deployment components.

@@ -8,148 +8,105 @@ componentName: "scalewayprivatenetwork"
 
 # Scaleway Private Network
 
-Deploys a Scaleway Private Network inside an existing VPC, with optional IPv4/IPv6 subnet configuration and default route propagation. The Private Network serves as the primary attachment point for Kapsule clusters, RDB instances, Redis clusters, Load Balancers, and other Scaleway resources that require private connectivity.
+Deploys a regional Private Network inside a Scaleway VPC with optional explicit IPv4 and IPv6 subnet configuration. Private Networks are the primary attachment point for Kapsule clusters, RDB instances, Redis clusters, Load Balancers, and Instances that need secure, private connectivity. Built-in DHCP assigns IP addresses automatically, with optional CIDR control for predictable address planning. Supports ValueFromRef for VPC dependency wiring in InfraCharts.
 
 ## What Gets Created
 
-When you deploy a ScalewayPrivateNetwork resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Private Network** — a `network.PrivateNetwork` resource attached to the specified VPC, with built-in DHCP and IPAM-managed addressing
-- **IPv4 Subnet** — either the user-specified CIDR or an auto-allocated subnet from Scaleway's IPAM service
-- **IPv6 Subnets** — created only when `ipv6Subnets` entries are provided
-- **Scaleway Tags** — resource kind, name, organization, and environment labels applied as flat `key=value` tags
+- **Private Network** -- a regional `network.PrivateNetwork` in the specified VPC with built-in DHCP and the configured subnet settings
+- **IPv4 Subnet** -- created only when `ipv4Subnet` is specified; a user-defined CIDR block for the network. When omitted, Scaleway's IPAM service auto-allocates a subnet from a default range
+- **IPv6 Subnets** -- created only when `ipv6Subnets` entries are provided; dual-stack networking for workloads requiring IPv6 reachability
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **An existing VPC** in the target region — either a literal VPC UUID or an Planton-managed ScalewayVpc resource whose output can be referenced via `valueFrom`
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway VPC** in the target region. Provide the VPC UUID directly or reference a ScalewayVpc Cloud Resource via ValueFromRef.
+- **Non-overlapping CIDR** -- if specifying an explicit `ipv4Subnet`, ensure the range does not overlap with other Private Networks in the same VPC. Overlapping ranges prevent routing between networks.
 
-Create a file `private-network.yaml`:
+## Deploy
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPrivateNetwork
-metadata:
-  name: my-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayPrivateNetwork.my-network
-spec:
-  vpcId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-  region: fr-par
-```
+### Console
 
-Deploy:
+Open the deployment store, find **Scaleway Private Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Auto-Subnet** preset in the [Presets](#presets) tab to let Scaleway IPAM assign the subnet automatically.
 
-```shell
-planton apply -f private-network.yaml
-```
+### CLI
 
-This creates a Private Network in the `fr-par` region with an IPAM-auto-allocated IPv4 subnet. The allocated CIDR is available in stack outputs as `ipv4_subnet_cidr`.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `vpcId` | `StringValueOrRef` | UUID of the VPC in which to create this Private Network. Can be a literal UUID or a `valueFrom` reference to a ScalewayVpc resource's `status.outputs.vpc_id`. The Private Network's region must match the VPC's region. | Required |
-| `region` | `string` | Scaleway region for the Private Network (e.g., `"fr-par"`, `"nl-ams"`, `"pl-waw"`). Cannot be changed after creation. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ipv4Subnet` | `string` | Auto-allocated by IPAM | IPv4 subnet in CIDR notation (e.g., `"192.168.0.0/24"`, `"10.0.1.0/24"`). When multiple Private Networks share a VPC, specify non-overlapping ranges to ensure correct routing. |
-| `ipv6Subnets` | `string[]` | `[]` | IPv6 subnets in CIDR notation (e.g., `"fd46:78ab:30b8:177c::/64"`). Multiple entries are supported for dual-stack networking. |
-| `enableDefaultRoutePropagation` | `bool` | `false` | When `true`, resources in this Private Network receive the VPC's default routes, enabling communication with resources in other Private Networks within the same VPC. |
-
-## Examples
-
-### Minimal Private Network with Auto-Allocated Subnet
-
-A Private Network with no explicit subnet — Scaleway's IPAM assigns one automatically:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPrivateNetwork
-metadata:
-  name: dev-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayPrivateNetwork.dev-network
-spec:
-  vpcId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-  region: fr-par
-```
-
-### Private Network with Explicit IPv4 Subnet and Route Propagation
-
-A Private Network with a controlled address range and cross-network routing enabled:
-
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPrivateNetwork
 metadata:
   name: app-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayPrivateNetwork.app-network
+  org: acme-corp
+  env: prod
 spec:
-  vpcId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  vpcId:
+    value: "abc12345-6789-def0-1234-567890abcdef"
   region: fr-par
-  ipv4Subnet: "10.0.1.0/24"
-  enableDefaultRoutePropagation: true
 ```
 
-### Dual-Stack Network with VPC Reference
+```shell
+planton apply -f scaleway-private-network.yaml
+```
 
-A Private Network referencing an Planton-managed VPC, with both IPv4 and IPv6 subnets:
+This creates a Private Network in the Paris region with an IPAM-managed auto-assigned subnet. No explicit CIDR, IPv6, or route propagation is configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Private Network to a VPC deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPrivateNetwork
-metadata:
-  name: dual-stack-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayPrivateNetwork.dual-stack-network
 spec:
   vpcId:
     valueFrom:
       kind: ScalewayVpc
       name: main-vpc
       fieldPath: status.outputs.vpc_id
-  region: nl-ams
-  ipv4Subnet: "172.16.0.0/22"
-  ipv6Subnets:
-    - "fd46:78ab:30b8:177c::/64"
-  enableDefaultRoutePropagation: true
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the Private Network with the resolved VPC ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `private_network_id` | `string` | UUID of the created Private Network. This is the primary cross-resource reference consumed by downstream components (Kapsule clusters, RDB instances, Redis clusters, Load Balancers, etc.) via `valueFrom`. |
-| `ipv4_subnet_cidr` | `string` | IPv4 CIDR of the subnet associated with this Private Network. Reflects the requested `ipv4Subnet` if specified, or the CIDR auto-allocated by Scaleway's IPAM service. |
+These are the most important decisions when configuring a Private Network. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Subnet mode** -- Omit `ipv4Subnet` to let Scaleway IPAM auto-allocate a CIDR. Specify an explicit CIDR (e.g., `10.0.1.0/24`) when running multiple Private Networks in a routing-enabled VPC, integrating with VPN tunnels, or requiring documented address ranges. The assigned CIDR is always available in `status.outputs.ipv4_subnet_cidr`.
 
-- [ScalewayVpc](/docs/catalog/scaleway/vpc) — the parent VPC that contains this Private Network
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — attaches Kubernetes clusters to this Private Network for private pod-to-service communication
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — attaches managed database instances to this Private Network for private database connectivity
-- [ScalewayRedisCluster](/docs/catalog/scaleway/redis-cluster) — attaches Redis clusters to this Private Network
-- [ScalewayInstanceSecurityGroup](/docs/catalog/scaleway/instance-security-group) — controls network access for compute instances within this Private Network
+**Region** -- The `region` must match the parent VPC's region. Cannot be changed after creation.
+
+**Default route propagation** -- Set `enableDefaultRoutePropagation` to true when the parent VPC has routing enabled and this Private Network's resources need to reach resources in other Private Networks within the same VPC. Leave disabled for isolated single-network environments.
+
+**IPv6 subnets** -- Add entries to `ipv6Subnets` for dual-stack networking. Most production deployments use IPv4 only; IPv6 is primarily useful for workloads that must be reachable on IPv6 or for advanced networking scenarios.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **ScalewayVpc** | `vpcId` | `status.outputs.vpc_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `private_network_id` | Unique identifier (UUID) of the created Private Network | ScalewayKapsuleCluster, ScalewayInstance, ScalewayLoadBalancer, ScalewayRdbInstance network attachment |
+| `ipv4_subnet_cidr` | IPv4 CIDR of the Private Network (explicit or IPAM-assigned) | Network planning, firewall rule configuration, VPN tunnel CIDR documentation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Auto-subnet Private Network** -- A Private Network with IPAM-managed automatic subnet allocation. The fastest path to a functional network for attaching instances, Kapsule clusters, and databases without upfront address planning. Start from the **Auto-Subnet** preset.
+
+**Explicit-subnet Private Network** -- A Private Network with a user-defined IPv4 CIDR block for environments requiring predictable addressing, non-overlapping ranges for inter-network routing, or VPN integration. Start from the **Explicit-Subnet** preset.
+
+## Works With
+
+- [**Scaleway VPC**](/cloud-catalog/scaleway-vpc) -- provides the VPC that contains this Private Network

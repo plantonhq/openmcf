@@ -6,154 +6,127 @@ order: 100
 componentName: "kubernetesvalkey"
 ---
 
-# Kubernetes Valkey
+# Valkey
 
-Deploys Valkey — the Linux Foundation's Redis-compatible in-memory data
-store — from the official Valkey Helm chart, in one of two topologies:
-standalone (the default, for caches and development) or primary/replica
-replication with a dedicated read Service. Durability is declared
-through typed valkey.conf fields (append-only file, RDB snapshots,
-memory ceiling and eviction policy), authentication through ACL users
-materialized as a Kubernetes Secret, and TLS through an existing
-certificate Secret.
-
-> **Redis compatibility**: Valkey is the BSD-licensed fork of Redis 7.2
-> governed by the Linux Foundation — a drop-in replacement. Every Redis
-> client library, the `RESP` protocol, and the command surface work
-> unchanged; point your existing Redis clients at the exported endpoint.
+Deploys Valkey — the Linux Foundation's Redis-compatible in-memory data store (the open-source successor every Redis client library speaks natively) — from the official Valkey Helm chart. Two topologies, chosen by the presence of the `replication` block: STANDALONE (one instance, the right shape for caches and development) or PRIMARY/REPLICA (one primary plus N streaming replicas with a dedicated read Service — read scaling, not automated failover). Several instances coexist per cluster: the release and every Service name are pinned to `metadata.name`.
 
 ## What Gets Created
 
-- **Namespace** (optional) — created and owned when `create_namespace`
-  is set
-- **Helm release** (official `valkey` chart, pinned 0.11.0) with the
-  chart fullname pinned to `metadata.name`: a Deployment (standalone)
-  or a StatefulSet (replication), the write Service `<name>`, and — in
-  replication mode — the read Service `<name>-read` and the headless
-  Service `<name>-headless`
-- **Auth Secret** (`<name>-auth`, when ACL users are declared) — one
-  key per username; the chart consumes it, passwords never appear in
-  rendered values
-- **PersistentVolumeClaims** — one for standalone persistence, or one
-  per pod in replication mode (where persistence is required)
-- **Metrics sidecar and Service** (when metrics are enabled) — the
-  redis_exporter the chart ships, plus an optional ServiceMonitor
-- **PodDisruptionBudget** — replication mode only, when enabled
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Helm Release** (`<metadata.name>`) -- a Deployment (standalone) or StatefulSet (replication) running Valkey, with the typed `config` block rendered into the chart's valkey.conf string deterministically on both engines
+- **Services** -- the write Service (`<name>`), and in replication mode the read Service (`<name>-read`, load balancing reads across all pods) and the headless Service (`<name>-headless`, direct pod discovery)
+- **Auth Secret** (optional) -- when ACL users are declared, their passwords are materialized as the `<name>-auth` Kubernetes Secret (one key per username) the chart consumes; they never appear in rendered chart values
+- **PersistentVolumeClaims** (optional) -- the dataset volume (standalone), or one per pod (replication, where persistence is required)
+- **Metrics sidecar + ServiceMonitor** (optional) -- the redis_exporter sidecar with its metrics Service, and a ServiceMonitor for the Prometheus operator
+- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true
 
-- A Kubernetes namespace that already exists, or set `create_namespace`
-- A StorageClass for persistence (most managed clusters provide a
-  default; or reference a KubernetesStorageClass)
-- For TLS: an existing kubernetes.io/tls Secret — issue a
-  KubernetesCertificate and reference it via `tls.certificate_secret`
-- For `metrics.service_monitor_enabled`: the Prometheus operator CRDs
-  on the cluster (the release fails to install without them)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+
+### Cluster
+
+- A StorageClass for the persistence volume (or accept the cluster default). Replication mode REQUIRES persistence — replicas bootstrap by syncing the primary's on-disk dataset.
+- For TLS: an existing `kubernetes.io/tls` Secret — issue a `KubernetesCertificate` and wire its Secret name through the reference (the cert-manager seam).
+- With the Prometheus ServiceMonitor: the Prometheus operator CRDs — the release fails to install without them.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Valkey**, and click **Deploy**. The creation wizard walks you through placement, the chart pin, the standalone-vs-replication topology decision, persistence, the valkey.conf memory and durability dials, ACL authentication, TLS, exposure, observability, and scheduling. Start from the **Single Instance** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesValkey
 metadata:
-  name: sessions
+  name: sessions-cache
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: sessions
-  create_namespace: true
-  replication:
-    replicas: 2
-    persistence:
-      size: 10Gi
-    min_replicas_to_write: 1
+    value: my-app
+  persistence:
+    size: 5Gi
   config:
-    append_only: true
-    max_memory: 1gb
+    appendOnly: true
+    maxMemory: 256mb
+    maxMemoryPolicy: allkeys-lru
   auth:
     users:
       - name: default
-        password: <set-a-strong-password>
+        password: $secret/valkey-default-password
 ```
 
-The chart brings up one primary and two replicas; applications write
-through the `<name>` Service (the exported `kube_endpoint`) and can
-read through `<name>-read`, authenticating with the `default` user's
-password from the `<name>-auth` Secret.
+```shell
+planton apply -f valkey.yaml
+```
 
-## Configuration
+Applications then reach the store at the exported in-cluster endpoint, authenticating as `default` with the password from the `sessions-cache-auth` Secret.
 
-### Topologies
+## Key Configuration
 
-Omit `replication` for a standalone instance (Deployment-backed;
-persistence optional — without it the cache starts empty after every
-restart). Declare `replication` for one primary plus N replicas
-(StatefulSet-backed; persistence required — replicas full-sync from the
-primary's dataset). Replication is NOT automated failover: the chart
-does not ship Sentinel or Cluster mode yet, so a dead primary is
-restarted by Kubernetes rather than replaced by a promoted replica —
-durability across that restart comes from the append-only file on a
-persistent volume. `min_replicas_to_write` adds write safety: a primary
-that cannot see enough in-sync replicas refuses writes.
+These are the most important decisions when configuring Valkey. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Durability and memory
+**Topology by presence** -- omitting `replication` means standalone; declaring it means one primary plus N replicas, a read Service, and REQUIRED persistence. Note what replication is NOT: automated failover. The chart ships no Sentinel — if the primary pod dies, Kubernetes restarts it and replicas re-attach, but no replica is promoted. Durability through a restart comes from persistence, not promotion.
 
-The typed `config` block renders valkey.conf: `append_only` for
-lossless restarts, `rdb_save_points` or `snapshots_disabled` for
-snapshot control, `max_memory` and `max_memory_policy` for the memory
-ceiling and eviction behavior (`allkeys-lru` for caches; the
-`noeviction` default for durable stores), and `extra_directives` for
-anything beyond the typed fields. Size `resources` memory above
-`max_memory` — Valkey needs headroom for replication buffers and
-fork-based persistence.
+**Authentication is declared, never defaulted** -- the chart ships with auth OFF: anyone who can reach the Service can read and write every key. Declaring ACL users turns it on, and the `default` user must be among them — without it, unauthenticated clients keep full access. Passwords are managed-secret references materialized into the `<name>-auth` Secret.
 
-### Authentication
+**The memory ceiling and eviction pair** -- `config.maxMemory` bounds the dataset; without it the pod's memory limit is the only bound, and hitting THAT is an OOM kill of the whole store, not an eviction. Pair the ceiling with an eviction policy (`allkeys-lru` for caches); `noeviction` — the server default — makes writes fail at the ceiling instead, which is right only when losing a key would be data loss.
 
-Auth is OFF by default (the chart default — anyone with network reach
-has full access; pair with a NetworkPolicy or keep it to development).
-Declaring `auth.users` turns on ACL authentication; the list must
-include the `default` user, and passwords land in the `<name>-auth`
-Secret referenced by the exported outputs.
+**The durability posture** -- `appendOnly` logs every write and replays it on restart: paired with a persistence volume, restarts are lossless. RDB snapshots run on the server's built-in schedule, on custom save points, or not at all (`snapshotsDisabled`) — save points and the disable flag are mutually exclusive.
 
-### TLS
+**Write safety in replication** -- `minReplicasToWrite` makes the primary refuse writes unless that many replicas are in sync, so a partitioned primary stops accepting writes replicas would never see. Applications see errors instead of silent divergence.
 
-`tls.enabled` with `certificate_secret` serves TLS from an existing
-kubernetes.io/tls Secret — reference a KubernetesCertificate for the
-cert-manager path; `require_client_certificate` adds mutual TLS.
+**Keep-on-uninstall** -- standalone only: keep the PVC (and the dataset) when the release is uninstalled. Off — the chart default — means the data dies with the resource.
 
-### Escape hatch
+**Exposure is composed** -- the store is in-cluster plumbing reachable at the exported endpoint; the LoadBalancer arm exists for managed-cloud recipes carried by the Service annotations. Compose a first-class exposure kind for anything else, and never expose an unauthenticated store.
 
-`helm_values` merges additional chart values LAST (Helm `-f`
-semantics) for the chart surface beyond the typed fields — never the
-primary interface, and never for secrets.
+**The escape hatch** -- `helm_values` carries additional chart values as a YAML document, merged LAST — never the substitute for typed fields, and never a place for secrets.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-| Output | Description |
-|---|---|
-| `namespace` | Namespace the instance runs in |
-| `service` | Write Service (`<name>`) — the primary in replication mode |
-| `read_service` | Read Service (`<name>-read`) — empty outside replication mode |
-| `headless_service` | Pod-discovery Service (`<name>-headless`) — replication mode only |
-| `kube_endpoint` | In-cluster connection host (`<name>.<namespace>.svc.cluster.local:<port>`) |
-| `port_forward_command` | Workstation access when no exposure is composed |
-| `username` | ACL username (`default` when auth is declared; empty when auth is off) |
-| `password_secret` | `{name, key}` of the password in the `<name>-auth` Secret — unset when auth is off |
+### What This Component Consumes
 
-## Related Components
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the instance is deployed into |
+| `spec.persistence.storage_class` / `spec.replication.persistence.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | The StorageClass backing the dataset volume |
+| `spec.tls.certificate_secret` | KubernetesCertificate (`status.outputs.secret_name`) | The kubernetes.io/tls Secret serving client TLS |
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) —
-  provides the target namespace via reference
-- [KubernetesCertificate](/docs/catalog/kubernetes/kubernetescertificate)
-  — issues the kubernetes.io/tls Secret `tls.certificate_secret` wires
-  in
-- [KubernetesNetworkPolicy](/docs/catalog/kubernetes/network-policy)
-  — restricts who can reach the store; essential when auth is off
+### What This Component Provides
 
-## Next Steps
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-Compose exposure when the store must be reachable from outside — a
-KubernetesService of type LoadBalancer or a Gateway TCP route against
-the `service` output (this component never embeds one). Declare ACL
-users before anything production-shaped touches the store, set
-`max_memory` with an explicit eviction policy, and turn on
-`append_only` with persistence wherever a restart must not lose data.
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Namespace the instance runs in | Debugging and composition |
+| `service` | The write Service name (`<metadata.name>`) | Where applications send writes |
+| `read_service` | The read Service name (`<metadata.name>-read`); empty standalone or when disabled | Read-heavy application paths |
+| `headless_service` | The headless Service name (`<metadata.name>-headless`); replication mode only | Direct pod discovery |
+| `kube_endpoint` | `<service>.<namespace>.svc.cluster.local:<port>` | The connection string applications consume |
+| `port_forward_command` | kubectl port-forward one-liner | Reaching the store from a workstation |
+| `username` | The ACL username applications authenticate with; empty when auth is off | Client configuration |
+| `password_secret` | The Kubernetes Secret name + key holding that user's password | Mounting the credential without copying its value |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single-instance cache** -- one instance with append-only persistence, a memory ceiling with LRU eviction, and ACL auth. Start from the **Single Instance** preset.
+
+**Production read scaling** -- a primary plus two replicas with per-pod persistence, write safety, the read Service, and a PodDisruptionBudget. Start from the **Persistent With Replicas** preset.
+
+## Works With
+
+- **Kubernetes Namespace** -- the placement target; deploy the cache beside the application that uses it.
+- **Kubernetes Certificate** -- issues and rotates the kubernetes.io/tls Secret the TLS block references.
+- **Kubernetes Deployment / StatefulSet** -- the applications that consume the exported endpoint and the auth Secret.
+- **Metrics / monitoring stack** -- the ServiceMonitor needs the Prometheus operator CRDs and turns cache health (memory, evictions, hit ratio, replica lag) into alerts.

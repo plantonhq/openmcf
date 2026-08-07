@@ -31,11 +31,11 @@ Terraform IaC module for creating firewalls with inline rules in Hetzner Cloud.
 bazel build //catalog/hetznercloud/hetznercloudfirewall/iac/tf:terraform_module
 
 # Initialize
-terraform init
+planton tofu init --manifest ../../e2e/manifest.yaml --module-dir .
 
 # Plan
-terraform plan -var-file=../hack/manifest.tfvars
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
 
 # Apply
-terraform apply -var-file=../hack/manifest.tfvars
+planton tofu apply --manifest ../../e2e/manifest.yaml --module-dir . --auto-approve
 ```

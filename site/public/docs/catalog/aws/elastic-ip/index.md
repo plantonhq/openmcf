@@ -8,148 +8,92 @@ componentName: "awselasticip"
 
 # AWS Elastic IP
 
-Deploys a static public IPv4 address from Amazon's pool or a Bring-Your-Own-IP range. The allocated Elastic IP persists until explicitly released, providing a stable public endpoint for Network Load Balancers, NAT Gateways, and EC2 instances.
+Deploys a static public IPv4 address from Amazon's address pool or from a Bring-Your-Own-IP (BYOIP) pool, with optional network border group scoping for Local Zones and Wavelength zones. The Elastic IP integrates with Planton's Provider Connections for AWS credential management.
 
 ## What Gets Created
 
-When you deploy an AwsElasticIp resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Elastic IP Address** — an `aws_eip` resource in the VPC domain, allocated from Amazon's default IPv4 pool or from a BYOIP pool when `publicIpv4Pool` is specified
+- **Elastic IP** -- a VPC-domain static public IPv4 address allocated from Amazon's pool (default) or from a BYOIP pool when `publicIpv4Pool` is specified
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the Elastic IP
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A BYOIP address range** registered with AWS if using `publicIpv4Pool` (optional — most deployments use Amazon's default pool)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `eip.yaml`:
+### AWS Account
+
+- **Elastic IP quota** -- AWS accounts have a default limit of 5 Elastic IPs per region. Request a quota increase before allocating additional addresses. Each EIP incurs hourly charges when not associated with a running resource.
+- **BYOIP pool** (optional) -- if using a Bring-Your-Own-IP pool, the pool must be provisioned and advertised in the target region before referencing it in `publicIpv4Pool`.
+- **Network border group** (optional) -- required when allocating an EIP in an AWS Local Zone or Wavelength zone. Verify the target zone is enabled in your account.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Elastic IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard EIP** preset in the [Presets](#presets) tab to pre-populate a default configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsElasticIp
 metadata:
-  name: my-eip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsElasticIp.my-eip
+  name: nlb-frontend
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
 ```
-
-Deploy:
 
 ```shell
-planton apply -f eip.yaml
+planton apply -f elastic-ip.yaml
 ```
 
-This allocates a VPC Elastic IP from Amazon's default pool in `us-east-1`. The `allocation_id` and `public_ip` outputs are immediately available for downstream references.
+This allocates a standard VPC Elastic IP from Amazon's address pool in us-west-2. No BYOIP or network border group is configured. The allocated IP persists until the Cloud Resource is destroyed -- it does not change across Stack Job runs. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an Elastic IP. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | `string` | AWS region where the Elastic IP will be allocated (e.g., `us-east-1`). |
+**BYOIP pool** -- Set `publicIpv4Pool` to a BYOIP pool ID when you need the Elastic IP to come from your own registered IP address range. Use `address` to request a specific IP from that pool. Both fields are ForceNew -- changing either requires replacing the EIP with a new allocation.
 
-### Optional Fields
+**Network border group** -- Set `networkBorderGroup` to scope the EIP to a specific AWS Local Zone or Wavelength zone instead of the default regional scope. Required when associating the EIP with resources in edge locations. This field is also ForceNew.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `publicIpv4Pool` | `string` | Amazon's pool | BYOIP pool ID to allocate from (e.g., `ipv4pool-ec2-xxx`). ForceNew — changing this replaces the EIP. |
-| `address` | `string` | — | Specific IPv4 address to allocate from the BYOIP pool. Requires `publicIpv4Pool` to be set. ForceNew. |
-| `networkBorderGroup` | `string` | Region default | Location scope for the EIP. Set to a Local Zone or Wavelength zone identifier to constrain the EIP to that zone. ForceNew. |
+**Immutability** -- All optional spec fields (`publicIpv4Pool`, `address`, `networkBorderGroup`) trigger resource replacement when changed. Treat an allocated Elastic IP as immutable -- any configuration change allocates a new IP address.
 
-## Examples
+## Outputs and Dependencies
 
-### Standard EIP for NLB
+### What This Component Consumes
 
-Allocate Elastic IPs and bind them to a Network Load Balancer for static ingress IPs:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticIp
-metadata:
-  name: nlb-eip-az1
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsElasticIp.nlb-eip-az1
-spec:
-  region: us-east-1
-```
+### What This Component Provides
 
-### Using Foreign Key References
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-Wire the Elastic IP into an NLB subnet mapping via `valueFrom`:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `allocation_id` | EIP allocation identifier (e.g., eipalloc-0123...) | Network Load Balancer subnet mappings, NAT Gateway attachment |
+| `public_ip` | Static public IPv4 address | DNS A records, firewall allowlists, application configuration |
+| `arn` | Amazon Resource Name of the EIP | IAM policies, resource-level permissions |
+| `public_dns` | Public DNS hostname (e.g., ec2-1-2-3-4.compute-1.amazonaws.com) | DNS CNAME records, reverse-lookup verification |
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsNlb
-metadata:
-  name: api-nlb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsNlb.api-nlb
-spec:
-  region: us-east-1
-  subnetMappings:
-    - subnetId:
-        valueFrom:
-          kind: AwsVpc
-          name: prod-vpc
-          fieldPath: status.outputs.public_subnets.[0].id
-      allocationId:
-        valueFrom:
-          kind: AwsElasticIp
-          name: nlb-eip-az1
-          fieldPath: status.outputs.allocation_id
-```
+The `allocation_id` is the primary output consumed by downstream resources. Network Load Balancers reference it in `subnetMappings` to bind a static IP per subnet. NAT Gateways reference it to provide a stable outbound IP for private subnets.
 
-The NLB's ports and TLS material live on separate `AwsLbListener` resources
-that attach to the NLB by ARN, with `AwsLbTargetGroup` resources as the
-destinations — the Elastic IP binding above is purely a placement concern of
-the load balancer itself.
+## Common Patterns
 
-### BYOIP Pool Allocation
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-Allocate from your organization's registered IP address range:
+**Standard EIP** -- An Elastic IP from Amazon's pool with no special configuration. The most common pattern for NLB frontends, NAT Gateways, and EC2 instances needing stable public addresses. Start from the **Standard EIP** preset.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticIp
-metadata:
-  name: byoip-eip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsElasticIp.byoip-eip
-spec:
-  region: us-east-1
-  publicIpv4Pool: ipv4pool-ec2-0123456789abcdef0
-  address: "198.51.100.10"
-```
+**BYOIP pool allocation** -- An Elastic IP from a customer-owned IP range, useful for maintaining IP reputation (e.g., email servers) or meeting contractual requirements for specific IP addresses. Start from the **BYOIP Pool** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `allocation_id` | `string` | Allocation ID of the Elastic IP (e.g., `eipalloc-0123456789abcdef0`). Primary identifier for NLB subnet mappings and NAT Gateways. |
-| `public_ip` | `string` | The public IPv4 address assigned to this Elastic IP. |
-| `arn` | `string` | ARN of the Elastic IP, used for IAM policy resource conditions. |
-| `public_dns` | `string` | Public DNS hostname (e.g., `ec2-1-2-3-4.compute-1.amazonaws.com`). |
-
-## Related Components
-
-- [AwsNlb](/docs/catalog/aws/nlb) — uses `allocationId` in subnet mappings for static public IPs
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the VPC and subnets where EIP consumers are deployed
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls traffic to resources associated with the EIP
+This component operates independently and does not reference other deployment components.

@@ -320,7 +320,7 @@ npx wrangler d1 migrations create my-app-db create_users_table
 npx wrangler d1 migrations apply my-app-db --remote
 ```
 
-This architectural separation is by design. See ../../docs/README.md for detailed explanation of the "Orchestration Gap."
+This architectural separation is by design. See ../../GUIDE.md for detailed explanation of the "Orchestration Gap."
 
 ## Multi-Environment Pattern
 

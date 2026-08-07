@@ -8,33 +8,43 @@ componentName: "openfgarelationshiptuple"
 
 # OpenFGA Relationship Tuple
 
-Deploys a relationship tuple into an existing OpenFGA store. A relationship tuple is the fundamental unit of authorization data in OpenFGA, representing that a specific user (or userset) has a particular relation to an object. Together with an authorization model, tuples determine access decisions at check time. All tuple fields are immutable — changing any field replaces the tuple. This component requires Terraform/Tofu as the provisioner; no Pulumi provider is available.
+Deploys a relationship tuple into an existing OpenFGA store. A relationship tuple is the fundamental unit of authorization data, representing that a specific user (or userset) has a particular relation to an object. Together with an authorization model, tuples determine access decisions at check time. All tuple fields are immutable -- changing any field replaces the tuple. Integrates with Planton's Provider Connections for OpenFGA credential management and ValueFromRef for store and model dependency wiring.
 
 ## What Gets Created
 
-When you deploy an OpenFgaRelationshipTuple resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Relationship Tuple** — an `openfga_relationship_tuple` resource that writes a single authorization tuple (user, relation, object) into the specified OpenFGA store
+- **Relationship Tuple** -- an `openfga_relationship_tuple` resource that writes a single authorization tuple (user, relation, object) into the specified OpenFGA store
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenFGA server** — a running OpenFGA instance (self-hosted or cloud-hosted)
-- **OpenFGA credentials** configured via environment variables: `FGA_API_URL` (required), plus either `FGA_API_TOKEN` for token-based auth or `FGA_CLIENT_ID`, `FGA_CLIENT_SECRET`, and `FGA_API_TOKEN_ISSUER` for client credentials auth
-- **An existing OpenFGA store** — provide the store ID directly or reference an OpenFgaStore resource via `valueFrom`
-- **An authorization model** — the store must contain a model that defines the types and relations used in the tuple
-- **Terraform/Tofu** — this component has no Pulumi provider; set the provisioner label to `tofu`
+### Planton Setup
 
-## Quick Start
+- **OpenFGA Provider Connection** -- an active connection in the Connect module with the OpenFGA API URL and authentication credentials (API token or client credentials). Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline authentication.
 
-Create a file `tuple.yaml`:
+### OpenFGA Server
+
+- **A running OpenFGA instance** -- self-hosted or cloud-hosted, reachable from the Planton Runner or provisioner environment.
+- **An existing OpenFGA store** with an authorization model that defines the types and relations used in the tuple.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenFGA Relationship Tuple**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **User-Document Access** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1alpha1
+apiVersion: openfga.planton.dev/v1
 kind: OpenFgaRelationshipTuple
 metadata:
   name: anne-views-budget
-  annotations:
-    planton.dev/provisioner: tofu
+  org: acme-corp
+  env: prod
 spec:
   storeId:
     value: "01HXYZ..."
@@ -48,156 +58,77 @@ spec:
     id:
       value: budget-2024
 ```
-
-Deploy:
 
 ```shell
-planton apply -f tuple.yaml
+planton apply -f openfga-tuple.yaml
 ```
 
-This creates a relationship tuple granting user `anne` the `viewer` relation on `document:budget-2024`.
+This creates a relationship tuple granting user `anne` the `viewer` relation on `document:budget-2024`. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `storeId` | `StringValueOrRef` | ID of the OpenFGA store this tuple belongs to. Immutable — changing it requires replacing the tuple. Can reference an OpenFgaStore resource via `valueFrom`. | Required |
-| `user` | `object` | The subject of the relationship tuple. Contains `type` (string, required), `id` (StringValueOrRef, required), and `relation` (string, optional — for usersets). The module combines these into `type:id` or `type:id#relation`. | Required |
-| `relation` | `string` | The relationship type between the user and object. Must be defined in the authorization model for the object type. Examples: `viewer`, `editor`, `owner`, `member`, `admin`. | Required |
-| `object` | `object` | The resource the user is being granted access to. Contains `type` (string, required) and `id` (StringValueOrRef, required). The module combines these into `type:id`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `authorizationModelId` | `StringValueOrRef` | — | ID of the authorization model to validate the tuple against. When omitted, the tuple is associated with the latest model in the store. Can reference an OpenFgaAuthorizationModel resource via `valueFrom`. |
-| `condition` | `object` | — | An optional condition that must be satisfied at check time. Contains `name` (string, required — the condition name defined in the authorization model) and `contextJson` (string, optional — partial context in JSON format merged with runtime context). |
-
-## Examples
-
-### Grant a User Access to a Document
-
-A minimal tuple granting a single user viewer access to a specific document, using direct values for all fields:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the tuple to a store and model deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaRelationshipTuple
-metadata:
-  name: anne-views-budget
-  annotations:
-    planton.dev/provisioner: tofu
-spec:
-  storeId:
-    value: "01HXYZ..."
-  user:
-    type: user
-    id:
-      value: anne
-  relation: viewer
-  object:
-    type: document
-    id:
-      value: budget-2024
-```
-
-### Group Membership with Userset
-
-Add a user to a group using the userset format (`group:engineering#member`). Other tuples can then reference this group membership to grant indirect access:
-
-```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaRelationshipTuple
-metadata:
-  name: anne-member-engineering
-  annotations:
-    planton.dev/provisioner: tofu
-spec:
-  storeId:
-    value: "01HXYZ..."
-  user:
-    type: user
-    id:
-      value: anne
-  relation: member
-  object:
-    type: group
-    id:
-      value: engineering
-```
-
-A second tuple grants all members of the engineering group editor access to a folder, using the userset `relation` field on the user:
-
-```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaRelationshipTuple
-metadata:
-  name: engineering-edits-reports
-  annotations:
-    planton.dev/provisioner: tofu
-spec:
-  storeId:
-    value: "01HXYZ..."
-  user:
-    type: group
-    id:
-      value: engineering
-    relation: member
-  relation: editor
-  object:
-    type: folder
-    id:
-      value: reports
-```
-
-### Conditional Tuple with Foreign Key References
-
-A tuple that uses foreign key references to resolve the store and model IDs from other Planton resources, and includes a condition that restricts access to a set of allowed IP ranges. The condition must be defined in the authorization model:
-
-```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaRelationshipTuple
-metadata:
-  name: bob-edits-roadmap-conditional
-  annotations:
-    planton.dev/provisioner: tofu
 spec:
   storeId:
     valueFrom:
       kind: OpenFgaStore
       name: prod-authz
-      field: status.outputs.id
+      fieldPath: status.outputs.id
   authorizationModelId:
     valueFrom:
       kind: OpenFgaAuthorizationModel
       name: rbac-model
-      field: status.outputs.id
-  user:
-    type: user
-    id:
-      value: bob
-  relation: editor
-  object:
-    type: document
-    id:
-      value: roadmap-2025
-  condition:
-    name: in_allowed_ip_range
-    contextJson: '{"allowed_ips": ["192.168.1.0/24", "10.0.0.0/8"]}'
+      fieldPath: status.outputs.id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the store and model first, then writes the relationship tuple.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `user` | `string` | The subject of the relationship tuple that was created, in `type:id` or `type:id#relation` format |
-| `relation` | `string` | The relationship type that was created |
-| `object` | `string` | The resource the tuple grants access to, in `type:id` format |
+These are the most important decisions when configuring an OpenFGA relationship tuple. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**User structure** -- The `user` object contains `type`, `id`, and an optional `relation` for usersets. Simple users resolve to `type:id` (e.g., `user:anne`). Adding a `relation` field creates a userset reference like `group:engineering#member`, granting access to all members of that group.
 
-- [OpenFgaStore](/docs/catalog/openfga/store) — provides the store where relationship tuples are written
-- [OpenFgaAuthorizationModel](/docs/catalog/openfga/authorization-model) — defines the types, relations, and conditions that govern how tuples are evaluated
+**Relation** -- The `relation` field must match a relation defined in the authorization model for the object type. Common values include `viewer`, `editor`, `owner`, `member`, and `admin`.
+
+**Object structure** -- The `object` contains `type` and `id`, resolving to `type:id` (e.g., `document:budget-2024`). The type must be defined in the authorization model.
+
+**Authorization model pinning** -- The optional `authorizationModelId` field pins the tuple to a specific model version for validation. When omitted, the tuple is associated with the latest model in the store. Pinning is useful in production to ensure tuples are validated against a known model version.
+
+**Conditions** -- The optional `condition` block adds dynamic access rules evaluated at check time. Specify a `name` matching a condition defined in the authorization model and an optional `contextJson` with partial context that is merged with runtime context during evaluation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenFgaStore** | `storeId` | `status.outputs.id` |
+| **OpenFgaAuthorizationModel** | `authorizationModelId` | `status.outputs.id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that confirm the tuple was created:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `user` | The subject of the tuple in `type:id` or `type:id#relation` format | Audit logs, permission verification |
+| `relation` | The relationship type that was created | Audit logs, permission verification |
+| `object` | The resource the tuple grants access to in `type:id` format | Audit logs, permission verification |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Direct user access** -- Grants a specific user a relation on a specific resource (e.g., `user:anne` is a `viewer` of `document:budget-2024`). This is the most fundamental authorization pattern in OpenFGA. Start from the **User-Document Access** preset.
+
+**Group membership** -- Adds a user to a group by creating a tuple like `user:anne` is a `member` of `group:engineering`. Other tuples can then grant access to `group:engineering#member`, providing inherited permissions to all group members. Start from the **Group Membership** preset.
+
+**Conditional access** -- Attaches a condition to a tuple so that the relation is only active when runtime context satisfies the condition (e.g., IP range restrictions, time-of-day checks). The condition must be defined in the authorization model.
+
+## Works With
+
+- [**OpenFGA Store**](/cloud-catalog/openfga-store) -- provides the store where relationship tuples are written
+- [**OpenFGA Authorization Model**](/cloud-catalog/openfga-authorization-model) -- defines the types, relations, and conditions that govern how tuples are evaluated

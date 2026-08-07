@@ -301,7 +301,7 @@ Solution: Ensure the `environment_id` exists in your Confluent Cloud account and
 
 ## Examples
 
-For more comprehensive examples, see examples.md which includes:
+For more comprehensive examples, see ../../e2e/manifest.yaml which includes:
 
 - Basic development cluster
 - Standard production cluster
@@ -311,7 +311,7 @@ For more comprehensive examples, see examples.md which includes:
 
 ## Terraform Examples
 
-For Terraform-specific examples with complete variable definitions and output usage, see examples.md.
+For Terraform-specific examples with complete variable definitions and output usage, see ../../e2e/manifest.yaml.
 
 ## Contributing
 

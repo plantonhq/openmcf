@@ -6,188 +6,94 @@ order: 100
 componentName: "civocertificate"
 ---
 
-# Civo Certificate
+# Certificate on Civo
 
-Manages TLS certificates on Civo Cloud, supporting both automated Let's Encrypt certificates and user-supplied custom certificates. The component validates the manifest and provisions the certificate resource, exposing its ID and expiry timestamp as stack outputs.
-
-> **Provider limitation (as of 2025):** The Civo Pulumi/Terraform provider does not yet expose a certificate resource type. The module validates your specification and logs the intended configuration, but actual certificate provisioning must be performed via the Civo API or dashboard until upstream provider support is added. Tracked at the [Civo Terraform provider docs](https://registry.terraform.io/providers/civo/civo/latest/docs).
+Deploys a TLS certificate on Civo Cloud, supporting free Let's Encrypt certificates with automatic renewal and custom user-provided certificates with PEM-encoded keys and chains. Integrates with Planton's Provider Connections for Civo credential management. Note: the Civo Terraform/Pulumi provider does not yet expose a certificate resource, so the IaC module validates and stores the specification while certificates are managed via the Civo dashboard or API until provider support is added.
 
 ## What Gets Created
 
-When you deploy a CivoCertificate resource, Planton processes the manifest and (once the upstream provider adds support) provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Civo Certificate** --- a TLS certificate registered in your Civo account, either auto-managed via Let's Encrypt or uploaded as a custom PEM bundle
-- **Labels** --- key-value metadata derived from `metadata.labels` and `spec.tags`, applied to the certificate for filtering and organization
+- **Civo Certificate** -- a TLS certificate associated with the Civo account, either auto-managed via Let's Encrypt or uploaded as a custom PEM-encoded certificate
+- **Auto-Renewal Configuration** -- created only when using Let's Encrypt type with auto-renewal enabled (default); renews the certificate before the 90-day expiration
 
-## Prerequisites
+## Before You Deploy
 
-- **Civo credentials** configured via environment variables or Planton provider config
-- **A registered domain** (for Let's Encrypt certificates) with DNS pointing to Civo infrastructure
-- **PEM-encoded certificate files** (for custom certificates) including the leaf certificate and private key
+### Planton Setup
 
-## Quick Start
+- **Civo Provider Connection** -- an active connection in the Connect module with a Civo API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `civo-certificate.yaml`:
+### Civo Account
+
+- **A Civo account** with DNS configured for the target domain(s) when using Let's Encrypt. Domain validation requires DNS records to be resolvable via Civo's nameservers.
+- **PEM-encoded certificate files** when using custom type -- the leaf certificate, private key, and optionally the intermediate certificate chain.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Certificate on Civo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Let's Encrypt** preset in the [Presets](#presets) tab for a free, auto-renewing wildcard certificate.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
+apiVersion: civo.planton.dev/v1
 kind: CivoCertificate
 metadata:
-  name: my-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoCertificate.my-cert
+  name: app-cert
+  org: acme-corp
+  env: prod
 spec:
-  certificateName: my-cert
+  certificateName: app-cert
   type: letsEncrypt
   letsEncrypt:
     domains:
       - "example.com"
-      - "www.example.com"
+      - "*.example.com"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f civo-certificate.yaml
 ```
 
-This requests a Let's Encrypt certificate covering `example.com` and `www.example.com` with automatic renewal enabled by default.
+This requests a Let's Encrypt wildcard certificate covering the apex domain and all subdomains with automatic renewal enabled. No custom PEM files are needed. A Stack Job tracks the operation in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Civo certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `certificateName` | `string` | A unique, human-readable name for the certificate. | Required; 1--64 characters |
-| `type` | `CivoCertificateType` | The certificate source type. Must match the branch chosen in the `certificateSource` oneof. | Required; must be `letsEncrypt` or `custom` |
-| `letsEncrypt` _or_ `custom` | `object` | Exactly one of `letsEncrypt` or `custom` must be provided (mutually exclusive oneof). | Required (oneof) |
+**Certificate type** -- Set `type` to `letsEncrypt` for free, browser-trusted certificates with automatic renewal, or `custom` to upload your own PEM-encoded certificate and private key. Let's Encrypt certificates expire every 90 days but renew automatically unless `disableAutoRenew` is set to `true`.
 
-#### CivoCertificateLetsEncryptParams (when `type` is `letsEncrypt`)
+**Domain coverage** -- For Let's Encrypt, specify one or more domains in the `domains` list. Use wildcard entries (e.g., `"*.example.com"`) to cover all subdomains with a single certificate. Include both the apex and wildcard to cover both `example.com` and `*.example.com`.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domains` | `string[]` | FQDNs or wildcard domains to include on the certificate (e.g., `"example.com"`, `"*.example.com"`). | Required; at least one entry; entries must be unique; must match FQDN or wildcard pattern |
+**Auto-renewal** -- Enabled by default for Let's Encrypt certificates. Set `disableAutoRenew` to `true` only if you need manual control over certificate renewal timing -- for example, in staging environments where you test certificate rotation procedures.
 
-#### CivoCertificateCustomParams (when `type` is `custom`)
+**Custom certificate chain** -- When using a custom certificate, provide `leafCertificate` and `privateKey` as PEM-encoded strings. Include `certificateChain` for intermediate CA certificates that clients may need to validate the full trust path.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `leafCertificate` | `string` | PEM-encoded public certificate. | Required; non-empty |
-| `privateKey` | `string` | PEM-encoded private key. | Required; non-empty |
+## Outputs and Dependencies
 
-### Optional Fields
+### What This Component Consumes
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Free-form description of the certificate. Maximum 128 characters. |
-| `tags` | `string[]` | `[]` | Tags for filtering and grouping. Must be unique, lowercase kebab-case values. |
-| `letsEncrypt.disableAutoRenew` | `bool` | `false` | When `true`, disables automatic renewal of the Let's Encrypt certificate. |
-| `custom.certificateChain` | `string` | `""` | PEM-encoded intermediate certificate chain. Only applicable when `type` is `custom`. |
+This component has no foreign key dependencies.
 
-## Examples
+### What This Component Provides
 
-### Let's Encrypt with Auto-Renewal
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A minimal Let's Encrypt certificate for a single domain:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `certificate_id` | Unique identifier of the certificate in Civo | Load balancer TLS configuration, Civo API references |
+| `expiry_rfc3339` | Certificate expiration timestamp in RFC 3339 format | Monitoring dashboards, renewal alerting |
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoCertificate
-metadata:
-  name: api-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoCertificate.api-cert
-spec:
-  certificateName: api-cert
-  type: letsEncrypt
-  letsEncrypt:
-    domains:
-      - "api.example.com"
-  description: "TLS for public API endpoint"
-  tags:
-    - api
-    - production
-```
+## Common Patterns
 
-### Let's Encrypt Wildcard with Renewal Disabled
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A wildcard certificate covering all subdomains, with automatic renewal turned off for manual control:
+**Let's Encrypt wildcard** -- a free wildcard certificate covering the apex domain and all subdomains with automatic renewal. Covers the majority of web hosting and API scenarios without managing certificate files manually. Start from the **Let's Encrypt** preset.
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoCertificate
-metadata:
-  name: wildcard-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.CivoCertificate.wildcard-cert
-spec:
-  certificateName: wildcard-cert
-  type: letsEncrypt
-  letsEncrypt:
-    domains:
-      - "*.staging.example.com"
-      - "staging.example.com"
-    disableAutoRenew: true
-  description: "Wildcard cert for staging subdomains"
-```
+## Works With
 
-### Custom Certificate Upload
-
-Upload an existing certificate and private key, including the intermediate chain:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoCertificate
-metadata:
-  name: custom-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoCertificate.custom-cert
-spec:
-  certificateName: custom-cert
-  type: custom
-  custom:
-    leafCertificate: |
-      -----BEGIN CERTIFICATE-----
-      MIIFazCCA1OgAwIBAgIUE...
-      -----END CERTIFICATE-----
-    privateKey: |
-      -----BEGIN PRIVATE KEY-----
-      MIIEvgIBADANBgkqhkiG9...
-      -----END PRIVATE KEY-----
-    certificateChain: |
-      -----BEGIN CERTIFICATE-----
-      MIIFYjCCBEqgAwIBAgIQd...
-      -----END CERTIFICATE-----
-  description: "Enterprise CA issued certificate"
-  tags:
-    - enterprise
-    - production
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `certificateId` | `string` | Unique identifier of the certificate, assigned by Civo |
-| `expiryRfc3339` | `string` | Expiration timestamp of the certificate in RFC 3339 format |
-
-## Related Components
-
-- [CivoKubernetesCluster](/docs/catalog/civo/kubernetes-cluster) --- Kubernetes clusters that can reference certificates for ingress TLS termination
-- [CivoFirewall](/docs/catalog/civo/firewall) --- firewall rules to restrict access to services using the certificate
-- [CivoVpc](/docs/catalog/civo/vpc) --- private networks where certificate-protected services run
+This component operates independently and does not reference other deployment components.

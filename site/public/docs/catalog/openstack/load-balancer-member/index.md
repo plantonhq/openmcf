@@ -8,214 +8,115 @@ componentName: "openstackloadbalancermember"
 
 # OpenStack Load Balancer Member
 
-Deploys an Octavia pool member in OpenStack, representing a backend server that receives traffic from a load balancer pool. Each member defines an IP address, port, and optional weight for weighted load distribution, with support for cross-subnet routing when the backend resides on a different subnet than the VIP.
+Deploys an Octavia pool member on OpenStack that registers a backend server with a load balancer pool. Each member has an IP address and port that receives traffic according to the pool's load-balancing algorithm. The member supports weighted distribution, administrative draining, and optional subnet specification for cross-subnet L3 routing. ValueFromRef wiring connects the member to an OpenStackLoadBalancerPool and optionally an OpenStackSubnet in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackLoadBalancerMember resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Octavia Pool Member** — a `loadbalancer.Member` (Pulumi) / `openstack_lb_member_v2` (Terraform) resource that registers a backend server in the specified pool. The member is identified by its address and port, and participates in the pool's load-balancing algorithm. When `weight` is set, the member receives a proportional share of traffic. When `subnetId` is set, Octavia performs L3 routing to reach the backend on a different subnet.
+- **Octavia Pool Member** -- a backend member resource registered with the specified pool, receiving traffic at the configured IP address and port according to the pool's load-balancing algorithm
+- **Subnet Routing Hint** -- created only when `subnetId` is specified; tells Octavia which subnet the member resides on for L3 routing when it differs from the VIP subnet
+- **OpenStack Tags** -- user-defined tags applied to the member for filtering and organization
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An Octavia pool** to add the member to (provide the pool UUID or reference an OpenStackLoadBalancerPool resource)
-- **A backend server** with a reachable IP address and listening port
-- **A subnet** (optional) if the backend server is on a different subnet than the load balancer VIP
+### OpenStack Account
 
-## Quick Start
+- **Pool** -- an Octavia pool must exist to add the member to. Provide the pool ID directly or reference an OpenStackLoadBalancerPool Cloud Resource via ValueFromRef.
+- **Backend server** -- the server at the specified IP address and port must be reachable from the Octavia amphora network. Verify network connectivity between the load balancer's VIP subnet and the member's subnet.
+- **Subnet** (optional) -- when the member is on a different subnet than the VIP, provide the member's subnet ID so Octavia can route traffic correctly. Reference an OpenStackSubnet Cloud Resource via ValueFromRef.
 
-Create a file `member.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Load Balancer Member**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Pool Member** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMember
 metadata:
-  name: web-backend-1
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.ref-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.maintenance-backend
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-secondary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackLoadBalancerMember.app-backend-primary
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackLoadBalancerMember.web-backend-1
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackloadbalancermember/iac/pulumi/module
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
+  name: web-server-1
+  org: acme-corp
+  env: prod
 spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  address: "10.0.0.10"
+  poolId:
+    value: "<pool-id>"
+  address: "192.168.1.10"
   protocolPort: 8080
 ```
-
-Deploy:
 
 ```shell
 planton apply -f member.yaml
 ```
 
-This registers a backend server at `10.0.0.10:8080` in the specified Octavia pool with default weight (1).
+This registers a backend server at `192.168.1.10:8080` with the specified pool. No subnet hint, weight override, or tags are configured. The member receives traffic immediately with the default weight of 1.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `poolId` | `StringValueOrRef` | The Octavia pool to add this member to. ForceNew: changing this recreates the member. Can reference OpenStackLoadBalancerPool resource via `valueFrom`. | Required |
-| `address` | `string` | IP address of the backend server that receives forwarded traffic. ForceNew: changing this recreates the member. | Required, non-empty |
-| `protocolPort` | `int32` | Port on the backend server that accepts traffic. ForceNew: changing this recreates the member. | Required, 1-65535 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `subnetId` | `StringValueOrRef` | — | Subnet where the member resides. Used by Octavia for L3 routing when the member is on a different subnet than the VIP. ForceNew: changing this recreates the member. Can reference OpenStackSubnet resource via `valueFrom`. |
-| `weight` | `int32` | `1` (set by Octavia) | Weight for weighted load balancing. A member with weight 0 receives no traffic (drain mode). Valid range: 0-256. When omitted, Octavia assigns a default weight of 1. |
-| `adminStateUp` | `bool` | `true` | Administrative state of the member. When `false`, the member is removed from the pool's rotation without deleting it. |
-| `tags` | `string[]` | `[]` | Tags applied to the member in OpenStack for filtering and organization. Must be unique within this resource. |
-| `region` | `string` | provider default | Overrides the region from the provider configuration for this member. |
-
-## Examples
-
-### Basic Member with Direct IP
-
-A minimal member that registers a single backend server in an Octavia pool:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the member to a pool and subnet deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMember
-metadata:
-  name: web-backend-1
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  address: "10.0.0.10"
-  protocolPort: 8080
-```
-
-### Weighted Members with Cross-Subnet Routing
-
-Two members with different weights on a backend subnet separate from the VIP subnet. The higher-weighted member receives proportionally more traffic:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMember
-metadata:
-  name: app-backend-primary
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  address: "10.1.0.10"
-  protocolPort: 8080
-  weight: 10
-  subnetId: b2c3d4e5-f6a7-8901-bcde-f12345678901
-  tags:
-    - production
-    - primary
----
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMember
-metadata:
-  name: app-backend-secondary
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  address: "10.1.0.11"
-  protocolPort: 8080
-  weight: 5
-  subnetId: b2c3d4e5-f6a7-8901-bcde-f12345678901
-  tags:
-    - production
-    - secondary
-```
-
-With these weights, `app-backend-primary` receives approximately twice the traffic of `app-backend-secondary` when the pool uses the ROUND_ROBIN algorithm.
-
-### Draining a Member for Maintenance
-
-Set `weight` to 0 to stop sending new traffic to a member while allowing existing connections to complete. Set `adminStateUp` to `false` to fully remove the member from rotation:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMember
-metadata:
-  name: maintenance-backend
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  address: "10.0.0.12"
-  protocolPort: 8080
-  weight: 0
-  adminStateUp: false
-  tags:
-    - maintenance
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding UUIDs:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMember
-metadata:
-  name: ref-backend
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
 spec:
   poolId:
     valueFrom:
       kind: OpenStackLoadBalancerPool
       name: web-pool
-      field: status.outputs.pool_id
-  address: "10.0.0.10"
-  protocolPort: 8080
-  weight: 10
+      fieldPath: status.outputs.pool_id
   subnetId:
     valueFrom:
       kind: OpenStackSubnet
-      name: backend-subnet
-      field: status.outputs.subnet_id
+      name: app-subnet
+      fieldPath: status.outputs.subnet_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the pool and subnet first, then provisions the member with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `member_id` | `string` | UUID of the created Octavia pool member |
-| `name` | `string` | Name of the member, derived from `metadata.name` |
-| `address` | `string` | IP address of the backend server |
-| `protocol_port` | `int32` | Port on the backend server |
-| `weight` | `int32` | Weight of the member in the load-balancing algorithm |
-| `region` | `string` | OpenStack region where the member was created |
+These are the most important decisions when configuring a pool member. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Backend address and port** -- The `address` and `protocolPort` fields identify the backend server. Both are immutable after creation -- changing either requires recreating the member. Create one member resource per backend server.
 
-- [OpenStackLoadBalancerPool](/docs/catalog/openstack/load-balancer-pool) — the pool this member belongs to; provides the `poolId` foreign key
-- [OpenStackSubnet](/docs/catalog/openstack/subnet) — optional subnet for cross-subnet routing; provides the `subnetId` foreign key
-- [OpenStackLoadBalancerListener](/docs/catalog/openstack/load-balancer-listener) — listener that routes traffic to the pool containing this member
-- [OpenStackLoadBalancer](/docs/catalog/openstack/load-balancer) — top-level load balancer resource that owns the VIP
-- [OpenStackLoadBalancerMonitor](/docs/catalog/openstack/load-balancer-monitor) — health monitor attached to the pool that determines member health
+**Weight** -- Leave unset for equal distribution (Octavia defaults to 1). Set `weight` to a value between 1 and 256 for weighted load balancing, where higher values receive proportionally more traffic. Set to `0` to drain a member without removing it from the pool.
+
+**Subnet hint** -- When the member is on the same subnet as the VIP, the `subnetId` field is optional. When the member is on a different subnet, provide `subnetId` so Octavia can perform L3 routing. Changing the subnet requires recreating the member.
+
+**Administrative state** -- The member is active by default (`adminStateUp: true`). Set to `false` to remove the member from the pool's rotation without deleting it, useful for maintenance windows.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackLoadBalancerPool** | `poolId` | `status.outputs.pool_id` |
+| **OpenStackSubnet** (optional) | `subnetId` | `status.outputs.subnet_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `member_id` | UUID of the pool member | Resource identification, API operations |
+| `name` | Name of the member | Monitoring labels |
+| `address` | IP address of the backend server | Diagnostics, inventory tracking |
+| `protocol_port` | Port on the backend server | Diagnostics, inventory tracking |
+| `weight` | Weight in the load-balancing algorithm | Monitoring, capacity planning |
+| `region` | OpenStack region where the member was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard Pool Member** -- Registers a backend server with explicit subnet routing and default weight. Suitable for any backend instance that should receive traffic from a pool. Start from the **Standard Pool Member** preset.
+
+## Works With
+
+- [**OpenStack Load Balancer Pool**](/cloud-catalog/openstack-load-balancer-pool) -- provides the pool ID that this member is registered with
+- [**OpenStack Subnet**](/cloud-catalog/openstack-subnet) -- provides the subnet ID for L3 routing when the member is on a different subnet than the VIP

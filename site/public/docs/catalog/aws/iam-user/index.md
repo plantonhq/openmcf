@@ -8,196 +8,111 @@ componentName: "awsiamuser"
 
 # AWS IAM User
 
-Deploys an AWS IAM User with optional managed policy attachments, inline policy documents, and access key creation. The component creates the user, attaches policies, optionally generates an access key pair, and exports credentials and identifiers for use by other components.
+Deploys an IAM user with configurable managed policy attachments, inline policies, and optional access key generation. The component is designed for CI/CD pipelines and service integrations that require long-lived programmatic credentials. It integrates with Planton's Provider Connections for AWS credential management and provides `user_arn`, `access_key_id`, and `secret_access_key` outputs for downstream consumption.
 
 ## What Gets Created
 
-When you deploy an AwsIamUser resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **IAM User** — an `iam.User` resource with the specified username and tags
-- **Managed Policy Attachments** — one `iam.UserPolicyAttachment` per entry in `managedPolicyArns`, linking the user to existing AWS-managed or customer-managed policies
-- **Inline Policies** — one `iam.UserPolicy` per entry in `inlinePolicies`, embedding policy documents directly on the user
-- **Access Key** — an `iam.AccessKey` resource created by default, providing an access key ID and base64-encoded secret key; skipped when `disableAccessKeys` is `true`
+- **IAM User** -- created with the specified username matching the pattern `[a-zA-Z0-9+=,.@_-]{1,64}`, at the optional IAM `path` (defaults to `/`), with an optional `permissionsBoundary` capping its maximum permissions
+- **Managed Policy Attachments** -- one attachment per entry in `managedPolicyArns`, linking AWS-managed or customer-managed policies to the user. Each entry is a literal ARN or a reference to an AwsIamPolicy's `policy_arn` output.
+- **Inline Policies** -- one inline policy per entry in `inlinePolicies`, embedded directly on the user with the specified policy name and JSON document
+- **Access Key** -- created only when `disableAccessKeys` is `false` (default); generates an active access key pair for programmatic AWS API access. The secret access key is base64-encoded in outputs.
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the user
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **Policy ARNs** for any managed policies you want to attach (ARNs must start with `arn:aws:iam::`)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `iam-user.yaml`:
+### AWS Account
+
+- **IAM permissions** -- the credentials used by the Provider Connection must have `iam:CreateUser`, `iam:AttachUserPolicy`, `iam:PutUserPolicy`, `iam:CreateAccessKey`, and related IAM permissions.
+- **Managed policy ARNs** -- any AWS-managed or customer-managed policy ARNs listed as literals in `managedPolicyArns` must exist in the account before deployment. Policies managed in Planton are referenced instead (see the consumes table below) and resolve at deploy time.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS IAM User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CI/CD Pipeline** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsIamUser
 metadata:
-  name: my-ci-user
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsIamUser.my-ci-user
+  name: deployer
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
-  userName: my-ci-user
+  region: us-west-2
+  userName: github-actions-deployer
+  managedPolicyArns:
+    - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+    - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f iam-user.yaml
 ```
 
-This creates an IAM user named `my-ci-user` with one active access key pair and no policies attached.
+This creates an IAM user with ECR push access and S3 read-only access, plus an active access key pair. No inline policies are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an IAM user. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the resource will be created. | Required |
-| `userName` | `string` | IAM user name. Must be 1-64 characters. | Pattern: `^[a-zA-Z0-9+=,.@_-]{1,64}$` |
+**Managed vs. inline policies** -- Use `managedPolicyArns` for reusable, centrally maintained policies (both AWS-managed and customer-managed). Use `inlinePolicies` for user-specific permissions that should not be shared. Managed policies are easier to audit across users; inline policies are deleted when the user is deleted.
 
-### Optional Fields
+**Access key generation** -- By default, an access key pair is created for programmatic access. Set `disableAccessKeys: true` for identity-only users (console access, federation) or monitoring integrations that use external credential delivery. The secret access key is base64-encoded in outputs and should be stored securely.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `path` | `string` | `"/"` | IAM path for organizing and wildcard-matching users (e.g. `/ci/`). |
-| `managedPolicyArns` | `StringValueOrRef[]` | `[]` | Managed policies to attach — `valueFrom` references to `AwsIamPolicy` resources, or literal ARNs for AWS-managed policies. |
-| `inlinePolicies` | `map<string, object>` | `{}` | Map of inline policy names to IAM policy documents. Keys are policy names (max 128 characters); values are `google.protobuf.Struct` policy documents. |
-| `permissionsBoundary` | `StringValueOrRef` | — | Managed policy whose grants cap this user's maximum permissions (intersection semantics). Especially valuable on long-lived credentials. |
-| `disableAccessKeys` | `bool` | `false` | When `true`, prevents creation of access keys for this user. When `false`, one active access key pair is created. |
-| `forceDestroy` | `bool` | `false` | Delete credentials created outside this resource (login profile, extra keys, MFA devices) on teardown instead of failing. |
+**Username conventions** -- The `userName` field accepts 1-64 characters matching `[a-zA-Z0-9+=,.@_-]`. Use descriptive names that identify the purpose (e.g., `github-actions-deployer`, `datadog-readonly`) rather than generic names. Unlike most IAM identifiers, the name is renameable in place -- AWS keeps the same underlying user and rewrites its ARN.
 
-## Examples
+**IAM path** -- `path` organizes users for wildcard policy matching: a permission scoped to `user/ci/*` covers every user under the `/ci/` path. Must begin and end with `/` (e.g. `/ci/`); defaults to `/`. Users, unlike roles and policies, can move paths in place.
 
-### CI/CD Pipeline User with S3 Access
+**Permissions boundary** -- `permissionsBoundary` names a managed policy that caps what the user can EVER do; effective permissions are the intersection of the boundary and the attached policies. Especially valuable on users, whose access keys are long-lived. Reference an AwsIamPolicy's `policy_arn` output or pass a literal ARN.
 
-A user for a CI pipeline that needs to push artifacts to an S3 bucket:
+**Deletion posture** -- `forceDestroy` (off by default) controls what happens when credentials created outside this resource exist at delete time -- console login profiles, extra access keys, MFA devices, SSH keys, signing certificates. Off, deletion fails loudly and surfaces them; on, teardown always succeeds. Turn it on for ephemeral or CI-owned users.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamUser
-metadata:
-  name: ci-deploy-user
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsIamUser.ci-deploy-user
-spec:
-  region: us-east-1
-  userName: ci-deploy-user
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/AmazonS3FullAccess
-```
+**Least privilege** -- Scope policies to the minimum permissions required. Prefer specific managed policies over broad ones like `AdministratorAccess`. Use inline policies for fine-grained, resource-level permissions (e.g., allowing ECS updates only on specific clusters).
 
-### Service Account with Inline Policy
+## Outputs and Dependencies
 
-A user for a third-party integration with a scoped inline policy granting read access to a specific DynamoDB table:
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamUser
-metadata:
-  name: analytics-service
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsIamUser.analytics-service
-spec:
-  region: us-east-1
-  userName: analytics-service
-  inlinePolicies:
-    dynamodb-read:
-      Version: "2012-10-17"
-      Statement:
-        - Effect: Allow
-          Action:
-            - dynamodb:GetItem
-            - dynamodb:Query
-            - dynamodb:Scan
-          Resource: arn:aws:dynamodb:us-east-1:123456789012:table/events
-```
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamPolicy** (optional) | `managedPolicyArns[]` | `status.outputs.policy_arn` |
+| **AwsIamPolicy** (optional) | `permissionsBoundary` | `status.outputs.policy_arn` |
 
-### User Without Access Keys
+Both fields also accept literal ARNs -- literals are how AWS-managed policies like `arn:aws:iam::aws:policy/ReadOnlyAccess` attach.
 
-A user intended for AWS Management Console access only, with no programmatic access keys:
+### What This Component Provides
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamUser
-metadata:
-  name: audit-viewer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsIamUser.audit-viewer
-spec:
-  region: us-east-1
-  userName: audit-viewer
-  disableAccessKeys: true
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/ReadOnlyAccess
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### Full-Featured User with Multiple Policies
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `user_arn` | Amazon Resource Name of the IAM user | IAM policies, cross-account access grants |
+| `user_name` | IAM user name | Policy attachment, resource tagging |
+| `user_id` | Stable unique identifier of the IAM user | Audit logging, resource ownership tracking |
+| `access_key_id` | Access key ID (present when access keys are enabled) | CI/CD pipeline `AWS_ACCESS_KEY_ID` configuration |
+| `secret_access_key` | Base64-encoded secret access key (sensitive) | CI/CD pipeline `AWS_SECRET_ACCESS_KEY` configuration |
+| `console_url` | AWS console sign-in URL | Documentation, onboarding guides |
 
-A production service account with both managed and inline policies for SQS and CloudWatch access:
+## Common Patterns
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamUser
-metadata:
-  name: worker-service
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsIamUser.worker-service
-spec:
-  region: us-east-1
-  userName: worker-service
-  managedPolicyArns:
-    - value: arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
-  inlinePolicies:
-    sqs-consumer:
-      Version: "2012-10-17"
-      Statement:
-        - Effect: Allow
-          Action:
-            - sqs:ReceiveMessage
-            - sqs:DeleteMessage
-            - sqs:GetQueueAttributes
-          Resource: arn:aws:sqs:us-east-1:123456789012:task-queue
-    s3-results:
-      Version: "2012-10-17"
-      Statement:
-        - Effect: Allow
-          Action:
-            - s3:PutObject
-          Resource: arn:aws:s3:::results-bucket/*
-```
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Stack Outputs
+**CI/CD pipeline user** -- ECR power user, S3 read-only, and ECS deployment permissions with access keys enabled. The standard configuration for GitHub Actions, GitLab CI, or Jenkins pipelines that build container images and deploy to ECS. Start from the **CI/CD Pipeline** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Read-only service user** -- Broad read-only access with access keys disabled. Suitable for third-party monitoring tools (Datadog, New Relic) or audit integrations that only need to observe resources without making changes. Start from the **Read-Only Service** preset.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `user_arn` | `string` | ARN of the created IAM user |
-| `user_name` | `string` | Friendly name of the IAM user |
-| `user_id` | `string` | Stable unique ID of the IAM user |
-| `access_key_id` | `string` | Access key ID for the user (present only if access keys are enabled) |
-| `secret_access_key` | `string` | Base64-encoded secret key associated with the access key (sensitive; present only if access keys are enabled) |
-| `console_url` | `string` | AWS Management Console sign-in URL (`https://signin.aws.amazon.com/console`) |
+## Works With
 
-## Related Components
-
-- [AwsIamRole](/docs/catalog/aws/iam-role) — creates IAM roles for service-level permission delegation via temporary credentials
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — bucket policies can reference IAM user ARNs for access control
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — IAM user credentials are sometimes used for programmatic cluster access
+- [**AWS IAM Policy**](/cloud-catalog/aws-iam-policy) -- provides customer-managed policies for attachment via `managedPolicyArns` and the permissions boundary via `permissionsBoundary`

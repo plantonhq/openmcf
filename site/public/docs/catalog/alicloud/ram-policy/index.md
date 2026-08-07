@@ -8,220 +8,97 @@ componentName: "alicloudrampolicy"
 
 # AliCloud RAM Policy
 
-Deploys an Alibaba Cloud RAM custom policy with a JSON permission document, optional version rotation strategy, and tag management. Custom policies define fine-grained permissions beyond what system-managed policies provide and can be attached to RAM roles via AliCloudRamRole.
+Deploys a custom RAM policy on Alibaba Cloud with a JSON permission document, optional version rotation, and tag management. Custom policies define fine-grained permissions beyond what system-managed policies provide and can be attached to RAM roles via AliCloudRamRole's `policyAttachments` field.
 
 ## What Gets Created
 
-When you deploy an AliCloudRamPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **RAM Policy** — an `alicloud_ram_policy` resource with the specified JSON policy document, version rotation strategy, and tags
+- **RAM Policy** -- an `alicloud_ram_policy` with the specified JSON policy document, version rotation strategy, and force-deletion behavior
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **An Alibaba Cloud account** with RAM service enabled
-- **A valid JSON policy document** conforming to the Alibaba Cloud RAM policy structure (Version, Statement, Effect, Action, Resource)
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `ram-policy.yaml`:
+### Alibaba Cloud Account
+
+- A valid JSON policy document conforming to the Alibaba Cloud RAM policy structure (Version, Statement, Effect, Action, Resource). Maximum 6144 bytes.
+- Custom policies referenced by `policyType: Custom` in AliCloudRamRole `policyAttachments` must exist before the role is deployed.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud RAM Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Scoped OSS Access** preset in the [Presets](#presets) tab to pre-populate a bucket-scoped read/write policy.
+
+### CLI
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamPolicy
 metadata:
-  name: my-oss-reader
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudRamPolicy.my-oss-reader
+  name: app-data-bucket-rw
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  policyName: oss-read-only
+  policyName: app-data-bucket-rw
   policyDocument: |
     {
       "Version": "1",
       "Statement": [
         {
           "Effect": "Allow",
-          "Action": ["oss:GetObject", "oss:ListObjects"],
-          "Resource": ["acs:oss:*:*:my-bucket/*"]
+          "Action": ["oss:GetObject", "oss:PutObject", "oss:DeleteObject", "oss:ListObjects"],
+          "Resource": ["acs:oss:*:*:app-data-prod", "acs:oss:*:*:app-data-prod/*"]
         }
       ]
     }
 ```
-
-Deploy:
 
 ```shell
 planton apply -f ram-policy.yaml
 ```
 
-This creates a custom RAM policy granting read-only access to a specific OSS bucket.
+This creates a custom RAM policy granting read/write access to a single OSS bucket. Version rotation and force-deletion are not configured.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a RAM policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for provider endpoint configuration. RAM is a global service, but the provider requires a region for API routing (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-| `policyName` | `string` | RAM policy name, unique within the Alibaba Cloud account. English letters, digits, and hyphens only. | Required; 1-128 characters |
-| `policyDocument` | `string` | JSON IAM policy document defining permissions. Must conform to the Alibaba Cloud RAM policy structure with Version, Statement, Effect, Action, and Resource fields. | Required; non-empty; max 6144 bytes |
+**Policy document structure** -- The `policyDocument` field accepts a JSON string with Alibaba Cloud's IAM policy format. Each statement specifies an Effect (Allow/Deny), a list of Actions (API operations), and Resource ARNs. Scope resources as narrowly as possible -- `acs:oss:*:*:my-bucket/*` is safer than `acs:oss:*:*:*`.
 
-### Optional Fields
+**Version rotation strategy** -- Alibaba Cloud allows up to 5 versions per policy. Set `rotateStrategy` to `DeleteOldestNonDefaultVersionWhenLimitExceeded` for policies that are updated frequently (e.g., CI/CD pipeline policies). Leave it at the default `None` for stable policies that rarely change -- updates will fail at the 5-version limit, which is a useful guard against unintended policy drift.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of what the policy allows or denies. Maximum 1024 characters. |
-| `rotateStrategy` | `string` | `"None"` | Strategy for handling the 5-version limit. `None`: update fails at the limit. `DeleteOldestNonDefaultVersionWhenLimitExceeded`: auto-deletes the oldest non-default version. |
-| `tags` | `map<string, string>` | `{}` | Tags applied to the policy. Merged with standard Planton tags (`resource_name`, `resource_kind`, `organization`, `environment`). User tags take precedence on conflict. |
-| `force` | `bool` | `false` | Force-delete the policy even if attached to roles, users, or groups. When `true`, detaches from all entities and deletes all non-default versions before deletion. |
+**Force deletion** -- Set `force: true` to allow deleting the policy even when it is still attached to roles, users, or groups. When `false` (default), deletion fails if the policy is attached anywhere, preventing accidental permission loss.
 
-## Examples
+## Outputs and Dependencies
 
-### Read-Only OSS Access
+### What This Component Consumes
 
-A minimal policy granting read-only access to all OSS buckets:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamPolicy
-metadata:
-  name: oss-reader
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudRamPolicy.oss-reader
-spec:
-  region: cn-hangzhou
-  policyName: oss-read-only
-  policyDocument: |
-    {
-      "Version": "1",
-      "Statement": [
-        {
-          "Effect": "Allow",
-          "Action": [
-            "oss:GetObject",
-            "oss:GetBucket",
-            "oss:ListObjects",
-            "oss:ListBuckets"
-          ],
-          "Resource": ["acs:oss:*:*:*"]
-        }
-      ]
-    }
-```
+### What This Component Provides
 
-### Scoped Bucket Access with Version Rotation
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A policy granting full access to a specific OSS bucket with automatic version rotation for frequent updates:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_name` | The RAM policy name as created | AliCloudRamRole `policyAttachments` with `policyType: Custom` |
+| `policy_type` | Always `Custom` for user-created policies | AliCloudRamRole `policyAttachments` require both name and type |
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamPolicy
-metadata:
-  name: app-data-access
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudRamPolicy.app-data-access
-spec:
-  region: cn-shanghai
-  policyName: app-data-bucket-full-access
-  description: Grants full access to the application data bucket and its objects
-  policyDocument: |
-    {
-      "Version": "1",
-      "Statement": [
-        {
-          "Effect": "Allow",
-          "Action": ["oss:*"],
-          "Resource": [
-            "acs:oss:*:*:app-data-prod",
-            "acs:oss:*:*:app-data-prod/*"
-          ]
-        }
-      ]
-    }
-  rotateStrategy: DeleteOldestNonDefaultVersionWhenLimitExceeded
-  tags:
-    team: platform
-    costCenter: infrastructure
-```
+## Common Patterns
 
-### Multi-Service CI/CD Pipeline Policy
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A cross-service policy for CI/CD pipelines with force delete enabled for clean teardowns:
+**Scoped OSS bucket access** -- A policy granting read/write access to a single OSS bucket with automatic version rotation. Start from the **Scoped OSS Access** preset.
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamPolicy
-metadata:
-  name: cicd-deploy-policy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudRamPolicy.cicd-deploy-policy
-spec:
-  region: cn-hangzhou
-  policyName: cicd-pipeline-deploy-policy
-  description: Permissions for CI/CD pipeline to build images, deploy to ACK, and manage logs
-  policyDocument: |
-    {
-      "Version": "1",
-      "Statement": [
-        {
-          "Effect": "Allow",
-          "Action": [
-            "cr:GetRepository",
-            "cr:PushRepository",
-            "cr:PullRepository"
-          ],
-          "Resource": ["acs:cr:*:*:repository/my-org/*"]
-        },
-        {
-          "Effect": "Allow",
-          "Action": [
-            "cs:DescribeClusterDetail",
-            "cs:GetClusterKubeconfig",
-            "cs:DescribeClusterNodes"
-          ],
-          "Resource": ["acs:cs:*:*:cluster/*"]
-        },
-        {
-          "Effect": "Allow",
-          "Action": [
-            "log:PostLogStoreLogs",
-            "log:GetLogStore"
-          ],
-          "Resource": ["acs:log:*:*:project/cicd-logs/*"]
-        }
-      ]
-    }
-  rotateStrategy: DeleteOldestNonDefaultVersionWhenLimitExceeded
-  force: true
-  tags:
-    purpose: cicd
-    managedBy: platform-team
-```
+**CI/CD deploy pipeline** -- A cross-service policy combining Container Registry image push, ACK cluster deployment, and SLS log writing permissions for CI/CD pipelines. Start from the **CI/CD Deploy Pipeline** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `policy_name` | `string` | The RAM policy name as created |
-| `policy_type` | `string` | Always `Custom` for user-created policies. Used by AliCloudRamRole `policyAttachments` which require both policy name and type for attachment. |
-
-## Related Components
-
-- [AliCloudRamRole](/docs/catalog/alicloud/ram-role) — attach this policy to a role via `policyAttachments` with `policyType: Custom`
-- [AliCloudStorageBucket](/docs/catalog/alicloud/oss-bucket) — common target for fine-grained OSS access policies
-- [AliCloudRdsInstance](/docs/catalog/alicloud/rds-instance) — common target for database access policies
+This component operates independently and does not reference other deployment components.

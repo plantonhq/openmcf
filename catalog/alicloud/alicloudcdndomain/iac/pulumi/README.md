@@ -14,7 +14,7 @@ specifies the directory containing the Pulumi program.
 
 ```shell
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -23,7 +23,7 @@ planton pulumi preview \
 
 ```shell
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -34,7 +34,7 @@ Detect drift between the Pulumi state and the actual Alibaba Cloud resources:
 
 ```shell
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -45,7 +45,7 @@ Remove all resources managed by this stack:
 
 ```shell
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```

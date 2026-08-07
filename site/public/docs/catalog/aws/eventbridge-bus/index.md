@@ -8,164 +8,123 @@ componentName: "awseventbridgebus"
 
 # AWS EventBridge Bus
 
-Deploys an AWS EventBridge custom event bus with optional KMS encryption, dead letter queue routing for undeliverable events, and configurable CloudWatch logging. Custom buses isolate event traffic from the default bus, enabling fine-grained access control and independent dead-letter queue routing for event-driven architectures.
+Deploys a custom EventBridge event bus with optional customer-managed KMS encryption, dead letter queue for undeliverable events, CloudWatch Logs delivery logging, and a resource-based access policy for cross-account event publishing. Custom buses isolate application event traffic from the default AWS event bus, enabling fine-grained access control and dedicated event routing. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS keys and SQS dead letter queues.
 
 ## What Gets Created
 
-When you deploy an AwsEventBridgeBus resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **EventBridge Custom Event Bus** — an `aws_cloudwatch_event_bus` resource named after `metadata.name`, with optional description, KMS encryption, and AWS resource tags for organization, environment, and resource tracking
-- **Dead Letter Config** — configured only when `deadLetterConfig` is provided, routes events that fail delivery to any rule target on this bus to the specified SQS queue
-- **Log Config** — configured only when `logConfig` is provided, sends event delivery logs to CloudWatch Logs at the specified verbosity level
-- **Bus Policy** — created only when `resourcePolicy` is provided, granting other accounts or organizations permission to put events onto this bus
+- **EventBridge Event Bus** -- a custom event bus named from your manifest's `metadata.name`, with optional description and partner event source configuration
+- **KMS Encryption** -- configured only when `kmsKeyIdentifier` is provided; encrypts events at rest with a customer-managed key instead of the default AWS-owned key
+- **Dead Letter Configuration** -- configured only when `deadLetterConfig` is provided; routes events that fail delivery to any rule target to the specified SQS queue
+- **Log Configuration** -- configured only when `logConfig` is provided; sends event delivery logs to CloudWatch Logs at the specified verbosity level
+- **Resource Policy** -- configured only when `resourcePolicy` is provided; attaches an IAM policy document to the bus granting other accounts, organizations, or roles permission to put events
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An SQS queue** if using dead letter queue routing — the queue must exist in the same account and region as the event bus
-- **A KMS key** if using customer-managed encryption — the key must grant EventBridge permission to encrypt and decrypt
-- **A partner event source** if creating a partner bus — the source must already exist in the account
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `bus.yaml`:
+### AWS Account
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeBus
-metadata:
-  name: my-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeBus.my-events
-spec:
-  region: us-east-1
-  description: Custom event bus for application events
-```
+- **A KMS key** (optional) -- required only when using customer-managed encryption. Provide the key ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef.
+- **An SQS queue** (optional) -- required when configuring a bus-level dead letter queue. The queue must exist in the same account and region. Provide the ARN directly or reference an AwsSqsQueue Cloud Resource via ValueFromRef.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f bus.yaml
-```
+### Console
 
-This creates a custom EventBridge bus with AWS-managed encryption and no dead letter queue or logging.
+Open the deployment store, find **AWS EventBridge Bus**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Simple Custom Bus** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the EventBridge bus will be created (e.g., `us-east-1`, `eu-west-1`). | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the event bus. Maximum 512 characters. |
-| `kmsKeyIdentifier` | `StringValueOrRef` | AWS-owned key | KMS key identifier for encrypting events on this bus. Accepts a key ARN, key ID, key alias, or key alias ARN. Can reference `AwsKmsKey` via `valueFrom`. |
-| `eventSourceName` | `string` | — | Partner event source name for SaaS integrations (e.g., Datadog, PagerDuty). Must match the pattern `aws.partner/{partner}/{...}` and `metadata.name` must match this value. Immutable — changing it forces bus replacement. |
-| `deadLetterConfig.arn` | `StringValueOrRef` | — | ARN of the SQS queue to use as the dead letter queue. Required when `deadLetterConfig` is set. The queue must exist in the same account and region. Can reference `AwsSqsQueue` via `valueFrom`. |
-| `logConfig.level` | `string` | — | Logging verbosity. One of `OFF`, `ERROR`, `INFO`, `TRACE`. Required when `logConfig` is set. |
-| `logConfig.includeDetail` | `string` | `NONE` | Whether to include full event detail in log entries. One of `NONE`, `FULL`. |
-| `resourcePolicy` | `Struct` | same-account only | Resource-based policy for the bus — cross-account / cross-organization `events:PutEvents` grants, expressed as an IAM policy document. |
-
-## Examples
-
-### Production Bus with Encryption and DLQ
-
-A bus with customer-managed KMS encryption, dead letter queue for undeliverable events, and error-level logging:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeBus
-metadata:
-  name: payment-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEventBridgeBus.payment-events
-spec:
-  region: us-east-1
-  description: Payment processing event bus
-  kmsKeyIdentifier: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
-  deadLetterConfig:
-    arn: arn:aws:sqs:us-east-1:123456789012:payment-bus-dlq
-  logConfig:
-    level: ERROR
-```
-
-### Development Bus with Trace Logging
-
-Verbose logging with full event detail for debugging event routing during development:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEventBridgeBus
-metadata:
-  name: dev-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeBus.dev-events
-spec:
-  region: us-east-1
-  description: Development bus with verbose logging
-  logConfig:
-    level: TRACE
-    includeDetail: FULL
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding ARNs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEventBridgeBus
 metadata:
   name: order-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsEventBridgeBus.order-events
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
-  description: Order processing event bus with referenced resources
+  region: us-west-2
+  description: Custom event bus for order domain events
+```
+
+```shell
+planton apply -f event-bus.yaml
+```
+
+This creates a custom event bus with AWS-managed encryption. No dead letter queue or logging is configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the event bus to a KMS key and SQS dead letter queue deployed in the same InfraPipeline:
+
+```yaml
+spec:
   kmsKeyIdentifier:
     valueFrom:
       kind: AwsKmsKey
-      name: order-key
+      name: events-encryption-key
       fieldPath: status.outputs.key_arn
   deadLetterConfig:
     arn:
       valueFrom:
         kind: AwsSqsQueue
-        name: order-bus-dlq
+        name: events-dlq
         fieldPath: status.outputs.queue_arn
-  logConfig:
-    level: INFO
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the KMS key and SQS queue first, then provisions the event bus with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bus_name` | `string` | Event bus name — primary identifier used in EventBridge API calls and rule configurations |
-| `bus_arn` | `string` | Event bus ARN — used in IAM policies, cross-account event delivery, and resource references |
+These are the most important decisions when configuring an EventBridge bus. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**KMS encryption** -- By default, events are encrypted with an AWS-owned key at no additional cost. Provide `kmsKeyIdentifier` with a customer-managed KMS key when you need key rotation control, CloudTrail audit logging of event data access, or cross-account key sharing. Required for compliance-sensitive environments.
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed encryption key for event encryption
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) — provides a dead letter queue for undeliverable events
-- [AwsEventBridgeRule](/docs/catalog/aws/eventbridge-rule) — attaches rules to this bus for event routing
-- [AwsLambda](/docs/catalog/aws/lambda) — common target for EventBridge rules
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — fan-out target for EventBridge rules
+**Dead letter queue** -- Configure `deadLetterConfig` with an SQS queue ARN to capture events that fail delivery to any rule target on this bus. Without a DLQ, failed events are silently dropped. Essential for production workloads where event loss is unacceptable.
+
+**Logging** -- Set `logConfig.level` to control event delivery logging. Use `ERROR` for production (logs delivery failures only) or `TRACE` for debugging (logs all events including matched/unmatched). Set `logConfig.includeDetail` to `FULL` to include complete event payloads in log entries, or `NONE` to reduce log volume.
+
+**Partner event source** -- Set `eventSourceName` only when creating a bus for a SaaS partner integration (Datadog, Zendesk, PagerDuty). The bus name must match the partner source name exactly. This field is immutable after creation.
+
+**Cross-account access** -- By default only the owning account can put events onto the bus. Set `resourcePolicy` to a standard IAM policy document to grant other accounts, an entire AWS Organization, or specific roles `events:PutEvents` permission — the mechanism behind hub-and-spoke event architectures where workload accounts publish into a central event hub.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyIdentifier` | `status.outputs.key_arn` |
+| **AwsSqsQueue** (optional) | `deadLetterConfig.arn` | `status.outputs.queue_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bus_name` | Name of the event bus | EventBridge rule attachment, PutEvents API calls |
+| `bus_arn` | Amazon Resource Name of the event bus | IAM policies, cross-account event delivery |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Simple custom bus** -- Minimal event bus with a description and AWS-managed encryption. The fastest way to isolate application events from the default bus for development or low-security workloads. Start from the **Simple Custom Bus** preset.
+
+**Production encrypted bus** -- Customer-managed KMS encryption, SQS dead letter queue, and error-level logging. The recommended configuration for production event-driven architectures where event loss and compliance are concerns. Start from the **Production Encrypted Bus** preset.
+
+**Partner event bus** -- Bus configured for a SaaS partner integration via EventBridge partner event sources. Use when receiving events from third-party services like Datadog or PagerDuty. Start from the **Partner Event Bus** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encrypting events at rest
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- provides a dead letter queue for events that fail delivery

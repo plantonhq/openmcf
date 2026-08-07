@@ -6,223 +6,128 @@ order: 100
 componentName: "ocifunctionsapplication"
 ---
 
-# OCI Functions Application
+# Functions Application on OCI
 
-Deploys an Oracle Cloud Infrastructure Functions application — the organizational container for serverless functions. Configures the shared execution environment including subnet placement, processor architecture (x86, ARM, or multi-arch), application-level environment variables, optional network security groups, image signature verification, and APM tracing.
+Deploys an Oracle Cloud Infrastructure Functions Application -- the organizational container and shared execution environment for serverless functions. The application defines the network placement (subnets and security groups), processor architecture, shared configuration environment variables, optional container image signature verification via KMS, and APM tracing. Individual functions are deployed as code artifacts via `fn deploy` or CI/CD pipelines, not managed by this component. The application integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments, subnets, security groups, and KMS keys.
 
 ## What Gets Created
 
-When you deploy an OciFunctionsApplication resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Functions Application** — a `functions.Application` resource in the specified compartment and subnets with configurable processor shape, application config (environment variables), optional NSG bindings, optional image signature verification via KMS keys, and optional APM tracing integration.
+- **Functions Application** -- a serverless function container in the specified compartment with subnet placement, processor architecture, optional NSG restrictions, shared config map, optional image signature verification policy, and optional APM tracing
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the application
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the application will be created — either a literal value or a reference to an OciCompartment resource
-- **At least one subnet OCID** — subnets where functions will execute, either as literal values or via `valueFrom` referencing OciSubnet resources
-- **KMS key OCIDs** (for image verification only) — if enabling image signature verification
-- **An APM domain OCID** (for tracing only) — if integrating with OCI Application Performance Monitoring
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `functions-app.yaml`:
+### OCI Tenancy
+
+- A compartment to place the application in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- At least one private subnet for function execution. Functions run inside these subnets and can reach any resources accessible from them. Subnets are immutable after creation.
+- Optionally, one or more network security groups to restrict inbound and outbound traffic for functions.
+- For image signature verification: one or more OCI KMS keys used to sign container images.
+- For distributed tracing: an OCI APM domain OCID.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Functions Application on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard x86** preset in the [Presets](#presets) tab to pre-populate an application with x86 architecture, a single subnet, and APM tracing enabled.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciFunctionsApplication
 metadata:
-  name: my-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciFunctionsApplication.my-app
+  name: order-processing
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
   subnetIds:
     - value: "ocid1.subnet.oc1..example"
+  shape: generic_x86
 ```
-
-Deploy:
 
 ```shell
 planton apply -f functions-app.yaml
 ```
 
-This creates a Functions application with GENERIC_X86 architecture in the specified subnet. The application OCID is exported as a stack output. Individual functions are deployed separately via `fn deploy` or CI/CD pipelines.
+This creates a Functions Application with x86 architecture placed in a single subnet. No NSGs, image policy, APM tracing, or shared config are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the application will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `subnetIds` | `StringValueOrRef[]` | OCIDs of the subnets where functions execute. Functions can reach resources accessible from these subnets. Immutable after creation. Can reference OciSubnet resources via `valueFrom`. | Min 1 item |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | metadata name | Display name for the application. Must be unique within the compartment. Immutable after creation. |
-| `shape` | `enum` | `generic_x86` | Processor architecture. Values: `generic_x86` (Intel/AMD x86-64), `generic_arm` (Ampere A1), `generic_x86_arm` (multi-architecture). Immutable after creation. |
-| `config` | `map<string, string>` | — | Application configuration passed as environment variables to all functions. Keys: ASCII letters, digits, underscores (cannot start with a digit). Max total size: 4 KB. |
-| `networkSecurityGroupIds` | `StringValueOrRef[]` | — | OCIDs of network security groups applied to the application. Can reference OciSecurityGroup resources via `valueFrom`. |
-| `syslogUrl` | `string` | — | Syslog URL for function logs (e.g., `"tcp://logserver.example.com:514"`). Must be reachable from the configured subnets. |
-| `imagePolicyConfig` | `ImagePolicyConfig` | — | Image signature verification policy. See below. |
-| `traceConfig` | `TraceConfig` | — | APM tracing configuration. See below. |
-
-### ImagePolicyConfig
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `isPolicyEnabled` | `bool` | Whether image signature verification is enabled. |
-| `keyDetails` | `ImagePolicyKeyDetail[]` | KMS keys used to verify image signatures. Required when `isPolicyEnabled` is `true`. |
-
-### ImagePolicyKeyDetail
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `kmsKeyId` | `StringValueOrRef` | OCID of the KMS key for image signature verification. Can reference an OciKmsKey resource via `valueFrom`. |
-
-### TraceConfig
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `isEnabled` | `bool` | Whether tracing is enabled. |
-| `domainId` | `string` | OCID of the APM domain (collector) where trace events are sent. |
-
-## Examples
-
-### Minimal Application
-
-An application with default x86 architecture in a single subnet:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the application to a compartment, subnet, and security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciFunctionsApplication
-metadata:
-  name: my-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciFunctionsApplication.my-app
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetIds:
-    - value: "ocid1.subnet.oc1..example"
-```
-
-### ARM Architecture with Environment Config
-
-An application running on Ampere A1 processors with shared environment variables and NSG binding:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciFunctionsApplication
-metadata:
-  name: arm-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciFunctionsApplication.arm-app
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-compartment
+      name: app-compartment
       fieldPath: status.outputs.compartmentId
   subnetIds:
     - valueFrom:
         kind: OciSubnet
-        name: private-subnet
+        name: functions-subnet
         fieldPath: status.outputs.subnetId
-  shape: generic_arm
-  config:
-    LOG_LEVEL: "info"
-    DB_ENDPOINT: "adb.us-ashburn-1.oraclecloud.com"
   networkSecurityGroupIds:
     - valueFrom:
         kind: OciSecurityGroup
-        name: fn-nsg
+        name: functions-nsg
         fieldPath: status.outputs.networkSecurityGroupId
 ```
 
-### Image Signature Verification
+The InfraPipeline resolves the dependency graph, deploys the compartment, subnet, and security group first, then provisions the application with the resolved values.
 
-An application with image signature verification — only images signed by the specified KMS key can be deployed:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciFunctionsApplication
-metadata:
-  name: secure-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciFunctionsApplication.secure-app
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetIds:
-    - value: "ocid1.subnet.oc1..example"
-  imagePolicyConfig:
-    isPolicyEnabled: true
-    keyDetails:
-      - kmsKeyId:
-          valueFrom:
-            kind: OciKmsKey
-            name: image-signing-key
-            fieldPath: status.outputs.keyId
-```
+These are the most important decisions when configuring a Functions Application. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Full-Featured with APM Tracing
+**Processor architecture** -- Set `shape` to `generic_x86` for standard Intel/AMD execution, `generic_arm` for Ampere A1 (lower cost per invocation), or `generic_x86_arm` for multi-architecture support. The shape is immutable after creation -- changing it forces application recreation.
 
-An application with multi-architecture support, syslog forwarding, and APM distributed tracing:
+**Subnet placement** -- Provide at least one subnet OCID in `subnetIds`. Functions execute within these subnets and inherit their routing and connectivity. Use private subnets with a NAT gateway for outbound internet access. Subnets are immutable after creation.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciFunctionsApplication
-metadata:
-  name: traced-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciFunctionsApplication.traced-app
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetIds:
-    - value: "ocid1.subnet.oc1..example-1"
-    - value: "ocid1.subnet.oc1..example-2"
-  shape: generic_x86_arm
-  config:
-    APP_ENV: "production"
-  syslogUrl: "tcp://logserver.example.com:514"
-  traceConfig:
-    isEnabled: true
-    domainId: "ocid1.apmdomain.oc1..example"
-```
+**Image signature verification** -- Set `imagePolicyConfig.isPolicyEnabled` to `true` and provide KMS key OCIDs in `keyDetails` to enforce that only signed container images can be deployed as functions. At least one key is required when the policy is enabled.
 
-## Stack Outputs
+**Shared configuration** -- Use `config` to pass environment variables to all functions in the application. Keys must be ASCII letters, digits, and underscores (no leading digit). Total key-value size is capped at 4 KB.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Outputs and Dependencies
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `application_id` | `string` | OCID of the functions application |
+### What This Component Consumes
 
-## Related Components
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciSubnet** | `subnetIds` | `status.outputs.subnetId` |
+| **OciSecurityGroup** (optional) | `networkSecurityGroupIds` | `status.outputs.networkSecurityGroupId` |
+| **OciKmsKey** (optional) | `imagePolicyConfig.keyDetails[].kmsKeyId` | `status.outputs.keyId` |
 
-- [OciSubnet](/docs/catalog/oci/subnet) — provides the subnets referenced by `subnetIds` via `valueFrom`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciSecurityGroup](/docs/catalog/oci/network-security-group) — provides NSGs referenced by `networkSecurityGroupIds` via `valueFrom`
-- [OciKmsKey](/docs/catalog/oci/kms-key) — provides signing keys for image verification via `valueFrom`
-- [OciApiGateway](/docs/catalog/oci/api-gateway) — exposes functions via HTTP endpoints using the `oracle_functions` backend type
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `application_id` | OCID of the functions application | Function deployment targets (`fn deploy`), IAM policy scoping, monitoring configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard x86** -- An application with Intel/AMD architecture, a single subnet, NSG restriction, and APM tracing enabled. The default starting point for most serverless workloads. Start from the **Standard x86** preset.
+
+**Secure production** -- An application with image signature verification enforced via KMS, NSG-restricted networking, and APM tracing. Designed for regulated environments where only signed container images may run. Start from the **Secure Production** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this application
+- [**Subnet on OCI**](/cloud-catalog/oci-subnet) -- provides the network subnets where functions execute
+- [**Network Security Group on OCI**](/cloud-catalog/oci-security-group) -- provides network security rules for function traffic
+- [**KMS Key on OCI**](/cloud-catalog/oci-kms-key) -- provides signing keys for container image verification

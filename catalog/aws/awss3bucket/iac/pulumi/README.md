@@ -5,26 +5,26 @@
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -46,7 +46,7 @@ Then make the script executable and run your command (e.g., `preview` or `update
 ```bash
 chmod +x debug.sh
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -76,4 +76,4 @@ The module code is organized by concern (`bucket.go`, `lifecycle.go`, `replicati
 
 ## Usage
 
-See the CLI usage section above; a working manifest lives at [`../hack/manifest.yaml`](../../e2e/manifest.yaml) and remixable starting points in [`../../presets/`](../../presets/).
+See the CLI usage section above; a working manifest lives at [`../../e2e/manifest.yaml`](../../e2e/manifest.yaml) and remixable starting points in [`../../presets/`](../../presets/).

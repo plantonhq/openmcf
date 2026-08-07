@@ -8,69 +8,122 @@ componentName: "azurefrontdoorsecret"
 
 # Azure Front Door Secret
 
-Creates a secret inside an AzureFrontDoorProfile -- the bring-your-own TLS certificate node wrapping an AzureKeyVaultCertificate. AzureFrontDoorCustomDomain resources reference the secret to terminate TLS with the wrapped certificate; a versionless certificate reference makes Key Vault rotation propagate automatically.
+Deploys a Front Door secret -- the bring-your-own TLS certificate node inside an Azure Front Door (Standard/Premium) profile. A secret wraps a Key Vault certificate so custom domains can terminate TLS with it: the domain's `tls.secretId` references this secret, and this secret references the AzureKeyVaultCertificate that actually holds the key material. One certificate -- typically a wildcard or multi-SAN cert -- serves many domains, and rotating it is a single operation, never a per-domain edit. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the profile and the certificate.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorSecret resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Secret** -- an `azurerm_cdn_frontdoor_secret` on the referenced profile, wrapping the referenced Key Vault certificate
+- **Front Door Secret** -- a named child of the profile wrapping the referenced Key Vault certificate
+- **Certificate binding** -- versionless (Front Door follows the certificate's latest version; Key Vault rotation propagates automatically) or version-pinned (one exact certificate ships until the secret is replaced)
 
-## Prerequisites
+## The Secret in the Front Door Family
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureFrontDoorProfile** to create the secret in (referenced through `profileId`)
-- **An AzureKeyVaultCertificate** holding the certificate to serve
-- **A one-time tenant grant**: Front Door's service principal (`Microsoft.AzureFrontDoor-Cdn`) needs Key Vault read access (e.g. the "Key Vault Secrets User" role) before the secret can deploy
+The secret is the TLS material bridge between Key Vault and the edge:
 
-## Quick Start
+- **AzureFrontDoorProfile** -- the parent container, referenced by `profileId`
+- **AzureKeyVaultCertificate** -- the certificate the secret wraps, referenced by `keyVaultCertificateId` (versionless by default)
+- **AzureFrontDoorCustomDomain** -- terminates TLS with this secret via `tls.secretId` when its certificate type is CUSTOMER_CERTIFICATE
 
-Create a file `front-door-secret.yaml`:
+## Before You Deploy
+
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Planton Runner** -- required when using Runner-based credential delivery.
+
+### Azure Subscription
+
+- **An Azure Front Door Profile** the secret nests under.
+- **A CA-issued Key Vault certificate with its complete chain** -- Azure rejects self-signed certificates ("the certificate chain includes an invalid number of certificates"). Use a certificate enrolled through a CA integration or an imported PKCS#12 carrying leaf plus issuer.
+- **The one-time vault grant** -- Front Door reads Key Vault with Microsoft's own service principal (the `Microsoft.AzureFrontDoor-Cdn` enterprise application). Grant it read access on the vault -- e.g. the "Key Vault Secrets User" role on an RBAC-mode vault -- before the first secret deploys.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Secret**, and click **Deploy**. The wizard walks you through the parent profile, the secret name, and the Key Vault certificate -- whose reference form (versionless vs versioned) decides the rotation story. Start from the **Rotating BYO Certificate** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorSecret
 metadata:
-  name: wildcard-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorSecret.wildcard-cert
+  name: wildcard-cert-secret
+  org: acme-corp
+  env: prod
 spec:
   profileId:
     valueFrom:
       kind: AzureFrontDoorProfile
-      name: my-front-door
+      name: cdn-profile
       fieldPath: status.outputs.profile_id
   secretName: wildcard-example-com
   keyVaultCertificateId:
     valueFrom:
       kind: AzureKeyVaultCertificate
-      name: my-wildcard-cert
+      name: wildcard-example-com-cert
       fieldPath: status.outputs.versionless_id
 ```
-
-Deploy:
 
 ```shell
 planton apply -f front-door-secret.yaml
 ```
 
-The versionless reference (the default) makes Front Door follow the certificate's latest Key Vault version -- renewals propagate with zero redeploys. Reference the versioned `certificate_id` output instead to pin one exact version for change-controlled rollouts.
+This creates a secret following the certificate's latest version. Custom domains reference the `secret_id` output next.
 
-Note that Azure rejects self-signed certificates for Front Door BYO TLS: the certificate must be CA-issued with a complete chain (leaf plus issuer). Enroll through a Key Vault CA integration or import a PKCS#12 carrying its full chain.
+### InfraChart
 
-## Key Outputs
+```yaml
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: cdn-profile
+      fieldPath: status.outputs.profile_id
+  secretName: wildcard-example-com
+  keyVaultCertificateId:
+    valueFrom:
+      kind: AzureKeyVaultCertificate
+      name: wildcard-example-com-cert
+      fieldPath: status.outputs.versionless_id
+```
 
-| Output | Purpose |
-|--------|---------|
-| `secret_id` | The ARM id -- what a custom domain's `tls.secretId` references |
-| `secret_name` | The secret's name inside the profile |
-| `subject_alternative_names` | The DNS names the wrapped certificate covers -- confirm a domain's hostname before attaching |
+## Key Configuration
 
-## Related Resources
+**Secret name** -- 2–260 characters; letters, digits, and hyphens; must start and end with a letter or digit. Unique within the profile. The name is a segment of the secret's ARM ID (the exact string domains reference), so renaming replaces the secret under a new ID.
 
-- [Azure Front Door Profile](/docs/catalog/azure/front-door-profile) -- the parent profile
-- [Azure Front Door Custom Domain](/docs/catalog/azure/front-door-custom-domain) -- terminates TLS with this secret
-- [Azure Key Vault Certificate](/docs/catalog/azure/key-vault-certificate) -- the wrapped certificate
+**Key Vault certificate** -- referenced by its Key Vault certificate identifier (a vault data-plane URL, not an ARM ID). The versionless form (no trailing version segment, the default reference) tells Front Door to follow the certificate's LATEST version; a versioned identifier pins one exact certificate.
+
+**Immutability** -- Azure exposes no update on Front Door secrets: changing any field replaces the secret. That is safe in practice, because certificate ROTATION happens inside Key Vault (new versions), not by editing the secret.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureFrontDoorProfile** | `profileId` | `status.outputs.profile_id` |
+| **AzureKeyVaultCertificate** | `keyVaultCertificateId` | `status.outputs.versionless_id` |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `secret_id` | ARM resource ID of the secret | AzureFrontDoorCustomDomain.`tls.secretId` |
+| `secret_name` | The secret's name within its profile | Operator tooling |
+| `subject_alternative_names` | The DNS names the wrapped certificate covers | Confirming a domain's host name is covered before attaching |
+
+## Presets
+
+| Preset | Rank | Description |
+|--------|------|-------------|
+| Rotating BYO Certificate | 1 | Versionless reference -- Key Vault rotation propagates automatically |
+| Pinned Certificate Version | 2 | Versioned reference -- one exact certificate until the secret is replaced |
+
+## Related Components
+
+- **AzureFrontDoorProfile** -- the parent container
+- **AzureKeyVaultCertificate** -- holds the key material this secret wraps
+- **AzureFrontDoorCustomDomain** -- terminates TLS with this secret

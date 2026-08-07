@@ -213,7 +213,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Examples
 
-For more comprehensive examples, see `examples.md`, including:
+For more comprehensive examples, see `e2e/manifest.yaml`, including:
 
 - Basic web traffic INGRESS ALLOW
 - SSH via IAP

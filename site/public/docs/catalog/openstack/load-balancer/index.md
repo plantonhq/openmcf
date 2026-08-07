@@ -8,179 +8,104 @@ componentName: "openstackloadbalancer"
 
 # OpenStack Load Balancer
 
-Deploys an Octavia load balancer in OpenStack, provisioning a Virtual IP (VIP) endpoint on a specified subnet. Listeners, pools, members, and health monitors attach to the load balancer to distribute traffic across backend servers.
+Deploys an Octavia load balancer on OpenStack with a Virtual IP (VIP) allocated on a specified subnet. The load balancer serves as the entry point for all Octavia traffic distribution -- attach listeners, pools, members, and monitors to complete the traffic path. ValueFromRef wiring connects the VIP subnet from an OpenStackSubnet Cloud Resource in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackLoadBalancer resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Octavia Load Balancer** -- a `loadbalancer.LoadBalancer` Pulumi resource (equivalent to `openstack_lb_loadbalancer_v2` in Terraform) with the configured VIP subnet, optional fixed VIP address, description, administrative state, flavor, tags, and region override. The load balancer allocates a VIP address on the target subnet and exposes the VIP port ID for floating IP or security group attachment.
+- **Octavia Load Balancer** -- a load balancer instance with a VIP address allocated from the specified subnet, acting as the client-facing endpoint for traffic distribution
+- **VIP Port** -- a Neutron port created automatically for the Virtual IP, which can be used to attach floating IPs or security groups
+- **OpenStack Tags** -- user-defined tags applied to the load balancer for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An existing subnet** where the VIP address will be allocated (can be an Planton-managed OpenStackSubnet)
-- **Octavia service** enabled in the target OpenStack project
-- **An Octavia flavor** (optional) if you need specific resource limits for the load balancer
+### OpenStack Account
 
-## Quick Start
+- **Subnet** -- a subnet with available IP addresses where the VIP will be allocated. Provide the subnet ID directly or reference an OpenStackSubnet Cloud Resource via ValueFromRef.
+- **Octavia service** -- the Octavia load balancing service must be enabled in your OpenStack deployment. Run `openstack loadbalancer list` to verify availability.
+- **Flavor** (optional) -- if your deployment defines Octavia flavors for custom bandwidth or connection limits, note the flavor ID for the `flavorId` field.
 
-Create a file `loadbalancer.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Load Balancer**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Load Balancer** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancer
 metadata:
-  name: my-lb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackLoadBalancer.my-lb
+  name: web-lb
+  org: acme-corp
+  env: prod
 spec:
-  vipSubnetId: e0a1f622-9aab-4a48-8c8c-3b0c7e2a9b1d
+  vipSubnetId:
+    value: "<subnet-id>"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f loadbalancer.yaml
 ```
 
-This creates an Octavia load balancer with a VIP auto-allocated from the specified subnet.
+This creates a load balancer with an auto-assigned VIP on the specified subnet. No flavor, custom VIP address, or tags are configured. Attach listeners and pools to begin routing traffic.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `vipSubnetId` | `StringValueOrRef` | The subnet on which to allocate the VIP address. Determines the network segment where the load balancer's virtual IP lives. The subnet must already exist and have available IP addresses. Can reference an OpenStackSubnet resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `vipAddress` | `string` | auto-allocated | A specific IP address to request for the VIP. Must be within the CIDR range of the specified subnet. ForceNew: changing this requires recreating the load balancer. |
-| `description` | `string` | `""` | Human-readable description of the load balancer. |
-| `adminStateUp` | `bool` | `true` | Administrative state of the load balancer. When false, the load balancer stops accepting traffic. |
-| `flavorId` | `string` | -- | The ID of an Octavia flavor to use. Flavors define resource limits such as bandwidth and connections. ForceNew: changing this requires recreating the load balancer. |
-| `tags` | `string[]` | `[]` | Tags applied to the load balancer in OpenStack. Must be unique within this resource. |
-| `region` | `string` | provider default | Overrides the region from the provider configuration for this load balancer. |
-
-## Examples
-
-### Basic Load Balancer
-
-A minimal load balancer with a VIP auto-allocated from a subnet:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the load balancer to a subnet deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancer
-metadata:
-  name: web-lb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackLoadBalancer.web-lb
-spec:
-  vipSubnetId: e0a1f622-9aab-4a48-8c8c-3b0c7e2a9b1d
-  description: Web tier load balancer
-```
-
-### Load Balancer with Fixed VIP Address
-
-Pin the VIP to a known IP address on the subnet, useful when DNS records or firewall rules reference a stable address:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancer
-metadata:
-  name: api-lb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancer.api-lb
-spec:
-  vipSubnetId: e0a1f622-9aab-4a48-8c8c-3b0c7e2a9b1d
-  vipAddress: "10.0.1.100"
-  description: API gateway load balancer with fixed VIP
-  tags:
-    - production
-    - api-tier
-```
-
-### Load Balancer with Flavor and Tags
-
-Use an Octavia flavor to control the load balancer's resource allocation (amphora size, topology, provider):
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancer
-metadata:
-  name: premium-lb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancer.premium-lb
-spec:
-  vipSubnetId: e0a1f622-9aab-4a48-8c8c-3b0c7e2a9b1d
-  vipAddress: "10.0.1.200"
-  description: High-capacity production load balancer
-  flavorId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-  adminStateUp: true
-  tags:
-    - production
-    - high-capacity
-  region: RegionOne
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed subnet instead of hardcoding its UUID:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancer
-metadata:
-  name: ref-lb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancer.ref-lb
 spec:
   vipSubnetId:
     valueFrom:
       kind: OpenStackSubnet
       name: app-subnet
-      field: status.outputs.subnet_id
-  description: Load balancer referencing a managed subnet
-  tags:
-    - managed
+      fieldPath: status.outputs.subnet_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the subnet first, then provisions the load balancer with the resolved subnet ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `loadbalancer_id` | `string` | UUID of the created Octavia load balancer. Primary output used as a foreign key by listeners. |
-| `name` | `string` | Name of the load balancer, derived from `metadata.name` |
-| `vip_address` | `string` | Virtual IP address allocated to the load balancer. This is the IP that clients connect to. |
-| `vip_port_id` | `string` | Neutron port ID of the VIP. Useful for attaching security groups or floating IPs. |
-| `vip_subnet_id` | `string` | Subnet where the VIP was allocated |
-| `region` | `string` | OpenStack region where the load balancer was created |
+These are the most important decisions when configuring a load balancer. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**VIP address allocation** -- By default, Octavia auto-assigns an available IP from the subnet. Set `vipAddress` to request a specific IP within the subnet's CIDR range. Changing the VIP address requires recreating the load balancer.
 
-- [OpenStackSubnet](/docs/catalog/openstack/subnet) -- provides the subnet for VIP allocation
-- [OpenStackLoadBalancerListener](/docs/catalog/openstack/load-balancer-listener) -- attaches a protocol/port listener to the load balancer
-- [OpenStackLoadBalancerPool](/docs/catalog/openstack/load-balancer-pool) -- defines a backend pool with load balancing algorithm
-- [OpenStackLoadBalancerMember](/docs/catalog/openstack/load-balancer-member) -- registers backend servers in a pool
-- [OpenStackLoadBalancerMonitor](/docs/catalog/openstack/load-balancer-monitor) -- configures health checks for pool members
-- [OpenStackFloatingIpAssociate](/docs/catalog/openstack/floating-ip-associate) -- associates a floating IP with the VIP port for external access
+**Flavor selection** -- Leave `flavorId` empty to use Octavia's default resource limits. Set it when your deployment provides custom flavors with specific bandwidth caps or connection limits. Changing the flavor requires recreating the load balancer.
+
+**Administrative state** -- The load balancer is active by default (`adminStateUp: true`). Set to `false` to provision the load balancer in a disabled state, useful for staged deployments where listeners and pools need configuration before accepting traffic.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackSubnet** | `vipSubnetId` | `status.outputs.subnet_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `loadbalancer_id` | UUID of the load balancer | Listener attachment via `loadbalancerId` |
+| `name` | Name of the load balancer | Monitoring labels, resource identification |
+| `vip_address` | Virtual IP address allocated to the load balancer | DNS records, client configuration |
+| `vip_port_id` | Neutron port ID of the VIP | Floating IP associations, security group attachments |
+| `vip_subnet_id` | Subnet where the VIP was allocated | Reference for downstream subnet-aware resources |
+| `region` | OpenStack region where the load balancer was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard Load Balancer** -- Creates an Octavia load balancer with an auto-assigned VIP on the specified subnet. The entry point for building a complete load balancing stack (LB, Listener, Pool, Members, Monitor). Start from the **Standard Load Balancer** preset.
+
+## Works With
+
+- [**OpenStack Subnet**](/cloud-catalog/openstack-subnet) -- provides the subnet ID where the load balancer's VIP address is allocated

@@ -17,10 +17,10 @@ hand-edit).
 Use the Planton CLI (tofu) with the default local backend:
 
 ```shell
-planton tofu init --manifest hack/manifest.yaml
-planton tofu plan --manifest hack/manifest.yaml
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest e2e/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
@@ -29,5 +29,5 @@ Deploys propagate to every CloudFront edge location, so expect apply/destroy
 to take 5-15 minutes each while the distribution converges (and destroy first
 disables the distribution, which is itself a propagation).
 
-For more examples, see [`hack/manifest.yaml`](../../e2e/manifest.yaml) and the
+For more examples, see [`e2e/manifest.yaml`](../../e2e/manifest.yaml) and the
 component presets.

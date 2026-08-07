@@ -8,177 +8,124 @@ componentName: "gcpvertexaideployedindex"
 
 # GCP Vertex AI Deployed Index
 
-Deploys a Vertex AI Vector Search index onto an index endpoint — the placement that makes nearest-neighbor queries actually servable, with automatic or dedicated serving compute, deployment-group IP partitioning, reserved-range pinning, and optional JWT authentication. The index and the endpoint are separate resources (`GcpVertexAiIndex`, `GcpVertexAiIndexEndpoint`); this component joins them.
+Deploys a Vertex AI Deployed Index: the resource that places a GcpVertexAiIndex onto a GcpVertexAiIndexEndpoint and gives the placement its serving compute — the final resource of the vector-search trio, after which nearest-neighbor queries can actually be served. Many deployed indexes can share one endpoint, and one index can be deployed to many endpoints. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to the index, the endpoint, reserved address ranges, and service accounts.
 
 ## What Gets Created
 
-When you deploy a GcpVertexAiDeployedIndex resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Deployed Index** — a `google_vertex_ai_index_endpoint_deployed_index` resource placing the referenced index onto the referenced endpoint with the chosen serving compute
+- **Deployed Index** -- the placement of the referenced index onto the referenced endpoint, addressed by your chosen deployment ID
+- **Serving Compute** -- either Vertex-managed automatic resources (machine types chosen by GCP, replicas scaling between your bounds) or dedicated resources (a pinned machine type); omitting both deploys with GCP's automatic defaults
+- **Private-Serving Refinements** -- on peered/PSC endpoints: the deployment group's IP-space partition, reserved peering ranges, private-endpoint access logging, and optional JWT authentication on the private query endpoint
 
-Note: the GCP API gives this resource class no labels and no project field (it lives inside the endpoint resource), so platform label attribution is not possible here.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **A `GcpVertexAiIndex`** in the same region (the `index` reference)
-- **A `GcpVertexAiIndexEndpoint`** in the same region (the `indexEndpoint` reference)
-- **Reserved `VPC_PEERING` global addresses** if pinning `reservedIpRanges` (peered endpoints only)
-- **GCP credentials** configured via environment variables or Planton provider config
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-## Quick Start
+### GCP Prerequisites
 
-Create a file `deployed-index.yaml`:
+- **A GcpVertexAiIndex and a GcpVertexAiIndexEndpoint** in the SAME region — the deployment joins them and cannot cross regions.
+- **Vertex AI API** enabled in the endpoint's project (the deployment inherits it — this kind carries no project field).
+- **Time budget** -- deploying takes tens of minutes (the provider allows up to 45).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Vertex AI Deployed Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Automatic** preset in the [Presets](#presets) tab for Vertex-managed sizing.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiDeployedIndex
 metadata:
-  name: products-v1
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiDeployedIndex.products-v1
+  name: catalog-deployment
+  org: acme-corp
+  env: prod
 spec:
   location: us-central1
-  deployedIndexId: products_v1
+  deployedIndexId: catalog_embeddings_v1
   index:
     valueFrom:
       kind: GcpVertexAiIndex
-      name: product-embeddings
+      name: catalog-embeddings
       fieldPath: status.outputs.index_id
   indexEndpoint:
     valueFrom:
       kind: GcpVertexAiIndexEndpoint
-      name: vector-serving
+      name: catalog-search
       fieldPath: status.outputs.index_endpoint_id
+  automaticResources:
+    minReplicaCount: 2
+    maxReplicaCount: 10
 ```
-
-Deploy:
 
 ```shell
 planton apply -f deployed-index.yaml
 ```
 
-This deploys the index with automatic serving compute at GCP's default bounds. Deployment is a long-running operation — expect tens of minutes.
+A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+The deployment is the natural LAST node of the vector-search chart: the InfraPipeline resolves both ValueFromRef joins, provisions the index and endpoint first, then this deployment — one chart deploys the whole serving composition.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `location` | `string` | Region of the index endpoint (the Vertex AI API host is regional; deployments cannot cross regions). Immutable. | Required, min length 1 |
-| `deployedIndexId` | `string` | User-chosen deployment handle, unique within the project. Immutable. | Letter start; letters, numbers, underscores; up to 128 chars |
-| `index` | `StringValueOrRef` | The index being deployed (full resource path). Can reference a GcpVertexAiIndex via `valueFrom`. Immutable. | Required |
-| `indexEndpoint` | `StringValueOrRef` | The endpoint being deployed onto (full resource path). Can reference a GcpVertexAiIndexEndpoint via `valueFrom`. Immutable. | Required |
+## Key Configuration
 
-### Optional Fields
+These are the most important decisions when configuring a deployed index. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | `""` | Display name — unusually, IMMUTABLE on this resource class (changing it redeploys). Up to 128 chars. |
-| `automaticResources` | `object` | GCP default when both arms omitted | Vertex-managed serving compute. Mutually exclusive with `dedicatedResources`. |
-| `automaticResources.minReplicaCount` | `int32` | `2` | Minimum replicas (no SLA at 1). Mutable in place. |
-| `automaticResources.maxReplicaCount` | `int32` | = min | Maximum replicas, up to 1000. Mutable in place. |
-| `dedicatedResources` | `object` | — | Pinned serving compute. Mutually exclusive with `automaticResources`. |
-| `dedicatedResources.machineType` | `string` | API default | Machine type (e.g. `e2-standard-16`); must be compatible with the index's `shardSize`. Immutable. |
-| `dedicatedResources.minReplicaCount` | `int32` | — | Required, >= 1. Mutable in place. |
-| `dedicatedResources.maxReplicaCount` | `int32` | = min | Up to 1000. Mutable in place. |
-| `deploymentGroup` | `string` | `default` | IP-space partitioning group (<= 64 chars, at most 5 besides `default`). The API permanently pairs a non-default group with the exact reserved-range set it first ships with. Immutable. |
-| `enableAccessLogging` | `bool` | `false` | Send private-endpoint access logs to Cloud Logging. Immutable. |
-| `reservedIpRanges` | `StringValueOrRef[]` | — | Names of reserved `VPC_PEERING` global addresses to deploy into (peered endpoints only). Can reference GcpGlobalAddress resources via `valueFrom`. Immutable. |
-| `authConfig` | `object` | — | JWT auth on the private query endpoint. Immutable. |
-| `authConfig.allowedIssuers` | `StringValueOrRef[]` | — | Service-account emails whose signed JWTs are accepted. Can reference GcpServiceAccount resources via `valueFrom`. |
-| `authConfig.audiences` | `string[]` | — | Accepted JWT audiences. |
+**The two joins** -- `index` and `indexEndpoint` (both required, both immutable) reference the index's `index_id` and the endpoint's `index_endpoint_id` outputs. All three resources must share one region.
 
-## Examples
+**Sizing arm** -- `automaticResources` (Vertex-managed) and `dedicatedResources` (pinned machine type) are mutually exclusive; omitting both deploys with automatic defaults. Dedicated machine types must be compatible with the INDEX's shard size (LARGE shards need e2-highmem-16 or n2d-standard-32). **Replica bounds are the deployment's ONLY mutable fields** — everything else replaces it.
 
-### Dedicated Compute with Explicit Bounds
+**Deployment group + reserved ranges** -- partition a peered endpoint's IP space; the API permanently holds a non-default group's pairing with its range set. Reference GcpGlobalAddress resources (purpose VPC_PEERING) by `name`.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiDeployedIndex
-metadata:
-  name: prod-products
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiDeployedIndex.prod-products
-spec:
-  location: us-central1
-  deployedIndexId: products_prod
-  index:
-    value: projects/my-project/locations/us-central1/indexes/1234567890
-  indexEndpoint:
-    value: projects/my-project/locations/us-central1/indexEndpoints/9876543210
-  displayName: Products Production
-  dedicatedResources:
-    machineType: e2-standard-16
-    minReplicaCount: 2
-    maxReplicaCount: 10
-```
+**JWT auth** -- `authConfig` gates the private query endpoint on tokens signed by allowed issuers (GcpServiceAccount `email` references) carrying accepted audiences. Without it, network reachability alone controls access.
 
-### Peered Endpoint with Reserved Ranges and JWT Auth
+## Outputs and Dependencies
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiDeployedIndex
-metadata:
-  name: private-products
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiDeployedIndex.private-products
-spec:
-  location: us-central1
-  deployedIndexId: products_private
-  index:
-    valueFrom:
-      kind: GcpVertexAiIndex
-      name: product-embeddings
-      fieldPath: status.outputs.index_id
-  indexEndpoint:
-    valueFrom:
-      kind: GcpVertexAiIndexEndpoint
-      name: private-search
-      fieldPath: status.outputs.index_endpoint_id
-  deploymentGroup: prod
-  enableAccessLogging: true
-  reservedIpRanges:
-    - valueFrom:
-        kind: GcpGlobalAddress
-        name: vertex-ai-range-a
-        fieldPath: status.outputs.name
-  authConfig:
-    allowedIssuers:
-      - valueFrom:
-          kind: GcpServiceAccount
-          name: query-client
-          fieldPath: status.outputs.email
-    audiences:
-      - vector-search-clients
-```
+### What This Component Consumes
 
-## Stack Outputs
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpVertexAiIndex** (required) | `index` | `status.outputs.index_id` |
+| **GcpVertexAiIndexEndpoint** (required) | `indexEndpoint` | `status.outputs.index_endpoint_id` |
+| **GcpGlobalAddress** (optional, repeated) | `reservedIpRanges` | `status.outputs.name` |
+| **GcpServiceAccount** (optional, repeated) | `authConfig.allowedIssuers` | `status.outputs.email` |
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Provides
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `name` | `string` | Name of the DeployedIndex resource as the provider reports it |
-| `deployed_index_id` | `string` | The user-chosen deployment handle |
-| `create_time` | `string` | RFC3339 timestamp of when the deployment was created |
-| `index_sync_time` | `string` | Timestamp up to which the deployment reflects the source index's updates — at least the index's `update_time` means in sync |
-| `match_grpc_address` | `string` | Private gRPC address for match queries (peered endpoints only) |
-| `service_attachment` | `string` | PSC service attachment consumers target with forwarding rules (PSC endpoints only) |
-| `index_endpoint` | `string` | Full resource path of the endpoint this deployment lives on — query clients pair it with `deployed_index_id` |
+After provisioning, `status.outputs` contains values that downstream consumers and query clients use:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `name` | The DeployedIndex resource name as the provider reports it | Display, tooling |
+| `deployed_index_id` | Pass-through of the user-chosen deployment handle | Query SDKs address the deployment by it |
+| `index_endpoint` | The fully qualified endpoint path this deployment lives on | Cross-checks, tooling |
+| `create_time` | RFC3339 creation timestamp | Audit |
+| `index_sync_time` | RFC3339 timestamp up to which this deployment reflects index updates | Data-freshness checks before critical queries |
+| `match_grpc_address` | Private gRPC query address (VPC-peered endpoints only) | Private query clients inside the peered VPC |
+| `service_attachment` | PSC service attachment (PSC endpoints only) | Consumer projects' forwarding rules |
 
-- [GcpVertexAiIndex](/docs/catalog/gcp/vertex-ai-index) — the vector index being deployed
-- [GcpVertexAiIndexEndpoint](/docs/catalog/gcp/vertex-ai-index-endpoint) — the serving surface being deployed onto
-- [GcpGlobalAddress](/docs/catalog/gcp/global-address) — reserved `VPC_PEERING` ranges for `reservedIpRanges`
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — JWT issuers for `authConfig.allowedIssuers`
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Automatic sizing** -- Vertex-managed machine types with tuned replica bounds; the managed middle ground for most workloads. Start from the **Automatic** preset.
+
+**Dedicated compute** -- A pinned machine type for predictable performance and cost on sustained query volume. Start from the **Dedicated** preset.
+
+**Peered with reserved ranges** -- Private serving with pinned IP space, access logging, and JWT auth for sensitive corpora. Start from the **Peered Reserved Ranges** preset.
+
+## Works With
+
+- [**GCP Vertex AI Index**](/cloud-catalog/gcp-vertex-ai-index) -- the vector index this deployment serves
+- [**GCP Vertex AI Index Endpoint**](/cloud-catalog/gcp-vertex-ai-index-endpoint) -- the serving surface this deployment lives on
+- [**GCP Global Address**](/cloud-catalog/gcp-global-address) -- the reserved VPC_PEERING ranges a peered deployment pins its IP space to
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- the JWT issuers the private query endpoint trusts

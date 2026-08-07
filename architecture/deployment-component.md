@@ -19,9 +19,9 @@ A deployment component consists of:
    - Terraform/OpenTofu (HCL-based, declarative)
 
 3. **Documentation** - Multi-layered documentation serving different audiences:
-   - Research documentation (comprehensive landscape analysis)
-   - User-facing documentation (Planton perspective)
-   - Examples (copy-paste ready, validated against current API)
+   - User-facing documentation (`README.md` and `catalog.md`, the catalog page)
+   - Authored operational judgment (`GUIDE.md`, where the component carries non-obvious judgment)
+   - Ready-to-deploy presets and a validated example manifest (`e2e/manifest.yaml`)
 
 ### Role in Planton
 
@@ -54,7 +54,7 @@ status:
 - **Protocol Buffers vs Go Structs** - Planton uses protobuf for language neutrality and multi-language SDK generation
 - **Provider-Specific vs Abstracted** - Each cloud provider has its own components (no artificial abstraction layer)
 - **Dual IaC Support** - Both Pulumi and Terraform implementations (Kubernetes only uses Go-based controllers)
-- **Documentation-First** - Research-driven design with comprehensive landscape analysis
+- **Documentation-First** - Research-driven design grounded in the provider's authoritative API
 
 ### Examples of Deployment Components
 
@@ -65,12 +65,12 @@ status:
 - `GcpCertManagerCert` - SSL/TLS certificates on GCP
 
 **Kubernetes Workloads:**
-- `PostgresKubernetes` - PostgreSQL deployed to any Kubernetes cluster
-- `RedisKubernetes` - Redis deployed to any Kubernetes cluster
-- `MicroserviceKubernetes` - Containerized microservice deployment
+- `KubernetesPostgres` - PostgreSQL deployed to any Kubernetes cluster
+- `KubernetesKafka` - Apache Kafka deployed to any Kubernetes cluster
+- `KubernetesDeployment` - Containerized workload deployment
 
 **SaaS Platform Resources:**
-- `MongodbAtlas` - MongoDB Atlas cluster
+- `AtlasMongodb` - MongoDB Atlas cluster
 - `ConfluentKafka` - Confluent Cloud Kafka cluster
 - `SnowflakeDatabase` - Snowflake database
 
@@ -103,7 +103,7 @@ Advanced fields like certificate scope, location, and labels are equally modeled
 
 **Contextual Completeness** means a component is complete when:
 
-1. **Research Accounts for Coverage** - The `docs/README.md` research document maps the deployment landscape and the provider's surface, states the pinned provider version parity is declared against, and records every coverage decision: compositions (provider resources deliberately folded into this kind) and exclusions (deprecated or superseded surface only), each with its reason
+1. **Coverage Is Accounted For** - Every coverage decision is recorded where the parity tooling reads it: compositions (provider resources deliberately folded into this kind) and exclusions (deprecated or superseded surface only), each with its reason, along with the pinned provider version parity is declared against. The durable rationale -- why the kind is shaped the way it is -- lives in the component's `GUIDE.md`; research working notes are never committed
 
 2. **Proto Schema Achieves Parity** - The `spec.proto` models the full configurable argument surface of the mapped provider resources at the pinned provider version -- no deliberate field exclusions, however rarely a field is used
 
@@ -131,7 +131,7 @@ Each provider's surface is designed **from that provider's own authoritative API
 **A module never mutates a resource it merely references.** When a spec field references another component (an IAM role a cluster assumes, a subnet a fleet launches into), the reference is the entire relationship: the module must not reach into the referenced resource to attach policies, add rules, or otherwise change its configuration. The referenced resource owns its own configuration -- requirements it must satisfy (e.g. a managed policy the consumer's cloud API demands on a role) are expressed on that resource's own spec, stated in the consumer's field comment and docs, and left to fail loudly at the provider when unmet. Side-effect mutation hides the real dependency from the resource graph, silently rewrites nodes the user owns (including ones created outside Planton), and inevitably diverges between engines.
 
 **Completeness Indicators:**
-- ✅ Research document explains landscape and rationale
+- ✅ Coverage accounting records every composition and exclusion with its reason; `GUIDE.md` carries the durable rationale where the component warrants one
 - ✅ Proto schema is validated with real-world constraints
 - ✅ Both IaC modules have feature parity
 - ✅ Both IaC modules are richly commented to the authoring bar (explain why/trade-offs, not narration)
@@ -143,7 +143,7 @@ Each provider's surface is designed **from that provider's own authoritative API
 - ❌ Proto has fields that aren't used in IaC modules
 - ❌ IaC modules reference fields not in proto
 - ❌ Examples fail validation against current schema
-- ❌ No research justifying scope decisions
+- ❌ Silent coverage omissions (no recorded reason for anything left out)
 - ❌ Missing Terraform or Pulumi implementation
 - ❌ IaC modules work but are uncommented, or narrate line-by-line instead of explaining why
 - ❌ No presets, or presets reference stale fields from an older spec.proto
@@ -154,6 +154,8 @@ Each provider's surface is designed **from that provider's own authoritative API
 
 The following sections define the complete, ideal state of any deployment component. This serves as both a reference for developers building components and as the specification for automated auditing.
 
+**File-set presence and absence is machine-enforced.** The `pkg/anatomy` conformance gate (CI lane `.github/workflows/lint.component-anatomy.yaml`) checks every component folder against the one canonical anatomy, file by file -- which files must exist, which must not, and what belongs where. The checklists below therefore concentrate on **content judgment**: what makes a good spec, a good module, a good guide, a good preset. Where a checklist item is a pure existence check, treat it as a pointer to the anatomy gate.
+
 ### 1. Cloud Resource Registry
 
 **Location:** `shared/cloudresourcekind/cloud_resource_kind.proto`
@@ -161,40 +163,40 @@ The following sections define the complete, ideal state of any deployment compon
 **Requirements:**
 
 - [ ] **Enum Entry Exists** - Component has an entry in the `CloudResourceKind` enum
-- [ ] **Correct Provider Range** - Enum value is within the correct provider's numeric range:
+- [ ] **Correct Provider Band** - Enum value is within the correct provider's 1,000-wide band (each provider owns a full band so its catalog can grow without colliding with a neighbor; the authoritative allocation table lives in the enum's header comment in `shared/cloudresourcekind/cloud_resource_kind.proto`):
   - Test/dev/custom: 1-49
   - SaaS platforms: 50-199
-  - AWS: 200-399
-  - Azure: 400-599
-  - GCP: 600-799
-  - Kubernetes: 800-999
-  - DigitalOcean: 1200-1499
-  - Civo: 1500-1799
-  - Cloudflare: 1800-2099
-  - Auth0: 2100-2299
-  - OpenFGA: 2300-2499
-  - OpenStack: 2500-2799
-  - Scaleway: 2800-2999
-  - Alibaba Cloud: 3000-3299
-  - OCI: 3300-3499
-  - Hetzner Cloud: 3500-3699
+  - AWS: 1000-1999
+  - Azure: 2000-2999
+  - GCP: 3000-3999
+  - Kubernetes: 4000-4999
+  - DigitalOcean: 5000-5999
+  - Civo: 6000-6999
+  - Cloudflare: 7000-7999
+  - Auth0: 8000-8999
+  - OpenFGA: 9000-9999
+  - OpenStack: 10000-10999
+  - Scaleway: 11000-11999
+  - Alibaba Cloud: 12000-12999
+  - OCI: 13000-13999
+  - Hetzner Cloud: 14000-14999
 - [ ] **Unique Enum Value** - No duplicate enum numbers
 - [ ] **Unique ID Prefix** - The `id_prefix` is globally unique across all providers
 - [ ] **Proper Metadata** - `kind_meta` includes:
   - `provider` - Correct provider enum value
-  - `version` - Currently `v1` for all components
+  - `version` - The served API version (e.g. `v1alpha1`; never bare `v1`)
   - `id_prefix` - Short, descriptive prefix (3-7 characters)
 - [ ] **Optional Metadata (when applicable)** - `kind_meta` may also include:
   - `prerequisites` - Other `CloudResourceKind`s that must exist first (e.g. an operator or CRD-installer like `KubernetesGatewayApiCrds`); drives resource-graph and infra-chart ordering
   - `is_service_kind` - Whether this kind is a Service Hub deployment target
   - `container_kind` - Whether this kind contains child resources in the org graph
-  - Note: there is no `kubernetes_meta`/`category`/`namespace_prefix` field on `CloudResourceKindMeta`; the Kubernetes layout is flat (`provider/kubernetes/<component>/v1/`).
+  - Note: there is no `kubernetes_meta`/`category`/`namespace_prefix` field on `CloudResourceKindMeta`; the Kubernetes layout is flat (`catalog/kubernetes/<component>/`).
 
 **Example:**
 ```protobuf
-GcpCertManagerCert = 616 [(kind_meta) = {
+GcpCertManagerCert = 3016 [(kind_meta) = {
   provider: gcp
-  version: v1
+  version: "v1alpha1"
   id_prefix: "gcpcert"
 }];
 ```
@@ -203,57 +205,67 @@ GcpCertManagerCert = 616 [(kind_meta) = {
 
 ### 2. Folder Structure
 
-**Base Path:** `catalog/<provider>/<component>/v1/`
+**Base Path:** `catalog/<provider>/<component>/`
+
+The anatomy follows one rule: **version directories hold only the versioned API contract; the component root holds the living component.** The `pkg/anatomy` gate enforces this shape file by file.
 
 **Requirements:**
 
 - [ ] **Correct Provider Hierarchy** - Component folder is under the correct provider:
-  - `catalog/aws/<component>/v1/`
-  - `catalog/gcp/<component>/v1/`
-  - `catalog/azure/<component>/v1/`
-  - `catalog/kubernetes/<component>/v1/`
+  - `catalog/aws/<component>/`
+  - `catalog/gcp/<component>/`
+  - `catalog/azure/<component>/`
+  - `catalog/kubernetes/<component>/`
   - etc.
 
 - [ ] **Lowercase Folder Naming** - Component folder name matches the `CloudResourceKind` enum value but in all lowercase
   - Enum: `GcpCertManagerCert` → Folder: `gcpcertmanagercert`
-  - Enum: `PostgresKubernetes` → Folder: `postgreskubernetes`
+  - Enum: `KubernetesPostgres` → Folder: `kubernetespostgres`
 
-- [ ] **Version Subfolder** - All files are under `v1/` subfolder (prepared for future API versioning)
+- [ ] **Version Directory Holds the Contract Only** - The versioned API contract lives under a maturity-channel version directory (`v1alpha1`, `v1beta1`, `v1`, ... — never a bare `v` glob, and today's components serve `v1alpha1`): `api.proto`, `spec.proto`, `input.proto`, `outputs.proto`, their `.pb.go` stubs, `BUILD.bazel`, `spec_test.go`, and `reference.md`. Everything that lives and evolves with the component — docs, logo, presets, example manifests, IaC modules — sits at the component root, outside any version directory.
 
 **Example Structure:**
 ```
-catalog/gcp/gcpcertmanagercert/v1alpha1/
-├── api.proto
-├── spec.proto
-├── input.proto
-├── outputs.proto
-├── api.pb.go
-├── spec.pb.go
-├── input.pb.go
-├── outputs.pb.go
-├── spec_test.go
-├── README.md
-├── docs/
-│   └── README.md
-├── presets/
+catalog/gcp/gcpcertmanagercert/
+├── README.md                    # GitHub-facing component page
+├── catalog.md                   # THE catalog page
+├── logo.svg                     # Component logo
+├── GUIDE.md                     # Authored operational judgment (optional)
+├── v1alpha1/                    # The versioned contract ONLY
+│   ├── api.proto
+│   ├── spec.proto
+│   ├── input.proto
+│   ├── outputs.proto
+│   ├── api.pb.go
+│   ├── spec.pb.go
+│   ├── input.pb.go
+│   ├── outputs.pb.go
+│   ├── BUILD.bazel
+│   ├── spec_test.go
+│   └── reference.md
+├── presets/                     # .yaml manifests + .md sidecar pairs
 │   ├── 01-managed-dns-validated.yaml
 │   ├── 01-managed-dns-validated.md
 │   ├── 02-load-balancer-cert.yaml
 │   └── 02-load-balancer-cert.md
+├── e2e/                         # Validated example manifest + test assets
+│   ├── manifest.yaml            # The canonical example manifest
+│   ├── profile.yaml             # (optional)
+│   ├── prerequisite.yaml        # (optional)
+│   └── scenarios/               # (optional) manifest variants
+├── conversions/                 # (optional) cross-version conversion specs
 └── iac/
-    ├── hack/
-    │   └── manifest.yaml
-    ├── pulumi/
+    ├── import-map.yaml          # (optional)
+    ├── pulumi/                  # No Makefile, no .gitignore
     │   ├── main.go
     │   ├── Pulumi.yaml
-    │   ├── Makefile
     │   ├── README.md
     │   └── module/
     │       ├── main.go
     │       ├── locals.go
     │       ├── outputs.go
     │       └── <resource-specific>.go
-    └── tf/
+    └── tf/                      # No Makefile, no .gitignore
         ├── provider.tf
         ├── variables.tf
         ├── locals.tf
@@ -266,7 +278,7 @@ catalog/gcp/gcpcertmanagercert/v1alpha1/
 
 ### 3. Protobuf API Definitions
 
-**Location:** `v1/*.proto`
+**Location:** `<version>/*.proto` (e.g. `v1alpha1/`)
 
 #### 3.1 api.proto
 
@@ -274,20 +286,20 @@ catalog/gcp/gcpcertmanagercert/v1alpha1/
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/api.proto` is present
+- [ ] **File Exists** - `<version>/api.proto` is present (enforced by the anatomy gate)
 - [ ] **Correct Package** - Package declaration matches path:
-  - `package dev.planton.<provider>.<component>.v1;`
+  - `package dev.planton.<provider>.<component>.<version>;`
 - [ ] **Standard Imports** - Imports common proto dependencies:
   ```protobuf
   import "buf/validate/validate.proto";
-  import "catalog/<provider>/<component>/v1/spec.proto";
-  import "catalog/<provider>/<component>/v1/outputs.proto";
+  import "catalog/<provider>/<component>/<version>/spec.proto";
+  import "catalog/<provider>/<component>/<version>/outputs.proto";
   import "shared/metadata.proto";
   ```
 - [ ] **Resource Message** - Defines `<Kind>` message with KRM structure:
   ```protobuf
   message <Kind> {
-    string api_version = 1 [(buf.validate.field).string.const = '<provider>.planton.dev/v1'];
+    string api_version = 1 [(buf.validate.field).string.const = '<provider>.planton.dev/<version>'];
     string kind = 2 [(buf.validate.field).string.const = '<Kind>'];
     dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
     <Kind>Spec spec = 4 [(buf.validate.field).required = true];
@@ -308,7 +320,7 @@ catalog/gcp/gcpcertmanagercert/v1alpha1/
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/spec.proto` is present
+- [ ] **File Exists** - `<version>/spec.proto` is present (enforced by the anatomy gate)
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **Validation Imports** - If using field validations, imports buf.validate:
   ```protobuf
@@ -346,11 +358,11 @@ message GcpCertManagerCertSpec {
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/input.proto` is present
+- [ ] **File Exists** - `<version>/input.proto` is present (enforced by the anatomy gate)
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **Standard Imports** - Imports common dependencies:
   ```protobuf
-  import "catalog/<provider>/<component>/v1/api.proto";
+  import "catalog/<provider>/<component>/<version>/api.proto";
   import "catalog/<provider>/provider.proto";
   ```
 - [ ] **StackInput Message** - Defines `<Kind>StackInput` message with the target resource and the provider config:
@@ -362,7 +374,7 @@ message GcpCertManagerCertSpec {
     <Provider>ProviderConfig provider_config = 2;
   }
   ```
-- [ ] **Provider Config Field** - References the correct provider config type (the `<Provider>ProviderConfig` message from `provider/<provider>/provider.proto`, consistent with the `provider_config = 2` example above):
+- [ ] **Provider Config Field** - References the correct provider config type (the `<Provider>ProviderConfig` message from `catalog/<provider>/provider.proto`, consistent with the `provider_config = 2` example above):
   - AWS: `dev.planton.aws.AwsProviderConfig`
   - GCP: `dev.planton.gcp.GcpProviderConfig`
   - Kubernetes: `dev.planton.kubernetes.KubernetesProviderConfig`
@@ -373,7 +385,7 @@ message GcpCertManagerCertSpec {
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/outputs.proto` is present
+- [ ] **File Exists** - `<version>/outputs.proto` is present (enforced by the anatomy gate)
 - [ ] **Correct Package** - Package declaration matches path
 - [ ] **StackOutputs Message** - Defines `<Kind>StackOutputs` message
 - [ ] **Relevant Outputs** - Contains outputs that users actually need:
@@ -410,13 +422,13 @@ message GcpCertManagerCertStackOutputs {
 
 #### 3.6 Unit Tests
 
-**Location:** `v1/spec_test.go`
+**Location:** `<version>/spec_test.go`
 
 **Purpose:** Validate that all buf.validate rules in spec.proto are syntactically and semantically correct
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/spec_test.go` is present
+- [ ] **File Exists** - `<version>/spec_test.go` is present (enforced by the anatomy gate)
 - [ ] **Substantial Content** - File is non-empty (>500 bytes indicates real tests)
 - [ ] **Validation Tests** - Tests for ALL validation rules in `spec.proto`:
   - Test that required fields trigger validation errors when missing
@@ -427,7 +439,7 @@ message GcpCertManagerCertStackOutputs {
 - [ ] **Tests Execute** - All tests run successfully (no compilation errors)
 - [ ] **Tests Pass** - All tests pass when running component-specific test:
   ```bash
-  go test ./catalog/<provider>/<component>/v1/
+  go test ./catalog/<provider>/<component>/v1alpha1/
   ```
 - [ ] **Meaningful Coverage** - Tests cover critical validation paths:
   - Happy path (valid configurations)
@@ -469,11 +481,11 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
 
 ### 4. IaC Modules - Pulumi
 
-**Base Path:** `v1/iac/pulumi/`
+**Base Path:** `iac/pulumi/` (component root)
 
 #### 4.1 Pulumi Module Files
 
-**Location:** `v1/iac/pulumi/module/`
+**Location:** `iac/pulumi/module/`
 
 **Purpose:** The actual deployment logic (the "recipe")
 
@@ -516,7 +528,7 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
 
 #### 4.2 Pulumi Entrypoint Files
 
-**Location:** `v1/iac/pulumi/`
+**Location:** `iac/pulumi/`
 
 **Requirements:**
 
@@ -534,22 +546,23 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
   runtime: go
   description: Pulumi module for <Kind>
   ```
-- [ ] **Makefile** - Automation targets:
-  - `build` - Compiles the Go code
-  - `install-pulumi-plugins` - Installs required Pulumi provider plugins
-  - `test` - Runs the module against test manifests
 - [ ] **README.md** - Pulumi-specific usage guide
+- [ ] **No Makefile, no .gitignore** - Module directories carry no build scaffolding; the anatomy gate rejects both. Build with plain `go build`, and exercise the module against the example manifest with the CLI:
+  ```bash
+  # from inside iac/pulumi/
+  planton pulumi preview --manifest ../../e2e/manifest.yaml --module-dir .
+  ```
 
 **Integration:**
-- [ ] **Compiles Successfully** - `make build` completes without errors
-- [ ] **Plugin Dependencies Listed** - `Pulumi.yaml` or `Makefile` documents required plugins
+- [ ] **Compiles Successfully** - `go build` completes without errors
+- [ ] **Plugin Dependencies Listed** - `Pulumi.yaml` documents required plugins
 - [ ] **Executable** - Binary can be built and run
 
 ---
 
 ### 5. IaC Modules - Terraform
 
-**Base Path:** `v1/iac/tf/`
+**Base Path:** `iac/tf/` (component root)
 
 **Purpose:** Feature-parity Terraform implementation
 
@@ -597,6 +610,12 @@ func TestGcpCertManagerCertSpec_Validation(t *testing.T) {
 
 - [ ] **README.md** - Terraform-specific usage guide
 
+- [ ] **No Makefile, no .gitignore** - Module directories carry no build scaffolding; the anatomy gate rejects both. Exercise the module against the example manifest with the CLI:
+  ```bash
+  # from inside iac/tf/
+  planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
+  ```
+
 **Code Quality:**
 - [ ] **Valid HCL** - All `.tf` files are valid Terraform configuration
 - [ ] **Validates Successfully** - `terraform validate` passes
@@ -630,13 +649,13 @@ variable "alternate_domain_names" {
 
 ---
 
-### 6. Documentation - Technical Research
+### 6. Documentation - Authored Guide
 
-**Location:** `v1/docs/README.md`
+**Location:** `GUIDE.md` (component root, optional)
 
-**Purpose:** Comprehensive research document explaining the deployment landscape
+**Purpose:** The durable-judgment home. The guide carries the authored operational judgment a component has earned: operational recipes, design rationale, and parity accounting. Research working notes are never committed -- research informs the design, and the judgment it yields is distilled into the guide, the spec comments, and the user-facing docs.
 
-**CRITICAL:** This document is the **primary source of truth** for understanding the component. It should be consulted when:
+**CRITICAL:** Where a guide exists, it is the **primary source of truth** for understanding the component's judgment. It should be consulted when:
 - Executing any lifecycle operation (forge, audit, update, delete)
 - Making decisions about component behavior
 - Understanding design rationale and scoping decisions
@@ -645,39 +664,24 @@ variable "alternate_domain_names" {
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/docs/README.md` is present
-- [ ] **Substantial Content** - Typically 300-1000+ lines (not a stub)
-- [ ] **Introduction** - What the component is and why it matters
-- [ ] **Landscape Analysis** - Survey of deployment methods:
-  - Manual (cloud console, CLI)
-  - IaC tools (Terraform, Pulumi, CloudFormation, etc.)
-  - Specialized tools (Helm, Ansible, Crossplane, etc.)
-  - Comparison of approaches
+- [ ] **Warranted Presence** - `GUIDE.md` exists at the component root where the component carries non-obvious judgment (state-ownership flags, component-vs-flag choices, operational surprises). A missing guide is not a defect by itself: guides exist where judgment earns a place
+- [ ] **Substantial Relative to Complexity** - Short is fine; empty scaffolding is not
+- [ ] **Operational Recipes** - The non-obvious "how do I actually run this" knowledge: sequencing, day-2 operations, what breaks and how to recover
+- [ ] **Design Rationale** - Why the kind is shaped the way it is: what was composed in, what was deliberately exported to neighboring kinds, and what the trade-offs were
 - [ ] **Parity Accounting** - Explicit statement of:
   - The pinned provider version parity is declared against
   - Full configurable-argument coverage of the mapped provider resources (no deliberate exclusions)
   - Any provider resources deliberately composed into this kind, with the mapping documented
   - Any recorded exclusions (deprecated or superseded surface only), each with its reason
-- [ ] **Best Practices** - Production-ready recommendations
-- [ ] **Common Pitfalls** - Known issues and how to avoid them
-- [ ] **Research-Backed** - References to official documentation, community discussions, real-world usage
 
 **Content Quality:**
-- [ ] **Technical Depth** - Goes beyond marketing material
+- [ ] **Teaches Judgment** - "When X vs when Y, and what breaks if you choose wrong" -- never feature lists
+- [ ] **Grounded** - Every claim traces to `spec.proto`, the IaC modules, or recorded platform behavior
 - [ ] **Opinionated** - Makes clear recommendations
 - [ ] **Actionable** - Readers understand what to do
 - [ ] **Well-Structured** - Uses headings, sections, tables
-- [ ] **Examples Included** - Shows real code/configuration snippets
 
-**Example Sections:**
-- Introduction
-- The Evolution (history of the technology)
-- Deployment Methods (manual → automated)
-- Comparative Analysis
-- Planton's Approach
-- Implementation Landscape
-- Production Best Practices
-- Conclusion
+**Reference:** `catalog/kubernetes/kubernetesdeployment/GUIDE.md` is a worked example of the form: it opens with the judgment the guide carries and spends every section on composition choices and their consequences.
 
 ---
 
@@ -685,13 +689,13 @@ variable "alternate_domain_names" {
 
 #### 7.1 README.md
 
-**Location:** `v1/README.md`
+**Location:** `README.md` (component root)
 
-**Purpose:** Concise, Planton perspective overview
+**Purpose:** Concise, Planton perspective overview -- the GitHub-facing component page
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/README.md` is present
+- [ ] **File Exists** - `README.md` is present at the component root (enforced by the anatomy gate)
 - [ ] **Moderate Length** - Typically 50-200 lines (not a deep research document)
 - [ ] **Overview Section** - High-level explanation from Planton perspective:
   - What the component does
@@ -709,10 +713,10 @@ variable "alternate_domain_names" {
 - [ ] **Best Practices** - Quick tips for production use
 
 **NOT Included:**
-- Detailed landscape analysis (that's in `docs/README.md`)
+- Operational judgment and design rationale (that's `GUIDE.md`)
 - History of the technology (not relevant to users)
 - Comparison of every deployment method (too detailed)
-- Every possible configuration option (that's in examples)
+- Every possible configuration option (that's what presets and `v1alpha1/reference.md` cover)
 
 **Tone:**
 - Helpful and encouraging
@@ -720,28 +724,45 @@ variable "alternate_domain_names" {
 - Assumes reader knows basic concepts
 - Points to other documentation for depth
 
+#### 7.2 catalog.md
+
+**Location:** `catalog.md` (component root)
+
+**Purpose:** THE catalog page -- rendered by the public site and the console
+
+**Requirements:**
+
+- [ ] **File Exists** - `catalog.md` is present at the component root (enforced by the anatomy gate)
+- [ ] **Follows the Catalog Page Standard** - Structure, tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`
+- [ ] **Current** - Field references and examples match the current `spec.proto`
+
 ---
 
 ### 8. Supporting Files
 
-#### 8.1 Hack Manifest
+#### 8.1 Example Manifest
 
-**Location:** `v1/iac/hack/manifest.yaml`
+**Location:** `e2e/manifest.yaml` (component root)
 
-**Purpose:** Test manifest for local development and CI/CD testing
+**Purpose:** The canonical validated example manifest. It is load-bearing
+twice: the reference generator embeds it as the reference page's Example
+block, and the e2e framework treats its presence as the testability marker
+and deploys exactly this manifest.
 
 **Requirements:**
 
-- [ ] **File Exists** - `v1/iac/hack/manifest.yaml` is present
+- [ ] **File Exists** - `e2e/manifest.yaml` is present (the anatomy
+  conformance gate and e2e discovery both key on it)
 - [ ] **Valid Manifest** - Complete YAML manifest with:
   - `apiVersion`, `kind`, `metadata`, `spec`
-  - Realistic test values
-  - Can be used for `make test` in Pulumi folder
+  - Concrete, working values that pass protovalidate
+  - Deployable by the e2e runner and usable with
+    `planton pulumi preview --manifest e2e/manifest.yaml`
 - [ ] **Non-Production Values** - Uses test/dev values (not real production data)
 
 #### 8.2 Pulumi Supporting Files
 
-**Location:** `v1/iac/pulumi/`
+**Location:** `iac/pulumi/` (component root)
 
 **Files:**
 
@@ -769,7 +790,7 @@ variable "alternate_domain_names" {
 
 ### 9. Presets
 
-**Location:** `v1/presets/`
+**Location:** `presets/`
 
 **Purpose:** Production-quality, directly deployable YAML manifests representing the most common real-world configuration patterns for the component. Each preset is a ranked starting point that users can deploy immediately (after replacing placeholders) without needing to understand every field in `spec.proto`.
 
@@ -777,7 +798,7 @@ variable "alternate_domain_names" {
 
 **Requirements:**
 
-- [ ] **Directory Exists** - `v1/presets/` directory is present
+- [ ] **Directory Exists** - `presets/` directory is present
 - [ ] **At Least One Preset** - Minimum 1 YAML + companion MD pair (rank 01 = the "30-second decision" configuration)
 - [ ] **KRM Envelope Correct** - Every preset YAML has `apiVersion` and `kind` matching the exact constants in `api.proto`
 - [ ] **Metadata Convention** - `metadata.name` is prefixed with `my-` (signals a template, not a live resource)
@@ -808,12 +829,12 @@ variable "alternate_domain_names" {
 | Artifact | Purpose | Presets Difference |
 |----------|---------|-------------------|
 | `README.md` | User-facing component overview | Presets are actionable starting points, README is explanation |
-| `iac/hack/manifest.yaml` | Minimal test manifest for CI/CD | Presets are production-quality, not minimal test configs |
-| `docs/README.md` | Research and design rationale | Presets are actionable starting points, not explanation |
+| `e2e/manifest.yaml` | The canonical validated example manifest | Presets are production-quality, not minimal validation configs |
+| `GUIDE.md` | Authored operational judgment and design rationale | Presets are actionable starting points, not explanation |
 
 **Example:**
 ```
-v1/presets/
+presets/
 ├── 01-internet-facing-https.yaml    # Most common: HTTPS ALB with SSL
 ├── 01-internet-facing-https.md
 ├── 02-internal-http.yaml            # Internal-only, no SSL
@@ -846,12 +867,12 @@ These are non-negotiable for a component to be considered functional:
 
 These significantly improve quality and usability:
 
-10. ✅ Comprehensive research document (docs/README.md) (13.18%)
-11. ✅ User-facing README (v1/README.md) (13.09%)
+10. ✅ Authored operational judgment (GUIDE.md) (13.18%)
+11. ✅ User-facing README (component-root README.md) (13.09%)
 13. ✅ Pulumi supporting documentation (README, overview) (5.05%)
 14. ✅ Terraform supporting documentation (README) (2.52%)
-15. ✅ Supporting files (hack manifest) (2.52%)
-16. ✅ Presets with companion documentation (v1/presets/) (5.00%)
+15. ✅ Supporting files (e2e example manifest) (2.52%)
+16. ✅ Presets with companion documentation (presets/) (5.00%)
 
 ### Nice to Have (Polish - 10%)
 
@@ -941,7 +962,7 @@ This document serves as the specification for an automated audit tool. The tool 
    - Terraform module: Check outputs.tf has output blocks
    - Both modules: Check authoring comments meet the module-comment bar (explain why/trade-offs/quirks/ordering, not merely present and not line-by-line narration)
 9. **Verify preset coverage and correctness**:
-   - Check `v1/presets/` directory exists with at least one YAML + MD pair
+   - Check `presets/` directory exists with at least one YAML + MD pair
    - Verify `apiVersion` and `kind` match `api.proto` constants
    - Verify all `StringValueOrRef` fields use `value:` wrapper
    - Verify preset field names exist in current `spec.proto` (detect stale presets)

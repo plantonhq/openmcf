@@ -35,7 +35,7 @@ Each cloud resource kind is deployed by its IaC module in the open-source
 repository `github.com/plantonhq/planton`, at:
 
 ```
-catalog/<provider>/<kind-lowercase>/v1/iac/
+catalog/<provider>/<kind-lowercase>/iac/
   ├── tf/       # the Terraform/OpenTofu module
   └── pulumi/   # the Pulumi (Go) module
 ```

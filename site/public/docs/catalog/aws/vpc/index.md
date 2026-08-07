@@ -8,130 +8,112 @@ componentName: "awsvpc"
 
 # AWS VPC
 
-Deploys a thin AWS Virtual Private Cloud: an isolated IP address space (primary
-IPv4 CIDR, optional secondary IPv4 CIDRs, and optional IPv6) with configurable
-tenancy and DNS settings. Subnets, gateways, and route tables are separate,
-composable components that reference this VPC.
+Deploys a Virtual Private Cloud on AWS -- the isolated network foundation that other AWS resources launch into. The VPC is a clean primitive: an IPv4 address space (with optional secondary ranges and IPv6), a tenancy mode, and DNS behaviour. Subnets, internet gateways, NAT gateways, and route tables are separate components that reference this VPC, so the whole topology is composed from first-class building blocks.
 
 ## What Gets Created
 
-When you deploy an AwsVpc resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VPC** — an `aws_vpc` / `ec2.Vpc` with the primary IPv4 CIDR (specified
-  directly or allocated from an IPAM pool), tenancy, DNS, and optional IPv6.
-- **Secondary IPv4 CIDR associations** — one `aws_vpc_ipv4_cidr_block_association`
-  / `ec2.VpcIpv4CidrBlockAssociation` per entry in `secondaryIpv4CidrBlocks`,
-  each independently associated so it can be added or removed without recreating
-  the VPC.
+- **VPC** -- the virtual network with your primary IPv4 CIDR (an explicit block or an IPAM allocation), DNS resolution and hostname settings, and the instance tenancy mode
+- **Secondary IPv4 CIDRs** -- created only when `secondaryIpv4CidrBlocks` is set; each additional range is associated as its own block and can be added or removed without recreating the VPC
+- **IPv6 association** -- created only when IPv6 is enabled; either an Amazon-provided `/56` or an IPAM-allocated block, making the VPC dual-stack
+- **Default route table, security group, and network ACL** -- AWS creates these automatically with every VPC; their IDs are surfaced as outputs
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the VPC
 
-Subnets, internet gateways, NAT gateways, and route tables are **not** created
-here — deploy `AwsSubnet`, `AwsInternetGateway`, and `AwsNatGateway` components
-that reference this VPC's `vpc_id` output.
+To build a working network on top of this VPC, compose the companion components listed under [Works With](#works-with).
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A primary IPv4 source**: either a `cidrBlock` (e.g. `10.0.0.0/16`) or an
-  `ipv4IpamPoolId`.
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `vpc.yaml`:
+### AWS Account
+
+- **Target region** -- the VPC is created in the specified `region` and is permanently bound to it. A VPC cannot be moved between regions.
+- **CIDR planning** -- choose a primary CIDR (`/16`-`/28`) that does not overlap with VPCs you intend to peer or connect via Transit Gateway. Common choices are `10.0.0.0/16` for production and `10.1.0.0/16` for staging.
+- **Service Quotas** -- the default AWS limit is 5 VPCs per region (and 5 CIDR associations per VPC). Request a quota increase if needed.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS VPC**, and click **Deploy**. The creation wizard walks you through region, IPv4 addressing, optional IPv6, and DNS/options. Start from the **Production Dual-Stack** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsVpc
 metadata:
-  name: my-vpc
+  name: production-vpc
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   cidrBlock: "10.0.0.0/16"
+  assignGeneratedIpv6CidrBlock: true
   enableDnsHostnames: true
+  enableDnsSupport: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f vpc.yaml
 ```
 
-## Configuration Reference
+This creates a dual-stack VPC with a `/16` IPv4 range and an Amazon-provided IPv6 `/56`, DNS resolution and hostnames on. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the VPC is created (e.g. `us-west-2`). | Required; non-empty |
-| `cidrBlock` *or* `ipv4IpamPoolId` | `string` | Primary IPv4 source: an explicit CIDR (e.g. `10.0.0.0/16`) or an IPAM pool. | Exactly one is required |
+These are the most important decisions when configuring a VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**Primary IPv4 source** -- Provide either an explicit `cidrBlock` (the common path) or allocate it from an IPAM pool (`ipv4IpamPoolId` + `ipv4NetmaskLength`). The two are mutually exclusive. A `/16` block gives 65,536 addresses; the primary range cannot change after creation without replacing the VPC.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `secondaryIpv4CidrBlocks` | `string[]` | `[]` | Additional IPv4 CIDRs associated with the VPC. |
-| `ipv4NetmaskLength` | `int32` | — | Netmask of the primary CIDR to allocate from `ipv4IpamPoolId` (16–28). Requires `ipv4IpamPoolId`; mutually exclusive with `cidrBlock`. |
-| `instanceTenancy` | `string` | `default` | `default` (shared) or `dedicated` (single-tenant hardware). |
-| `enableDnsSupport` | `bool` | `true` | Amazon-provided DNS resolution within the VPC. Unset keeps it on. |
-| `enableDnsHostnames` | `bool` | `false` | Public DNS hostnames for instances with public IPs. |
-| `enableNetworkAddressUsageMetrics` | `bool` | `false` | CloudWatch Network Address Usage metrics. |
-| `assignGeneratedIpv6CidrBlock` | `bool` | `false` | Request an Amazon-provided IPv6 /56. Mutually exclusive with the IPAM IPv6 fields. |
-| `ipv6CidrBlock` | `string` | — | Explicit IPv6 CIDR to allocate from `ipv6IpamPoolId`. Requires `ipv6IpamPoolId`. |
-| `ipv6CidrBlockNetworkBorderGroup` | `string` | — | Advertisement border group for an Amazon-provided IPv6 CIDR. Requires `assignGeneratedIpv6CidrBlock`. |
-| `ipv6IpamPoolId` | `string` | — | IPAM pool for the IPv6 CIDR. |
-| `ipv6NetmaskLength` | `int32` | — | IPv6 netmask to allocate from `ipv6IpamPoolId` (44, 48, 52, 56, or 60). Mutually exclusive with `ipv6CidrBlock`. |
+**Secondary CIDRs** -- Add `secondaryIpv4CidrBlocks` when a single range runs low or you need a distinct space (such as `100.64.0.0/10`). Unlike the primary, secondaries can be added and removed in place.
 
-## Examples
+**IPv6** -- Opt in for globally routable addresses. **Amazon-provided** is the simplest (one setting yields a `/56`); **IPAM** suits orgs that govern IPv6 space centrally. Pair a dual-stack VPC with an egress-only internet gateway for outbound-only IPv6.
 
-### Dual-stack VPC with a secondary CIDR
+**DNS settings** -- Leave `enableDnsSupport` on its default (resolution on) unless you run your own resolver. Enable `enableDnsHostnames` for services that depend on DNS names within the VPC (EKS, RDS, private hosted zones) -- it requires resolution to be on.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsVpc
-metadata:
-  name: dual-stack-vpc
-spec:
-  region: us-west-2
-  cidrBlock: "10.0.0.0/16"
-  secondaryIpv4CidrBlocks:
-    - "100.64.0.0/16"
-  assignGeneratedIpv6CidrBlock: true
-  enableDnsHostnames: true
-```
+## Outputs and Dependencies
 
-### IPAM-allocated VPC
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsVpc
-metadata:
-  name: ipam-vpc
-spec:
-  region: us-west-2
-  ipv4IpamPoolId: "ipam-pool-0abc123"
-  ipv4NetmaskLength: 16
-  enableDnsHostnames: true
-```
+This component has no foreign key dependencies.
 
-## Stack Outputs
+### What This Component Provides
 
-After deployment, the following outputs are available in `status.outputs`:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `vpc_id` | `string` | ID of the VPC. Referenced by subnets, gateways, and security groups. |
-| `vpc_arn` | `string` | ARN of the VPC. |
-| `cidr_block` | `string` | Primary IPv4 CIDR of the VPC. |
-| `ipv6_cidr_block` | `string` | IPv6 CIDR of the VPC (empty when IPv4-only). |
-| `owner_id` | `string` | AWS account ID that owns the VPC. |
-| `main_route_table_id` | `string` | ID of the VPC's main route table. |
-| `default_security_group_id` | `string` | ID of the default security group. |
-| `default_network_acl_id` | `string` | ID of the default network ACL. |
-| `default_route_table_id` | `string` | ID of the default route table. |
-| `region` | `string` | Region the VPC was created in. |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vpc_id` | ID of the created VPC | Subnets, gateways, security groups, EKS/RDS, load balancers |
+| `vpc_arn` | ARN of the VPC | IAM policies, resource sharing |
+| `cidr_block` | The primary IPv4 CIDR | Security group rules, network ACLs, peering configuration |
+| `ipv6_cidr_block` | The associated IPv6 CIDR (empty when IPv4-only) | IPv6 subnet ranges, egress-only routing |
+| `main_route_table_id` | ID of the VPC's main route table | Subnet route-table associations |
+| `default_route_table_id` | ID of the default route table | Default routing inspection |
+| `default_security_group_id` | ID of the default security group | Baseline rule management |
+| `default_network_acl_id` | ID of the default network ACL | Subnet-level network ACLs |
+| `owner_id` | AWS account ID that owns the VPC | Cross-account references |
+| `region` | Region the VPC was created in | Downstream region wiring |
 
-## Related Components
+## Common Patterns
 
-- [AwsSubnet](/docs/catalog/aws/subnet) — a subnet within the VPC (with routing folded in)
-- [AwsInternetGateway](/docs/catalog/aws/internet-gateway) — internet access for public subnets
-- [AwsNatGateway](/docs/catalog/aws/nat-gateway) — outbound internet access for private subnets
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network traffic for resources in the VPC
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production dual-stack** -- A `/16` IPv4 range plus an Amazon-provided IPv6 `/56`, with DNS resolution and hostnames on. The standard foundation for a production network; compose subnets and gateways onto it. Start from the **Production Dual-Stack** preset.
+
+**Development** -- A minimal single-CIDR, IPv4-only VPC for development environments. Start from the **Development** preset.
+
+## Works With
+
+A VPC is the root of an AWS network topology. Compose these components, each referencing this VPC by `status.outputs.vpc_id`:
+
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- carves subnets (public, private, or isolated) from the VPC's address space, with their own routing
+- [**AWS Internet Gateway**](/cloud-catalog/aws-internet-gateway) -- attaches to the VPC to give public subnets inbound and outbound internet access
+- [**AWS NAT Gateway**](/cloud-catalog/aws-nat-gateway) -- gives private subnets outbound internet access, composing an Elastic IP by reference
+- [**AWS Egress-Only Internet Gateway**](/cloud-catalog/aws-egress-only-internet-gateway) -- the IPv6 outbound-only counterpart of a NAT gateway for dual-stack VPCs

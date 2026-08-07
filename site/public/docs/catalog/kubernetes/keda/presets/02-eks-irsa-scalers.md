@@ -5,7 +5,7 @@ type: "preset"
 rank: "02"
 presetSlug: "02-eks-irsa-scalers"
 componentSlug: "keda"
-componentTitle: "KEDA"
+componentTitle: "Keda"
 provider: "kubernetes"
 icon: "package"
 order: 2

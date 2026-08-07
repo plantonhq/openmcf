@@ -8,241 +8,132 @@ componentName: "azurecontainerregistry"
 
 # Azure Container Registry
 
-Deploys an Azure Container Registry (ACR) — the managed, private OCI registry that stores the container images and artifacts a platform's workloads run. The SKU is the registry's feature gate, and the spec mirrors Azure's own tiering rather than hiding it: every Premium-only field (geo-replication, zone redundancy, network isolation, policies, CMK encryption) is validated against the chosen tier, so a misconfigured manifest fails at validation, not at apply. What the registry composes with is referenced, never created here: the user-assigned identity that unwraps a customer-managed encryption key is a first-class `AzureUserAssignedIdentity`, AKS clusters pull by referencing the `container_registry_id` output, and `AcrPull`/`AcrPush` grants are standalone `AzureRoleAssignment` resources scoped to the registry.
+Deploys an Azure Container Registry (ACR): the managed, private OCI registry that stores the container images and artifacts a platform's workloads run. The SKU is the registry's feature gate -- Basic and Standard carry the core push/pull surface, while Premium unlocks the enterprise surface: geo-replication, zone redundancy, network isolation, content-trust/quarantine/retention policies, and customer-managed-key encryption. Spec-level validation enforces the same SKU gates ARM does, so a misconfigured manifest fails at validation, not at apply.
 
 ## What Gets Created
 
-When you deploy an AzureContainerRegistry resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Container Registry** — a `containerservice.Registry` in the specified region and resource group, with the configured SKU, admin-account setting, network posture (public access, IP rule set, bypass option, data endpoints), policies (quarantine, retention, content trust, export), managed identity, and CMK encryption
-- **Geo-Replications** — for Premium registries, one replication per entry in `georeplications`, each its own tracked ARM resource with its own zone redundancy, regional endpoint, and tags
-- **Azure Tags** — Planton-derived metadata tags merged with user tags (user wins on key collision), applied to the registry for tracking and governance
+- **Container Registry** -- an Azure Container Registry in the specified region and resource group, with the chosen SKU tier, access posture (admin account, anonymous pull, public network access, export policy), and trusted-services bypass
+- **Geo-Replications** -- created only on the Premium SKU when `georeplications` entries are configured; each replica serves pulls locally in its region, with per-replica zone redundancy, optional regional endpoints, and its own tags
+- **Network Rule Set** -- created only on the Premium SKU when `networkRuleSet` is configured; a default action plus an IPv4 CIDR allowlist for a public-but-restricted registry
+- **Customer-Managed-Key Encryption** -- created only on the Premium SKU when `encryption` is configured; the registry's data is encrypted with a Key Vault key you own, unwrapped by a user-assigned identity
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-Nothing else is created here. Image-pull and image-push permissions are composed with the standalone `AzureRoleAssignment` resource against the registry's ARM ID, private endpoints for a fully private registry are composed with `AzurePrivateEndpoint`, and the identity that unwraps a CMK key is a referenced `AzureUserAssignedIdentity`.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the registry will be created (can reference an AzureResourceGroup resource)
-- **A globally unique registry name** — 5-50 lowercase alphanumerics, unique across all of Azure because it becomes the registry's DNS name (`{name}.azurecr.io`)
-- **For CMK encryption**: an `AzureUserAssignedIdentity` holding get/wrapKey/unwrapKey permission on the Key Vault key's vault
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-## Quick Start
+### Azure Subscription
 
-Create a file `acr.yaml`:
+- **An Azure Resource Group** where the Container Registry will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **A globally unique registry name** (5-50 characters, lowercase letters and numbers only -- no hyphens, no uppercase). The name becomes the login server hostname: `{name}.azurecr.io`. Renaming replaces the registry and its images do not migrate.
+- **For CMK encryption** (Premium): an AzureUserAssignedIdentity holding get/wrapKey/unwrapKey on the key's vault, and an AzureKeyVaultKey -- both must exist before the registry.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Container Registry**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for a single-region registry with Standard tier.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureContainerRegistry
 metadata:
-  name: my-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureContainerRegistry.my-registry
+  name: acme-registry
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: my-rg
-  registryName: myregistry01
-```
-
-Deploy:
-
-```shell
-planton apply -f acr.yaml
-```
-
-This creates a Standard-tier registry (the baseline applied when the SKU is unspecified) with the admin account disabled and public network access enabled — the production single-region shape. Images are pushed to and pulled from `myregistry01.azurecr.io` (the `login_server` output).
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region the registry's home replica lives in (e.g., `eastus`, `westeurope`). Additional regions are geo-replications, not a region change. Changing the region replaces the registry. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `registryName` | `string` | Globally unique registry name; becomes the `{name}.azurecr.io` login server. Changing it replaces the registry and its contents do not migrate — every image would need re-pushing. | Required, `^[a-z0-9]{5,50}$` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sku` | `enum` | `STANDARD` | The registry's feature gate. `BASIC` (cost-optimized dev/test), `STANDARD` (production baseline: 100 GiB storage, webhooks, anonymous pull available), `PREMIUM` (geo-replication, zone redundancy, network isolation, policies, CMK, 500 GiB, highest throughput). Changes in place, but downgrading requires Premium-only features to be unset first. |
-| `adminUserEnabled` | `bool` | `false` | Enables the built-in admin account (one username, two rotatable passwords, surfaced in outputs). Production authentication should be Entra ID; enable only for consumers that can use nothing but a static username/password. |
-| `publicNetworkAccessEnabled` | `bool` | `true` | `false` takes the registry fully private (private endpoints only) and requires `PREMIUM`. For a public registry restricted to known addresses, keep `true` and use `networkRuleSet` instead. |
-| `zoneRedundancyEnabled` | `bool` | `false` | Spreads the home replica across availability zones. `PREMIUM` only, fixed at creation. Each geo-replication declares its own zone redundancy separately. |
-| `anonymousPullEnabled` | `bool` | `false` | Allows unauthenticated pulls — makes every repository publicly readable. `STANDARD` or `PREMIUM` only. The right shape for public artifact distribution, and only that. |
-| `dataEndpointEnabled` | `bool` | `false` | Gives the registry dedicated regional data endpoints (`{name}.{region}.data.azurecr.io`) instead of shared storage endpoints, so egress firewalls can allowlist exact hostnames. `PREMIUM` only. |
-| `quarantinePolicyEnabled` | `bool` | `false` | Quarantines newly pushed images until scanning tooling marks them passed; unquarantined clients cannot pull them. `PREMIUM` only. |
-| `retentionPolicyInDays` | `int32` | unset | Days after which untagged manifests are purged (0 = immediately; unset keeps them forever, Azure's default). `PREMIUM` only. Range: 0-365. The hygiene lever that keeps CI push churn from growing storage without bound. |
-| `trustPolicyEnabled` | `bool` | `false` | Enables Docker Content Trust: clients with content trust enabled can push signed images and verify signatures at pull. `PREMIUM` only. |
-| `exportPolicyEnabled` | `bool` | `true` | `false` blocks exporting artifacts out of the registry — a data-exfiltration control. Requires `PREMIUM` and `publicNetworkAccessEnabled` explicitly `false` (validation enforces the pairing, as ARM does). |
-| `networkRuleBypassOption` | `enum` | `AZURE_SERVICES` | Whether trusted Azure services (ACR Tasks, Microsoft Defender) may reach a network-restricted registry. `NONE` closes even that door. |
-| `networkRuleSet` | `object` | unset | Access rules for a public registry: `defaultAction` (`ALLOW`/`DENY`) plus `ipRules` (IPv4 CIDR allowlist). `PREMIUM` only. A real allowlist sets `DENY`; ARM only supports allow rules, so entries carry no per-rule action. |
-| `georeplications` | `object[]` | `[]` | Additional regions to replicate to, each with `location`, `zoneRedundancyEnabled`, `regionalEndpointEnabled`, and `tags`. `PREMIUM` only; must not contain the registry's own region (the home replica is implicit). Replicas add and remove in place. |
-| `identity` | `object` | unset | The registry's managed identity: `type` (`SYSTEM_ASSIGNED`, `USER_ASSIGNED`, `SYSTEM_AND_USER_ASSIGNED`) and, for user-assigned flavors, `identityIds` referencing `AzureUserAssignedIdentity` resources. Required for CMK encryption. |
-| `encryption` | `object` | unset | Customer-managed-key encryption: `identityClientId` (defaults to referencing an `AzureUserAssignedIdentity`'s `client_id` output) and `keyVaultKeyId` (the key's full Key Vault ID). `PREMIUM` only, fixed at creation, and requires a `USER_ASSIGNED` identity. |
-| `tags` | `map<string, string>` | `{}` | Additional tags applied to the registry, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Standard Production Registry
-
-The single-region production baseline — Standard tier, admin account off, Entra-based authentication:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureContainerRegistry
-metadata:
-  name: prod-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureContainerRegistry.prod-registry
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  registryName: prodregistry01
+    value: "acme-prod-rg"
+  registryName: acmeprodregistry
   sku: STANDARD
 ```
 
-### Premium Geo-Replicated Registry
-
-A Premium registry with a zone-redundant home replica, replicas in two more regions, and automatic purging of untagged manifests. Pushes propagate to all replicas automatically; each replica serves its region's pulls locally:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureContainerRegistry
-metadata:
-  name: global-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureContainerRegistry.global-registry
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  registryName: globalregistry01
-  sku: PREMIUM
-  zoneRedundancyEnabled: true
-  retentionPolicyInDays: 30
-  georeplications:
-    - location: westeurope
-      zoneRedundancyEnabled: true
-    - location: southeastasia
-      zoneRedundancyEnabled: true
+```shell
+planton apply -f container-registry.yaml
 ```
 
-### Network-Restricted Public Registry
+This creates a Standard-tier Container Registry with the admin account disabled and no geo-replication. Authentication is handled via Microsoft Entra (service principals, managed identities, repo-scoped tokens).
 
-A Premium registry that stays publicly addressable but denies every connection not on the CIDR allowlist, with dedicated data endpoints so egress firewalls can allowlist exact hostnames (surfaced in the `data_endpoint_host_names` output):
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the registry to a resource group:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureContainerRegistry
-metadata:
-  name: restricted-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureContainerRegistry.restricted-registry
 spec:
-  region: eastus
   resourceGroup:
-    value: prod-rg
-  registryName: restrictedreg01
-  sku: PREMIUM
-  dataEndpointEnabled: true
-  networkRuleSet:
-    defaultAction: DENY
-    ipRules:
-      - ipRange: 203.0.113.0/24
-      - ipRange: 198.51.100.32/28
-```
-
-### Fully Private Registry with CMK Encryption
-
-A locked-down registry: public access off (private endpoints only), export disabled as a data-exfiltration control, and data encrypted with a Key Vault key unwrapped by a referenced user-assigned identity. The identity must hold get/wrapKey/unwrapKey on the vault before the registry is created:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureContainerRegistry
-metadata:
-  name: locked-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureContainerRegistry.locked-registry
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  registryName: lockedregistry01
-  sku: PREMIUM
-  publicNetworkAccessEnabled: false
-  exportPolicyEnabled: false
-  identity:
-    type: USER_ASSIGNED
-    identityIds:
-      - valueFrom:
-          name: acr-cmk-identity
-  encryption:
-    identityClientId:
-      valueFrom:
-        name: acr-cmk-identity
-    keyVaultKeyId:
-      value: https://prod-vault.vault.azure.net/keys/acr-cmk
-```
-
-### Composing Pull Access for a CI Identity
-
-Image-pull and image-push permissions are never bundled into the registry — they are standalone `AzureRoleAssignment` resources scoped to the registry's ARM ID, so grants stay visible, auditable, and independently lifecycled:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleAssignment
-metadata:
-  name: ci-acr-pull
-spec:
-  scope:
     valueFrom:
-      kind: AzureContainerRegistry
-      name: prod-registry
-      fieldPath: status.outputs.container_registry_id
-  roleDefinitionName: AcrPull
-  principalId:
-    valueFrom:
-      name: ci-runner-identity
+      kind: AzureResourceGroup
+      name: production-rg
+      fieldPath: status.outputs.resource_group_name
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the Container Registry with the resolved value.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `container_registry_id` | `string` | Azure Resource Manager ID of the registry — the primary output; AKS clusters reference it to wire image pulls, and `AcrPull`/`AcrPush` role assignments scope to it |
-| `container_registry_name` | `string` | The registry's name as deployed |
-| `login_server` | `string` | The hostname images are tagged with and pulled from, e.g. `myregistry.azurecr.io` |
-| `admin_username` | `string` | The admin account's username (the registry name); populated only when `adminUserEnabled` is true |
-| `admin_password` | `string` | One of the admin account's two rotatable passwords; populated only when `adminUserEnabled` is true |
-| `system_assigned_identity_principal_id` | `string` | Principal (object) ID of the registry's system-assigned identity; populated only when the identity type includes `SYSTEM_ASSIGNED` |
-| `data_endpoint_host_names` | `string[]` | The dedicated regional data-endpoint hostnames (home region plus each geo-replication); populated only when `dataEndpointEnabled` is true — the exact hostnames an egress firewall must allowlist |
+These are the most important decisions when configuring a Container Registry. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**SKU tier** -- `sku` is the registry's feature gate. Unspecified deploys `STANDARD`, the production baseline (100 GiB included storage, webhooks, anonymous pull available). `BASIC` is the cost-optimized dev/test tier with the full API surface but low storage and throughput limits. `PREMIUM` adds the enterprise surface gated throughout the spec (geo-replication, zone redundancy, network isolation, artifact policies, CMK) plus the highest throughput and 500 GiB included storage. Upgrades apply in place; downgrading requires the Premium-only features to be unset first.
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for registry placement
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) -- the identity that unwraps a customer-managed encryption key, referenced via `identity.identityIds` and `encryption.identityClientId`
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) -- composes `AcrPull`/`AcrPush` grants against the registry's `container_registry_id`
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) -- AKS clusters reference the registry via its `container_registry_id` output to wire image pulls
-- [AzurePrivateEndpoint](/docs/catalog/azure/private-endpoint) -- private connectivity for registries with `publicNetworkAccessEnabled: false`
-- [AzureKeyVault](/docs/catalog/azure/key-vault) -- holds the customer-managed encryption key referenced by `encryption.keyVaultKeyId`
+**Access posture** -- `adminUserEnabled` (off by default; Entra is the production path), `anonymousPullEnabled` (Standard+; makes EVERY repository publicly readable), `publicNetworkAccessEnabled` (default true; explicit false takes the registry private-endpoints-only and requires Premium), and `exportPolicyEnabled` (default true; disabling is a data-exfiltration control requiring Premium plus public access explicitly false).
+
+**Geo-replication** -- `georeplications` replicates images to additional Azure regions (Premium only). Each entry carries its own `location`, `zoneRedundancyEnabled`, `regionalEndpointEnabled`, and `tags`. The list must not contain the home region -- the home replica is implicit. Pulls are served from the nearest replica; pushes propagate automatically.
+
+**Network rules** -- `networkRuleSet` (Premium only) keeps the registry public but restricted: set `defaultAction: DENY` and enumerate IPv4 CIDR `ipRules`. `networkRuleBypassOption` decides whether trusted Azure services (ACR Tasks, Defender) skip the restrictions; `dataEndpointEnabled` gives blob traffic exact per-region hostnames for egress allowlists.
+
+**Artifact policies** -- `retentionPolicyInDays` purges untagged manifests (0 = immediately; unset = keep forever), `trustPolicyEnabled` enables Docker Content Trust, `quarantinePolicyEnabled` holds new pushes until scanning clears them. All Premium-only.
+
+**CMK encryption** -- `encryption` (Premium only, fixed at creation) encrypts with a Key Vault key you own: `keyVaultKeyId` references an AzureKeyVaultKey's versionless ID so rotation propagates, and `identityClientId` names the user-assigned identity (by CLIENT id) that unwraps it. Requires a USER_ASSIGNED flavor in `identity`.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureUserAssignedIdentity** | `identity.identityIds[]` | `status.outputs.identity_id` |
+| **AzureUserAssignedIdentity** | `encryption.identityClientId` | `status.outputs.client_id` |
+| **AzureKeyVaultKey** | `encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `container_registry_id` | Azure Resource Manager ID of the registry | AKS registry attachment (AcrPull), AzurePrivateEndpoint target, role assignments, diagnostic settings |
+| `container_registry_name` | The registry's name | Scripting and az CLI automation |
+| `login_server` | Registry hostname (`{name}.azurecr.io`) | Image references, docker login, Container App and Function App registry configuration |
+| `admin_username` | The admin account's username (only when the admin account is enabled) | Static-credential image pulls |
+| `admin_password` | The admin account's password (only when the admin account is enabled) | Static-credential image pulls |
+| `system_assigned_identity_principal_id` | The system-assigned identity's principal ID (when enabled) | Role assignments granting the registry access to other resources |
+| `data_endpoint_host_names` | Dedicated data endpoint hostnames (when enabled) | Egress firewall allowlists |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard single-region registry** -- Standard SKU with the admin account disabled and no geo-replication. Suitable for most teams and production workloads in a single region. Authentication via Microsoft Entra. Start from the **Standard** preset.
+
+**Premium geo-replicated registry** -- Premium SKU with a zone-redundant home replica, geo-replication, and untagged-manifest retention. Low-latency pulls for multi-region AKS clusters and survival of a regional outage. Start from the **Premium Geo-Replicated** preset.
+
+**Premium network-restricted registry** -- Premium SKU, publicly addressable but DENY-by-default with a CIDR allowlist and dedicated data endpoints. The middle ground between open and fully private. Start from the **Premium Network-Restricted** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the Container Registry is created
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- attached to the registry and unwraps the CMK encryption key
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed encryption key (reference its versionless ID so rotation propagates)
+- [**Azure AKS Cluster**](/cloud-catalog/azure-aks-cluster) -- attaches to the registry by referencing `container_registry_id` for AcrPull image access
+- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- private connectivity for a registry with public network access disabled

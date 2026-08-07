@@ -8,180 +8,78 @@ componentName: "gcpvertexaiendpoint"
 
 # GCP Vertex AI Endpoint
 
-Deploys a GCP Vertex AI Endpoint — a stable serving surface for machine learning models with configurable networking (public, VPC-peered, or Private Service Connect), optional CMEK encryption, and optional dedicated DNS for isolated prediction traffic. Model deployment to the endpoint is a separate operational step.
+Deploys a Vertex AI Endpoint -- a stable serving surface for deploying machine learning models -- with configurable networking (public, VPC-peered, or Private Service Connect), optional customer-managed encryption via Cloud KMS, and dedicated DNS for traffic isolation. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
 
 ## What Gets Created
 
-When you deploy a GcpVertexAiEndpoint resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Vertex AI Endpoint** — a `google_vertex_ai_endpoint` resource in the specified region, labeled with your `labels` merged beneath the platform's attribution labels
-- **API Enablement** — the Vertex AI API (`aiplatform.googleapis.com`) is enabled in the target project (never disabled on destroy)
-- **Stable Numeric Identity** — when `endpointName` is omitted, both provisioning engines derive the same numeric endpoint ID from the resource identity, so the same manifest always produces the same endpoint reference
+- **Vertex AI Endpoint** -- a managed `vertex.AiEndpoint` in the specified GCP project and region, configured with the chosen networking mode and display name
+- **Encryption Configuration** -- when `kmsKeyName` is provided, configures customer-managed encryption (CMEK) for data at rest on the endpoint; otherwise uses Google-managed encryption
+- **VPC-Peered Networking** -- created only when `network` is set; places the endpoint behind a VPC peering connection, accessible only from within the peered network (requires Private Services Access on the VPC)
+- **Private Service Connect Configuration** -- created only when `privateServiceConnectConfig` is set; exposes the endpoint via a PSC service attachment with an optional project allowlist for fine-grained access control
+- **Dedicated Endpoint DNS** -- created only when `dedicatedEndpointEnabled` is true; provisions a dedicated prediction URL (`{endpointId}.{region}-{projectNumber}.prediction.vertexai.goog`) for isolated traffic
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A VPC network with Private Services Access** if using VPC-peered networking (`network` field)
-- **A Cloud KMS key** in the same region as the endpoint if using CMEK encryption (`kmsKeyName` field)
-- **IAM permissions** — the Vertex AI service agent must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the KMS key if CMEK is enabled
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `endpoint.yaml`:
+### GCP Project
+
+- **A GCP project** where the endpoint will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Vertex AI API** (`aiplatform.googleapis.com`) enabled in the target project.
+- **Private Services Access** (if using VPC peering) -- the VPC network must have a private services connection configured for the `servicenetworking.googleapis.com` API.
+- **Cloud KMS key** (if using CMEK) -- a key in the same region as the endpoint, with the Vertex AI service agent granted the `cloudkms.cryptoKeyEncrypterDecrypter` role.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Vertex AI Endpoint**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Public Endpoint** preset in the [Presets](#presets) tab to pre-populate a minimal public endpoint configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiEndpoint
 metadata:
-  name: my-endpoint
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiEndpoint.my-endpoint
+  name: ml-serving
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   location: us-central1
-  displayName: My ML Endpoint
+  displayName: ML Serving Endpoint
 ```
-
-Deploy:
 
 ```shell
-planton apply -f endpoint.yaml
+planton apply -f vertex-ai-endpoint.yaml
 ```
 
-This creates a public Vertex AI Endpoint in the provider's default project, accessible via the shared regional DNS with Google-managed encryption.
+This creates a public Vertex AI Endpoint with Google-managed encryption and no private networking. Models are deployed to the endpoint separately via the Vertex AI API or console. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `location` | `string` | Region for the endpoint (e.g., `us-central1`). Immutable after creation. | Required, min length 1 |
-| `displayName` | `string` | Human-readable name for the endpoint. | Required, 1-128 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the endpoint is created. Can reference a GcpProject resource via `valueFrom`. |
-| `description` | `string` | `""` | Description of the endpoint. |
-| `labels` | `map(string)` | `{}` | User labels for cost attribution and ownership; merged beneath platform labels. Mutable. |
-| `network` | `StringValueOrRef` | — | VPC network for private endpoints via VPC peering. Format: `projects/{project}/global/networks/{network}`. Mutually exclusive with `privateServiceConnectConfig`. Immutable. Can reference a GcpVpcNetwork resource via `valueFrom`. |
-| `kmsKeyName` | `StringValueOrRef` | — | Cloud KMS key for CMEK encryption. Format: `projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}`. Immutable. Can reference a GcpKmsKey resource via `valueFrom`. |
-| `dedicatedEndpointEnabled` | `bool` | `false` | Enables a dedicated DNS name for better performance and traffic isolation. Mutually exclusive with `privateServiceConnectConfig`. |
-| `privateServiceConnectConfig` | `object` | — | Private Service Connect configuration. Mutually exclusive with `network` and `dedicatedEndpointEnabled`. |
-| `privateServiceConnectConfig.projectAllowlist` | `string[]` | `[]` | Projects allowed to create forwarding rules targeting this endpoint. |
-| `privateServiceConnectConfig.enableSecurePrivateServiceConnect` | `bool` | `false` | Require IAM authorization on PSC connections (secure PSC). |
-| `requestResponseLoggingConfig.enabled` | `bool` | `false` | Sample online predictions into BigQuery. |
-| `requestResponseLoggingConfig.samplingRate` | `double` | GCP default | Fraction of requests to log, in `(0, 1]`. |
-| `requestResponseLoggingConfig.bigqueryDestinationUri` | `string` | — | BigQuery destination: `bq://project`, `bq://project.dataset`, or `bq://project.dataset.table`. |
-| `endpointName` | `string` | identity-derived | Numeric-only GCP resource identifier (1-10 digits, no leading zeros). When omitted, a stable ID is derived from the resource identity — identical on both engines. Immutable. |
-
-## Examples
-
-### Public Endpoint with Description
-
-A public endpoint for development or non-sensitive workloads:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the endpoint to a GCP project, VPC, and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiEndpoint
-metadata:
-  name: dev-recommendations
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiEndpoint.dev-recommendations
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  displayName: Dev Recommendation Engine
-  description: Development endpoint for A/B testing recommendation models
-```
-
-### VPC-Peered Private Endpoint with CMEK
-
-Production endpoint with network isolation and customer-managed encryption:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiEndpoint
-metadata:
-  name: prod-scoring
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiEndpoint.prod-scoring
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  displayName: Production Scoring Endpoint
-  network:
-    value: projects/123456789/global/networks/prod-vpc
-  kmsKeyName:
-    value: projects/my-gcp-project/locations/us-central1/keyRings/ml-ring/cryptoKeys/endpoint-key
-  dedicatedEndpointEnabled: true
-```
-
-### Private Service Connect Endpoint
-
-Strongest network isolation using PSC with an explicit project allowlist:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiEndpoint
-metadata:
-  name: psc-inference
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiEndpoint.psc-inference
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  displayName: PSC Inference Endpoint
-  privateServiceConnectConfig:
-    projectAllowlist:
-      - consumer-project-a
-      - consumer-project-b
-  kmsKeyName:
-    value: projects/my-gcp-project/locations/us-central1/keyRings/ml-ring/cryptoKeys/endpoint-key
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources for composable infrastructure:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiEndpoint
-metadata:
-  name: composed-endpoint
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiEndpoint.composed-endpoint
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: ml-project
+      name: production-project
       fieldPath: status.outputs.project_id
-  location: us-central1
-  displayName: Composed ML Endpoint
   network:
     valueFrom:
       kind: GcpVpcNetwork
-      name: ml-vpc
+      name: main-vpc
       fieldPath: status.outputs.network_self_link
   kmsKeyName:
     valueFrom:
@@ -190,22 +88,56 @@ spec:
       fieldPath: status.outputs.key_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project, VPC, and KMS key first, then provisions the Vertex AI Endpoint with VPC-peered private networking and CMEK encryption.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `endpoint_id` | `string` | Fully qualified endpoint resource path: `projects/{project}/locations/{location}/endpoints/{name}` |
-| `display_name` | `string` | Display name of the endpoint |
-| `dedicated_endpoint_dns` | `string` | DNS of the dedicated endpoint. Populated only when `dedicatedEndpointEnabled` is `true`. Format: `https://{endpointId}.{region}-{projectNumber}.prediction.vertexai.goog` |
-| `create_time` | `string` | RFC3339 timestamp of when the endpoint was created |
-| `endpoint_name` | `string` | The numeric endpoint ID (explicit or identity-derived) — the value model-deployment tooling passes as the endpoint reference |
+These are the most important decisions when configuring a Vertex AI Endpoint. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Networking mode** -- Three mutually exclusive modes are available. Public (default) exposes the endpoint via the shared regional DNS. VPC-peered (`network`) restricts access to within a peered VPC and requires Private Services Access. Private Service Connect (`privateServiceConnectConfig`) provides the strongest isolation via a PSC service attachment with a project allowlist.
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for the endpoint
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for VPC-peered private endpoints
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides the encryption key for CMEK
-- [GcpVertexAiNotebook](/docs/catalog/gcp/vertex-ai-notebook) — commonly co-deployed for ML development workflows
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — provides the service identity for model serving
+**Dedicated endpoint DNS** -- Set `dedicatedEndpointEnabled: true` to provision a dedicated prediction URL instead of the shared regional endpoint. Dedicated DNS provides better performance and traffic isolation. Not available with Private Service Connect.
+
+**Customer-managed encryption** -- Set `kmsKeyName` to a Cloud KMS key resource path for CMEK encryption. The key must be in the same region as the endpoint. If omitted, Google-managed encryption is used. Immutable after creation.
+
+**Display name and endpoint name** -- `displayName` is the human-readable identifier (up to 128 characters). `endpointName` is an optional numeric GCP resource identifier (1-10 digits). Most users should omit `endpointName` and use `displayName` for identification. Both fields serve different purposes -- `displayName` is mutable while `endpointName` is immutable.
+
+**Request/response logging** -- `requestResponseLoggingConfig` samples prediction traffic into a BigQuery table (`bq://project`, `bq://project.dataset`, or `bq://project.dataset.table`), the raw material for drift monitoring and audit. Tune `samplingRate` (in `(0, 1]`) to bound BigQuery cost on high-QPS endpoints. Mutable in place.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** (optional) | `network` | `status.outputs.network_self_link` |
+| **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `endpoint_id` | Fully qualified endpoint resource path (`projects/{project}/locations/{location}/endpoints/{name}`) | Model deployment targets, monitoring dashboards |
+| `display_name` | Display name of the endpoint | Application configuration, inventory tracking |
+| `dedicated_endpoint_dns` | Dedicated prediction URL (populated only when `dedicatedEndpointEnabled` is true) | Application prediction client configuration |
+| `create_time` | RFC3339 timestamp of endpoint creation | Audit logs, lifecycle tracking |
+| `endpoint_name` | The numeric endpoint ID (explicit or derived from the resource identity) | Model-deploy tooling that addresses the endpoint by ID |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic public endpoint** -- A public prediction URL with Google-managed encryption and no private networking. The simplest configuration for development, testing, or workloads where network isolation is not required. Start from the **Basic Public Endpoint** preset.
+
+**Private VPC-peered endpoint** -- VPC peering for network isolation, CMEK encryption for data protection, and dedicated DNS for performance. Suitable for regulated environments (HIPAA, PCI, SOC 2). Start from the **Private VPC-Peered Endpoint** preset.
+
+**Private Service Connect endpoint** -- The strongest network isolation using PSC with an explicit project allowlist. Ideal for multi-tenant environments or cross-project model serving without VPC peering. Start from the **Private Service Connect Endpoint** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the endpoint is created
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for private endpoint access via VPC peering
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the customer-managed encryption key for data at rest

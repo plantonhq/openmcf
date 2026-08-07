@@ -8,162 +8,134 @@ componentName: "alicloudnasfilesystem"
 
 # AliCloud NAS File System
 
-Deploys an Alibaba Cloud Network Attached Storage (NAS) file system with a VPC mount target and optional custom access control. NAS provides fully managed, elastic, shared file storage supporting NFS and SMB protocols, accessible from ECS instances, Kubernetes pods, and serverless functions within a VPC.
+Deploys an Alibaba Cloud Network Attached Storage (NAS) file system with a bundled access group and VPC mount target. NAS provides fully managed, elastic, shared file storage supporting NFS and SMB protocols. The file system, access group, and mount target are deployed as a single atomic unit because a file system without a mount target is unreachable from any VPC resource.
 
 ## What Gets Created
 
-When you deploy an AliCloudNasFileSystem resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **NAS File System** -- an `alicloud_nas_file_system` resource (Pulumi: `nas.FileSystem`) with the specified protocol type, storage tier, and optional encryption at rest
-- **Access Group + Access Rules** -- (conditional) when `accessRules` are specified, a custom `alicloud_nas_access_group` with `alicloud_nas_access_rule` entries controlling which IP ranges can mount the file system and with what permissions
-- **Mount Target** -- an `alicloud_nas_mount_target` resource (Pulumi: `nas.MountTarget`) in the specified VPC/VSwitch, producing the domain name clients use for NFS/SMB mounting
-- **Tags** -- system metadata tags (`resource`, `resource_name`, `resource_kind`, `organization`, `environment`) merged with user-defined `spec.tags`, with user values taking precedence on key conflict
+- **NAS File System** -- an `alicloud_nas_file_system` resource with the chosen protocol, storage type, and optional encryption
+- **Access Group** (conditional) -- an `alicloud_nas_access_group` with `alicloud_nas_access_rule` entries when `accessRules` are specified. Controls which IP ranges can mount and with what permissions
+- **Mount Target** -- an `alicloud_nas_mount_target` in the specified VPC/VSwitch, associated with the custom access group or the default VPC group
 
-When no `accessRules` are specified, the mount target uses the built-in DEFAULT_VPC_GROUP_NAME access group, which allows full read-write access from all IP addresses within the VPC.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Alibaba Cloud credentials** configured via environment variables (`ALICLOUD_ACCESS_KEY`, `ALICLOUD_SECRET_KEY`) or Planton provider config
-- **A VPC and VSwitch** in the target region -- the mount target is created in this VSwitch
-- **Planton CLI** installed with either Pulumi or Terraform (OpenTofu) backend
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-## Quick Start
+### Alibaba Cloud Account
 
-Create a file `nas.yaml`:
+- **An existing VPC and VSwitch** -- the mount target requires placement in a VSwitch within a VPC.
+- **Protocol selection** -- `protocolType` (NFS or SMB) is immutable after creation. NFS for Linux/Unix workloads, SMB for Windows.
+- **Storage type selection** -- `storageType` is immutable. For standard NAS: Performance (SSD), Capacity (HDD), or Premium. For extreme NAS: standard or advance.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud NAS File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including protocol, storage type, VPC, and access rules.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudNasFileSystem
 metadata:
-  name: shared-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudNasFileSystem.shared-data
+  name: app-shared-fs
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   protocolType: NFS
   storageType: Performance
-  vpcId: vpc-abc123
-  vswitchId: vsw-abc123
-```
-
-Deploy:
-
-```shell
-planton apply -f nas.yaml
-```
-
-This creates a standard NFS file system with Performance storage and a mount target accessible from all VPC IPs. Mount the file system:
-
-```shell
-mount -t nfs -o vers=4,minorversion=0,noresvport <mount_target_domain>:/ /mnt/nas
-```
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region (e.g., `cn-hangzhou`, `cn-shanghai`, `us-west-1`). | Required; non-empty |
-| `protocolType` | `string` | Mount protocol: `NFS` (Linux/Unix) or `SMB` (Windows). | Required; immutable |
-| `storageType` | `string` | Storage tier. Standard: `Performance`, `Capacity`, `Premium`. Extreme: `standard`, `advance`. | Required; immutable |
-| `vpcId` | `StringValueOrRef` | VPC for the mount target. | Required |
-| `vswitchId` | `StringValueOrRef` | VSwitch for the mount target. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `fileSystemType` | `string` | `"standard"` | `standard` (auto-scaling, general-purpose) or `extreme` (dedicated throughput, fixed capacity). **Immutable after creation.** |
-| `description` | `string` | -- | Human-readable description. |
-| `encryption` | `object` | -- | Encryption config: `encryptType` (`1`=NAS-managed, `2`=KMS) and optional `kmsKeyId`. **Immutable after creation.** |
-| `capacity` | `int` | `0` | GiB capacity. Required for extreme NAS (min 100). Ignored for standard (auto-scales). |
-| `zoneId` | `string` | -- | Availability zone. Required for extreme NAS. Format: `cn-hangzhou-a`. |
-| `accessRules` | `list` | `[]` | Custom access rules. Omit for default full VPC access. |
-| `resourceGroupId` | `string` | `""` | Resource group for organizational grouping. |
-| `tags` | `map<string, string>` | `{}` | User-defined tags merged with system tags. |
-
-## Examples
-
-### Minimal NFS File System
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNasFileSystem
-metadata:
-  name: dev-share
-spec:
-  region: cn-hangzhou
-  protocolType: NFS
-  storageType: Performance
-  vpcId: vpc-abc123
-  vswitchId: vsw-abc123
-```
-
-### Production NFS with Encryption and Access Rules
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNasFileSystem
-metadata:
-  name: prod-storage
-  org: my-org
-  env: production
-spec:
-  region: cn-shanghai
-  protocolType: NFS
-  storageType: Performance
-  encryption:
-    encryptType: 1
-  vpcId: vpc-prod-001
-  vswitchId: vsw-prod-001
+  description: Shared file storage for application workloads
+  vpcId:
+    value: vpc-bp1234567890
+  vswitchId:
+    value: vsw-app-zone-a
   accessRules:
-    - sourceCidrIp: "10.0.1.0/24"
+    - sourceCidrIp: "10.0.0.0/8"
       rwAccessType: RDWR
-    - sourceCidrIp: "10.0.2.0/24"
-      rwAccessType: RDONLY
       userAccessType: root_squash
-  tags:
-    team: platform
 ```
 
-### Extreme NAS for High-Throughput Workloads
+```shell
+planton apply -f alicloud-nas.yaml
+```
+
+This creates a Performance NFS file system with a mount target and access rule restricting root squash. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of an application stack, use ValueFromRef to wire VPC and VSwitch dependencies:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudNasFileSystem
-metadata:
-  name: hpc-scratch
 spec:
   region: cn-hangzhou
-  fileSystemType: extreme
   protocolType: NFS
-  storageType: advance
-  capacity: 500
-  zoneId: cn-hangzhou-a
-  encryption:
-    encryptType: 2
-    kmsKeyId: "cmk-abc123"
-  vpcId: vpc-hpc-001
-  vswitchId: vsw-hpc-001
+  storageType: Performance
+  vpcId:
+    valueFrom:
+      kind: AliCloudVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
+  vswitchId:
+    valueFrom:
+      kind: AliCloudVswitch
+      name: app-vswitch-a
+      fieldPath: status.outputs.vswitch_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph and provisions VPC and VSwitch before the NAS file system.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `file_system_id` | `string` | The NAS file system ID assigned by Alibaba Cloud. |
-| `mount_target_domain` | `string` | The mount target domain name used for NFS/SMB mounting from within the VPC. |
+These are the most important decisions when configuring a NAS file system. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**File system type** -- The `fileSystemType` field selects "standard" (default, auto-scaling capacity) or "extreme" (dedicated throughput, fixed capacity, requires `zoneId` and `capacity`).
 
-- [AliCloudVpc](/docs/catalog/alicloud/vpc) -- prerequisite VPC for the mount target
-- [AliCloudVswitch](/docs/catalog/alicloud/vswitch) -- prerequisite VSwitch for the mount target
-- [AliCloudKmsKey](/docs/catalog/alicloud/kms-key) -- for customer-managed encryption keys
-- [AliCloudStorageBucket](/docs/catalog/alicloud/oss-bucket) -- object storage alternative for unstructured data
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) -- Kubernetes clusters that mount NAS for shared persistent volumes
+**Protocol** -- The `protocolType` field is immutable. "NFS" for Linux/Unix. "SMB" for Windows.
+
+**Storage type** -- The `storageType` field is immutable. "Performance" (SSD) for low latency, "Capacity" (HDD) for cost-effective warm storage, "Premium" for next-gen SSD.
+
+**Access rules** -- When `accessRules` are specified, a custom access group is auto-created. Each rule controls which CIDR ranges can mount, with what read/write permissions, and with what user identity mapping (no_squash, root_squash, all_squash).
+
+**Encryption** -- The `encryption` block enables at-rest encryption. Type 1 uses NAS-managed keys. Type 2 uses a customer-managed KMS key (create with AliCloudKmsKey).
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AliCloudVswitch** | `vswitchId` | `status.outputs.vswitch_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `file_system_id` | NAS file system ID (e.g., 1ca404a348) | Snapshot policies, lifecycle policies |
+| `mount_target_domain` | Mount endpoint domain name | NFS/SMB mount commands from ECS instances and containers |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard NFS** -- A Performance NFS file system with default VPC access. The simplest starting point. Start from the **Standard NFS** preset.
+
+**Production encrypted** -- A Performance NFS file system with NAS-managed encryption and restricted access rules with root squash. Start from the **Production Encrypted** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- the VPC the mount target is created in
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- the VSwitch for mount target placement
+- [**AliCloud KMS Key**](/cloud-catalog/ali-cloud-kms-key) -- customer-managed encryption key (when encryption type is 2)
+- [**AliCloud ECS Instance**](/cloud-catalog/ali-cloud-ecs-instance) -- compute instances that mount the file system
+- [**AliCloud Kubernetes Cluster**](/cloud-catalog/ali-cloud-kubernetes-cluster) -- Kubernetes pods that mount the file system via PV/PVC

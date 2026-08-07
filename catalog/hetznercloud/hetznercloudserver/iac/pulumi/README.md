@@ -36,7 +36,7 @@ Pulumi (Go) IaC module for provisioning Hetzner Cloud servers with SSH key injec
 bazel build //catalog/hetznercloud/hetznercloudserver/iac/pulumi:pulumi
 
 # Test with local manifest
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 pulumi up
 ```
 
@@ -44,7 +44,7 @@ pulumi up
 
 ```bash
 # Run locally against the hack manifest
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 export HCLOUD_TOKEN="your-api-token"
 pulumi up --stack dev
 ```

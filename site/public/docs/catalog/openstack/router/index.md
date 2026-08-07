@@ -8,166 +8,108 @@ componentName: "openstackrouter"
 
 # OpenStack Router
 
-Deploys an OpenStack Neutron router, providing L3 routing between tenant subnets and, optionally, external network connectivity via SNAT/DNAT. Routers are the backbone of OpenStack networking — they connect isolated subnets to each other and to the outside world.
+Deploys a Neutron router on OpenStack, providing Layer 3 routing between subnets and optional external network connectivity via SNAT. The router references an external OpenStackNetwork for its gateway and supports Distributed Virtual Router (DVR) mode for eliminating centralized routing bottlenecks.
 
 ## What Gets Created
 
-When you deploy an OpenStackRouter resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Neutron Router** — an `openstack_networking_router_v2` resource with the configured external gateway, SNAT settings, DVR mode, external fixed IPs, and tags
+- **Neutron Router** -- a Layer 3 router with configurable admin state, external gateway, SNAT, DVR mode, and external fixed IP allocations
+- **External Gateway** -- created only when `externalNetworkId` is provided; connects the router to a provider network for outbound connectivity and floating IP allocation
+- **OpenStack Tags** -- user-defined tags applied to the router for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **External network UUID** if connecting the router to an external (provider) network for internet access — this network is typically created by a cloud administrator
-- **Admin privileges** if setting `distributed` mode on deployments that restrict DVR to admin users
+### OpenStack Account
 
-## Quick Start
+- **External network** (optional) -- for outbound internet access, the router needs an external (provider) network as its gateway. Obtain the external network ID from your OpenStack administrator or reference an OpenStackNetwork Cloud Resource via ValueFromRef.
+- **Subnet connectivity** -- routers provide routing between subnets. After creating the router, attach subnets using OpenStackRouterInterface resources to enable inter-subnet traffic.
+- **DVR support** -- if you plan to use `distributed: true`, confirm your OpenStack deployment supports DVR (requires the L3 agent configured in DVR mode on compute nodes).
 
-Create a file `router.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Router**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Edge with SNAT** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouter
 metadata:
-  name: my-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackRouter.my-router
-spec: {}
+  name: edge-router
+  org: acme-corp
+  env: prod
+spec:
+  externalNetworkId:
+    value: "<external-network-id>"
+  enableSnat: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f router.yaml
 ```
 
-This creates a Neutron router named `my-router` with default settings: admin state up and no external gateway (internal routing only).
+This creates a router with an external gateway and SNAT enabled. Tenant instances on connected subnets can reach the internet through this router without individual floating IPs. DVR mode and external fixed IPs are not configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-All spec fields are optional. The router name is derived from `metadata.name`.
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `externalNetworkId` | `StringValueOrRef` | — | ID of the external (provider) network used as the router's gateway. When set, the router gains external connectivity and can perform SNAT. Can reference an OpenStackNetwork resource via `valueFrom`. |
-| `adminStateUp` | `bool` | `true` | Administrative state of the router. When `false`, the router is disabled and does not forward traffic. |
-| `enableSnat` | `bool` | platform default | Controls whether Source NAT is enabled on the router's external gateway. Only valid when `externalNetworkId` is configured. |
-| `distributed` | `bool` | platform default | Controls whether the router uses Distributed Virtual Router (DVR) mode. DVR distributes routing to each compute node, eliminating the centralized L3 agent bottleneck. Create-time setting only — cannot be changed after creation. |
-| `externalFixedIps` | `ExternalFixedIp[]` | `[]` | Fixed IP addresses to allocate on the external network for the router's gateway. Only valid when `externalNetworkId` is configured. If omitted, OpenStack auto-allocates. |
-| `externalFixedIps[].subnetId` | `string` | — | UUID of a subnet on the external network from which to allocate the IP. |
-| `externalFixedIps[].ipAddress` | `string` | — | Specific IP address to allocate on the external network. Must be within the range of the specified subnet. |
-| `description` | `string` | — | Human-readable description of the router, visible in the OpenStack API and Horizon. |
-| `tags` | `string[]` | `[]` | Tags for filtering and organization in the OpenStack API. Must be unique. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this router. |
-
-**Validation rules:**
-
-- `enableSnat` can only be set when `externalNetworkId` is configured.
-- `externalFixedIps` can only be specified when `externalNetworkId` is configured.
-
-## Examples
-
-### Internal Router
-
-A router without an external gateway, providing routing between tenant subnets only:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the router to an external network deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouter
-metadata:
-  name: internal-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackRouter.internal-router
-spec:
-  description: Internal routing between dev subnets
-  tags:
-    - dev
-    - internal
-```
-
-### Router with External Gateway
-
-A router connected to an external network for internet access, referencing the network by UUID:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouter
-metadata:
-  name: gateway-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackRouter.gateway-router
-spec:
-  externalNetworkId:
-    value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-  enableSnat: true
-  description: Staging router with external connectivity
-  tags:
-    - staging
-    - gateway
-```
-
-### DVR Router with Foreign Key Reference
-
-A distributed router that references an OpenStackNetwork resource for its external gateway using `valueFrom`, with a specific external IP allocation:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouter
-metadata:
-  name: prod-router
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackRouter.prod-router
 spec:
   externalNetworkId:
     valueFrom:
       kind: OpenStackNetwork
-      name: external-net
+      name: provider-net
       fieldPath: status.outputs.network_id
-  enableSnat: true
-  distributed: true
-  externalFixedIps:
-    - subnetId: "f1e2d3c4-b5a6-7890-abcd-ef1234567890"
-      ipAddress: "203.0.113.10"
-  description: Production DVR router with dedicated external IP
-  tags:
-    - prod
-    - dvr
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the external network first, then provisions the router with the resolved network ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `routerId` | `string` | UUID of the created Neutron router. Primary output used as a foreign key by downstream components. |
-| `name` | `string` | Name of the router, derived from `metadata.name`. |
-| `externalNetworkId` | `string` | ID of the external network used as the router's gateway. Empty if no external gateway is configured. |
-| `externalGatewayIp` | `string` | Primary external IP address allocated to the router's gateway. Empty if no external gateway is configured. |
-| `region` | `string` | OpenStack region where the router was created. |
+These are the most important decisions when configuring a router. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**External gateway** -- Set `externalNetworkId` to connect the router to a provider network. Without an external gateway, the router provides internal routing only (east-west traffic between subnets). This is the fundamental choice between an edge router and an internal router.
 
-- [OpenStackNetwork](/docs/catalog/openstack/network) — provides the Layer 2 network that the router connects to as an external gateway
-- [OpenStackSubnet](/docs/catalog/openstack/subnet) — defines IP address ranges on networks; subnets are attached to routers via router interfaces
-- [OpenStackRouterInterface](/docs/catalog/openstack/router-interface) — attaches a subnet to this router, enabling routing for that subnet's traffic
-- [OpenStackFloatingIp](/docs/catalog/openstack/floating-ip) — allocates floating IPs from the external network for 1:1 NAT to instances
-- [OpenStackSecurityGroup](/docs/catalog/openstack/security-group) — controls traffic filtering for ports on networks connected to this router
-- [OpenStackInstance](/docs/catalog/openstack/instance) — compute instances whose traffic is routed by this router
+**SNAT** -- `enableSnat` controls whether tenant traffic is NATed to the router's external IP for outbound connectivity. Only valid when an external gateway is configured. Most production routers enable SNAT so instances can reach the internet without individual floating IPs.
+
+**Distributed Virtual Router** -- Set `distributed: true` to distribute routing to each compute node, eliminating the centralized L3 agent as a bottleneck. This is a create-time setting and cannot be changed after creation. DVR improves east-west traffic performance but adds operational complexity.
+
+**External fixed IPs** -- `externalFixedIps` lets you request specific IP addresses or subnets on the external network for the router's gateway. If omitted, OpenStack auto-allocates from the external network. Use this when you need a predictable external IP for DNS or firewall rules.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackNetwork** (optional) | `externalNetworkId` | `status.outputs.network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `router_id` | UUID of the router in OpenStack | Router interface attachments |
+| `name` | Name of the router | DNS records, monitoring labels |
+| `external_network_id` | ID of the external gateway network (empty if none) | Network topology reference |
+| `external_gateway_ip` | Primary external IP allocated to the router's gateway (empty if none) | Floating IP associations, firewall rules |
+| `region` | OpenStack region where the router was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Edge router with SNAT** -- Connects to an external network with SNAT enabled. Tenant instances on attached subnets can reach the internet through this router without individual floating IPs. The standard production router configuration. Start from the **Edge with SNAT** preset.
+
+**Internal-only router** -- No external gateway. Provides Layer 3 routing between connected subnets within the tenant. Use for isolated environments, air-gapped networks, or when external access is handled by a separate shared router. Start from the **Internal-Only** preset.
+
+## Works With
+
+- [**OpenStack Network**](/cloud-catalog/openstack-network) -- provides the external (provider) network used as the router's gateway

@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("KubernetesKafkaUi Validation Tests", func() {
 			input.Spec.Clusters[0].SchemaRegistry = &KubernetesKafkaUiSchemaRegistry{
 				Url:      literal("http://karapace.kafka.svc.cluster.local:8081"),
 				Username: "registry-user",
-				PasswordSecret: &KubernetesKafkaUiPasswordSecret{
+				PasswordSecret: &KubernetesKafkaUiBasicAuthPasswordSecret{
 					SecretName: literal("registry-user"),
 				},
 			}

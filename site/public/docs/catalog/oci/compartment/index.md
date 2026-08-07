@@ -6,143 +6,104 @@ order: 100
 componentName: "ocicompartment"
 ---
 
-# OCI Compartment
+# Compartment on OCI
 
-Deploys an Oracle Cloud Infrastructure compartment for hierarchical resource isolation. Compartments are OCI's fundamental organizational primitive — every resource in OCI exists within exactly one compartment, and every other OCI component in Planton takes `compartmentId` as its first spec field. Nested hierarchies are built by chaining OciCompartment resources, where each child references its parent via `compartmentId`.
+Deploys an Oracle Cloud Infrastructure compartment for hierarchical resource isolation and access control. Compartments are OCI's fundamental organizational primitive -- every resource exists within exactly one compartment. This component creates a single compartment within a parent compartment or tenancy, and nested hierarchies are built by chaining OciCompartment resources where each child references its parent via `compartmentId`. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring for parent compartment resolution.
 
 ## What Gets Created
 
-When you deploy an OciCompartment resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Identity Compartment** — an `oci_identity_compartment` resource within the specified parent compartment or tenancy. The compartment is created with a name, description, and standard Planton freeform tags. By default, the compartment is retained even if the IaC resource is destroyed (`enableDelete` defaults to `false`).
+- **Identity Compartment** -- an `oci_identity_compartment` within the specified parent compartment or tenancy, with name, description, and configurable delete protection
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the compartment
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A parent compartment OCID or tenancy OCID** where the compartment will be created — the tenancy OCID for top-level compartments, or the OCID of an existing compartment (literal value or via `valueFrom` referencing another OciCompartment resource)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `compartment.yaml`:
+### OCI Tenancy
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciCompartment
-metadata:
-  name: my-compartment
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciCompartment.my-compartment
-spec:
-  compartmentId:
-    value: "ocid1.tenancy.oc1..example"
-  description: "Compartment for my-project workloads"
-```
+- A parent compartment OCID or the tenancy OCID where this compartment will be created. For top-level compartments, use the tenancy OCID. For nested compartments, provide the parent compartment OCID directly or reference another OciCompartment Cloud Resource via ValueFromRef.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f compartment.yaml
-```
+### Console
 
-This creates a compartment named `my-compartment` under the specified tenancy. The compartment OCID is exported as a stack output for use as `compartmentId` in downstream resources such as OciVcn, OciSubnet, and OciSecurityGroup. Delete protection is enabled by default — destroying the IaC resource does not delete the compartment from OCI.
+Open the deployment store, find **Compartment on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Project** preset in the [Presets](#presets) tab to pre-populate a long-lived compartment with delete protection enabled.
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the parent compartment or tenancy where this compartment will be created. For top-level compartments, use the tenancy OCID. For nested compartments, use the parent compartment OCID. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `description` | `string` | Description of the compartment's purpose. Shown in the OCI Console and referenced by operators navigating the compartment hierarchy. | Minimum 1 character |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | `metadata.name` | Name assigned to the compartment in OCI. Must be unique among siblings within the parent compartment. Shown in the OCI Console and used in IAM policy statements. Falls back to `metadata.name` if not provided. |
-| `enableDelete` | `bool` | `false` | When `true`, the compartment is deleted when the IaC resource is destroyed. When `false`, the compartment is retained — OCI's safety mechanism to prevent accidental deletion of compartments containing active resources. Set to `true` only for ephemeral or development compartments. |
-
-## Examples
-
-### Minimal Project Compartment
-
-A long-lived compartment for a project or team. Delete protection retains the compartment even if the IaC resource is destroyed:
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciCompartment
 metadata:
   name: platform-compartment
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciCompartment.platform-compartment
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.tenancy.oc1..example"
   description: "Platform team infrastructure and shared services"
 ```
 
-### Ephemeral Sandbox Compartment
-
-A temporary compartment for development or CI/CD pipelines. Setting `enableDelete` to `true` allows full teardown:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciCompartment
-metadata:
-  name: ci-sandbox
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciCompartment.ci-sandbox
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  description: "Ephemeral sandbox for CI integration tests"
-  enableDelete: true
+```shell
+planton apply -f compartment.yaml
 ```
 
-### Nested Compartment with Foreign Key Reference
+This creates a compartment named `platform-compartment` under the tenancy root. Delete protection is enabled by default -- destroying the IaC resource does not delete the compartment from OCI.
 
-A child compartment referencing an Planton-managed parent via `valueFrom`, enabling declarative multi-level hierarchies:
+### InfraChart
+
+When deploying nested compartments as part of a multi-resource environment, use ValueFromRef to wire a child compartment to its parent:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciCompartment
-metadata:
-  name: networking
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciCompartment.networking
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
       name: platform-compartment
       fieldPath: status.outputs.compartmentId
-  description: "Networking resources for the platform team"
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the parent compartment first, then provisions the child compartment with the resolved OCID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `compartment_id` | `string` | OCID of the created compartment. Referenced by virtually every other OCI component via `compartmentId.valueFrom`. |
+These are the most important decisions when configuring a compartment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Delete protection** -- The `enableDelete` flag defaults to `false`, meaning the compartment is retained in OCI even when the IaC resource is destroyed. This is OCI's safety mechanism to prevent accidental deletion of compartments containing active resources. Set to `true` only for ephemeral or development compartments. To delete a protected compartment, first set `enableDelete: true`, apply, then destroy -- this two-step process is intentional friction.
 
-- [OciVcn](/docs/catalog/oci/vcn) — creates virtual cloud networks within a compartment
-- [OciIdentityPolicy](/docs/catalog/oci/identity-policy) — defines IAM policies scoped to a compartment
-- [OciDynamicGroup](/docs/catalog/oci/dynamic-group) — creates dynamic groups with compartment-scoped matching rules
-- [OciSecurityGroup](/docs/catalog/oci/network-security-group) — manages network security rules within a compartment
-- [OciSubnet](/docs/catalog/oci/subnet) — creates subnets within a VCN that lives in a compartment
+**Compartment name** -- The `name` field falls back to `metadata.name` if not provided. The name must be unique among siblings within the parent compartment. It appears in the OCI Console and is referenced in IAM policy statements.
+
+**Description** -- Required by the OCI API. Use it to document what resources or teams the compartment is intended for. This is the first thing operators see when navigating the compartment hierarchy in the OCI Console.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `compartment_id` | OCID of the created compartment | OciVcn, OciSubnet, OciSecurityGroup, OciIdentityPolicy, OciDynamicGroup, OciKmsVault, OciKmsKey, and virtually every other OCI component |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Project compartment** -- A long-lived compartment for a project, team, or workload with delete protection enabled. The standard choice for production, staging, and shared-services compartments. Start from the **Project** preset.
+
+**Sandbox compartment** -- An ephemeral compartment for development, CI/CD pipelines, or proof-of-concept work with `enableDelete: true` for automated teardown. Start from the **Sandbox** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the parent compartment for nested hierarchies

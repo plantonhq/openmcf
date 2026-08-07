@@ -8,281 +8,141 @@ componentName: "awsglobalaccelerator"
 
 # AWS Global Accelerator
 
-Deploys an AWS Global Accelerator with bundled listeners and regional endpoint groups, providing two static anycast IP addresses that route traffic through the AWS global network to healthy endpoints in one or more AWS regions. The component bundles the full accelerator hierarchy (accelerator, listeners, endpoint groups, endpoints) into a single resource for complete deployment in one manifest.
+Deploys a Global Accelerator with static anycast IP addresses, configurable listeners, regional endpoint groups, and endpoint routing. The accelerator routes traffic through the AWS global network to optimal endpoints based on health, geography, and traffic dial percentages. Integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsGlobalAccelerator resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Global Accelerator** — an `aws_globalaccelerator_accelerator` with static anycast IPs, optional flow log delivery to S3, and support for both IPv4 and dual-stack addressing
-- **Listeners** — one `aws_globalaccelerator_listener` per entry in `spec.listeners`, each defining the protocol (TCP or UDP), port ranges, and client affinity setting
-- **Endpoint Groups** — one `aws_globalaccelerator_endpoint_group` per entry in each listener's `endpointGroups`, each targeting a specific AWS region with health check configuration, traffic dial percentage, and optional port overrides
-- **Endpoints** — registered within each endpoint group, pointing to ALBs, NLBs, Elastic IPs, or EC2 instances with configurable weights and client IP preservation
+- **Global Accelerator** -- a networking resource with two static anycast IPv4 addresses (or dual-stack) that serve as fixed entry points, with configurable flow log delivery to S3
+- **Listeners** -- one per entry in `listeners`, each accepting traffic on specified port ranges and protocol (TCP or UDP), with optional SOURCE_IP client affinity
+- **Endpoint Groups** -- one per listener entry, each targeting a specific AWS region with configurable health checks, traffic dial percentages, and port overrides
+- **Endpoints** -- registered within endpoint groups, supporting ALBs, NLBs, Elastic IPs, and EC2 instances as traffic targets with configurable weights and client IP preservation
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least one endpoint** (ALB, NLB, Elastic IP, or EC2 instance) deployed in the target region, or plan to register endpoints after the accelerator is created
-- **An S3 bucket** if enabling flow logs
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `global-accelerator.yaml`:
+### AWS Account
+
+- **Endpoint resources** -- at least one ALB, NLB, Elastic IP, or EC2 instance to register as a traffic target. Provide the ARN or ID directly or reference another Cloud Resource via ValueFromRef.
+- **An S3 bucket** (optional) for flow log storage when traffic analysis is needed. Provide the bucket name directly or reference an AwsS3Bucket Cloud Resource.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Global Accelerator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic TCP Accelerator** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsGlobalAccelerator
 metadata:
-  name: my-ga
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsGlobalAccelerator.my-ga
+  name: web-accelerator
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   listeners:
-    - name: tcp-443
+    - name: https
       protocol: TCP
       portRanges:
         - fromPort: 443
           toPort: 443
       endpointGroups:
         - name: primary
+          endpoints:
+            - endpointId:
+                value: "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-alb/abc123"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f global-accelerator.yaml
 ```
 
-This creates a Global Accelerator with a TCP listener on port 443 and one endpoint group in the provider's default region. No endpoints are registered yet — add them to the `endpoints` array or register them after deployment.
+This creates a Global Accelerator with a single TCP listener on port 443 routing to one ALB endpoint. Flow logs are disabled, health checks use TCP defaults, and traffic dial is set to 100%.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS provider region for the deployment. Global Accelerator itself is a global service (its API is homed in us-west-2 regardless of this value); this region serves as the default `endpointGroupRegion` for endpoint groups that do not set one. | Required; non-empty |
-| `listeners` | `object[]` | Listener definitions. Each defines a protocol, port ranges, and endpoint groups. | Minimum 1 item |
-| `listeners[].name` | `string` | Unique name for the listener. Used as key in output maps. | Lowercase alphanumeric and hyphens, starts with letter, max 63 chars |
-| `listeners[].protocol` | `string` | Layer 4 protocol: `TCP` or `UDP`. | Required |
-| `listeners[].portRanges` | `object[]` | Port ranges the listener accepts traffic on. | Minimum 1, maximum 10 |
-| `listeners[].portRanges[].fromPort` | `int` | First port in range (inclusive). | 1–65535 |
-| `listeners[].portRanges[].toPort` | `int` | Last port in range (inclusive). | 1–65535 |
-| `listeners[].endpointGroups` | `object[]` | Regional endpoint group definitions. | Minimum 1 |
-| `listeners[].endpointGroups[].name` | `string` | Unique name within the listener. Used in composite output key. | Lowercase alphanumeric and hyphens, starts with letter, max 63 chars |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | `bool` | `true` | Whether the accelerator accepts traffic. Set `false` to disable without destroying. |
-| `ipAddressType` | `string` | `IPV4` | `IPV4` or `DUAL_STACK` (IPv4 + IPv6). |
-| `ipAddresses` | `string[]` | `[]` | BYOIP addresses (max 2). ForceNew. Leave empty for AWS-allocated IPs. |
-| `flowLogs.enabled` | `bool` | `false` | Enable flow log delivery to S3. |
-| `flowLogs.s3Bucket` | `string` | — | S3 bucket for flow logs. Required when `flowLogs.enabled` is `true`. Can reference AwsS3Bucket via `valueFrom`. |
-| `flowLogs.s3Prefix` | `string` | `""` | S3 key prefix for flow logs. |
-| `listeners[].clientAffinity` | `string` | `NONE` | `NONE` or `SOURCE_IP`. Use `SOURCE_IP` for stateful protocols. |
-| `listeners[].endpointGroups[].endpointGroupRegion` | `string` | Provider region | AWS region for the endpoint group. ForceNew. |
-| `listeners[].endpointGroups[].healthCheckPort` | `int` | Listener port | Port for health checks. |
-| `listeners[].endpointGroups[].healthCheckProtocol` | `string` | `TCP` | `TCP`, `HTTP`, or `HTTPS`. |
-| `listeners[].endpointGroups[].healthCheckPath` | `string` | — | Path for HTTP/HTTPS health checks. Required when protocol is `HTTP` or `HTTPS`. |
-| `listeners[].endpointGroups[].healthCheckIntervalSeconds` | `int` | `30` | Health check interval in seconds. Must be exactly `10` or `30` (AWS constraint). |
-| `listeners[].endpointGroups[].thresholdCount` | `int` | `3` | Consecutive checks to change health status. Range: 1–10. |
-| `listeners[].endpointGroups[].trafficDialPercentage` | `float` | `100.0` | Percentage of traffic to route to this group. 0.0–100.0. Set to 0 to drain a region. |
-| `listeners[].endpointGroups[].endpoints` | `object[]` | `[]` | Endpoints to register. Can be added later. |
-| `listeners[].endpointGroups[].endpoints[].endpointId` | `string` | — | ALB ARN, NLB ARN, EIP allocation ID, or EC2 instance ID. Can reference via `valueFrom`. |
-| `listeners[].endpointGroups[].endpoints[].weight` | `int` | `128` (when omitted) | Relative traffic weight. 0–255. An explicit `0` stops traffic without removing the endpoint. |
-| `listeners[].endpointGroups[].endpoints[].clientIpPreservationEnabled` | `bool` | AWS per-type default | Preserve the original client IP. Applies to ALB and EC2 endpoints; omitted means the AWS default for the endpoint type. |
-| `listeners[].endpointGroups[].endpoints[].attachmentArn` | `string` | `""` | Cross-account attachment ARN authorizing an endpoint owned by another AWS account. Empty for same-account endpoints. |
-| `listeners[].endpointGroups[].portOverrides` | `object[]` | `[]` | Remap listener ports to different endpoint ports. Maximum 10. |
-| `listeners[].endpointGroups[].portOverrides[].listenerPort` | `int` | — | Source listener port. 1–65535. |
-| `listeners[].endpointGroups[].portOverrides[].endpointPort` | `int` | — | Destination endpoint port. 1–65535. |
-
-## Examples
-
-### Single-Region TCP Accelerator
-
-Route HTTPS traffic to an ALB through the AWS global network:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the accelerator to an ALB and S3 bucket deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlobalAccelerator
-metadata:
-  name: web-ga
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsGlobalAccelerator.web-ga
 spec:
-  region: us-east-1
-  listeners:
-    - name: https
-      protocol: TCP
-      portRanges:
-        - fromPort: 443
-          toPort: 443
-      endpointGroups:
-        - name: us-east-1
-          endpointGroupRegion: us-east-1
-          healthCheckProtocol: HTTP
-          healthCheckPath: /health
-          endpoints:
-            - endpointId: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234567890abcdef
-              weight: 128
-              clientIpPreservationEnabled: true
-```
-
-### Multi-Region with Traffic Shifting
-
-Route traffic across two regions with a 70/30 split for gradual regional migration:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlobalAccelerator
-metadata:
-  name: global-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsGlobalAccelerator.global-api
-spec:
-  region: us-east-1
-  ipAddressType: DUAL_STACK
-  flowLogs:
-    enabled: true
-    s3Bucket: my-ga-flow-logs
-    s3Prefix: global-api/
-  listeners:
-    - name: https
-      protocol: TCP
-      portRanges:
-        - fromPort: 443
-          toPort: 443
-      endpointGroups:
-        - name: us-east-1
-          endpointGroupRegion: us-east-1
-          healthCheckProtocol: HTTP
-          healthCheckPath: /health
-          healthCheckIntervalSeconds: 10
-          thresholdCount: 5
-          trafficDialPercentage: 70.0
-          endpoints:
-            - endpointId: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/us-alb/1111111111111111
-              weight: 200
-              clientIpPreservationEnabled: true
-        - name: eu-west-1
-          endpointGroupRegion: eu-west-1
-          healthCheckProtocol: HTTP
-          healthCheckPath: /health
-          healthCheckIntervalSeconds: 10
-          thresholdCount: 5
-          trafficDialPercentage: 30.0
-          endpoints:
-            - endpointId: arn:aws:elasticloadbalancing:eu-west-1:123456789012:loadbalancer/app/eu-alb/2222222222222222
-              weight: 200
-              clientIpPreservationEnabled: true
-```
-
-### Gaming UDP with Client Affinity
-
-UDP accelerator for a real-time multiplayer game with source IP stickiness:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlobalAccelerator
-metadata:
-  name: game-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsGlobalAccelerator.game-server
-spec:
-  region: us-west-2
-  listeners:
-    - name: game-udp
-      protocol: UDP
-      clientAffinity: SOURCE_IP
-      portRanges:
-        - fromPort: 7000
-          toPort: 8000
-      endpointGroups:
-        - name: us-west-2
-          endpointGroupRegion: us-west-2
-          endpoints:
-            - endpointId: eipalloc-0123456789abcdef0
-              weight: 128
-            - endpointId: eipalloc-fedcba9876543210f
-              weight: 128
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding ARNs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlobalAccelerator
-metadata:
-  name: ref-ga
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsGlobalAccelerator.ref-ga
-spec:
-  region: us-east-1
   flowLogs:
     enabled: true
     s3Bucket:
       valueFrom:
         kind: AwsS3Bucket
-        name: ga-logs
+        name: ga-flow-logs
         fieldPath: status.outputs.bucket_id
-  listeners:
-    - name: https
-      protocol: TCP
-      portRanges:
-        - fromPort: 443
-          toPort: 443
-      endpointGroups:
-        - name: primary
-          healthCheckProtocol: HTTP
-          healthCheckPath: /health
-          endpoints:
-            - endpointId:
-                valueFrom:
-                  kind: AwsAlb
-                  name: my-alb
-                  field: status.outputs.load_balancer_arn
-              weight: 200
-              clientIpPreservationEnabled: true
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the S3 bucket first, then provisions the Global Accelerator with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `accelerator_arn` | `string` | ARN of the Global Accelerator |
-| `accelerator_dns_name` | `string` | Anycast DNS name (e.g., `a1234567890abcdef.awsglobalaccelerator.com`) |
-| `accelerator_dual_stack_dns_name` | `string` | IPv4+IPv6 DNS name. Only populated when `ipAddressType` is `DUAL_STACK`. |
-| `accelerator_hosted_zone_id` | `string` | Route53 hosted zone ID for alias records (always `Z2BJ6XQ5FK7U4H`) |
-| `accelerator_ip_addresses` | `string[]` | Static anycast IP addresses assigned to the accelerator |
-| `listener_arns` | `map<string, string>` | Map of listener name to listener ARN |
-| `endpoint_group_arns` | `map<string, string>` | Map of `listener_name/group_name` to endpoint group ARN |
+These are the most important decisions when configuring a Global Accelerator. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**IP address type** -- `ipAddressType` defaults to `IPV4` for two static anycast IPv4 addresses. Set to `DUAL_STACK` for IPv4 + IPv6 when serving clients on IPv6 networks. BYOIP addresses can replace AWS-allocated IPs for IP portability.
 
-- [AwsAlb](/docs/catalog/aws/alb) — common endpoint type for HTTP/HTTPS workloads behind the accelerator
-- [AwsNlb](/docs/catalog/aws/nlb) — common endpoint type for Layer 4 workloads
-- [AwsElasticIp](/docs/catalog/aws/elastic-ip) — provides static IP endpoints for direct server routing
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — stores flow logs when flow log delivery is enabled
-- [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — create alias records pointing custom domains to the accelerator DNS name
+**Client affinity** -- Set `clientAffinity` to `SOURCE_IP` on a listener to route all requests from the same client IP to the same endpoint. Required for stateful protocols (gaming, WebSocket, long-lived TCP sessions). Default `NONE` distributes requests across endpoints.
+
+**Traffic dial percentage** -- `trafficDialPercentage` on each endpoint group controls what fraction of traffic reaches that region (0.0-100.0). Use values below 100 for gradual traffic shifting between regions during blue/green or canary deployments. Set to 0 to drain a region without removing endpoints.
+
+**Health check configuration** -- Each endpoint group supports TCP, HTTP, or HTTPS health checks. AWS only supports intervals of exactly 10 or 30 seconds. HTTP/HTTPS checks validate application readiness via a path, while TCP checks only verify port reachability.
+
+**Cross-account endpoints** -- An endpoint that lives in another AWS account needs a Global Accelerator cross-account attachment: create the attachment in the endpoint-owning account (naming this accelerator's account as a principal) and supply its ARN in the endpoint's `attachmentArn`. Same-account endpoints -- the common case -- leave it empty.
+
+**Optional dials stay AWS-owned when unset** -- Fields like endpoint `weight` (default 128), `trafficDialPercentage` (default 100), and the health-check port (defaults to the listener's port) are only written to the spec when you take a position. For `weight` and `trafficDialPercentage`, 0 is a real value that drains the endpoint or region -- distinct from leaving the field unset.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsS3Bucket** (optional) | `flowLogs.s3Bucket` | `status.outputs.bucket_id` |
+| **AwsAlb** (optional) | `listeners[].endpointGroups[].endpoints[].endpointId` | `status.outputs.load_balancer_arn` |
+| **AwsNlb** (optional) | `listeners[].endpointGroups[].endpoints[].endpointId` | `status.outputs.load_balancer_arn` |
+| **AwsElasticIp** (optional) | `listeners[].endpointGroups[].endpoints[].endpointId` | `status.outputs.allocation_id` |
+| **AwsEc2Instance** (optional) | `listeners[].endpointGroups[].endpoints[].endpointId` | `status.outputs.instance_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `accelerator_arn` | ARN of the Global Accelerator | IAM policies, cross-service permissions |
+| `accelerator_dns_name` | DNS name for client connections | Route53 alias records, client configuration |
+| `accelerator_dual_stack_dns_name` | Dual-stack DNS name (IPv4 + IPv6) | IPv6-capable client configuration |
+| `accelerator_hosted_zone_id` | Route53 hosted zone ID for the accelerator | Route53 alias record creation |
+| `accelerator_ip_addresses` | Static anycast IP addresses | DNS pinning, firewall allowlists, client configuration |
+| `listener_arns` | Map of listener name to listener ARN | Cross-resource listener references |
+| `endpoint_group_arns` | Map of listener/group name to endpoint group ARN | Cross-resource endpoint group references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic TCP accelerator** -- Single-region accelerator with TCP on port 443 routing to one ALB endpoint. Provides static anycast IPs and BGP-based failover. Start from the **Basic TCP Accelerator** preset.
+
+**Multi-region production** -- Two regional endpoint groups (e.g., us-east-1 and eu-west-1) with HTTP health checks, flow logs, and weighted traffic distribution. Automatic regional failover within seconds. Start from the **Multi-Region Production** preset.
+
+**Gaming UDP accelerator** -- UDP protocol with SOURCE_IP affinity and a port range for game servers. Routes players to the nearest healthy game server via Elastic IP endpoints. Start from the **Gaming UDP Accelerator** preset.
+
+## Works With
+
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the storage bucket for flow log delivery
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- an Application Load Balancer registered as an endpoint traffic target
+- [**AWS NLB**](/cloud-catalog/aws-nlb) -- a Network Load Balancer registered as an endpoint traffic target
+- [**AWS Elastic IP**](/cloud-catalog/aws-elastic-ip) -- an Elastic IP allocation registered as an endpoint traffic target
+- [**AWS EC2 Instance**](/cloud-catalog/aws-ec2-instance) -- an EC2 instance registered as an endpoint traffic target

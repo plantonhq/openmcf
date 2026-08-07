@@ -61,7 +61,7 @@ func customHostname(
 // buildSsl maps the spec ssl block onto the provider's ssl args. Note the Pulumi
 // SDK names differ from the Terraform provider for two fields: the spec's
 // `custom_cert_bundle` maps to `CustomCertBundles` and `settings.tls_1_3` maps to
-// `Tls13`; both carry identical data — see docs/README.md ("Field-name nuance").
+// `Tls13`; both carry identical data — see ../../../GUIDE.md ("Field-name nuance").
 func buildSsl(s *cloudflarecustomhostnamev1alpha1.CloudflareCustomHostnameSsl) *cloudflare.CustomHostnameSslArgs {
 	args := &cloudflare.CustomHostnameSslArgs{}
 

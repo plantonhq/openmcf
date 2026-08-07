@@ -6,162 +6,78 @@ order: 100
 componentName: "ocirediscluster"
 ---
 
-# OCI Redis Cluster
+# Redis Cluster on OCI
 
-Deploys an Oracle Cloud Infrastructure Cache (Redis) cluster — a fully managed, Redis-compatible in-memory caching service that supports both non-sharded (single primary with replicas) and sharded (horizontally scaled) topologies.
+Deploys an Oracle Cloud Infrastructure Cache (Redis) cluster -- a fully managed, Redis-compatible in-memory caching service supporting both non-sharded and sharded deployment modes. Non-sharded clusters provide a single primary with optional replicas for high availability. Sharded clusters distribute data across multiple shards for horizontal scaling, each with its own primary and replicas. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments, subnets, and security groups.
 
 ## What Gets Created
 
-When you deploy an OciRedisCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Redis Cluster** — an `oci_redis_redis_cluster` resource in the specified compartment and subnet. Non-sharded clusters consist of a single primary with optional replicas. Sharded clusters distribute data across multiple shards, each with its own primary and replicas. Freeform tags are automatically populated from metadata labels, organization, and environment.
+- **Redis Cluster** -- a `redis.RedisCluster` in the specified compartment and subnet with configurable node count, memory per node, software version, cluster topology (sharded or non-sharded), and network security group associations
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the cluster
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the Redis cluster will be created — either a literal value or a reference to an OciCompartment resource
-- **A subnet OCID** where the Redis cluster will be placed — either a literal value or a reference to an OciSubnet resource
-- **A supported Redis version** available in the target region (e.g. `V7.0.5`, `V7.1.1`)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `redis-cluster.yaml`:
+### OCI Tenancy
+
+- A compartment to place the cluster in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A private subnet for cluster placement. The cluster runs on private IPs within the subnet. Provide the subnet OCID directly or reference an OciSubnet Cloud Resource via ValueFromRef. Changing the subnet forces recreation.
+- Optionally, one or more network security groups to control inbound/outbound traffic to the cluster endpoints.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Redis Cluster on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Non-Sharded Cluster** preset in the [Presets](#presets) tab to pre-populate a 3-node HA cluster with read replicas.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciRedisCluster
 metadata:
-  name: my-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciRedisCluster.my-cache
+  name: app-cache
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
   subnetId:
     value: "ocid1.subnet.oc1..example"
-  nodeCount: 2
-  nodeMemoryInGbs: 4
-  softwareVersion: "V7.0.5"
+  nodeCount: 3
+  nodeMemoryInGbs: 8
+  softwareVersion: V7.1.1
+  clusterMode: nonsharded
 ```
-
-Deploy:
 
 ```shell
 planton apply -f redis-cluster.yaml
 ```
 
-This creates a non-sharded Redis cluster with 2 nodes (1 primary + 1 replica), each with 4 GB of memory. The cluster ID, primary endpoint, replicas endpoint, and discovery endpoint are exported as stack outputs.
+This creates a non-sharded Redis 7.1.1 cluster with 3 nodes (1 primary + 2 replicas) and 8 GB memory per node. No network security groups or custom config set are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the Redis cluster will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `subnetId` | `StringValueOrRef` | OCID of the subnet where the Redis cluster will be placed. Changing this forces recreation. Can reference an OciSubnet resource via `valueFrom`. | Required |
-| `nodeCount` | `int32` | Number of nodes. For non-sharded clusters: total node count (1 primary + N-1 replicas). For sharded clusters: nodes per shard. | >= 1 |
-| `nodeMemoryInGbs` | `float` | Memory allocated to each node in gigabytes. Common values: 2, 4, 8, 16, 32. | > 0 |
-| `softwareVersion` | `string` | OCI Cache engine version (e.g. `V7.0.5`, `V7.1.1`). Available versions depend on the region. | Non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | `metadata.name` | Human-readable name shown in the OCI Console. Falls back to `metadata.name` if not provided. |
-| `clusterMode` | `ClusterMode` | `cluster_mode_unspecified` | Cluster topology. `nonsharded`: single primary with replicas. `sharded`: multiple shards for horizontal scaling. When unset, OCI defaults to non-sharded. Changing this forces recreation. |
-| `shardCount` | `int32` | — | Number of shards. Only applicable when `clusterMode` is `sharded`. Each shard gets `nodeCount` nodes. Must be > 0 when `clusterMode` is `sharded`. |
-| `nsgIds` | `StringValueOrRef[]` | — | OCIDs of network security groups controlling access to the cluster. Can reference OciSecurityGroup resources via `valueFrom`. |
-| `configSetId` | `StringValueOrRef` | — | OCID of an OCI Cache Config Set providing custom Redis configuration parameters (e.g. maxmemory-policy, timeout). When omitted, the default configuration is used. |
-
-## Examples
-
-### Non-Sharded Cluster for Development
-
-A minimal non-sharded cluster with a single replica for development workloads:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the cluster to a compartment, subnet, and security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciRedisCluster
-metadata:
-  name: dev-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciRedisCluster.dev-cache
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetId:
-    value: "ocid1.subnet.oc1..example"
-  nodeCount: 2
-  nodeMemoryInGbs: 2
-  softwareVersion: "V7.0.5"
-```
-
-### Sharded Cluster for Production
-
-A sharded cluster with 3 shards and 3 nodes per shard for horizontally scaled production workloads:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciRedisCluster
-metadata:
-  name: prod-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciRedisCluster.prod-cache
-  env: prod
-  org: acme
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetId:
-    value: "ocid1.subnet.oc1..example"
-  displayName: "Production Redis Cache"
-  nodeCount: 3
-  nodeMemoryInGbs: 16
-  softwareVersion: "V7.1.1"
-  clusterMode: sharded
-  shardCount: 3
-  nsgIds:
-    - value: "ocid1.networksecuritygroup.oc1..example"
-```
-
-### Cluster with Foreign Key References
-
-Reference Planton-managed compartment, subnet, and NSG resources instead of hardcoding OCIDs:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciRedisCluster
-metadata:
-  name: ref-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OciRedisCluster.ref-cache
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: staging-compartment
+      name: app-compartment
       fieldPath: status.outputs.compartmentId
   subnetId:
     valueFrom:
       kind: OciSubnet
-      name: app-subnet
+      name: cache-subnet
       fieldPath: status.outputs.subnetId
-  nodeCount: 2
-  nodeMemoryInGbs: 8
-  softwareVersion: "V7.0.5"
   nsgIds:
     - valueFrom:
         kind: OciSecurityGroup
@@ -169,47 +85,54 @@ spec:
         fieldPath: status.outputs.networkSecurityGroupId
 ```
 
-### Cluster with Custom Config Set
+The InfraPipeline resolves the dependency graph, deploys the compartment, subnet, and security group first, then provisions the Redis cluster with the resolved values.
 
-A non-sharded cluster using a custom OCI Cache Config Set for tuned Redis configuration:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciRedisCluster
-metadata:
-  name: custom-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciRedisCluster.custom-cache
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  subnetId:
-    value: "ocid1.subnet.oc1..example"
-  nodeCount: 3
-  nodeMemoryInGbs: 32
-  softwareVersion: "V7.1.1"
-  configSetId:
-    value: "ocid1.ocicacheconfigset.oc1..example"
-```
+These are the most important decisions when configuring a Redis cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Cluster mode** -- Set `clusterMode` to `nonsharded` for a single-shard cluster with one primary and optional replicas (suitable for most caching workloads). Set to `sharded` for data distribution across multiple shards (each with its own primary and replicas) when a single node's memory is insufficient. Changing `clusterMode` forces recreation.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Node count and sharding** -- For non-sharded clusters, `nodeCount` is the total number of nodes (1 primary + N-1 replicas). For sharded clusters, `nodeCount` is the number of nodes per shard, and `shardCount` sets the number of shards. Total nodes in a sharded cluster = `nodeCount` x `shardCount`. Both are updatable after creation.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `clusterId` | `string` | OCID of the Redis cluster |
-| `primaryFqdn` | `string` | FQDN of the primary (read-write) endpoint. Main connection point for non-sharded clusters. |
-| `primaryEndpointIpAddress` | `string` | Private IP address of the primary endpoint |
-| `replicasFqdn` | `string` | FQDN of the replica (read-only) endpoint |
-| `discoveryFqdn` | `string` | FQDN of the discovery endpoint for sharded clusters. Clients use this to discover shard topology. |
+**Memory per node** -- Set `nodeMemoryInGbs` to the memory allocated to each node. Common values: 2, 4, 8, 16, 32 GB. Total cache capacity = `nodeMemoryInGbs` x total nodes (non-sharded) or `nodeMemoryInGbs` x `nodeCount` x `shardCount` (sharded). Updatable.
 
-## Related Components
+**Software version** -- Set `softwareVersion` to the desired Redis version (e.g., `V7.0.5`, `V7.1.1`). Available versions depend on the region. Updatable -- OCI performs rolling upgrades.
 
-- [OciSubnet](/docs/catalog/oci/subnet) — provides the subnet referenced by `subnetId`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId`
-- [OciSecurityGroup](/docs/catalog/oci/network-security-group) — controls network access to the cluster via `nsgIds`
-- [OciVcn](/docs/catalog/oci/vcn) — provides the VCN that contains the subnet
+**Config set** -- Set `configSetId` to reference a custom OCI Cache Config Set for Redis configuration parameters (e.g., `maxmemory-policy`, `timeout`). When omitted, the default configuration is used.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciSubnet** | `subnetId` | `status.outputs.subnetId` |
+| **OciSecurityGroup** (optional) | `nsgIds` | `status.outputs.networkSecurityGroupId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_id` | OCID of the Redis cluster | Monitoring, IAM policy scoping, resource management |
+| `primary_fqdn` | FQDN of the primary (read-write) endpoint | Application connection configuration for non-sharded clusters |
+| `primary_endpoint_ip_address` | Private IP address of the primary endpoint | Firewall rules, direct IP-based connections |
+| `replicas_fqdn` | FQDN of the replica (read-only) endpoint | Read-replica routing for non-sharded clusters |
+| `discovery_fqdn` | FQDN of the discovery endpoint for sharded clusters | Client shard topology discovery for sharded clusters |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Non-sharded cluster** -- A 3-node Redis 7.1.1 cluster (1 primary + 2 replicas) with 8 GB per node and NSG-based access control. The standard configuration for application caching with high availability and read scaling. Start from the **Non-Sharded Cluster** preset.
+
+**Sharded cluster** -- A 3-shard Redis 7.1.1 cluster with 3 nodes per shard (9 nodes total), 16 GB per node, and NSG-based access control. Designed for large-scale caching where data exceeds single-node memory capacity. Start from the **Sharded Cluster** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this Redis cluster
+- [**Subnet on OCI**](/cloud-catalog/oci-subnet) -- provides the private subnet for cluster placement
+- [**Network Security Group on OCI**](/cloud-catalog/oci-security-group) -- provides network security rules for cluster access control

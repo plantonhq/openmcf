@@ -12,26 +12,26 @@ Generated resources: `fc.V3Function`.
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -70,4 +70,4 @@ The `module/` directory contains three files:
 
 ## Further Reading
 
-- [`../hack/manifest.yaml`](../../e2e/manifest.yaml) — Minimal test manifest
+- [`../../e2e/manifest.yaml`](../../e2e/manifest.yaml) — Minimal test manifest

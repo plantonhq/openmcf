@@ -22,12 +22,12 @@ until the worker polls), never ECS task liveness.
 Use the Planton CLI (tofu) with the default local backend:
 
 ```shell
-planton tofu init --manifest hack/manifest.yaml
-planton tofu plan --manifest hack/manifest.yaml
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest e2e/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-See [`hack/manifest.yaml`](../../e2e/manifest.yaml) for a minimal test manifest.
+See [`e2e/manifest.yaml`](../../e2e/manifest.yaml) for a minimal test manifest.

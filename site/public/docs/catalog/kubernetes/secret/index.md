@@ -8,223 +8,101 @@ componentName: "kubernetessecret"
 
 # Kubernetes Secret
 
-Deploys a type-safe Kubernetes Secret to a target cluster, supporting Opaque, TLS, Docker registry, basic-auth, and SSH-auth secret types through a single declarative manifest. The IaC module handles data encoding, label merging, and `.dockerconfigjson` construction automatically.
+Deploys a type-safe Kubernetes Secret supporting Opaque, TLS, Docker registry, Basic Auth, SSH Auth, and Service Account Token secret types. Each variant is validated at creation time with type-specific fields, ensuring the correct Kubernetes secret type is produced. Manages secrets declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
 
 ## What Gets Created
 
-When you deploy a KubernetesSecret resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Secret** — a Kubernetes Secret with the appropriate type (`Opaque`, `kubernetes.io/tls`, `kubernetes.io/dockerconfigjson`, `kubernetes.io/basic-auth`, or `kubernetes.io/ssh-auth`), populated via `stringData` so values can be supplied as plain strings
-- **Labels** — standard Planton tracking labels (`managed-by`, `resource`, `resource-kind`) merged with any user-provided labels
-- **Annotations** — user-provided annotations applied to the Secret metadata
+- **Kubernetes Secret** -- a single Secret resource in the specified namespace with the correct `type` field set automatically based on the chosen variant (Opaque, `kubernetes.io/tls`, `kubernetes.io/dockerconfigjson`, `kubernetes.io/basic-auth`, `kubernetes.io/ssh-auth`, or `kubernetes.io/service-account-token`). UTF-8 values are written using Kubernetes `stringData` semantics; Opaque `binaryData` entries are written pre-encoded as base64.
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists (the module does not create namespaces)
-- **Secret values** ready to supply — PEM-encoded certificates for TLS, registry credentials for Docker, SSH private keys for SSH auth, or plain key-value pairs for Opaque secrets
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `secret.yaml`:
+### Kubernetes Cluster
+
+- The target namespace must already exist (the module does not create it). Use the Kubernetes Namespace component to manage namespaces declaratively.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Kubernetes Secret**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Opaque** preset for general-purpose secrets or **TLS** for certificate key pairs in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSecret
 metadata:
-  name: my-secret
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSecret.my-secret
+  name: app-credentials
+  org: acme-corp
+  env: prod
 spec:
-  name: my-secret
+  name: app-credentials
+  namespace: backend-services
   opaque:
     data:
-      API_KEY: "sk-example-key-value"
+      DB_PASSWORD: "s3cret-value"
+      API_KEY: "tok_live_abc123"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f secret.yaml
 ```
 
-This creates an Opaque Kubernetes Secret named `my-secret` in the `default` namespace with a single key `API_KEY`.
+This creates an Opaque secret in the `backend-services` namespace with two key-value pairs. The secret type is set to `Opaque` automatically. Immutability and additional labels are not configured.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Kubernetes Secret. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.name` | `string` | Name of the Kubernetes Secret. Must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots). | 1–253 characters, matches `^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$` |
-| `spec.<secretData>` | `oneof` | Exactly one secret data variant must be provided: `opaque`, `tls`, `dockerConfigJson`, `basicAuth`, or `sshAuth`. | One variant required |
-| `spec.opaque.data` | `map<string, string>` | Key-value pairs of secret data (when using the `opaque` variant). | At least 1 entry |
-| `spec.tls.tlsCrt` | `string` | PEM-encoded TLS certificate or certificate chain (when using the `tls` variant). | Non-empty |
-| `spec.tls.tlsKey` | `string` | PEM-encoded TLS private key (when using the `tls` variant). | Non-empty |
-| `spec.dockerConfigJson.registryServer` | `string` | Docker registry server URL, e.g., `https://index.docker.io/v1/` (when using the `dockerConfigJson` variant). | Non-empty |
-| `spec.dockerConfigJson.username` | `string` | Registry authentication username (when using the `dockerConfigJson` variant). | Non-empty |
-| `spec.dockerConfigJson.password` | `string` | Registry authentication password or access token (when using the `dockerConfigJson` variant). | Non-empty |
-| `spec.basicAuth.username` | `string` | Username for basic authentication (when using the `basicAuth` variant). | Non-empty |
-| `spec.basicAuth.password` | `string` | Password for basic authentication (when using the `basicAuth` variant). | Non-empty |
-| `spec.sshAuth.sshPrivateKey` | `string` | PEM-encoded SSH private key (when using the `sshAuth` variant). | Non-empty |
+**Secret type selection** -- Exactly one variant must be provided: `opaque` for arbitrary key-value data (with a `binaryData` map for base64 payloads), `tls` for certificate and private key pairs, `dockerConfigJson` for container registry credentials, `basicAuth` for username/password pairs, `sshAuth` for SSH private keys, or `serviceAccountToken` for a long-lived API token the cluster mints for a ServiceAccount. The variant determines the Kubernetes secret type automatically.
 
-### Optional Fields
+**Immutability** -- Set `immutable` to `true` to prevent updates after creation. Immutable secrets reduce API server watch load and protect against accidental overwrites. Once set, the secret data cannot be changed -- you must delete and recreate it.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.namespace` | `string` | `default` | Namespace where the secret will be created. Max 63 characters, valid DNS label. |
-| `spec.labels` | `map<string, string>` | `{}` | Additional labels merged with standard Planton labels. |
-| `spec.annotations` | `map<string, string>` | `{}` | Additional annotations applied to the secret. |
-| `spec.immutable` | `bool` | `false` | When `true`, the secret data cannot be updated after creation. Immutable secrets reduce API server watch load. |
-| `spec.dockerConfigJson.email` | `string` | — | Optional email associated with the registry account. |
+**Namespace targeting** -- The `namespace` field defaults to `default` if omitted. Ensure the target namespace exists before deploying.
 
-## Examples
+**TLS certificate chain** -- When using the `tls` variant, provide the full PEM-encoded certificate chain in `tlsCrt` (leaf + intermediates) and the corresponding private key in `tlsKey`. Ingress controllers and service meshes automatically validate this type.
 
-### Basic Opaque Secret
+## Outputs and Dependencies
 
-A simple key-value secret for storing application credentials:
+### What This Component Consumes
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesSecret
-metadata:
-  name: app-credentials
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSecret.app-credentials
-spec:
-  name: app-credentials
-  namespace: backend
-  opaque:
-    data:
-      DB_PASSWORD: "s3cret-passw0rd"
-      API_TOKEN: "tok_abc123"
-```
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the Secret is created in; omitted means the cluster's `default` namespace |
+| `spec.serviceAccountToken.serviceAccountName` | KubernetesServiceAccount (`spec.name`) | The ServiceAccount a `kubernetes.io/service-account-token` secret authenticates as |
 
-### TLS Certificate Secret
+### What This Component Provides
 
-A TLS secret for use with Ingress controllers or services that terminate TLS:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesSecret
-metadata:
-  name: api-tls
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesSecret.api-tls
-spec:
-  name: api-tls
-  namespace: ingress
-  immutable: true
-  tls:
-    tlsCrt: |
-      -----BEGIN CERTIFICATE-----
-      MIIBkTCB+wIJAL...
-      -----END CERTIFICATE-----
-    tlsKey: |
-      -----BEGIN EC PRIVATE KEY-----
-      MHQCAQEEIBk2...
-      -----END EC PRIVATE KEY-----
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `secret_name` | The name of the created Kubernetes Secret | Pod `envFrom.secretRef` or volume mount references |
+| `secret_namespace` | The namespace where the secret was created | Cross-namespace secret references |
+| `secret_type` | The Kubernetes secret type string (e.g., Opaque, kubernetes.io/tls) | Conditional logic in downstream configurations |
 
-### Docker Registry Credentials with Labels
+## Common Patterns
 
-A Docker registry pull secret for authenticating with a private container registry, with custom labels and annotations:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesSecret
-metadata:
-  name: ghcr-pull-secret
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSecret.ghcr-pull-secret
-spec:
-  name: ghcr-pull-secret
-  namespace: production
-  labels:
-    team: platform
-    cost-center: infra
-  annotations:
-    description: "GitHub Container Registry pull credentials"
-  immutable: true
-  dockerConfigJson:
-    registryServer: ghcr.io
-    username: my-bot
-    password: "ghp_xxxxxxxxxxxxxxxxxxxx"
-    email: bot@example.com
-```
+**Application credentials** -- Opaque secret storing database passwords, API keys, and connection strings consumed by application pods via `envFrom` or mounted volumes. Start from the **Opaque** preset.
 
-The module constructs the `.dockerconfigjson` JSON automatically from the structured fields, including base64-encoded auth.
+**Ingress TLS termination** -- TLS secret containing a certificate and private key pair referenced by Ingress resources for HTTPS termination. Use when cert-manager is not available and certificates are managed externally. Start from the **TLS** preset.
 
-### Basic Auth Secret
+**Private registry access** -- Docker registry secret providing authentication for pulling images from private container registries (Docker Hub, GCR, ECR, ACR, GHCR). Referenced by pods via `imagePullSecrets`. Start from the **Docker Registry** preset.
 
-A basic authentication secret for services that require username/password credentials:
+## Works With
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesSecret
-metadata:
-  name: monitoring-auth
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSecret.monitoring-auth
-spec:
-  name: monitoring-auth
-  namespace: monitoring
-  basicAuth:
-    username: admin
-    password: "mon!t0r-pass"
-```
-
-### SSH Auth Secret
-
-An SSH authentication secret for Git operations or SSH-based access:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesSecret
-metadata:
-  name: deploy-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSecret.deploy-key
-spec:
-  name: deploy-key
-  namespace: flux-system
-  immutable: true
-  sshAuth:
-    sshPrivateKey: |
-      -----BEGIN OPENSSH PRIVATE KEY-----
-      b3BlbnNzaC1rZXktdjEA...
-      -----END OPENSSH PRIVATE KEY-----
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `secretName` | `string` | Name of the created Kubernetes Secret |
-| `secretNamespace` | `string` | Namespace where the Kubernetes Secret was created |
-| `secretType` | `string` | Kubernetes secret type string (`Opaque`, `kubernetes.io/tls`, `kubernetes.io/dockerconfigjson`, `kubernetes.io/basic-auth`, or `kubernetes.io/ssh-auth`) |
-
-## Related Components
-
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — references secrets as environment variables via `container.app.env.secrets` or as image pull secrets
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace for the secret
+- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this Secret in dependency order.
+- **Kubernetes Service Account** -- the `serviceAccountToken` variant references the identity its token belongs to; docker-registry Secrets are attached to ServiceAccounts as `imagePullSecrets`.
+- **Kubernetes Deployment and the other workload kinds** -- consume secrets as env vars, mounted files, or registry credentials.

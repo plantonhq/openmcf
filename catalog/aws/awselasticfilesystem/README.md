@@ -201,7 +201,7 @@ The following fields require **resource replacement** if changed. Plan them upfr
 - **Per-mount-target security groups** — security groups apply to all mount targets; they gate the same NFS clients regardless of AZ, and AWS's own console offers no per-AZ distinction. Compose separate file systems if isolation is genuinely per-AZ.
 - **`creation_token` as a field** — the token is pinned to `metadata.name` by both engines (it is the idempotency key, not configuration).
 
-See docs/README.md for architecture details and integration patterns.
+See GUIDE.md for architecture details and integration patterns.
 
 ---
 

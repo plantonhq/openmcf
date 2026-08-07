@@ -8,172 +8,128 @@ componentName: "azurevirtualnetwork"
 
 # Azure Virtual Network
 
-Creates an Azure Virtual Network (VNet) -- the isolated, private IP address space every network-attached Azure workload lives inside -- with the full network surface: multi-CIDR and dual-stack address spaces, Azure Network Manager IPAM delegation, custom DNS, BGP community advertisement, DDoS Protection Plan attachment, VM-to-VM encryption, and flow-timeout tuning.
+Deploys an Azure Virtual Network (VNet) -- the isolated, private IP address space every network-attached Azure workload lives inside. The network is deliberately just the network: address planning and network-wide policy live here, while subnets, NAT gateways, and private DNS links are their own composable Cloud Resources referencing this network's outputs. The VNet integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups.
 
 ## What Gets Created
 
-When you deploy an AzureVirtualNetwork resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Virtual Network** — an `azurerm_virtual_network` carrying the address space and network-wide policy
+- **Virtual Network** -- the regional network with your address space (self-planned CIDR blocks or delegated Azure Network Manager IPAM allocation)
+- **DNS Configuration** -- custom DNS servers applied network-wide when `dnsServers` entries are provided; otherwise Azure's default resolver serves the network
+- **DDoS Protection Attachment** -- created only when `ddosProtectionPlan` is configured; attaches an existing (separately billed) DDoS Protection Plan by ARM ID
+- **Network-wide Policies** -- virtual network encryption enforcement and private endpoint VNet policies applied based on configuration
 
-The network is deliberately just the network. Subnets (`AzureSubnet`), outbound NAT (`AzureNatGateway`), and private DNS attachments (`AzurePrivateDnsZoneVirtualNetworkLink`) are their own composable resources referencing this network's outputs -- so topologies grow without touching the network itself.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the network in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/virtualNetworks/write` (Network Contributor, Contributor, or Owner)
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-## Quick Start
+### Azure Subscription
 
-Create a file `network.yaml`:
+- **An Azure Resource Group** -- the network must be created inside a resource group. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **CIDR planning** -- pick private ranges (RFC 1918) that do not overlap with networks you will peer with or with on-premises ranges reachable over VPN/ExpressRoute. Blocks can be added later in place, but a block in use by subnets cannot shrink.
+- **IPAM (optional)** -- delegated allocation requires an Azure Network Manager IPAM pool; the network requests a size and the pool provisions a non-overlapping range at deploy time.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Virtual Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a general-purpose /16 network with Azure's default DNS.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureVirtualNetwork
 metadata:
-  name: prod-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureVirtualNetwork.prod-network
+  name: prod-hub
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: prod-rg
-  name: prod-vnet
+    value: "network-rg"
+  name: prod-hub-vnet
   addressSpaces:
     - "10.0.0.0/16"
+  tags:
+    cost-center: net-1234
 ```
-
-Deploy:
 
 ```shell
-planton apply -f network.yaml
+planton apply -f azure-virtual-network.yaml
 ```
 
-## Configuration Reference
+This creates a /16 network with Azure's default resolver -- room for dozens of /24 subnets. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the network. A regional resource; changing it replaces the network. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Network name, unique within the resource group. | Required, 2-64 chars, Azure naming rules |
-
-### Address Source (exactly one)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `addressSpaces` | `list(string)` | Self-managed CIDR blocks. Multiple blocks are first-class -- grow the space or run dual-stack. |
-| `ipAddressPools` | `list(object)` | Delegate allocation to Azure Network Manager IPAM pools (max 2: one per IP version). Each entry: `id` (pool ARM ID) + `numberOfIpAddresses` (positive number as string; can grow, never shrink). |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `dnsServers` | `list(string)` | Custom DNS server IPs. Empty means Azure's default resolver (168.63.129.16) -- required for private DNS zone resolution. VMs pick up changes on DHCP lease renewal. |
-| `bgpCommunity` | `string` | BGP community advertised with the network's routes over ExpressRoute, `asn:community` notation (ASN segment is always 12076 today). |
-| `ddosProtectionPlan` | `object` | Attach an existing DDoS Protection Plan: `id` (plan ARM ID) + `enable`. The plan is a separate, billed, shareable resource. |
-| `encryption` | `enum` | VM-to-VM encryption enforcement: `ALLOW_UNENCRYPTED` or `DROP_UNENCRYPTED`. Unset = encryption off. Note ARM currently accepts only `ALLOW_UNENCRYPTED`. |
-| `flowTimeoutInMinutes` | `int` | Connection-tracking timeout for intra-network flows, 4-30. Unset = Azure's 4-minute default. |
-| `privateEndpointVnetPolicies` | `enum` | Network-wide private endpoint policy: `BASIC`. Unset = ARM's default (`Disabled`). |
-| `edgeZone` | `string` | Deploy into an Azure Edge Zone (metro-local extension). Changing it replaces the network. |
-| `tags` | `map(string)` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Growing Network with Custom DNS
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the network to a resource group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureVirtualNetwork
-metadata:
-  name: hub-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureVirtualNetwork.hub-network
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: hub-vnet
+      kind: AzureResourceGroup
+      name: production-rg
+      fieldPath: status.outputs.resource_group_name
+  name: production-vnet
   addressSpaces:
     - "10.0.0.0/16"
-    - "10.1.0.0/16"
-  dnsServers:
-    - "10.0.0.4"
-    - "10.0.0.5"
-  flowTimeoutInMinutes: 15
 ```
 
-### DDoS-Protected Public-Facing Network
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the network with the resolved values.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureVirtualNetwork
-metadata:
-  name: edge-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureVirtualNetwork.edge-network
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: edge-rg
-  name: edge-vnet
-  addressSpaces:
-    - "10.50.0.0/16"
-  ddosProtectionPlan:
-    id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/security-rg/providers/Microsoft.Network/ddosProtectionPlans/org-ddos-plan
-    enable: true
-```
+## Key Configuration
 
-### Dual-Stack Network
+These are the most important decisions when configuring a virtual network. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureVirtualNetwork
-metadata:
-  name: dualstack-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureVirtualNetwork.dualstack-network
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: prod-rg
-  name: dualstack-vnet
-  addressSpaces:
-    - "10.2.0.0/16"
-    - "fd00:db8:deca::/48"
-```
+**Address source** -- exactly one of `addressSpaces` (self-planned CIDR blocks, the common choice) or `ipAddressPools` (delegated allocation from Azure Network Manager IPAM, at most two entries -- one per IP version). A /16 starting block means you will likely never renumber; dual-stack networks carry an IPv4 and an IPv6 block side by side.
 
-## Stack Outputs
+**DNS servers** -- leave `dnsServers` empty for Azure's default resolver (168.63.129.16), which Azure Private DNS zone resolution requires. Custom servers replace resolution for EVERY workload in the network and must forward to 168.63.129.16 for private zones to keep resolving.
 
-After deployment, the following outputs are available in `status.outputs`:
+**DDoS protection** -- `ddosProtectionPlan` attaches an existing plan by ARM ID for networks fronting public IPs. Attachment and activation are distinct: `enable: false` keeps the plan attached with protection off, ready to re-activate without re-attaching. Omit the block entirely for Azure's free basic protection.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `virtual_network_id` | `string` | Full ARM ID of the network -- the join key for subnets, peerings, and DNS links |
-| `virtual_network_name` | `string` | The network's name as deployed |
-| `guid` | `string` | ARM's stable network GUID |
-| `address_spaces` | `list(string)` | The ACTUAL ranges carried (IPAM-provisioned when pools delegate allocation) |
+**Encryption enforcement** -- `encryption` enables VM-to-VM traffic encryption over the Azure backbone. `ALLOW_UNENCRYPTED` is the only enforcement mode ARM currently accepts (`DROP_UNENCRYPTED` is API-defined but not yet generally available).
 
-## Related Components
+## Outputs and Dependencies
 
-- [AzureSubnet](/docs/catalog/azure/subnet) — partitions the network's address space into workload segments
-- [AzureNatGateway](/docs/catalog/azure/nat-gateway) — managed outbound connectivity for a subnet
-- [AzurePrivateDnsZoneVirtualNetworkLink](/docs/catalog/azure/private-dns-zone-virtual-network-link) — makes a private DNS zone resolvable from this network
-- [AzureNetworkSecurityGroup](/docs/catalog/azure/network-security-group) — traffic filtering for subnets and NICs
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `virtual_network_id` | Azure Resource Manager ID of the network | AzureSubnet (partitioning), AzurePrivateDnsZoneVirtualNetworkLink (private DNS resolution), AzureVirtualNetworkPeering (connecting networks) |
+| `virtual_network_name` | Name of the virtual network | Resources joining by name inside the network |
+| `guid` | The stable GUID ARM assigns at creation | BGP community advertisement, network diagnostics |
+| `address_spaces` | The address space ACTUALLY carried | For IPAM-allocated networks, the only place the provisioned ranges are visible -- NSG rules, firewall rules, downstream planning |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard network** -- A general-purpose /16 with Azure's default resolver: the networking foundation for any new environment or a spoke in a hub-and-spoke topology. Start from the **Standard** preset.
+
+**Hub with custom DNS** -- Two address blocks (shared services grow fast in hubs), custom DNS servers for on-premises integration, and a raised flow timeout for long-lived gateway traffic. Start from the **Hub with Custom DNS** preset.
+
+**DDoS-protected edge network** -- An attached DDoS Protection Plan and virtual network encryption for networks hosting internet-facing workloads. Start from the **DDoS-Protected** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the network is created in
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- partitions the network's address space into workload segments
+- [**Azure NAT Gateway**](/cloud-catalog/azure-nat-gateway) -- provides managed outbound connectivity for the network's subnets
+- [**Azure Private DNS Zone Virtual Network Link**](/cloud-catalog/azure-private-dns-zone-virtual-network-link) -- makes private DNS zones resolvable from this network
+- [**Azure Virtual Network Peering**](/cloud-catalog/azure-virtual-network-peering) -- connects this network to other networks

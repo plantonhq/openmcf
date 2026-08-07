@@ -81,7 +81,7 @@ This creates a private STANDARD bucket that no IAM grant can ever expose publicl
 | `location` | Location as reported by GCS (upper-cased) |
 | `project_number` | Numeric owning project |
 
-See the [presets](presets/) for remixable starting points and docs/README.md for the deep dive.
+See the [presets](presets/) for remixable starting points and GUIDE.md for the deep dive.
 
 ---
 

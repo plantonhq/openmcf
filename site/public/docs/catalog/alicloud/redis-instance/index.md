@@ -8,103 +8,117 @@ componentName: "alicloudredisinstance"
 
 # AliCloud Redis Instance
 
-Deploys an Alibaba Cloud Redis (KVStore) instance for managed in-memory caching, session management, and real-time data processing. Supports both Redis and Memcache engines, with Redis as the default.
+Deploys a managed Redis (KVStore) instance on Alibaba Cloud with configurable engine versions, cluster sharding, multi-zone high availability, read replicas, and encryption at rest. The instance integrates with Planton's Provider Connections for AliCloud credential management and supports ValueFromRef wiring to VSwitches for network placement.
 
 ## What Gets Created
 
-When you deploy an AliCloudRedisInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **KVStore Instance** -- an `alicloud_kvstore_instance` with the selected engine version, instance class, and network placement
+- **KVStore Instance** -- an `alicloud_kvstore_instance` with the selected engine version, instance class, and network placement in the specified VSwitch
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **A VSwitch** -- the Redis instance is placed in a VSwitch (create one with AliCloudVswitch)
-- The VSwitch's VPC and availability zone determine the instance's network placement
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `redis-instance.yaml`:
+### Alibaba Cloud Account
+
+- **A VSwitch** in the target region and availability zone. The Redis instance inherits its VPC and AZ from the VSwitch. Provide the VSwitch ID directly or reference an AliCloudVswitch Cloud Resource via ValueFromRef.
+- **A secondary AZ VSwitch** (optional) -- for multi-zone HA, set `secondaryZoneId` to a different AZ so the standby node runs in a separate zone.
+- **A KMS key** (optional) -- required when enabling Transparent Data Encryption (`tdeStatus: Enabled`). Once TDE is enabled, it cannot be disabled.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud Redis Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Single** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRedisInstance
 metadata:
-  name: my-redis
+  name: app-cache
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   instanceClass: redis.master.small.default
   password: "${REDIS_PASSWORD}"
   vswitchId:
-    valueFrom:
-      name: my-app-vswitch
+    value: "vsw-abc123"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f redis-instance.yaml
 ```
 
-This creates a Redis 7.0 instance with the default PostPaid billing and VPC password authentication.
+This creates a Redis 7.0 master-slave instance with VPC password authentication, PostPaid billing, and the default `redis.master.small.default` instance class. Sharding, read replicas, SSL, and TDE are not configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Redis instance to a VSwitch deployed in the same InfraPipeline:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | string | Alibaba Cloud region (e.g., `cn-hangzhou`) | Required; non-empty |
-| `vswitchId` | StringValueOrRef | VSwitch ID. Can reference AliCloudVswitch via `valueFrom`. | Required |
-| `instanceClass` | string | Instance specification (e.g., `redis.master.small.default`) | Required; non-empty |
-| `password` | string | Authentication password (8-32 chars) | Required; 8-32 characters |
+```yaml
+spec:
+  vswitchId:
+    valueFrom:
+      kind: AliCloudVswitch
+      name: cache-vswitch
+      fieldPath: status.outputs.vswitch_id
+```
 
-### Optional Fields
+The InfraPipeline resolves the dependency graph, deploys the VSwitch first, then provisions the Redis instance with the resolved VSwitch ID.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `engineVersion` | string | `7.0` | Redis version: `2.8`, `4.0`, `5.0`, `6.0`, `7.0` |
-| `instanceType` | string | `Redis` | Engine: `Redis` or `Memcache` |
-| `dbInstanceName` | string | metadata.name | Instance display name (2-256 chars) |
-| `zoneId` | string | | Primary availability zone |
-| `secondaryZoneId` | string | | Standby AZ for multi-zone HA |
-| `paymentType` | string | `PostPaid` | Billing: `PostPaid` or `PrePaid` |
-| `securityIps` | list | | IP whitelist for access control |
-| `securityGroupId` | string | | Security group ID |
-| `resourceGroupId` | string | | Resource group for organizational grouping |
-| `tags` | map | | Key-value tags |
-| `shardCount` | int32 | | Data shards for cluster mode |
-| `readOnlyCount` | int32 | | Read replicas in primary zone (1-9) |
-| `sslEnable` | string | | SSL: `Enable`, `Disable`, `Update` |
-| `tdeStatus` | string | | TDE encryption: `Enabled` |
-| `encryptionKey` | string | | Custom KMS key for TDE |
-| `vpcAuthMode` | string | `Open` | VPC auth: `Open` or `Close` |
-| `config` | map | | Redis configuration parameters |
-| `instanceReleaseProtection` | bool | `false` | Prevent accidental deletion |
-| `maintainStartTime` | string | | Maintenance window start (e.g., `02:00Z`) |
-| `maintainEndTime` | string | | Maintenance window end (e.g., `06:00Z`) |
-| `backupPeriod` | list | | Backup days (e.g., `Monday`, `Wednesday`) |
-| `backupTime` | string | | Backup time window (e.g., `02:00Z-03:00Z`) |
-| `privateConnectionPrefix` | string | | Custom private connection prefix |
-| `autoRenew` | bool | `false` | Auto-renewal for PrePaid |
-| `autoRenewPeriod` | int32 | | Auto-renewal period in months (1-12) |
-| `period` | string | | Subscription months: 1-9, 12, 24, 36 |
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a Redis instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Instance class and sharding** -- The `instanceClass` determines memory capacity and throughput per node. For workloads that exceed a single node's capacity, set `shardCount` to a value greater than 1 to create a cluster-mode Redis instance with data distributed across shards. Cluster mode is recommended for large-scale caching.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | string | Redis instance ID (e.g., `r-xxxxx`) |
-| `connection_domain` | string | Intranet (VPC-internal) connection domain |
-| `private_connection_port` | string | Private connection port (default: 6379) |
-| `private_ip` | string | Private IP address within the VSwitch |
+**Read scaling** -- Set `readOnlyCount` (1-9) to add read replicas in the primary zone. Read replicas distribute read traffic across multiple nodes, reducing load on the primary. Available for master-slave and cluster instances.
 
-## Related Components
+**VPC authentication mode** -- Set `vpcAuthMode` to `Open` (default) to require password authentication for all connections, including those from within the VPC. Set to `Close` to allow password-free connections from within the same VPC -- useful for trusted internal networks.
 
-- **AliCloudVswitch** -- VSwitch where the Redis instance is placed
-- **AliCloudVpc** -- VPC that provides network isolation
-- **AliCloudSecurityGroup** -- Network security rules for instance access
-- **AliCloudKmsKey** -- Customer-managed key for TDE encryption
-- **AliCloudPrivateDnsZone** -- Private DNS resolution for the instance endpoint
+**Encryption and protection** -- Enable `tdeStatus: Enabled` with `encryptionKey` for Transparent Data Encryption at rest. Enable `sslEnable: Enable` for encrypted client connections. Set `instanceReleaseProtection: true` to prevent accidental deletion via console or API.
+
+**Backup and maintenance** -- Set `backupPeriod` (e.g., `["Monday", "Wednesday", "Friday"]`) and `backupTime` (e.g., `"02:00Z-03:00Z"`) for automated backup scheduling. Set `maintainStartTime` and `maintainEndTime` for the maintenance window when Alibaba Cloud may apply minor version upgrades.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVswitch** | `vswitchId` | `status.outputs.vswitch_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | Redis instance ID (e.g., `r-xxxxx`) | Monitoring dashboards, audit references |
+| `connection_domain` | Intranet (VPC-internal) connection domain | Application connection strings, DNS CNAME records |
+| `private_connection_port` | Private connection port (default: `6379`) | Application connection configuration |
+| `private_ip` | Private IP address within the VSwitch | Direct IP-based connections, security group rules |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard single instance** -- A master-slave Redis instance with minimal instance class for development, testing, or lightweight caching workloads. PostPaid billing for cost efficiency. Start from the **Standard Single** preset.
+
+**HA cluster** -- A cluster-mode Redis instance with multiple shards and a secondary AZ for cross-zone failover. Suitable for high-throughput caching and session management. Start from the **HA Cluster** preset.
+
+**Production encrypted** -- A production instance with TDE encryption, SSL for client connections, release protection, and backup policies configured. Suitable for workloads subject to data-at-rest encryption requirements. Start from the **Production Encrypted** preset.
+
+## Works With
+
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- provides the VSwitch for VPC and availability zone placement

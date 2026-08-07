@@ -8,171 +8,143 @@ componentName: "azureroleassignment"
 
 # Azure Role Assignment
 
-Grants an Azure RBAC role to a principal at a scope -- the atomic unit of Azure authorization, modeled as a first-class composable resource. Use it to give a managed identity, user, group, or service principal exactly the access it needs on exactly the resources it touches.
+Deploys an Azure RBAC role assignment: the grant of a role to a principal at a scope. A role assignment is the atomic unit of authorization in Azure — everything a user, group, service principal, or managed identity is allowed to do is the sum of the role assignments that target it. Because grants are the most-repeated pattern in any Azure environment, this component models them as first-class, composable nodes: one assignment per resource, referenceable in InfraCharts, with an independent lifecycle from both the principal and the scope it binds. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureRoleAssignment resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Role Assignment** — an `azurerm_role_assignment` binding the role (by built-in name or definition ID) to the principal at the target ARM scope
+- **Role Assignment** -- one grant record binding a role to a principal at a scope, visible in the portal's IAM blade
 
-Role assignments carry no Azure tags -- the `Microsoft.Authorization` resource type does not support them.
+The three coordinates of every assignment:
 
-## Prerequisites
+- **scope** -- WHERE the permission applies (management group, subscription, resource group, or an individual resource). Permissions inherit downward.
+- **role** -- WHAT is permitted, referenced either by built-in role name (e.g. "Reader") or by role definition ID (custom roles).
+- **principalId** -- WHO receives the permission (the Entra object ID of a user, group, service principal, or managed identity).
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **Authorization-plane rights**: the deploying credential needs `Microsoft.Authorization/roleAssignments/write` at the target scope (Owner, User Access Administrator, or Role Based Access Control Administrator -- Contributor alone is not sufficient)
-- **The principal's OBJECT ID** (not the application/client ID) when passing it as a literal
+Azure role assignments are immutable: changing any field replaces the assignment (delete + create). This matches ARM's own model, where an assignment is an atomic grant record rather than a mutable object.
 
-## Quick Start
+## Before You Deploy
 
-Create a file `roleassignment.yaml`:
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **Authorization-plane rights on the target scope** -- creating role assignments requires `Microsoft.Authorization/roleAssignments/write`, held via Owner, User Access Administrator, or Role Based Access Control Administrator. A deploy failing with "AuthorizationFailed" almost always means the deploying credential has Contributor-level rights but no authorization-plane rights at that scope.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Role Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with a curated built-in role catalog and the object-ID-vs-client-ID trap taught at the moment of choice. Start from the **Identity Resource Group Grant** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureRoleAssignment
 metadata:
-  name: app-reader
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureRoleAssignment.app-reader
+  name: ci-acr-pull
+  org: acme-corp
+  env: prod
 spec:
   scope:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg
-  roleDefinitionName: Reader
+    valueFrom:
+      kind: AzureResourceGroup
+      name: registry-rg
+      fieldPath: status.outputs.resource_group_id
+  roleDefinitionName: "AcrPull"
   principalId:
-    value: 11111111-1111-1111-1111-111111111111
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: ci-deployer
+      fieldPath: status.outputs.principal_id
+  description: "CI deploy identity pulls from the shared registry"
+  skipServicePrincipalAadCheck: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f roleassignment.yaml
+planton apply -f grant.yaml
 ```
 
-This grants the principal read-only access to everything in `platform-rg`.
+The `skipServicePrincipalAadCheck` flag is the designed posture for the deploy-identity-and-grant-together composition: Entra replicates new principals asynchronously, and an assignment racing that replication would otherwise fail with "PrincipalNotFound".
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `scope` | `StringValueOrRef` | The ARM scope the role applies at: management group, subscription, resource group, or a single resource ID. Defaults to referencing an `AzureResourceGroup`'s ARM ID. | Required |
-| `principalId` | `StringValueOrRef` | The Azure AD object ID of the grantee. Defaults to referencing an `AzureUserAssignedIdentity`'s principal ID output. | Required |
-| `roleDefinitionName` / `roleDefinitionId` | `string` | Exactly one identifies the role: built-in role name (e.g. `Reader`) or fully-scoped role definition ID (custom roles). | Exactly one of the two |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `principalType` | `enum` | `SERVICE_PRINCIPAL`, `USER`, or `GROUP`. Azure infers the type when omitted; set it explicitly when the deploying credential is constrained by ABAC delegation rules. |
-| `description` | `string` | Audit note shown in the portal's IAM blade -- record WHY the grant exists. |
-| `condition` | `string` | Azure ABAC condition expression narrowing when the role applies. |
-| `conditionVersion` | `string` | `1.0` or `2.0`; only with `condition` (Azure defaults to `2.0`). |
-| `delegatedManagedIdentityResourceId` | `string` | Cross-tenant (Azure Lighthouse) delegation only. |
-| `skipServicePrincipalAadCheck` | `bool` | Skip the Azure AD existence check for a freshly created service principal (replication-lag escape hatch). |
-| `name` | `string` | Pinned GUID for the assignment's ARM resource name; generated when omitted. |
-
-## Examples
-
-### Grant a Workload Identity Pull Access to a Registry
+The scope is genuinely polymorphic — any resource's ID output is a valid grant boundary:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleAssignment
-metadata:
-  name: app-acr-pull
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleAssignment.app-acr-pull
 spec:
   scope:
     valueFrom:
-      kind: AzureContainerRegistry
-      name: platform-acr
-      fieldPath: status.outputs.registry_id
-  roleDefinitionName: AcrPull
+      kind: AzureKeyVault
+      name: platform-kv
+      fieldPath: status.outputs.key_vault_id
+  roleDefinitionName: "Key Vault Crypto Service Encryption User"
   principalId:
     valueFrom:
-      name: app-identity
+      kind: AzureDiskEncryptionSet
+      name: prod-des
+      fieldPath: status.outputs.identity_principal_id
   skipServicePrincipalAadCheck: true
-  description: Application workload identity pulls images from the platform registry
 ```
 
-### ABAC-Conditioned Storage Grant
+This is the grant that completes the disk-encryption chain: the set's system-assigned principal gets exactly the wrap/unwrap role on exactly the vault holding the key.
 
-Read access limited to blobs tagged `Project=Cascade`:
+## Key Configuration
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleAssignment
-metadata:
-  name: cascade-blob-reader
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleAssignment.cascade-blob-reader
-spec:
-  scope:
-    valueFrom:
-      kind: AzureStorageAccount
-      name: analytics-storage
-      fieldPath: status.outputs.storage_account_id
-  roleDefinitionName: Storage Blob Data Reader
-  principalId:
-    value: 22222222-2222-2222-2222-222222222222
-  condition: >-
-    ((!(ActionMatches{'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read'}))
-    OR (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags:Project<$key_case_sensitive$>] StringEquals 'Cascade'))
-  conditionVersion: "2.0"
-  description: Analysts read only Cascade-tagged blobs
-```
+These are the most important decisions when configuring a role assignment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Custom Role at Subscription Scope
+**Object ID, not client ID** -- The most common role-assignment mistake: an assignment created with an application (client) ID SUCCEEDS and grants nothing, because no directory object carries that object ID. Referencing an AzureUserAssignedIdentity's `principal_id` output makes the mistake unrepresentable.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleAssignment
-metadata:
-  name: cost-auditor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleAssignment.cost-auditor
-spec:
-  scope:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000
-  roleDefinitionId: /subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
-  principalId:
-    value: 33333333-3333-3333-3333-333333333333
-  principalType: GROUP
-  description: FinOps group audits costs subscription-wide via the custom CostAuditor role
-```
+**Exactly one way to name the role** -- Built-in roles by name (matched case-insensitively against Azure's catalog); custom roles by fully-scoped definition ID (from an AzureRoleDefinition's `role_definition_id` output). Never both.
 
-## Stack Outputs
+**Least-privilege scope** -- Permissions inherit downward, so grant at the narrowest scope that satisfies the use case: the specific vault, not the subscription.
 
-After deployment, the following outputs are available in `status.outputs`:
+**ABAC conditions** -- An optional condition expression narrows WHEN the role's permissions apply (e.g. only blobs carrying a specific tag). Supported on storage data-plane roles and a growing set of others.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `role_assignment_id` | `string` | Fully-scoped ARM ID of the assignment (`{scope}/providers/Microsoft.Authorization/roleAssignments/{guid}`) |
-| `name` | `string` | The assignment's GUID resource name |
-| `scope` | `string` | The scope the role was granted at |
-| `role_definition_id` | `string` | The role definition ID Azure resolved (even when the spec referenced the role by name) |
-| `principal_id` | `string` | The principal's Azure AD object ID |
-| `principal_type` | `string` | The principal type Azure recorded |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the managed identity most grants target
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — the most common grant scope
-- [AzureKeyVault](/docs/catalog/azure/key-vault) — grant identities secret/key/certificate access in RBAC mode
-- [AzureContainerRegistry](/docs/catalog/azure/container-registry) — grant AcrPull/AcrPush to workload identities
-- [AzureStorageAccount](/docs/catalog/azure/storage-account) — grant blob/queue/table data-plane roles
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** (default scope) | `scope` | `status.outputs.resource_group_id` |
+| **Any Azure resource** (polymorphic scope) | `scope` | the resource's ID output |
+| **AzureUserAssignedIdentity** (default principal) | `principalId` | `status.outputs.principal_id` |
+| **AzureRoleDefinition** (custom roles) | `roleDefinitionId` | `status.outputs.role_definition_id` (copy the resolved ID) |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream tooling can consume:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `role_assignment_id` | Fully-scoped ARM ID of the assignment | Auditing, authorization-API automation |
+| `name` | The assignment's GUID | Cross-referencing with `az role assignment` output |
+| `scope` | The scope as resolved at deploy | Auditing |
+| `role_definition_id` | The definition Azure bound — resolved even when the spec named a built-in role | Auditing exactly which role matched |
+| `principal_id` | The object ID granted | Auditing |
+| `principal_type` | What Azure recorded (useful when inferred) | Auditing |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**The identity-grant triad** -- An AzureUserAssignedIdentity plus one assignment per resource it touches, each with `skipServicePrincipalAadCheck: true` so identity and grants deploy in one pipeline run. Start from the **Identity Resource Group Grant** preset.
+
+**Custom-role grants** -- An AzureRoleDefinition captures the permission set; assignments bind it by definition ID. Start from the **Custom Role Subscription Grant** preset.
+
+**Tag-conditioned data access** -- A data-plane role narrowed by an ABAC condition on resource tags. Start from the **ABAC Conditioned Grant** preset.
+
+## Works With
+
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- the principal most grants target, via `principal_id`
+- [**Azure Role Definition**](/cloud-catalog/azure-role-definition) -- custom roles bound by `role_definition_id`
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- the most common grant boundary
+- [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- the classic narrow-scope grant target for CMK and secret consumers

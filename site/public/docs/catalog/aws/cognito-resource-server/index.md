@@ -8,75 +8,71 @@ componentName: "awscognitoresourceserver"
 
 # AWS Cognito Resource Server
 
-Deploys a Cognito resource server -- the OAuth 2.0 resource (an API) a user pool mints custom access-token scopes for. Each scope it defines becomes requestable by app clients as `{identifier}/{scope_name}`, and machine-to-machine clients using the `client_credentials` grant can request only these custom scopes.
+Deploys a Cognito Resource Server — an OAuth 2.0 scope namespace attached to a user pool. Each scope becomes an `identifier/scope-name` string that app clients request and your APIs enforce. The resource server does not host users; it declares the permissions tokens may carry.
 
 ## What Gets Created
 
-When you deploy an AwsCognitoResourceServer resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Resource Server** -- an `aws_cognito_resource_server` on the referenced pool with the configured identifier and scope vocabulary
+- **Cognito Resource Server** -- registered on the target user pool with a permanent identifier, display name, and the configured OAuth scopes
+- **AWS Tags** -- resource metadata tags applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **An AwsCognitoUserPool** -- the pool this resource server belongs to (referenced by `userPoolId`)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `resource-server.yaml`:
+### AWS Account
+
+- **A Cognito User Pool** -- the directory whose access tokens will carry these scopes. Reference an AwsCognitoUserPool Cloud Resource or provide the pool ID directly.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Cognito Resource Server**, and click **Deploy**. Start from the **API Scopes** preset to pre-populate a working configuration.
+
+### CLI
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCognitoResourceServer
 metadata:
-  name: orders-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCognitoResourceServer.orders-api
+  name: orders-api-scopes
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   userPoolId:
     valueFrom:
       kind: AwsCognitoUserPool
-      name: my-auth
+      name: app-auth
       fieldPath: status.outputs.user_pool_id
   identifier: https://api.example.com
   name: Orders API
   scopes:
-    - scopeName: read
-      scopeDescription: Read orders
-    - scopeName: write
+    - scopeName: orders.read
+      scopeDescription: Read order history
+    - scopeName: orders.write
       scopeDescription: Create and update orders
 ```
 
-Deploy:
-
 ```shell
-planton apply -f resource-server.yaml
+planton apply -f cognito-resource-server.yaml
 ```
 
-A machine-to-machine client can now list `https://api.example.com/read` in its `allowedOauthScopes`.
+### InfraChart
 
-## Configuration Reference
+Wire the pool with ValueFromRef, then have app clients request the emitted `scope_identifiers` in `allowedOauthScopes`.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `region` | `string` | Yes | AWS region. |
-| `userPoolId` | `StringValueOrRef` | Yes | The pool this resource server belongs to. ForceNew. |
-| `identifier` | `string` | Yes | Unique identifier within the pool -- the scope prefix access tokens carry (conventionally the API's audience URI, e.g. `https://api.example.com`). 1-256 characters. ForceNew. |
-| `name` | `string` | Yes | Human-readable display name shown in the Cognito console. 1-256 characters. |
-| `scopes` | `object[]` | No | Up to 100 custom scopes, each with `scopeName` (no spaces, `/`, `"`, `\`) and `scopeDescription`. Scope names must be unique. Scopes update in place. |
+## After Deployment
 
-## Stack Outputs
+Stack outputs include the resource server identifier, the full `scope_identifiers` list (the exact strings clients request), and the resolved user pool ID. Add those scope strings to an AwsCognitoUserPoolClient's allowed OAuth scopes.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `resource_server_identifier` | `string` | The identifier -- the scope prefix access tokens carry. |
-| `scope_identifiers` | `string[]` | Fully-qualified scope strings (`{identifier}/{scope_name}`) -- the exact values app clients list in `allowedOauthScopes`. |
-| `user_pool_id` | `string` | The pool this resource server belongs to, resolved from the spec reference. |
+## Related Resources
 
-## Related Components
-
-- [AWS Cognito User Pool](/docs/catalog/aws/cognito-user-pool) -- the pool this resource server belongs to
-- [AWS Cognito User Pool Client](/docs/catalog/aws/cognito-user-pool-client) -- clients that request this resource server's scopes, most importantly machine-to-machine `client_credentials` clients
+- **AwsCognitoUserPool** -- the user directory this resource server attaches to
+- **AwsCognitoUserPoolClient** -- app clients that request these scopes
+- **AwsCognitoIdentityProvider** -- federated sign-in providers on the same pool

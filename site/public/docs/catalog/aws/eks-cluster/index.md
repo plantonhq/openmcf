@@ -8,43 +8,73 @@ componentName: "awsekscluster"
 
 # AWS EKS Cluster
 
-Deploys an EKS cluster control plane: the managed Kubernetes API server
-and etcd, with networking exposure, access-entry authentication, secrets
-encryption, control-plane logging, upgrade policy, and optional EKS Auto
-Mode -- the foundation node that `AwsEksNodeGroup` compute and
-IRSA identity compose onto.
+Deploys a managed Kubernetes control plane on Amazon EKS — the API server, etcd, and the cluster-level posture everything else composes onto: endpoint exposure, access-entry authentication, secrets encryption, control-plane logging, upgrade policy, and optionally EKS Auto Mode. The cluster is deliberately only the control plane; compute attaches as separate AwsEksNodeGroup resources (or Auto Mode manages it for you). It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsEksCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **EKS cluster** — an `aws_eks_cluster` / `eks.Cluster` named from
-  `metadata.name`, attached to the referenced subnets and cluster role,
-  with the endpoint exposure, access config, encryption, logging,
-  upgrade, and zonal-shift posture you declare
-- **Auto Mode capabilities** (when `autoMode.enabled`) — AWS-managed
-  compute, block storage, and load balancing, expanded from the single
-  toggle into the three settings the EKS API requires to move together
+- **EKS Cluster** -- a managed Kubernetes control plane attached to your subnets (at least two Availability Zones) and cluster IAM role, with the endpoint exposure, authentication mode, encryption, logging, upgrade, and zonal-shift posture you declare
+- **Secrets Encryption Configuration** -- configured only when `kmsKeyArn` is provided; enables envelope encryption of Kubernetes secrets using your customer-managed KMS key (a one-way door: it cannot be disabled on a live cluster)
+- **Control Plane Log Streams** -- created for each log type in `enabledClusterLogTypes`; streams to CloudWatch Logs
+- **Auto Mode Capabilities** -- when `autoMode.enabled` is set, AWS manages compute, block storage, and load balancing for the cluster's workloads without any node group
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-The cluster role is never modified: attach `AmazonEKSClusterPolicy` on
-the referenced `AwsIamRole` itself (`managedPolicyArns`).
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **Subnets** (`AwsSubnet`) in at least two availability zones.
-- **A cluster IAM role** (`AwsIamRole`) trusting `eks.amazonaws.com` with `AmazonEKSClusterPolicy` attached.
-- **A KMS key** (`AwsKmsKey`) if you want customer-managed secrets encryption.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
+
+- **At least two subnets** in distinct Availability Zones. Private subnets are recommended for production. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef.
+- **An IAM role** trusting `eks.amazonaws.com` with the `AmazonEKSClusterPolicy` managed policy attached — attach it on the role itself; this component never modifies a role it merely references. Provide the ARN directly or reference an AwsIamRole Cloud Resource.
+- **A KMS key** (optional) for envelope encryption of Kubernetes secrets. Provide the ARN directly or reference an AwsKmsKey Cloud Resource. Decide this before deploying — it cannot be added to a live cluster.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS EKS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** or **Private Endpoint** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEksCluster
 metadata:
-  name: platform
+  name: platform-cluster
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
+  subnetIds:
+    - value: "subnet-0a1b2c3d4e5f00001"
+    - value: "subnet-0a1b2c3d4e5f00002"
+  clusterRoleArn:
+    value: "arn:aws:iam::123456789012:role/EksClusterServiceRole"
+  endpointPrivateAccess: true
+  accessConfig:
+    authenticationMode: API
+  enabledClusterLogTypes: [audit, authenticator]
+```
+
+```shell
+planton apply -f eks-cluster.yaml
+```
+
+This creates a cluster on the current default Kubernetes version with the public endpoint open (AWS default), private in-VPC access enabled, access-entry authentication, and the two highest-signal log streams. A Stack Job tracks the provisioning and streams progress in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the EKS cluster to subnets and an IAM role deployed in the same InfraPipeline:
+
+```yaml
+spec:
   subnetIds:
     - valueFrom:
         kind: AwsSubnet
@@ -59,132 +89,68 @@ spec:
       kind: AwsIamRole
       name: eks-cluster-role
       fieldPath: status.outputs.role_arn
-  accessConfig:
-    authenticationMode: API
 ```
 
-```shell
-planton apply -f eks-cluster.yaml
-```
+The InfraPipeline resolves the dependency graph, deploys the subnets and IAM role first, then provisions the EKS cluster with the resolved values.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an EKS cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region for the control plane. | Required; non-empty |
-| `subnetIds` | `string[] \| valueFrom` | Subnets for the control plane's network interfaces, in ≥2 AZs. Defaults to referencing `AwsSubnet` `subnet_id` outputs. | Required; ≥2 entries |
-| `clusterRoleArn` | `string \| valueFrom` | The IAM role EKS assumes (must trust `eks.amazonaws.com` and carry `AmazonEKSClusterPolicy`). Defaults to referencing an `AwsIamRole` `role_arn` output. | Required |
+**Endpoint access** -- `endpointPublicAccess` (AWS default: true) and `endpointPrivateAccess` (AWS default: false) form the exposure posture. Production clusters almost always want private access on — without it, in-VPC clients reach the API server over the internet. Restrict a public endpoint with `publicAccessCidrs`; it is the single cheapest hardening step.
 
-### Optional Fields
+**Authentication mode** -- `accessConfig.authenticationMode` chooses between EKS access entries (`API`, the modern model), the legacy aws-auth ConfigMap (`CONFIG_MAP`), or both. Migration toward `API` is one-way on a live cluster — new clusters should start there and grant access through AwsEksAccessEntry resources.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `version` | `string` | AWS default | Kubernetes minor (`"1.31"`); ≥1.24; EKS never downgrades. |
-| `securityGroupIds` | `string[] \| valueFrom` | `[]` | Extra control-plane security groups on top of the EKS-managed one. |
-| `endpointPublicAccess` | `bool` | `true` | Internet reachability of the API server. Explicit `false` = private-only (pair with private access). |
-| `endpointPrivateAccess` | `bool` | `false` | In-VPC API endpoint. Almost always wanted in production. |
-| `publicAccessCidrs` | `string[]` | `0.0.0.0/0` | CIDRs allowed at the public endpoint — the cheapest hardening step. |
-| `controlPlaneEgressMode` | `string` | `AWS_MANAGED` | `CUSTOMER_ROUTED` (your route tables) or `CUSTOMER_ISOLATED`; reverting CUSTOMER_ROUTED replaces the cluster. |
-| `ipFamily` | `string` | `ipv4` | `ipv4` or `ipv6` pod/service networking. Create-only. |
-| `serviceIpv4Cidr` | `string` | AWS default | Service CIDR (/12–/24, private ranges, non-overlapping). Create-only. |
-| `enabledClusterLogTypes` | `string[]` | `[]` | Any of `api`, `audit`, `authenticator`, `controllerManager`, `scheduler` to CloudWatch. |
-| `kmsKeyArn` | `string \| valueFrom` | AWS-owned keys | Customer-managed envelope encryption of secrets. One-way: cannot be disabled later. |
-| `accessConfig.authenticationMode` | `string` | `API_AND_CONFIG_MAP` | `API` (access entries), `API_AND_CONFIG_MAP`, or `CONFIG_MAP`. Migration toward `API` is one-way. |
-| `accessConfig.bootstrapClusterCreatorAdminPermissions` | `bool` | `true` | Whether the creating identity gets cluster-admin. Create-only. |
-| `autoMode.enabled` | `bool` | `false` | EKS Auto Mode: AWS manages compute, block storage, and load balancing (the API's all-or-nothing trio, one toggle). |
-| `autoMode.nodePools` | `string[]` | `[]` | Built-in pools: `general-purpose`, `system`. Empty = custom in-cluster NodePools only. |
-| `autoMode.nodeRoleArn` | `string \| valueFrom` | — | Node identity for Auto Mode capacity. Required when `nodePools` is set. |
-| `upgradeSupportType` | `string` | `EXTENDED` | `STANDARD` (upgrade on schedule, no surcharge) or `EXTENDED`. |
-| `zonalShiftEnabled` | `bool` | `false` | Amazon Application Recovery Controller zonal shift. |
-| `deletionProtection` | `bool` | `false` | EKS refuses deletion until disabled. |
-| `bootstrapSelfManagedAddons` | `bool` | `true` | Install default vpc-cni/kube-proxy/CoreDNS at creation. `false` = bring-your-own add-ons. Create-only. |
-| `forceUpdateVersion` | `bool` | `false` | Force version updates past unsatisfiable pod disruption budgets. |
+**Compute model** -- Explicit AwsEksNodeGroup fleets, or `autoMode.enabled: true` to have AWS provision compute, block storage, and load balancing itself. Alternatives, not companions — pick one per cluster.
 
-## Examples
+**Secrets encryption** -- `kmsKeyArn` enables customer-managed envelope encryption of Kubernetes secrets in etcd. One-way door: once enabled it cannot be disabled or re-keyed on a live cluster, and it cannot be added later without replacement.
 
-### Private, encrypted, deletion-protected control plane
+**Control plane logging** -- `enabledClusterLogTypes` selects from `api`, `audit`, `authenticator`, `controllerManager`, `scheduler`. Audit and authenticator carry the most signal; all five on a busy cluster carries real CloudWatch ingestion cost.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEksCluster
-metadata:
-  name: prod
-spec:
-  region: us-west-2
-  subnetIds:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  clusterRoleArn:
-    valueFrom: { kind: AwsIamRole, name: eks-cluster-role, fieldPath: status.outputs.role_arn }
-  endpointPublicAccess: false
-  endpointPrivateAccess: true
-  kmsKeyArn:
-    valueFrom: { kind: AwsKmsKey, name: eks-secrets, fieldPath: status.outputs.key_arn }
-  accessConfig:
-    authenticationMode: API
-  enabledClusterLogTypes: [audit, authenticator]
-  deletionProtection: true
-```
+**Upgrade policy** -- `version` pins the Kubernetes minor (1.24+; EKS never downgrades); `upgradeSupportType: STANDARD` removes the extended-support surcharge risk for teams that upgrade on schedule.
 
-### EKS Auto Mode (no node groups to operate)
+**Operational guard rails** -- `deletionProtection` blocks accidental control-plane deletion; `zonalShiftEnabled` lets Amazon Application Recovery Controller drain an impaired Availability Zone; `bootstrapSelfManagedAddons: false` yields a bring-your-own-add-ons cluster for GitOps flows.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEksCluster
-metadata:
-  name: hands-off
-spec:
-  region: us-west-2
-  subnetIds:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  clusterRoleArn:
-    valueFrom: { kind: AwsIamRole, name: eks-cluster-role, fieldPath: status.outputs.role_arn }
-  autoMode:
-    enabled: true
-    nodePools: [general-purpose, system]
-    nodeRoleArn:
-      valueFrom: { kind: AwsIamRole, name: eks-auto-node-role, fieldPath: status.outputs.role_arn }
-  bootstrapSelfManagedAddons: false
-```
+## Outputs and Dependencies
 
-### IRSA in one reference
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamOidcProvider
-metadata:
-  name: platform-irsa
-spec:
-  region: us-west-2
-  url:
-    valueFrom:
-      kind: AwsEksCluster
-      name: platform
-      fieldPath: status.outputs.oidc_issuer_url
-  clientIdList:
-    - sts.amazonaws.com
-```
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnetIds` | `status.outputs.subnet_id` |
+| **AwsIamRole** | `clusterRoleArn` | `status.outputs.role_arn` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsKmsKey** (optional) | `kmsKeyArn` | `status.outputs.key_arn` |
+| **AwsIamRole** (optional) | `autoMode.nodeRoleArn` | `status.outputs.role_arn` |
 
-## Stack Outputs
+### What This Component Provides
 
-| Output | Description |
-| --- | --- |
-| `endpoint` | Kubernetes API server URL |
-| `cluster_ca_certificate` | Base64 cluster CA certificate, for kubeconfigs |
-| `cluster_security_group_id` | The EKS-managed control-plane security group (node groups use it for control-plane communication) |
-| `oidc_issuer_url` | The OIDC issuer — point an `AwsIamOidcProvider` here to enable IRSA |
-| `cluster_arn` | Cluster ARN, for IAM policies and access entries |
-| `name` | Cluster name — what `AwsEksNodeGroup.clusterName` references |
-| `platform_version` | EKS platform revision of the control plane (e.g. `eks.12`) |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `endpoint` | Kubernetes API server URL | Kubernetes Provider Connections, kubectl configuration |
+| `cluster_ca_certificate` | Base64-encoded cluster CA certificate | TLS verification in downstream connections |
+| `cluster_security_group_id` | EKS-managed control-plane security group | Node-to-control-plane traffic rules |
+| `oidc_issuer_url` | OpenID Connect issuer URL | Point an AwsIamOidcProvider here to enable IRSA with a single reference |
+| `cluster_arn` | Cluster Amazon Resource Name | IAM policies, access entries, CloudWatch alarms |
+| `name` | EKS cluster name | What `AwsEksNodeGroup.clusterName` references |
+| `platform_version` | EKS platform revision (e.g. `eks.12`) | Fleet-wide platform-version audits |
 
-- [AwsEksNodeGroup](/docs/catalog/aws/eks-node-group) — managed worker fleets registered to this cluster
-- [AwsIamRole](/docs/catalog/aws/iam-role) — the cluster role (and Auto Mode node role) this cluster assumes
-- [AwsIamOidcProvider](/docs/catalog/aws/iam-oidc-provider) — IRSA trust anchor fed by `oidc_issuer_url`
-- [AwsSubnet](/docs/catalog/aws/subnet) — where the control plane attaches its network interfaces
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — customer-managed secrets encryption
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — additional control-plane security groups
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard cluster** -- Public endpoint restricted by CIDRs, private access on, access-entry authentication, audit + authenticator logging. The production starting point for most teams. Start from the **Standard** preset.
+
+**Private endpoint cluster** -- `endpointPublicAccess: false` with `endpointPrivateAccess: true`: the API server is reachable only inside the VPC (VPN, Direct Connect, or bastion). Required for compliance-sensitive environments (PCI-DSS, HIPAA). Start from the **Private Endpoint** preset.
+
+**Hands-off compute** -- `autoMode.enabled: true` with the `general-purpose` and `system` built-in pools and an Auto Mode node role: AWS operates the compute so there are no node groups to patch or scale.
+
+## Works With
+
+- [**AWS EKS Node Group**](/cloud-catalog/aws-eks-node-group) -- managed worker fleets that register with this cluster's `name` output
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets for control plane network interface placement
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the cluster service role (and the Auto Mode node role)
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for Kubernetes secrets encryption
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides additional control-plane security groups

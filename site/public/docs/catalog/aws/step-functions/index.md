@@ -8,258 +8,145 @@ componentName: "awsstepfunction"
 
 # AWS Step Functions
 
-Deploys an AWS Step Functions state machine with an Amazon States Language (ASL) workflow definition, configurable execution type (STANDARD or EXPRESS), optional CloudWatch Logs logging, X-Ray tracing, and customer-managed KMS encryption.
+Deploys a Step Functions state machine that orchestrates distributed workflows using Amazon States Language (ASL) definitions expressed as native YAML. The component supports both STANDARD (long-running, exactly-once) and EXPRESS (high-volume, short-duration) state machine types, with configurable CloudWatch Logs logging, X-Ray tracing, and customer-managed KMS encryption. It integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring IAM role, log group, and KMS key dependencies.
 
 ## What Gets Created
 
-When you deploy an AwsStepFunction resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Step Functions State Machine** — an `aws_sfn_state_machine` resource with the provided ASL definition serialized to JSON, assigned the specified IAM execution role, and tagged with Planton resource metadata
-- **Tracing Configuration** — enabled only when `tracingEnabled` is `true`, sends trace data to AWS X-Ray for visualizing request flows
-- **Logging Configuration** — configured only when `logging.level` is set to a value other than `OFF`, delivers execution history events to the specified CloudWatch Logs log group (the module automatically appends `:*` to the log group ARN if missing)
-- **Encryption Configuration** — configured only when the `encryption` block is provided, uses a customer-managed KMS key for encrypting state machine data, execution history, and input/output payloads
+- **Step Functions State Machine** -- a state machine configured with the specified type, ASL definition (serialized from YAML to JSON), and IAM execution role
+- **Logging Configuration** -- configured only when `logging` is provided with a level other than OFF; sends execution history events to the specified CloudWatch Logs log group
+- **X-Ray Tracing** -- enabled only when `tracingEnabled` is true; sends trace data for visualizing request flows across coordinated services
+- **Encryption Configuration** -- configured only when `encryption` is provided; uses a customer-managed KMS key for encrypting state machine data, execution history, and input/output payloads
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An IAM execution role** with a trust policy for `states.amazonaws.com` and policies granting access to all services invoked by the workflow (e.g., `lambda:InvokeFunction`, `sqs:SendMessage`, `sns:Publish`)
-- **A CloudWatch Logs log group** if enabling execution logging
-- **A customer-managed KMS key** if enabling encryption (must be a symmetric encryption key in the same region)
-- **X-Ray permissions** on the execution role (`xray:PutTraceSegments`, `xray:PutTelemetryRecords`) if enabling tracing
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `step-function.yaml`:
+### AWS Account
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsStepFunction
-metadata:
-  name: my-step-function
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsStepFunction.my-step-function
-spec:
-  region: us-east-1
-  roleArn: arn:aws:iam::123456789012:role/step-functions-exec
-  definition:
-    StartAt: Hello
-    States:
-      Hello:
-        Type: Pass
-        Result: Hello, World!
-        End: true
-```
+- **An IAM execution role** with a trust policy for `states.amazonaws.com` and policies granting access to all services invoked by the workflow (Lambda:InvokeFunction, SQS:SendMessage, SNS:Publish, etc.). Provide the ARN directly or reference an AwsIamRole Cloud Resource via ValueFromRef.
+- **A CloudWatch log group** (optional) -- required when enabling execution logging. Provide the ARN directly or reference an AwsCloudwatchLogGroup Cloud Resource via ValueFromRef.
+- **A KMS key** (optional) -- required when using customer-managed encryption. The key must be a symmetric encryption key in the same region. Provide the ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f step-function.yaml
-```
+### Console
 
-This creates a STANDARD state machine with a single Pass state that returns a static result.
+Open the deployment store, find **AWS Step Functions**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Workflow** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the state machine will be created. | Required |
-| `definition` | `object` | State machine definition in Amazon States Language (ASL). Write as native YAML; the module serializes it to JSON for the AWS API. ASL key casing (`StartAt`, `States`, `Type`, `Resource`) is preserved. | Required. Max 1 MB after JSON serialization. |
-| `roleArn` | `string` | IAM execution role ARN. The role must trust `states.amazonaws.com` and grant access to all services the workflow invokes. Can reference an AwsIamRole resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `type` | `string` | `"STANDARD"` | State machine type. `STANDARD` for long-running workflows (up to 1 year, exactly-once). `EXPRESS` for high-volume short-duration workflows (up to 5 minutes, at-most-once). Cannot be changed after creation (forces replacement). Must be `STANDARD` or `EXPRESS`. |
-| `publish` | `bool` | `false` | Publish an immutable version on create and on every configuration change. The latest version's ARN is exported as a stack output, so consumers can pin executions to a snapshot instead of the mutable state machine. |
-| `tracingEnabled` | `bool` | `false` | Enables AWS X-Ray tracing. Requires `xray:PutTraceSegments` and `xray:PutTelemetryRecords` permissions on the execution role. |
-| `logging.level` | `string` | `"OFF"` | Logging level for execution history events. `ALL` logs every event type, `ERROR` logs errors only, `FATAL` logs fatal errors only, `OFF` disables logging. |
-| `logging.includeExecutionData` | `bool` | `false` | When `true`, includes full JSON payloads passed between states in log entries. Increases log volume and may expose sensitive data. |
-| `logging.logDestination` | `string` | — | CloudWatch Logs log group ARN for log delivery. Required when `logging.level` is not `OFF`. The module appends `:*` automatically if not present. |
-| `encryption.kmsKeyId` | `string` | — | Customer-managed KMS key ARN for encrypting state machine data, execution history, and payloads. Must be a symmetric key in the same region. Can reference an AwsKmsKey resource via `valueFrom`. Required when the `encryption` block is present. |
-| `encryption.kmsDataKeyReusePeriodSeconds` | `int` | `300` (AWS default) | Duration in seconds Step Functions reuses a data key before calling `GenerateDataKey` again. Range: 60–900. |
-
-## Examples
-
-### Standard Workflow with Lambda Integration
-
-A workflow that invokes a Lambda function and handles success or failure:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsStepFunction
 metadata:
   name: order-processor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsStepFunction.order-processor
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   roleArn:
-    value: arn:aws:iam::123456789012:role/step-functions-exec
+    value: "arn:aws:iam::123456789012:role/step-functions-role"
   definition:
     StartAt: ProcessOrder
     States:
       ProcessOrder:
         Type: Task
-        Resource: arn:aws:lambda:us-east-1:123456789012:function:process-order
-        Next: OrderComplete
-        Catch:
-          - ErrorEquals:
-              - States.ALL
-            Next: OrderFailed
-      OrderComplete:
-        Type: Succeed
-      OrderFailed:
-        Type: Fail
-        Error: OrderProcessingError
-        Cause: The order could not be processed.
-```
-
-### Express Workflow for Event Processing
-
-A high-throughput EXPRESS state machine for processing events with logging enabled:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsStepFunction
-metadata:
-  name: event-ingest
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsStepFunction.event-ingest
-spec:
-  region: us-east-1
-  type: EXPRESS
-  roleArn:
-    value: arn:aws:iam::123456789012:role/step-functions-express-exec
-  tracingEnabled: true
-  logging:
-    level: ERROR
-    includeExecutionData: false
-    logDestination:
-      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/event-ingest
-  definition:
-    StartAt: ValidateEvent
-    States:
-      ValidateEvent:
-        Type: Choice
-        Choices:
-          - Variable: $.eventType
-            StringEquals: order
-            Next: RouteToOrders
-        Default: DropEvent
-      RouteToOrders:
-        Type: Task
-        Resource: arn:aws:lambda:us-east-1:123456789012:function:route-orders
+        Resource: "arn:aws:lambda:us-west-2:123456789012:function:process-order"
         End: true
-      DropEvent:
-        Type: Succeed
 ```
 
-### Encrypted Workflow with Full Observability
+```shell
+planton apply -f step-function.yaml
+```
 
-Production configuration with customer-managed KMS encryption, X-Ray tracing, and verbose logging:
+This creates a STANDARD state machine with a single Lambda task. No logging, tracing, or encryption is configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the state machine to an IAM role, log group, and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsStepFunction
-metadata:
-  name: payment-workflow
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsStepFunction.payment-workflow
 spec:
-  region: us-east-1
   roleArn:
-    value: arn:aws:iam::123456789012:role/payment-sfn-exec
-  publish: true
-  tracingEnabled: true
+    valueFrom:
+      kind: AwsIamRole
+      name: step-functions-role
+      fieldPath: status.outputs.role_arn
   logging:
     level: ALL
     includeExecutionData: true
     logDestination:
-      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/stepfunctions/payment-workflow
-  encryption:
-    kmsKeyId:
-      value: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
-    kmsDataKeyReusePeriodSeconds: 60
-  definition:
-    StartAt: AuthorizePayment
-    States:
-      AuthorizePayment:
-        Type: Task
-        Resource: arn:aws:lambda:us-east-1:123456789012:function:authorize-payment
-        Next: CapturePayment
-      CapturePayment:
-        Type: Task
-        Resource: arn:aws:lambda:us-east-1:123456789012:function:capture-payment
-        End: true
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding ARNs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsStepFunction
-metadata:
-  name: ref-step-function
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsStepFunction.ref-step-function
-spec:
-  region: us-east-1
-  roleArn:
-    valueFrom:
-      kind: AwsIamRole
-      name: sfn-exec-role
-      field: status.outputs.role_arn
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: workflow-logs
+        fieldPath: status.outputs.log_group_arn
   encryption:
     kmsKeyId:
       valueFrom:
         kind: AwsKmsKey
-        name: sfn-encryption-key
-        field: status.outputs.key_arn
-    kmsDataKeyReusePeriodSeconds: 300
-  definition:
-    StartAt: InvokeService
-    States:
-      InvokeService:
-        Type: Task
-        Resource: arn:aws:lambda:us-east-1:123456789012:function:my-service
-        End: true
+        name: workflow-encryption-key
+        fieldPath: status.outputs.key_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the IAM role, log group, and KMS key first, then provisions the state machine with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `state_machine_arn` | `string` | ARN of the created Step Functions state machine, used for invoking executions and cross-service references (EventBridge targets, API Gateway integrations, IAM policies) |
-| `state_machine_name` | `string` | Name of the state machine, useful for dashboards, monitoring, and human-readable log references |
-| `state_machine_version_arn` | `string` | ARN of the most recently published version (populated when `publish` is true) -- pin consumers here for immutable snapshots |
-| `revision_id` | `string` | Revision identifier of the current definition; changes on every definition or configuration update |
-| `status` | `string` | Lifecycle status reported by AWS (e.g. `ACTIVE`) |
-| `creation_date` | `string` | RFC3339 timestamp of state machine creation |
+These are the most important decisions when configuring Step Functions. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**State machine type** -- STANDARD (default) supports workflows up to 1 year with exactly-once execution semantics and full execution history in the console. EXPRESS supports workflows up to 5 minutes with at-most-once semantics, optimized for high-volume event processing. The type cannot be changed after creation.
 
-- [AwsIamRole](/docs/catalog/aws/iam-role) — provides the execution role assumed by the state machine
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides the customer-managed encryption key for state machine data
-- [AwsLambda](/docs/catalog/aws/lambda) — common Task state target invoked by Step Functions workflows
+**ASL definition** -- Write the workflow definition as native YAML in the `definition` field; the IaC module serializes it to JSON. ASL key casing (StartAt, States, Type, Resource) is preserved through serialization. Maximum 1 MB after JSON serialization.
+
+**Logging** -- Set `logging.level` to ALL for full execution visibility (recommended for development) or ERROR for production (captures failures only). When enabled, `logging.logDestination` must reference a CloudWatch log group ARN. Set `logging.includeExecutionData` to true to include input/output payloads in log entries.
+
+**Encryption** -- By default, AWS uses AWS-owned keys. Provide `encryption.kmsKeyId` with a customer-managed KMS key for compliance requirements. Adjust `encryption.kmsDataKeyReusePeriodSeconds` (60--900, default 300) to balance KMS API costs against key reuse window.
+
+**Versioning** -- Set `publish: true` to publish an immutable version on every create and configuration update (definition + role + logging/tracing/encryption frozen at publish time). The newest version's ARN is exported as `state_machine_version_arn` — pin EventBridge targets or aliases to it for safe rollouts and rollbacks. When false (the default), executions always run the latest saved revision.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** | `roleArn` | `status.outputs.role_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `logging.logDestination` | `status.outputs.log_group_arn` |
+| **AwsKmsKey** (optional) | `encryption.kmsKeyId` | `status.outputs.key_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `state_machine_arn` | Amazon Resource Name of the state machine | EventBridge rule targets, API Gateway integrations, IAM policies |
+| `state_machine_name` | Name of the state machine | Dashboards, monitoring, human-readable log references |
+| `state_machine_version_arn` | ARN of the most recently published version (populated only when `publish` is true) | Version-pinned EventBridge targets and aliases for safe rollouts |
+| `revision_id` | Revision identifier of the current definition (changes on every update) | Change auditing |
+| `status` | Lifecycle status reported by AWS (e.g. ACTIVE) | Health dashboards |
+| `creation_date` | RFC3339 creation timestamp | Auditing and inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard workflow** -- STANDARD type with a single Lambda task. The starting point for long-running business process automation, ETL pipelines, and workflows requiring exactly-once execution and full console debugging. Start from the **Standard Workflow** preset.
+
+**Express workflow** -- EXPRESS type with a Choice-state routing pattern and error-level logging. Suited for high-volume, short-duration event processing pipelines (EventBridge to Step Functions to Lambda). Start from the **Express Workflow** preset.
+
+**Production workflow** -- STANDARD type with ALL-level logging, X-Ray tracing, customer-managed KMS encryption, and ValueFromRef wiring for IAM role, log group, and KMS key. The recommended configuration for business-critical production workflows. Start from the **Production Workflow** preset.
+
+## Works With
+
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the execution role for the state machine to invoke AWS services
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- provides the logging destination for execution history events
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encrypting state machine data and execution history

@@ -8,192 +8,113 @@ componentName: "scalewaypublicgateway"
 
 # Scaleway Public Gateway
 
-Deploys a Scaleway Public Gateway with a dedicated Flexible IP, GatewayNetwork attachment, and optional PAT (port forwarding) rules. Provides NAT masquerade for outbound internet access, SSH bastion for secure private resource access, and port-level ingress routing -- all as a single declarative resource.
+Deploys a managed Public Gateway on a Scaleway Private Network with NAT masquerade for outbound internet access, optional SSH bastion for secure jump-host connectivity, and configurable port forwarding (PAT) rules for inbound traffic routing. The IaC module bundles a dedicated Flexible IP, the gateway appliance, and the network attachment into a single declarative resource. Supports ValueFromRef for Private Network dependency wiring in InfraCharts.
 
 ## What Gets Created
 
-When you deploy a ScalewayPublicGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Flexible IP** — a `network.PublicGatewayIp` resource providing a dedicated public IPv4 address for the gateway, managed independently so it survives gateway replacements
-- **Public Gateway** — a `network.PublicGateway` resource, the managed network appliance that performs NAT, SSH bastion proxying, and port forwarding
-- **GatewayNetwork** — a `network.GatewayNetwork` resource binding the gateway to the target Private Network with the configured masquerade setting
-- **PAT Rules** — one `network.PublicGatewayPatRule` resource per entry in the `patRules` list, mapping public ports on the gateway IP to private IP:port pairs inside the attached network
+- **Flexible IP** -- a dedicated public IPv4 address (`scaleway_vpc_public_gateway_ip`) assigned to the gateway, with optional reverse DNS configuration. The IP persists independently of the gateway appliance.
+- **Public Gateway** -- a `scaleway_vpc_public_gateway` appliance in the specified zone with the configured gateway type, SSH bastion settings, and SMTP policy
+- **Gateway Network Attachment** -- a `scaleway_vpc_gateway_network` binding the gateway to the referenced Private Network with NAT masquerade settings
+- **PAT Rules** -- created only when `patRules` entries are provided; `scaleway_vpc_public_gateway_pat_rule` resources mapping public ports to private IP:port pairs inside the attached network
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) applied to the gateway and Flexible IP for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **A Private Network** in the target region (can be created via a ScalewayPrivateNetwork resource or referenced by UUID)
-- **Zone within the Private Network's region** — Public Gateways are zonal; the zone must belong to the same region as the target Private Network (e.g., `fr-par-1` for a network in `fr-par`)
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway Private Network** in the target region. Provide the Private Network UUID directly or reference a ScalewayPrivateNetwork Cloud Resource via ValueFromRef.
+- **Choose an Availability Zone** -- Public Gateways are zonal resources (`fr-par-1`, `nl-ams-1`, `pl-waw-1`). The zone must be within the same region as the target Private Network.
+- **Gateway type** -- `VPC-GW-S` (standard) is sufficient for most workloads. `VPC-GW-XL` (high-bandwidth, up to 10 Gbps) is available only in Paris region zones.
 
-Create a file `public-gateway.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Public Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **NAT Gateway** preset in the [Presets](#presets) tab for a standard gateway with NAT masquerade enabled.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayPublicGateway
 metadata:
-  name: my-gateway
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayPublicGateway.my-gateway
+  name: app-gateway
+  org: acme-corp
+  env: prod
 spec:
-  privateNetworkId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  privateNetworkId:
+    value: "abc12345-6789-def0-1234-567890abcdef"
   zone: fr-par-1
   type: VPC-GW-S
   enableMasquerade: true
 ```
 
-Deploy:
-
 ```shell
-planton apply -f public-gateway.yaml
+planton apply -f scaleway-public-gateway.yaml
 ```
 
-This creates a standard Public Gateway with NAT masquerade enabled, giving all resources in the attached Private Network outbound internet access through a single public IP.
+This creates a standard Public Gateway in Paris-1 with NAT masquerade enabled, allowing all resources in the attached Private Network to reach the internet through the gateway's public IP. No SSH bastion or port forwarding is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `privateNetworkId` | `StringValueOrRef` | Private Network UUID to attach the gateway to. Can reference a ScalewayPrivateNetwork resource via `valueFrom`. | Required |
-| `zone` | `string` | Scaleway zone for the gateway (e.g., `"fr-par-1"`, `"nl-ams-1"`, `"pl-waw-1"`). Must be within the same region as the target Private Network. Cannot be changed after creation. | Required |
-| `type` | `string` | Gateway type determining bandwidth tier. Options: `"VPC-GW-S"` (standard), `"VPC-GW-XL"` (high-bandwidth, Paris region only). | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enableMasquerade` | `bool` | `true` | Enables NAT masquerade so Private Network resources can reach the internet through the gateway's public IP. Disable only if the gateway is used solely as an SSH bastion. |
-| `bastion` | `object` | — | SSH bastion configuration. When configured, the gateway acts as a jump host for SSH connections to private resources. |
-| `bastion.enabled` | `bool` | `false` | Enables the SSH bastion feature on the gateway. |
-| `bastion.port` | `int32` | `22` | Port the SSH bastion listens on. Change if port 22 is blocked by network policies. |
-| `bastion.allowedIpRanges` | `string[]` | `[]` | CIDR ranges allowed to connect to the bastion (e.g., `"203.0.113.0/24"`). If empty, all source IPs are allowed. |
-| `enableSmtp` | `bool` | `false` | Enables outbound SMTP (port 25) through the gateway. Blocked by default to prevent spam abuse. |
-| `reverseDns` | `string` | — | Reverse DNS hostname for the gateway's public IP (e.g., `"gateway.example.com"`). A matching DNS A record must already exist. |
-| `patRules` | `object[]` | `[]` | Port forwarding rules mapping public ports to private IP:port pairs. |
-| `patRules[].privateIp` | `string` | — | Target private IP address within the attached network. Required per rule. |
-| `patRules[].privatePort` | `int32` | — | Target port on the private IP. Required per rule. |
-| `patRules[].publicPort` | `int32` | — | Public port on the gateway IP to listen on. Required per rule. |
-| `patRules[].protocol` | `string` | `"both"` | Protocol for the rule: `"tcp"`, `"udp"`, or `"both"`. |
-
-## Examples
-
-### NAT Gateway for a Private Network
-
-A standard gateway providing outbound internet access for private resources, referencing an Planton-managed Private Network:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the gateway to a Private Network deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPublicGateway
-metadata:
-  name: nat-gateway
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayPublicGateway.nat-gateway
 spec:
   privateNetworkId:
     valueFrom:
       kind: ScalewayPrivateNetwork
       name: app-network
       fieldPath: status.outputs.private_network_id
-  zone: fr-par-1
-  type: VPC-GW-S
-  enableMasquerade: true
 ```
 
-### SSH Bastion with IP Restrictions
+The InfraPipeline resolves the dependency graph, deploys the Private Network first, then provisions the Public Gateway attached to it.
 
-A gateway configured as an SSH jump host with bastion access restricted to specific CIDR ranges:
+## Key Configuration
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPublicGateway
-metadata:
-  name: bastion-gateway
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayPublicGateway.bastion-gateway
-spec:
-  privateNetworkId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-  zone: nl-ams-1
-  type: VPC-GW-S
-  enableMasquerade: true
-  bastion:
-    enabled: true
-    port: 61022
-    allowedIpRanges:
-      - 203.0.113.0/24
-      - 198.51.100.10/32
-```
+These are the most important decisions when configuring a Public Gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Full Configuration with Port Forwarding and Reverse DNS
+**Gateway type** -- The `type` field selects the performance tier. `VPC-GW-S` provides standard bandwidth and is sufficient for most workloads. `VPC-GW-XL` offers up to 10 Gbps but is available only in Paris zones (`fr-par-1`, `fr-par-2`).
 
-A production gateway with NAT, SSH bastion, PAT rules exposing internal services, SMTP enabled for an email relay, and reverse DNS configured:
+**NAT masquerade** -- The `enableMasquerade` field controls whether resources in the attached Private Network can reach the internet through the gateway's public IP. Almost always enabled. Disable only when using the gateway solely as an SSH bastion.
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayPublicGateway
-metadata:
-  name: prod-gateway
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayPublicGateway.prod-gateway
-spec:
-  privateNetworkId:
-    valueFrom:
-      kind: ScalewayPrivateNetwork
-      name: prod-network
-      fieldPath: status.outputs.private_network_id
-  zone: fr-par-1
-  type: VPC-GW-S
-  enableMasquerade: true
-  enableSmtp: true
-  reverseDns: gateway.example.com
-  bastion:
-    enabled: true
-    port: 22
-    allowedIpRanges:
-      - 203.0.113.0/24
-  patRules:
-    - privateIp: 10.0.1.5
-      privatePort: 80
-      publicPort: 8080
-      protocol: tcp
-    - privateIp: 10.0.1.10
-      privatePort: 5432
-      publicPort: 15432
-      protocol: tcp
-    - privateIp: 10.0.1.20
-      privatePort: 53
-      publicPort: 5353
-      protocol: both
-```
+**SSH bastion** -- The `bastion` block enables the gateway as a secure SSH jump host. Configure `bastion.port` (default 22) and restrict access with `bastion.allowedIpRanges` to specific CIDRs (office IP, VPN exit). Leaving the allowlist empty permits all IPs -- not recommended for production.
 
-## Stack Outputs
+**Port forwarding** -- The `patRules` array maps public ports on the gateway's IP to private IP:port pairs inside the network. Each rule specifies `publicPort`, `privateIp`, `privatePort`, and `protocol` (`tcp`, `udp`, or `both`). Use for exposing specific services without assigning individual public IPs.
 
-After deployment, the following outputs are available in `status.outputs`:
+**SMTP** -- Set `enableSmtp` to true only when resources in the Private Network need to send email directly on port 25. Blocked by default to prevent spam abuse.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `gateway_id` | `string` | Zoned ID of the created Public Gateway (e.g., `"fr-par-1/xxxxxxxx-xxxx-..."`). Used to reference the gateway in other resources. |
-| `public_ip_address` | `string` | Public IPv4 address assigned to the gateway. Use for DNS A records, firewall allowlists, and connectivity diagnostics. |
-| `public_ip_id` | `string` | Zoned ID of the Flexible IP resource. Useful for reassigning the IP to a replacement gateway without changing the public address. |
-| `gateway_network_id` | `string` | Zoned ID of the GatewayNetwork attachment binding the gateway to the Private Network. |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — provides the Private Network that the gateway attaches to for NAT, bastion, and port forwarding
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — deploys Kubernetes clusters whose nodes use the gateway for outbound internet access
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — deploys managed databases reachable through the gateway's port forwarding rules
-- [ScalewayInstanceSecurityGroup](/docs/catalog/scaleway/instance-security-group) — controls network access for compute instances behind the gateway
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **ScalewayPrivateNetwork** | `privateNetworkId` | `status.outputs.private_network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `gateway_id` | Zoned ID of the Public Gateway | Scaleway API operations, monitoring dashboards |
+| `public_ip_address` | Public IPv4 address of the gateway | DNS A records, firewall allowlists, connectivity diagnostics |
+| `public_ip_id` | Zoned ID of the Flexible IP resource | IP lifecycle management, reassignment to replacement gateways |
+| `gateway_network_id` | Zoned ID of the gateway-to-network attachment | Network attachment management, NAT diagnostics |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**NAT gateway** -- A standard gateway with NAT masquerade for outbound internet access. The most common configuration for Private Networks hosting Kapsule nodes, databases, and application servers that need to reach external services without individual public IPs. Start from the **NAT Gateway** preset.
+
+**Bastion-enabled gateway** -- A gateway with both NAT masquerade and SSH bastion for secure operator access. Provides a single auditable entry point for SSH connections to private instances, eliminating the need for public IPs on individual machines. Start from the **Bastion-Enabled** preset.
+
+## Works With
+
+- [**Scaleway Private Network**](/cloud-catalog/scaleway-private-network) -- provides the Private Network that the gateway attaches to for NAT, bastion, and port forwarding

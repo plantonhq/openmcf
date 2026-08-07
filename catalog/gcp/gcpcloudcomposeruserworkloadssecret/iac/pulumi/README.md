@@ -9,11 +9,11 @@ The Secret's data updates in place; name, environment, region, and project are i
 ## Usage with Planton CLI
 
 ```shell
-planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
-planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi up --manifest ../../e2e/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
-Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../../e2e/manifest.yaml`.
 
 ## Direct Pulumi Usage
 

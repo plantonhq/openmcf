@@ -39,7 +39,7 @@ When `create_namespace` is set to `false`, the module will:
 ## Usage
 
 ```shell
-planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
+planton tofu init --manifest e2e/manifest.yaml --backend-type s3 \
   --backend-config="bucket=planton-tf-state-backend" \
   --backend-config="dynamodb_table=planton-tf-state-backend-lock" \
   --backend-config="region=ap-south-2" \
@@ -47,13 +47,13 @@ planton tofu init --manifest hack/manifest.yaml --backend-type s3 \
 ```
 
 ```shell
-planton tofu plan --manifest hack/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
 ```
 
 ```shell
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
 ```
 
 ```shell
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```

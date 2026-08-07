@@ -98,9 +98,9 @@ rename_deployment_component.py (Python Script)
       ↓
    [Run: make protos]
       ↓
-   [Run: go build ./catalog/.../v1/...]
+   [Run: go build ./catalog/...]
       ↓
-   [Run: go test -v ./catalog/.../v1/]
+   [Run: go test -v ./catalog/...]
       ↓
 JSON Output (success + metrics)
       ↓
@@ -251,16 +251,16 @@ catalog/{provider}/{new_folder}/
 ```
 
 **Everything in the component directory**:
-- `v1/` (API version)
-  - `*.proto` (all proto files)
+- `README.md`, `catalog.md`, `logo.svg`, `GUIDE.md` (component root docs)
+- `<version>/` (e.g., `v1alpha1/` -- the versioned contract)
+  - `*.proto` (all four contract protos)
   - `*.pb.go` (generated stubs, will be regenerated)
-  - `*_test.go` (test files)
-  - `README.md`, `examples.md`
-  - `docs/` (research documentation)
-  - `iac/` (IaC modules)
-    - `pulumi/` (Pulumi implementation)
-    - `tf/` (Terraform implementation)
-    - `hack/` (test fixtures)
+  - `spec_test.go`, `BUILD.bazel`, `reference.md`
+- `presets/` (preset manifests + .md sidecars)
+- `e2e/` (test manifest, variants, scenarios)
+- `iac/` (IaC modules)
+  - `pulumi/` (Pulumi implementation)
+  - `tf/` (Terraform implementation)
 
 ### Icon Folder (if exists)
 
@@ -294,7 +294,7 @@ The registry entry gets updated:
 // Before
 KubernetesMicroservice = 810 [(kind_meta) = {
   provider: kubernetes
-  version: v1
+  version: "v1alpha1"
   id_prefix: "k8sms"
   is_service_kind: true
   kubernetes_meta: {
@@ -306,7 +306,7 @@ KubernetesMicroservice = 810 [(kind_meta) = {
 // After
 KubernetesDeployment = 810 [(kind_meta) = {
   provider: kubernetes
-  version: v1
+  version: "v1alpha1"
   id_prefix: "k8sdpl"              // Updated if new prefix provided
   is_service_kind: true              // Preserved
   kubernetes_meta: {
@@ -319,7 +319,7 @@ KubernetesDeployment = 810 [(kind_meta) = {
 **What's preserved**:
 - Enum value (810)
 - Provider (kubernetes)
-- Version (v1)
+- Version ("v1alpha1")
 - All flags (`is_service_kind`)
 - All metadata (`kubernetes_meta`)
 
@@ -363,7 +363,7 @@ The rename isn't complete until all three build phases pass:
 - Import path issues
 - Message name conflicts
 
-### Phase 2: go build ./catalog/.../v1/...
+### Phase 2: go build ./catalog/...
 
 **Purpose**: Compile entire codebase
 
@@ -377,7 +377,7 @@ The rename isn't complete until all three build phases pass:
 - Import path errors
 - Type mismatches
 
-### Phase 3: go test -v ./catalog/.../v1/
+### Phase 3: go test -v ./catalog/...
 
 **Purpose**: Run test suite
 
@@ -397,8 +397,8 @@ The pipeline stops immediately on first failure:
 
 ```
 make protos → ✅ Success → Continue
-go build ./catalog/.../v1/...  → ❌ Failed  → STOP (show error)
-go test -v ./catalog/.../v1/   → (not reached)
+go build ./catalog/...  → ❌ Failed  → STOP (show error)
+go test -v ./catalog/...   → (not reached)
 ```
 
 This provides fast feedback and prevents cascading errors.
@@ -479,7 +479,7 @@ git status
 
 # Ensure tests pass
 cd /path/to/planton
-go test -v ./catalog/.../v1/
+go test -v ./catalog/...
 ```
 
 #### Step 2: Invoke Rule
@@ -555,8 +555,8 @@ Deleting old directory...
 
 Running build pipeline...
   ✓ make protos (23s)
-  ✓ go build ./catalog/.../v1/... (34s)
-  ✓ go test -v ./catalog/.../v1/ (18s)
+  ✓ go build ./catalog/... (34s)
+  ✓ go test -v ./catalog/... (18s)
 
 ✅ Rename completed successfully!
 ```
@@ -750,7 +750,7 @@ ls catalog/kubernetes/workload/
 ### Error: Build Failed
 
 ```
-Error: go build ./catalog/.../v1/... failed
+Error: go build ./catalog/... failed
 Exit code: 1
 Output: undefined: kubernetesMicroservice.SomeType
 ```
@@ -773,7 +773,7 @@ grep -r "kubernetesMicroservice" .
 ### Error: Tests Failed
 
 ```
-Error: go test -v ./catalog/.../v1/ failed
+Error: go test -v ./catalog/... failed
 Exit code: 1
 Output: Test "TestKubernetesMicroservice" expects old name
 ```
@@ -892,8 +892,8 @@ A rename is successful when:
 - ✅ Icon folder renamed (if exists)
 - ✅ Old directory deleted
 - ✅ `make protos` passes
-- ✅ `go build ./catalog/.../v1/...` passes
-- ✅ `go test -v ./catalog/.../v1/` passes
+- ✅ `go build ./catalog/...` passes
+- ✅ `go test -v ./catalog/...` passes
 - ✅ Changelog created
 - ✅ Changes committed
 

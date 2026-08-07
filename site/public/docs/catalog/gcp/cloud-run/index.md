@@ -8,178 +8,172 @@ componentName: "gcpcloudrun"
 
 # GCP Cloud Run
 
-Deploys a Cloud Run service — a fully managed, request-serving container deployment that scales from zero to thousands of instances. One resource carries the whole story: the serving endpoint (ingress, invoker policy, traffic splitting) and the revision template (containers, volumes, scaling, networking) that every deploy stamps into a new immutable revision.
+Deploys a containerized service on Google Cloud Run v2: one or more containers per instance (sidecars are first-class), request-driven autoscaling from zero to thousands of instances, declarative traffic splitting across immutable revisions, ingress and IAM invoker controls, Direct VPC Egress, and volumes backed by Cloud SQL, Secret Manager, GCS, NFS, or scratch space. The service integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, KMS keys, Cloud SQL instances, GCS buckets, VPC networks, and subnetworks.
 
 ## What Gets Created
 
-When you deploy a GcpCloudRun resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cloud Run service** — a `google_cloud_run_v2_service` in the chosen region; the Cloud Run Admin API is enabled automatically so a fresh project works on the first deploy
-- **Containers** — the serving container plus any sidecars, with startup ordering, probes, Secret Manager environment variables, and volume mounts as configured
-- **Volumes** — Cloud SQL sockets, Secret Manager files, scratch space, GCS FUSE buckets, and NFS shares as configured
-- **Public-invoker grant** — when `allowUnauthenticated` is true, an IAM member granting `roles/run.invoker` to `allUsers`
-- **Platform attribution** — organization, environment, and resource labels applied on the service object
+- **Cloud Run v2 Service** -- a managed container service in the specified GCP project and region, configured with the provided containers (images, env vars, probes, resources), scaling bounds, concurrency, and timeout
+- **Ingress Configuration** -- controls whether the service accepts traffic from all sources, internal sources only, or internal sources plus Cloud Load Balancing
+- **Invoker IAM Policy** -- created when `allowUnauthenticated` is true; grants `roles/run.invoker` to `allUsers` for public access
+- **VPC Access** -- created only when `vpcAccess` is configured; Direct VPC Egress network interfaces or a Serverless VPC Access connector for private connectivity
+- **Volumes** -- Cloud SQL Unix sockets, Secret Manager file projections, ephemeral scratch space, GCS FUSE mounts, or NFS shares, mounted into containers by name
+- **Traffic Split** -- created when the `traffic` block is populated; routes percentages and preview tags across named revisions for canary and blue/green rollouts
+- **GCP Labels** -- resource metadata labels applied for tracking and billing breakdowns
 
-## Prerequisites
+Custom domains are deliberately not part of this resource -- the production-grade path is composition: a serverless network endpoint group (GcpRegionNetworkEndpointGroup) bridges the service into the load-balancer chain, with DNS managed by GcpDnsRecord.
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A container image** in a registry the runtime identity can read ([GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repository))
-- **A service account** ([GcpServiceAccount](/docs/catalog/gcp/service-account)) for production services — the Compute Engine default SA is used otherwise
-- **A VPC and subnetwork** ([GcpVpcNetwork](/docs/catalog/gcp/vpc), [GcpSubnetwork](/docs/catalog/gcp/subnetwork)) if using direct VPC egress
-- **Secret Manager secrets** already created if referencing them in env vars or volumes (the runtime identity needs `roles/secretmanager.secretAccessor`)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `service.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the Cloud Run service will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Artifact Registry or container registry** with the container image pushed and accessible to the Cloud Run service agent.
+- **Cloud Run Admin API** enabled in the target project.
+- **VPC network and subnetwork** (if using Direct VPC Egress) -- the subnetwork must be in the service's region with free address space for the instance fleet.
+- **Secret Manager secrets** (if referenced by env vars or volumes) -- the runtime service account needs `roles/secretmanager.secretAccessor` on each.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud Run**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public API Service** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudRun
 metadata:
   name: my-api
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   region: us-central1
   containers:
-    - image: us-docker.pkg.dev/my-project/my-repo/api:1.0.0
+    - image: us-docker.pkg.dev/acme-prod-12345/registry/my-api:1.0.0
       ports:
         containerPort: 8080
+      resources:
+        cpu: "1"
+        memory: 512Mi
+        startupCpuBoost: true
+  scaling:
+    minInstanceCount: 0
+    maxInstanceCount: 20
   allowUnauthenticated: true
-  deletionProtection: false
 ```
-
-Deploy:
 
 ```shell
-planton apply -f service.yaml
+planton apply -f cloud-run.yaml
 ```
 
-This creates a public, scale-to-zero HTTP service with Cloud Run's defaults (1 CPU / 512Mi, concurrency 80, 300s timeout) and prints its `https://….run.app` URL.
+This creates a publicly accessible Cloud Run service with scale-to-zero, 1 vCPU, 512Mi memory, and the Gen 2 execution environment. VPC access, volumes, and traffic splitting are not configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Cloud Run service to resources deployed in the same InfraPipeline:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Region the service is deployed in (e.g. `us-central1`). Immutable. | Required |
-| `containers` | `list` | The instance's containers; the first conventionally serves requests. | At least 1; each needs `image` |
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+  serviceAccount:
+    valueFrom:
+      kind: GcpServiceAccount
+      name: my-api-runtime
+      fieldPath: status.outputs.email
+  vpcAccess:
+    networkInterfaces:
+      - network:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: production-vpc
+            fieldPath: status.outputs.network_name
+        subnetwork:
+          valueFrom:
+            kind: GcpSubnetwork
+            name: production-subnet
+            fieldPath: status.outputs.subnetwork_name
+    egress: PRIVATE_RANGES_ONLY
+```
 
-### Service Identity & Metadata
+The InfraPipeline resolves the dependency graph, deploys the project, VPC, and subnetwork first, then provisions the Cloud Run service with VPC connectivity.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default | GCP project. Can reference a GcpProject resource. |
-| `serviceName` | `string` | `metadata.name` | Service name in GCP (1–63 chars, lowercase). Immutable. |
-| `description` | `string` | — | Human-readable description shown in the console. |
-| `labels` | `map` | — | User labels (shared with billing); merged beneath platform attribution labels. |
-| `serviceAccount` | `StringValueOrRef` | Compute Engine default SA | Runtime identity. Reference a GcpServiceAccount's `email` output. |
-| `deletionProtection` | `bool` | `true` | A destroy fails until this is explicitly set false. |
+## Key Configuration
 
-### Containers (`containers[]`)
+These are the most important decisions when configuring a Cloud Run service. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | auto | Container name; required for multi-container services (`dependsOn` refers to it). |
-| `image` | `string` | — | Container image URL. Resolved to a digest at revision creation. |
-| `command` / `args` | `string[]` | image defaults | Entrypoint and argument overrides. |
-| `env[].name` | `string` | — | Variable name. |
-| `env[].value` | `string` | — | Literal value (never place credentials here). |
-| `env[].valueFromSecret` | object | — | Secret Manager reference: `secret` + `version` (`latest` or a number). Exclusive with `value`. |
-| `ports.containerPort` | `int` | `8080` | The single serving port (one container per service may set it). |
-| `ports.name` | `string` | `http1` | `h2c` enables end-to-end HTTP/2 (required for gRPC streaming). |
-| `resources.cpu` | `string` | `1` | CPU limit: `1`, `2`, `4`, `8`, or fractional (`0.5`, `500m`). |
-| `resources.memory` | `string` | `512Mi` | Memory limit with unit suffix (`512Mi`, `2Gi`). Minimums scale with CPU. |
-| `resources.cpuIdle` | `bool` | `true` | `true` = request-based billing; `false` = instance-based (CPU always allocated — required for background work). |
-| `resources.startupCpuBoost` | `bool` | `false` | Extra CPU during startup; cuts cold-start latency for JIT runtimes. |
-| `volumeMounts[]` | list | — | `{name, mountPath}` pairs; Cloud SQL volumes must mount at `/cloudsql`. |
-| `workingDir` | `string` | image default | Working directory for the entrypoint. |
-| `startupProbe` | object | TCP on the port | Gates instance start: HTTP, TCP, or gRPC with delays/periods/thresholds. |
-| `livenessProbe` | object | — | Restarts unhealthy containers: HTTP or gRPC (Cloud Run rejects TCP liveness). |
-| `dependsOn` | `string[]` | — | Containers this one waits for — sidecar startup ordering. |
+**Containers** -- The `containers` list holds the serving container plus any sidecars (log collectors, auth proxies); exactly one container may declare a `ports.containerPort` (injected as `$PORT`). Per-container `resources` set CPU/memory and the two cost levers: `cpuIdle` (request-based vs instance-based billing) and `startupCpuBoost` (faster cold starts for JIT-heavy runtimes). Startup and liveness probes gate first traffic and restart unhealthy instances (TCP checks are startup-only).
 
-### Volumes (`volumes[]` — exactly one source each)
+**Scaling and performance** -- `scaling.minInstanceCount` keeps instances warm (eliminates cold starts at idle cost) and `scaling.maxInstanceCount` caps scale-out. `maxInstanceRequestConcurrency` decides how many requests one instance serves before scale-out; `timeoutSeconds` bounds each request. `serviceScaling.scalingMode: MANUAL` pins the total instance count -- an emergency brake or load-test lever.
 
-| Source | Fields | Description |
-|--------|--------|-------------|
-| `cloudSqlInstance` | `instances[]` (refs → GcpCloudSql `connection_name`) | Managed Unix sockets under the mount path — no sidecar, no VPC needed. |
-| `secret` | `secret`, `defaultMode`, `items[]{path, version, mode}` | Secret Manager versions projected as files. |
-| `emptyDir` | `medium` (`MEMORY`/`DISK`), `sizeLimit` | Per-instance scratch space; MEMORY counts against the memory limit. |
-| `gcs` | `bucket` (ref → GcpGcsBucket), `readOnly` | Cloud Storage FUSE mount; requires GEN2. |
-| `nfs` | `server`, `path`, `readOnly` | NFS share (e.g. Filestore); requires GEN2 and VPC access. |
+**Ingress and authentication** -- `ingress` controls network-level access (all traffic, internal only, or internal plus load balancer). `allowUnauthenticated` grants public access through IAM; `invokerIamDisabled` switches the IAM check off entirely (for org policies forbidding `allUsers` grants) -- set at most one. Combine internal-only ingress with authenticated access for backend microservices.
 
-### Scaling & Runtime
+**VPC connectivity** -- Configure `vpcAccess.networkInterfaces` for Direct VPC Egress (recommended -- no connector infrastructure) or `vpcAccess.connector` for a Serverless VPC Access connector, never both. Set `egress` to `PRIVATE_RANGES_ONLY` to route only private traffic through the VPC, or `ALL_TRAFFIC` for static egress IPs via Cloud NAT.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `scaling.minInstanceCount` | `int` | `0` | Warm instances per revision; 0 scales to zero, 1+ eliminates cold starts. |
-| `scaling.maxInstanceCount` | `int` | GCP default (100) | Per-revision instance cap — the cost/overload circuit breaker. |
-| `serviceScaling.scalingMode` | `string` | `AUTOMATIC` | `MANUAL` pins the total instance count regardless of traffic. |
-| `serviceScaling.manualInstanceCount` | `int` | — | Exact instance count in MANUAL mode. |
-| `serviceScaling.minInstanceCount` | `int` | — | Service-level minimum, distributed across serving revisions. |
-| `maxInstanceRequestConcurrency` | `int` | 80 (1 below 1 CPU) | Concurrent requests per instance (1–1000). |
-| `timeoutSeconds` | `int` | `300` | Request timeout (1–3600); also bounds instance startup. |
-| `executionEnvironment` | enum | GCP-selected | `GEN2` (full Linux, required for GCS/NFS) or `GEN1` (faster cold starts). |
-| `sessionAffinity` | `bool` | `false` | Best-effort same-client-same-instance routing. |
-| `revision` | `string` | auto-generated | Explicit next-revision name (must be prefixed with the service name) — enables declarative blue/green. |
-| `encryptionKey` | `StringValueOrRef` | Google-managed | CMEK crypto key for deployed images. Reference a GcpKmsKey's `key_id` output. |
+**Traffic splitting** -- The `traffic` list makes canary and blue/green declarative: `TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION` targets name a revision and a percentage (all percents must sum to 100), and a `tag` gives a target a stable `https://<tag>---<host>` preview URL. Pin `revision` names only when the traffic table routes by name.
 
-### Networking & Access
+**Execution environment** -- `EXECUTION_ENVIRONMENT_GEN2` (recommended) runs full Linux and is required for GCS/NFS volumes; `EXECUTION_ENVIRONMENT_GEN1` has faster cold starts with a gVisor-restricted syscall surface.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `vpcAccess.networkInterfaces[]` | list | — | Direct VPC egress: `network`/`subnetwork` references + firewall `tags`. Exclusive with `connector`. |
-| `vpcAccess.connector` | `StringValueOrRef` | — | Serverless VPC Access connector (the legacy egress mechanism). |
-| `vpcAccess.egress` | `string` | `PRIVATE_RANGES_ONLY` | `ALL_TRAFFIC` routes everything through the VPC. |
-| `ingress` | enum | `INGRESS_TRAFFIC_ALL` | `INTERNAL_ONLY` or `INTERNAL_LOAD_BALANCER` lock the run.app URL down. |
-| `allowUnauthenticated` | `bool` | `false` | Grants `roles/run.invoker` to `allUsers`. Exclusive with `invokerIamDisabled`. |
-| `invokerIamDisabled` | `bool` | `false` | Switches the IAM invoker check off entirely (org-policy alternative). |
-| `customAudiences` | `string[]` | — | Extra accepted token audiences for authenticated callers. |
+## Outputs and Dependencies
 
-### Traffic Splitting (`traffic[]`)
+### What This Component Consumes
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | enum | `TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST` or `…_REVISION`. |
-| `revision` | `string` | Revision name for REVISION targets. |
-| `percent` | `int` | Share of traffic (all entries must sum to 100). |
-| `tag` | `string` | Stable `<tag>---<host>` preview URL for smoke-testing before traffic moves. |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpServiceAccount** (optional) | `serviceAccount` | `status.outputs.email` |
+| **GcpKmsKey** (optional) | `encryptionKey` | `status.outputs.key_id` |
+| **GcpCloudSql** (optional) | `volumes[].cloudSqlInstance.instances` | `status.outputs.connection_name` |
+| **GcpGcsBucket** (optional) | `volumes[].gcs.bucket` | `status.outputs.bucket_id` |
+| **GcpServerlessVpcConnector** (optional) | `vpcAccess.connector` | `status.outputs.self_link` |
+| **GcpVpcNetwork** (optional) | `vpcAccess.networkInterfaces[].network` | `status.outputs.network_name` |
+| **GcpSubnetwork** (optional) | `vpcAccess.networkInterfaces[].subnetwork` | `status.outputs.subnetwork_name` |
 
-Empty `traffic` routes 100% to the latest ready revision.
+### What This Component Provides
 
-### GPU & Deploy Gates
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `nodeSelector.accelerator` | `string` | GPU per instance (e.g. `nvidia-l4`); needs ≥4 CPU / 16Gi. |
-| `gpuZonalRedundancyDisabled` | `bool` | Single-zone GPU serving — cheaper capacity, zonal risk. |
-| `launchStage` | `string` | `BETA`/`ALPHA` declaration when using preview features. |
-| `binaryAuthorization` | object | `useDefault` XOR `policy` + `breakglassJustification` — attestation-gated deploys. |
-
-## Stack Outputs
-
-| Output | Description |
-|--------|-------------|
-| `url` | Canonical serving URL |
-| `service_name` | Service name in GCP — what serverless NEGs reference |
-| `revision` | Latest ready revision name |
-| `location` | Deployed region |
-| `uid` | Server-assigned unique identifier |
-| `urls` | Every URL serving the service |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `url` | Stable serving URL of the Cloud Run service | Application configuration, API gateway routing |
+| `service_name` | Name of the Cloud Run service in GCP | Serverless NEG wiring, monitoring, IAM bindings |
+| `revision` | Latest ready revision name | Deployment tracking, traffic pinning |
+| `location` | Region the service serves from | Regional composition (NEGs, LB backends) |
+| `uid` | Server-assigned unique identifier | Audit and correlation |
+| `urls` | Every serving URL, including tagged preview URLs | Canary smoke tests, preview environments |
 
 ## Common Patterns
 
-- **Public API** — one container, `allowUnauthenticated: true`, scale-to-zero (see the `01-public-api-service` preset)
-- **Private backend** — internal ingress, direct VPC egress, Cloud SQL volume, secret env, dedicated identity (see `02-private-vpc-service`)
-- **GPU inference** — `nodeSelector.accelerator`, instance-based billing, bounded max instances (see `03-gpu-inference`)
-- **Canary rollout** — pin `revision` names and split `traffic` 90/10 with a `canary` tag; promote by editing percents
-- **Custom domain** — compose a [GcpRegionNetworkEndpointGroup](/docs/catalog/gcp/region-network-endpoint-group) → [GcpBackendService](/docs/catalog/gcp/backend-service) → [GcpUrlMap](/docs/catalog/gcp/url-map) → [GcpTargetHttpsProxy](/docs/catalog/gcp/target-https-proxy) → [GcpGlobalForwardingRule](/docs/catalog/gcp/global-forwarding-rule) with [GcpDnsRecord](/docs/catalog/gcp/dns-record)
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Related Components
+**Public API service** -- Publicly accessible with scale-to-zero, unauthenticated access, port 8080, and Gen 2 execution. Suitable for web applications, APIs, and webhooks. Start from the **Public API Service** preset.
 
-- [GcpRegionNetworkEndpointGroup](/docs/catalog/gcp/region-network-endpoint-group) — the bridge into the global HTTPS load balancer
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — databases mounted via Cloud SQL volumes
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — the runtime identity
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) / [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — direct VPC egress targets
-- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — GCS FUSE volume origins
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK image encryption
-- [GcpArtifactRegistryRepo](/docs/catalog/gcp/artifact-registry-repository) — image storage
+**Private VPC-connected service** -- Internal-only ingress with IAM authentication and Direct VPC Egress for private resource access (private-IP Cloud SQL, Memorystore). Suitable for backend microservices. Start from the **Private VPC Service** preset.
+
+**GPU inference** -- A `nodeSelector.accelerator` (e.g. `nvidia-l4`) gives every instance a GPU for scale-to-zero model serving; containers need at least 4 CPU / 16Gi and the region needs GPU quota. Start from the **GPU Inference** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the Cloud Run service is created
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the least-privilege runtime identity
+- [**GCP Cloud SQL**](/cloud-catalog/gcp-cloud-sql) -- exposes databases as managed Unix sockets via the Cloud SQL volume
+- [**GCP GCS Bucket**](/cloud-catalog/gcp-gcs-bucket) -- mounts object storage via Cloud Storage FUSE
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC for Direct VPC Egress connectivity
+- [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- provides the subnetwork instances draw IPs from
+- [**GCP Region Network Endpoint Group**](/cloud-catalog/gcp-region-network-endpoint-group) -- bridges the service into the HTTPS load-balancer chain for custom domains
+- [**GCP Cloud Run Job**](/cloud-catalog/gcp-cloud-run-job) -- the run-to-completion sibling for batch and scheduled work

@@ -8,110 +8,142 @@ componentName: "awsbatchjobdefinition"
 
 # AWS Batch Job Definition
 
-Deploys an AWS Batch job definition — the versioned container blueprint jobs are submitted from: image, command, sizing, IAM identities, retries, and timeout. Every spec change registers a new immutable revision, and the revision-carrying ARN output rolls referencing consumers automatically.
+Deploys an AWS Batch job definition: the versioned container blueprint jobs are submitted from — image, command, sizing, IAM identities, retries, and timeout. The compute environment provides capacity, the queue routes, and the job definition describes WHAT runs. It models single-container ECS-based jobs for EC2 and Fargate — the shape nearly every Batch workload uses. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsBatchJobDefinition resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Job Definition revision** — an `aws_batch_job_definition` of type `container` with the structured container properties (sizing via resource requirements, identities, environment, secrets, logging, volumes), retry strategy, and timeout
+- **Batch Job Definition (a new revision)** -- registered under `metadata.name`. Revisions are immutable in AWS: every spec change registers a NEW revision rather than mutating the old one, and by default the previous revision is deregistered so exactly one stays ACTIVE
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+Because the `job_definition_arn` output carries the revision, an EventBridge rule that references it picks up each new revision on its next deployment — "change the image tag, the schedule runs the new code" falls out of the composition.
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **For Fargate jobs**: an execution role carrying `AmazonECSTaskExecutionRolePolicy` — use `AwsIamRole`
-- **For private ECR images on EC2**: the compute environment's instance role needs pull permissions
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `job-definition.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **A container image** the compute can pull: ECR images need pull permissions on the execution role (Fargate) or instance role (EC2); private non-ECR registries use a Secrets Manager credentials secret.
+- **An execution role** (Fargate only, required) -- lets the agent pull the image, resolve secrets, and write logs. Reference an AwsIamRole or provide the ARN.
+- **A job role** (recommended) -- the identity the workload's code runs as. Keep it minimal; it is the job's blast radius.
+- **EFS file systems / access points** (only when mounting volumes) -- reference AwsElasticFileSystem / AwsEfsAccessPoint Cloud Resources.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Batch Job Definition**, and click **Deploy**. The creation wizard walks you through the platform choice (which reshapes the flow — the Linux step exists only on EC2, the Fargate runtime step only on Fargate), the image, sizing with the structural Fargate pairing table, identities, configuration, storage, and the execution posture. Start from the **Fargate Container Job** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsBatchJobDefinition
 metadata:
-  name: nightly-etl
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsBatchJobDefinition.nightly-etl
+  name: etl-job
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
+  platformCapabilities:
+    - FARGATE
   container:
-    image: public.ecr.aws/amazonlinux/amazonlinux:2023
-    command: ["echo", "hello"]
+    image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/etl:1.4.2
+    command: ["python", "run.py", "Ref::dataset"]
     vcpus: 1
     memoryMib: 2048
+    executionRole:
+      valueFrom:
+        kind: AwsIamRole
+        name: batch-execution
+        fieldPath: status.outputs.role_arn
+    jobRole:
+      valueFrom:
+        kind: AwsIamRole
+        name: etl-job-role
+        fieldPath: status.outputs.role_arn
+  parameters:
+    dataset: s3://acme-data/default.csv
+  retryStrategy:
+    attempts: 3
+    evaluateOnExit:
+      - action: RETRY
+        onStatusReason: "Host EC2*"
+  timeout:
+    attemptDurationSeconds: 3600
 ```
-
-Deploy:
 
 ```shell
-planton apply -f job-definition.yaml
+planton apply -f batch-job-definition.yaml
 ```
 
-Submit jobs against the definition (with a queue) via SubmitJob or an EventBridge Batch target.
+This registers a Fargate container job with a parameterized command, the recommended Spot-reclaim retry posture (retry infrastructure failures, exit on application failures), and a one-hour per-attempt limit. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+Jobs are submitted at runtime against a queue + this definition; within an InfraPipeline the definition typically references the IAM roles and EFS resources deployed beside it, exactly as in the CLI example's `valueFrom` blocks.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Region the definition is registered in. | Required; non-empty |
-| `container.image` | string | Full image reference. | Required; ≤255 chars |
-| `container.vcpus` | double | vCPUs (fractional Fargate sizes: 0.25-16). | > 0 |
-| `container.memoryMib` | int32 | Memory hard limit in MiB. | >= 4 |
+## Key Configuration
 
-### Optional Fields — Container
+These are the most important decisions when configuring a job definition. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `command` | list(string) | CMD override; supports `Ref::<key>` placeholders resolved from `parameters`. |
-| `jobRole` | StringValueOrRef → AwsIamRole | The code's runtime AWS identity. |
-| `executionRole` | StringValueOrRef → AwsIamRole | The agent's setup identity. **Required for Fargate.** |
-| `environment` | map(string) | Plain env vars (names must not start with `AWS_BATCH`). |
-| `secrets` | map(string) | Env vars from Secrets Manager / SSM ARNs, resolved at job start. |
-| `logConfiguration` | object | Driver override; without it logs land in `/aws/batch/job` automatically. |
-| `volumes` + `mountPoints` | list | EFS volumes (file system + access point refs) and EC2 host paths. |
-| `gpus`, `ulimits`, `linuxParameters`, `privileged`, `user`, `readonlyRootFilesystem` | — | EC2-only container controls (GPU reservation, limits, devices/tmpfs/swap, hardening). |
-| `runtimePlatform`, `fargatePlatformVersion`, `assignPublicIp`, `ephemeralStorageGib` | — | Fargate-only (ARM64/Windows, platform version, public IP, 21-200 GiB scratch). |
-| `repositoryCredentialsSecretArn` | string | Private non-ECR registry credentials (a Secrets Manager ARN). |
+**Platform** -- `FARGATE` requires the execution role and offers the fixed vCPU/memory pairing table, the Graviton (ARM64) runtime, and ephemeral storage up to 200 GiB; `EC2` unlocks GPUs, ulimits, privileged mode, devices, tmpfs, and swap. The definition's platform must match the queue's compute-environment family.
 
-### Optional Fields — Top Level
+**Sizing** -- Fargate accepts only specific vCPU/memory pairs (0.25 vCPU → 512-2048 MiB, up to 16 vCPU → 32-120 GiB); the console offers only legal pairs. EC2 sizes are free-form — size against the compute environment's instance types or jobs sit in RUNNABLE forever.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `platformCapabilities` | list(string) | `["EC2"]` (AWS) | `EC2` and/or `FARGATE`; decides which container knobs are legal. |
-| `parameters` | map(string) | — | Default `Ref::` placeholder values; overridable per job. |
-| `retryStrategy.attempts` | int32 | 1 | 1-10 attempts. |
-| `retryStrategy.evaluateOnExit` | list, max 5 | — | Ordered RETRY/EXIT conditions on exit code / reason / status reason (trailing `*` globs). |
-| `timeout.attemptDurationSeconds` | int32 | — | Hard wall-clock limit per attempt (≥60). |
-| `schedulingPriority` | int32 | — | 0-9999; consulted only on fair-share queues. |
-| `propagateTags` | bool | false | Propagate definition tags to the ECS task. |
-| `deregisterOnNewRevision` | bool | true | Keep exactly one ACTIVE revision. |
+**The two-role split** -- the EXECUTION role sets the job up (image pull, secret resolution, logs); the JOB role is what your code runs as. Deliberately never one role.
 
-## Stack Outputs
+**Secrets vs environment** -- `environment` is plain text, visible to anyone who can describe the definition. `secrets` maps env names to Secrets Manager / SSM ARNs resolved by the agent at job start — the values never enter the definition.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `job_definition_arn` | string | Revision-carrying ARN — changes every revision, rolling referencing consumers. |
-| `arn_without_revision` | string | Revisionless ARN for latest-ACTIVE consumers. |
-| `job_definition_name` | string | The name revisions register under. |
-| `revision` | int64 | The registered revision number. |
+**Storage** -- named `volumes` (EFS-backed — mount through an access point to pin POSIX identity — or EC2 host paths) placed by `mountPoints`. Pair a read-only root filesystem with one writable volume for the hardening default.
 
-## Presets
+**Retry strategy** -- ordered `evaluateOnExit` conditions; first match decides RETRY or EXIT. The canonical posture: RETRY on status reason `Host EC2*` (Spot reclaims), EXIT on everything else.
 
-| Name | Description |
-|------|-------------|
-| [01-fargate-container-job](../presets/01-fargate-container-job.yaml) | Fargate job with execution role and Spot-safe retries |
-| [02-ec2-gpu-job](../presets/02-ec2-gpu-job.yaml) | EC2 GPU job with ulimits and shared memory |
+**Revision posture** -- `deregisterOnNewRevision` defaults to true (exactly one ACTIVE revision). Disable it only when out-of-band SubmitJob calls pin old revisions.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AwsBatchJobQueue](/docs/catalog/aws/batch-job-queue) — where jobs from this definition are submitted
-- [AwsBatchComputeEnvironment](/docs/catalog/aws/batch-compute-environment) — the capacity the jobs run on
-- [AwsIamRole](/docs/catalog/aws/iam-role) — the job and execution identities
-- [AwsElasticFileSystem](/docs/catalog/aws/elastic-file-system) / [AwsEfsAccessPoint](/docs/catalog/aws/efs-access-point) — durable shared volumes
-- [AwsEventBridgeRule](/docs/catalog/aws/event-bridge-rule) — schedules submissions referencing this definition's revision-carrying ARN
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** (job role) | `container.jobRole` | `status.outputs.role_arn` |
+| **AwsIamRole** (execution role; required on Fargate) | `container.executionRole` | `status.outputs.role_arn` |
+| **AwsElasticFileSystem** (per EFS volume) | `container.volumes[].efs.fileSystemId` | `status.outputs.file_system_id` |
+| **AwsEfsAccessPoint** (optional per EFS volume) | `container.volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `job_definition_arn` | Revisioned ARN — rolls with each new revision | EventBridge Batch targets, SubmitJob calls |
+| `arn_without_revision` | Revision-free ARN ("latest active") | IAM policies covering every revision |
+| `job_definition_name` | Definition name | CLI commands, monitoring dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Fargate container job** -- the zero-management default: a parameterized container with the Spot-reclaim retry posture. Start from the **Fargate Container Job** preset.
+
+**EC2 GPU job** -- GPU-reserved training or inference on EC2 compute with the NVIDIA image family. Start from the **EC2 GPU Job** preset.
+
+**Scheduled batch** -- an EventBridge rule targeting the queue + this definition's revisioned ARN: pushing a new image tag and redeploying rolls the schedule onto the new code automatically.
+
+## Works With
+
+- [**AWS Batch Job Queue**](/cloud-catalog/aws-batch-job-queue) -- where jobs from this definition are submitted at runtime
+- [**AWS Batch Compute Environment**](/cloud-catalog/aws-batch-compute-environment) -- the capacity the jobs run on (its family must match the platform here)
+- [**AWS Batch Scheduling Policy**](/cloud-catalog/aws-batch-scheduling-policy) -- `schedulingPriority` orders this definition's jobs within their share on fair-share queues
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the job and execution identities
+- [**AWS Elastic File System**](/cloud-catalog/aws-elastic-file-system) -- durable shared volumes
+- [**AWS EFS Access Point**](/cloud-catalog/aws-efs-access-point) -- POSIX-pinned volume mounts

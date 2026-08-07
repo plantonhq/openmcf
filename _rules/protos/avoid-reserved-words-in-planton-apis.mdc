@@ -1,6 +1,7 @@
 ---
 globs:
-  - apis/**/*.proto
+  - catalog/**/*.proto
+  - shared/**/*.proto
 alwaysApply: false
 ---
 
@@ -86,7 +87,7 @@ When you need to represent concepts that match reserved words:
 
 ## Verification
 
-Java stubs are generated during `make protos` and kept in `apis/generated/stubs/java/` (gitignored). If proto changes introduce reserved word violations, the Java generation will fail immediately, catching the issue before it reaches the planton monorepo.
+Java stubs are generated during `make protos` and kept in `generated/stubs/java/` (gitignored). If proto changes introduce reserved word violations, the Java generation will fail immediately, catching the issue before it ships.
 
 ## Quick Reference
 

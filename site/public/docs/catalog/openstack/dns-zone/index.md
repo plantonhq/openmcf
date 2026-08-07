@@ -8,208 +8,86 @@ componentName: "openstackdnszone"
 
 # OpenStack DNS Zone
 
-Deploys an OpenStack Designate DNS zone with configurable zone type (PRIMARY or SECONDARY), SOA email, TTL, optional master nameservers for zone transfers, and optional inline DNS record sets provisioned alongside the zone.
+Deploys a Designate DNS zone on OpenStack -- the authoritative container for DNS records under a domain name. The zone supports primary and secondary modes, optional inline records, and configurable TTL and SOA email. For independently managed records with DAG visibility in InfraCharts, use the separate OpenStackDnsRecord component.
 
 ## What Gets Created
 
-When you deploy an OpenStackDnsZone resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Zone** — an `openstack_dns_zone_v2` resource representing an authoritative domain in OpenStack Designate. The zone can be PRIMARY (Designate is the authoritative source) or SECONDARY (replicated from upstream master nameservers).
-- **Inline DNS Record Sets** (optional) — one `openstack_dns_recordset_v2` resource per entry in the `records` list. Each record set is keyed by `recordType` + `recordName` for stable IaC state management. Supported types include A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA, SPF, SSHFP, and NAPTR.
+- **Designate DNS Zone** -- an authoritative zone for the specified domain with configurable type (PRIMARY or SECONDARY), TTL, SOA email, and optional master nameservers for zone transfers
+- **Inline DNS Recordsets** -- created only when `records` entries are specified; one recordset per entry, each provisioned as a separate resource keyed by record type + record name for stable IaC state
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Designate DNS service** enabled and available in the target OpenStack project
-- **A valid domain name** for the zone (e.g., `example.com`)
-- **Master nameserver addresses** if creating a SECONDARY zone for zone transfers
+### OpenStack Account
 
-## Quick Start
+- **Designate service** -- the Designate DNS service must be enabled in your OpenStack deployment. Run `openstack zone list` to verify availability.
+- **Domain ownership** -- for production zones, ensure the domain's registrar delegates to the Designate nameservers. Without proper delegation, records are resolvable only within the OpenStack deployment.
+- **Secondary zone masters** -- if creating a SECONDARY zone, have the master nameserver addresses ready. Designate will perform zone transfers (AXFR/IXFR) from these servers.
 
-Create a file `dns-zone.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Primary Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsZone
 metadata:
-  name: my-zone
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackDnsZone.replica-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackDnsZone.mail-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackDnsZone.app-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackDnsZone.example-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackDnsZone.my-zone
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnszone/iac/pulumi/module
-    planton.dev/provisioner: pulumi
+  name: example-zone
+  org: acme-corp
+  env: prod
 spec:
-  domainName: example.com
-  email: admin@example.com
+  domainName: "example.com."
+  email: "admin@example.com"
+  ttl: 3600
 ```
-
-Deploy:
 
 ```shell
 planton apply -f dns-zone.yaml
 ```
 
-This creates a PRIMARY DNS zone for `example.com` in OpenStack Designate with the specified administrator email in the SOA record.
+This creates a primary DNS zone for `example.com.` with a 1-hour default TTL and an SOA admin email. No inline records, secondary masters, or region override are configured.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domainName` | `string` | The DNS domain name for the zone (e.g., `example.com`). This is the authoritative domain managed by Designate. Designate may auto-append a trailing dot internally. ForceNew: changing this requires recreating the zone. | Must be a valid DNS domain (lowercase labels separated by dots, ending with a TLD) |
+**Zone type** -- PRIMARY zones are authoritative (Designate manages all records). SECONDARY zones replicate from upstream master nameservers via zone transfer. If omitted, Designate defaults to PRIMARY. The type is immutable after creation.
 
-### Optional Fields
+**Default TTL** -- The `ttl` field sets the zone-wide default TTL applied to records that do not specify their own. Use 3600 (1 hour) for stable production zones and lower values (60-300) for zones with frequently changing records.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `email` | `string` | — | Email address of the zone administrator. Used in the SOA record for the zone. |
-| `description` | `string` | — | Human-readable description of the DNS zone. |
-| `ttl` | `int32` | Designate default | Default Time To Live (in seconds) for records in this zone. Determines how long resolvers cache records from this zone. |
-| `type` | `string` | `PRIMARY` | The zone type. `PRIMARY` for zones where Designate is the authoritative source. `SECONDARY` for zones replicated from upstream master nameservers. ForceNew: changing this requires recreating the zone. Must be `PRIMARY` or `SECONDARY` when specified. |
-| `masters` | `string[]` | `[]` | List of master nameserver addresses for SECONDARY zones. Required when `type` is `SECONDARY`. Ignored for PRIMARY zones. |
-| `records` | `OpenStackDnsRecord[]` | `[]` | Inline DNS records to create alongside the zone. Each entry provisions a separate record set resource. For independently managed records, use the standalone [OpenStackDnsRecord](/docs/catalog/openstack/dns-record) component instead. |
-| `region` | `string` | provider default | Override the region from the provider config for this zone. ForceNew: changing this requires recreating the zone. |
+**Inline vs standalone records** -- The `records` field creates recordsets alongside the zone in one manifest. For InfraChart deployments where individual records need DAG-level dependency tracking (e.g., an A record pointing to a floating IP resolved via ValueFromRef), use the standalone OpenStackDnsRecord component instead.
 
-#### Inline Record Sub-Fields (`records[]`)
+**SOA email** -- The `email` field sets the administrative contact in the zone's SOA record. While optional, production zones should include a valid contact email for operational transparency.
 
-Each entry in the `records` list defines a DNS record set within the zone:
+## Outputs and Dependencies
 
-| Field | Type | Default | Description | Validation |
-|-------|------|---------|-------------|------------|
-| `recordType` | `RecordType` | — | **(Required)** The DNS record type. Supported values: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `NS`, `PTR`, `CAA`, `SOA`, `SPF`, `SSHFP`, `NAPTR`. | Must be a defined enum value; cannot be `record_type_unspecified` |
-| `recordName` | `string` | — | **(Required)** The fully qualified domain name for this record. Must end with a trailing dot (e.g., `www.example.com.`). Wildcard records are supported (e.g., `*.example.com.`). | Must be a valid FQDN ending with a trailing dot |
-| `values` | `string[]` | — | **(Required)** The DNS record values. For A records: IPv4 addresses. For AAAA records: IPv6 addresses. For CNAME records: target hostname with trailing dot. For MX records: priority and mail server (e.g., `10 mail.example.com.`). For TXT records: text values. Multiple values create a round-robin record set. | Minimum 1 item required |
-| `ttl` | `int32` | `60` | Time To Live (in seconds) for this specific record. Overrides the zone-level TTL. | — |
+### What This Component Consumes
 
-## Examples
+This component has no foreign key dependencies.
 
-### Basic Primary Zone
+### What This Component Provides
 
-A minimal PRIMARY zone with an administrator email and a default TTL:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsZone
-metadata:
-  name: example-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  domainName: example.com
-  email: dns-admin@example.com
-  description: Primary zone for example.com
-  ttl: 3600
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zone_id` | UUID of the DNS zone | DNS record creation via `zoneId` |
+| `zone_name` | DNS zone name (the authoritative domain) | Monitoring labels, resource identification |
+| `region` | OpenStack region where the zone was created | Region-aware downstream resources |
 
-### Zone with Inline A and CNAME Records
+## Common Patterns
 
-A zone with inline records for a web application, including an A record for the apex domain and a CNAME for the `www` subdomain:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsZone
-metadata:
-  name: app-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  domainName: app.example.com
-  email: ops@example.com
-  ttl: 300
-  records:
-    - recordType: A
-      recordName: app.example.com.
-      values:
-        - "192.0.2.10"
-        - "192.0.2.11"
-      ttl: 60
-    - recordType: CNAME
-      recordName: www.app.example.com.
-      values:
-        - "app.example.com."
-      ttl: 300
-```
+**Primary zone** -- Creates an authoritative DNS zone with a 1-hour default TTL and SOA email. The starting point for hosting DNS in Designate -- add records inline or as standalone OpenStackDnsRecord resources. Start from the **Primary Zone** preset.
 
-### Zone with MX and TXT Records for Email
+## Works With
 
-A zone configured for email delivery with MX records pointing to mail servers and TXT records for SPF and DKIM verification:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsZone
-metadata:
-  name: mail-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  domainName: corp.example.com
-  email: postmaster@corp.example.com
-  ttl: 3600
-  records:
-    - recordType: MX
-      recordName: corp.example.com.
-      values:
-        - "10 mail1.corp.example.com."
-        - "20 mail2.corp.example.com."
-      ttl: 3600
-    - recordType: TXT
-      recordName: corp.example.com.
-      values:
-        - "v=spf1 mx ip4:192.0.2.0/24 ~all"
-      ttl: 3600
-    - recordType: A
-      recordName: mail1.corp.example.com.
-      values:
-        - "192.0.2.25"
-      ttl: 300
-    - recordType: A
-      recordName: mail2.corp.example.com.
-      values:
-        - "192.0.2.26"
-      ttl: 300
-```
-
-### Secondary Zone with Master Nameservers
-
-A SECONDARY zone that replicates DNS data from upstream master nameservers via zone transfers (AXFR/IXFR):
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsZone
-metadata:
-  name: replica-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  domainName: replicated.example.com
-  description: Secondary zone replicated from upstream nameservers
-  type: SECONDARY
-  masters:
-    - "ns1.upstream.example.com"
-    - "ns2.upstream.example.com"
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_id` | `string` | UUID of the created DNS zone. This is the primary output used as a foreign key by DNS record components. |
-| `zone_name` | `string` | DNS zone name (derived from `domainName` in spec). This is the authoritative domain managed by this zone. |
-| `region` | `string` | OpenStack region where the DNS zone was created |
-
-## Related Components
-
-- [OpenStackDnsRecord](/docs/catalog/openstack/dns-record) — standalone DNS recordset component for independently managed records; use instead of inline `records` when DAG-visible dependencies are needed
-- [OpenStackFloatingIp](/docs/catalog/openstack/floating-ip) — floating IPs commonly referenced by A records within a DNS zone
-- [OpenStackLoadBalancer](/docs/catalog/openstack/load-balancer) — load balancer VIPs commonly referenced by A or CNAME records within a DNS zone
-- [OpenStackInstance](/docs/catalog/openstack/instance) — compute instances whose IPs can be published as DNS records
+This component operates independently and does not reference other deployment components.

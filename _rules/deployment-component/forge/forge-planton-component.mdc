@@ -77,7 +77,7 @@ The bar for every component:
   surface that reader will actually be looking at: live-caught constraints upstream docs do
   not state go into the spec proto's FIELD comments (the manifest author's surface);
   mechanism explanations go into the module comments of BOTH engines; operational recipes
-  and cross-component prerequisites go into `docs/README.md` / the catalog page / preset
+  and cross-component prerequisites go into `GUIDE.md` / the kind-root `catalog.md` / preset
   explainers. The test: if a future manifest could repeat the mistake, the warning must sit
   on the field its author will be reading when they make it — a lesson recorded only in a
   workflow rule is NOT captured. (The update rule's "Knowledge lands where its READER
@@ -92,8 +92,8 @@ A complete deployment component includes:
 
 ✅ **Proto API Definitions** - All 4 proto files with validations and tests
 ✅ **IaC Modules** - Both Pulumi and Terraform at **100% behavioral parity** (see the Parity Mandate below)
-✅ **Documentation** - User-facing, research, and technical docs
-✅ **Supporting Files** - Test manifests, build configs
+✅ **Documentation** - User-facing README, catalog page, module docs, and the authored GUIDE.md
+✅ **Supporting Files** - The e2e test manifest and module docs
 ✅ **Registry Entry** - Registered in cloud_resource_kind.proto
 ✅ **Import Recipes** - Provider-catalog entries + component import map, round-trip proven (Phase 6c)
 ✅ **Presets** - Ready-to-deploy configuration templates (2-3 common patterns)
@@ -112,7 +112,7 @@ deployed result depends on which provisioner a resource happens to use, which on
 platform breaks auth, networking, or data depending on the field that drifted.
 
 **Neither engine is privileged — both must be behaviorally identical.** The arbiter of
-"correct" is the proto contract (`spec.proto` + `*_stack_outputs.proto`) and the intended
+"correct" is the proto contract (`spec.proto` + `outputs.proto`) and the intended
 behavior, NOT one engine. When the two engines disagree, determine which is right and bring
 the other into line; when you author or change one engine, reconcile the other in the SAME
 session. (In the forge sequence Pulumi is generated first, so Terraform is reconciled
@@ -199,7 +199,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 ## Execution Sequence
 
-The following 21 rules execute in order. Each rule is atomic and can be run individually if needed.
+The following 19 rules execute in order. Each rule is atomic and can be run individually if needed.
 
 ### Phase 1: Proto API Definitions (Rules 001-006)
 
@@ -216,29 +216,31 @@ The following 21 rules execute in order. Each rule is atomic and can be run indi
      ("SENSITIVE FIELD OPTIONS") and the Secret-by-default section below.
    - **Every CEL `message` must be a user-facing, empathetic string** -- see rule `002-spec-validate` ("VALIDATION MESSAGE QUALITY"). These messages are rendered directly in UIs and CLIs. Write them like a knowledgeable colleague, not a compiler.
 3. **003-spec-tests** - Generate spec_test.go with validation tests
-4. **004-stack-outputs** - Generate stack_outputs.proto (deployment outputs)
+4. **004-outputs** - Generate outputs.proto (deployment outputs; the message stays `<Kind>StackOutputs`)
 5. **005-api** - Generate api.proto (KRM wiring: metadata/spec/status)
-6. **006-stack-input** - Generate stack_input.proto (inputs to IaC modules)
+6. **006-input** - Generate input.proto (inputs to IaC modules; the message stays `<Kind>StackInput`)
 
-### Phase 2: Registration and Stubs (Rules 016-017)
+### Phase 2: Registration and Stubs (Rules 014-015)
 
-7. **016-cloud-resource-kind** - Add enum entry to cloud_resource_kind.proto
-8. **017-generate-proto-stubs** - Generate .pb.go stubs (make protos)
+7. **014-cloud-resource-kind** - Add enum entry to cloud_resource_kind.proto
+8. **015-generate-proto-stubs** - Generate .pb.go stubs (make protos)
 
-### Phase 3: Documentation (Rules 007, 020)
+### Phase 3: Documentation (Rule 007)
 
-9. **007-docs** - Generate v1/README.md (user-facing)
-10. **020-research-docs** - Generate v1/docs/README.md (comprehensive research)
+9. **007-readme** - Generate the component-root README.md (user-facing GitHub page)
 
 ### Phase 4: Supporting Files (Rule 008)
 
-11. **008-hack-manifest** - Generate iac/hack/manifest.yaml (test manifest)
+10. **008-e2e-manifest** - Generate the component-root e2e/manifest.yaml (the kind's
+    complete, protovalidate-valid example manifest -- embedded as the reference page's
+    Example block AND deployed by the E2E framework, which treats its presence as the
+    testability marker)
 
-### Phase 5: Pulumi Implementation (Rules 009-010, 012)
+### Phase 5: Pulumi Implementation (Rules 009-011)
 
-12. **009-pulumi-module** - Generate module/ (main.go, locals.go, outputs.go, resources), richly commented to the module-comment bar
-13. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml, Makefile)
-14. **012-pulumi-docs** - Generate iac/pulumi/README.md
+11. **009-pulumi-module** - Generate module/ (main.go, locals.go, outputs.go, resources), richly commented to the module-comment bar
+12. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml -- nothing else)
+13. **011-pulumi-readme** - Generate iac/pulumi/README.md
 
 **CR-rendering kinds — verify the generated SDK can actually CARRY the CRD
 before adopting it.** crd2pulumi flattens a CRD field typed as a map of
@@ -272,20 +274,20 @@ previous operator created instead of failing on the field conflict. The
 E2E verifier asserts the object exists while deployed and is GONE after
 destroy.
 
-### Phase 6: Terraform Implementation (Rules 013, 015)
+### Phase 6: Terraform Implementation (Rules 012-013)
 
-15. **013-terraform-module** - Generate tf/ (variables.tf, main.tf, locals.tf, outputs.tf, provider.tf), richly commented to the module-comment bar
+14. **012-terraform-module** - Generate tf/ (variables.tf, main.tf, locals.tf, outputs.tf, provider.tf), richly commented to the module-comment bar
     - **variables.tf is GENERATED, never hand-mirrored**: run
-      `planton tofu generate-variables <Kind> --output-file <kind>/v1/iac/tf/variables.tf`
+      `planton tofu generate-variables <Kind> --output-file catalog/<provider>/<kind>/iac/tf/variables.tf`
       from the working tree (after the proto stubs regenerate) and commit the generator's
       output (`tofu fmt` it). A hand-written mirror silently drops fields — the module then
       never renders them and every offline gate stays green (the drift surfaces only live,
       as a spec field that does nothing). Re-run the generator after every spec change.
-    - Rule 013 ends with the mandatory **PARITY WITH PULUMI** reconciliation (see that rule).
+    - Rule 012 ends with the mandatory **PARITY WITH PULUMI** reconciliation (see that rule).
       Terraform is authored AFTER Pulumi in the sequence, so it is reconciled field-by-field
       against the existing Pulumi module — fixing whichever engine is wrong, since neither is
       privileged (the proto contract + intended behavior decide correctness).
-16. **015-terraform-docs** - Generate iac/tf/README.md
+15. **013-terraform-readme** - Generate iac/tf/README.md
 
 ### Phase 6b: Cross-Engine Parity Gate (orchestrator gate -- no flow-rule file)
 
@@ -308,9 +310,9 @@ moving on. This is a hard gate: do not proceed to presets/validation while an
   and ignored on the other is a parity defect.
 - **Dependency ordering** -- the same `depends_on`/relationship edges exist on both sides.
 - **Stack outputs** -- both engines emit output shapes that flatten onto the SAME
-  `*_stack_outputs.proto` fields. Verify with the automated guard, not by eye:
+  `outputs.proto` fields. Verify with the automated guard, not by eye:
   ```bash
-  planton validate-outputs --kind <Kind> --module-dir apis/.../v1/iac/tf --sample-outputs <sample>.json
+  planton validate-outputs --kind <Kind> --module-dir catalog/<provider>/<kind>/iac/tf --sample-outputs <sample>.json
   ```
   Expect full proto population and zero unmapped outputs. Add/extend the per-kind case in
   `pkg/outputs/conformance_test.go` so the parity bar is enforced in CI thereafter.
@@ -340,7 +342,7 @@ platform's guided import can derive identifiers instead of asking the user
    declare it as a dotted `write_normalized_attributes` sub-path
    (e.g. `"spec.update_strategy"`) -- never tolerate a whole structural
    attribute like `spec`, which would blind the proof.
-2. **Component map** (`v1/iac/import-map.yaml`): the value source per
+2. **Component map** (the component-root `iac/import-map.yaml`): the value source per
    `{placeholder}` -- prefer derivable sources (metadata.name, spec field,
    stack output, ARN part, address key); `where_to_find` is mandatory when
    nothing derives. The file's presence IS enrollment: the offline conformance
@@ -359,37 +361,40 @@ conditional satellite that no scenario exercises is a recipe that has never
 been proven). When a resource cannot be composed live, say so in the profile
 header and treat its recipe as offline-validated only.
 
-### Phase 7: Presets (Rule 022)
+### Phase 7: Presets (Rule 018)
 
-17. **022-presets** - Generate initial presets (2-3 common configuration templates)
+16. **018-presets** - Generate initial presets (2-3 common configuration templates)
     - Reads `spec.proto` to identify field combinations that produce distinct deployment patterns
-    - Creates ranked YAML manifests + companion markdown in `v1/presets/`
+    - Creates ranked YAML manifests + companion markdown in the component-root `presets/`
     - Follows conventions from `architecture/presets.md`
 
-### Phase 8: Final Validation (Rules 018-019)
+### Phase 8: Final Validation (Rules 016-017)
 
-18. **018-build-validation** - Verify component Go code compiles AND the Pulumi entrypoint
-    builds as the release builds it. Runs BOTH `go build ./catalog/.../v1/...` (recursive, catches
-    module/proto errors) and `go build -o /dev/null ./catalog/.../v1/iac/pulumi` (non-recursive,
+17. **016-build-validation** - Verify component Go code compiles AND the Pulumi entrypoint
+    builds as the release builds it. Runs BOTH `go build ./catalog/<provider>/<kind>/...`
+    (recursive, catches module/proto errors) and
+    `go build -o /dev/null ./catalog/<provider>/<kind>/iac/pulumi` (non-recursive,
     the release contract -- requires a `package main` at the entrypoint root). Also asserts the
     entrypoint lives at `iac/pulumi/` root with no `main/` or `entrypoint/` subdir, AND that
     `iac/pulumi/Pulumi.yaml` exists: without the project file `pulumi stack init` fails at
     deploy time with a misleading "pass the fully qualified name" error, and NO offline check
     (go build, tofu validate, spec tests) can catch its absence -- only a live run does.
-19. **019-test-validation** - Run `go test -v ./catalog/.../v1/` (verify component tests pass)
+18. **017-test-validation** - Run `go test -v ./catalog/<provider>/<kind>/v1alpha1/` (verify component tests pass)
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
-20. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
-    so the new component's catalog page materializes in the built site. The copy script
-    self-cleans provider directories, so stale pages disappear and new ones appear in the
-    same pass. Skipping this leaves the built catalog silently lagging the source --
-    the site build does NOT pick up `catalog-page.md` files on its own.
+19. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
+    so the new component's public page materializes in the built site. The site builds each
+    component's public page from the KIND-ROOT `catalog.md`. The copy script self-cleans
+    provider directories, so stale pages disappear and new ones appear in the same pass.
+    Skipping this leaves the built catalog silently lagging the source -- the site build
+    does NOT pick up the source pages on its own.
 
-### Phase 9: Guide + Reference Regeneration (Rule 023)
+### Phase 9: Guide + Reference Regeneration (Rule 019)
 
-20. **023-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer beside
-    `reference.md`) from what this forging session learned -- internal conventions,
-    judgment calls, diagram impact -- following `_rules/docs/write-planton-component-guide.mdc`.
+20. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
+    component root) from what this forging session learned -- internal conventions,
+    judgment calls, operational recipes, parity accounting, diagram impact -- following
+    `_rules/docs/write-planton-component-guide.mdc`.
     Then run `make generate-reference`: the new kind's reference page, its guide head
     link, and the catalog indexes all materialize in one pass, and the reference
     freshness gate fails any new kind whose pages were not regenerated.
@@ -405,11 +410,11 @@ header and treat its recipe as offline-validated only.
 
 The orchestrator provides progress updates:
 ```
-[1/21] ✅ Generated spec.proto
-[2/21] ✅ Added validations
-[3/21] ✅ Generated tests
+[1/20] ✅ Generated spec.proto
+[2/20] ✅ Added validations
+[3/20] ✅ Generated tests
 ...
-[21/21] ✅ Guide seeded and reference regenerated
+[20/20] ✅ Guide seeded and reference regenerated
 
 🎉 Component creation complete!
 Run @audit-planton-component to verify 100% ideal state compliance.
@@ -1153,7 +1158,7 @@ the resource's `.region` attribute when the output proto documents a region name
 
 - **Ideal State Definition:** `architecture/deployment-component.md`
 - **Individual Flow Rules:** `_rules/deployment-component/forge/flow/`
-- **Analysis:** `_rules/deployment-component/forge/FORGE_ANALYSIS.md`
+- **Anatomy Conformance Gate:** `pkg/anatomy` (CI lane `.github/workflows/lint.component-anatomy.yaml`) -- the machine-enforced constitution of the component layout; run it instead of auditing file inventories by hand
 
 ## Notes
 
@@ -1176,17 +1181,18 @@ After forge completes, the component should have:
 ✅ spec_test.go with validation tests
 ✅ **Component tests execute and pass** (validates buf.validate rules)
 ✅ Registered in cloud_resource_kind.proto
-✅ Complete user-facing documentation (README.md)
-✅ Comprehensive research documentation (docs/README.md)
+✅ Complete user-facing documentation (component-root README.md)
+✅ Component-root `e2e/manifest.yaml` -- complete, protovalidate-valid, embedded as the reference Example and deployed by the E2E framework
 ✅ Pulumi module that compiles and works
 ✅ **Pulumi entrypoint at canonical root** (`iac/pulumi/main.go` is `package main`; no `main/` or `entrypoint/` subdir)
 ✅ Terraform module that validates and works
 ✅ **Both IaC modules richly commented to the module-comment bar** (explain why/trade-offs/provider quirks/ordering, not narration -- see `architecture/deployment-component.md` §4.1)
 ✅ **Cross-engine parity gate passed** (Phase 6b) -- Pulumi and Terraform agree on namespace, naming basis, labels, selectors, feature coverage, dependency ordering, and stack outputs; any divergence carries a `PARITY-EXCEPTION:` comment in both modules
 ✅ **Import recipes shipped and proven** (Phase 6c) -- catalog entries for every module resource type, component import map with derivable-first value sources, offline conformance green, live import round-trip green
-✅ Supporting files (manifests, module overviews)
+✅ Supporting files (e2e manifest, module overviews)
 ✅ Initial presets generated (2-3 common configuration templates)
-✅ Build validation passed -- BOTH `go build ./catalog/.../v1/...` AND the release-equivalent `go build -o /dev/null ./catalog/.../v1/iac/pulumi`
-✅ Component test validation passed (`go test -v ./catalog/.../v1/`)
+✅ Build validation passed -- BOTH `go build ./catalog/<provider>/<kind>/...` AND the release-equivalent `go build -o /dev/null ./catalog/<provider>/<kind>/iac/pulumi`
+✅ Component test validation passed (`go test -v ./catalog/<provider>/<kind>/v1alpha1/`)
+✅ **Anatomy conformance gate green** (`pkg/anatomy`; CI lane `lint.component-anatomy.yaml`) -- the component's file layout is machine-checked, so never audit the inventory by hand
 
 **Result:** A production-ready deployment component matching 95-100% of ideal state with all tests passing!

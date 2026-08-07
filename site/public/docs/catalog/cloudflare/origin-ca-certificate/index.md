@@ -6,43 +6,88 @@ order: 100
 componentName: "cloudflareorigincacertificate"
 ---
 
-# Cloudflare Origin CA Certificate
+# Origin CA Certificate on Cloudflare
 
-Issue a free Cloudflare Origin CA certificate to encrypt the connection between
-Cloudflare's edge and your origin server (the "Full (Strict)" SSL mode).
+Provisions a Cloudflare Origin CA certificate: a free TLS certificate that Cloudflare's edge trusts, installed on your origin server so the Cloudflare-to-origin hop runs encrypted end-to-end (the "Full (Strict)" SSL mode). It is not browser-trusted -- it is valid only between Cloudflare and your origin. By default Cloudflare generates the private key and CSR for you and returns both, so a downstream origin can mount the certificate and key without any out-of-band key handling. Integrates with Planton's Provider Connections for Cloudflare credential management.
 
 ## What Gets Created
 
-- A `cloudflare_origin_ca_certificate` valid for the requested hostnames.
-- When no CSR is supplied: a generated private key + CSR (via the `tls` provider),
-  with the key exported as a sensitive output.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Origin CA Certificate** -- an edge-trusted certificate valid for the hostnames you list
+- **Private Key (optional)** -- generated and returned as a sensitive output when no CSR is supplied
 
-- A Cloudflare API token with `SSL and Certificates` permission (the deprecated
-  Origin CA Key is not required).
+## Before You Deploy
 
-## Configuration Reference
+### Planton Setup
 
-**Required**
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Origin CA edit access. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-- `hostnames` — the SANs the certificate covers (e.g. the zone apex and a wildcard).
+## Deploy
 
-**Optional**
+### Console
 
-- `requestType` — `origin-rsa` (default), `origin-ecc`, or `keyless-certificate`.
-- `requestedValidity` — 7, 30, 90, 365, 730, 1095, or 5475 days (default 5475).
-- `csr` — supply your own CSR to keep your key private (no key is generated).
+Open the deployment store, find **Origin CA Certificate on Cloudflare**, and click **Deploy**. The creation wizard captures the hostnames, how the key is obtained (Cloudflare generates it, or bring your own CSR), and the validity.
 
-## Stack Outputs
+### CLI
 
-| Output | Description |
-|---|---|
-| `certificate_id` | The certificate identifier |
-| `certificate` | The issued certificate (PEM) |
-| `private_key` | The generated private key (PEM, sensitive); empty if a CSR was supplied |
-| `expires_on` | Expiry timestamp |
+Create a manifest and apply it:
 
-## Related Components
+```yaml
+apiVersion: cloudflare.planton.dev/v1
+kind: CloudflareOriginCaCertificate
+metadata:
+  name: edge-origin-cert
+  org: acme-corp
+  env: prod
+spec:
+  hostnames:
+    - example.com
+    - "*.example.com"
+  requestType: origin-rsa
+  requestedValidity: 5475
+```
 
-- `CloudflareDnsRecord`, `CloudflareDnsZone`
+```shell
+planton apply -f cloudflare-origin-ca-certificate.yaml
+```
+
+This issues a 15-year RSA Origin CA certificate covering the apex and its subdomains. A Stack Job tracks the provisioning in real time.
+
+## Key Configuration
+
+These are the most important decisions when configuring an Origin CA certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Hostnames (`hostnames`)** -- The Subject Alternative Names the certificate covers. Wildcards like `*.example.com` are allowed, and hostnames may belong to any zone your account controls. Immutable -- changing them re-issues the certificate.
+
+**Key Algorithm (`requestType`)** -- `origin-rsa` (default, broadest compatibility), `origin-ecc` (smaller/faster), or `keyless-certificate`. Applies when Cloudflare generates the key. Immutable.
+
+**Validity (`requestedValidity`)** -- 7, 30, 90, 365, 730, 1095, or 5475 days. Because these certificates are not browser-trusted, the 15-year default is safe and avoids renewal churn. Immutable.
+
+**CSR (`csr`)** -- Supply a PEM CSR to use your own key material; no private key is generated and your key never leaves your control. Omit it (recommended) to have Cloudflare generate the key + CSR.
+
+## Outputs and Dependencies
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `certificate_id` | The Origin CA certificate identifier | Verification, dashboards |
+| `certificate` | The issued certificate (PEM) | Install on the origin |
+| `private_key` | The generated private key (PEM), when no CSR was supplied. Sensitive. | Mount on the origin alongside the certificate |
+| `expires_on` | RFC3339 expiry timestamp | Rotation reminders |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**One-click cert + key** -- let Cloudflare generate everything and mount both outputs into a Kubernetes TLS secret on the origin.
+
+**Bring your own key** -- supply a CSR so the private key never leaves your infrastructure.
+
+## Works With
+
+- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose origin serves traffic behind this certificate

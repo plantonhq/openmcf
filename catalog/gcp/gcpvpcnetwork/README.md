@@ -201,7 +201,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Examples
 
-For more comprehensive examples, see `examples.md`, including:
+For more comprehensive examples, see `e2e/manifest.yaml`, including:
 - Basic development VPC
 - Production shared VPC setup
 - Multi-region VPC with global routing

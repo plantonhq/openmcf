@@ -55,13 +55,13 @@ make test
 pulumi stack init local
 
 # Preview changes
-STACK_INPUT_FILE=../hack/manifest.yaml pulumi preview
+STACK_INPUT_FILE=../../e2e/manifest.yaml pulumi preview
 
 # Apply changes
-STACK_INPUT_FILE=../hack/manifest.yaml pulumi up
+STACK_INPUT_FILE=../../e2e/manifest.yaml pulumi up
 
 # Destroy resources
-STACK_INPUT_FILE=../hack/manifest.yaml pulumi destroy
+STACK_INPUT_FILE=../../e2e/manifest.yaml pulumi destroy
 ```
 
 ## Module Structure

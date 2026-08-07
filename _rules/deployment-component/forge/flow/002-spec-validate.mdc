@@ -13,7 +13,7 @@ You are the Planton Code Partner working inside the developer’s local workspac
 This rule separates deterministic steps (Python tools) from LLM drafting.
 
 SCOPE
-- Target: `catalog/<provider>/<kindfolder>/v1/spec.proto`
+- Target: `catalog/<provider>/<kindfolder>/v1alpha1/spec.proto`
 - Only add validations and brief comments. No field/message renames/additions/deletions.
 - Do not manually create folders; writer tool handles directories.
 - Do not edit other files.
@@ -62,8 +62,8 @@ defect (GcpGlobalAddress `internal_requires_network` rejected VPC-ref manifests
 before it was caught and fixed).
 
 - Correct presence check: `has(this.field) && (has(this.field.value) || has(this.field.value_from))`
-- Worked examples: `gcpcloudsql/v1/spec.proto` (`private_ip_requires_vpc`),
-  `gcpaddress/v1/spec.proto` (`peering_purpose_requires_network`).
+- Worked examples: `catalog/gcp/gcpcloudsql/v1alpha1/spec.proto` (`connectivity_required`),
+  `catalog/gcp/gcpaddress/v1alpha1/spec.proto` (`peering_purpose_requires_network`).
 - `this.field.value != ''` is only safe when the rule really is about the LITERAL
   branch specifically (rare; document why in a comment if so).
 

@@ -8,139 +8,72 @@ componentName: "azurewebapplicationfirewallpolicy"
 
 # Azure Web Application Firewall Policy
 
-Creates a regional Web Application Firewall (WAF) policy -- the rule set an Azure Application Gateway enforces on HTTP traffic. Custom rules handle allowlists, geo fencing, rate limiting, and bot challenges; Microsoft's managed rule sets (OWASP core rule set, bot manager) handle attack signatures, tuned with per-rule overrides and scoped exclusions; policy settings govern the enforcement mode and body inspection.
+Deploys a regional Web Application Firewall (WAF) policy — the rule set an Azure Application Gateway enforces on HTTP traffic. This is the APPLICATION GATEWAY policy type (`Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies`); Azure Front Door's WAF is a different ARM resource with a different rule vocabulary. A policy attaches to gateways at three levels — gateway-wide, per HTTP listener, and per URL path rule — so a single org-standard policy governs many gateways while specific routes carry stricter or looser variants (most specific wins). The attached gateway must be on the WAF_v2 SKU.
+
+A policy has three layers, evaluated in order: **custom rules** (your match and rate-limit rules, by ascending priority), then **managed rules** (Microsoft's curated OWASP / bot-manager sets), governed by **policy settings** (Prevention vs Detection, body-inspection limits, log scrubbing).
 
 ## What Gets Created
 
-When you deploy an AzureWebApplicationFirewallPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **WAF Policy** -- an `azurerm_web_application_firewall_policy` in the specified region and resource group, carrying your custom rules, managed-rule configuration, policy settings, and tags
+- **WAF Policy** -- the policy with its custom rules, managed rule sets and tuning, enforcement settings, and log-scrubbing rules
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-The policy is deliberately standalone: one policy is shared across Application Gateways and attached by reference -- gateway-wide, per listener, or per URL path rule -- so tuning it never touches the gateways.
+Azure REQUIRES at least one managed rule set — a WAF policy without one is rejected. The gateway attachment is NOT created here: an AzureApplicationGateway references this policy's `policy_id` output.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the policy in (an `AzureResourceGroup` in composed environments)
-- **A WAF_v2 Application Gateway** to attach it to (the Standard_v2 and Basic SKUs cannot enforce WAF policies)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `waf-policy.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the policy will be created — conventionally beside the Application Gateways it protects.
+- **An Application Gateway on the WAF_v2 SKU** to attach the policy (created separately; the policy can also exist unattached).
+- **A tuning window**: new policies run best in Detection mode against real traffic first, then switch to Prevention once false positives are tuned out.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Web Application Firewall Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **OWASP Baseline** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureWebApplicationFirewallPolicy
 metadata:
   name: waf-baseline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureWebApplicationFirewallPolicy.waf-baseline
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
-  policyName: org-waf-baseline
+    value: "rg-web"
+  policyName: waf-baseline
   managedRules:
     managedRuleSets:
-      - version: "3.2"
+      - type: OWASP
+        version: "3.2"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f waf-policy.yaml
 ```
 
-This creates an OWASP 3.2 policy in Prevention mode. Read `status.outputs.policy_id` for gateway wiring.
+OWASP 3.2 in Prevention mode (Azure's default) blocks SQL injection, XSS, RCE, LFI, and protocol violations out of the box.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region -- must match the gateways that attach the policy. Changing it replaces the policy. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `policyName` | `string` | The policy's name, unique within the resource group. | Required, 1-128 chars |
-| `managedRules` | `object` | At least one managed rule set (see below). | Required |
-
-### Managed Rules
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `managedRuleSets[].type` | `enum` | `OWASP` | `OWASP`, `MICROSOFT_BOT_MANAGER_RULE_SET`, or `MICROSOFT_DEFAULT_RULE_SET`. |
-| `managedRuleSets[].version` | `string` | -- | OWASP: `3.2`/`3.1`/`3.0`/`2.2.9`; DefaultRuleSet: `2.1`/`2.2`; BotManager: `0.1`/`1.0`/`1.1`. |
-| `managedRuleSets[].ruleGroupOverrides` | `list` | `[]` | Per-group tuning: `ruleGroupName` + rules (`id`, `enabled` -- default `false`, so listing a rule disables it -- and an optional `OVERRIDE_*` action). |
-| `exclusions` | `list` | `[]` | Request parts the managed rules skip: a collection (`REQUEST_HEADER_NAMES`, `REQUEST_COOKIE_NAMES`, ...), a `SELECTOR_*` operator, the selector key, and an optional narrowed `excludedRuleSet`. |
-
-### Custom Rules
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | Letters and digits, starting with a letter. |
-| `priority` | `int32` | 1-100, unique; lower runs first. |
-| `ruleType` | `enum` | `MATCH_RULE` or `RATE_LIMIT_RULE`. |
-| `action` | `enum` | `ALLOW`, `BLOCK`, `LOG`, `JS_CHALLENGE` (rate-limit rules cannot `ALLOW`). |
-| `rateLimitDuration` / `rateLimitThreshold` / `groupRateLimitBy` | -- | Required for rate-limit rules: `ONE_MIN`/`FIVE_MINS` window, threshold, and grouping (`CLIENT_ADDR`, `CLIENT_ADDR_XFF_HEADER`, `GEO_LOCATION`, `GEO_LOCATION_XFF_HEADER`, `NONE`). |
-| `matchConditions` | `list` | Variables (`REMOTE_ADDR`, `REQUEST_URI`, `REQUEST_HEADERS` + selector, ...), an operator (`IP_MATCH`, `GEO_MATCH`, `CONTAINS`, `REGEX`, ...), values, optional negation and transforms (`LOWERCASE`, `URL_DECODE`, ...). Conditions AND; values OR. |
-
-### Policy Settings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | `bool` | `true` | Whether the policy is enforced at all. |
-| `mode` | `enum` | `PREVENTION` | `PREVENTION` blocks; `DETECTION` only logs (the tuning mode). |
-| `requestBodyCheck` / `requestBodyEnforcement` | `bool` | `true` | Body inspection and over-size blocking. |
-| `requestBodyInspectLimitInKb` | `int32` | `128` | 0 = unlimited inspection. |
-| `maxRequestBodySizeInKb` | `int32` | `128` | 8-2000. |
-| `fileUploadEnforcement` / `fileUploadLimitInMb` | -- | `true` / `100` | Upload blocking (OWASP 3.2 only) and the 1-4000 MB limit. |
-| `jsChallengeCookieExpirationInMinutes` | `int32` | `30` | 5-1440; how long a solved JS challenge stays valid. |
-| `logScrubbing` | `object` | -- | Redact request parts from WAF logs: `SCRUB_REQUEST_HEADER_NAMES`, `SCRUB_REQUEST_COOKIE_NAMES`, `SCRUB_REQUEST_IP_ADDRESS`, ... with `SELECTOR_EQUALS` (one key) or `SELECTOR_EQUALS_ANY` (all keys). |
-
-## Examples
-
-### Rate Limiting and Geo Fencing
+Attach the policy to an Application Gateway (the direction is gateway → policy):
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureWebApplicationFirewallPolicy
-metadata:
-  name: waf-edge
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  policyName: org-waf-edge
-  customRules:
-    - name: throttleApi
-      priority: 20
-      ruleType: RATE_LIMIT_RULE
-      action: BLOCK
-      rateLimitDuration: ONE_MIN
-      rateLimitThreshold: 300
-      groupRateLimitBy: CLIENT_ADDR
-      matchConditions:
-        - matchVariables:
-            - variableName: REQUEST_URI
-          operator: BEGINS_WITH
-          matchValues:
-            - /api/
-  managedRules:
-    managedRuleSets:
-      - version: "3.2"
-```
-
-### Attach to an Application Gateway
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureApplicationGateway
-metadata:
-  name: web-gateway
+# AzureApplicationGateway
 spec:
   sku: WAF_V2
   firewallPolicyId:
@@ -150,16 +83,48 @@ spec:
       fieldPath: status.outputs.policy_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the graph, deploys the policy first, then the gateway that references its `policy_id`.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `policy_id` | `string` | The policy's ARM ID -- referenced by Application Gateways gateway-wide, per listener, and per path rule |
-| `policy_name` | `string` | The policy's name |
+These are the most important decisions when configuring a WAF policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Managed rules (required)** -- OWASP 3.2 is the production standard (several enforcement dials only work with it); the bot manager runs beside it. Tune with per-rule OVERRIDES (remember: listing a rule DISABLES it unless explicitly enabled) and per-part EXCLUSIONS — never disable a whole set for one false positive. Exclusions carry a NARROWER version vocabulary than the rule sets.
 
-- [AzureApplicationGateway](/docs/catalog/azure/application-gateway) — the L7 load balancer that enforces the policy
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for policy placement
+**Custom rules** -- evaluated first, by ascending priority. MATCH rules act on every matching request; RATE_LIMIT rules act past a threshold within a window (and cannot ALLOW). Conditions AND together; values within one condition OR; transforms (LOWERCASE + URL_DECODE) catch encoding evasions.
+
+**Enforcement (`policy_settings`)** -- Prevention blocks, Detection only logs (the tuning mode). The body-inspection dials carry Azure defaults; a 0 inspect limit means UNLIMITED. Omit the whole block for Azure's defaults.
+
+**Log scrubbing** -- redact auth headers, PII arguments, and client IPs from the WAF logs before they land in Log Analytics.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_id` | Azure Resource Manager ID of the WAF policy | AzureApplicationGateway `firewallPolicyId` — gateway-wide, per-listener, or per-path-rule (most specific wins) |
+| `policy_name` | Name of the policy | Automation scripts, inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**OWASP baseline** -- the OWASP 3.2 core rule set in Prevention mode, no custom rules, no overrides: the policy almost every gateway starts from. Start from the **OWASP Baseline** preset.
+
+**Rate limit and geo** -- OWASP plus the bot manager, with custom rules for per-client rate limiting and geo restriction. Start from the **Rate Limit & Geo** preset.
+
+**Detection tuning** -- the same baseline in Detection mode for watching real traffic before enforcing. Start from the **Detection Tuning** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the policy is created
+- [**Azure Application Gateway**](/cloud-catalog/azure-application-gateway) -- the WAF_v2 gateway that attaches this policy at up to three levels

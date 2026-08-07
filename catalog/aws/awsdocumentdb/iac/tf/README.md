@@ -5,10 +5,10 @@ This module provisions an Amazon DocumentDB (MongoDB-compatible) cluster and its
 ## CLI (local backend)
 
 ```shell
-planton tofu init --manifest ../hack/manifest.yaml
-planton tofu plan --manifest ../hack/manifest.yaml
-planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest ../hack/manifest.yaml --auto-approve
+planton tofu init --manifest ../../e2e/manifest.yaml
+planton tofu plan --manifest ../../e2e/manifest.yaml
+planton tofu apply --manifest ../../e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest ../../e2e/manifest.yaml --auto-approve
 ```
 
 Credentials are passed via the stack input through the CLI, not in `spec`.

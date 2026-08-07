@@ -19,7 +19,7 @@ spec:
   #   actions, and the spec CEL enforces that.)
   #
   # Excluded from the live lane with reasons (proven by spec tests + the
-  # offline plan gate against iac/hack/manifest.yaml, which exercises every
+  # offline plan gate against e2e/manifest.yaml, which exercises every
   # one of these arms):
   # - triggers (push/pull_request filters): require a
   #   CodeStarSourceConnection source action, and the connection object

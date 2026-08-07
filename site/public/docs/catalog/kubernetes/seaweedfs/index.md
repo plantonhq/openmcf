@@ -6,146 +6,136 @@ order: 100
 componentName: "kubernetesseaweedfs"
 ---
 
-# Kubernetes SeaweedFS
+# SeaweedFS
 
-Deploys SeaweedFS — an Apache-2.0, S3-compatible object store — from
-the official SeaweedFS Helm chart. One resource is one whole store:
-master servers coordinate the cluster, volume servers hold the object
-bytes, and the filer serves the namespace and the S3 API — each tier
-sized and scaled independently. The S3 gateway is on by default with
-credentials materialized in a Kubernetes Secret, buckets declared in
-the spec are created at install, storage deliberately rides
-PersistentVolumeClaims instead of the chart's hostPath default, and
-everything stays ClusterIP — external reachability composes from
-ingress and gateway kinds.
+Deploy [SeaweedFS](https://seaweedfs.github.io) — the Apache-2.0, S3-compatible distributed object store — from the official SeaweedFS Helm chart. One resource is one whole store: **master** servers coordinate the cluster, **volume** servers hold the object bytes (the only tier that grows with your data), and the **filer** serves the file/bucket namespace and hosts the S3 API. Each tier is sized and scaled independently, and storage deliberately rides PersistentVolumeClaims instead of the chart's hostPath default.
 
-> **Why an in-cluster object store**: applications need S3 for
-> artifacts, backups, datasets and media even where no cloud bucket
-> service exists — on-prem fleets, air-gapped clusters, dev
-> environments. SeaweedFS serves the S3 API from inside the cluster
-> with a deliberately small footprint: three small pods on default
-> volumes make a working store.
+Applications need S3 for artifacts, backups, datasets, and media even where no cloud bucket service exists — on-prem fleets, air-gapped clusters, dev environments. SeaweedFS serves the S3 API from inside the cluster with a small footprint: an empty spec gives a working single-node store. Everything stays ClusterIP; external reachability composes from ingress and gateway kinds.
 
 ## What Gets Created
 
-- **Namespace** (optional) — created and owned when `create_namespace`
-  is set
-- **Admin auth Secret** (`<name>-admin-auth`, when the console is
-  enabled without `existing_auth_secret`) — keys `user`/`password`;
-  the console is never installed open
-- **Helm release** (official `seaweedfs` chart, pinned 4.40.0, named
-  `metadata.name`): the master, volume and filer tiers on
-  PersistentVolumeClaims (5Gi/30Gi/10Gi defaults), the S3 gateway
-  (embedded on the filer, or its own Deployment with `s3.dedicated`),
-  the `<name>-s3` Service (port 8333), the `<name>-s3-secret`
-  credentials Secret (when auth is on — the default; stable across
-  upgrades, kept on uninstall), the install hook that creates the
-  buckets declared in `s3.buckets`, and the admin console when
-  enabled
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Helm release** (official `seaweedfs` chart, pinned `4.40.0`, named `metadata.name`) — the master, volume, and filer tiers on PersistentVolumeClaims (5Gi/30Gi/10Gi chart defaults), the S3 gateway (embedded on the filer, or its own Deployment when `s3.dedicated` is declared), the `<name>-s3` Service on port 8333, and the install hook that creates every bucket declared in `s3.buckets`
+- **S3 credentials Secret** (`<name>-s3-secret`, when auth is on — the default) — admin and read-only access-key pairs, generated once, stable across upgrades, kept on uninstall
+- **Admin auth Secret** (`<name>-admin-auth`, when the console is enabled without `existing_auth_secret`) — keys `user`/`password`; the console is never installed open
+- **Kubernetes Namespace** — created only when `create_namespace` is true; otherwise the namespace must already exist
 
-- A Kubernetes namespace that already exists, or set
-  `create_namespace`
-- A StorageClass for the data volumes (most managed clusters provide
-  a default; or reference a KubernetesStorageClass per tier)
-- For `s3.existing_config_secret`: a Secret carrying the chart's
-  `seaweedfs_s3_config` key (the inline JSON identities document)
-- For `admin.existing_auth_secret`: a Secret carrying `user` and
-  `password` keys
-- For `replication`: enough volume servers (and racks / data centers,
-  per the placement code) to place every copy
-- For `service_monitor_enabled`: the Prometheus Operator CRDs
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
+
+### Cluster Side
+
+- **A StorageClass** for the data volumes — most managed clusters provide a default; reference a **Kubernetes Storage Class** per tier for explicit (SSD) placement. The module keeps data on PVCs, so pod restarts are never data loss.
+- **The Prometheus Operator CRDs** — only if you set `service_monitor_enabled`; without the operator, the release fails to install.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **SeaweedFS**, and click **Deploy**. The creation wizard walks you through namespace placement, the chart pin, the three tiers in dependency order, the S3 gateway posture, day-one buckets, the replication code, the admin console, observability, and the Helm-values escape hatch. Start from the **Dev Single Node** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSeaweedFs
 metadata:
-  name: object-store
+  name: dev-seaweedfs
+  org: acme-corp
+  env: dev
 spec:
   namespace:
-    value: object-store
+    value: dev-object-store
   create_namespace: true
   s3:
     buckets:
       - name: app-data
 ```
 
-SDKs point at the exported `s3_endpoint`
-(`http://object-store-s3.object-store.svc.cluster.local:8333`,
-path-style addressing) with the admin access-key pair from the
-`object-store-s3-secret` Secret; a read-only pair lives alongside it
-for consumers that must not write.
+```shell
+planton apply -f seaweedfs.yaml
+```
 
-## Configuration
+This creates the smallest declarable store that actually serves: one master, one volume server, one filer, the S3 gateway embedded on the filer with authentication on (credentials in the `dev-seaweedfs-s3-secret` Secret), and one bucket created at install.
 
-### Topology and scaling
+### InfraChart
 
-Empty tiers give 1 master / 1 volume server / 1 filer — a working
-single-node store. For HA: 3 masters (a Raft quorum — use an odd
-count), volume servers sized for your data (the only tier that grows
-with stored bytes), and a `replication` placement code (`"001"` = one
-extra copy on another server, requiring at least 2 volume servers).
-Keep 1 filer unless a shared external metadata store is wired via
-`helm_values` — the embedded leveldb default is per-pod.
+Compose the store behind its namespace with a reference, and the InfraPipeline orders the deploys:
 
-### S3, credentials and buckets
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: object-store-namespace
+      fieldPath: spec.name
+  create_namespace: false
+```
 
-The gateway is on with auth on by default — the chart materializes
-admin and read-only credential pairs in `<name>-s3-secret`. Declare
-`s3.dedicated` to run the gateway as its own Deployment and scale the
-API independently of metadata; both shapes expose the same `<name>-s3`
-Service. Buckets in `s3.buckets` are typed (name, `anonymous_read`,
-`ttl` like `"7d"`, `object_lock` — irreversible, forces versioning —
-and `versioning`) and created by the chart's install hook; removing
-an entry later does NOT delete the bucket or its data.
+## Key Configuration
 
-### Storage
+**The S3 gateway is on by default** — this kind exists to serve S3. Untouched, the chart serves the API with authentication required and materializes admin + read-only credential pairs in the `<name>-s3-secret` Secret. Explicit `enabled: false` is the pure filer/POSIX posture; explicit `enable_auth: false` means every pod that can reach the Service can read AND write every bucket — a dev-only posture.
 
-The chart's out-of-the-box storage is hostPath (bare-metal grain);
-this component deliberately maps every data volume to a
-PersistentVolumeClaim and logs to emptyDir. Declare `size` and
-optionally `storage_class` per tier; empty means the tier default on
-the cluster's default class.
+**The volume tier is the capacity decision** — `volume.data_volume.size` is per volume-server pod and holds the actual object bytes (the chart default is 30Gi). Size it for the data you expect, and multiply by the replication code's copy count. Master and filer state stay small.
 
-### Exposure
+**Replication is placement, not backup** — the three-digit XYZ code (`"001"` = one extra copy on another server) protects against server loss, never against deletion or corruption written through the API. The copies must fit the declared topology: `"001"` needs at least 2 volume servers or writes fail.
 
-Everything is in-cluster only (ClusterIP). Compose a
-KubernetesIngress or Gateway API route over the `<name>-s3` Service
-for external S3 clients, and over the admin Service for the console.
+**Buckets are declarative, deletion is not** — buckets in `s3.buckets` are created at install with per-bucket TTL (objects expire themselves — no cleanup job), S3 versioning, anonymous read, and Object Lock. Removing a bucket from the spec never deletes it or its data — cleanup is a deliberate manual act. Object Lock is a one-way door: once enabled it cannot be turned off, and locked objects resist deletion until retention expires.
 
-## Stack Outputs
+**One filer until you wire an external store** — the filer's embedded LevelDB metadata store is per-pod. Raising `filer.replicas` without first wiring a shared store (Postgres/MySQL through `WEED_*` env vars and `helm_values`) gives each filer its own divergent namespace.
 
-| Output | Description |
-|---|---|
-| `namespace` | Namespace the store runs in |
-| `release_name` | Helm release name (= `metadata.name`) |
-| `s3_endpoint` | In-cluster S3 endpoint (`http://<name>-s3.<ns>.svc.cluster.local:8333`); empty when the gateway is disabled |
-| `s3_credentials_secret_name` | Secret holding the S3 credentials (`<name>-s3-secret`, or the referenced existing config secret); empty when auth is disabled |
-| `filer_service_name` | Filer Service (file namespace HTTP API, port 8888) |
-| `master_service_name` | Master Service (cluster coordination, port 9333) |
-| `admin_endpoint` | In-cluster admin console endpoint (port 23646); empty when the console is disabled |
-| `admin_auth_secret_name` | Secret holding the console credentials (keys `user`/`password`); empty when the console is disabled |
-| `port_forward_command` | Workstation S3 access when no exposure is composed |
+**The console is never installed open** — `admin.enabled` without `existing_auth_secret` generates the `<name>-admin-auth` Secret (keys `user`/`password`, surfaced in the outputs). Give it a small `data_volume` to persist console configuration across restarts.
 
-## Related Components
+**`helm_values` merges last** — the escape hatch for chart surface the typed fields do not cover (scheduling, probes, SFTP, mTLS, external filer stores). Anything here silently overrides the typed fields on every deploy; never put secrets in it.
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) —
-  provides the target namespace via reference
-- [KubernetesStorageClass](/docs/catalog/kubernetes/storage-class)
-  — backs the per-tier data volumes via reference
-- [KubernetesIngress](/docs/catalog/kubernetes/ingress) —
-  composes external S3 or console exposure over the service handles
+## Outputs and Dependencies
 
-## Next Steps
+### What This Component Consumes
 
-Declare the buckets applications need where the store is declared —
-the hook creates them at install, and consumers receive a bucket name
-plus the credentials Secret, never bucket-creation power. Size the
-volume tier for the data you expect and set a `replication` code once
-there are enough volume servers to place the copies. Enable the admin
-console for operations visibility — it always ships behind
-credentials — and compose exposure only where S3 clients live outside
-the cluster.
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | Where the store runs |
+| `spec.master.data_volume.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Master state volume class |
+| `spec.volume.data_volume.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Object-bytes volume class |
+| `spec.filer.data_volume.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Filer metadata volume class |
+| `spec.admin.data_volume.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Console state volume class |
+| `spec.s3.existing_config_secret` | Existing Secret (`seaweedfs_s3_config` key) | Bring-your-own S3 identities |
+| `spec.admin.existing_auth_secret` | Existing Secret (`user`/`password` keys) | Bring-your-own console credentials |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Namespace the store runs in | Application deployment manifests |
+| `release_name` | Helm release name (= metadata.name) | Operational tooling |
+| `s3_endpoint` | In-cluster S3 endpoint (port 8333, path-style; the filer service when embedded, the gateway service when dedicated). Empty when the gateway is disabled | Application S3 SDK configuration |
+| `s3_credentials_secret_name` | The credentials Secret — admin and read-only access-key pairs. Empty when auth is disabled | Client authentication |
+| `filer_service_name` | The filer Service (file-namespace HTTP API, port 8888) | POSIX/HTTP file access, diagnostics |
+| `master_service_name` | The master Service (cluster coordination, port 9333) | Operational tooling |
+| `admin_endpoint` | In-cluster admin console endpoint. Empty when the console is disabled | Operator access |
+| `admin_auth_secret_name` | The console credentials Secret (keys `user`/`password`). Empty when the console is disabled | Operator authentication |
+| `port_forward_command` | Copy-paste `kubectl port-forward` for the S3 endpoint | Local development access |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Dev Single Node** — one master, one volume server, one filer on small PVCs, the S3 gateway embedded with auth on, and one bucket created at install: a real S3 endpoint for developers and CI without production ceremony. Start from the **Dev Single Node** preset.
+
+**Production HA** — a 3-master Raft quorum, 3 volume servers on explicit fast storage under the `"001"` replication code, a dedicated 2-replica S3 gateway Deployment, resources on every tier, and the admin console with persisted state. Start from the **Production HA** preset.
+
+**Artifact Store** — three typed buckets from day one: CI artifacts that expire themselves after 30 days (TTL), release artifacts with versioning so an overwrite never destroys a prior release, and a public-assets bucket with anonymous reads. Start from the **Artifact Store** preset.
+
+## Works With
+
+- **Kubernetes Namespace** — referenced placement; the InfraPipeline orders namespace-first.
+- **Kubernetes Storage Class** — SSD-backed classes for the tier data volumes.
+- **Kubernetes Secret** — bring-your-own S3 identities and console credentials.
+- **Kubernetes Ingress / Gateway API kinds** — HTTP exposure over the exported S3 endpoint or admin console.
+- **Microservice Kubernetes and job kinds** — consume the exported `s3_endpoint` and credentials Secret for artifacts, backups, and media.

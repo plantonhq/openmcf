@@ -6,161 +6,65 @@ order: 100
 componentName: "kubernetesdaemonset"
 ---
 
-# Kubernetes DaemonSet
+# DaemonSet on Kubernetes
 
-Deploys a node agent to a target Kubernetes cluster as an apps/v1 DaemonSet through a single declarative manifest: exactly one pod on every node matching the pod's scheduling rules, with node targeting via selectors/tolerations/affinity, host access via HostPath mounts, host namespaces, and host ports, and rolling updates bounded by `maxUnavailable`/`maxSurge`. The IaC module handles selector labels and label merging automatically.
+Deploys a node agent on any Kubernetes cluster as an apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's scheduling rules, and pods are added or garbage-collected as nodes join and leave. This is the kind for log shippers, node monitors, storage daemons, and CNI components. Supports the full shared workload surface (sidecars and init containers, all environment variable sources, probes, lifecycle hooks, security contexts), node coverage via selectors/affinity/tolerations, host ports and host namespaces for node-level access, and fleet-safe update strategies with surge support. Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
 ## What Gets Created
 
-When you deploy a KubernetesDaemonSet resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DaemonSet** — the apps/v1 workload with the agent container, sidecars, init containers, scheduling, host access, and security configuration from the spec
-- **Env Secret** — `<name>-env-secrets`, only when the spec carries literal secret env values
-- **Namespace** — only when `createNamespace` is true
-- **Labels** — standard Planton tracking labels merged with selector labels and any user-provided pod labels
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Kubernetes DaemonSet** -- the core workload resource that schedules one pod per matching node, with the configured container image, resources, environment, probes, volume mounts, and security contexts
+- **Kubernetes Secret** -- created only when `container.app.env.secrets` carry literal values; stores them and mounts them as environment variables
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-Nothing else: DaemonSets have no Service, ingress, HPA, or PDB — clients reach an agent on its node via `hostPort` or `hostNetwork`, and identity/permissions compose from `KubernetesServiceAccount` and `KubernetesRbac` resources.
+There is no replica count — node membership IS the replica count — and no Service or ingress: clients that must reach an agent do so on its node via per-container host ports or the pod's host networking. Identity and permissions are composed, not bundled: `pod.serviceAccount` references a KubernetesServiceAccount, and API permissions come from KubernetesRbac grants targeting that identity.
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, a `KubernetesNamespace` resource referenced from `spec.namespace`, or `createNamespace: true`
-- **A container image** for the agent, reachable from the cluster
-- **Tolerations planned** for any tainted nodes (e.g. control-plane) the agent must cover
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `daemonset.yaml`:
+### Kubernetes Cluster
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesDaemonSet
-metadata:
-  name: log-collector
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesDaemonSet.log-collector
-spec:
-  namespace:
-    value: observability
-  container:
-    app:
-      image:
-        repo: fluent/fluent-bit
-        tag: "3.0.7"
-      volumeMounts:
-        - name: varlog
-          mountPath: /var/log
-          readOnly: true
-          hostPath:
-            path: /var/log
-            type: Directory
-```
+- **Node access** for agents that need host-level resources. If the agent reads node logs or metrics, nodes must allow HostPath volume mounts.
+- **Taint tolerations** configured under `pod.scheduling.tolerations` if the agent must run on control-plane or specially tainted nodes.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f daemonset.yaml
-```
+### Console
 
-This runs one collector pod on every schedulable node, reading node logs through a read-only HostPath mount.
+Open the deployment store, find **DaemonSet on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Log Collector** preset for log forwarding with host path mounts, or **Node Monitor** for a lightweight metrics agent, in the [Presets](#presets) tab.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `spec.namespace` | `StringValueOrRef` | Target namespace — a literal name (`{ value: observability }`) or a reference to a `KubernetesNamespace` resource |
-| `spec.container.app` | `WorkloadContainer` | The main agent container; `image.repo` and `image.tag` are required |
-
-### Container Fields (`spec.container`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `app.ports` | `list` | `[]` | Container ports; `hostPort` exposes an endpoint at `<node-ip>:<port>` on every node (DaemonSets have no Service, so `servicePort` does not apply) |
-| `app.env` | `ContainerEnv` | — | Plain `variables`, `secrets` (literal values materialize a managed Secret), and bulk `envFrom` imports |
-| `app.livenessProbe` / `readinessProbe` / `startupProbe` | `Probe` | — | Health checks; keep them node-local so a sink outage does not restart the fleet |
-| `app.volumeMounts` | `list` | `[]` | Mounts carrying their own volume source; `hostPath` sources (node logs, `/proc`, runtime sockets) are the classic DaemonSet pattern — prefer `readOnly: true` |
-| `app.securityContext` | `WorkloadContainerSecurityContext` | — | Container hardening; add targeted capabilities after `drop: ["ALL"]` instead of `privileged` where possible |
-| `sidecars` | `list<WorkloadContainer>` | `[]` | Named sidecar containers with the full container surface |
-
-### Pod Fields (`spec.pod`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `serviceAccount` | `StringValueOrRef` | namespace default | Identity pods run as — literal name or reference to a `KubernetesServiceAccount`; API permissions come from `KubernetesRbac` grants |
-| `scheduling.nodeSelector` / `nodeAffinity` | — | all nodes | WHICH nodes run the agent |
-| `scheduling.tolerations` | `list` | `[]` | Unlock tainted nodes — e.g. `node-role.kubernetes.io/control-plane` with `operator: Exists` for control-plane coverage |
-| `hostNetwork` | `bool` | `false` | Run in the node's network namespace; pair with `dnsPolicy: ClusterFirstWithHostNet` if the agent resolves cluster services |
-| `hostPid` | `bool` | `false` | Share the node's PID namespace (process-visibility agents) |
-| `dnsPolicy` / `dnsConfig` / `hostAliases` | — | — | DNS resolution controls |
-| `securityContext` | `WorkloadPodSecurityContext` | — | Pod-level security baseline |
-| `terminationGracePeriodSeconds` | `int64` | `30` | Time between SIGTERM and SIGKILL |
-
-### DaemonSet Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.createNamespace` | `bool` | `false` | Create the namespace if it does not exist |
-| `spec.updateStrategy.type` | `string` | `RollingUpdate` | `RollingUpdate` (node by node) or `OnDelete` (per-node manual control) |
-| `spec.updateStrategy.maxUnavailable` | `string` | `1` | Nodes whose agent may be down during an update — absolute or percentage |
-| `spec.updateStrategy.maxSurge` | `string` | `0` | Nodes that may run old AND new pods during an update — gapless rollouts, but incompatible with exclusive host ports |
-| `spec.minReadySeconds` | `int32` | `0` | Seconds a new pod must stay ready before the rollout proceeds — a fleet-wide flap detector |
-| `spec.revisionHistoryLimit` | `int32` | `10` | Retained ControllerRevisions for rollback |
-
-## Examples
-
-### Node Monitor with Host Namespaces
-
-Host network and PID, read-only kernel interfaces, a host-port scrape endpoint, and targeted capabilities:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
-  name: node-monitor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesDaemonSet.node-monitor
+  name: node-exporter
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: observability
+    value: "monitoring"
+  createNamespace: true
   container:
     app:
       image:
         repo: prom/node-exporter
-        tag: "v1.8.1"
+        tag: v1.8.2
       ports:
         - name: metrics
           containerPort: 9100
           hostPort: 9100
-      volumeMounts:
-        - name: proc
-          mountPath: /host/proc
-          readOnly: true
-          hostPath:
-            path: /proc
-            type: Directory
-        - name: sys
-          mountPath: /host/sys
-          readOnly: true
-          hostPath:
-            path: /sys
-            type: Directory
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop: ["ALL"]
-          add: ["SYS_PTRACE"]
+          networkProtocol: TCP
   pod:
-    hostNetwork: true
-    hostPid: true
-    dnsPolicy: ClusterFirstWithHostNet
     scheduling:
       tolerations:
         - key: node-role.kubernetes.io/control-plane
@@ -168,90 +72,77 @@ spec:
           effect: NoSchedule
 ```
 
-### Gapless Log Shipper Update
-
-Surge-based rollout so no node ever lacks a running collector (note: no host ports, which surge cannot coexist with):
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesDaemonSet
-metadata:
-  name: log-shipper
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesDaemonSet.log-shipper
-spec:
-  namespace:
-    value: observability
-  container:
-    app:
-      image:
-        repo: fluent/fluent-bit
-        tag: "3.0.7"
-      volumeMounts:
-        - name: pod-logs
-          mountPath: /var/log/pods
-          readOnly: true
-          hostPath:
-            path: /var/log/pods
-            type: DirectoryOrCreate
-  updateStrategy:
-    type: RollingUpdate
-    maxUnavailable: "0"
-    maxSurge: "1"
-  minReadySeconds: 15
+```shell
+planton apply -f daemonset.yaml
 ```
 
-### Dedicated-Pool Agent
+This creates a DaemonSet running on every node including control-plane nodes, exposing node metrics on each node's own IP at port 9100.
 
-An agent that runs only on a tainted GPU pool:
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the DaemonSet to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesDaemonSet
-metadata:
-  name: gpu-device-agent
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesDaemonSet.gpu-device-agent
 spec:
   namespace:
-    value: kube-system-ext
-  container:
-    app:
-      image:
-        repo: my-registry/gpu-agent
-        tag: "2.1.0"
-  pod:
-    scheduling:
-      nodeSelector:
-        node-pool: gpu
-      tolerations:
-        - key: dedicated
-          operator: Equal
-          value: gpu
-          effect: NoSchedule
+    valueFrom:
+      kind: KubernetesNamespace
+      name: monitoring-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the DaemonSet with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Namespace the workload was deployed into |
-| `daemonSetName` | `string` | Name of the DaemonSet object in the cluster |
-| `selectorLabels` | `string` | Pod selector labels as `k=v,k=v`, for NetworkPolicy podSelectors, `kubectl -l`, and pod-affinity terms |
+These are the most important decisions when configuring a Kubernetes DaemonSet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Node coverage** -- `pod.scheduling.nodeSelector` and `pod.scheduling.nodeAffinity` NARROW the node set (e.g., `node-type: gpu` for a GPU telemetry agent); `pod.scheduling.tolerations` UNLOCK tainted nodes -- tolerate `node-role.kubernetes.io/control-plane` with `operator: Exists` to cover control-plane nodes. With no rules at all, the agent runs on every schedulable node.
 
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — N interchangeable replicas behind a Service
-- [KubernetesStatefulSet](/docs/catalog/kubernetes/statefulset) — stateful members with identity and per-replica storage
-- [KubernetesServiceAccount](/docs/catalog/kubernetes/serviceaccount) — the identity pods run as; reference it from `spec.pod.serviceAccount`
-- [KubernetesRbac](/docs/catalog/kubernetes/rbac) — API permissions for agents, granted to the referenced identity
-- [KubernetesConfigMap](/docs/catalog/kubernetes/configmap) — agent configuration consumed via env or volume mounts
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace; reference it from `spec.namespace`
+**Host ports and host namespaces** -- Expose node-local endpoints (metrics, health) through each port's `hostPort` -- DaemonSets have no Service. Network observers use `pod.hostNetwork` and process monitors `pod.hostPid`; host-network agents that resolve cluster services should also set `pod.dnsPolicy: ClusterFirstWithHostNet`.
+
+**Security context** -- Agents that touch kernel interfaces need specific capabilities via `container.app.securityContext.capabilities.add` (prefer NET_ADMIN or SYS_ADMIN over `privileged: true`). Observability agents usually need no elevation: run non-root, read-only root filesystem, all capabilities dropped.
+
+**Volume mounts** -- HostPath volume mounts are the DaemonSet's signature storage: node logs (`/var/log`), the container runtime socket, kernel interfaces. Mount them read-only wherever possible. ConfigMap mounts inject agent configuration files.
+
+**Update strategy** -- `updateStrategy.type: "RollingUpdate"` (default) replaces pods node by node within `maxUnavailable`/`maxSurge`; surging gives gapless updates for agents that must never miss data, but cannot combine with exclusive host ports. `"OnDelete"` replaces pods only when deleted -- full manual control per node. Pair rollouts with `minReadySeconds` so a crashing agent build is caught before it covers the fleet.
+
+**Identity** -- Reference a KubernetesServiceAccount via `pod.serviceAccount` for agents that read the Kubernetes API (log enrichment, node metadata); grant permissions with KubernetesRbac cluster-scope read rules -- never cluster-admin, since an agent's credential is the widest-deployed secret in the cluster.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `pod.serviceAccount` | `status.outputs.service_account_name` |
+| **KubernetesSecret** | `pod.imagePullSecrets` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Kubernetes namespace the workload was deployed into | Other workloads deploying into the same namespace |
+| `daemon_set_name` | Name of the DaemonSet object as created in the cluster | Operational tooling and audits |
+| `selector_labels` | Pod selector labels as a `k=v,k=v` string | NetworkPolicy podSelectors, `kubectl get pods -l`, pod-affinity terms |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Log collector** -- A node-level log forwarder with host path mounts for `/var/log`, buffering headroom, and a control-plane toleration. Suitable for Fluent Bit, Fluentd, or Filebeat. Start from the **Log Collector** preset.
+
+**Node monitor** -- A lightweight metrics agent on every node with a host-port scrape endpoint and minimal resources. Suitable for Prometheus node exporter and similar collectors. Start from the **Node Monitor** preset.
+
+**Hardened agent** -- Passes the Kubernetes restricted Pod Security Standard: non-root, read-only root filesystem, all capabilities dropped, runtime-default seccomp, no API token mount. Start from the **Hardened Agent** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the DaemonSet
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the identity agents run as when they read the Kubernetes API
+- [**Kubernetes Rbac**](/cloud-catalog/kubernetes-rbac) -- grants the agent identity its API permissions (composed, never bundled)
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- image pull secrets and referenced credential material

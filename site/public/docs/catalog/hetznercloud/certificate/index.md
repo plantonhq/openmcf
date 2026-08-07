@@ -8,201 +8,120 @@ componentName: "hetznercloudcertificate"
 
 # Hetzner Cloud Certificate
 
-Deploys a TLS certificate to the Hetzner Cloud certificate store for use by load balancer HTTPS services. Supports two mutually exclusive types: **uploaded** (user-provided PEM certificate and private key) or **managed** (automatic Let's Encrypt issuance and renewal). Exactly one type must be specified per manifest.
+Provisions a TLS certificate on Hetzner Cloud for use with load balancer HTTPS services. Supports two mutually exclusive modes: uploaded certificates where you provide your own PEM-encoded certificate chain and private key, or managed certificates where Hetzner Cloud automatically obtains and renews a Let's Encrypt certificate for specified domain names.
 
 ## What Gets Created
 
-- **Uploaded Certificate** — an `hcloud_uploaded_certificate` resource that stores a user-provided PEM certificate chain and private key. Created only when the `uploaded` variant is set.
-- **Managed Certificate** — an `hcloud_managed_certificate` resource that requests a Let's Encrypt certificate for the specified domains, with automatic renewal. Created only when the `managed` variant is set.
+When you deploy this Cloud Resource, the IaC module provisions one of:
 
-Exactly one of the two resources is created per deployment.
+- **Uploaded Certificate** -- an `hcloud_uploaded_certificate` resource storing your PEM-encoded certificate chain and private key
+- **Managed Certificate** -- an `hcloud_managed_certificate` resource that automatically obtains and renews a Let's Encrypt certificate for the specified domains
 
-## Prerequisites
+## Before You Deploy
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
+### Hetzner Cloud Account
 
-For **managed** certificates:
-- DNS A or AAAA records for each domain pointing to a Hetzner Cloud load balancer
-- A load balancer HTTPS service referencing this certificate (for the ACME HTTP-01 challenge)
+- **A Hetzner Cloud account** with an active project and API token.
 
-For **uploaded** certificates:
-- A PEM-encoded certificate chain (server cert + intermediate CAs)
-- A PEM-encoded private key matching the certificate
+### For Uploaded Certificates
 
-## Quick Start
+- **A PEM-encoded TLS certificate chain** (server cert + intermediate CAs).
+- **The corresponding PEM-encoded private key** (sensitive material).
 
-Create a file `certificate.yaml`:
+### For Managed Certificates
+
+- **Domain names** with DNS records pointing to a Hetzner Cloud load balancer so the ACME HTTP-01 challenge can succeed.
+- **A load balancer** with an HTTPS service configured to reference this certificate.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the choice between uploaded and managed certificate types.
+
+### CLI
+
+**Managed certificate (Let's Encrypt):**
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudCertificate
 metadata:
-  name: my-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudCertificate.my-cert
+  name: web-cert
+  org: acme-corp
+  env: prod
 spec:
   managed:
     domainNames:
-      - example.com
+      - "example.com"
+      - "www.example.com"
 ```
 
-Deploy:
-
-```shell
-planton apply -f certificate.yaml
-```
-
-This creates a managed Let's Encrypt certificate for `example.com`. The certificate's ID and metadata are available in the stack outputs.
-
-## Configuration Reference
-
-Exactly one of `uploaded` or `managed` must be set. Setting both or neither is a validation error.
-
-### Required Fields (Uploaded Variant)
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `uploaded.certificate` | `string` | PEM-encoded TLS certificate chain. Server certificate first, intermediate CAs in order. Changing this value forces replacement. | min length: 1 |
-| `uploaded.privateKey` | `string` | PEM-encoded private key for the certificate. Treated as sensitive (encrypted in state, masked in output). Changing this value forces replacement. | min length: 1 |
-
-### Required Fields (Managed Variant)
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `managed.domainNames` | `string[]` | Domain names for the Let's Encrypt certificate. Hetzner Cloud issues a single SAN certificate covering all listed domains. Changing this list forces replacement. | min items: 1 |
-
-### Optional Fields
-
-This component has no optional fields. All fields within the selected variant are required.
-
-## Examples
-
-### Managed Certificate with Multiple Domains
-
-A SAN certificate covering a root domain and subdomains. All domains must resolve to a load balancer with an HTTPS service referencing this certificate.
+**Uploaded certificate:**
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudCertificate
 metadata:
-  name: web-platform-cert
+  name: custom-cert
   org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: web-platform
-    pulumi.planton.dev/stack.name: production.HetznerCloudCertificate.web-platform-cert
-spec:
-  managed:
-    domainNames:
-      - example.com
-      - www.example.com
-      - app.example.com
-```
-
-### Uploaded Wildcard Certificate
-
-A user-provided wildcard certificate and private key. Use when you need wildcard coverage, an EV/OV certificate, or a certificate from a specific CA.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudCertificate
-metadata:
-  name: wildcard-cert
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: web-platform
-    pulumi.planton.dev/stack.name: production.HetznerCloudCertificate.wildcard-cert
+  env: prod
 spec:
   uploaded:
     certificate: |
       -----BEGIN CERTIFICATE-----
-      MIIFYDCCBEigAwIBAgISA1...
-      -----END CERTIFICATE-----
-      -----BEGIN CERTIFICATE-----
-      MIIEdTCCA12gAwIBAgIJAN...
+      ...
       -----END CERTIFICATE-----
     privateKey: |
       -----BEGIN PRIVATE KEY-----
-      MIIEvgIBADANBgkqhkiG9w...
+      ...
       -----END PRIVATE KEY-----
 ```
 
-### Certificate with Load Balancer HTTPS Service
-
-A managed certificate deployed alongside a load balancer that references it for HTTPS termination. The load balancer uses `valueFrom` to resolve the certificate ID automatically.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudCertificate
-metadata:
-  name: api-cert
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: api-platform
-    pulumi.planton.dev/stack.name: production.HetznerCloudCertificate.api-cert
-spec:
-  managed:
-    domainNames:
-      - api.example.com
+```shell
+planton apply -f hetznercloud-certificate.yaml
 ```
 
-The companion load balancer manifest references the certificate via `valueFrom`:
+A Stack Job tracks the provisioning in real time. Reference the certificate in HetznerCloudLoadBalancer HTTPS services via `certificateIds`.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudLoadBalancer
-metadata:
-  name: api-lb
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: api-platform
-    pulumi.planton.dev/stack.name: production.HetznerCloudLoadBalancer.api-lb
-spec:
-  loadBalancerType: lb11
-  location: fsn1
-  services:
-    - protocol: https
-      listenPort: 443
-      destinationPort: 80
-      http:
-        certificateIds:
-          - valueFrom:
-              kind: HetznerCloudCertificate
-              name: api-cert
-              fieldPath: status.outputs.certificate_id
-  targets:
-    - type: server
-      serverId:
-        valueFrom:
-          kind: HetznerCloudServer
-          name: api-server
-          fieldPath: status.outputs.server_id
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `certificate_id` | `string` | The Hetzner Cloud numeric ID of the created certificate. Referenced by load balancer HTTPS services. |
-| `type` | `string` | Certificate type: `"uploaded"` or `"managed"`. Computed by Hetzner Cloud. |
-| `fingerprint` | `string` | SHA256 fingerprint of the certificate. Computed by Hetzner Cloud. |
-| `not_valid_before` | `string` | Point in time when the certificate becomes valid (ISO-8601). |
-| `not_valid_after` | `string` | Point in time when the certificate stops being valid (ISO-8601). |
+**Certificate type** -- Exactly one of `uploaded` or `managed` must be set. Uploaded certificates require you to provide and renew the certificate yourself. Managed certificates use Let's Encrypt for automatic issuance and renewal but require DNS records pointing to a Hetzner Cloud load balancer.
 
-## Related Components
+**Domain names (managed)** -- The `managed.domainNames` field lists the domains covered by the certificate. Hetzner Cloud issues a single SAN certificate covering all listed domains. Changing this list forces replacement.
 
-- [HetznerCloudLoadBalancer](/docs/catalog/hetznercloud/load-balancer) — The primary consumer of certificates. Load balancer HTTPS services reference `certificate_id` to terminate TLS connections.
+**Certificate chain (uploaded)** -- The `uploaded.certificate` field accepts the PEM-encoded certificate chain (server cert first, root last). Changing forces replacement.
+
+**Private key (uploaded)** -- The `uploaded.privateKey` field accepts the PEM-encoded private key. This is sensitive material handled as a secret by the IaC modules. Changing forces replacement.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `certificate_id` | Hetzner Cloud numeric ID of the certificate | HetznerCloudLoadBalancer HTTPS service `certificateIds` |
+| `type` | Certificate type ("uploaded" or "managed") | Display and monitoring |
+| `fingerprint` | SHA256 fingerprint of the certificate | Certificate verification |
+| `not_valid_before` | Certificate validity start (ISO-8601) | Expiration monitoring |
+| `not_valid_after` | Certificate validity end (ISO-8601) | Expiration monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Let's Encrypt auto-renewal** -- Create a managed certificate with domain names and reference it from a load balancer HTTPS service. Hetzner Cloud handles issuance and renewal automatically.
+
+**Custom CA certificate** -- Upload a certificate from a corporate CA or a paid certificate authority for domains requiring extended validation or specific trust chains.
+
+## Works With
+
+- [**Hetzner Cloud Load Balancer**](/cloud-catalog/hetznercloud-load-balancer) -- HTTPS services reference this certificate for TLS termination

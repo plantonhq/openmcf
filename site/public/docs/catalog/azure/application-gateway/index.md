@@ -8,255 +8,207 @@ componentName: "azureapplicationgateway"
 
 # Azure Application Gateway
 
-Creates an Azure Application Gateway -- the Layer 7 load balancer and reverse proxy that routes by host name and URI path, terminates TLS (including mutual TLS) with Key Vault certificates that renew in place, rewrites requests and responses, proxies raw TCP/TLS, and enforces a Web Application Firewall policy on the WAF_v2 SKU.
+Deploys an Azure Application Gateway -- the Layer 7 (HTTP/HTTPS) load balancer and reverse proxy that routes by host name and URI path, terminates TLS (including mutual TLS) with Key Vault certificates that renew in place, rewrites requests and responses in flight, proxies raw TCP/TLS at layer 4, and enforces a Web Application Firewall policy on the WAF_v2 SKU. The gateway bundles its sub-objects -- frontends, ports, listeners, backend pools, backend settings, routing rules, path maps, probes, certificates, SSL profiles, redirects, and rewrites -- because Azure configures them as one atomic ARM resource: none has a life outside its gateway, and they wire to each other BY NAME within the spec. What other resources need to reach is exported as name-keyed map outputs, so pool membership composes from the member side without splitting the gateway apart. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureApplicationGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions one Application Gateway carrying every declared sub-object:
 
-- **Application Gateway** -- an `azurerm_application_gateway` carrying every sub-object as one atomic resource: frontend IP configurations and ports, HTTP(S) and TCP/TLS listeners, backend pools and settings, routing rules and URL path maps, health probes, certificates and SSL profiles, redirects, rewrite rule sets, Private Link configurations, and custom error pages
+- **The gateway** -- BASIC, STANDARD_V2, or WAF_V2 SKU with fixed capacity or autoscale bounds, availability zones, HTTP/2, FIPS mode, and request/response buffering posture
+- **Frontend IP Configurations** -- public (a referenced Standard AzurePublicIp) or private (an address in the gateway's own dedicated subnet), at least one; optionally exposed over Private Link to other networks
+- **Frontend Ports** -- declared once and shared by name (one "https" 443 serves every HTTPS listener)
+- **Backend Address Pools** -- FQDN and/or IP targets, or empty pools that NICs and scale sets join member-side after deploy
+- **Backend HTTP Settings** -- port, protocol, cookie affinity, timeouts, probe binding, host-header handling, connection draining, and backend-TLS trust per backend group
+- **HTTP Listeners** -- frontend + port + protocol entry points with wildcard host names, TLS termination, SNI, per-listener WAF overrides, and custom error pages
+- **Request Routing Rules and URL Path Maps** -- basic listener-to-backend (or redirect) wiring, or per-path routing with first-match-wins path rules
+- **Health Probes** -- HTTP(S) probes with host pairing and match criteria, or TCP/TLS probes for layer-4 backends
+- **SSL Certificates, Trusted Root/Client Certificates, and SSL Profiles** -- Key Vault or inline sources, backend-CA trust, and named mutual-TLS postures
+- **Redirect Configurations and Rewrite Rule Sets** -- the HTTP-to-HTTPS pattern, header edits, and conditional URL rewrites
+- **Layer-4 Listeners, Backend Settings, and Routing Rules** -- raw TCP/TLS proxying through the same gateway
+- **Managed Identity association** -- system- and/or user-assigned; the user-assigned identity is how Key Vault certificate fetches authenticate
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with your `tags`
 
-Sub-objects wire to each other by name inside the spec. What other resources need to reach is exported as name-keyed map outputs: NICs and scale sets join pools through `backend_address_pool_ids`, and frontends chain through `frontend_ip_configuration_ids`. The WAF policy composes as its own `AzureWebApplicationFirewallPolicy` resource, referenced at three levels (gateway, listener, path rule).
+Pool membership is NOT created here -- each AzureNetworkInterface or scale set references `status.outputs.backend_address_pool_ids.<pool-name>` to join. The WAF policy is its own first-class resource (AzureWebApplicationFirewallPolicy), referenced at up to three levels: gateway, listener, and path rule -- most specific wins.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A DEDICATED subnet** for the gateway (no other resource types; /24 recommended -- an `AzureSubnet` in composed environments)
-- **A Standard static public IP** (`AzurePublicIp`) for public frontends
-- **For Key Vault certificates**: a user-assigned identity with GET on the vault's secrets, granted before the gateway deploys
-- **Time**: applies run 15-25 minutes -- Azure's slowest networking resource
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `gateway.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the gateway will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **A DEDICATED subnet** -- Azure allows no other resource type in the gateway's subnet. /24 is recommended for production (up to 125 v2 instances plus Azure-reserved addresses). Reference an AzureSubnet Cloud Resource.
+- **A Standard SKU public IP** (for public frontends) -- reference an AzurePublicIp Cloud Resource; DNS records point at ITS address output.
+- **For Key Vault certificates** -- a user-assigned identity (AzureUserAssignedIdentity) with GET on the vault's secrets, granted BEFORE the gateway deploys.
+- **Time** -- applies run 15-25 minutes; Azure's slowest networking resource. Plan pipelines accordingly.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Application Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the gateway's sub-objects in dependency order -- every name reference is a dropdown over what you have declared, so a dangling reference cannot be typed. Start from the **Standard HTTPS** preset for the production TLS baseline in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationGateway.web-gateway
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: app-rg
+    value: "web-rg"
   name: web-gateway
   subnetId:
-    valueFrom:
-      name: gateway-subnet
+    value: "/subscriptions/.../subnets/appgw"
   sku: STANDARD_V2
-  capacity: 2
+  autoscale:
+    minCapacity: 2
+    maxCapacity: 10
+  zones: ["1", "2", "3"]
   frontendIpConfigurations:
     - name: public
       publicIpAddressId:
-        valueFrom:
-          name: gateway-ip
+        value: "/subscriptions/.../publicIPAddresses/gw-pip"
   frontendPorts:
     - name: http
       port: 80
   backendAddressPools:
+    # Membership joins from the member side: a NIC ip_configuration or a
+    # scale set references status.outputs.backend_address_pool_ids.web.
     - name: web
-      ipAddresses:
-        - 10.0.1.4
   backendHttpSettings:
-    - name: web-settings
+    - name: http-settings
       port: 8080
       protocol: HTTP
   httpListeners:
-    - name: http-listener
+    - name: http
       frontendIpConfigurationName: public
       frontendPortName: http
       protocol: HTTP
   requestRoutingRules:
-    - name: http-rule
+    - name: default
       ruleType: BASIC_ROUTING
-      httpListenerName: http-listener
+      httpListenerName: http
       priority: 100
       backendAddressPoolName: web
-      backendHttpSettingsName: web-settings
+      backendHttpSettingsName: http-settings
 ```
-
-Deploy:
 
 ```shell
-planton apply -f gateway.yaml
+planton apply -f azure-application-gateway.yaml
 ```
 
-## Configuration Reference
+This creates a zone-redundant autoscaling Standard v2 gateway with one public frontend, an HTTP listener, and a basic rule to an empty pool that members join after deploy. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region (must match the subnet, IPs, and WAF policy). | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. | Required |
-| `name` | `string` | The gateway's name, unique within the resource group. | 1-80 chars |
-| `subnetId` | `StringValueOrRef` | The DEDICATED gateway subnet (references `AzureSubnet`). | Required |
-| `sku` | `enum` | `BASIC`, `STANDARD_V2`, or `WAF_V2`. | Required |
-| `frontendIpConfigurations` | `list` | Public (`publicIpAddressId`) XOR private (`subnetId` + allocation) frontends. | min 1 |
-| `frontendPorts` | `list` | Named ports listeners bind to. | min 1 |
-| `backendAddressPools` | `list` | Pools (FQDNs/IPs, or joined member-side). | min 1 |
-
-Exactly one of `capacity` (1-125; 1-2 on BASIC) and `autoscale` must be set, and at least one listener + routing rule (L7 `httpListeners`/`requestRoutingRules` or L4 `listeners`/`routingRules`) plus matching backend settings.
-
-### The L7 Surface
-
-| Field | Description |
-|-------|-------------|
-| `backendHttpSettings[]` | Port, protocol (HTTP/HTTPS), cookie affinity, path prefix, timeouts, probe, host-header handling, connection draining, backend-CA trust, dedicated connections. |
-| `httpListeners[]` | Frontend + port + protocol, wildcard `hostNames`, TLS certificate, SNI, SSL profile, per-listener WAF policy, custom error pages. |
-| `requestRoutingRules[]` | `BASIC_ROUTING` (listener -> pool/redirect) or `PATH_BASED_ROUTING` (listener -> url path map); `priority` 1-20000 required. |
-| `urlPathMaps[]` | Per-path rules with their own pools, redirects, rewrites, and WAF policies, plus defaults for unmatched paths. |
-| `probes[]` | HTTP(S) GET probes (path, host, match criteria) or TCP/TLS connection probes. |
-| `redirectConfigurations[]` | 301/302/303/307 redirects to a listener or external URL. |
-| `rewriteRuleSets[]` | Condition-driven header edits and URL rewrites (URL rewriting not on BASIC). |
-
-### TLS
-
-| Field | Description |
-|-------|-------------|
-| `sslCertificates[]` | Key Vault secret reference (renewals propagate) XOR inline PFX `data`+`password`. |
-| `trustedRootCertificates[]` | Private-CA bundles for backend HTTPS trust. |
-| `trustedClientCertificates[]` + `sslProfiles[]` | Mutual TLS: client-CA bundles, issuer-DN and OCSP checks, per-profile TLS policy. |
-| `sslPolicy` | Gateway-wide policy: `PREDEFINED` (e.g. `AppGwSslPolicy20220101S`), `CUSTOM`/`CUSTOM_V2` (min protocol + ciphers), or `disabledProtocols`. |
-
-### Layer 4, WAF, and the Rest
-
-| Field | Description |
-|-------|-------------|
-| `listeners[]` / `backends[]` / `routingRules[]` | The TCP/TLS proxy trio. |
-| `firewallPolicyId` | The `AzureWebApplicationFirewallPolicy` reference (WAF_V2 only) + `forceFirewallPolicyAssociation`. |
-| `privateLinkConfigurations[]` | Private Link NAT allocations exposing frontends to other networks. |
-| `customErrorConfigurations[]` | Gateway-wide custom error pages. |
-| `http2Enabled` / `fipsEnabled` / `globalConfiguration` | HTTP/2, FIPS mode, request/response buffering. |
-| `zones` / `identity` / `tags` | Zone redundancy, managed identity, user tags. |
-
-## Examples
-
-### WAF Gateway with Path-Based Routing
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the gateway to its resource group, subnet, and public IP -- and wire each member NIC to the pool:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureApplicationGateway
-metadata:
-  name: waf-gateway
+# On the AzureApplicationGateway:
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: app-rg
-  name: waf-gateway
+      kind: AzureResourceGroup
+      name: web-rg
+      fieldPath: status.outputs.resource_group_name
   subnetId:
     valueFrom:
-      name: gateway-subnet
-  sku: WAF_V2
-  autoscale:
-    minCapacity: 2
-    maxCapacity: 10
-  firewallPolicyId:
-    valueFrom:
-      kind: AzureWebApplicationFirewallPolicy
-      name: waf-baseline
-      fieldPath: status.outputs.policy_id
-  identity:
-    type: USER_ASSIGNED
-    identityIds:
-      - valueFrom:
-          name: gateway-identity
+      kind: AzureSubnet
+      name: appgw-subnet
+      fieldPath: status.outputs.subnet_id
   frontendIpConfigurations:
     - name: public
       publicIpAddressId:
         valueFrom:
-          name: gateway-ip
-  frontendPorts:
-    - name: https
-      port: 443
-  backendAddressPools:
-    - name: web
-    - name: api
-  backendHttpSettings:
-    - name: web-settings
-      port: 8080
-      protocol: HTTP
-    - name: api-settings
-      port: 8443
-      protocol: HTTPS
-      pickHostNameFromBackendAddress: true
-  httpListeners:
-    - name: https-listener
-      frontendIpConfigurationName: public
-      frontendPortName: https
-      protocol: HTTPS
-      sslCertificateName: tls
-      requireSni: true
-  requestRoutingRules:
-    - name: path-routing
-      ruleType: PATH_BASED_ROUTING
-      httpListenerName: https-listener
-      priority: 100
-      urlPathMapName: paths
-  urlPathMaps:
-    - name: paths
-      defaultBackendAddressPoolName: web
-      defaultBackendHttpSettingsName: web-settings
-      pathRules:
-        - name: api
-          paths: ["/api/*"]
-          backendAddressPoolName: api
-          backendHttpSettingsName: api-settings
-  sslCertificates:
-    - name: tls
-      keyVaultSecretId:
-        valueFrom:
-          kind: AzureKeyVaultCertificate
-          name: web-tls
-          fieldPath: status.outputs.versionless_secret_id
-```
+          kind: AzurePublicIp
+          name: gw-pip
+          fieldPath: status.outputs.public_ip_id
 
-### Join a Pool from a Network Interface
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: app-nic
+# On each AzureNetworkInterface that should join the pool:
 spec:
   ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: app-subnet
-      applicationGatewayBackendAddressPoolIds:
+    - applicationGatewayBackendPoolIds:
         - valueFrom:
             kind: AzureApplicationGateway
-            name: waf-gateway
+            name: web-gateway
             fieldPath: status.outputs.backend_address_pool_ids.web
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the group, subnet, and public IP first, then the gateway, then the interfaces that join its pools.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `application_gateway_id` | `string` | The gateway's ARM ID -- referenced by AKS AGIC and management tooling |
-| `application_gateway_name` | `string` | The gateway's name |
-| `backend_address_pool_ids` | `map(string)` | Each pool's ARM ID, keyed by pool name -- the membership seam for NICs and scale sets |
-| `frontend_ip_configuration_ids` | `map(string)` | Each frontend's ARM ID, keyed by frontend name |
-| `private_ip_address` | `string` | The first private frontend's address (internal DNS target); empty when all frontends are public |
-| `private_ip_addresses` | `list(string)` | All private frontends' addresses |
+These are the most important decisions when configuring an Application Gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**SKU** -- fixed at creation and feature-gating everything else: `STANDARD_V2` is the general-purpose platform (autoscale, zones, rewrites, mTLS, Private Link); `WAF_V2` adds Web Application Firewall enforcement via a referenced `firewallPolicyId`; `BASIC` caps capacity at 2 and drops autoscale, mTLS, URL rewriting, zones, and WAF. Azure's retired v1 SKUs are not modeled.
 
-- [AzureWebApplicationFirewallPolicy](/docs/catalog/azure/web-application-firewall-policy) — the WAF rule set the gateway enforces
-- [AzureSubnet](/docs/catalog/azure/subnet) — the dedicated gateway subnet
-- [AzurePublicIp](/docs/catalog/azure/public-ip) — public frontend addresses (and where their IPs live)
-- [AzureKeyVaultCertificate](/docs/catalog/azure/key-vault-certificate) — TLS certificates that renew in place
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the vault-access identity
-- [AzureNetworkInterface](/docs/catalog/azure/network-interface) — backend pool members
-- [AzureVirtualMachineScaleSet](/docs/catalog/azure/virtual-machine-scale-set) — fleet pool members
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for gateway placement
+**Scale** -- exactly one of `capacity` (1-125 fixed; BASIC: 1-2) and `autoscale` (min 0-100, max 2-125). Autoscale 2-10 with all three `zones` is the production posture; a minimum of 0 allows scale-to-zero billing at idle at the cost of cold-request latency.
+
+**The traffic path** -- a listener (frontend + port + protocol + optional wildcard host names) feeds a routing rule, which targets a backend pool via backend HTTP settings XOR a redirect (BASIC_ROUTING), or consults a URL path map for per-path destinations (PATH_BASED_ROUTING). `priority` is required and unique across ALL rules (1-20000, lower wins) -- a specific-host listener's rule must out-rank a wildcard's.
+
+**TLS** -- certificates source from Key Vault (the production grain: reference an AzureKeyVaultCertificate's `versionless_secret_id` so renewals propagate without a redeploy) XOR inline PFX data. Key Vault fetches authenticate through the gateway's USER-ASSIGNED identity, which needs GET on the vault's secrets before deploy. SSL profiles add mutual TLS (client-CA bundles, issuer-DN verification, OCSP) and per-listener policy overrides; the gateway-wide `sslPolicy` sets the baseline (AppGwSslPolicy20220101S is Microsoft's strict recommendation).
+
+**Probes** -- backends without a custom probe get Azure's default (GET / on the backend port, healthy on 200-399) -- an app whose root path redirects with auth or serves only /api/* is silently dropped from rotation. Declare a /healthz probe; HTTP(S) probes need exactly one host source (explicit XOR pick-from-settings), TCP/TLS probes serve layer-4 backends.
+
+**Layer 4** -- the `listeners`/`backends`/`routingRules` trio proxies raw TCP or TLS (databases, MQTT, custom protocols) through the same gateway, sharing the declared frontends, ports, pools, and certificates. The spec requires at least one listener, one backend-settings entry, and one routing rule across EITHER the L7 or the L4 side.
+
+**Provisioning time** -- 15-25 minutes per apply. Changes to the atomic gateway re-run the deploy; plan pipelines accordingly.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureSubnet** | `subnetId` (and per private frontend / Private Link allocation) | `status.outputs.subnet_id` |
+| **AzurePublicIp** (per public frontend) | `frontendIpConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
+| **AzureUserAssignedIdentity** | `identity.identityIds[]` | `status.outputs.identity_id` |
+| **AzureKeyVaultCertificate** (per Key Vault certificate) | `sslCertificates[].keyVaultSecretId` | `status.outputs.versionless_secret_id` |
+| **AzureWebApplicationFirewallPolicy** (WAF_V2; three levels) | `firewallPolicyId`, `httpListeners[].firewallPolicyId`, path rules' `firewallPolicyId` | `status.outputs.policy_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef. The name-keyed maps are the composition seams:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `application_gateway_id` | Azure Resource Manager ID of the gateway | Diagnostics settings, RBAC scopes |
+| `application_gateway_name` | Name of the gateway | Operational tooling |
+| `backend_address_pool_ids.<name>` | Each pool's ARM ID, keyed by name | THE membership seam: NIC ip_configurations and scale-set network profiles reference it to join |
+| `frontend_ip_configuration_ids.<name>` | Each frontend's ARM ID, keyed by name | Chaining the frontend into other resources |
+| `private_ip_address` | The first private frontend's address | The address internal DNS records point at |
+| `private_ip_addresses` | All private frontends' addresses, in declaration order | Multi-frontend internal DNS |
+
+A public frontend's ADDRESS is not exported here -- it lives on the referenced AzurePublicIp (its `ip_address` output), which DNS records point at.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production HTTPS baseline** -- a zone-redundant autoscaling Standard v2 gateway terminating TLS with a Key Vault certificate, the universal HTTP-to-HTTPS 301 redirect, a /healthz probe, and the Microsoft strict TLS policy. Start from the **Standard HTTPS** preset.
+
+**WAF with path-based routing** -- a WAF v2 gateway enforcing a referenced firewall policy, with a URL path map splitting /api/* and /static/* across pools. Start from the **WAF Path Routing** preset.
+
+**Internal gateway** -- a private frontend in the dedicated subnet serving east-west traffic with no public exposure. Start from the **Internal Gateway** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the gateway is created in
+- [**Azure Virtual Network**](/cloud-catalog/azure-virtual-network) and [**Azure Subnet**](/cloud-catalog/azure-subnet) -- host the gateway's dedicated subnet and private frontends
+- [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- the address public frontends receive traffic on (and what DNS points at)
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- authenticates Key Vault certificate fetches
+- [**Azure Key Vault Certificate**](/cloud-catalog/azure-key-vault-certificate) -- the renewing TLS certificate source
+- [**Azure Web Application Firewall Policy**](/cloud-catalog/azure-web-application-firewall-policy) -- the WAF rules a WAF_v2 gateway enforces
+- [**Azure Network Interface**](/cloud-catalog/azure-network-interface) -- joins backend pools from the member side
+- [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) -- the workload the pools front (via its network interfaces)

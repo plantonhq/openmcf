@@ -10,10 +10,10 @@ EC2 instances, launch templates, and Auto Scaling groups reference.
 Use the Planton CLI with the default local backend:
 
 ```shell
-planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
-planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi up --manifest ../../e2e/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-For a ready-to-run fixture, see [`hack/manifest.yaml`](../../e2e/manifest.yaml).
+For a ready-to-run fixture, see [`e2e/manifest.yaml`](../../e2e/manifest.yaml).

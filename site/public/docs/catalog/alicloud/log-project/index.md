@@ -8,197 +8,96 @@ componentName: "alicloudlogproject"
 
 # AliCloud Log Project
 
-Deploys an Alibaba Cloud Simple Log Service (SLS) project with bundled log stores and full-text indexes. The component provisions the project, creates each specified log store, and enables full-text search indexing per store by default — ensuring logs are immediately queryable after ingestion.
+Deploys an Alibaba Cloud Simple Log Service (SLS) project with bundled log stores and full-text search indexes. The component provisions the project, creates each specified log store with configurable retention and sharding, and enables full-text indexing per store by default so logs are immediately searchable after ingestion. The project integrates with Planton's Provider Connections for AliCloud credential management.
 
 ## What Gets Created
 
-When you deploy an AliCloudLogProject resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **SLS Project** — the regional container for log data, created with the specified name, description, resource group, and tags
-- **Log Stores** — one `alicloud_log_store` per entry in `logStores`, each with configurable retention, shard count, auto-split, and metadata enrichment
-- **Full-Text Store Indexes** — one `alicloud_log_store_index` per log store where `enableIndex` is true (the default), configured with case-insensitive matching and standard tokenization
+- **SLS Project** -- an `alicloud_log_project` with the specified name, description, resource group, and tags
+- **Log Stores** -- one `alicloud_log_store` per entry in the `logStores` list, each with configurable retention period, shard count, auto-split behavior, and metadata enrichment
+- **Full-Text Store Indexes** -- one `alicloud_log_store_index` per log store where `enableIndex` is `true` (the default), configured with case-insensitive matching and standard tokenization
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables (`ALIBABA_CLOUD_ACCESS_KEY_ID`, `ALIBABA_CLOUD_ACCESS_KEY_SECRET`) or Planton provider config
-- **A globally unique project name** — SLS project names are unique across all Alibaba Cloud accounts within a region
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `log-project.yaml`:
+### Alibaba Cloud Account
+
+- **A globally unique project name** -- SLS project names must be unique across all Alibaba Cloud accounts within a region. Use a descriptive name that includes your organization or environment prefix.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud Log Project**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Multi-Store** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudLogProject
 metadata:
-  name: my-log-project
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudLogProject.my-log-project
+  name: app-logging
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  projectName: my-app-logs
+  projectName: acme-prod-logs
   logStores:
     - name: app-logs
+    - name: audit-logs
+      retentionDays: 365
 ```
-
-Deploy:
 
 ```shell
 planton apply -f log-project.yaml
 ```
 
-This creates an SLS project named `my-app-logs` in `cn-hangzhou` with one log store (`app-logs`) and a full-text search index on that store.
+This creates an SLS project named `acme-prod-logs` in `cn-hangzhou` with two log stores: `app-logs` with 30-day retention (default) and `audit-logs` with 365-day retention. Both stores have full-text indexing enabled, 2 shards with auto-split, and metadata enrichment turned on.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Log Project. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region where the SLS project will be created (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-| `projectName` | `string` | Globally unique SLS project name. Lowercase letters, digits, and hyphens only. Must start and end with a letter or digit. | Required; 3-63 characters |
+**Log store retention** -- Set `retentionDays` per log store to control how long data is retained. Defaults to 30 days. Set to 3650 for permanent retention. Use shorter retention for development stores and longer retention for audit or compliance stores.
 
-### Optional Fields
+**Shard count and auto-split** -- Each shard supports approximately 5 MB/s write throughput. Set `shardCount` based on expected ingestion volume. Enable `autoSplit` (default: `true`) to let SLS automatically split shards when write throughput exceeds capacity, up to `maxSplitShardCount` (default: 64).
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the project. |
-| `resourceGroupId` | `string` | `""` | Alibaba Cloud resource group ID for organizational grouping. If omitted, the default resource group is used. |
-| `tags` | `map<string, string>` | `{}` | Key-value tags applied to the SLS project. Merged with standard Planton tags. |
-| `logStores` | `AliCloudLogStore[]` | `[]` | Log stores to create within this project. See fields below. |
-| `logStores[].name` | `string` | — | Log store name. Must be unique within the project. (Required per store; 3-63 characters) |
-| `logStores[].retentionDays` | `int` | `30` | Data retention period in days. Range: 1-3650. Set to 3650 for permanent retention. |
-| `logStores[].shardCount` | `int` | `2` | Number of write shards. Each shard supports ~5 MB/s write throughput. Range: 1-256. |
-| `logStores[].autoSplit` | `bool` | `true` | Automatically split shards when write throughput exceeds capacity. |
-| `logStores[].maxSplitShardCount` | `int` | `64` | Maximum shards after auto-splitting. Only effective when `autoSplit` is true. Range: 1-256. |
-| `logStores[].enableIndex` | `bool` | `true` | Create a full-text search index for this store. When true, logs are immediately searchable after ingestion. |
-| `logStores[].appendMeta` | `bool` | `true` | Append log receive time and client IP as metadata fields on each log entry. |
+**Full-text indexing** -- When `enableIndex` is `true` (default), a full-text search index is created on the log store, making logs immediately queryable after ingestion. Disable indexing (`enableIndex: false`) for archive-only stores where query capability is not needed, eliminating index storage costs.
 
-## Examples
+**Metadata enrichment** -- When `appendMeta` is `true` (default), SLS automatically appends log receive time and client IP as metadata fields on each log entry. Useful for debugging ingestion issues and correlating logs with source hosts.
 
-### Minimal Project
+## Outputs and Dependencies
 
-An empty SLS project with no log stores. Stores can be added by updating the manifest.
+### What This Component Consumes
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudLogProject
-metadata:
-  name: empty-project
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudLogProject.empty-project
-spec:
-  region: cn-hangzhou
-  projectName: my-empty-project
-```
+This component has no foreign key dependencies.
 
-### Development with Single Store
+### What This Component Provides
 
-A project for a development environment with one log store using short retention and minimal shards.
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudLogProject
-metadata:
-  name: dev-logging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudLogProject.dev-logging
-spec:
-  region: cn-hangzhou
-  projectName: dev-app-logs
-  description: Development environment logging
-  logStores:
-    - name: app-logs
-      retentionDays: 7
-      shardCount: 1
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `project_name` | SLS project name (also serves as the project identifier in SLS APIs) | Downstream components referencing this project for log ingestion |
+| `project_id` | SLS project resource ID | Monitoring dashboards, audit references |
+| `log_store_names` | Map of log store names created within the project | Downstream components referencing specific stores via ValueFromRef |
 
-### Production Multi-Store
+## Common Patterns
 
-Separate stores for application logs, audit trails, and access logs with distinct retention and shard configurations. Tags enable cost attribution and organizational filtering.
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudLogProject
-metadata:
-  name: prod-logging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudLogProject.prod-logging
-spec:
-  region: cn-shanghai
-  projectName: prod-platform-logs
-  description: Production platform logging
-  resourceGroupId: rg-prod-123
-  tags:
-    team: platform
-    costCenter: engineering
-  logStores:
-    - name: app-logs
-      retentionDays: 90
-      shardCount: 4
-      autoSplit: true
-      maxSplitShardCount: 64
-      enableIndex: true
-      appendMeta: true
-    - name: audit-logs
-      retentionDays: 365
-      shardCount: 2
-      enableIndex: true
-    - name: access-logs
-      retentionDays: 30
-      shardCount: 2
-      enableIndex: true
-```
+**Production multi-store** -- Separate log stores for application logs, audit trails, and access logs with distinct retention periods and shard configurations. Tags enable cost attribution and organizational filtering. Start from the **Production Multi-Store** preset.
 
-### Archive Store Without Indexing
+**Development** -- A single log store with short retention and minimal shards for development and testing environments. Start from the **Development** preset.
 
-A project for compliance archival where query capability is not needed. Disabling indexing eliminates index storage costs.
+## Works With
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudLogProject
-metadata:
-  name: archive-project
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudLogProject.archive-project
-spec:
-  region: cn-hangzhou
-  projectName: compliance-archive
-  logStores:
-    - name: regulatory-archive
-      retentionDays: 3650
-      shardCount: 1
-      autoSplit: false
-      enableIndex: false
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `project_name` | `string` | The SLS project name (also serves as the project identifier in SLS APIs) |
-| `project_id` | `string` | The SLS project resource ID |
-| `log_store_names` | `map<string, string>` | Map of log store names created within the project. Key and value are both the store name. Downstream components can reference specific stores via `StringValueOrRef`. |
-
-## Related Components
-
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) — references this project for cluster audit and event logging
-- [AliCloudFcFunction](/docs/catalog/alicloud/alicloudfcfunction) — references this project for function execution logging
-- [AliCloudSaeApplication](/docs/catalog/alicloud/saeapplication) — references this project for application logging
+This component operates independently and does not reference other deployment components.

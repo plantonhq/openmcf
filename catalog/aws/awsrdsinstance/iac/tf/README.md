@@ -5,10 +5,10 @@ This module provisions a single AWS RDS DB instance aligned with the Planton API
 ## CLI (local backend)
 
 ```shell
-planton tofu init --manifest ../hack/manifest.yaml
-planton tofu plan --manifest ../hack/manifest.yaml
-planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest ../hack/manifest.yaml --auto-approve
+planton tofu init --manifest ../../e2e/manifest.yaml
+planton tofu plan --manifest ../../e2e/manifest.yaml
+planton tofu apply --manifest ../../e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest ../../e2e/manifest.yaml --auto-approve
 ```
 
 Credentials are passed via the stack input through the CLI, not in `spec`.
@@ -22,4 +22,4 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 - `outputs.tf` — outputs matching `AwsRdsInstanceStackOutputs`
 
 ## Examples
-See `../../examples.md` for example manifests.
+See `../../e2e/manifest.yaml` for example manifests.

@@ -8,12 +8,12 @@ TITLE
 Forge: Generate api.proto for a resource (metadata/spec/status wiring)
 
 ROLE
-You are the Planton Code Partner working inside the developer’s local workspace in Cursor. This rule creates the `api.proto` that wires envelope fields and links `spec.proto` and `stack_outputs.proto`.
+You are the Planton Code Partner working inside the developer’s local workspace in Cursor. This rule creates the `api.proto` that wires envelope fields and links `spec.proto` and `outputs.proto`.
 
 SCOPE
 - Detect provider and kind.
 - Do not manually create folders; writer tool handles directories.
-- Generate `api.proto` with `<Kind>` and `<Kind>Status` wired to `spec` and `stack_outputs`.
+- Generate `api.proto` with `<Kind>` and `<Kind>Status` wired to `<Kind>Spec` and `<Kind>StackOutputs` (the status message carries an `outputs` field of type `<Kind>StackOutputs`).
 - Do not create/modify other files.
 
 TOOLS
@@ -30,7 +30,7 @@ SEQUENTIAL STEPS
 
 SUCCESS
 - Correct path, imports, and package.
-- `<Kind>` and `<Kind>Status` wired to `spec` and `stack_outputs`.
+- `<Kind>` and `<Kind>Status` wired to `<Kind>Spec` and `<Kind>StackOutputs`.
 - Writer tool reports `build_succeeded: true`.
 
 OUTPUT

@@ -514,13 +514,32 @@ message KubernetesKeycloakAdditionalOption {
   /**
    * Value from a Secret (mutually exclusive with value).
    */
-  KubernetesKeycloakSecretSelector secret = 3;
+  KubernetesKeycloakOptionSecretSelector secret = 3;
 
   option (buf.validate.message).cel = {
     id: "spec.additional_options.one_source"
     expression: "!(size(this.value) > 0 && has(this.secret))"
     message: "Give the option's value exactly one way — inline OR from a Secret, not both."
   };
+}
+
+/**
+ * A value read from a Kubernetes Secret you created. Server options
+ * are arbitrary, so there is deliberately no default reference
+ * target — name the Secret holding the option's value.
+ */
+message KubernetesKeycloakOptionSecretSelector {
+  /**
+   * Secret name. Same-namespace constraint (a Kubernetes rule, not
+   * an operator one): the Secret must live in the namespace Keycloak
+   * installs into.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key within the Secret.
+   */
+  string key = 2 [(buf.validate.field).required = true];
 }
 
 /** Pod scheduling constraints. */

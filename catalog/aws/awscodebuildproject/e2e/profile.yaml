@@ -15,7 +15,7 @@ spec:
   #   (registry prerequisite).
   #
   # Excluded from the live lane with reasons (proven by spec tests + the
-  # offline plan gate against iac/hack/manifest.yaml, which exercises every
+  # offline plan gate against e2e/manifest.yaml, which exercises every
   # one of these arms):
   # - webhook (all shapes incl. scope_configuration and
   #   pull_request_build_policy): registering a webhook requires a real

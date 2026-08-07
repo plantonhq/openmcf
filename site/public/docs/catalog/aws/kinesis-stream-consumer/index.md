@@ -8,137 +8,62 @@ componentName: "awskinesisstreamconsumer"
 
 # AWS Kinesis Stream Consumer
 
-Registers an Amazon Kinesis enhanced fan-out consumer for a Kinesis Data Stream, providing dedicated 2 MB/s read throughput per shard independent of all other consumers. The consumer name is derived from `metadata.name` and both the name and stream binding are immutable after creation.
+Registers an enhanced fan-out consumer for an Amazon Kinesis Data Stream, providing dedicated 2 MB/s read throughput per shard independent of all other consumers. The consumer integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent Kinesis stream.
 
 ## What Gets Created
 
-When you deploy an AwsKinesisStreamConsumer resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kinesis Stream Consumer** — an `aws_kinesis_stream_consumer` resource registered with the specified stream, providing dedicated 2 MB/s per shard via SubscribeToShard (HTTP/2 push delivery)
+- **Kinesis Stream Consumer** -- a registered enhanced fan-out consumer on the specified stream, with dedicated 2 MB/s per shard via SubscribeToShard (HTTP/2 push delivery with ~70ms propagation delay)
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically
 
-No additional sub-resources are created. This is a single-resource component.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An existing Kinesis Data Stream** — the consumer registers with a stream. The stream can be managed by Planton (AwsKinesisStream) or pre-existing.
-- **IAM permissions** — `kinesis:RegisterStreamConsumer` and `kinesis:DeregisterStreamConsumer`
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `kinesis-stream-consumer.yaml`:
+- **A Kinesis Data Stream** -- the consumer registers with an existing stream. Provide the stream ARN directly or reference an AwsKinesisStream Cloud Resource via ValueFromRef.
+- **IAM permissions** -- the deploying role needs `kinesis:RegisterStreamConsumer` and `kinesis:DeregisterStreamConsumer` on the target stream.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStreamConsumer
-metadata:
-  name: my-consumer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsKinesisStreamConsumer.my-consumer
-spec:
-  region: us-east-1
-  streamArn:
-    value: arn:aws:kinesis:us-east-1:123456789012:stream/my-stream
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f kinesis-stream-consumer.yaml
-```
+Open the deployment store, find **AWS Kinesis Stream Consumer**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Consumer** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-This registers an enhanced fan-out consumer with the specified stream. The consumer gets dedicated 2 MB/s read throughput per shard.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the consumer will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `streamArn` | `StringValueOrRef` | ARN of the parent Kinesis Data Stream to register with. ForceNew — changing the stream forces consumer replacement. | Required. Accepts literal ARN or `valueFrom` reference to AwsKinesisStream. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `resourcePolicy` | `object` | — | Resource-based access policy on the consumer, as a native YAML structure. Primary use: granting another account's principals `kinesis:SubscribeToShard` / `kinesis:DescribeStreamConsumer` on this consumer without role assumption. |
-
-The consumer name is derived from `metadata.name` (ForceNew — consumers cannot be renamed).
-
-## Examples
-
-### Consumer with Direct Stream ARN
-
-Register a consumer with an existing stream using a literal ARN:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStreamConsumer
-metadata:
-  name: dashboard-consumer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKinesisStreamConsumer.dashboard-consumer
-spec:
-  region: us-east-1
-  streamArn:
-    value: arn:aws:kinesis:us-east-1:123456789012:stream/order-events
-```
-
-### Consumer with Stream Reference
-
-Reference an Planton-managed Kinesis stream. The platform resolves the ARN at deployment time:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: analytics-consumer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsKinesisStreamConsumer.analytics-consumer
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   streamArn:
-    valueFrom:
-      kind: AwsKinesisStream
-      name: clickstream-events
-      fieldPath: status.outputs.stream_arn
+    value: "arn:aws:kinesis:us-east-1:123456789012:stream/order-events"
 ```
 
-### Multiple Consumers on the Same Stream
+```shell
+planton apply -f kinesis-consumer.yaml
+```
 
-Deploy multiple consumers for different processing pipelines, each with dedicated throughput:
+This registers an enhanced fan-out consumer with the specified Kinesis stream. The consumer gets dedicated 2 MB/s read throughput per shard. No additional configuration is needed -- AWS manages all internals. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the consumer to a Kinesis stream deployed in the same InfraPipeline:
 
 ```yaml
-# Consumer 1: Real-time dashboard
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStreamConsumer
-metadata:
-  name: dashboard-consumer
 spec:
-  region: us-east-1
-  streamArn:
-    valueFrom:
-      kind: AwsKinesisStream
-      name: order-events
-      fieldPath: status.outputs.stream_arn
----
-# Consumer 2: Audit trail
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsKinesisStreamConsumer
-metadata:
-  name: audit-consumer
-spec:
-  region: us-east-1
   streamArn:
     valueFrom:
       kind: AwsKinesisStream
@@ -146,19 +71,45 @@ spec:
       fieldPath: status.outputs.stream_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the Kinesis stream first, then registers the consumer with the resolved stream ARN.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `consumer_arn` | `string` | ARN of the registered consumer, used for Lambda event source mappings with enhanced fan-out and IAM policies |
-| `consumer_name` | `string` | Name of the consumer (matches `metadata.name`) |
-| `stream_arn` | `string` | ARN of the parent Kinesis Data Stream (echoed for convenience) |
-| `creation_timestamp` | `string` | RFC3339 timestamp of consumer registration |
+These are the most important decisions when configuring a Kinesis stream consumer. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Consumer name** -- Derived from `metadata.name`. The name is immutable after creation -- renaming requires replacing the consumer. Choose a descriptive name that identifies the consuming application (e.g., `analytics-consumer`, `audit-trail-consumer`).
 
-- [AwsKinesisStream](/docs/catalog/aws/kinesis-stream) — the parent stream this consumer registers with
-- [AwsLambda](/docs/catalog/aws/lambda) — commonly configured with the `consumer_arn` output for enhanced fan-out event source mappings
-- [AwsIamRole](/docs/catalog/aws/iam-role) — provides `kinesis:SubscribeToShard` permissions for consumer applications
+**Stream binding** -- The `streamArn` field is ForceNew. Changing the stream forces consumer replacement (deregister + re-register). A consumer can only be registered with one stream at a time. Up to 20 consumers can be registered per stream (soft limit).
+
+**Cross-account access** -- The optional `resourcePolicy` field attaches a resource-based IAM policy to the consumer, keyed by the consumer ARN. Its primary use is granting another account's principals `kinesis:SubscribeToShard` and `kinesis:DescribeStreamConsumer` on this consumer without role assumption. Most consumers need no policy -- same-account readers authorize through their own IAM identities. Stream-level grants (PutRecord, GetRecords) belong on the stream's own `resourcePolicy`, not here.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKinesisStream** | `streamArn` | `status.outputs.stream_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `consumer_arn` | ARN of the registered consumer | Lambda event source mappings with enhanced fan-out, IAM policies |
+| `consumer_name` | Consumer name (matches metadata.name) | Human-readable identification, ListStreamConsumers filtering |
+| `stream_arn` | ARN of the parent Kinesis Data Stream | Downstream resource stream discovery without separate lookup |
+| `creation_timestamp` | RFC3339 timestamp of consumer registration | Operational visibility, debugging registration order |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic consumer** -- Register an enhanced fan-out consumer with an existing stream using a direct ARN. Suitable for standalone consumer registration and quick prototyping. Start from the **Basic Consumer** preset.
+
+**Stream reference consumer** -- Register a consumer using a ValueFromRef to an Planton-managed Kinesis stream. The platform resolves the stream ARN at deployment time and creates a dependency edge in the InfraPipeline DAG. Start from the **Stream Reference** preset.
+
+## Works With
+
+- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- provides the parent stream this consumer registers with for dedicated throughput

@@ -66,7 +66,7 @@ make protos
 Generates Go stubs from Protocol Buffer definitions using Buf. Run this after modifying any `.proto` file. This target:
 
 1. Runs `buf generate` to produce Go, TypeScript, and Java stubs
-2. Copies generated Go stubs into the `apis/` source tree
+2. Copies generated Go stubs into the source tree alongside the proto definitions
 3. Runs `bazel run //:gazelle` to update Bazel BUILD files
 
 ### CLI Only
@@ -108,13 +108,13 @@ For faster iteration when working on a single component, run tests directly in t
 go test -v ./catalog/aws/awss3bucket/v1alpha1/...
 
 # Build check for a Pulumi module
-go build ./catalog/aws/awss3bucket/v1alpha1/iac/pulumi/...
+go build ./catalog/aws/awss3bucket/iac/pulumi/...
 
 # Vet check
-go vet ./catalog/aws/awss3bucket/v1alpha1/iac/pulumi/...
+go vet ./catalog/aws/awss3bucket/iac/pulumi/...
 
 # Validate a Terraform module
-cd catalog/aws/awss3bucket/v1alpha1/iac/tf
+cd catalog/aws/awss3bucket/iac/tf
 terraform init && terraform validate
 ```
 
@@ -153,7 +153,7 @@ Proto linting includes a custom Buf plugin (`buf/lint/optional-linter/`) that va
 
 - Component folders: `<provider><resource>` in lowercase (e.g., `awss3bucket`, `gcpgkecluster`)
 - Component kinds: `<Provider><Resource>` in PascalCase (e.g., `AwsS3Bucket`, `GcpGkeCluster`)
-- API versions: `<provider>.planton.dev/v1`
+- API versions: `<provider>.planton.dev/v1alpha1`
 
 ## Submitting Changes
 

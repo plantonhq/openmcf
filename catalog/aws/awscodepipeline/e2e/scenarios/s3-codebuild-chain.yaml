@@ -18,7 +18,7 @@
 # source action -- the connection needs a manual console OAuth handshake),
 # cross-region artifact stores, and condition RULES (the managed rule
 # providers act only during executions); all proven by spec tests + the
-# offline plan gate against iac/hack/manifest.yaml.
+# offline plan gate against e2e/manifest.yaml.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:

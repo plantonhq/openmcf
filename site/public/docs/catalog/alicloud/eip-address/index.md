@@ -8,137 +8,106 @@ componentName: "alicloudeipaddress"
 
 # AliCloud EIP Address
 
-Deploys an Alibaba Cloud Elastic IP Address (EIP). The component provisions a standalone public IPv4 address that persists independently of any cloud resource, allowing it to be associated with and disassociated from NAT gateways, load balancers, VPN gateways, and ECS instances without changing the address.
+Deploys an Alibaba Cloud Elastic IP Address (EIP) -- a static, public IPv4 address that persists independently of any cloud resource. An EIP can be associated with NAT gateways, load balancers, VPN gateways, and ECS instances, and can be released and re-associated without changing the address.
 
 ## What Gets Created
 
-When you deploy an AliCloudEipAddress resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **EIP** -- an `alicloud_eip_address` resource in the specified region with configurable bandwidth, ISP, and metering settings
+- **EIP** -- an `alicloud_eip_address` resource in the specified region with configurable bandwidth, ISP line type, and metering settings
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `eip.yaml`:
+### Alibaba Cloud Account
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudEipAddress
-metadata:
-  name: my-eip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudEipAddress.my-eip
-spec:
-  region: cn-hangzhou
-  addressName: my-nat-eip
-  description: EIP for NAT gateway outbound access
-  bandwidth: 10
-```
+- **Region selection** -- the EIP can only be associated with resources in the same region.
+- **ISP and metering decisions** -- both `isp` and `internetChargeType` are immutable after creation. Choose carefully based on workload characteristics.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f eip.yaml
-```
+### Console
 
-This allocates a 10 Mbps EIP using BGP multi-line and PayByTraffic metering.
+Open the deployment store, find **AliCloud EIP Address**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including region, bandwidth, and ISP.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for the EIP allocation (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `addressName` | `string` | `""` | EIP display name (1-128 chars). |
-| `description` | `string` | `""` | Human-readable description. |
-| `bandwidth` | `int32` | `5` | Maximum outbound bandwidth in Mbps (1-1000). |
-| `internetChargeType` | `string` | `"PayByTraffic"` | Metering method. `PayByTraffic` bills per GB. `PayByBandwidth` bills for reserved bandwidth. Immutable after creation. |
-| `isp` | `string` | `"BGP"` | ISP line type. `BGP` (default), `BGP_PRO`, `ChinaTelecom`, `ChinaUnicom`, `ChinaMobile`, and L2/FinanceCloud/International variants. Immutable after creation. |
-| `resourceGroupId` | `string` | `""` | Resource group ID for organizational grouping. |
-| `tags` | `map<string, string>` | `{}` | Tags applied to the EIP. Merged with standard Planton tags. |
-
-## Examples
-
-### Minimal EIP
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudEipAddress
-metadata:
-  name: my-eip
-spec:
-  region: cn-hangzhou
-```
-
-### Named EIP for NAT Gateway
-
-A named EIP intended for association with a NAT gateway. Uses default 5 Mbps bandwidth and PayByTraffic metering:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudEipAddress
 metadata:
   name: nat-eip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudEipAddress.nat-eip
+  org: acme-corp
+  env: prod
 spec:
-  region: cn-shanghai
+  region: cn-hangzhou
   addressName: prod-nat-eip
-  description: EIP for production NAT gateway outbound access
+  description: EIP for production NAT gateway
+  bandwidth: 10
   tags:
     purpose: nat
     team: platform
 ```
 
-### High-Bandwidth Production EIP
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudEipAddress
-metadata:
-  name: prod-lb-eip
-  org: my-org
-  env: production
-spec:
-  region: cn-hangzhou
-  addressName: prod-alb-eip
-  description: High-bandwidth EIP for production ALB
-  bandwidth: 100
-  internetChargeType: PayByBandwidth
-  isp: BGP_PRO
-  resourceGroupId: rg-prod-123
-  tags:
-    team: platform
-    costCenter: engineering
+```shell
+planton apply -f alicloud-eip.yaml
 ```
 
-## Stack Outputs
+This allocates a 10 Mbps EIP using BGP multi-line and PayByTraffic metering. A Stack Job tracks the provisioning in real time.
 
-After deployment, the following outputs are available in `status.outputs`:
+### InfraChart
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `eip_id` | `string` | The EIP allocation ID assigned by Alibaba Cloud |
-| `ip_address` | `string` | The allocated public IPv4 address |
+EIPs are standalone resources with no upstream dependencies. Downstream components reference the EIP via ValueFromRef:
 
-## Related Components
+```yaml
+spec:
+  eipId:
+    valueFrom:
+      kind: AliCloudEipAddress
+      name: nat-eip
+      fieldPath: status.outputs.eip_id
+```
 
-- [AliCloudNatGateway](/docs/catalog/alicloud/nat-gateway) -- associate this EIP for SNAT outbound internet access
-- [AliCloudApplicationLoadBalancer](/docs/catalog/alicloud/alb-load-balancer) -- use this EIP for internet-facing ALB
-- [AliCloudNetworkLoadBalancer](/docs/catalog/alicloud/nlb-load-balancer) -- use this EIP for internet-facing NLB
-- [AliCloudVpnGateway](/docs/catalog/alicloud/vpn-gateway) -- use this EIP for VPN gateway public endpoint
+The InfraPipeline resolves the dependency graph and allocates the EIP before any dependent resources.
+
+## Key Configuration
+
+These are the most important decisions when configuring an EIP. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Bandwidth** -- The `bandwidth` field sets the maximum outbound bandwidth in Mbps (1-1000, default 5). With PayByTraffic, this is a ceiling. With PayByBandwidth, this is the reserved allocation.
+
+**Metering method** -- The `internetChargeType` field is immutable after creation. "PayByTraffic" (default) bills per GB transferred -- best for bursty workloads. "PayByBandwidth" bills for reserved bandwidth -- best for steady, high-throughput workloads.
+
+**ISP line type** -- The `isp` field selects the network routing. "BGP" (default) works in all regions. "BGP_PRO" provides optimized routing for China mainland. Single-carrier options (ChinaTelecom, ChinaUnicom, ChinaMobile) are available for specific needs. Immutable after creation.
+
+## Outputs and Dependencies
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `eip_id` | EIP allocation ID assigned by Alibaba Cloud | AliCloudNatGateway, AliCloudApplicationLoadBalancer, AliCloudVpnGateway |
+| `ip_address` | Allocated public IPv4 address | DNS record configuration, application endpoints |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard EIP** -- A default 5 Mbps BGP EIP with PayByTraffic metering, suitable for NAT gateways and non-production load balancers. Start from the **Standard** preset.
+
+**High-bandwidth production** -- A 100 Mbps BGP_PRO EIP with PayByBandwidth metering for production ALBs with predictable traffic. Start from the **High Bandwidth** preset.
+
+## Works With
+
+- [**AliCloud NAT Gateway**](/cloud-catalog/ali-cloud-nat-gateway) -- associate this EIP for SNAT outbound internet access
+- [**AliCloud Application Load Balancer**](/cloud-catalog/ali-cloud-application-load-balancer) -- use this EIP for internet-facing ALB
+- [**AliCloud Network Load Balancer**](/cloud-catalog/ali-cloud-network-load-balancer) -- use this EIP for internet-facing NLB
+- [**AliCloud VPN Gateway**](/cloud-catalog/ali-cloud-vpn-gateway) -- use this EIP for VPN gateway public endpoint

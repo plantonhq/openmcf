@@ -6,293 +6,120 @@ order: 100
 componentName: "ocidynamicroutinggateway"
 ---
 
-# OCI Dynamic Routing Gateway
+# Dynamic Routing Gateway on OCI
 
-Deploys an Oracle Cloud Infrastructure Dynamic Routing Gateway (DRG) with VCN attachments, custom route tables, route distributions, and static route rules in a single deployment unit. The DRG is OCI's virtual router for connectivity between VCNs (peering), on-premises networks (Site-to-Site VPN, FastConnect), and cross-region VCNs (remote peering). Sub-resources reference each other by display name, making the YAML experience self-contained.
+Deploys an Oracle Cloud Infrastructure Dynamic Routing Gateway (DRG) with bundled VCN attachments, custom route tables, route distributions, distribution statements, and static route rules. A DRG is a virtual router that enables connectivity between a VCN and networks outside its region -- other VCNs (peering), on-premises networks (Site-to-Site VPN via IPSec, FastConnect), and cross-region VCNs (remote peering). Sub-resources reference each other by `displayName` rather than OCID, keeping the YAML self-contained. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments.
 
 ## What Gets Created
 
-When you deploy an OciDynamicRoutingGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Dynamic Routing Gateway** — an `oci_core_drg` resource in the specified compartment. OCI automatically creates default route tables (one per network type) and a default export route distribution. Standard Planton freeform tags are applied.
-- **Route Distributions** — one `oci_core_drg_route_distribution` per entry in `routeDistributions`. Controls which routes are advertised to route tables (import) or to attachments (export).
-- **Distribution Statements** — one `oci_core_drg_route_distribution_statement` per entry in each distribution's `statements` list. Prioritized rules that match routes by attachment type or specific attachment.
-- **Route Tables** — one `oci_core_drg_route_table` per entry in `routeTables`. Controls traffic forwarding between DRG attachments. May import routes from a distribution and contain static route rules.
-- **Static Route Rules** — one `oci_core_drg_route_table_route_rule` per entry in each route table's `staticRouteRules` list. Directs traffic for a specific CIDR to a named attachment.
-- **Attachments** — one `oci_core_drg_attachment` per entry in `attachments`. Connects a VCN, IPSec tunnel, virtual circuit, remote peering connection, or loopback to the DRG.
+- **DRG** -- the virtual router in the specified compartment
+- **DRG Attachments** -- one per entry in `attachments`, connecting VCNs, IPSec tunnels, virtual circuits, remote peering connections, or loopbacks to the DRG
+- **DRG Route Tables** -- one per entry in `routeTables`, with optional import distribution references and ECMP settings. OCI also auto-creates default route tables per network type.
+- **Static Route Rules** -- one per entry in each route table's `staticRouteRules`, directing traffic for a CIDR to a specific DRG attachment
+- **DRG Route Distributions** -- one per entry in `routeDistributions`, controlling which routes are advertised to route tables (import) or to attachments (export)
+- **Distribution Statements** -- one per entry in each distribution's `statements`, with priority-based match criteria (match all, attachment type, or specific attachment)
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the DRG, attachments, route tables, and distributions
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the DRG will be created — literal value or reference to an OciCompartment resource
-- **VCN OCIDs** for each VCN being attached — literal values or references to OciVcn resources
-- **IPSec connection or virtual circuit OCIDs** if attaching on-premises networks (these are created outside this component)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `drg.yaml`:
+### OCI Tenancy
+
+- A compartment to place the DRG in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- One or more VCNs to attach (for peering). Each VCN can be attached to only one DRG at a time. Provide VCN OCIDs directly or through separate OciVcn Cloud Resources.
+- For on-premises connectivity: IPSec connections or FastConnect virtual circuits configured in OCI. These are attached to the DRG as additional attachment types.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Dynamic Routing Gateway on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single VCN Attachment** preset in the [Presets](#presets) tab to pre-populate a DRG with one VCN attachment.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciDynamicRoutingGateway
 metadata:
-  name: my-drg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDynamicRoutingGateway.my-drg
+  name: hub-drg
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
+  displayName: hub-drg
   attachments:
-    - displayName: "app-vcn"
+    - displayName: app-vcn
       networkDetails:
         type: vcn
         id:
-          value: "ocid1.vcn.oc1.iad.example"
+          value: "ocid1.vcn.oc1..example"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f drg.yaml
 ```
 
-This creates a DRG with a single VCN attachment. The DRG uses its default route tables and default export distribution. The DRG OCID and default export distribution OCID are exported as stack outputs.
+This creates a DRG with a single VCN attachment using OCI's auto-generated default route tables. No custom route tables, distributions, or static rules are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the DRG will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | `metadata.name` | Human-readable name for the DRG shown in the OCI Console. |
-| `attachments` | `DrgAttachment[]` | — | Network attachments connecting VCNs or other resources to this DRG. See [attachment fields](#attachment-fields). |
-| `routeTables` | `DrgRouteTable[]` | — | Custom DRG route tables for controlling traffic routing within the DRG. See [routeTable fields](#routetable-fields). |
-| `routeDistributions` | `DrgRouteDistribution[]` | — | Custom route distributions controlling route advertisement. See [routeDistribution fields](#routedistribution-fields). |
-
-### attachment Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `displayName` | `string` | Unique name for this attachment. Used by route rules and distribution statements to reference this attachment. | Minimum 1 character |
-| `networkDetails` | `NetworkDetails` | Details of the network being attached. See [networkDetails fields](#networkdetails-fields). | Required |
-| `drgRouteTableName` | `string` | Name of a route table defined in `routeTables`. When set, the attachment uses this custom route table instead of the default. | Optional |
-| `exportDrgRouteDistributionName` | `string` | Name of a distribution defined in `routeDistributions`. When set, the attachment uses this distribution for exporting routes. | Optional |
-
-### networkDetails Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `type` | `enum` | Type of network resource. Values: `vcn`, `ipsec_tunnel`, `remote_peering_connection`, `virtual_circuit`, `loopback`. | Required (cannot be unspecified) |
-| `id` | `StringValueOrRef` | OCID of the network resource (VCN, IPSec connection, virtual circuit, or remote peering connection). | Required |
-| `routeTableId` | `string` | OCID of a VCN route table for ingress routing (transit routing). Only applicable for VCN attachments. | Optional |
-| `vcnRouteType` | `enum` | Controls whether VCN CIDRs or subnet CIDRs are imported into the DRG route table. Values: `vcn_cidrs`, `subnet_cidrs`. Only applicable for VCN attachments. | Optional |
-
-### routeTable Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `displayName` | `string` | Unique name for this route table. Attachments reference route tables by this name. | Minimum 1 character |
-| `importDrgRouteDistributionName` | `string` | Name of a distribution defined in `routeDistributions`. Routes from matching attachments are automatically imported. | Optional |
-| `isEcmpEnabled` | `bool` | When `true`, enables Equal-Cost Multi-Path routing across multiple IPSec tunnels or virtual circuits. | Optional |
-| `staticRouteRules` | `StaticRouteRule[]` | Static routes for this table. Static routes take precedence over dynamically imported routes. See [staticRouteRule fields](#staticrouterule-fields). | Optional |
-
-### staticRouteRule Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `destination` | `string` | Destination CIDR block (IPv4 or IPv6). Example: `"10.0.0.0/8"`. | Minimum 1 character |
-| `nextHopAttachmentName` | `string` | Name of a DRG attachment (defined in `attachments`) that serves as the next hop. | Minimum 1 character |
-
-### routeDistribution Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `displayName` | `string` | Unique name for this distribution. Route tables and attachments reference distributions by this name. | Minimum 1 character |
-| `distributionType` | `enum` | Direction of route distribution. Values: `import_routes` (controls import into route tables), `export_routes` (controls export to attachments). | Required (cannot be unspecified) |
-| `statements` | `DistributionStatement[]` | Prioritized rules that define which routes are accepted. See [statement fields](#statement-fields). | Optional |
-
-### statement Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `priority` | `int32` | Priority (1-65535). Lower numbers are evaluated first. Must be unique within a distribution. | 1–65535 |
-| `matchCriteria` | `MatchCriteria` | Criteria for selecting routes. See [matchCriteria fields](#matchcriteria-fields). | Required |
-
-### matchCriteria Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `matchType` | `enum` | How to match routes. Values: `match_all` (all routes), `drg_attachment_type` (by network type), `drg_attachment_id` (by specific attachment). | Required (cannot be unspecified) |
-| `attachmentType` | `string` | Network type to match. Values: `"VCN"`, `"IPSEC_TUNNEL"`, `"VIRTUAL_CIRCUIT"`, `"REMOTE_PEERING_CONNECTION"`. Required when `matchType` is `drg_attachment_type`. | Optional |
-| `drgAttachmentName` | `string` | Name of a DRG attachment (defined in `attachments`) to match. Required when `matchType` is `drg_attachment_id`. | Optional |
-
-## Examples
-
-### Simple VCN Peering
-
-Two VCNs attached to a DRG for local peering within the same region. Traffic between VCNs routes through the DRG using the default route tables:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the DRG to a compartment deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicRoutingGateway
-metadata:
-  name: peering-drg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDynamicRoutingGateway.peering-drg
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  attachments:
-    - displayName: "app-vcn"
-      networkDetails:
-        type: vcn
-        id:
-          value: "ocid1.vcn.oc1.iad.appvcn"
-    - displayName: "db-vcn"
-      networkDetails:
-        type: vcn
-        id:
-          value: "ocid1.vcn.oc1.iad.dbvcn"
-```
-
-### Hub-and-Spoke with Custom Route Tables
-
-A hub VCN routing traffic between spoke VCNs through the DRG. Custom route tables and an import distribution control which routes are visible to each spoke:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicRoutingGateway
-metadata:
-  name: hub-drg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: prod.OciDynamicRoutingGateway.hub-drg
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: network-compartment
+      name: networking
       fieldPath: status.outputs.compartmentId
-  displayName: "Hub DRG"
-  routeDistributions:
-    - displayName: "import-all-vcns"
-      distributionType: import_routes
-      statements:
-        - priority: 1
-          matchCriteria:
-            matchType: drg_attachment_type
-            attachmentType: "VCN"
-  routeTables:
-    - displayName: "spoke-route-table"
-      importDrgRouteDistributionName: "import-all-vcns"
-  attachments:
-    - displayName: "hub-vcn"
-      networkDetails:
-        type: vcn
-        id:
-          valueFrom:
-            kind: OciVcn
-            name: hub-vcn
-            fieldPath: status.outputs.vcnId
-    - displayName: "spoke-a"
-      networkDetails:
-        type: vcn
-        id:
-          valueFrom:
-            kind: OciVcn
-            name: spoke-a-vcn
-            fieldPath: status.outputs.vcnId
-      drgRouteTableName: "spoke-route-table"
-    - displayName: "spoke-b"
-      networkDetails:
-        type: vcn
-        id:
-          valueFrom:
-            kind: OciVcn
-            name: spoke-b-vcn
-            fieldPath: status.outputs.vcnId
-      drgRouteTableName: "spoke-route-table"
 ```
 
-### Transit Routing with On-Premises VPN
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the DRG with the resolved compartment OCID.
 
-A DRG connecting a VCN to an on-premises network via IPSec VPN. A static route in a custom route table directs on-premises traffic (10.100.0.0/16) to the IPSec tunnel attachment, with ECMP enabled across multiple tunnels:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicRoutingGateway
-metadata:
-  name: transit-drg
-  org: acme
-  env: prod
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: prod.OciDynamicRoutingGateway.transit-drg
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  displayName: "Transit DRG"
-  routeDistributions:
-    - displayName: "import-vpn-routes"
-      distributionType: import_routes
-      statements:
-        - priority: 1
-          matchCriteria:
-            matchType: drg_attachment_type
-            attachmentType: "IPSEC_TUNNEL"
-        - priority: 2
-          matchCriteria:
-            matchType: drg_attachment_type
-            attachmentType: "VCN"
-  routeTables:
-    - displayName: "vcn-to-onprem"
-      importDrgRouteDistributionName: "import-vpn-routes"
-      isEcmpEnabled: true
-      staticRouteRules:
-        - destination: "10.100.0.0/16"
-          nextHopAttachmentName: "vpn-tunnel"
-  attachments:
-    - displayName: "prod-vcn"
-      networkDetails:
-        type: vcn
-        id:
-          value: "ocid1.vcn.oc1.iad.prodvcn"
-        vcnRouteType: subnet_cidrs
-      drgRouteTableName: "vcn-to-onprem"
-    - displayName: "vpn-tunnel"
-      networkDetails:
-        type: ipsec_tunnel
-        id:
-          value: "ocid1.ipsecconnection.oc1.iad.example"
-```
+These are the most important decisions when configuring a DRG. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Attachment types** -- Each attachment connects a network to the DRG via `networkDetails.type`: `vcn` (VCN peering), `ipsec_tunnel` (Site-to-Site VPN), `virtual_circuit` (FastConnect), `remote_peering_connection` (cross-region), or `loopback`. The `networkDetails.id` field references the network resource OCID.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Custom route tables** -- Define entries in `routeTables` to control traffic forwarding between attachments. Reference an import distribution via `importDrgRouteDistributionName` to automatically populate routes from matching attachments. Add `staticRouteRules` for explicit CIDR-to-attachment mappings. Enable `isEcmpEnabled` for equal-cost multi-path routing across redundant IPSec tunnels or virtual circuits.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `drg_id` | `string` | OCID of the created DRG. |
-| `default_export_drg_route_distribution_id` | `string` | OCID of the default export route distribution that OCI automatically creates. Useful for configuring external DRG attachments managed outside this component. |
+**Route distributions** -- Define entries in `routeDistributions` to control which routes are advertised. Each distribution contains prioritized `statements` with match criteria (`matchAll`, `drgAttachmentType`, or `drgAttachmentId`). Distributions are referenced by name from route tables (import) and attachments (export).
 
-## Related Components
+**Hub-and-spoke routing** -- For multi-VCN environments, create a shared custom route table with an import distribution that matches all VCN attachments. Assign each spoke VCN attachment to this shared route table so spokes automatically learn each other's CIDRs.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciVcn](/docs/catalog/oci/vcn) — provides VCN OCIDs for VCN attachments via `valueFrom`
-- [OciSubnet](/docs/catalog/oci/subnet) — subnets within attached VCNs route traffic through the DRG for cross-VCN and on-premises connectivity
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `drg_id` | OCID of the DRG | OciSubnet route rules targeting the DRG, network auditing |
+| `default_export_drg_route_distribution_id` | OCID of the auto-created default export distribution | Configuring external DRG attachments (IPSec, FastConnect) managed outside this component |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single VCN attachment** -- A DRG with one VCN attachment using OCI's auto-generated default route tables. The starting point for IPSec VPN, FastConnect, or future VCN peering. Start from the **Single VCN Attachment** preset.
+
+**Hub-and-spoke** -- A DRG configured as a multi-VCN hub with two spoke VCN attachments sharing a custom route table that imports routes from all VCN attachments via an import distribution, enabling spoke-to-spoke communication. Start from the **Hub-and-Spoke** preset.
+
+## Works With
+
+- [**OCI Compartment**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this DRG

@@ -6,141 +6,134 @@ order: 100
 componentName: "kubernetesopensearch"
 ---
 
-# Kubernetes OpenSearch
+# OpenSearch
 
-Declares an OpenSearch cluster — the Apache-2.0 search and analytics
-engine, drop-in compatible with the Elasticsearch APIs at the 7.10
-fork line, with its own 2.x/3.x feature line since — reconciled by the
-OpenSearch Kubernetes Operator. One resource carries node pools with
-roles and per-pool storage, the TLS and security-plugin posture, an
-optional OpenSearch Dashboards console, Prometheus monitoring,
-keystore entries, and snapshot repositories. Workloads connect at the
-exported https endpoint; exposure composes from ingress and gateway
-kinds over the exported service handles.
+Deploy an [OpenSearch](https://opensearch.org) cluster — the Apache-2.0 search and analytics engine (a drop-in replacement for the Elasticsearch APIs at the 7.10 fork line, with its own 2.x/3.x feature line since). The cluster is declared as an `OpenSearchCluster` custom resource reconciled by the OpenSearch Kubernetes Operator, which manages the full lifecycle: node StatefulSets per pool, cluster bootstrap, TLS, the security plugin's admin bootstrap, safe rolling upgrades, and an optional OpenSearch Dashboards console.
 
-> **Migrating from Elasticsearch**: existing Elasticsearch clients and
-> tooling speak to OpenSearch unchanged at the API-compatibility line —
-> the fork is Apache-2.0 end to end, which is the reason it exists.
+The topology is yours to declare: node pools carry roles (`cluster_manager`, `data`, `ingest`, …), counts, storage, and sizing. The smallest working dev shape is one all-roles pool with 2 replicas — a single manager-eligible replica cannot survive the operator's bootstrap handoff (verified live).
 
 ## What Gets Created
 
-- **Namespace** (optional) — created and owned when `create_namespace`
-  is set
-- **OpenSearchCluster** (`opensearch.opster.io/v1`, named
-  `metadata.name`) — the ONLY custom resource: topology, security,
-  Dashboards, monitoring, keystore, snapshot repositories
+When you deploy this Cloud Resource, the IaC module provisions:
 
-The operator reconciles it into node StatefulSets per pool
-(`<cluster>-<pool>`), the main Service (`<name>`), a discovery
-Service, TLS Secrets, the `<name>-admin-password` credentials Secret,
-and — when enabled — the `<name>-dashboards` Deployment and Service.
+- **OpenSearchCluster custom resource** — one StatefulSet per node pool, the cluster Services, and (when enabled) the Dashboards Deployment, all reconciled by the operator
+- **Generated TLS** — a CA plus per-layer certificates for node-to-node and client traffic (the default posture), and the security plugin's admin bootstrap
+- **Snapshot repositories and keystore entries** — registered on the cluster at startup when declared
 
-## Prerequisites
+## Before You Deploy
 
-- The OpenSearch Kubernetes Operator on the cluster
-  (KubernetesOpenSearchOperator) — it must watch this cluster's
-  namespace (the default posture watches all namespaces)
-- A StorageClass for PVC-backed pools (most managed clusters provide a
-  default; or reference a KubernetesStorageClass)
-- For provided certificates: a kubernetes.io/tls Secret — issue a
-  KubernetesCertificate and reference it in the TLS blocks
-- For `monitoring.enabled`: the Prometheus Operator CRDs (enabling it
-  without them fails reconciliation)
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
+- **OpenSearch Operator** — a **Kubernetes OpenSearch Operator** resource must be running and watching the target namespace (its default watch is cluster-wide). Deploy it first.
+
+### Cluster Side
+
+- **Kernel tuning** — OpenSearch needs `vm.max_map_count` raised; the default-on privileged init container handles it. On clusters that forbid privileged init containers, tune nodes out of band and disable the dial.
+- **Prometheus Operator CRDs** — only if you enable monitoring; a missing ServiceMonitor CRD fails reconciliation.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenSearch**, and click **Deploy**. The creation wizard walks you through namespace placement, the engine version, the node-pool topology (with the manager-quorum floor held live), engine settings, node runtime, the TLS/security posture, the optional Dashboards console, monitoring, backups, and air-gap sourcing. Start from the **Dev Minimal** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenSearch
 metadata:
-  name: main
+  name: dev-opensearch
+  org: acme-corp
+  env: dev
+spec:
+  namespace:
+    value: dev-opensearch
+  create_namespace: true
+  version: 2.19.4
+  node_pools:
+    - name: all
+      replicas: 2
+      roles:
+        - cluster_manager
+        - data
+        - ingest
+      jvm: -Xmx1G -Xms1G
+      disk_size: 10Gi
+```
+
+```shell
+planton apply -f opensearch-cluster.yaml
+```
+
+### InfraChart
+
+Compose the cluster behind its operator and give Dashboards real exposure:
+
+```yaml
 spec:
   namespace:
     value: search
-  create_namespace: true
-  version: "2.19.4"
-  node_pools:
-    - name: core
-      replicas: 3
-      roles: [cluster_manager, data]
-      jvm: "-Xmx1G -Xms1G"
-  security:
-    transport_tls: {}
-    http_tls: {}
+  version: 2.19.4
   dashboards:
     enabled: true
 ```
 
-The operator forms the cluster and bootstraps security; workloads
-connect at the exported `http_endpoint`
-(`https://main.search.svc.cluster.local:9200`) with the credentials
-from the `main-admin-password` Secret.
+Reference the exported `dashboards_service_name` from a **Kubernetes Ingress** or Gateway API route for team access.
 
-## Security: Read This Before Production
+## Key Configuration
 
-The HTTP API serves **https in every posture** — even without a
-`security` block, the image's demo security configuration is active.
-And WITHOUT a custom `security.config`, the bootstrapped credentials
-in `<name>-admin-password` are the image's **well-known demo admin
-credentials** — the operator does not generate a random password at
-this release. Inside a private cluster that is fine for development;
-for anything real, bring a custom `security.config` (your own
-internal_users.yml and admin credentials) or rotate the admin password
-through the security API immediately after install.
+**The manager floor** — a lone 1-replica `cluster_manager` pool is stranded by the operator's temporary bootstrap manager (every write returns `cluster_manager_not_discovered`). Declare at least 2 manager-eligible replicas; production runs 3 dedicated managers.
 
-## Configuration
+**The admin password is the image's demo credential** — the operator does not generate a random admin password at this release. The bootstrapped `<name>-admin-password` Secret holds the well-known demo pair: rotate it through the security API immediately after install, or bring a custom security config, before anything real uses the cluster.
 
-### Topology
+**Storage is per-pool and durable by default** — a PVC per node on the default StorageClass. emptyDir is for throwaway experiments only; heap should be about half the container memory (`jvm` sets it; the rest is OS page cache).
 
-`node_pools` is the cluster's shape: roles (underscore forms —
-`cluster_manager`, `data`, `ingest`, ...), replicas, JVM, resources,
-disk size, and storage backing (PVC by default — data survives pod
-loss; emptyDir for throwaway experiments). One 3-replica all-roles
-pool is the smallest real cluster; one replica works for development.
+**Version bumps are day-2 friendly** — the operator rolls nodes one at a time with drain ordering. Check its compatibility table before a major-line jump, and keep an enabled Dashboards aligned with the engine version.
 
-### Backups
+**Snapshot credentials live in the keystore** — repository settings pass verbatim into the CR (never put credentials there), and a cloud repository type needs its plugin (`repository-s3`, …) in the node plugins list.
 
-`snapshot_repositories` registers repositories (`s3`, `gcs`, `azure`,
-`fs`, ...); the matching repository plugin rides `plugins_list`, and
-credentials go in the `keystore` (Secrets loaded into every node, with
-key renaming) — or nowhere, when the nodes carry instance/workload
-identity (IRSA, GKE Workload Identity): the keyless path.
+## Outputs and Dependencies
 
-### Dashboards
+### What This Component Consumes
 
-A section of the same resource: `dashboards.enabled` with optional
-TLS, replicas, a base path for path-rewriting proxies, and a
-LoadBalancer service type for quick exposure.
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | Where the cluster runs |
+| `spec.node_pools[].persistence.pvc.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Per-pool volume class |
+| `spec.security.transport_tls.secret` / `spec.security.http_tls.secret` | KubernetesCertificate (`status.outputs.secret_name`) | Bring-your-own TLS (the cert-manager seam) |
+| `spec.security.transport_tls.ca_secret` | KubernetesSecret (`metadata.name`) | Existing CA for generated node certs |
+| `spec.security.config.*` | KubernetesSecret (`metadata.name`) | Custom security-plugin config trio |
+| `spec.dashboards.tls.secret` | KubernetesCertificate (`status.outputs.secret_name`) | Dashboards HTTPS certificate |
+| `spec.dashboards.opensearch_credentials_secret` | KubernetesSecret (`metadata.name`) | Dashboards cluster credentials (custom security config) |
+| `spec.monitoring.monitoring_user_secret` | KubernetesSecret (`metadata.name`) | Scrape credentials (custom security config) |
+| `spec.keystore[].secret` | KubernetesSecret (`metadata.name`) | Secure settings loaded into the node keystore |
 
-## Stack Outputs
+### What This Component Provides
 
-| Output | Description |
-|---|---|
-| `namespace` | Namespace the cluster runs in |
-| `cluster_name` | OpenSearchCluster resource name (= `metadata.name`) |
-| `service_name` | Main Service fronting all nodes (`<name>`) |
-| `http_endpoint` | In-cluster HTTP API endpoint — always https |
-| `admin_credentials_secret_name` | `<name>-admin-password` (fields `username`/`password`); empty with a custom security config |
-| `dashboards_service_name` | `<name>-dashboards`; empty when not enabled |
-| `dashboards_endpoint` | In-cluster Dashboards endpoint (port 5601); empty when not enabled |
-| `port_forward_command` | Workstation access when no exposure is composed |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `http_endpoint` | In-cluster https API endpoint | Application clients, log shippers, dashboards |
+| `admin_credentials_secret_name` | The bootstrapped admin Secret (username/password) — empty when a custom security config replaces the bootstrap | Client authentication |
+| `service_name` / `cluster_name` / `namespace` | Cluster identity handles | Ingress/Gateway composition, monitoring |
+| `dashboards_service_name` / `dashboards_endpoint` | The console's handles — empty when Dashboards is disabled | Ingress/Gateway exposure for the team |
+| `port_forward_command` | Copy-paste developer access | Local exploration |
 
-## Related Components
+## Common Patterns
 
-- [KubernetesOpenSearchOperator](/docs/catalog/kubernetes/opensearch-operator)
-  — the engine; must be installed and watching this namespace
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) —
-  provides the target namespace via reference
-- [KubernetesCertificate](/docs/catalog/kubernetes/kubernetescertificate)
-  — issues the TLS Secrets the provided-certificate arms reference
-- [KubernetesIngress](/docs/catalog/kubernetes/ingress) —
-  composes external exposure over the exported service handles
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Next Steps
+**Dev Minimal** — one all-roles pool with 2 replicas (the smallest shape that survives the bootstrap handoff), generated TLS on both layers. Start from the **Dev Minimal** preset.
 
-Replace the demo bootstrap before anything real touches the cluster —
-a custom `security.config` or an immediate admin-password rotation.
-Register a snapshot repository with keystore (or keyless) credentials
-and take a first snapshot. Compose exposure from KubernetesIngress or
-Gateway API kinds over `service_name` and `dashboards_service_name` —
-this component never embeds it.
+**Production Cluster** — dedicated manager and data pools, sized heaps, durable storage, disruption budgets. Start from the **Production Cluster** preset.
+
+**S3 Snapshots** — the production shape plus the `repository-s3` plugin, keystore-loaded credentials, and a registered S3 snapshot repository. Start from the **S3 Snapshots** preset.
+
+## Works With
+
+- **Kubernetes OpenSearch Operator** — the engine that reconciles this cluster; deploy it first.
+- **Kubernetes Certificate** — cert-manager-issued TLS for bring-your-own postures.
+- **Kubernetes Secret** — keystore sources, custom security config, credentials.
+- **Kubernetes Ingress / Gateway API kinds** — real exposure for the API and Dashboards.
+- **Kubernetes Kube Prometheus Stack** — the ServiceMonitor consumer when monitoring is enabled.

@@ -29,7 +29,7 @@ module/
 
 ```bash
 # Set stack input from manifest
-export STACK_INPUT=$(cat iac/hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 
 # Run Pulumi preview
 pulumi preview --stack test --non-interactive

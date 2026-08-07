@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Deterministic tool: Write Pulumi entrypoint files (main.go, Pulumi.yaml, Makefile) under iac/pulumi/.
+Deterministic tool: Write Pulumi entrypoint files (main.go, Pulumi.yaml) under the
+component-root iac/pulumi/.
 
 Usage (stdin JSON):
   cat files.json | python3 _rules/deployment-component/_scripts/pulumi_entrypoint_write.py --provider aws --kindfolder awscloudfront --stdin --build
@@ -9,8 +10,7 @@ JSON shape:
 {
   "files": [
     {"name": "main.go", "content": "..."},
-    {"name": "Pulumi.yaml", "content": "..."},
-    {"name": "Makefile", "content": "..."}
+    {"name": "Pulumi.yaml", "content": "..."}
   ]
 }
 
@@ -42,7 +42,6 @@ def base_paths(repo_root: str, provider: str, kind_folder: str) -> Tuple[str, st
         "catalog",
         provider,
         kind_folder,
-        "v1alpha1",
         "iac",
         "pulumi",
     )
@@ -59,6 +58,11 @@ def norm_name(name: str) -> str:
     s = name.strip()
     if s.startswith("/") or s.startswith("~") or ".." in s:
         raise ValueError("invalid name")
+    # Module Makefiles are not part of the component anatomy (the anatomy gate
+    # rejects them as forbidden files); refuse to write one rather than let a
+    # drafted entrypoint reintroduce the class.
+    if s == "Makefile":
+        raise ValueError("Makefile is not part of the entrypoint (nothing consumes it; the anatomy gate forbids it)")
     return s
 
 
@@ -86,7 +90,7 @@ def write_files(base_abs: str, base_rel: str, files: List[Dict[str, str]]) -> Tu
 
 def run_go_build(repo_root: str, base_rel: str) -> Tuple[int, str, str]:
     # Build the entrypoint directory NON-RECURSIVELY, exactly as the release pipeline does
-    # (release.pulumi-modules.yaml runs `go build -o <bin> ./<...>/v1alpha1/iac/pulumi`). A recursive
+    # (release.pulumi-modules.yaml runs `go build -o <bin> ./catalog/<provider>/<kind>/iac/pulumi`). A recursive
     # `./<base_rel>/...` build would compile the module/ library and PASS even when the root
     # `package main` entrypoint is missing or misplaced -- masking the very failure this writer
     # must catch. `-o /dev/null` discards the binary while still requiring a buildable root main.

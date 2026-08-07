@@ -8,174 +8,47 @@ componentName: "alicloudramrole"
 
 # AliCloud RAM Role
 
-Deploys an Alibaba Cloud RAM role with bundled policy attachments and a configurable trust policy document. The component provisions the role and its policy attachments as a single atomic unit, ensuring the role is always created with its intended permissions.
+Deploys an Alibaba Cloud RAM role with bundled policy attachments and a configurable trust policy document. The component provisions the role and its policy attachments as a single atomic unit, ensuring the role is always created with its intended permissions. The role ARN is consumed by other AliCloud components (Function Compute, ECS, ACK) via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AliCloudRamRole resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **RAM Role** — an `alicloud_ram_role` resource with the specified trust policy, session duration, and tags
-- **Policy Attachments** — one `alicloud_ram_role_policy_attachment` per entry in `policyAttachments`, granting the role permissions defined by system-managed or custom policies
+- **RAM Role** -- an `alicloud_ram_role` with the specified trust policy, session duration, force-deletion behavior, and tags
+- **Policy Attachments** -- one `alicloud_ram_role_policy_attachment` per entry in `policyAttachments`, granting the role permissions defined by system-managed or custom policies
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **An Alibaba Cloud account** with RAM service enabled
-- **Custom policies** must already exist before referencing them with `policyType: Custom` — create them with AliCloudRamPolicy
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `ram-role.yaml`:
+### Alibaba Cloud Account
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamRole
-metadata:
-  name: my-ecs-role
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudRamRole.my-ecs-role
-spec:
-  region: cn-hangzhou
-  roleName: my-ecs-service-role
-  assumeRolePolicyDocument: |
-    {
-      "Statement": [{
-        "Action": "sts:AssumeRole",
-        "Effect": "Allow",
-        "Principal": {"Service": ["ecs.aliyuncs.com"]}
-      }],
-      "Version": "1"
-    }
-```
+- A valid JSON trust policy document specifying which principals (services, accounts, or federated identities) can assume the role via STS.
+- Custom policies referenced with `policyType: Custom` must already exist -- create them with AliCloudRamPolicy first.
+- System-managed policies (e.g., `AliyunOSSFullAccess`, `AliyunLogFullAccess`) are provided by Alibaba Cloud and do not need to be created.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f ram-role.yaml
-```
+### Console
 
-This creates a RAM role that ECS instances can assume via STS. No policies are attached in this minimal configuration.
+Open the deployment store, find **AliCloud RAM Role**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **ECS Service Role** preset in the [Presets](#presets) tab to pre-populate a role for ECS instances with OSS, CloudMonitor, and Log Service access.
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for provider endpoint configuration. RAM is a global service, but the provider requires a region for API routing (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-| `roleName` | `string` | RAM role name, unique within the Alibaba Cloud account. Letters, digits, periods, hyphens, and underscores only. | Required; 1-64 characters |
-| `assumeRolePolicyDocument` | `string` | JSON trust policy document defining which principals can assume this role via STS. | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the role's purpose. |
-| `maxSessionDuration` | `int` | `3600` | Maximum STS session duration in seconds when assuming this role. Range: 3600-43200 (1 hour to 12 hours). |
-| `tags` | `map<string, string>` | `{}` | Tags applied to the RAM role. Merged with standard Planton tags (`resource_name`, `resource_kind`, `organization`, `environment`). User tags take precedence on conflict. |
-| `force` | `bool` | `false` | Force-detach all attached policies before deleting the role. When `false`, deletion fails if policies are still attached. |
-| `policyAttachments` | `list` | `[]` | Policies to attach to this role. Each entry creates a policy attachment resource. |
-| `policyAttachments[].policyName` | `string` | — | Policy name to attach (e.g., `AliyunECSFullAccess`, `AliyunOSSReadOnlyAccess`). Required per attachment. |
-| `policyAttachments[].policyType` | `string` | `System` | `System` for Alibaba Cloud managed policies, `Custom` for user-created policies. |
-
-## Examples
-
-### ECS Service Role with System Policies
-
-A role for ECS instances that need access to OSS and log services, with a 2-hour session duration:
+### CLI
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamRole
-metadata:
-  name: ecs-worker-role
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudRamRole.ecs-worker-role
-spec:
-  region: cn-shanghai
-  roleName: ecs-worker-role
-  description: Role for ECS worker instances accessing OSS and monitoring
-  assumeRolePolicyDocument: |
-    {
-      "Statement": [{
-        "Action": "sts:AssumeRole",
-        "Effect": "Allow",
-        "Principal": {"Service": ["ecs.aliyuncs.com"]}
-      }],
-      "Version": "1"
-    }
-  maxSessionDuration: 7200
-  tags:
-    team: platform
-    costCenter: infrastructure
-  policyAttachments:
-    - policyName: AliyunOSSFullAccess
-    - policyName: AliyunCloudMonitorFullAccess
-    - policyName: AliyunLogFullAccess
-```
-
-### Cross-Account Audit Role
-
-A role that another Alibaba Cloud account can assume for read-only audit access, with both system and custom policies:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRamRole
-metadata:
-  name: cross-account-audit
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudRamRole.cross-account-audit
-spec:
-  region: cn-hangzhou
-  roleName: cross-account-audit-role
-  description: Allows the security audit account to read billing and logs
-  assumeRolePolicyDocument: |
-    {
-      "Statement": [{
-        "Action": "sts:AssumeRole",
-        "Effect": "Allow",
-        "Principal": {"RAM": ["acs:ram::1234567890123456:root"]}
-      }],
-      "Version": "1"
-    }
-  maxSessionDuration: 43200
-  force: true
-  tags:
-    purpose: security-audit
-  policyAttachments:
-    - policyName: AliyunBSSReadOnlyAccess
-    - policyName: AliyunLogReadOnlyAccess
-    - policyName: audit-log-reader-policy
-      policyType: Custom
-```
-
-### Function Compute Execution Role
-
-A role for Function Compute functions that need VPC access and log service integration:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRamRole
 metadata:
   name: fc-execution-role
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AliCloudRamRole.fc-execution-role
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   roleName: fc-execution-role
-  description: Execution role for Function Compute with VPC and logging access
   assumeRolePolicyDocument: |
     {
       "Statement": [{
@@ -186,24 +59,53 @@ spec:
       "Version": "1"
     }
   policyAttachments:
-    - policyName: AliyunVPCFullAccess
-    - policyName: AliyunECSNetworkInterfaceManagement
     - policyName: AliyunLogFullAccess
 ```
 
-## Stack Outputs
+```shell
+planton apply -f ram-role.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+This creates a RAM role that Function Compute can assume, with Log Service full access for writing invocation logs. Session duration defaults to 3600 seconds (1 hour) and force-deletion is disabled.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `role_id` | `string` | The RAM role ID assigned by Alibaba Cloud |
-| `role_name` | `string` | The RAM role name as created |
-| `arn` | `string` | The Alibaba Cloud Resource Name for the role (format: `acs:ram::<account-id>:role/<role-name>`) |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a RAM role. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [AliCloudRamPolicy](/docs/catalog/alicloud/ram-policy) — create custom policies to attach to this role
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) — references this role for cluster service authentication
-- [AliCloudFcFunction](/docs/catalog/alicloud/alicloudfcfunction) — references the role ARN for function execution permissions
-- [AliCloudEcsInstance](/docs/catalog/alicloud/ecsinstance) — references this role for instance profile attachment
+**Trust policy document** -- The `assumeRolePolicyDocument` field defines which principals can call `sts:AssumeRole`. For service roles, specify a Service principal (e.g., `fc.aliyuncs.com` for Function Compute, `ecs.aliyuncs.com` for ECS). For cross-account access, specify a RAM principal with the trusted account ID (e.g., `acs:ram::1234567890123456:root`).
+
+**Policy attachments** -- Each entry in `policyAttachments` creates a policy attachment resource. Set `policyType` to `System` (default) for Alibaba Cloud managed policies or `Custom` for policies created with AliCloudRamPolicy. A role without policies can authenticate via STS but has zero permissions.
+
+**Session duration** -- Set `maxSessionDuration` between 3600 (1 hour, default) and 43200 (12 hours). Longer durations suit CI/CD pipelines and batch workloads that should not need to re-assume the role mid-execution.
+
+**Force deletion** -- Set `force: true` to allow deleting the role even when policies are still attached. When `false` (default), deletion fails if any policies remain, preventing accidental permission removal.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `role_id` | The RAM role ID assigned by Alibaba Cloud | Internal reference, audit logs |
+| `role_name` | The RAM role name as created | Direct role name references in other configurations |
+| `arn` | The role ARN (`acs:ram::<account-id>:role/<role-name>`) | AliCloudFunction `role`, ECS instance profiles, ACK service authentication |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**ECS service role** -- A role for ECS instances with OSS, CloudMonitor, and Log Service access. Also serves as a starting point for ACK worker node roles. Start from the **ECS Service Role** preset.
+
+**FC execution role** -- A minimal role for Function Compute functions with Log Service access for invocation logging. Add service-specific policies based on what the function accesses. Start from the **FC Execution Role** preset.
+
+**Cross-account audit role** -- A role that another Alibaba Cloud account can assume for read-only security auditing with billing, log, and ActionTrail access. Uses a 12-hour session duration and force-deletion. Start from the **Cross-Account Audit** preset.
+
+## Works With
+
+This component operates independently and does not reference other deployment components.

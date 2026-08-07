@@ -8,96 +8,155 @@ componentName: "gcpfilestoreinstance"
 
 # GCP Filestore Instance
 
-Creates a Google Cloud Filestore instance — fully managed, high-performance NFS file storage for shared POSIX filesystems — with a single file share, VPC connectivity across three connect modes, NFS export access controls, IOPS tuning, CMEK encryption, create-time replication and backup restore, and deletion protection. Supports all eight Filestore tiers from cost-effective HDD to enterprise-grade regional HA.
+Deploys a fully managed NFS file server on Google Cloud Filestore with configurable tiers (BASIC_SSD through ENTERPRISE), VPC network connectivity, CMEK encryption, NFS export controls, and IOPS performance tuning. Each instance provides a single file share mountable via NFSv3 or NFSv4.1. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
 
 ## What Gets Created
 
-- The Filestore API is enabled on the project (never disabled on destroy)
-- A `google_filestore_instance` carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set) and any Resource Manager tags
-- One NFS file share on the instance (a GCP constraint: exactly one per instance), mountable at `<ip>:/<share_name>`
-- One VPC network attachment via `DIRECT_PEERING` (default), `PRIVATE_SERVICE_ACCESS` (Shared VPC; rides an existing service-networking connection), or `PRIVATE_SERVICE_CONNECT`
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Filestore Instance** -- a managed NFS file server in the specified project and location, configured with the chosen tier, capacity, and protocol
+- **File Share** -- a single NFS export with the specified name and capacity, mountable at `<ip>:/<share_name>`
+- **VPC Network Attachment** -- connects the instance to the specified VPC network using DIRECT_PEERING, PRIVATE_SERVICE_ACCESS, or PRIVATE_SERVICE_CONNECT mode
+- **NFS Export Options** -- created only when export options are provided; control client access by IP range, read/write mode, and root squash settings
+- **Performance Configuration** -- created only when `performanceConfig` is set; configures fixed IOPS or per-TB IOPS scaling (ZONAL, REGIONAL, ENTERPRISE tiers only)
+- **CMEK Encryption** -- applied only when `kmsKeyName` is provided; encrypts data at rest with a customer-managed Cloud KMS key
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **IAM permissions** — Filestore admin on the target project
-- **A VPC network** for the instance to attach to (reference a `GcpVpcNetwork`)
-- For CMEK: a `GcpKmsKey` the Filestore service agent can use
-- For `PRIVATE_SERVICE_ACCESS`: an existing service-networking connection on the VPC
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `filestore.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the Filestore instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **A VPC network** for the instance to connect to. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef. The network configuration is immutable after creation.
+- **Cloud Filestore API** (`file.googleapis.com`) enabled in the target project.
+- **Private Services Access** (if using PRIVATE_SERVICE_ACCESS connect mode) -- the VPC must have a private services connection configured.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Filestore Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Basic** preset in the [Presets](#presets) tab to pre-populate a development-ready configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpFilestoreInstance
 metadata:
-  name: my-nfs
+  name: shared-nfs
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
+    value: "acme-prod-12345"
+  instanceName: shared-nfs
   location: us-central1-a
   tier: BASIC_SSD
   fileShare:
-    name: vol1
+    name: data
     capacityGb: 2560
   networkConfig:
     network:
-      value: default
+      value: "projects/acme-prod-12345/global/networks/main-vpc"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f filestore.yaml
 ```
 
-This creates a 2.5 TiB SSD-backed NFS server named `my-nfs` (the instance name falls back to `metadata.name`) in `us-central1-a`, mountable from any client on the default VPC: `mount <ip>:/vol1 /mnt/nfs`.
+This creates a BASIC_SSD Filestore instance with a 2.5 TiB file share named `data`, connected to the specified VPC via DIRECT_PEERING. No CMEK, deletion protection, or performance tuning is configured.
 
-## Configuration Reference
+### InfraChart
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | StringValueOrRef | No | Target project; reference a `GcpProject` or set a literal value. Empty falls back to the provider's default project. Immutable |
-| `instanceName` | string | No | GCP resource name; empty falls back to `metadata.name`. Immutable |
-| `location` | string | Yes | Zone for zonal tiers, region for `REGIONAL`/`ENTERPRISE`. Immutable |
-| `tier` | string | Yes | `STANDARD`, `PREMIUM`, `BASIC_HDD`, `BASIC_SSD`, `HIGH_SCALE_SSD`, `ZONAL`, `REGIONAL`, `ENTERPRISE`. Immutable |
-| `description` | string | No | Human-readable description |
-| `protocol` | string | No | `NFS_V3` (default) or `NFS_V4_1` (modern tiers only). Immutable |
-| `kmsKeyName` | StringValueOrRef | No | CMEK key (reference a `GcpKmsKey`). Immutable |
-| `deletionProtectionEnabled` | bool | No | Destroy guard: must be flipped false before a protected instance can be deleted |
-| `deletionProtectionReason` | string | No | Informational reason for the protection |
-| `fileShare.name` | string | Yes | Export path name (max 16 chars). Immutable |
-| `fileShare.capacityGb` | int | Yes | Capacity in GiB (tier-specific minimums). Grows, never shrinks |
-| `fileShare.nfsExportOptions[]` | list | No | Up to 10 access controls: `ipRanges`, `accessMode`, `squashMode`, `anonUid`/`anonGid` |
-| `fileShare.sourceBackup` | string | No | Restore from an existing Filestore backup. Create-time only |
-| `networkConfig.network` | StringValueOrRef | Yes | VPC network (reference a `GcpVpcNetwork`). Immutable |
-| `networkConfig.connectMode` | string | No | `DIRECT_PEERING` (default), `PRIVATE_SERVICE_ACCESS`, `PRIVATE_SERVICE_CONNECT`. Immutable |
-| `networkConfig.reservedIpRange` | string | No | A `/29` block; empty lets GCP pick. Immutable |
-| `networkConfig.modes[]` | list | No | `MODE_IPV4` / `MODE_IPV6`; empty means IPv4. Immutable |
-| `performanceConfig` | object | No | `fixedIops.maxIops` or `iopsPerTb.maxIopsPerTb` (mutually exclusive; ZONAL/REGIONAL/ENTERPRISE) |
-| `initialReplication` | object | No | Create-time replication: `role` (`STANDBY` default / `ACTIVE`) + `peerInstances[]` referencing other `GcpFilestoreInstance` resources |
-| `labels` | map | No | User labels (merged beneath platform labels) |
-| `tags` | map | No | Resource Manager tags (`tagKeys/{id}` → `tagValues/{id}`). Create-time only |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Filestore instance to infrastructure deployed in the same InfraPipeline:
 
-## Stack Outputs
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+  networkConfig:
+    network:
+      valueFrom:
+        kind: GcpVpcNetwork
+        name: production-vpc
+        fieldPath: status.outputs.network_name
+  kmsKeyName:
+    valueFrom:
+      kind: GcpKmsKey
+      name: filestore-key
+      fieldPath: status.outputs.key_id
+```
 
-| Output | Description |
-|--------|-------------|
-| `instance_id` | Fully qualified resource ID — what replication peers reference |
-| `instance_name` | Short instance name |
-| `ip_addresses` | Addresses on the VPC network; use the first for NFS mounts |
-| `file_share_name` | Share name for the mount path |
-| `create_time` | Creation timestamp (RFC3339) |
-| `reserved_ip_range` | The `/29` block as resolved by GCP |
-| `etag` | Server-specified ETag guarding concurrent updates |
+The InfraPipeline resolves the dependency graph, deploys the project, VPC, and KMS key first, then provisions the Filestore instance with the resolved values.
 
-## Related Resources
+## Key Configuration
 
-- **GcpVpcNetwork** — the VPC the instance attaches to via `networkConfig.network`
-- **GcpKmsKey / GcpKmsKeyRing** — CMEK protection via `kmsKeyName`
-- **GcpProject** — target project via `projectId`
-- **GcpGkeCluster** — mount shares as ReadWriteMany PersistentVolumes via the Filestore CSI driver
-- **GcpComputeInstance** — VMs mount shares directly over NFS
-- **GcpFilestoreInstance** — another instance as the ACTIVE replication peer
+These are the most important decisions when configuring a Filestore instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Tier selection** -- Determines performance, availability, and pricing. BASIC_SSD (2.5 TiB minimum) for development and moderate workloads. ZONAL for modern SSD with IOPS tuning. ENTERPRISE for regional HA with automatic failover. The tier is immutable after creation.
+
+**File share capacity** -- Set `fileShare.capacityGb` to meet your storage needs. Minimums depend on tier: 1024 GiB for STANDARD/ZONAL/ENTERPRISE, 2560 GiB for BASIC_SSD, 10240 GiB for HIGH_SCALE_SSD. Capacity can be increased after creation but not decreased.
+
+**Network connectivity** -- Choose the `connectMode` in `networkConfig`: DIRECT_PEERING (default, simplest), PRIVATE_SERVICE_ACCESS (for Shared VPC or enterprise networks), or PRIVATE_SERVICE_CONNECT. The network configuration is immutable after creation.
+
+**NFS export options** -- Control client access to the file share via `fileShare.nfsExportOptions`. Configure `ipRanges` to restrict which CIDR blocks can mount, `accessMode` for READ_WRITE or READ_ONLY, and `squashMode` for root user handling (ROOT_SQUASH maps root to anonymous for security).
+
+**Performance tuning** -- Available on ZONAL, REGIONAL, and ENTERPRISE tiers. Choose between `performanceConfig.fixedIops` (constant IOPS regardless of capacity) and `performanceConfig.iopsPerTb` (IOPS scales with capacity). Omit for tier-default performance.
+
+**Restore and replication** -- Seed the share from an existing backup at creation via `fileShare.sourceBackup` (the share's capacity must cover the backup's source capacity). For cross-instance DR, `initialReplication` pairs this instance with a peer at creation — usually as the STANDBY replica of an existing ACTIVE instance (referenced via its `instance_id` output). Both are create-time only, and backups cannot be taken from a standby replica.
+
+**Labels and tags** -- `labels` are mutable organizational metadata merged beneath Planton's attribution labels. `tags` bind Resource Manager tag values (`tagKeys/{id}` → `tagValues/{id}`) for org-policy and IAM conditions — create-time only.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** | `networkConfig.network` | `status.outputs.network_name` |
+| **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
+| **GcpFilestoreInstance** (optional) | `initialReplication.peerInstances[]` | `status.outputs.instance_id` |
+
+The network reference resolves the VPC's plain NAME output — the Filestore API
+rejects self-link URLs for same-project networks.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | Fully qualified resource ID (`projects/{p}/locations/{l}/instances/{i}`) | Another instance's `initialReplication.peerInstances`, monitoring, audit logs |
+| `instance_name` | Short name of the Filestore instance | Application configuration |
+| `ip_addresses` | IP addresses assigned on the connected VPC network | NFS mount commands (`mount <ip>:/<share> /mnt`) |
+| `file_share_name` | Name of the file share (NFS export path) | NFS mount path construction |
+| `create_time` | Instance creation timestamp (RFC3339) | Audit, lifecycle tracking |
+| `reserved_ip_range` | The CIDR range in use (set or auto-selected) | Planning non-overlapping address space |
+| `etag` | Server-computed checksum of the instance state | Optimistic-concurrency API calls |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Dev basic** -- A BASIC_SSD instance with 2.5 TiB capacity, default VPC, and DIRECT_PEERING. Minimal configuration for development, testing, and CI/CD pipelines. Start from the **Dev Basic** preset.
+
+**Production enterprise** -- An ENTERPRISE-tier instance with regional HA, PRIVATE_SERVICE_ACCESS networking, ROOT_SQUASH security, IP range restrictions, and deletion protection. For production workloads that cannot tolerate zone-level outages. Start from the **Production Enterprise** preset.
+
+**High performance zonal** -- A ZONAL-tier instance with 2.5 TiB capacity, 20,000 fixed IOPS, CMEK encryption, and PRIVATE_SERVICE_ACCESS networking. Optimized for media rendering, EDA, genomics, and ML training data staging. Start from the **High Performance Zonal** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the instance is created
+- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for instance connectivity
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the encryption key for customer-managed encryption at rest

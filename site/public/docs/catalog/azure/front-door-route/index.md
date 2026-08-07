@@ -8,50 +8,67 @@ componentName: "azurefrontdoorroute"
 
 # Azure Front Door Route
 
-Creates a route inside an AzureFrontDoorEndpoint -- the rule that matches client requests by URL pattern and forwards them to an origin group, with protocol policy and edge caching. Routes are the glue of the Front Door graph: endpoint -> route -> origin group -> origins.
+Deploys a Front Door route -- the URL-pattern glue that connects an endpoint to an origin group, with supported protocols, forwarding protocol, HTTPS redirect, custom domains, and optional edge caching. `originIds` exists only for deploy sequencing (ARM rejects a route whose origin group is empty); Azure never receives the list. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring across the Front Door serving spine.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorRoute resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Route** -- an `azurerm_cdn_frontdoor_route` on the referenced endpoint, forwarding to the referenced origin group
+- **Front Door Route** -- a named child of an endpoint matching URL patterns and forwarding to an origin group
+- **Protocol posture** -- supported protocols (HTTP/HTTPS), forwarding protocol, and HTTPS redirect
+- **Domain binding** -- link to the default `*.azurefd.net` hostname and/or custom domains
+- **Edge cache** (optional) -- query-string caching behavior, compression, and content types to compress
+- **Rule sets** (optional) -- references to AzureFrontDoorRuleSet for request/response transforms
 
-## Prerequisites
+## The Route in the Front Door Family
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureFrontDoorEndpoint** to attach to (referenced through `endpointId`)
-- **An AzureFrontDoorOriginGroup with at least one origin** -- ARM rejects a route whose origin group is empty (list the origins in `originIds` when deploying the whole chain together)
+- **AzureFrontDoorEndpoint** -- the public entry, referenced by `endpointId` (ForceNew)
+- **AzureFrontDoorOriginGroup** -- the backend pool, referenced by `originGroupId` (editable in place)
+- **AzureFrontDoorOrigin** -- listed in `originIds` so the route waits for backends to exist
+- **AzureFrontDoorCustomDomain** / **AzureFrontDoorRuleSet** -- optional attachments (slice-two kinds)
 
-## Quick Start
+## Before You Deploy
 
-Create a file `route.yaml`:
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Planton Runner** -- required when using Runner-based credential delivery.
+
+### Azure Subscription
+
+- **An endpoint and an origin group** under the same Front Door profile, with at least one origin in the group before the route applies (or list them in `originIds` for sequencing).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Route**, and click **Deploy**. The wizard walks you through attachment (endpoint, origin group, sequencing origins), matching and protocols, domains, and optional edge caching. Start from the **Catch-All HTTPS** preset for the default route shape.
+
+### CLI
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorRoute
 metadata:
-  name: default-route
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorRoute.default-route
+  name: my-default-route
+  org: acme-corp
+  env: prod
 spec:
   endpointId:
     valueFrom:
       kind: AzureFrontDoorEndpoint
-      name: web-endpoint
+      name: my-web-endpoint
       fieldPath: status.outputs.endpoint_id
-  routeName: default
+  routeName: default-route
   originGroupId:
     valueFrom:
       kind: AzureFrontDoorOriginGroup
-      name: api-backends
+      name: my-app-backends
       fieldPath: status.outputs.origin_group_id
   originIds:
     - valueFrom:
         kind: AzureFrontDoorOrigin
-        name: primary-app
+        name: my-app-origin
         fieldPath: status.outputs.origin_id
   patternsToMatch:
     - /*
@@ -60,29 +77,79 @@ spec:
     - HTTPS
 ```
 
-Deploy:
-
 ```shell
-planton apply -f route.yaml
+planton apply -f front-door-route.yaml
 ```
 
-This serves everything on the endpoint's hostname with the default HTTPS redirect (HTTP arrives only to be 301'd). Add a `cache` block for static content -- its absence means caching is off, a deliberate switch, not a defaults bundle. Front Door picks the most specific pattern across an endpoint's routes, so "/api/*" and "/*" cleanly split traffic.
+This creates a catch-all route with both protocols and the default HTTPS redirect (HTTP arrives only to be 301'd to HTTPS). Caching stays off until a `cache` block is declared.
 
-Attach delivery policies through `ruleSetIds` (AzureFrontDoorRuleSet references) and serve your own hostnames through `customDomainIds` (validated AzureFrontDoorCustomDomain references); set `linkToDefaultDomain: false` once custom domains are attached to stop answering on the generated *.azurefd.net name.
+### InfraChart
 
-## Key Outputs
+```yaml
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureFrontDoorEndpoint
+      name: my-web-endpoint
+      fieldPath: status.outputs.endpoint_id
+  routeName: static-assets
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: my-app-backends
+      fieldPath: status.outputs.origin_group_id
+  patternsToMatch:
+    - /assets/*
+  supportedProtocols:
+    - HTTPS
+  httpsRedirectEnabled: false
+  cache:
+    queryStringCachingBehavior: IGNORE_QUERY_STRING
+    compressionEnabled: true
+```
 
-| Output | Purpose |
-|--------|---------|
-| `route_id` | The ARM id of the route |
-| `route_name` | The route's name inside its endpoint |
+## Key Configuration
 
-The client-facing hostname deliberately lives on the ENDPOINT's outputs, not here -- the route is policy attached to that hostname.
+**Patterns** -- at least one; each must start with `/`. `/*` is the catch-all.
 
-## Related Resources
+**HTTPS redirect** -- requires both HTTP and HTTPS in `supportedProtocols` (the redirect needs HTTP to arrive and HTTPS to land on). Disable the redirect, or list both.
 
-- [Azure Front Door Endpoint](/docs/catalog/azure/front-door-endpoint) -- the parent entry hostname
-- [Azure Front Door Origin Group](/docs/catalog/azure/front-door-origin-group) -- the destination pool
-- [Azure Front Door Origin](/docs/catalog/azure/front-door-origin) -- the backends the pool serves
-- [Azure Front Door Rule Set](/docs/catalog/azure/front-door-rule-set) -- the delivery policies this route attaches
-- [Azure Front Door Custom Domain](/docs/catalog/azure/front-door-custom-domain) -- the hostnames this route serves
+**Default domain vs custom domains** -- `linkToDefaultDomain` can only be false when at least one custom domain is attached; otherwise the route would answer on no hostname.
+
+**Cache** -- absence means caching off. When present, choose query-string behavior and optionally enable compression with Front Door's supported content-type list.
+
+**originIds** -- deploy sequencing only. List origins so the route provisions after the group is non-empty; Azure never sees this field.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureFrontDoorEndpoint** | `endpointId` | `status.outputs.endpoint_id` |
+| **AzureFrontDoorOriginGroup** | `originGroupId` | `status.outputs.origin_group_id` |
+| **AzureFrontDoorOrigin** | `originIds[]` | `status.outputs.origin_id` (sequencing) |
+| **AzureFrontDoorCustomDomain** | `customDomainIds[]` | `status.outputs.custom_domain_id` |
+| **AzureFrontDoorRuleSet** | `ruleSetIds[]` | `status.outputs.rule_set_id` |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `route_id` | ARM resource ID of the route | Operator tooling / diagnostics |
+| `route_name` | The route's name | Operator tooling |
+
+## Presets
+
+| Preset | Rank | Description |
+|--------|------|-------------|
+| Catch-All HTTPS | 1 | `/*` with both protocols and HTTPS redirect |
+| Static Assets Cached | 2 | Path-scoped route with edge caching and compression |
+| API HTTPS-Only | 3 | HTTPS-only API path without redirect |
+
+## Related Components
+
+- **AzureFrontDoorEndpoint** -- the public entry
+- **AzureFrontDoorOriginGroup** / **AzureFrontDoorOrigin** -- the backend pool
+- **AzureFrontDoorCustomDomain** -- branded hostnames (slice two)
+- **AzureFrontDoorRuleSet** -- request/response transforms (slice two)

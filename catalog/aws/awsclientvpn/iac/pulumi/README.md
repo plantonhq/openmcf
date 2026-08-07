@@ -5,26 +5,26 @@
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -46,7 +46,7 @@ Then make the script executable and run your command (e.g., `preview` or `update
 ```bash
 chmod +x debug.sh
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -60,32 +60,32 @@ This Pulumi program deploys an `AwsClientVpn` endpoint using the Planton CLI.
 ```bash
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack <org>/<project>/<stack> \
   --module-dir .
 ```
 
 ## Examples
-See `examples.md` in this directory for example manifests and flows. These mirror the root-level examples for AwsClientVpn.
+See `../../e2e/manifest.yaml` in this directory for example manifests and flows. These mirror the root-level examples for AwsClientVpn.
 
 ## Debugging
 For local debugging, a `debug.sh` helper is provided. To enable it, uncomment the following in `Pulumi.yaml`:

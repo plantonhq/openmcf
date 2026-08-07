@@ -1,9 +1,9 @@
 ---
 title: "Presets"
-description: "Ready-to-deploy configuration presets for KEDA"
+description: "Ready-to-deploy configuration presets for Keda"
 type: "preset-list"
 componentSlug: "keda"
-componentTitle: "KEDA"
+componentTitle: "Keda"
 provider: "kubernetes"
 icon: "package"
 order: 200
@@ -22,6 +22,6 @@ presets:
     excerpt: "This preset hardens KEDA for clusters where autoscaling is load-bearing: two replicas of every component (warm standbys — KEDA leader-elects, so extra replicas buy failover speed, not throughput),..."
 ---
 
-# KEDA Presets
+# Keda Presets
 
-Ready-to-deploy configuration presets for KEDA. Each preset is a complete manifest you can copy, customize, and deploy.
+Ready-to-deploy configuration presets for Keda. Each preset is a complete manifest you can copy, customize, and deploy.

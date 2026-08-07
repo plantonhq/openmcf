@@ -8,147 +8,85 @@ componentName: "openstacknetwork"
 
 # OpenStack Network
 
-Deploys an OpenStack Neutron network, providing an isolated Layer 2 broadcast domain that serves as the foundation for subnets, ports, routers, and instance attachments.
+Deploys a Neutron network on OpenStack -- the foundational Layer 2 broadcast domain that subnets, ports, routers, and instances attach to. The network supports configurable MTU, port security, DNS integration, and tenant/shared/external modes.
 
 ## What Gets Created
 
-When you deploy an OpenStackNetwork resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Neutron Network** — an `openstack_networking_network_v2` resource with the configured administrative state, MTU, port security settings, and optional DNS domain integration
+- **Neutron Network** -- an isolated Layer 2 network with configurable admin state, MTU, port security, DNS domain, and shared/external flags
+- **OpenStack Tags** -- user-defined tags applied to the network for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Admin privileges** if creating shared networks (`shared: true`) or external/provider networks (`external: true`)
-- **DNS integration extension** enabled in Neutron if using `dnsDomain`
+### OpenStack Account
 
-## Quick Start
+- **Project access** -- the network is created in the project associated with the OpenStack credentials. Shared or external networks require admin privileges.
+- **Network type** -- the underlying network type (VXLAN, VLAN, flat) is determined by the Neutron backend configuration, not by this spec. If your deployment uses a specific network type, confirm the MTU setting matches (e.g., 1450 for VXLAN overlays).
+- **DNS integration** (optional) -- if you plan to use `dnsDomain` for automatic DNS name assignment on ports, confirm that the Neutron deployment has the dns-integration extension enabled.
 
-Create a file `network.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Tenant** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackNetwork
 metadata:
-  name: my-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackNetwork.my-network
+  name: app-network
+  org: acme-corp
+  env: prod
 spec: {}
 ```
-
-Deploy:
 
 ```shell
 planton apply -f network.yaml
 ```
 
-This creates a Neutron network named `my-network` with default settings: admin state up, port security enabled, and standard MTU.
+This creates a tenant network with all OpenStack defaults: admin state up, standard MTU, port security enabled, not shared, and not external. Attach subnets to assign IP ranges before launching instances.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a network. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-All spec fields are optional. The network name is derived from `metadata.name`.
+**Admin state** -- `adminStateUp` defaults to `true`. Set to `false` to create the network in a disabled state (useful for pre-staging infrastructure before a maintenance window).
 
-### Optional Fields
+**Shared vs tenant** -- `shared` makes the network visible to all projects in the OpenStack deployment. Most workloads use tenant-scoped networks (the default). Creating shared networks requires admin privileges.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the network, visible in the OpenStack API and Horizon. |
-| `adminStateUp` | `bool` | `true` | Administrative state of the network. When `false`, the network is down and does not forward traffic. |
-| `shared` | `bool` | `false` | When `true`, the network is shared across all tenants/projects. Requires admin privileges. |
-| `external` | `bool` | `false` | When `true`, marks this as an external (provider) network used for floating IP allocation and router gateways. Requires admin privileges. |
-| `mtu` | `int` | platform default | Maximum Transmission Unit in bytes. Common values: `1500` (standard Ethernet), `1450` (VXLAN overlay), `9000` (jumbo frames). |
-| `dnsDomain` | `string` | — | DNS domain for auto-assigned port DNS names. Must end with a dot (e.g., `my-network.example.com.`). Requires the dns-integration Neutron extension. |
-| `portSecurityEnabled` | `bool` | platform default | Controls port security enforcement on ports created on this network. When enabled, only traffic matching security groups and allowed address pairs is permitted. |
-| `tags` | `string[]` | `[]` | Tags for filtering and organization in the OpenStack API. Must be unique. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this network. |
+**External network** -- `external` marks the network as a provider network for floating IP allocation and router gateways. This is an admin-level operation. Tenant workloads consume external networks but do not create them.
 
-## Examples
+**MTU** -- The `mtu` field overrides the default Maximum Transmission Unit. Set to `1450` for VXLAN overlays or `9000` for jumbo frames on flat/VLAN networks. Mismatched MTU values between the network and its physical infrastructure cause packet fragmentation or drops.
 
-### Basic Network
+**Port security** -- `portSecurityEnabled` controls whether security group enforcement applies to ports on this network. Disable for networks that need promiscuous traffic (e.g., network appliances, VPN gateways, or monitoring interfaces).
 
-A simple network with default settings, suitable for development environments:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackNetwork
-metadata:
-  name: dev-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackNetwork.dev-network
-spec:
-  description: Development environment network
-```
+### What This Component Consumes
 
-### Network with Custom MTU and DNS
+This component has no foreign key dependencies.
 
-A network configured for VXLAN overlay with DNS integration for automatic port name resolution:
+### What This Component Provides
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackNetwork
-metadata:
-  name: overlay-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackNetwork.overlay-network
-spec:
-  description: VXLAN overlay network with DNS integration
-  mtu: 1450
-  dnsDomain: overlay.internal.example.com.
-  tags:
-    - staging
-    - overlay
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### External Provider Network
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `network_id` | UUID of the network in OpenStack | Subnets, routers, network ports, floating IPs, instance network attachments |
+| `name` | Name of the network | DNS records, monitoring labels |
+| `region` | OpenStack region where the network was created | Region-aware downstream resources |
 
-An admin-created external network for floating IP allocation and router gateways:
+## Common Patterns
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackNetwork
-metadata:
-  name: external-net
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackNetwork.external-net
-spec:
-  description: External provider network for floating IPs
-  external: true
-  shared: true
-  portSecurityEnabled: false
-  mtu: 1500
-  tags:
-    - external
-    - provider
-```
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Stack Outputs
+**Standard tenant network** -- A basic isolated network with all defaults. The starting point for most workloads -- attach subnets, connect a router for external access, and launch instances. Start from the **Standard Tenant** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Works With
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `network_id` | `string` | UUID of the created Neutron network |
-| `name` | `string` | Name of the network, derived from `metadata.name` |
-| `region` | `string` | OpenStack region where the network was created |
-
-## Related Components
-
-- [OpenStackSubnet](/docs/catalog/openstack/subnet) — defines IP address ranges and DHCP settings on the network
-- [OpenStackNetworkPort](/docs/catalog/openstack/network-port) — creates ports with specific IPs and security groups on the network
-- [OpenStackRouter](/docs/catalog/openstack/router) — provides routing between networks and external connectivity
-- [OpenStackInstance](/docs/catalog/openstack/instance) — attaches compute instances to the network
-- [OpenStackFloatingIp](/docs/catalog/openstack/floating-ip) — allocates floating IPs from external networks
+This component operates independently and does not reference other deployment components.

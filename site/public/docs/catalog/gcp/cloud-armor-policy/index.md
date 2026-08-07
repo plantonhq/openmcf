@@ -8,278 +8,131 @@ componentName: "gcpcloudarmorpolicy"
 
 # GCP Cloud Armor Policy
 
-Deploys a Google Cloud Armor security policy with inline rules for WAF protection, DDoS defense, and traffic filtering. The component supports IP-based allowlists/denylists, CEL expression matching, rate limiting with ban escalation, redirect actions, custom header injection, and preconfigured WAF rule exclusions.
+Deploys a Cloud Armor security policy with configurable rules for IP allowlisting/denylisting, rate limiting, ban escalation, OWASP WAF protection, and Layer 7 DDoS defense. The policy attaches to HTTP(S) load balancers, Cloud CDN backends, or internal Traffic Director services. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-When you deploy a GcpCloudArmorPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Security Policy** — a `google_compute_security_policy` with the specified type (CLOUD_ARMOR, CLOUD_ARMOR_EDGE, or CLOUD_ARMOR_INTERNAL_SERVICE)
-- **Inline Security Rules** — each rule in the spec becomes an inline rule on the policy, evaluated in priority order (lowest number first)
-- **Adaptive Protection** — optional Layer 7 DDoS defense configuration on the policy
-- **Advanced Options** — optional JSON body parsing, logging verbosity, and client IP resolution settings
+- **Security Policy** -- a `compute.SecurityPolicy` in the specified GCP project, configured with the chosen policy type, rules, and advanced options
+- **Security Rules** -- one rule per entry in `rules`, each with a priority, action (allow, deny, throttle, rate_based_ban, redirect), match condition (IP ranges or CEL expression), and optional rate limiting, redirect, header injection, or WAF exclusion configuration
+- **Adaptive Protection** -- created only when `adaptiveProtectionConfig` is present; enables automatic Layer 7 DDoS detection and alerting
+- **Advanced Options** -- created only when `advancedOptionsConfig` is present; configures JSON body parsing (with optional custom content types), logging verbosity, and client IP resolution headers
+- **Default Rule** -- if no rule at priority 2147483647 is provided, the IaC module auto-adds a default "allow all" rule
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-Every policy carries a default rule at priority 2147483647: leave `rules` empty to get the API's automatic "allow all" default, or include the default rule explicitly in any non-empty rule set (validated before deploy).
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the security policy will be created
-- **A backend service or load balancer** to attach the policy to (the policy is created independently; attachment is configured on the backend service)
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-## Quick Start
+### GCP Project
 
-Create a file `cloud-armor.yaml`:
+- **A GCP project** where the security policy will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **An HTTP(S) load balancer** or backend service to attach the policy to (configured outside this Cloud Resource via the backend service's `securityPolicy` field).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud Armor Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic IP Allowlist** preset in the [Presets](#presets) tab to pre-populate a deny-by-default policy with IP-based allow rules.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudArmorPolicy
 metadata:
-  name: my-waf-policy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCloudArmorPolicy.my-waf-policy
+  name: api-protection
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
+    value: "acme-prod-12345"
+  policyName: api-protection
+  type: CLOUD_ARMOR
   rules:
     - action: allow
       priority: 1000
-      description: Allow internal network
       match:
         versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - 10.0.0.0/8
+        srcIpRanges: ["10.0.0.0/8"]
     - action: "deny(403)"
       priority: 2147483647
-      description: Default deny
       match:
         versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
+        srcIpRanges: ["*"]
 ```
-
-Deploy:
 
 ```shell
-planton apply -f cloud-armor.yaml
+planton apply -f gcp-cloud-armor-policy.yaml
 ```
 
-This creates a Cloud Armor policy that allows traffic from the `10.0.0.0/8` range and denies everything else.
+This creates a CLOUD_ARMOR policy that allows traffic from RFC 1918 ranges and denies everything else with 403. The policy must be attached to a backend service separately. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the security policy will be created. | Required. Default kind: `GcpProject` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `policyName` | `string` | `metadata.name` | Name of the security policy in GCP. Must be 1-63 characters, RFC1035-compliant. |
-| `description` | `string` | — | Description of the security policy. Max 2048 characters. |
-| `type` | `string` | `CLOUD_ARMOR` | Policy type. `CLOUD_ARMOR` for HTTP(S) LB, `CLOUD_ARMOR_EDGE` for CDN/backend buckets, `CLOUD_ARMOR_INTERNAL_SERVICE` for Traffic Director. Immutable. |
-| `adaptiveProtectionConfig` | `object` | — | Layer 7 DDoS defense configuration. See below. |
-| `advancedOptionsConfig` | `object` | — | JSON parsing, logging, and IP resolution settings. See below. |
-| `rules` | `object[]` | `[]` | Security rules evaluated in priority order. If empty, the API auto-adds the default "allow all" rule; a non-empty set must include the priority-2147483647 default. |
-
-### Adaptive Protection Config
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enableLayer7DdosDefense` | `bool` | `false` | Enable Cloud Armor Adaptive Protection for automatic DDoS detection. |
-| `ruleVisibility` | `string` | — | `STANDARD` or `PREMIUM` (requires Managed Protection Plus). |
-
-### Advanced Options Config
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `jsonParsing` | `string` | `DISABLED` | `DISABLED`, `STANDARD`, or `STANDARD_WITH_GRAPHQL`. |
-| `logLevel` | `string` | `NORMAL` | `NORMAL` or `VERBOSE` (includes matched rule details). |
-| `userIpRequestHeaders` | `string[]` | `[]` | Custom headers for client IP resolution behind CDN/proxy. |
-| `jsonCustomConfig.contentTypes` | `string[]` | — | Additional Content-Type values parsed as JSON (requires `jsonParsing: STANDARD` or `STANDARD_WITH_GRAPHQL`). |
-
-### Rule Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `action` | `string` | Yes | `allow`, `deny(403)`, `deny(404)`, `deny(502)`, `redirect`, `throttle`, or `rate_based_ban`. |
-| `priority` | `int32` | Yes | 0 to 2147483647. Lower = higher priority. Must be unique per policy. |
-| `match` | `object` | Yes | Traffic matching condition. See below. |
-| `description` | `string` | No | Rule description. Max 64 characters. |
-| `preview` | `bool` | No | When `true`, rule is logged but not enforced. |
-| `rateLimitOptions` | `object` | No | Required for `throttle` and `rate_based_ban` actions. |
-| `redirectOptions` | `object` | No | Required for `redirect` action. `type`: `EXTERNAL_302` or `GOOGLE_RECAPTCHA`. |
-| `headerAction` | `object` | No | Custom headers to inject into matching requests. CLOUD_ARMOR only. |
-| `preconfiguredWafConfig` | `object` | No | WAF rule exclusions for handling false positives. CLOUD_ARMOR only. |
-
-### Match Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `versionedExpr` | `string` | Set to `SRC_IPS_V1` for IP-based matching. Mutually exclusive with `expression`. |
-| `srcIpRanges` | `string[]` | CIDR ranges. Required when `versionedExpr` is set. Use `*` for all IPs. Max 10 per rule. |
-| `expression` | `string` | CEL expression for advanced matching (geo, path, headers). Mutually exclusive with `versionedExpr`. |
-
-## Examples
-
-### Geo-Blocking with CEL Expression
-
-Block traffic from specific countries:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the policy to a GCP project deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudArmorPolicy
-metadata:
-  name: geo-blocking
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudArmorPolicy.geo-blocking
 spec:
   projectId:
-    value: my-gcp-project
-  rules:
-    - action: "deny(403)"
-      priority: 1000
-      description: Block restricted regions
-      match:
-        expression: "origin.region_code == 'CN' || origin.region_code == 'RU'"
-    - action: allow
-      priority: 2147483647
-      description: Default allow
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
 ```
 
-### Per-IP Rate Limiting
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the Cloud Armor policy with the resolved project ID.
 
-Protect APIs from abuse with per-IP request throttling:
+## Key Configuration
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudArmorPolicy
-metadata:
-  name: api-rate-limit
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudArmorPolicy.api-rate-limit
-spec:
-  projectId:
-    value: my-gcp-project
-  rules:
-    - action: throttle
-      priority: 1000
-      description: Rate limit per IP
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
-      rateLimitOptions:
-        conformAction: allow
-        exceedAction: "deny(429)"
-        enforceOnKey: IP
-        rateLimitThreshold:
-          count: 100
-          intervalSec: 60
-    - action: allow
-      priority: 2147483647
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
-```
+These are the most important decisions when configuring a Cloud Armor policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Production WAF with Adaptive Protection
+**Policy type** -- Set `type` to CLOUD_ARMOR (default) for backend security policies with full WAF, rate limiting, and header injection. Use CLOUD_ARMOR_EDGE for CDN and backend bucket protection (IP/geo rules only). Use CLOUD_ARMOR_INTERNAL_SERVICE for internal Traffic Director services. Type is immutable after creation.
 
-Full-featured OWASP protection with DDoS defense and rate limiting:
+**Rule priority and evaluation** -- Rules are evaluated from lowest priority number (highest precedence) to highest. Priority 2147483647 is reserved for the default rule. Plan priority numbering with gaps (e.g., 1000, 2000, 3000) to allow inserting rules later without renumbering.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudArmorPolicy
-metadata:
-  name: prod-waf
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudArmorPolicy.prod-waf
-spec:
-  projectId:
-    value: my-gcp-project
-  type: CLOUD_ARMOR
-  description: Production WAF policy
-  adaptiveProtectionConfig:
-    enableLayer7DdosDefense: true
-    ruleVisibility: STANDARD
-  advancedOptionsConfig:
-    jsonParsing: STANDARD
-    logLevel: VERBOSE
-  rules:
-    - action: allow
-      priority: 100
-      description: Internal network
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - 10.0.0.0/8
-    - action: "deny(403)"
-      priority: 1000
-      description: SQLi protection
-      match:
-        expression: "evaluatePreconfiguredWaf('sqli-v33-stable')"
-    - action: "deny(403)"
-      priority: 2000
-      description: XSS protection
-      match:
-        expression: "evaluatePreconfiguredWaf('xss-v33-stable')"
-    - action: throttle
-      priority: 3000
-      description: Per-IP rate limit
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
-      rateLimitOptions:
-        conformAction: allow
-        exceedAction: "deny(429)"
-        enforceOnKey: IP
-        rateLimitThreshold:
-          count: 200
-          intervalSec: 60
-    - action: "deny(403)"
-      priority: 2147483647
-      description: Default deny
-      match:
-        versionedExpr: SRC_IPS_V1
-        srcIpRanges:
-          - "*"
-```
+**Rate limiting and ban escalation** -- Use `throttle` action for simple rate limiting or `rate_based_ban` for two-tier protection. Rate limiting uses `rateLimitThreshold` to cap requests per interval; ban escalation adds `banThreshold` and `banDurationSec` to fully block persistent abusers. Set `enforceOnKey` to `IP` for per-source limiting.
 
-## Stack Outputs
+**WAF rules and exclusions** -- Match against preconfigured OWASP rule sets (e.g., `sqli-v33-stable`, `xss-v33-stable`) using CEL expressions. Add `preconfiguredWafConfig` exclusions for request fields that trigger false positives -- critical for production APIs that accept user-generated content.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Adaptive Protection** -- Enable `adaptiveProtectionConfig.enableLayer7DdosDefense` for automatic anomaly detection. STANDARD visibility is available to all Cloud Armor users. PREMIUM requires Managed Protection Plus.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `policy_id` | `string` | Fully qualified resource ID (`projects/{project}/global/securityPolicies/{name}`) |
-| `policy_name` | `string` | Name of the security policy as it exists in GCP |
-| `policy_self_link` | `string` | Self-link URI of the policy, used when attaching to backend services and load balancers |
-| `fingerprint` | `string` | Server-computed fingerprint for optimistic concurrency control |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the network context for CLOUD_ARMOR_INTERNAL_SERVICE policies
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project referenced by `projectId`
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — provides encryption keys if needed for related services
-- [GcpFirewallRule](/docs/catalog/gcp/firewall-rule) — complements Cloud Armor with network-level firewall rules
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_id` | Fully qualified resource ID (`projects/{p}/global/securityPolicies/{name}`) | Backend service security policy references |
+| `policy_name` | Name of the security policy in GCP | Audit logs, monitoring dashboards |
+| `policy_self_link` | Self-link URI of the security policy | Attaching to backend services, load balancers, CDN configurations |
+| `fingerprint` | Server-computed fingerprint for optimistic concurrency | Out-of-band policy updates |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic IP allowlist** -- Deny-by-default policy that allows traffic only from specified CIDR ranges (corporate networks, VPNs). All other traffic receives 403 Forbidden. Suitable for internal dashboards and admin APIs. Start from the **Basic IP Allowlist** preset.
+
+**Rate limiting for APIs** -- Per-IP rate limiting with ban escalation. Throttles traffic beyond 100 requests per minute, then bans persistent abusers exceeding 500 requests over 5 minutes for 1 hour. Start from the **Rate Limiting API** preset.
+
+**WAF OWASP protection** -- OWASP WAF rules blocking SQL injection and XSS attacks, with adaptive Layer 7 DDoS protection, JSON body parsing, and verbose logging. Suitable for internet-facing web applications. Start from the **WAF OWASP Protection** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the security policy is created

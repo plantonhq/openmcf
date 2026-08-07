@@ -65,8 +65,8 @@ Deletion is **irreversible** without backups. Delete prioritizes safety:
 # (Type: DELETE ObsoleteComponent)
 
 # Step 6: Verify no issues
-go build ./catalog/.../v1/...
-go test -v ./catalog/.../v1/
+go build ./catalog/...
+go test -v ./catalog/...
 
 # Step 7: Commit changes
 git add -A
@@ -80,24 +80,28 @@ Delete removes **everything** related to a component:
 ### 1. Component Folder (All Files)
 
 ```
-catalog/<provider>/<component>/v1/
-├── api.proto                    ❌ Deleted
-├── spec.proto                   ❌ Deleted
-├── stack_input.proto            ❌ Deleted
-├── stack_outputs.proto          ❌ Deleted
-├── *.pb.go                      ❌ Deleted
-├── spec_test.go                 ❌ Deleted
+catalog/<provider>/<component>/
 ├── README.md                    ❌ Deleted
-├── examples.md                  ❌ Deleted
-├── docs/
-│   └── README.md                ❌ Deleted
+├── catalog.md                   ❌ Deleted
+├── logo.svg                     ❌ Deleted
+├── GUIDE.md                     ❌ Deleted (if present)
+├── <version>/                   (e.g., v1alpha1/)
+│   ├── api.proto                ❌ Deleted
+│   ├── spec.proto               ❌ Deleted
+│   ├── input.proto              ❌ Deleted
+│   ├── outputs.proto            ❌ Deleted
+│   ├── *.pb.go                  ❌ Deleted
+│   ├── spec_test.go             ❌ Deleted
+│   ├── BUILD.bazel              ❌ Deleted
+│   └── reference.md             ❌ Deleted
+├── presets/
+│   └── *.yaml + *.md            ❌ Deleted
+├── e2e/
+│   └── manifest.yaml (+ variants, scenarios/)  ❌ Deleted
 └── iac/
-    ├── hack/
-    │   └── manifest.yaml        ❌ Deleted
     ├── pulumi/
     │   ├── main.go              ❌ Deleted
     │   ├── Pulumi.yaml          ❌ Deleted
-    │   ├── Makefile             ❌ Deleted
     │   ├── README.md            ❌ Deleted
     │   └── module/
     │       ├── main.go          ❌ Deleted
@@ -120,7 +124,7 @@ catalog/<provider>/<component>/v1/
 // Before deletion
 enum CloudResourceKind {
   ...
-  MongodbAtlas = 51 [(kind_meta) = {    ❌ Deleted
+  AtlasMongodb = 51 [(kind_meta) = {    ❌ Deleted
     provider: atlas                      ❌ Deleted
     version: v1                          ❌ Deleted
     id_prefix: "mdbatl"                  ❌ Deleted
@@ -136,7 +140,7 @@ enum CloudResourceKind {
 // After deletion
 enum CloudResourceKind {
   ...
-  // MongodbAtlas removed
+  // AtlasMongodb removed
   SnowflakeDatabase = 52 [(kind_meta) = {
     provider: snowflake
     version: v1
@@ -159,25 +163,25 @@ After deletion, running `make protos` removes stale .pb.go files for deleted com
 **Preview without deleting:**
 
 ```bash
-@delete-planton-component MongodbAtlas --dry-run
+@delete-planton-component AtlasMongodb --dry-run
 ```
 
 **Output:**
 ```
-🔍 Dry-Run: MongodbAtlas Deletion
+🔍 Dry-Run: AtlasMongodb Deletion
 
 Component Info:
   Provider: atlas
   Enum Value: 51
   ID Prefix: mdbatl
-  Path: catalog/atlas/mongodbatlas/v1alpha1/
+  Path: catalog/atlas/atlasmongodb/v1alpha1/
 
 Would Delete:
   📁 Component folder
      23 files, 450 KB total
      
   📝 Registry entry
-     cloud_resource_kind.proto: MongodbAtlas = 51
+     cloud_resource_kind.proto: AtlasMongodb = 51
 
 Would Check:
   🔎 References in other files
@@ -188,7 +192,7 @@ Would Check:
      
 Would Create (if --backup used):
   💾 Backup folder
-     mongodbatlas-backup-YYYY-MM-DD-HHMMSS/
+     atlasmongodb-backup-YYYY-MM-DD-HHMMSS/
 
 Summary:
   Files to delete: 23
@@ -198,7 +202,7 @@ Summary:
 No files will be modified (dry-run mode)
 
 To proceed:
-  @delete-planton-component MongodbAtlas --backup
+  @delete-planton-component AtlasMongodb --backup
 ```
 
 ### --backup (Strongly Recommended)
@@ -206,14 +210,14 @@ To proceed:
 **Create backup before deleting:**
 
 ```bash
-@delete-planton-component MongodbAtlas --backup
+@delete-planton-component AtlasMongodb --backup
 ```
 
 **Creates:**
 ```
 catalog/atlas/
-├── mongodbatlas/                         # Original (will be deleted)
-└── mongodbatlas-backup-2025-11-13-143022/  # Backup (preserved)
+├── atlasmongodb/                         # Original (will be deleted)
+└── atlasmongodb-backup-2025-11-13-143022/  # Backup (preserved)
     ├── v1/
     │   ├── ... (all files)
     └── enum_entry.txt                    # Saved enum entry
@@ -222,10 +226,10 @@ catalog/atlas/
 **Restore if needed:**
 ```bash
 # Restore component
-cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
+cp -r atlasmongodb-backup-2025-11-13-143022/v1 atlasmongodb/
 
 # Restore enum entry
-cat mongodbatlas-backup-2025-11-13-143022/enum_entry.txt
+cat atlasmongodb-backup-2025-11-13-143022/enum_entry.txt
 # Manually add to cloud_resource_kind.proto
 
 # Regenerate stubs
@@ -268,41 +272,41 @@ Delete automatically searches for references:
 
 **Go Code:**
 ```go
-import "catalog/atlas/mongodbatlas/v1alpha1"  // ⚠️ Reference found
+import "catalog/atlas/atlasmongodb/v1alpha1"  // ⚠️ Reference found
 ```
 
 **Proto Files:**
 ```protobuf
-import "catalog/atlas/mongodbatlas/v1alpha1/api.proto";  // ⚠️ Reference found
+import "catalog/atlas/atlasmongodb/v1alpha1/api.proto";  // ⚠️ Reference found
 ```
 
 **Documentation:**
 ```markdown
-See [MongodbAtlas](./mongodbatlas/) for SaaS examples.  // ⚠️ Reference found
+See [AtlasMongodb](./atlasmongodb/) for SaaS examples.  // ⚠️ Reference found
 ```
 
 **Configuration:**
 ```yaml
-kind: MongodbAtlas  // ⚠️ Reference found
+kind: AtlasMongodb  // ⚠️ Reference found
 ```
 
 ### If References Found
 
 ```
-⚠️  Warning: MongodbAtlas is referenced in 3 files
+⚠️  Warning: AtlasMongodb is referenced in 3 files
 
 Critical References (will break build):
   1. catalog/atlas/backup/v1alpha1/spec.proto:15
-     import "catalog/atlas/mongodbatlas/v1alpha1/api.proto";
+     import "catalog/atlas/atlasmongodb/v1alpha1/api.proto";
      → Must remove or update import
      
-  2. docs/examples/database-comparison.md:45
-     See MongodbAtlas for managed NoSQL
+  2. site/public/docs/catalog/atlas.md:45
+     See AtlasMongodb for managed NoSQL
      → Update documentation
 
 Non-Critical References:
-  3. docs/changelog/2024-03-15.md:12
-     Added MongodbAtlas support
+  3. _changelog/2025-11/2025-11-13-091500-added-atlasmongodb.md:12
+     Added AtlasMongodb support
      → Historical reference, can leave as-is
 
 Recommendations:
@@ -323,48 +327,48 @@ Proceed? (y/n): _
 Delete requires explicit confirmation:
 
 ```
-🗑️  Ready to Delete: MongodbAtlas
+🗑️  Ready to Delete: AtlasMongodb
 
 Summary:
   Provider: atlas
-  Enum: MongodbAtlas = 51
+  Enum: AtlasMongodb = 51
   Files: 23 files (450 KB)
-  Backup: Yes (mongodbatlas-backup-2025-11-13-143022)
+  Backup: Yes (atlasmongodb-backup-2025-11-13-143022)
   References: 3 found (2 critical)
 
 ⚠️  This action is IRREVERSIBLE without backup!
 
 To confirm deletion, type the component name exactly:
-DELETE MongodbAtlas
+DELETE AtlasMongodb
 
 Type here: _
 ```
 
-**Must type exactly:** `DELETE MongodbAtlas`
+**Must type exactly:** `DELETE AtlasMongodb`
 
 **Typos rejected:**
-- `delete MongodbAtlas` ❌
-- `DELETE mongodbatlas` ❌
-- `MongodbAtlas` ❌
+- `delete AtlasMongodb` ❌
+- `DELETE atlasmongodb` ❌
+- `AtlasMongodb` ❌
 - `DELETE` ❌
 
-**Only accepts:** `DELETE MongodbAtlas` ✅
+**Only accepts:** `DELETE AtlasMongodb` ✅
 
 ## Deletion Report
 
 After successful deletion:
 
 ```
-✅ Deletion Complete: MongodbAtlas
+✅ Deletion Complete: AtlasMongodb
 
 What Was Deleted:
   ✅ Component folder
-     Path: catalog/atlas/mongodbatlas/v1alpha1/
+     Path: catalog/atlas/atlasmongodb/v1alpha1/
      Files: 23 deleted
      Size: 450 KB freed
      
   ✅ Registry entry
-     Removed: MongodbAtlas = 51
+     Removed: AtlasMongodb = 51
      From: cloud_resource_kind.proto
      
   ✅ Proto stubs regenerated
@@ -372,34 +376,34 @@ What Was Deleted:
      Status: Success
 
 Backup Created:
-  💾 Location: mongodbatlas-backup-2025-11-13-143022/
+  💾 Location: atlasmongodb-backup-2025-11-13-143022/
   📦 Contents: 23 files + enum entry
   ⏰ Created: 2025-11-13 14:30:22
   
   To restore:
-    cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
+    cp -r atlasmongodb-backup-2025-11-13-143022 catalog/atlas/atlasmongodb
 
 References Found:
   ⚠️  2 critical references require updates
   ℹ️  1 non-critical reference (historical)
   
   Details:
-    1. backup/v1/spec.proto - Remove import
-    2. docs/database-comparison.md - Update text
+    1. backup/v1alpha1/spec.proto - Remove import
+    2. site/public/docs/catalog/atlas.md - Update text
 
 Build Status:
   ⚠️  Not verified (references may cause build errors)
   
   Recommended:
-    go build ./catalog/.../v1/...  # Check for import errors
-    go test -v ./catalog/.../v1/   # Check for test failures
+    go build ./catalog/...  # Check for import errors
+    go test -v ./catalog/...   # Check for test failures
 
 Next Steps:
   1. Fix critical references (2 files)
-  2. Run: go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+  2. Run: go build ./catalog/... && go test -v ./catalog/...
   3. Commit changes:
      git add -A
-     git commit -m "Remove MongodbAtlas component"
+     git commit -m "Remove AtlasMongodb component"
 
 Duration: 8 seconds
 Status: ✅ Complete
@@ -418,24 +422,24 @@ Status: ✅ Complete
 # ✅ Deleted successfully
 # ✅ Build still passes
 
-go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/  # ✅ All pass
+go build ./catalog/... && go test -v ./catalog/...  # ✅ All pass
 ```
 
 ### Scenario 2: Remove Obsolete Component
 
 ```bash
 # Old implementation being replaced
-@delete-planton-component OldPostgresKubernetes --dry-run
+@delete-planton-component OldKubernetesPostgres --dry-run
 
 # Review references (find 5 references)
 # Update references to new component
 # ...edit files...
 
 # Delete after fixing references
-@delete-planton-component OldPostgresKubernetes --backup
+@delete-planton-component OldKubernetesPostgres --backup
 
 # Verify
-go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/  # ✅ All pass
+go build ./catalog/... && go test -v ./catalog/...  # ✅ All pass
 ```
 
 ### Scenario 3: Provider Discontinuation
@@ -451,7 +455,7 @@ go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/  # ✅ All pass
 # Type: DELETE DiscontinuedService
 
 # Update docs to note service discontinued
-vim docs/providers/old-provider.md
+vim site/public/docs/catalog/old-provider.md
 # Add: "Service discontinued as of 2025-11-13"
 
 git add -A
@@ -482,7 +486,7 @@ git commit -m "Remove OldComponentName (consolidated into NewComponentName)"
 ### Component Not Found
 
 ```
-❌ Error: MongodbAtlas not found
+❌ Error: AtlasMongodb not found
 
 Searched:
   ✓ cloud_resource_kind.proto - No enum entry
@@ -505,14 +509,14 @@ Did you mean one of these?
 ```
 ❌ Error: Permission denied
 
-Cannot delete: catalog/atlas/mongodbatlas/v1alpha1/
+Cannot delete: catalog/atlas/atlasmongodb/v1alpha1/
 Reason: Directory not writable
 
 Fix:
-  chmod -R u+w catalog/atlas/mongodbatlas/
+  chmod -R u+w catalog/atlas/atlasmongodb/
   
 Then retry:
-  @delete-planton-component MongodbAtlas --backup
+  @delete-planton-component AtlasMongodb --backup
 ```
 
 ### References Block Deletion
@@ -521,8 +525,8 @@ Then retry:
 ❌ Error: Critical references prevent safe deletion
 
 Found 2 blocking references:
-  1. backup/v1/spec.proto:15 - Import dependency
-  2. other-component/v1/spec.proto:23 - Type dependency
+  1. backup/v1alpha1/spec.proto:15 - Import dependency
+  2. other-component/v1alpha1/spec.proto:23 - Type dependency
 
 Cannot proceed without --force (not recommended)
 
@@ -531,7 +535,7 @@ Recommended action:
   2. Then delete safely
 
 Or force delete (may break build):
-  @delete-planton-component MongodbAtlas --force --backup
+  @delete-planton-component AtlasMongodb --force --backup
 ```
 
 ## Restoring Deleted Components
@@ -543,10 +547,10 @@ Or force delete (may break build):
 ls catalog/<provider>/*-backup-*/
 
 # Restore component folder
-cp -r mongodbatlas-backup-2025-11-13-143022/v1 mongodbatlas/
+cp -r atlasmongodb-backup-2025-11-13-143022/v1 atlasmongodb/
 
 # Restore enum entry
-cat mongodbatlas-backup-2025-11-13-143022/enum_entry.txt
+cat atlasmongodb-backup-2025-11-13-143022/enum_entry.txt
 # Copy the enum entry text
 vim shared/cloudresourcekind/cloud_resource_kind.proto
 # Paste enum entry in correct location (numeric order)
@@ -555,29 +559,29 @@ vim shared/cloudresourcekind/cloud_resource_kind.proto
 make protos
 
 # Verify restoration
-go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+go build ./catalog/... && go test -v ./catalog/...
 ```
 
 ### From Git History
 
 ```bash
 # Find when component was deleted
-git log --all --oneline -- catalog/atlas/mongodbatlas/
+git log --all --oneline -- catalog/atlas/atlasmongodb/
 
 # Example output:
-# abc1234 Remove MongodbAtlas component
-# def5678 Update MongodbAtlas documentation
+# abc1234 Remove AtlasMongodb component
+# def5678 Update AtlasMongodb documentation
 # ...
 
 # Restore from commit before deletion
-git checkout def5678 -- catalog/atlas/mongodbatlas/
+git checkout def5678 -- catalog/atlas/atlasmongodb/
 
 # Restore enum entry
-git show def5678:shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "MongodbAtlas"
+git show def5678:shared/cloudresourcekind/cloud_resource_kind.proto | grep -A 5 "AtlasMongodb"
 # Manually add to current cloud_resource_kind.proto
 
 # Regenerate and verify
-make protos && go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+make protos && go build ./catalog/... && go test -v ./catalog/...
 ```
 
 ## Best Practices
@@ -601,8 +605,8 @@ make protos && go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 
 ### After Deletion
 
-- [ ] Run `go build ./catalog/.../v1/...` (check for errors)
-- [ ] Run `go test -v ./catalog/.../v1/` (check for failures)
+- [ ] Run `go build ./catalog/...` (check for errors)
+- [ ] Run `go test -v ./catalog/...` (check for failures)
 - [ ] Fix any broken references
 - [ ] Update related documentation
 - [ ] Commit with descriptive message
@@ -636,18 +640,18 @@ chmod -R u+w catalog/<provider>/<component>/
 
 ```bash
 # Find what broke
-go build ./catalog/.../v1/... 2>&1 | grep "error"
+go build ./catalog/... 2>&1 | grep "error"
 
 # Common issues:
 # 1. Unremoved imports
-grep -r "mongodbatlas" .
+grep -r "atlasmongodb" .
 
 # 2. Type references
-grep -r "MongodbAtlas" catalog/
+grep -r "AtlasMongodb" catalog/
 
 # Fix imports and references
 # Then rebuild
-go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+go build ./catalog/... && go test -v ./catalog/...
 ```
 
 ### "Need to restore deleted component"
@@ -660,7 +664,7 @@ cp -r component-backup-*/v1 component/
 # Edit cloud_resource_kind.proto
 
 # Regenerate
-make protos && go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+make protos && go build ./catalog/... && go test -v ./catalog/...
 ```
 
 ## Success Metrics
@@ -669,8 +673,8 @@ Successful deletion:
 
 - ✅ Component folder removed (verified with `ls`)
 - ✅ Enum entry removed (verified in proto file)
-- ✅ Build succeeds (`go build ./catalog/.../v1/...` passes)
-- ✅ Tests pass (`go test -v ./catalog/.../v1/` passes)
+- ✅ Build succeeds (`go build ./catalog/...` passes)
+- ✅ Tests pass (`go test -v ./catalog/...` passes)
 - ✅ Backup created (can be restored)
 - ✅ References updated or documented
 - ✅ Changes committed with clear message
@@ -691,4 +695,4 @@ Successful deletion:
 
 ---
 
-**Remember:** Always `--dry-run` first, always `--backup` when deleting, and always verify with `go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/`!
+**Remember:** Always `--dry-run` first, always `--backup` when deleting, and always verify with `go build ./catalog/... && go test -v ./catalog/...`!

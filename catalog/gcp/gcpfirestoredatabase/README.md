@@ -70,7 +70,7 @@ Firestore databases do **not** support GCP labels.
 planton apply -f firestore-database.yaml
 ```
 
-For copy-paste ready manifests, see examples.md.
+For copy-paste ready manifests, see e2e/manifest.yaml.
 
 ---
 

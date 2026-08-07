@@ -8,80 +8,56 @@ componentName: "awshttpapivpclink"
 
 # AWS HTTP API VPC Link
 
-Deploys an API Gateway v2 VPC link -- the managed network attachment that lets HTTP APIs proxy traffic to private backends (internal ALBs, NLBs, or Cloud Map services) inside a VPC without exposing them to the internet.
+Deploys an API Gateway v2 VPC link — the managed network attachment that lets HTTP APIs ([AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway)) reach private backends inside a VPC without exposing them to the internet: an internal ALB, an NLB, or a Cloud Map service. The link is deliberately its own resource: one link is shared by any number of APIs and integrations (each private integration references the link by its ID), and the link owns its own network-attachment lifecycle — AWS provisions cross-account ENIs into the chosen subnets that persist across API create/destroy cycles. One link per VPC is typically enough.
 
 ## What Gets Created
 
-When you deploy an AwsHttpApiVpcLink resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VPC link** -- a set of AWS-managed elastic network interfaces in the subnets you choose, tagged with Planton identity tags
+- **API Gateway v2 VPC Link** -- the managed attachment HTTP APIs route through (this is the v2 link for HTTP APIs; REST APIs use a different, NLB-only v1 link)
+- **Managed Network Interfaces** -- cross-account ENIs in your chosen subnets (create-time immutable; the link can only reach targets in AZs it has an ENI in)
+- **Security Group Bindings** -- the groups governing what the link's ENIs may reach (create-time immutable; empty means no link-side filtering)
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-HTTP API private integrations then reference the link by ID (`connectionId` with `connectionType: VPC_LINK`).
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **Subnets** in the target VPC (two or more availability zones recommended -- the link can only reach targets in AZs it has an ENI in)
-- (Optional) **A security group** allowing egress to the target ALB/NLB listener ports
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Network resources** -- the target VPC's [AwsSubnet](/cloud-catalog/aws-subnet) resources (at least one; two AZs for production) and ideally an egress-scoped [AwsSecurityGroup](/cloud-catalog/aws-security-group), deployed first and referenced.
 
-## Quick Start
+### AWS Account
 
-Create a file `vpc-link.yaml`:
+- **The backend's security group must admit the link** -- allow ingress on the listener ports FROM the link's security groups (reference by group ID, never CIDR).
+- **AZ alignment** -- the link only reaches targets in AZs it has an ENI in; mirror the internal load balancer's AZ spread.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS HTTP API VPC Link**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private ALB Link** preset in the [Presets](#presets) tab to pre-populate the production shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiVpcLink
 metadata:
   name: private-services-link
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
-  subnetIds:
-    - value: subnet-0abc123def456
-    - value: subnet-0def456abc789
-  securityGroupIds:
-    - value: sg-0abc123def456
-```
-
-Deploy:
-
-```shell
-planton apply -f vpc-link.yaml
-```
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the VPC link will be created | Non-empty |
-| `subnetIds` | `StringValueOrRef[]` | Subnets for the link's network interfaces. Immutable after creation (changing the set replaces the link). Can reference `AwsSubnet` via `valueFrom`. | Minimum 1 item |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security groups on the link's ENIs. Immutable after creation. When omitted, AWS applies no filtering on the link side -- reachability is governed solely by the target's security groups. Can reference `AwsSecurityGroup` via `valueFrom`. |
-
-## Examples
-
-### Composed from Planton-Managed Networking
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiVpcLink
-metadata:
-  name: internal-alb-link
-spec:
-  region: us-east-1
+  region: us-west-2
   subnetIds:
     - valueFrom:
         kind: AwsSubnet
-        name: private-subnet-a
+        name: private-az1
         fieldPath: status.outputs.subnet_id
     - valueFrom:
         kind: AwsSubnet
-        name: private-subnet-b
+        name: private-az2
         fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
@@ -90,19 +66,66 @@ spec:
         fieldPath: status.outputs.security_group_id
 ```
 
-## Stack Outputs
+```shell
+planton apply -f http-api-vpc-link.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+This creates a two-AZ link with an egress-scoped security group — the shape every HTTP API in the VPC shares. A Stack Job tracks the provisioning in real time.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `vpc_link_id` | `string` | The VPC link ID -- what private integrations set as their `connectionId` |
-| `vpc_link_arn` | `string` | ARN of the VPC link, for IAM policies and tag-based governance |
+### InfraChart
 
-## Related Components
+When deploying as part of a multi-resource environment, the subnets and security group deploy first, then the link, then the HTTP APIs whose private integrations reference it:
 
-- [AwsHttpApiGateway](/docs/catalog/aws/http-api-gateway) — HTTP APIs whose private integrations route through this link
-- [AwsSubnet](/docs/catalog/aws/subnet) — Subnets hosting the link's network interfaces
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — Security groups governing the link's reach
-- [AwsAlb](/docs/catalog/aws/alb) — Internal ALBs targeted by private integrations
-- [AwsNlb](/docs/catalog/aws/nlb) — Internal NLBs targeted by private integrations
+```yaml
+# In an AwsHttpApiGateway route's integration:
+integration:
+  integrationType: HTTP_PROXY
+  integrationUri:
+    value: <internal-alb-listener-arn>
+  connectionType: VPC_LINK
+  connectionId:
+    valueFrom:
+      kind: AwsHttpApiVpcLink
+      name: private-services-link
+      fieldPath: status.outputs.vpc_link_id
+```
+
+## Key Configuration
+
+These are the most important decisions when configuring a VPC link. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Subnets are the one-way door** -- AWS has no update API for the link's network attachment: changing the subnet or security-group set replaces the link, and every private integration referencing its ID re-homes with it. Spread across at least two availability zones at create time; the link cannot reach backends in AZs it has no ENI in.
+
+**Security groups are the reach contract** -- the link's groups allow egress to the backend listener ports; the backend's group admits ingress from the link's groups. Omitting them creates the link with no link-side filtering — workable, but the set is immutable, so the production-grade group cannot be added later.
+
+**One link, many APIs** -- the link is infrastructure, not per-API config. Deploy it once per VPC and let every HTTP API's private integrations share it by `connection_id`.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+References the target VPC's [AwsSubnet](/cloud-catalog/aws-subnet) resources (`subnet_id`) and optionally [AwsSecurityGroup](/cloud-catalog/aws-security-group) resources (`security_group_id`).
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vpc_link_id` | The VPC link identifier | HTTP API private integrations' `connection_id` |
+| `vpc_link_arn` | Amazon Resource Name of the link | IAM policies and tag-based governance |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Private ALB frontend** -- HTTP APIs fronting an internal Application Load Balancer; two AZs, an egress-scoped security group. Start from the **Private ALB Link** preset.
+
+**Minimal link** -- a single-subnet development link with no security groups. Start from the **Minimal Link** preset.
+
+## Works With
+
+- [**AWS HTTP API Gateway**](/cloud-catalog/aws-http-api-gateway) -- the API whose private integrations route through this link (references `vpc_link_id`)
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- where the link's ENIs land
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- the egress contract to the private backend
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- the internal load balancer the link typically fronts

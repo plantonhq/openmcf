@@ -270,23 +270,26 @@ planton pulumi up \
 ```bash
 # 1. Clone or fork a module
 git clone https://github.com/plantonhq/planton
-cd catalog/kubernetes/postgresqk8s/v1alpha1/iac/pulumi
+cd planton/catalog/kubernetes/kubernetespostgres/iac/pulumi
 
 # 2. Make changes to module code
 vim main.go
 
-# 3. Test with your manifest
+# 3. Check that the module compiles
+go build ./...
+
+# 4. Test with the component's e2e manifest (or your own)
 planton pulumi preview \
-  -f ~/test-manifests/postgres.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir .
 
-# 4. Iterate
+# 5. Iterate
 vim main.go
-planton pulumi preview -f ~/test-manifests/postgres.yaml --module-dir .
+planton pulumi preview --manifest ../../e2e/manifest.yaml --module-dir .
 
-# 5. Deploy when ready
+# 6. Deploy when ready
 planton pulumi up \
-  -f ~/test-manifests/postgres.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir .
 ```
 
@@ -296,7 +299,7 @@ planton pulumi up \
 
 ```bash
 # 1. Fork the default module
-cp -r catalog/aws/awss3bucket/v1alpha1/iac/pulumi \
+cp -r catalog/aws/awss3bucket/iac/pulumi \
       ~/custom-modules/my-s3-module
 
 # 2. Customize

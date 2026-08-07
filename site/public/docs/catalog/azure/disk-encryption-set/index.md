@@ -8,89 +8,134 @@ componentName: "azurediskencryptionset"
 
 # Azure Disk Encryption Set
 
-Creates an Azure Disk Encryption Set — the resource that binds a customer-managed Key Vault key to managed disks, snapshots, and images for encryption at rest with a key you control. Managed disks, VMs, and VM scale sets reference the set by ARM ID to opt their disks into CMK encryption.
+Deploys an Azure Disk Encryption Set -- the bridge between Key Vault and server-side disk encryption. Managed disks, VM OS disks, and scale-set disks reference the SET (never the key directly), and the set holds the grantable identity that unwraps the vault key. One set serves many disks: the fan-out point where a single customer-managed key protects a whole environment's storage. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureDiskEncryptionSet resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Disk Encryption Set** — an `azurerm_disk_encryption_set` with a managed identity, bound to a Key Vault key
+- **Disk Encryption Set** -- in the specified region and resource group, bound to the referenced Key Vault key with the chosen encryption posture
+- **Managed identity** -- required: a system-assigned principal (the grant target surfaced in the outputs) or attached user-assigned identities that unwrap the key
+- **Automatic key rotation** -- when enabled: the set re-wraps every dependent disk against each new key version within about a day of rotation
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
 
-Granting the set's identity crypto access on the key, and encrypting specific disks with the set, are separate steps (a role assignment and each disk's `diskEncryptionSetId`).
+## The Set in the Security Family
 
-## Prerequisites
+- **AzureKeyVaultKey** -- the customer-managed key this set unwraps, referenced by `keyVaultKeyId` (its `versionless_id` for the rotating posture); the key's vault must run purge protection
+- **AzureUserAssignedIdentity** -- optionally attached so vault grants can exist BEFORE the set deploys (the pipeline-friendly ordering)
+- **Compute consumers** -- AzureManagedDisk, AzureVirtualMachine, and AzureVirtualMachineScaleSet reference the set's ARM ID as their `disk_encryption_set_id`
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A Key Vault key** (an `AzureKeyVaultKey`) on a vault with **purge protection enabled** — Azure requires it for disk encryption
-- **Compute + Key Vault rights**: `Microsoft.Compute/diskEncryptionSets/write` plus the ability to grant the set crypto access on the key
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **An Azure Key Vault with PURGE PROTECTION enabled** -- Azure refuses disk encryption against a vault whose keys could be permanently purged.
+- **An AzureKeyVaultKey** with Wrap Key + Unwrap Key in its permitted operations. Reference its `versionless_id` (rotation-following) or `key_id` (pinned).
+- **For user-assigned identities** -- AzureUserAssignedIdentity resources already holding vault crypto access ('Key Vault Crypto Service Encryption User' or an access-policy grant).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Disk Encryption Set**, and click **Deploy**. The creation wizard walks you through placement (region affinity taught up front), the vault key with the rotation pairing rule carried live to the moment of choice, the required identity, and the fixed encryption posture. Start from the **System-Assigned Rotation** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureDiskEncryptionSet
 metadata:
   name: prod-des
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureDiskEncryptionSet.prod-des
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: platform-rg
+    value: "acme-security-rg"
   name: prod-des
   keyVaultKeyId:
     valueFrom:
+      kind: AzureKeyVaultKey
       name: disk-cmk
+      fieldPath: status.outputs.versionless_id
   autoKeyRotationEnabled: true
   identity:
     type: SYSTEM_ASSIGNED
 ```
 
-Deploy:
-
 ```shell
 planton apply -f disk-encryption-set.yaml
 ```
 
-After deployment, grant `status.outputs.identity_principal_id` the "Key Vault Crypto Service Encryption User" role on the key, then reference `status.outputs.disk_encryption_set_id` from your disks.
+This creates the recommended posture: a system-assigned identity and automatic rotation following the key's versionless ID. Grant the identity vault crypto access after creation (via the `identity_principal_id` output), then point disks at the set.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+Compute kinds wire to the set through its ARM ID in the same InfraPipeline:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | `string` | Azure region; must match the disks. Fixed at creation. |
-| `resourceGroup` | `StringValueOrRef` | Resource group. Defaults to an `AzureResourceGroup` reference. |
-| `name` | `string` | Set name, unique in the resource group. Fixed at creation. |
-| `keyVaultKeyId` | `StringValueOrRef` | The CMK. Defaults to an `AzureKeyVaultKey` `versionless_id` reference. |
-| `identity` | `object` | The set's managed identity (`type`: `SYSTEM_ASSIGNED` / `USER_ASSIGNED` / `SYSTEM_AND_USER_ASSIGNED`; `identityIds` for the user-assigned flavors). |
+```yaml
+spec:
+  diskEncryptionSetId:
+    valueFrom:
+      kind: AzureDiskEncryptionSet
+      name: prod-des
+      fieldPath: status.outputs.disk_encryption_set_id
+```
 
-### Optional Fields
+The InfraPipeline resolves the dependency graph -- vault, key, set, then the disks and VMs the set protects.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `autoKeyRotationEnabled` | `bool` | `false` | Follow the key's latest version. Requires a versionless key when true, a versioned key when false. |
-| `encryptionType` | `enum` | `ENCRYPTION_AT_REST_WITH_CUSTOMER_KEY` | Customer-key / platform+customer / confidential-VM. Fixed at creation. |
-| `federatedClientId` | `string` | `""` | Multi-tenant app client id for cross-tenant CMK (UUID). |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins). |
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a disk encryption set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `disk_encryption_set_id` | `string` | Full ARM ID — referenced by disks, VMs, and scale sets |
-| `disk_encryption_set_name` | `string` | The set's name as deployed |
-| `identity_principal_id` | `string` | Principal to grant Key Vault crypto access (system-assigned) |
-| `identity_tenant_id` | `string` | Tenant of the system-assigned identity |
+**The rotation pairing** -- Azure's one apply-time trap with no authoring-time net: `autoKeyRotationEnabled: true` requires the key's VERSIONLESS ID (what an AzureKeyVaultKey reference resolves by default); rotation off pins a VERSIONED key URL. The mismatch fails at apply.
 
-## Related Components
+**Identity ordering** -- SYSTEM_ASSIGNED (recommended) is born with the set, so the vault grant comes AFTER creation via the `identity_principal_id` output. USER_ASSIGNED identities exist before the set, so their grants can too -- the ordering that lets a whole environment stamp out in one pipeline run. Switching a user-assigned flavor to system-assigned replaces the set.
 
-- [AzureKeyVaultKey](/docs/catalog/azure/key-vault-key) — the customer-managed key the set wraps disks with
-- [AzureManagedDisk](/docs/catalog/azure/managed-disk) — references the set via `diskEncryptionSetId`
-- [AzureVirtualMachine](/docs/catalog/azure/virtual-machine) — references the set for OS/data disk CMK encryption
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the identity you grant vault access before the set exists
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) — grants the set's identity crypto access on the key
+**Encryption type** -- fixed at creation, one set per posture: the customer-key default, double encryption (platform + customer keys, for the strictest regimes), or confidential-VM disks (that posture serves ONLY confidential VMs' OS disks).
+
+**Region affinity** -- disks only reference sets in their OWN region; a multi-region footprint runs one set per region, all sharing the same vault key.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureKeyVaultKey** | `keyVaultKeyId` | `status.outputs.versionless_id` |
+| **AzureUserAssignedIdentity** | `identity.identityIds[]` | `status.outputs.identity_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `disk_encryption_set_id` | Azure Resource Manager ID of the set | The `disk_encryption_set_id` on AzureManagedDisk, AzureVirtualMachine disks, and scale-set disks |
+| `disk_encryption_set_name` | Name of the set | Operator tooling |
+| `identity_principal_id` | The system-assigned identity's principal ID (empty for user-assigned-only) | The AzureRoleAssignment grant target for vault crypto access |
+| `identity_tenant_id` | The Entra tenant of the system-assigned identity | Grant tooling |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**System-assigned rotation** -- the recommended posture: the set's own identity, automatic rotation, grant after creation. Start from the **System-Assigned Rotation** preset.
+
+**User-assigned pre-provisioned** -- attached identities whose vault grants exist before the set deploys; the cleaner IaC ordering. Start from the **User-Assigned Pre-Provisioned** preset.
+
+## Works With
+
+- [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- hosts the key; must run purge protection
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed key this set unwraps
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- pre-provisioned unwrapping identities
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants the set's identity vault crypto access
+- [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) -- encrypts its OS and data disks through the set

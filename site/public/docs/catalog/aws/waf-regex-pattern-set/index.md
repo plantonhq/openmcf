@@ -8,113 +8,124 @@ componentName: "awswafregexpatternset"
 
 # AWS WAF Regex Pattern Set
 
-Deploys an AWS WAFv2 regex pattern set — a named, reusable collection of regular expressions. Web ACL rules reference the set by ARN; update the patterns once and every referencing rule sees the change without redeploying the web ACL.
+Deploys a WAFv2 regex pattern set — a named, reusable collection of regular expressions that web ACL rules match request components against: URI paths, headers, query strings, bodies. Pattern sets centralize the expressions many rules share (scanner probes, banned paths, known-bad user agents) with independent ownership: AppSec maintains the patterns, application teams reference them, and updating the set once propagates to every referencing rule immediately, with no web ACL redeploy. The set integrates with Planton's Provider Connections for AWS credential management, and its `regex_pattern_set_arn` output is what every web ACL `regex_pattern_set_reference` statement binds via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AwsWafRegexPatternSet resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **WAFv2 Regex Pattern Set** — an `aws_wafv2_regex_pattern_set` resource with the configured scope and regular expressions
+- **WAFv2 Regex Pattern Set** -- the named expression collection in the chosen scope (REGIONAL or CLOUDFRONT). The set name comes from `metadata.name`; scope is create-time immutable, and the expressions update in place
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **Appropriate IAM permissions** for `wafv2:*` operations
-- **us-east-1 region** when using `CLOUDFRONT` scope
-- **Valid PCRE patterns** — AWS rejects backreferences and lookaround assertions
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `pattern-set.yaml`:
+### AWS Account
+
+- **The expressions to hold** -- at least one is required (AWS rejects an empty pattern set, unlike an IP set), each up to 200 characters. WAF's engine runs a PCRE subset: no backreferences (`\1`), no lookaround (`(?=…)`, `(?<=…)`) — such patterns fail at AWS create time.
+- **No pre-existing resources required** -- the set is a leaf: it references nothing and matches nothing until a web ACL rule binds it.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS WAF Regex Pattern Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the scope choice pins the region automatically for CloudFront, and the expressions step teaches the PCRE-subset limits in place. Start from the **Scanner Probes** preset in the [Presets](#presets) tab for the classic block-list shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsWafRegexPatternSet
 metadata:
   name: scanner-probes
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsWafRegexPatternSet.scanner-probes
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   scope: REGIONAL
   regularExpressions:
-    - ^/wp-admin/.*
-    - ^/\.env$
-  description: Common scanner probe paths
+    - '^/(wp-admin|wp-login|xmlrpc)\.php'
+    - '^/\.env'
+  description: Known scanner probe paths - maintained by AppSec
 ```
-
-Deploy:
 
 ```shell
-planton apply -f pattern-set.yaml
+planton apply -f waf-regex-pattern-set.yaml
 ```
 
-## Configuration Reference
+This publishes the probe list; pair it with a web ACL block rule whose `regex_pattern_set_reference` statement inspects the URI path. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region. Use `us-east-1` for CLOUDFRONT scope. | Required; non-empty |
-| `scope` | `string` | `REGIONAL` or `CLOUDFRONT` | Required; ForceNew |
-| `regularExpressions` | `string[]` | Regex patterns (min 1; each 1–200 chars) | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description (max 256 characters). |
-
-`scope` is create-time immutable. AWS's default quota is 10 expressions per set.
-
-## Examples
-
-### Admin Path Protection
+When deploying as part of a multi-resource environment, web ACLs wire to the set through ValueFromRef:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsWafRegexPatternSet
-metadata:
-  name: internal-admin-paths
+# On an AwsWafWebAcl rule in the same InfraPipeline:
 spec:
-  region: eu-west-1
-  scope: REGIONAL
-  regularExpressions:
-    - ^/internal/admin/.*
-    - ^/debug/.*
-  description: Internal admin and debug URL patterns
+  rules:
+    - name: block-scanner-probes
+      priority: 5
+      action: block
+      statement:
+        regexPatternSetReference:
+          arn:
+            valueFrom:
+              kind: AwsWafRegexPatternSet
+              name: scanner-probes
+              fieldPath: status.outputs.regex_pattern_set_arn
+          fieldToMatch:
+            uriPath: true
+          textTransformations:
+            - priority: 0
+              type: LOWERCASE
 ```
 
-### CloudFront Global Scanner Block
+The InfraPipeline resolves the dependency graph, deploys the set first, then provisions the web ACL with the resolved ARN.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsWafRegexPatternSet
-metadata:
-  name: global-scanner-probes
-spec:
-  region: us-east-1
-  scope: CLOUDFRONT
-  regularExpressions:
-    - ^/wp-login\.php
-    - ^/xmlrpc\.php
-  description: WordPress scanner probes on CloudFront distributions
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a pattern set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Scope decides the set's universe** -- WAF keeps REGIONAL resources (protecting ALBs, API Gateway, AppSync, Cognito, App Runner, Verified Access) and CLOUDFRONT resources (protecting distributions) strictly separate. A web ACL can only reference sets of its own scope, and scope is create-time immutable. CloudFront-scoped sets live in `us-east-1` — the WAF global region.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `regex_pattern_set_arn` | `string` | Pattern set ARN for web ACL `regex_pattern_set_reference` statements. |
-| `regex_pattern_set_id` | `string` | AWS-assigned UUID. |
-| `regex_pattern_set_name` | `string` | Set name in AWS. |
+**ANY-match semantics** -- a referencing rule picks ONE request component and matches when ANY expression in the set matches it. Sets are OR-lists by construction; long alternations split across entries for free.
 
-## Related Components
+**The PCRE subset is real** -- no backreferences, no lookaround. AWS rejects such patterns at create time with a generic error; rewrite with alternation and explicit character classes. Expressions cap at 200 characters each, and the default quota is 10 expressions per set (adjustable via Service Quotas).
 
-- [AwsWafWebAcl](/docs/catalog/aws/waf-web-acl) — references pattern sets in `regex_pattern_set_reference` rules
-- [AwsWafIpSet](/docs/catalog/aws/waf-ip-set) — the sibling reusable set for IP/CIDR matching
+**Set vs inline regex** -- the web ACL also offers a one-off `regex_match` statement. Reach for a pattern set when the same expressions back multiple rules or need independent ownership; keep a single-rule, single-use regex inline.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+The set is a leaf — it references no other Cloud Resources.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `regex_pattern_set_arn` | Amazon Resource Name of the pattern set | AwsWafWebAcl `regex_pattern_set_reference` rule statements |
+| `regex_pattern_set_id` | AWS-assigned set ID (UUID) | Direct WAFv2 API calls together with name and scope |
+| `regex_pattern_set_name` | The set name as created in AWS | WAF console URLs and CLI commands |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Scanner-probe block-list** -- expressions catching WordPress, phpMyAdmin, and dotfile probes on the URI path, referenced by a block rule — the classic first pattern set in any estate. Start from the **Scanner Probes** preset.
+
+**Internal path gate** -- expressions matching admin and internal route prefixes, referenced by a rule that blocks (or CAPTCHA-challenges) requests from outside the office allow-list. Start from the **Internal Admin Paths** preset.
+
+## Works With
+
+- [**AWS WAF Web ACL**](/cloud-catalog/aws-waf-web-acl) -- references this set through `regex_pattern_set_reference` rule statements; the statement picks the request component and text transformations
+- [**AWS WAF IP Set**](/cloud-catalog/aws-waf-ip-set) -- the sibling reusable-collection kind for source-IP matching instead of pattern matching
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- the most common REGIONAL association target of the web ACLs that consume this set
+- [**AWS CloudFront**](/cloud-catalog/aws-cloud-front) -- the association target of CLOUDFRONT-scoped web ACLs (its `webAclArn` binds the web ACL)

@@ -8,64 +8,128 @@ componentName: "azureservicebusdisasterrecoveryconfig"
 
 # Azure Service Bus Disaster Recovery Config
 
-Creates a geo-disaster-recovery pairing between two PREMIUM Service Bus namespaces -- continuous metadata replication plus a failover-stable alias DNS name clients connect through.
+Pairs two PREMIUM Azure Service Bus namespaces for geo-disaster recovery: metadata (queues, topics, subscriptions, rules, SAS rules -- not message data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a failover needs no client reconfiguration. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureServiceBusDisasterRecoveryConfig resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Disaster Recovery Config (alias)** -- an `azurerm_servicebus_namespace_disaster_recovery_config` pairing the primary and partner namespaces under the alias name
+- **The geo-DR pairing** -- on the primary namespace, with continuous metadata replication to the partner
+- **The alias DNS name** -- `{alias}.servicebus.windows.net`, resolving to whichever side is currently primary
+- **Alias connection strings** -- surfaced as sensitive outputs, carrying the paired authorization rule's keys (the namespace's root rule when none is referenced)
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **Two PREMIUM AzureServiceBusNamespaces** in DIFFERENT regions; the partner must be EMPTY (no entities) at pairing time
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `geo-dr.yaml`:
+### Azure Subscription
+
+- **Two PREMIUM AzureServiceBusNamespaces in DIFFERENT regions** -- reference both `namespace_id` outputs via ValueFromRef. The partner must be EMPTY (no queues or topics) at pairing time; replication populates it.
+- **An alias name** -- globally unique with the same rules as a namespace name (it lives in the same DNS space and cannot collide with one either).
+- Optionally, **a NAMESPACE-scoped AzureServiceBusAuthorizationRule on the primary** for least-privilege alias credentials.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Service Bus Disaster Recovery Config**, and click **Deploy**. The creation wizard walks you through the alias (with a live DNS preview and the namespace-grammar validation), the pairing (with Azure's three apply-time contracts taught live), and the alias credentials with the root-rule-default honesty. Start from the **Geo-DR Pairing** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureServiceBusDisasterRecoveryConfig
 metadata:
-  name: orders-bus-dr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureServiceBusDisasterRecoveryConfig.orders-bus-dr
+  name: app-bus-dr
+  org: acme-corp
+  env: prod
 spec:
-  aliasName: myorg-orders-bus
+  aliasName: myorg-app-bus-alias
   primaryNamespaceId:
     valueFrom:
       kind: AzureServiceBusNamespace
-      name: orders-bus-eastus
+      name: app-bus-eastus
       fieldPath: status.outputs.namespace_id
   partnerNamespaceId:
     valueFrom:
       kind: AzureServiceBusNamespace
-      name: orders-bus-westus
+      name: app-bus-westus
+      fieldPath: status.outputs.namespace_id
+  aliasAuthorizationRuleId:
+    valueFrom:
+      kind: AzureServiceBusAuthorizationRule
+      name: dr-clients-rule
+      fieldPath: status.outputs.authorization_rule_id
+```
+
+```shell
+planton apply -f dr-config.yaml
+```
+
+The alias and the primary are **fixed at creation**. Changing the partner breaks the current pairing and re-pairs to the new one -- the alias and primary keep serving throughout. Deleting the resource breaks the pairing gracefully: both namespaces keep running independently, and the alias name is released after deletion.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pairing to namespaces deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  primaryNamespaceId:
+    valueFrom:
+      kind: AzureServiceBusNamespace
+      name: app-bus-eastus
       fieldPath: status.outputs.namespace_id
 ```
 
-Deploy:
+The InfraPipeline resolves the dependency graph, deploys both namespaces first, then provisions the pairing with the resolved values.
 
-```shell
-planton apply -f geo-dr.yaml
-```
+## Key Configuration
 
-Point clients at the ALIAS connection strings, not either namespace -- that is what makes failover transparent. Failover itself is triggered on the secondary during an incident (an operational action, not a config change).
+These are the most important decisions when configuring a geo-DR pairing. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Key Outputs
+**The alias is the contract** -- `aliasName` becomes the DNS identity every DR-aware client holds. Name it for the SERVICE the pair serves, never for a region: the whole point is that the name outlives whichever region is currently primary.
 
-| Output | Purpose |
-|--------|---------|
-| `primary_connection_string_alias` | The failover-stable credential DR-aware clients hold |
-| `alias_name` | The stable DNS identity (`{alias}.servicebus.windows.net`) |
-| `default_primary_key` | The paired rule's key (rotation partner: `default_secondary_key`) |
+**Metadata, not messages** -- replication protects the topology (entities, rules, SAS rules), not in-flight message data. Applications with strict no-message-loss requirements pair this with sender-side persistence.
 
-## Related Resources
+**Failover is operational** -- it is triggered from the SECONDARY side (portal/CLI/SDK) during a regional incident, never a configuration change here. After a promotion, set up a NEW pairing to a new partner region.
 
-- [Azure Service Bus Namespace](/docs/catalog/azure/service-bus-namespace) -- the paired namespaces (PREMIUM)
-- [Azure Service Bus Authorization Rule](/docs/catalog/azure/service-bus-authorization-rule) -- least-privilege alias credentials via `aliasAuthorizationRuleId`
+**Least-privilege alias credentials** -- unset `aliasAuthorizationRuleId` defaults to the namespace's root rule (full manage rights for every DR client). Prefer a scoped NAMESPACE-level rule minted for DR clients.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureServiceBusNamespace** | `primaryNamespaceId` | `status.outputs.namespace_id` |
+| **AzureServiceBusNamespace** | `partnerNamespaceId` | `status.outputs.namespace_id` |
+| **AzureServiceBusAuthorizationRule** | `aliasAuthorizationRuleId` | `status.outputs.authorization_rule_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `disaster_recovery_config_id` | Azure Resource Manager ID of the pairing (under the primary namespace) | Diagnostics and governance tooling |
+| `alias_name` | The failover-stable DNS identity | Composing `{alias}.servicebus.windows.net` endpoints |
+| `primary_connection_string_alias` / `secondary_connection_string_alias` | Connection strings addressing the ALIAS (sensitive) | What DR-aware applications hold -- they survive a failover without reconfiguration |
+| `default_primary_key` / `default_secondary_key` | The paired rule's keys (sensitive) | The same keys the alias connection strings embed; the secondary is the rotation partner |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Geo-DR pairing** -- the full story: an east/west PREMIUM pair fronted by one alias, with a scoped rule for least-privilege alias credentials. Start from the **Geo-DR Pairing** preset.
+
+## Works With
+
+- [**Azure Service Bus Namespace**](/cloud-catalog/azure-service-bus-namespace) -- both sides of the pair (PREMIUM, different regions)
+- [**Azure Service Bus Authorization Rule**](/cloud-catalog/azure-service-bus-authorization-rule) -- the namespace-scoped rule whose keys the alias connection strings carry
+- [**Azure Service Bus Queue**](/cloud-catalog/azure-service-bus-queue) -- replicated to the partner as metadata, like every entity in the namespace
+- [**Azure Service Bus Topic**](/cloud-catalog/azure-service-bus-topic) -- likewise replicated; subscriptions and rules included

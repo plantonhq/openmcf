@@ -6,137 +6,88 @@ order: 100
 componentName: "civoipaddress"
 ---
 
-# Civo IP Address
+# IP Address on Civo
 
-Deploys a static reserved (public) IPv4 address on Civo Cloud. Reserved IPs persist independently of instances and load balancers, making them useful for stable external endpoints that survive resource replacements.
+Allocates a static reserved IPv4 address on Civo Cloud that persists independently of compute instances and can be reassigned between resources in the same region. Reserved IPs are region-specific and suitable for production workloads, high-availability failover, and services that require a stable public endpoint. Integrates with Planton's Provider Connections for Civo credential management.
 
 ## What Gets Created
 
-When you deploy a CivoIpAddress resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Reserved IP** — a `civo_reserved_ip` resource that allocates a persistent public IPv4 address in the specified Civo region
+- **Civo Reserved IP** -- a static public IPv4 address allocated in the specified region, available for attachment to compute instances or load balancers
 
-The IP is created in an unattached state. You can later associate it with a CivoComputeInstance or load balancer in the same region.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Civo credentials** configured via environment variables or Planton provider config
-- **A target Civo region** — reserved IPs are region-scoped and can only be attached to resources in the same region
+- **Civo Provider Connection** -- an active connection in the Connect module with a Civo API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-## Quick Start
+### Civo Account
 
-Create a file `civo-ip.yaml`:
+- **A Civo account** with access to the target region. No additional prerequisites are required -- reserved IPs are standalone resources with no VPC or firewall dependencies.
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoIpAddress
-metadata:
-  name: my-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoIpAddress.my-ip
-spec:
-  region: nyc1
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f civo-ip.yaml
-```
+Open the deployment store, find **IP Address on Civo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for a general-purpose reserved IP.
 
-This allocates a reserved IPv4 address in the New York region.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `enum` | Civo region where the IP is allocated. The IP can only be attached to resources in this region. Valid values: `lon1`, `lon2`, `fra1`, `nyc1`, `phx1`, `mum1`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable name or description for the reserved IP. If omitted, Civo may default to using the IP address itself as the label. Max 100 characters. |
-
-## Examples
-
-### Basic Reserved IP
-
-A minimal manifest that allocates a reserved IP in Frankfurt:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
+apiVersion: civo.planton.dev/v1
 kind: CivoIpAddress
 metadata:
-  name: basic-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoIpAddress.basic-ip
-spec:
-  region: fra1
-```
-
-### Reserved IP with Description
-
-Adding a description makes the IP easier to identify in the Civo dashboard and in IaC state:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoIpAddress
-metadata:
-  name: api-gateway-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.CivoIpAddress.api-gateway-ip
+  name: prod-ip
+  org: acme-corp
+  env: prod
 spec:
   region: lon1
-  description: "API gateway public endpoint"
+  description: Production web server IP
 ```
 
-### Production Stable Endpoint
-
-A reserved IP intended for a production load balancer, paired with a DNS record:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoIpAddress
-metadata:
-  name: prod-lb-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoIpAddress.prod-lb-ip
-spec:
-  region: nyc1
-  description: "Production load balancer IP"
+```shell
+planton apply -f civo-ip-address.yaml
 ```
 
-After deployment, use the `ipAddress` output to configure a CivoDnsRecord that points your domain to this stable IP.
+This allocates a static reserved IPv4 address in Civo's London region. The IP is not attached to any resource initially -- attach it to a compute instance or load balancer after provisioning. A Stack Job tracks the allocation in real time.
 
-## Stack Outputs
+## Key Configuration
 
-After deployment, the following outputs are available in `status.outputs`:
+These are the most important decisions when configuring a Civo reserved IP. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `reservedIpId` | `string` | Unique identifier (UUID) of the reserved IP in Civo |
-| `ipAddress` | `string` | The static IPv4 address allocated for this reserved IP |
-| `attachedResourceId` | `string` | ID of the Civo resource (instance or load balancer) currently attached to this IP. Empty if unattached. |
-| `createdAtRfc3339` | `string` | Timestamp when the reserved IP was created, in RFC 3339 format |
+**Region** -- The `region` field determines where the IP is allocated. Reserved IPs can only be attached to resources in the same region. Use region codes such as `lon1` (London), `nyc1` (New York), or `fra1` (Frankfurt). Choose the region matching your compute workloads.
 
-## Related Components
+**Description** -- The `description` field provides a human-readable label for identifying the IP in the Civo dashboard and API responses. Use descriptive names that indicate the purpose (e.g., "Production load balancer IP", "Bastion host IP") to simplify tracking across multiple reserved IPs.
 
-- [CivoComputeInstance](/docs/catalog/civo/compute-instance) — attach the reserved IP to a compute instance for a stable public address
-- [CivoDnsRecord](/docs/catalog/civo/dns-record) — create DNS records pointing to the reserved IP
-- [CivoFirewall](/docs/catalog/civo/firewall) — control inbound traffic to resources using this IP
-- [CivoVpc](/docs/catalog/civo/vpc) — private network for the resources that use this IP
+**Attachment** -- Reserved IPs are allocated in an unattached state. After provisioning, attach the IP to a CivoComputeInstance or load balancer via the Civo dashboard or API. The IP persists independently of the attached resource, so it survives instance replacements during maintenance or failover.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `reserved_ip_id` | Unique identifier of the reserved IP in Civo | Civo API operations, instance attachment |
+| `ip_address` | Static IPv4 address allocated for this reservation | DNS A records, client configuration, firewall rules |
+| `attached_resource_id` | ID of the resource currently attached to this IP (empty if unattached) | Monitoring, resource tracking |
+| `created_at_rfc3339` | Reservation creation timestamp in RFC 3339 format | Audit logs, lifecycle tracking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard reserved IP** -- a static IPv4 address in the target region for production workloads that need a stable public endpoint. Use for load balancers, bastion hosts, or any service where external clients address resources by IP. Start from the **Standard** preset.
+
+## Works With
+
+This component operates independently and does not reference other deployment components.

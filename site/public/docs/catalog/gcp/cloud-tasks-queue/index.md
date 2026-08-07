@@ -8,232 +8,129 @@ componentName: "gcpcloudtasksqueue"
 
 # GCP Cloud Tasks Queue
 
-Deploys a GCP Cloud Tasks queue with configurable dispatch rate limits, retry policies, and optional queue-level HTTP target configuration with OIDC or OAuth authentication. Cloud Tasks queues do not support GCP labels.
+Deploys a Cloud Tasks queue with configurable rate limits, retry behavior, queue-level HTTP target settings with OAuth or OIDC authentication, URI overrides, and dispatch logging. The queue manages asynchronous task dispatch to HTTP endpoints with controlled concurrency and automatic retry with exponential backoff. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and service accounts.
 
 ## What Gets Created
 
-When you deploy a GcpCloudTasksQueue resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cloud Tasks API enablement** — a `google_project_service` resource enabling `cloudtasks.googleapis.com`, so a fresh project works first try
-- **Cloud Tasks Queue** — a `google_cloud_tasks_queue` resource in the specified project and region with the configured dispatch and retry settings
-- **Rate Limits** — created only when `rateLimits` is specified, controls dispatch rate and concurrency
-- **Retry Config** — created only when `retryConfig` is specified, controls exponential backoff and max attempts
-- **HTTP Target** — created only when `httpTarget` is specified, configures queue-level HTTP method, authentication, URI override, and header defaults for all tasks
-- **App Engine Routing Override** — created only when `appEngineRoutingOverride` is specified, pins App Engine tasks to one service/version/instance
-- **Stackdriver Logging** — created only when `stackdriverLoggingConfig` is specified, enables dispatch operation logging at the configured sampling ratio
+- **Cloud Tasks Queue** -- a managed task queue in the specified GCP project and region, configured with rate limits, retry behavior, and optional queue-level dispatch defaults
+- **Queue-Level HTTP Target** -- created only when `httpTarget` is configured; sets queue-wide authentication (OAuth or OIDC), HTTP method override, header overrides, and URI overrides applied to all dispatched tasks
+- **Rate Limits** -- created only when `rateLimits` is configured; controls maximum dispatch rate (tasks/second) and maximum concurrent dispatches
+- **Retry Configuration** -- created only when `retryConfig` is configured; controls retry attempts, backoff durations, and the exponential-to-linear backoff transition
+- **Logging Configuration** -- created only when `stackdriverLoggingConfig` is configured; controls the fraction of dispatch operations written to Cloud Logging
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A service account** with `iam.serviceAccounts.actAs` permission if configuring queue-level OIDC or OAuth authentication
-- **The target service** (e.g., Cloud Run, Cloud Functions) deployed if configuring `httpTarget.uriOverride`
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `cloud-tasks-queue.yaml`:
+### GCP Project
+
+- **A GCP project** where the Cloud Tasks queue will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Cloud Tasks API** enabled in the target project.
+- **GCP service account** (if using queue-level authentication) -- the service account must exist in the same project, and the deploying principal must have `iam.serviceAccounts.actAs` permission on it. Reference via ValueFromRef to a GcpServiceAccount Cloud Resource.
+- **HTTP endpoint** (Cloud Run, Cloud Functions, or external) that the queue will dispatch tasks to.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud Tasks Queue**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Queue** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudTasksQueue
 metadata:
-  name: my-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCloudTasksQueue.my-queue
+  name: background-jobs
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
-  queueName: my-task-queue
+    value: "acme-prod-12345"
+  queueName: background-jobs
   location: us-central1
 ```
-
-Deploy:
 
 ```shell
 planton apply -f cloud-tasks-queue.yaml
 ```
 
-This creates a Cloud Tasks queue in `us-central1` with GCP-managed defaults for rate limits and retry behavior.
+This creates a Cloud Tasks queue with GCP-managed defaults for rate limits and retry behavior. No queue-level HTTP target, authentication, or logging is configured -- individual tasks define their own targets.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `queueName` | `string` | Name of the queue. Immutable after creation; a deleted queue's ID is reserved for up to 7 days. | 1-63 chars, starts with letter, `^[a-zA-Z][a-zA-Z0-9-]*$` |
-| `location` | `string` | GCP region (e.g., `us-central1`). Immutable after creation. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the queue will be created. Can reference a GcpProject resource via `valueFrom`. When omitted, the provider's default project is used. |
-| `httpTarget.httpMethod` | `string` | — | HTTP method override for all tasks. Valid: `POST`, `GET`, `HEAD`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`. |
-| `httpTarget.headerOverrides` | `object[]` | `[]` | HTTP headers to set on all tasks. Each entry has `key` and `value`. |
-| `httpTarget.oauthToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account for OAuth2 token generation. Can reference GcpServiceAccount via `valueFrom`. Required when `oauthToken` is set. Mutually exclusive with `oidcToken`. |
-| `httpTarget.oauthToken.scope` | `string` | `cloud-platform` | OAuth scope for the access token. |
-| `httpTarget.oidcToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account for OIDC token generation. Can reference GcpServiceAccount via `valueFrom`. Required when `oidcToken` is set. Mutually exclusive with `oauthToken`. |
-| `httpTarget.oidcToken.audience` | `string` | target URI | Audience for the OIDC token. |
-| `httpTarget.uriOverride.scheme` | `string` | — | URI scheme override. Valid: `HTTP`, `HTTPS`. |
-| `httpTarget.uriOverride.host` | `string` | — | URI host override. Replaces the host part of all task URLs. |
-| `httpTarget.uriOverride.port` | `string` | — | URI port override. Positive integer as string. |
-| `httpTarget.uriOverride.path` | `string` | — | URI path override. Replaces the path of all task URLs. |
-| `httpTarget.uriOverride.queryParams` | `string` | — | URI query override (e.g., `key=val&key2=val2`). |
-| `httpTarget.uriOverride.enforceMode` | `string` | `ALWAYS` | When to apply overrides. `ALWAYS` replaces task URIs. `IF_NOT_EXISTS` only applies if the task lacks the component. |
-| `appEngineRoutingOverride.service` | `string` | task default | App Engine service every App Engine task in the queue routes to. |
-| `appEngineRoutingOverride.version` | `string` | task default | App Engine version every App Engine task in the queue routes to. |
-| `appEngineRoutingOverride.instance` | `string` | task default | App Engine instance every App Engine task in the queue routes to. |
-| `rateLimits.maxDispatchesPerSecond` | `double` | GCP default | Maximum tasks dispatched per second. |
-| `rateLimits.maxConcurrentDispatches` | `int` | GCP default | Maximum concurrent task executions. |
-| `retryConfig.maxAttempts` | `int` | GCP default | Maximum attempts per task. Set to `-1` for unlimited. |
-| `retryConfig.maxRetryDuration` | `string` | GCP default | Maximum total retry time (e.g., `86400s`). `0s` for unlimited. |
-| `retryConfig.minBackoff` | `string` | GCP default | Minimum wait between retries (e.g., `0.100s`). |
-| `retryConfig.maxBackoff` | `string` | GCP default | Maximum wait between retries (e.g., `3600s`). |
-| `retryConfig.maxDoublings` | `int` | GCP default | Number of times the backoff interval doubles before becoming linear. |
-| `stackdriverLoggingConfig.samplingRatio` | `double` | `0.0` | Fraction of dispatch operations to log. Must be 0.0-1.0. |
-
-## Examples
-
-### Rate-Limited Background Processing
-
-Queue with explicit rate limits and retry configuration for production background processing:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the queue to a GCP project and service account deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudTasksQueue
-metadata:
-  name: background-processor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudTasksQueue.background-processor
-spec:
-  projectId:
-    value: my-gcp-project
-  queueName: background-processor
-  location: us-central1
-  rateLimits:
-    maxDispatchesPerSecond: 500
-    maxConcurrentDispatches: 100
-  retryConfig:
-    maxAttempts: 5
-    minBackoff: "1s"
-    maxBackoff: "3600s"
-    maxDoublings: 16
-  stackdriverLoggingConfig:
-    samplingRatio: 0.1
-```
-
-### Cloud Run Target with OIDC Authentication
-
-Queue configured to dispatch all tasks to a Cloud Run service with automatic OIDC token generation. This is the recommended pattern for serverless task processing:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudTasksQueue
-metadata:
-  name: cloud-run-dispatcher
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudTasksQueue.cloud-run-dispatcher
-spec:
-  projectId:
-    value: my-gcp-project
-  queueName: cloud-run-dispatcher
-  location: us-central1
-  httpTarget:
-    httpMethod: POST
-    oidcToken:
-      serviceAccountEmail:
-        value: task-invoker@my-gcp-project.iam.gserviceaccount.com
-      audience: https://my-service-abc123-uc.a.run.app
-    uriOverride:
-      scheme: HTTPS
-      host: my-service-abc123-uc.a.run.app
-      path: /v1/tasks/process
-      enforceMode: ALWAYS
-    headerOverrides:
-      - key: Content-Type
-        value: application/json
-  rateLimits:
-    maxDispatchesPerSecond: 100
-    maxConcurrentDispatches: 50
-  retryConfig:
-    maxAttempts: 3
-    minBackoff: "5s"
-    maxBackoff: "300s"
-    maxDoublings: 4
-  stackdriverLoggingConfig:
-    samplingRatio: 1.0
-```
-
-### Full-Featured Queue with Foreign Key References
-
-Production queue referencing other Planton-managed resources via `valueFrom` for infra-chart composition:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudTasksQueue
-metadata:
-  name: composed-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudTasksQueue.composed-queue
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  queueName: composed-task-queue
-  location: us-central1
+      name: production-project
+      fieldPath: status.outputs.project_id
   httpTarget:
-    httpMethod: POST
     oidcToken:
       serviceAccountEmail:
         valueFrom:
           kind: GcpServiceAccount
-          name: task-invoker-sa
-          field: status.outputs.email
-      audience: https://my-service.run.app
-    uriOverride:
-      scheme: HTTPS
-      host: my-service.run.app
-      enforceMode: ALWAYS
-  rateLimits:
-    maxDispatchesPerSecond: 200
-    maxConcurrentDispatches: 50
-  retryConfig:
-    maxAttempts: 5
-    minBackoff: "1s"
-    maxBackoff: "3600s"
-    maxDoublings: 16
-    maxRetryDuration: "86400s"
-  stackdriverLoggingConfig:
-    samplingRatio: 0.5
+          name: task-invoker
+          fieldPath: status.outputs.email
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and service account first, then provisions the Cloud Tasks queue with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `queue_id` | `string` | Fully qualified queue path: `projects/{project}/locations/{location}/queues/{name}` |
-| `queue_name` | `string` | Short queue name (same as `spec.queueName`) |
-| `max_burst_size` | `int` | Effective max burst size computed by GCP from `maxDispatchesPerSecond` |
+These are the most important decisions when configuring a Cloud Tasks queue. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Rate limits** -- Set `rateLimits.maxDispatchesPerSecond` to control how fast tasks are dispatched and `rateLimits.maxConcurrentDispatches` to limit parallel task execution. Use rate limits to protect downstream services from being overwhelmed. GCP provides reasonable defaults when not specified.
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for queue creation
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — provides the service account for OIDC/OAuth authentication in `httpTarget`
-- [GcpCloudSchedulerJob](/docs/catalog/gcp/cloud-scheduler-job) — creates scheduled tasks that target Cloud Tasks queues
-- [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) — alternative messaging pattern for event fan-out (vs task dispatch)
+**Retry behavior** -- Configure `retryConfig` with `maxAttempts` (set to -1 for unlimited), `minBackoff` and `maxBackoff` for exponential backoff timing, and `maxDoublings` to control the transition from exponential to linear backoff. Tasks that exhaust all retries are dropped.
+
+**Queue-level HTTP target** -- Configure `httpTarget` with authentication, URI overrides, and method overrides that apply to all tasks in the queue. This is the recommended pattern for microservices: set auth and routing at the queue level, then enqueue tasks with just a request body.
+
+**Authentication** -- For queues targeting Cloud Run or Cloud Functions, configure `httpTarget.oidcToken` with a service account email. For queues targeting Google APIs, use `httpTarget.oauthToken` instead. These are mutually exclusive.
+
+**Pause and resume** -- The queue's dispatch state (RUNNING/PAUSED) is a runtime operation, deliberately not part of this declarative spec: pause with `gcloud tasks queues pause` during maintenance windows and resume afterwards, without touching the deployed configuration. Tasks can still be enqueued to a paused queue.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpServiceAccount** (optional) | `httpTarget.oauthToken.serviceAccountEmail` | `status.outputs.email` |
+| **GcpServiceAccount** (optional) | `httpTarget.oidcToken.serviceAccountEmail` | `status.outputs.email` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `queue_id` | Fully qualified queue ID (`projects/{project}/locations/{location}/queues/{name}`) | Task enqueue operations, monitoring dashboards |
+| `queue_name` | Short queue name | Application configuration, reference in task creation |
+| `max_burst_size` | GCP-computed burst bucket derived from the rate limits | Capacity planning, dispatch-behavior tuning |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic queue** -- A minimal queue with GCP-managed defaults for rate limits and retry behavior. Tasks define their own HTTP targets individually. Suitable for simple background processing where individual tasks manage their own routing. Start from the **Basic Queue** preset.
+
+**Rate-limited processing** -- A queue with explicit rate limits (500 tasks/second, 100 concurrent) and retry configuration with exponential backoff. Suitable for workloads that need controlled dispatch rates to protect downstream services. Start from the **Rate-Limited Processing** preset.
+
+**Secure Cloud Run target** -- A queue with OIDC authentication, HTTPS URI override pointing to a Cloud Run service, and controlled dispatch rates. Suitable for microservices architectures where all tasks in the queue target the same authenticated Cloud Run endpoint. Start from the **Secure Cloud Run Target** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the queue is created
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the identity for OAuth or OIDC token generation on task dispatch

@@ -6,140 +6,90 @@ order: 100
 componentName: "cloudflared1database"
 ---
 
-# Cloudflare D1 Database
+# D1 Database on Cloudflare
 
-Deploys a Cloudflare D1 serverless SQL database with an optional primary location hint and read replication configuration. The component provisions a single D1 database resource in the specified Cloudflare account and exports the database identifier for use by Workers bindings.
+Deploys a Cloudflare D1 serverless SQLite database with configurable region placement and optional read replication. Integrates with Planton's Provider Connections for Cloudflare credential management and exports the database identifier for binding to Cloudflare Workers.
 
 ## What Gets Created
 
-When you deploy a CloudflareD1Database resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **D1 Database** — a `cloudflare_d1_database` resource in the specified Cloudflare account, with an optional region hint that maps to the Cloudflare `primary_location_hint` property
-- **Read Replication (optional)** — when `readReplication` is configured, the database is created with D1 Read Replication (Beta) enabled, placing read-only replicas across multiple regions to reduce global read latency
+- **D1 Database** -- a serverless SQLite database created in the specified Cloudflare account, with an optional primary location hint to control the region of the primary instance
+- **Read Replication** -- created only when `readReplication` is configured; enables D1 Read Replication (Beta) to place read-only replicas across multiple regions for lower global read latency
+- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Cloudflare credentials** configured via environment variables or Planton provider config
-- **A Cloudflare account ID** with D1 access enabled
-- **Application-level Sessions API support** if enabling read replication — failing to use the D1 Sessions API with replication enabled will cause data consistency errors
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has D1 permissions. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `d1-database.yaml`:
+### Cloudflare Account
+
+- **A Cloudflare account** with D1 access enabled. The `accountId` field identifies which Cloudflare account owns the database.
+- **Schema management** -- D1 tables, indexes, and migrations are managed via the Wrangler CLI, not at the resource level. Deploy the database first, then run migrations against it.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **D1 Database on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
+apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareD1Database
 metadata:
-  name: my-d1-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CloudflareD1Database.my-d1-db
+  name: app-cache
+  org: acme-corp
+  env: prod
 spec:
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  databaseName: my-app-db
+  accountId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+  databaseName: app-cache
 ```
-
-Deploy:
 
 ```shell
-planton apply -f d1-database.yaml
+planton apply -f cloudflare-d1-database.yaml
 ```
 
-This creates a D1 database named `my-app-db` with Cloudflare selecting the default storage region.
+This creates a D1 database named `app-cache` with Cloudflare selecting the default storage region. No read replication is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a D1 database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | `string` | The Cloudflare account ID in which to create the database. | Required |
-| `databaseName` | `string` | The unique name for the D1 database within the account. | Required, max 64 characters |
+**Region placement** -- The `region` field sets the primary location hint for the database. Valid values are `weur` (Western Europe), `eeur` (Eastern Europe), `apac` (Asia Pacific), `oc` (Oceania), `wnam` (Western North America), and `enam` (Eastern North America). Omit to let Cloudflare select based on your account settings. Choose a region close to your Workers for lowest write latency.
 
-### Optional Fields
+**Read replication** -- Set `readReplication.mode` to `auto` to enable automatic read replicas across multiple regions. This reduces global read latency but requires your application code to use the D1 Sessions API for consistency. Set to `disabled` or omit for single-region operation.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `region` | `enum` | unspecified | The geographical region for the database's primary instance. Maps to Cloudflare's `primary_location_hint`. If omitted, Cloudflare selects a default location based on account settings. One of: `weur` (Western Europe), `eeur` (Eastern Europe), `apac` (Asia Pacific), `oc` (Oceania), `wnam` (Western North America), `enam` (Eastern North America). |
-| `readReplication.mode` | `enum` | — | The replication mode: `auto` (enable automatic read replication across regions) or `disabled` (turn it off). Required when the `readReplication` object is present. Enabling replication requires application-level code changes to use the D1 Sessions API. |
+**Database naming** -- The `databaseName` must be unique within the account and is limited to 64 characters. Choose a descriptive name since it appears in Wrangler CLI commands and Worker bindings.
 
-## Examples
+## Outputs and Dependencies
 
-### Minimal Database with Default Region
+### What This Component Consumes
 
-A D1 database where Cloudflare selects the optimal storage location:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareD1Database
-metadata:
-  name: analytics-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CloudflareD1Database.analytics-db
-spec:
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  databaseName: analytics
-```
+### What This Component Provides
 
-### Database in a Specific Region
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A D1 database pinned to Western Europe, useful for GDPR compliance or when your Workers are deployed in that region:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `database_id` | The unique identifier (UUID) of the created D1 database | CloudflareWorker D1 bindings, Wrangler CLI configuration |
+| `database_name` | The name of the database as confirmed by Cloudflare | Application configuration, monitoring dashboards |
+| `connection_string` | Reserved for future use; currently empty as the Pulumi Cloudflare provider does not expose a D1 connection string | Future Worker binding configuration |
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareD1Database
-metadata:
-  name: eu-users-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CloudflareD1Database.eu-users-db
-spec:
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  databaseName: eu-users
-  region: weur
-```
+## Common Patterns
 
-### Database with Read Replication
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A production D1 database in Eastern North America with automatic read replication enabled for lower global read latency. Your application code must use the D1 Sessions API to maintain consistency:
+**Standard database** -- A D1 database with optional region placement and no read replication. Use for edge databases backing Workers, lightweight relational storage, or key-value workloads with SQL access. Start from the **Standard** preset.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareD1Database
-metadata:
-  name: global-app-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CloudflareD1Database.global-app-db
-spec:
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  databaseName: global-app
-  region: enam
-  readReplication:
-    mode: auto
-```
+## Works With
 
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `databaseId` | `string` | The unique identifier (UUID) of the created D1 database (referenced by a Worker `d1` binding) |
-| `databaseName` | `string` | The name of the database as confirmed by Cloudflare |
-
-## Related Components
-
-- [CloudflareWorker](/docs/catalog/cloudflare/worker) — Workers bind to D1 databases for query execution; deploy a Worker alongside your D1 database to serve your application
-- [CloudflareR2Bucket](/docs/catalog/cloudflare/r2-bucket) — object storage commonly paired with D1 for storing large blobs while keeping metadata in D1
-- [CloudflareKvNamespace](/docs/catalog/cloudflare/kv-namespace) — key-value storage useful as a caching layer in front of D1 queries
+This component operates independently and does not reference other deployment components.

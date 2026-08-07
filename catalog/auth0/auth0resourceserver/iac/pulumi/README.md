@@ -139,7 +139,7 @@ Common issues:
 
 ## Testing
 
-Use the test manifest in `../hack/manifest.yaml`:
+Use the test manifest in `../../e2e/manifest.yaml`:
 
 ```bash
 cd ../hack

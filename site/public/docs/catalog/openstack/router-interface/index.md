@@ -8,101 +8,57 @@ componentName: "openstackrouterinterface"
 
 # OpenStack Router Interface
 
-Deploys an OpenStack Neutron router interface, attaching a router to a subnet by creating a port on the subnet and binding it to the router. This is the join between Layer 2 (subnet) and Layer 3 (router) — without it, a subnet has no route to other subnets or to external networks.
+Attaches an OpenStack Neutron subnet to a router, enabling Layer 3 routing for that subnet. This is a join resource -- it creates a port on the subnet and binds it to the router. Without a router interface, a subnet is an isolated Layer 2 domain with no connectivity to other subnets or external networks. ValueFromRef wiring connects both the router and subnet from their respective Cloud Resources in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackRouterInterface resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Neutron Router Interface** — an `openstack_networking_router_interface_v2` resource that creates a port on the specified subnet and attaches it to the specified router, establishing L3 connectivity for the subnet
+- **Neutron Router Interface** -- a port on the specified subnet attached to the specified router, enabling Layer 3 routing between the subnet and any other subnets or external networks connected to that router
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An existing router** — either an OpenStackRouter resource or a pre-existing router UUID
-- **An existing subnet** — either an OpenStackSubnet resource or a pre-existing subnet UUID
+### OpenStack Account
 
-## Quick Start
+- **Router** -- an existing Neutron router to attach the subnet to. Provide the router ID directly or reference an OpenStackRouter Cloud Resource via ValueFromRef.
+- **Subnet** -- an existing subnet to connect to the router. Provide the subnet ID directly or reference an OpenStackSubnet Cloud Resource via ValueFromRef.
+- **Subnet CIDR conflicts** -- the subnet's CIDR must not overlap with any other subnet already attached to the same router. Overlapping CIDRs cause a creation error.
 
-Create a file `router-interface.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Router Interface**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackRouterInterface
 metadata:
-  name: my-router-interface
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackRouterInterface.my-router-interface
+  name: app-subnet-attach
+  org: acme-corp
+  env: prod
 spec:
   routerId:
-    value: <router-uuid>
+    value: "<router-id>"
   subnetId:
-    value: <subnet-uuid>
+    value: "<subnet-id>"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f router-interface.yaml
 ```
 
-This attaches the specified router to the specified subnet, enabling L3 routing for instances on that subnet.
+This attaches the subnet to the router, enabling instances on the subnet to reach other connected subnets and (if the router has an external gateway) the internet. No region override is configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `routerId` | `StringValueOrRef` | ID of the router to attach the subnet to. Can reference an OpenStackRouter resource via `valueFrom`. | required |
-| `subnetId` | `StringValueOrRef` | ID of the subnet to connect to the router. Can reference an OpenStackSubnet resource via `valueFrom`. | required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `region` | `string` | provider default | Overrides the region from the provider config for this router interface. |
-
-## Examples
-
-### Basic with Literal UUIDs
-
-Attach a pre-existing router to a pre-existing subnet using their UUIDs directly:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire both the router and subnet deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouterInterface
-metadata:
-  name: web-subnet-attachment
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackRouterInterface.web-subnet-attachment
-spec:
-  routerId:
-    value: 3a1f2b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
-  subnetId:
-    value: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
-```
-
-### Foreign Key References
-
-Wire the router interface to OpenStackRouter and OpenStackSubnet resources in the same deployment using `valueFrom`, so the IDs are resolved automatically:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouterInterface
-metadata:
-  name: app-subnet-to-edge
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackRouterInterface.app-subnet-to-edge
 spec:
   routerId:
     valueFrom:
@@ -116,49 +72,45 @@ spec:
       fieldPath: status.outputs.subnet_id
 ```
 
-### Multi-Region with Explicit Region
+The InfraPipeline resolves the dependency graph, deploys the router and subnet first, then provisions the router interface with the resolved IDs.
 
-Attach a router to a subnet in a specific OpenStack region, overriding the provider default:
+## Key Configuration
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackRouterInterface
-metadata:
-  name: region2-db-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackRouterInterface.region2-db-subnet
-spec:
-  routerId:
-    valueFrom:
-      kind: OpenStackRouter
-      name: region2-router
-      fieldPath: status.outputs.router_id
-  subnetId:
-    valueFrom:
-      kind: OpenStackSubnet
-      name: db-subnet
-      fieldPath: status.outputs.subnet_id
-  region: RegionTwo
-```
+These are the most important decisions when configuring a router interface. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Router selection** -- The `routerId` determines which router provides Layer 3 connectivity. For internet access, reference a router with an external gateway. For internal-only routing, reference a router without an external gateway.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Subnet selection** -- The `subnetId` determines which subnet gains routing. Each subnet can be attached to only one router. Attaching the same subnet to multiple routers is not supported by OpenStack.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `port_id` | `string` | UUID of the port auto-created by the router interface attachment. This is also the Terraform resource ID. |
-| `router_id` | `string` | UUID of the router this interface is attached to |
-| `subnet_id` | `string` | UUID of the subnet connected to the router |
-| `region` | `string` | OpenStack region where the router interface was created |
+**Immutability** -- All fields are ForceNew. Changing the router or subnet reference recreates the interface, which briefly disrupts routing for instances on the subnet.
 
-## Related Components
+## Outputs and Dependencies
 
-- [OpenStackRouter](/docs/catalog/openstack/router) — the L3 router that this interface attaches to
-- [OpenStackSubnet](/docs/catalog/openstack/subnet) — the subnet that this interface connects to the router
-- [OpenStackNetwork](/docs/catalog/openstack/network) — the Layer 2 network that subnets belong to
-- [OpenStackFloatingIp](/docs/catalog/openstack/floating-ip) — allocates floating IPs from the external network reachable via the router
-- [OpenStackInstance](/docs/catalog/openstack/instance) — compute instances that use the subnet's default gateway provided by the router interface
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackRouter** | `routerId` | `status.outputs.router_id` |
+| **OpenStackSubnet** | `subnetId` | `status.outputs.subnet_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `port_id` | UUID of the port created by the router interface attachment | Debugging, network topology inspection |
+| `router_id` | UUID of the router this interface is attached to | Audit, topology reference |
+| `subnet_id` | UUID of the subnet connected to the router | Audit, topology reference |
+| `region` | OpenStack region where the router interface was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard attachment** -- Attaches a subnet to a router with no additional configuration. This is the only pattern -- every router interface is a simple binding between a router and a subnet. Start from the **Standard** preset.
+
+## Works With
+
+- [**OpenStack Router**](/cloud-catalog/openstack-router) -- provides the router ID that the subnet is attached to
+- [**OpenStack Subnet**](/cloud-catalog/openstack-subnet) -- provides the subnet ID connected to the router

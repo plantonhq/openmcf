@@ -41,7 +41,7 @@ terraform validate
 
 ## Configuration Reference
 
-See [catalog-page.md](./catalog.md) for complete field documentation, examples, and presets.
+See [catalog.md](./catalog.md) for complete field documentation, examples, and presets.
 
 ---
 

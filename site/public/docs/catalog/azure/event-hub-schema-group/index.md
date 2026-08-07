@@ -8,33 +8,42 @@ componentName: "azureeventhubschemagroup"
 
 # Azure Event Hub Schema Group
 
-Creates a schema group in an Event Hubs namespace's schema registry -- a named collection of event schemas with a shared format (Avro or JSON) and a compatibility policy that makes schema evolution safe.
+Creates a schema group in an Event Hubs namespace's schema registry -- a named collection of event schemas with one serialization format and one compatibility (evolution) policy. The registry lets producers and consumers exchange compact, schema-referencing payloads instead of embedding schemas in every event: serializers register and resolve schemas against the group at runtime, through the Azure SDKs or the registry's Kafka-compatible surface. The compatibility policy is what makes schema evolution SAFE -- it controls which changes the registry accepts as new versions. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureEventHubSchemaGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Schema Group** -- an `azurerm_eventhub_namespace_schema_group` on the referenced namespace, with your chosen serialization format and evolution policy
+- **Schema Group** -- in the referenced namespace's schema registry, with your chosen evolution policy and serialization format
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureEventHubNamespace** at STANDARD tier or above (referenced through `namespaceId`) -- BASIC namespaces reject schema groups
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `schema-group.yaml`:
+### Azure Subscription
+
+- **An AzureEventHubNamespace** on STANDARD or higher -- the schema registry requires it, and Azure rejects schema groups on BASIC namespaces at apply time. Reference the namespace's `namespace_id` output via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Event Hub Schema Group**, and click **Deploy**. The creation wizard walks you through the namespace attachment and the group's constitution -- the evolution policy and serialization format, with the recommended BACKWARD + Avro pairing preselected. Start from the **Backward-Compatible Avro Group** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureEventHubSchemaGroup
 metadata:
   name: telemetry-schemas
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureEventHubSchemaGroup.telemetry-schemas
+  org: acme-corp
+  env: prod
 spec:
   namespaceId:
     valueFrom:
@@ -46,22 +55,67 @@ spec:
   schemaType: AVRO
 ```
 
-Deploy:
-
 ```shell
 planton apply -f schema-group.yaml
 ```
 
-Choose the compatibility policy deliberately: BACKWARD (new schemas read old data; upgrade consumers first) is the standard for analytics pipelines; FORWARD (old schemas read new data; upgrade producers first) suits producer-led evolution; NONE skips checking entirely. Every field is fixed at creation -- Azure exposes no mutable properties on a schema group, so any change replaces it and drops the schemas registered inside.
+**Every field is fixed at creation** -- Azure exposes no mutable properties on a schema group, so any change replaces it and DROPS the schemas registered inside. Treat the group as append-only infrastructure: to change the policy, create the new group, re-register its schemas, cut serializers over, then retire the old one.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `schema_group_id` | The Azure Resource Manager ID of the group |
-| `schema_group_name` | What schema-registry serializers address at runtime, alongside the namespace hostname |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the group to a namespace deployed in the same InfraPipeline:
 
-## Related Resources
+```yaml
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+```
 
-- [Azure Event Hub Namespace](/docs/catalog/azure/event-hub-namespace) -- the namespace whose registry holds the group (STANDARD+)
-- [Azure Event Hub](/docs/catalog/azure/event-hub) -- the streams whose events reference the registered schemas
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the group in its registry.
+
+## Key Configuration
+
+These are the most important decisions when configuring a schema group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**The evolution policy** -- `schemaCompatibility` decides which changes the registry accepts as new schema versions, and therefore which side of the stream upgrades first. BACKWARD (new schemas read old data -- upgrade consumers first) is the standard choice for analytics pipelines, because upgraded readers can replay the whole retained stream. FORWARD (old schemas read new data) suits producer-led rollouts. NONE disables checking entirely -- safe only when producers and consumers deploy together.
+
+**The serialization format** -- `schemaType` applies to every schema in the group (a group never mixes formats). AVRO is the registry's first-class format: compact binary payloads with rich evolution semantics; JSON covers JSON-Schema payloads.
+
+**The name** -- `schemaGroupName` is the registry coordinate serializers are configured with. Name it after the event DOMAIN (telemetry, orders, payments), not any one application.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureEventHubNamespace** | `namespaceId` | `status.outputs.namespace_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `schema_group_id` | Azure Resource Manager ID of the group | Governance tooling and ARM-level references |
+| `schema_group_name` | The group's name within the registry | What producer and consumer serializers are configured with (and the Kafka schema-registry group id) |
+
+Access to the registry is keyless: grant Entra data-plane roles (Schema Registry Reader / Schema Registry Contributor) on the namespace -- the group itself carries no secrets.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Analytics pipeline vocabulary** -- one BACKWARD Avro group per event domain: consumers upgrade first and replay the full retention window under the new schema. Start from the **Backward-Compatible Avro Group** preset.
+
+**Producer-led rollout** -- a FORWARD group where producers add fields ahead of lagging consumers -- pick it when the write side owns the deploy train.
+
+## Works With
+
+- [**Azure Event Hub Namespace**](/cloud-catalog/azure-event-hub-namespace) -- the STANDARD+ namespace whose registry holds the group
+- [**Azure Event Hub**](/cloud-catalog/azure-event-hub) -- the streams whose events conform to the group's schemas
+- [**Azure Event Hub Consumer Group**](/cloud-catalog/azure-event-hub-consumer-group) -- the readers whose serializers resolve schemas from the group
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- keyless Schema Registry Reader/Contributor grants on the namespace

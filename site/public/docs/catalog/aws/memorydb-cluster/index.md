@@ -8,225 +8,97 @@ componentName: "awsmemorydbcluster"
 
 # AWS MemoryDB Cluster
 
-Deploys an Amazon MemoryDB cluster — a fully managed, Redis-compatible, durable in-memory database with microsecond reads, single-digit millisecond writes, and Multi-AZ durability via a distributed transaction log. The component provisions the cluster with optional subnet group and parameter group management, ACL-based authentication, and always-on encryption at rest.
+Deploys a fully managed Amazon MemoryDB cluster -- a Redis-compatible, durable in-memory database with multi-AZ transaction log replication, microsecond reads, and single-digit millisecond writes. The cluster supports sharded topology, ACL-based authentication ([AwsMemorydbAcl](/cloud-catalog/aws-memorydb-acl)), TLS encryption, customer-managed KMS keys, automatic snapshots, snapshot restore (MemoryDB snapshots or S3 RDB files), IPv6/dual-stack networking, multi-Region membership, and optional data tiering to SSD. It integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, ACLs, KMS keys, and SNS topics.
 
 ## What Gets Created
 
-When you deploy an AwsMemorydbCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **MemoryDB Cluster** — a `memorydb.Cluster` resource with configurable shards and replicas per shard, TLS encryption, ACL-based authentication, and optional data tiering for cost-efficient large datasets
-- **Subnet Group** — created only when `subnetIds` are provided, placing cluster nodes in the specified VPC subnets
-- **Parameter Group** — created only when `parameters` are provided with a `parameterGroupFamily`, enabling custom engine tuning (e.g., activedefrag, maxmemory-policy)
+- **MemoryDB Cluster** -- a sharded in-memory database cluster running Redis or Valkey with the specified node type, shard count, and replicas per shard, using ACL-based authentication
+- **Subnet Group** -- created from the provided `subnetIds` spanning at least two Availability Zones for multi-AZ durability; alternatively the cluster joins an existing group via `subnetGroupName` (the two are mutually exclusive)
+- **Parameter Group** -- created only when `parameters` entries are configured (with the required `parameterGroupFamily`); alternatively the cluster uses an existing group via `parameterGroupName` (mutually exclusive with inline parameters)
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **VPC subnets** in at least two Availability Zones for production deployments
-- **A security group** allowing inbound traffic on port 6379 (default) from your application instances
-- **A MemoryDB ACL** — use the built-in `open-access` for development; create a custom ACL with users via AWS console/CLI for production authentication
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `memorydb.yaml`:
+### AWS Account
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsMemorydbCluster
-metadata:
-  name: my-memorydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsMemorydbCluster.my-memorydb
-spec:
-  region: us-east-1
-  engine: redis
-  engineVersion: "7.1"
-  nodeType: db.t4g.small
-  numShards: 1
-  numReplicasPerShard: 0
-  aclName:
-    value: open-access
-  tlsEnabled: true
-  subnetIds:
-    - value: subnet-aaa111
-    - value: subnet-bbb222
-```
+- **At least two subnets** in distinct Availability Zones within the target VPC for multi-AZ durability. Private subnets are recommended. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Security groups** (optional) to control network-level access to the MemoryDB endpoint. Must allow inbound traffic on the cluster port (default 6379). Provide security group IDs directly or reference AwsSecurityGroup Cloud Resources.
+- **A KMS key** (optional) for customer-managed at-rest encryption. MemoryDB always encrypts data at rest; this field specifies your own key instead of the AWS-managed key. The KMS key is ForceNew and cannot be changed after creation. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
+- **An SNS topic** (optional) for cluster event notifications (failover, maintenance, configuration changes). Provide the topic ARN directly or reference an AwsSnsTopic Cloud Resource.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f memorydb.yaml
-```
+### Console
 
-This creates a single-shard, single-node MemoryDB cluster with Redis 7.1, TLS encryption, and no authentication.
+Open the deployment store, find **AWS MemoryDB Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Single Shard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the MemoryDB cluster will be created (e.g., `us-west-2`, `eu-west-1`). | Required; non-empty |
-| `engine` | `string` | Cache engine: `"redis"` or `"valkey"` | Must be `redis` or `valkey` |
-| `nodeType` | `string` | Instance type determining CPU, memory, and network capacity (e.g., `"db.t4g.small"`, `"db.r7g.large"`, `"db.r6gd.xlarge"` for data tiering) | Required, non-empty |
-| `aclName` | `StringValueOrRef` | The ACL the cluster authenticates against — reference an AwsMemorydbAcl or set the literal `"open-access"` (development only). AWS couples `tlsEnabled: false` to `"open-access"`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `engineVersion` | `string` | Provider default | Engine version (e.g., `"7.1"`, `"7.0"`, `"6.2"`) |
-| `description` | `string` | — | Human-readable cluster description |
-| `port` | `int32` | `6379` | Connection port. ForceNew. Range: 1–65535. |
-| `numShards` | `int32` | `1` | Number of shards (data partitions). Min: 1. |
-| `numReplicasPerShard` | `int32` | `1` | Replicas per shard. Range: 0–5. |
-| `subnetIds` | `StringValueOrRef[]` | `[]` | Subnets for a module-managed subnet group. Mutually exclusive with `subnetGroupName`. Can reference AwsSubnet via `valueFrom`. |
-| `subnetGroupName` | `string` | — | Bring-your-own existing subnet group. ForceNew. Mutually exclusive with `subnetIds`. |
-| `securityGroupIds` | `StringValueOrRef[]` | `[]` | Security groups to attach. Once one is set, the set can only be swapped, never emptied. |
-| `networkType` | `string` | `ipv4` | `ipv4`, `ipv6`, or `dual_stack`. ForceNew. |
-| `ipDiscovery` | `string` | `ipv4` | Which stack discovery commands report: `ipv4` or `ipv6` (needs an IPv6-capable `networkType`). |
-| `tlsEnabled` | `bool` | `true` | Enable TLS for in-transit encryption. ForceNew. |
-| `kmsKeyArn` | `StringValueOrRef` | — | Customer-managed KMS key ARN for at-rest encryption. ForceNew. Can reference AwsKmsKey. |
-| `maintenanceWindow` | `string` | AWS-assigned | Weekly window in UTC: `"ddd:hh24:mi-ddd:hh24:mi"`. |
-| `snapshotRetentionLimit` | `int32` | `0` | Days to retain automatic snapshots (0–35). 0 disables. |
-| `snapshotWindow` | `string` | AWS-assigned | Daily snapshot window in UTC: `"hh24:mi-hh24:mi"`. |
-| `finalSnapshotName` | `string` | — | Final snapshot name on cluster deletion. |
-| `snapshotArns` | `string[]` | `[]` | S3 ARNs of RDB files to restore from. ForceNew. Mutually exclusive with `snapshotName`. |
-| `snapshotName` | `string` | — | Named snapshot to restore from. ForceNew. Mutually exclusive with `snapshotArns`. |
-| `parameterGroupFamily` | `string` | — | Required when `parameters` are provided (e.g., `"memorydb_valkey7"`). |
-| `parameters` | `AwsMemorydbClusterParameter[]` | `[]` | Name/value pairs applied via a module-managed group. Mutually exclusive with `parameterGroupName`. |
-| `parameterGroupName` | `string` | — | Bring-your-own existing parameter group. Mutually exclusive with `parameters`. |
-| `multiRegionClusterName` | `string` | — | Existing multi-region cluster to join (active-active). ForceNew. |
-| `snsTopicArn` | `StringValueOrRef` | — | SNS topic for cluster event notifications. Can reference AwsSnsTopic. |
-| `autoMinorVersionUpgrade` | `bool` | `true` | Automatically apply minor engine version upgrades. |
-| `dataTiering` | `bool` | `false` | Move cold data to SSD. Only available on `db.r6gd.*` node types. ForceNew. |
-
-## Examples
-
-### Development Cluster
-
-A minimal single-node cluster for local development:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsMemorydbCluster
-metadata:
-  name: dev-memorydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsMemorydbCluster.dev-memorydb
-spec:
-  region: us-east-1
-  engine: redis
-  engineVersion: "7.1"
-  nodeType: db.t4g.small
-  numShards: 1
-  numReplicasPerShard: 0
-  aclName:
-    value: open-access
-```
-
-### Production HA with VPC and Snapshots
-
-Multi-shard cluster with replicas, custom ACL, VPC placement, and daily snapshots:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbCluster
 metadata:
   name: session-store
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsMemorydbCluster.session-store
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   engine: redis
   engineVersion: "7.1"
-  description: Production session store
   nodeType: db.r7g.large
   numShards: 2
-  numReplicasPerShard: 2
-  aclName:
-    valueFrom:
-      kind: AwsMemorydbAcl
-      name: prod-acl
-      fieldPath: status.outputs.acl_name
+  numReplicasPerShard: 1
   subnetIds:
-    - subnet-0a1b2c3d4e5f00001
-    - subnet-0a1b2c3d4e5f00002
-  securityGroupIds:
-    - sg-0123456789abcdef0
-  snapshotRetentionLimit: 7
-  snapshotWindow: "03:00-04:00"
-  maintenanceWindow: "sun:05:00-sun:06:00"
-  parameterGroupFamily: memorydb_redis7
-  parameters:
-    - name: activedefrag
-      value: "yes"
+    - value: "subnet-0a1b2c3d4e5f00001"
+    - value: "subnet-0a1b2c3d4e5f00002"
+  tlsEnabled: true
 ```
 
-### Full-Featured with Foreign Key References
+```shell
+planton apply -f memorydb-cluster.yaml
+```
 
-Production cluster using cross-resource references for VPC, security group, KMS, and SNS:
+This creates a two-shard MemoryDB cluster with one replica per shard (4 total nodes), TLS encryption enabled, the default `open-access` ACL, and AWS-managed at-rest encryption. A Stack Job tracks the provisioning and streams progress in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the MemoryDB cluster to a VPC, security group, and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsMemorydbCluster
-metadata:
-  name: analytics-store
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsMemorydbCluster.analytics-store
 spec:
-  region: us-east-1
-  engine: redis
-  engineVersion: "7.1"
-  description: High-throughput analytics store
-  nodeType: db.r6gd.xlarge
-  numShards: 4
-  numReplicasPerShard: 2
-  aclName:
-    valueFrom:
-      kind: AwsMemorydbAcl
-      name: analytics-acl
-      fieldPath: status.outputs.acl_name
-  dataTiering: true
   subnetIds:
     - valueFrom:
         kind: AwsSubnet
-        name: main-private-subnet-a
+        name: private-az1
         fieldPath: status.outputs.subnet_id
     - valueFrom:
         kind: AwsSubnet
-        name: main-private-subnet-b
+        name: private-az2
         fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
         name: memorydb-sg
         fieldPath: status.outputs.security_group_id
+  aclName:
+    valueFrom:
+      kind: AwsMemorydbAcl
+      name: prod-services
+      fieldPath: status.outputs.acl_name
   kmsKeyArn:
     valueFrom:
       kind: AwsKmsKey
       name: memorydb-key
       fieldPath: status.outputs.key_arn
-  snapshotRetentionLimit: 14
-  snapshotWindow: "02:00-03:00"
-  maintenanceWindow: "wed:04:00-wed:05:00"
-  parameterGroupFamily: memorydb_redis7
-  parameters:
-    - name: activedefrag
-      value: "yes"
-    - name: maxmemory-policy
-      value: volatile-lru
   snsTopicArn:
     valueFrom:
       kind: AwsSnsTopic
@@ -234,24 +106,66 @@ spec:
       fieldPath: status.outputs.topic_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, ACL, KMS key, and SNS topic first, then provisions the MemoryDB cluster with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_endpoint_address` | `string` | DNS address of the cluster endpoint for client connections |
-| `cluster_endpoint_port` | `int32` | Port of the cluster endpoint |
-| `cluster_arn` | `string` | ARN of the MemoryDB cluster |
-| `cluster_name` | `string` | Name of the cluster (matches `metadata.id`) |
-| `engine_patch_version` | `string` | Actual engine patch version running on the cluster |
-| `subnet_group_name` | `string` | Name of the created subnet group (empty if not created) |
-| `parameter_group_name` | `string` | Name of the created parameter group (empty if not created) |
+These are the most important decisions when configuring a MemoryDB cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Engine choice** -- Set `engine` to `"redis"` or `"valkey"` (open-source Redis-compatible alternative). Specify `engineVersion` (e.g., `"7.1"` for Redis, `"7.2"` for Valkey) or leave empty for the provider default. Unlike ElastiCache, MemoryDB provides full data durability through a multi-AZ transaction log.
 
-- [AwsVpc](/docs/catalog/aws/vpc) — provides VPC subnets for cluster placement
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls network access to MemoryDB endpoints
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed key for at-rest encryption
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — receives cluster event notifications
-- [AwsRedisElasticache](/docs/catalog/aws/redis-elasticache) — ephemeral caching alternative when durability is not needed
+**Topology** -- `numShards` controls data partitions (each holding a portion of the keyspace). `numReplicasPerShard` (0-5) controls read replicas within each shard. Total nodes = `numShards` x (`numReplicasPerShard` + 1). For production, use at least 2 shards with 1 replica each for high availability and read scaling.
+
+**Authentication** -- Every cluster requires an `aclName`. Use the built-in `"open-access"` ACL for development (no authentication) or reference an [AwsMemorydbAcl](/cloud-catalog/aws-memorydb-acl) whose member users ([AwsMemorydbUser](/cloud-catalog/aws-memorydb-user)) carry per-application permissions for production. Swapping ACLs applies in place. When `tlsEnabled` is `false`, only `"open-access"` is allowed.
+
+**Encryption** -- TLS is on by default (omit `tlsEnabled` to keep AWS's default). MemoryDB always encrypts data at rest; provide `kmsKeyArn` to use a customer-managed KMS key instead of the AWS-managed key. Both `tlsEnabled` and `kmsKeyArn` are ForceNew -- changing them destroys and recreates the cluster.
+
+**Snapshot restore** -- seed a new cluster's data from a named MemoryDB snapshot (`snapshotName`) or S3-hosted RDB files (`snapshotArns`, the migrate-from-self-managed path). The two are mutually exclusive and both are create-time decisions.
+
+**Network addressing** -- `networkType` (`ipv4`/`ipv6`/`dual_stack`, ForceNew) sets which IP families the cluster serves; `ipDiscovery` (updates in place) sets which family discovery commands return -- the dual-stack + flip-discovery combination migrates clients to IPv6 without replacement. `multiRegionClusterName` (ForceNew) joins an existing multi-Region cluster for active-active replication.
+
+**Data tiering** -- Set `dataTiering: true` on db.r6gd.* node types to automatically move less-frequently-accessed data to SSD storage, reducing cost for large datasets. ForceNew -- cannot be changed after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnetIds` | `status.outputs.subnet_id` |
+| **AwsMemorydbAcl** | `aclName` | `status.outputs.acl_name` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsKmsKey** (optional) | `kmsKeyArn` | `status.outputs.key_arn` |
+| **AwsSnsTopic** (optional) | `snsTopicArn` | `status.outputs.topic_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_endpoint_address` | DNS address of the cluster endpoint | Application connection strings, Redis client configuration |
+| `cluster_endpoint_port` | Port of the cluster endpoint | Application connection configuration |
+| `cluster_arn` | Amazon Resource Name of the cluster | IAM policies, CloudWatch alarms, resource tagging |
+| `cluster_name` | MemoryDB cluster name | Operational scripts, monitoring dashboards |
+| `engine_patch_version` | Actual engine patch version running | Compatibility verification, patching audits |
+| `subnet_group_name` | Subnet group name (if created) | Audit, related resource lookups |
+| `parameter_group_name` | Parameter group name (if created) | Parameter auditing |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development single-shard** -- A single-shard cluster with db.t4g.small nodes, one replica, TLS enabled, and the `open-access` ACL. Minimal cost for development and testing. Start from the **Dev Single Shard** preset.
+
+**Production high-availability** -- Multi-shard cluster with db.r7g.large nodes, replicas per shard, TLS enabled, customer-managed KMS encryption, snapshot retention, and SNS event notifications. Designed for production workloads requiring durability and failover. Start from the **Production HA** preset.
+
+**High-throughput** -- Multi-shard cluster with db.r7g.xlarge nodes, multiple replicas for read scaling, data tiering on db.r6gd.* node types, and custom parameters for memory management. Optimized for high-throughput workloads with large datasets. Start from the **High Throughput** preset.
+
+## Works With
+
+- [**AWS MemoryDB ACL**](/cloud-catalog/aws-memorydb-acl) -- the access control list the cluster attaches; its member [**users**](/cloud-catalog/aws-memorydb-user) carry per-application permissions
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides subnets for the MemoryDB subnet group across multiple Availability Zones
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for the cluster endpoint
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for at-rest encryption
+- [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- provides event notification delivery for cluster operations

@@ -39,7 +39,7 @@ make build
 make test
 
 # Or use debug.sh for a specific manifest
-./debug.sh ../hack/manifest.yaml
+./debug.sh ../../e2e/manifest.yaml
 ```
 
 ## Dependencies

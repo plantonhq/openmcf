@@ -48,4 +48,4 @@ planton apply -f security-group.yaml
 
 **Note**: Credentials are provided via stack input (CLI), not in the manifest `spec`.
 
-For more examples, see `examples.md` and [`hack/manifest.yaml`](../../e2e/manifest.yaml).
+For more examples, see `../../e2e/manifest.yaml` and [`e2e/manifest.yaml`](../../e2e/manifest.yaml).

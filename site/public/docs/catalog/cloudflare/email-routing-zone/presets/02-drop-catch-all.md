@@ -5,7 +5,7 @@ type: "preset"
 rank: "02"
 presetSlug: "02-drop-catch-all"
 componentSlug: "email-routing-zone"
-componentTitle: "Email Routing (Zone)"
+componentTitle: "Email Routing Zone"
 provider: "cloudflare"
 icon: "package"
 order: 2

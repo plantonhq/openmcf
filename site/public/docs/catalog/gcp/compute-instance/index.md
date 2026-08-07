@@ -8,98 +8,164 @@ componentName: "gcpcomputeinstance"
 
 # GCP Compute Instance
 
-Creates a Google Compute Engine virtual machine — the general-purpose compute node behind databases-on-VM, stateful servers, GPU workers, and bastion hosts — with the full single-instance surface: boot from image/snapshot/existing disk, first-class data-disk attachments, Spot provisioning, Shielded and Confidential VM, multi-NIC networking with static IPs by reference, and an in-place start/suspend/stop lever.
+Deploys a Compute Engine virtual machine with configurable machine type, boot disk, network interfaces, attached disks, scheduling options (including Spot VMs), Shielded/confidential hardening, GPU accelerators, service account bindings, and startup scripts. The instance integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnets, disks, addresses, KMS keys, and service accounts.
 
 ## What Gets Created
 
-- The Compute Engine API is enabled on the project (never disabled on destroy)
-- A `google_compute_instance` carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set)
-- The instance name falls back to `metadata.name` when `instanceName` is not set; SSH keys fold into the instance metadata `ssh-keys` key
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Compute Engine Instance** -- a virtual machine in the specified GCP project and zone, configured with the chosen machine type, boot source, and network interfaces
+- **Boot Disk** -- initialized from exactly one source: an OS image (fresh install), a snapshot (restore), or an existing bootable GcpComputeDisk; with configurable size, type (pd-standard, pd-balanced, pd-ssd, hyperdisk types), CMEK encryption, and auto-delete behavior
+- **Network Interfaces** -- one or more vNICs with optional external IPv4/IPv6 access configs, static internal/external IPs (reserved GcpAddress references), and alias IP ranges
+- **Disk Attachments** -- created only when `attachedDisks` is configured; first-class GcpComputeDisk resources attached in READ_WRITE or READ_ONLY mode, plus optional ephemeral local-SSD `scratchDisks`
+- **Service Account Binding** -- created only when `serviceAccount` is configured; binds a GCP service account with specified OAuth scopes to the instance
+- **Scheduling Configuration** -- created only when `scheduling` is configured; the Spot provisioning model, automatic restart, host maintenance policy, lifetime limits, and sole-tenant node affinities
+- **Hardening** -- Shielded VM boot-chain options, confidential computing (`confidentialInstanceConfig`), and GPU accelerators when configured
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **IAM permissions** — `roles/compute.instanceAdmin.v1` on the target project; `roles/iam.serviceAccountUser` on any attached service account
-- For CMEK boot disks: a `GcpKmsKey` the Compute Engine service agent can use
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `vm.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the Compute Engine instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Compute Engine API** enabled in the target project.
+- **VPC network and subnet** in the target project and region. Provide the network or subnet self-link directly or reference GcpVpcNetwork and GcpSubnetwork Cloud Resources via ValueFromRef.
+- **GCP service account** (recommended) -- a dedicated service account following least-privilege principles, referenced directly or via ValueFromRef to a GcpServiceAccount Cloud Resource.
+- **For CMEK disks** -- the Compute Engine service agent must hold `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the referenced GcpKmsKey.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Compute Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Spot VM** preset in the [Presets](#presets) tab for the cheapest full Linux machine, or **Hardened Web Server** for the production security posture.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpComputeInstance
 metadata:
-  name: dev-vm
+  name: app-server
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   zone: us-central1-a
-  machineType: e2-medium
+  machineType: e2-standard-2
   bootDisk:
     image: debian-cloud/debian-12
-    type: pd-balanced
+    sizeGb: 50
+    type: pd-ssd
   networkInterfaces:
-    - network:
-        value: default
-      accessConfigs:
-        - {}
-  scheduling:
-    provisioningModel: SPOT
-    instanceTerminationAction: DELETE
+    - subnetwork:
+        value: "projects/acme-prod-12345/regions/us-central1/subnetworks/default"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f vm.yaml
+planton apply -f compute-instance.yaml
 ```
 
-This creates a Spot Debian 12 VM on the default network with an ephemeral external IP — deeply discounted capacity that GCP may reclaim, ideal for dev and interruption-tolerant work.
+This creates a Debian 12 VM with 2 vCPU, 8 GB RAM, 50 GB SSD boot disk, and no external IP. Spot VM scheduling, service account, and deletion protection are not configured.
 
-## Configuration Reference
+### InfraChart
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | StringValueOrRef | No | Owning project (reference a `GcpProject`); empty uses the provider default. Immutable |
-| `instanceName` | string | No | Falls back to `metadata.name`. Immutable |
-| `zone` | string | Yes | e.g. `us-central1-a`. Immutable |
-| `machineType` | string | Yes | e.g. `e2-medium`, `n2-standard-4`. Changing it stops/restarts the VM |
-| `hostname` | string | No | Custom FQDN. Immutable |
-| `bootDisk` | object | Yes | Exactly one source: `image`, `sourceSnapshot`, or `sourceDisk` (`GcpComputeDisk` reference); plus size/type/`autoDelete`/CMEK |
-| `attachedDisks[]` | list | No | First-class `GcpComputeDisk` references — disks keep their own lifecycle |
-| `scratchDisks[]` | list | No | Ephemeral local SSDs (contents lost on stop). Create-time only |
-| `networkInterfaces[]` | list | Yes | `network` (`GcpVpcNetwork`) or `subnetwork` (`GcpSubnetwork`); static internal `networkIp` and external `accessConfigs[].natIp` reference `GcpAddress`; IPv6, gVNIC, alias ranges |
-| `serviceAccount` | object | No | `email` (`GcpServiceAccount` reference) + `scopes`. Omitted = Compute Engine default account |
-| `scheduling` | object | No | Spot (`provisioningModel: SPOT`), maintenance (`MIGRATE`/`TERMINATE`), Spot termination action (`STOP`/`DELETE`), run-duration limits, sole tenancy |
-| `shieldedInstanceConfig` | object | No | Secure boot, vTPM, integrity monitoring |
-| `confidentialInstanceConfig` | object | No | SEV / SEV_SNP / TDX memory encryption; requires `onHostMaintenance: TERMINATE` |
-| `guestAccelerators[]` | list | No | GPUs; require `onHostMaintenance: TERMINATE` |
-| `advancedMachineFeatures` | object | No | Nested virtualization, SMT control, PMU, turbo mode |
-| `reservationAffinity` | object | No | Reserved-capacity consumption mode |
-| `totalEgressBandwidthTier` | string | No | `DEFAULT` or `TIER_1` |
-| `metadata` / `startupScript` / `sshKeys[]` | — | No | Guest metadata, per-boot startup script, SSH keys (folded into `ssh-keys`) |
-| `labels` / `tags[]` / `resourceManagerTags` | — | No | Labels (merged beneath platform labels), firewall network tags, org-policy tag bindings |
-| `deletionProtection` | bool | No | Guards the VM object only (default false — data levers live on disks) |
-| `desiredStatus` | string | No | `RUNNING` / `SUSPENDED` / `TERMINATED` — start/suspend/stop in place |
-| `allowStoppingForUpdate` | bool | No | Allow stop/restart for updates that need it (recommended true) |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a GCP project, subnet, and service account deployed in the same InfraPipeline:
 
-## Stack Outputs
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+  networkInterfaces:
+    - subnetwork:
+        valueFrom:
+          kind: GcpSubnetwork
+          name: production-subnet
+          fieldPath: status.outputs.subnetwork_self_link
+  serviceAccount:
+    email:
+      valueFrom:
+        kind: GcpServiceAccount
+        name: app-server-sa
+        fieldPath: status.outputs.email
+```
 
-| Output | Description |
-|--------|-------------|
-| `instance_name` | Name of the instance |
-| `instance_id` | Server-assigned unique numeric identifier |
-| `self_link` | API self link — what consumers reference |
-| `internal_ip` | Primary internal IP (first interface) |
-| `external_ip` | External IP of the first interface; `""` when private |
-| `status` | Current status (RUNNING, TERMINATED, ...) |
-| `zone` | Zone |
-| `machine_type` | Machine type |
-| `cpu_platform` | CPU platform the instance landed on |
+The InfraPipeline resolves the dependency graph, deploys the project, subnet, and service account first, then provisions the Compute Engine instance with the resolved values.
 
-## Related Resources
+## Key Configuration
 
-- **GcpComputeDisk** — boot-from-existing-disk and attached data disks with their own lifecycles
-- **GcpAddress** — static internal (`networkIp`) and external (`accessConfigs[].natIp`) IPs
-- **GcpVpcNetwork / GcpSubnetwork** — the networks each vNIC attaches to
-- **GcpServiceAccount** — the VM's least-privilege workload identity
-- **GcpKmsKey** — CMEK protection for boot and attached disks
+These are the most important decisions when configuring a Compute Engine instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Machine type and zone** -- The `machineType` field sets CPU and memory (e.g., `e2-standard-2` for 2 vCPU / 8 GB, `n2-standard-4` for 4 vCPU / 16 GB, or custom shapes like `custom-6-20480`). The `zone` determines physical placement and must match the subnet's region; it is immutable, and attached disks must live in the same zone.
+
+**Boot disk** -- Exactly one source: `bootDisk.image` (an OS image family like `debian-cloud/debian-12`), `bootDisk.sourceSnapshot`, or `bootDisk.sourceDisk` (an existing bootable GcpComputeDisk). Choose `bootDisk.type` based on I/O requirements: `pd-balanced` for the sensible default, `pd-ssd` for high IOPS, hyperdisk types for tunable performance.
+
+**Data disks** -- Durable data belongs on `attachedDisks` entries referencing first-class GcpComputeDisk resources by `self_link` -- the data survives this VM. Ephemeral `scratchDisks` (local SSD) offer extreme IOPS but lose contents on stop or preemption.
+
+**Networking** -- Configure `networkInterfaces` with a VPC network or subnetwork reference. Omit `accessConfigs` for private-only instances (use Cloud NAT for internet egress). Add an access config for an external IP -- reference a reserved EXTERNAL GcpAddress from `natIp` to keep the address across rebuilds, and a reserved INTERNAL GcpAddress from `networkIp` for a stable private address.
+
+**Spot VMs** -- Set `scheduling.provisioningModel: SPOT` for 60-91% cost savings with the trade-off of potential preemption (the legacy preemptible flag is derived automatically). Use `scheduling.instanceTerminationAction: STOP` to preserve the stopped VM on preemption, or `DELETE` for ephemeral workloads.
+
+**Security** -- `shieldedInstanceConfig` hardens the boot chain (secure boot is the deliberate opt-in), `confidentialInstanceConfig` enables hardware memory encryption (supported machine families only; requires `onHostMaintenance: TERMINATE`), and `deletionProtection` guards the VM object -- the data levers remain the disks' own lifecycles.
+
+**Service account** -- Bind a dedicated `serviceAccount.email` with the single cloud-platform scope instead of the default Compute Engine service account. Reference a GcpServiceAccount Cloud Resource via ValueFromRef.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpComputeDisk** (optional) | `bootDisk.sourceDisk` | `status.outputs.self_link` |
+| **GcpComputeDisk** (optional) | `attachedDisks[].source` | `status.outputs.self_link` |
+| **GcpKmsKey** (optional) | `bootDisk.kmsKey`, `attachedDisks[].kmsKey` | `status.outputs.key_id` |
+| **GcpVpcNetwork** (optional) | `networkInterfaces[].network` | `status.outputs.network_self_link` |
+| **GcpSubnetwork** (optional) | `networkInterfaces[].subnetwork` | `status.outputs.subnetwork_self_link` |
+| **GcpAddress** (optional) | `networkInterfaces[].networkIp` (INTERNAL), `networkInterfaces[].accessConfigs[].natIp` (EXTERNAL) | `status.outputs.address` |
+| **GcpServiceAccount** (optional) | `serviceAccount.email` | `status.outputs.email` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_name` | Name of the Compute Engine instance | Monitoring dashboards, SSH access |
+| `instance_id` | Unique numeric instance identifier | API references, audit logs |
+| `self_link` | GCP resource self link | IAM bindings, instance groups |
+| `internal_ip` | Private IP address | Application connection strings, GcpDnsRecord targets |
+| `external_ip` | Public IP address (empty for private VMs) | SSH access, external service endpoints |
+| `status` | Current instance status (RUNNING, TERMINATED, ...) | Health monitoring, automation triggers |
+| `zone` | Zone where the instance is located | Regional resource configuration |
+| `machine_type` | Machine type of the instance | Capacity planning, cost reporting |
+| `cpu_platform` | CPU platform of the instance | Performance benchmarking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Dev Spot VM** -- The cheapest full Linux machine: an e2-medium Spot VM on the default network with an ephemeral external IP, deleted outright on preemption. Suitable for dev boxes, CI runners, and disposable experiments. Start from the **Dev Spot VM** preset.
+
+**Hardened Web Server** -- The production security posture: a Shielded VM on a custom-mode subnetwork with no external IP, a dedicated least-privilege service account, OS Login instead of static SSH keys, and firewall targeting via network tags. Start from the **Hardened Web Server** preset.
+
+**Stateful Data VM** -- The database-on-VM pattern where everything durable outlives the instance: data on a referenced GcpComputeDisk, a stable internal address from a referenced GcpAddress, deletion protection on the VM object, and live-migration for zero-downtime maintenance. Start from the **Stateful Data VM** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the instance is created
+- [**GCP Compute Disk**](/cloud-catalog/gcp-compute-disk) -- provides durable boot and data disks that survive the instance
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for instance networking
+- [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- provides the subnet for instance placement
+- [**GCP Address**](/cloud-catalog/gcp-address) -- provides reserved static internal and external IPs
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the runtime identity for the instance

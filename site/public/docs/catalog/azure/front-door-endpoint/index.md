@@ -8,60 +8,108 @@ componentName: "azurefrontdoorendpoint"
 
 # Azure Front Door Endpoint
 
-Creates an endpoint inside an AzureFrontDoorProfile -- the public entry point client traffic arrives at. Azure generates a globally unique `{name}-{hash}.z01.azurefd.net` hostname; routes attach to the endpoint and custom-domain DNS records CNAME onto its hostname.
+Deploys a public Front Door endpoint -- the `*.azurefd.net` hostname clients hit at Microsoft's edge. The endpoint belongs to an AzureFrontDoorProfile and is the attachment point for routes (and later custom domains). Renaming the endpoint replaces it and changes the generated hostname, so every DNS record pointing at the old name breaks. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent profile.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorEndpoint resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Endpoint** -- an `azurerm_cdn_frontdoor_endpoint` on the referenced profile, with its generated public hostname
+- **Front Door Endpoint** -- a named child of the profile with a generated public hostname (`{endpointName}-{hash}.z01.azurefd.net`)
+- **Enabled state** -- whether the endpoint accepts traffic (default on; disable for maintenance without deleting the hostname)
+- **Azure Tags** -- resource metadata tags merged with user tags and applied to the endpoint
 
-## Prerequisites
+## The Endpoint in the Front Door Family
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureFrontDoorProfile** to create the endpoint in (referenced through `profileId`)
+The endpoint is the public face of the delivery surface:
 
-## Quick Start
+- **AzureFrontDoorProfile** -- the parent container, referenced by `profileId`; its SKU tier and identity govern every child
+- **AzureFrontDoorRoute** -- attaches URL patterns to this endpoint and forwards them to an origin group
+- **AzureFrontDoorCustomDomain** -- later, CNAMEs a branded hostname at this endpoint's `host_name` output (or aliases it via Azure DNS)
 
-Create a file `endpoint.yaml`:
+## Before You Deploy
+
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Planton Runner** -- required when using Runner-based credential delivery.
+
+### Azure Subscription
+
+- **An Azure Front Door Profile** the endpoint nests under. Reference an AzureFrontDoorProfile Cloud Resource via ValueFromRef, or provide the profile ARM ID directly.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Endpoint**, and click **Deploy**. The wizard walks you through the parent profile, the endpoint name (2–46 characters -- shorter than other Front Door names because Azure builds the public hostname from it), and the enabled switch. Start from the **Production Endpoint** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorEndpoint
 metadata:
-  name: web-endpoint
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorEndpoint.web-endpoint
+  name: my-web-endpoint
+  org: acme-corp
+  env: prod
 spec:
   profileId:
     valueFrom:
       kind: AzureFrontDoorProfile
-      name: my-front-door
+      name: cdn-profile
       fieldPath: status.outputs.profile_id
-  endpointName: web
+  endpointName: my-web
 ```
-
-Deploy:
 
 ```shell
-planton apply -f endpoint.yaml
+planton apply -f front-door-endpoint.yaml
 ```
 
-The endpoint name becomes the prefix of the public hostname, so pick something recognizable -- and treat it as permanent: renaming replaces the endpoint and changes the hostname, breaking every DNS record pointing at the old one. Set `enabled: false` to provision dark and flip the switch at launch.
+This creates an enabled endpoint under the profile. Routes attach next, referencing the `endpoint_id` output; custom-domain DNS points at the `host_name` output.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `endpoint_id` | The ARM id -- what AzureFrontDoorRoute references as its parent |
-| `endpoint_name` | The endpoint's name inside the profile |
-| `host_name` | The generated `*.azurefd.net` hostname -- the CNAME target for custom-domain DNS records |
+```yaml
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: cdn-profile
+      fieldPath: status.outputs.profile_id
+  endpointName: my-web
+```
 
-## Related Resources
+## Key Configuration
 
-- [Azure Front Door Profile](/docs/catalog/azure/front-door-profile) -- the parent profile
-- [Azure Front Door Route](/docs/catalog/azure/front-door-route) -- attaches traffic rules to this endpoint
-- [Azure DNS Record](/docs/catalog/azure/dns-record) -- CNAMEs custom domains onto the endpoint hostname
+**Endpoint name** -- 2–46 characters; letters, digits, and hyphens; must start and end with a letter or digit. Becomes the prefix of the generated public hostname. ForceNew: renaming replaces the endpoint and changes the hostname.
+
+**Enabled** -- the traffic switch. Leave on for production; set false for a maintenance hold without deleting the DNS target. Defaults to true when omitted.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureFrontDoorProfile** | `profileId` | `status.outputs.profile_id` |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `endpoint_id` | ARM resource ID of the endpoint | AzureFrontDoorRoute.`endpointId` |
+| `endpoint_name` | The endpoint's name | Operator tooling |
+| `host_name` | The generated `*.azurefd.net` hostname | AzureDnsRecord CNAME/alias targets; AzureFrontDoorCustomDomain validation |
+
+## Presets
+
+| Preset | Rank | Description |
+|--------|------|-------------|
+| Production Endpoint | 1 | Enabled endpoint for live traffic |
+| Maintenance Disabled | 2 | Endpoint created with traffic off |
+
+## Related Components
+
+- **AzureFrontDoorProfile** -- the parent container
+- **AzureFrontDoorRoute** -- attaches patterns to this endpoint
+- **AzureDnsRecord** -- CNAMEs or aliases a custom hostname at `host_name`

@@ -18,15 +18,15 @@ alwaysApply: false
 
 ### Step 1: Read Source Files
 
-1. The guide itself: `{version}/GUIDE.md`
-2. `{version}/spec.proto` and `{version}/stack_outputs.proto` -- the current schema truth
+1. The guide itself: `GUIDE.md` at the component root
+2. `{version}/spec.proto` and `{version}/outputs.proto` -- the current schema truth
 3. `{version}/reference.md` -- the generated page the guide must complement, never duplicate
-4. `{version}/iac/pulumi/module/*.go` (and `iac/tf/*.tf` where present) -- deployment behavior claims
-5. `{version}/docs/README.md` -- the research record, where design-rationale claims should trace
+4. `iac/pulumi/module/*.go` (and `iac/tf/*.tf` where present) -- deployment behavior claims
+5. The component's `README.md` and `catalog.md` -- the durable-judgment record beside the guide (research documents are never committed; design rationale traces to these files or to the guide itself)
 
 ### Step 2: Wiring Checks (Critical)
 
-- The kind's `reference.md` head carries the `**Guide**: [GUIDE.md](GUIDE.md)` line. Missing line means `make generate-reference` was not run after the guide landed -- the guide is invisible to index readers.
+- The kind's `reference.md` head carries the `**Guide**: [GUIDE.md](../GUIDE.md)` line. Missing line means `make generate-reference` was not run after the guide landed -- the guide is invisible to index readers.
 - `go test ./pkg/explain/refgen/` passes: guardrails (placement, embedded manifests, links) and the freshness gate.
 
 ### Step 3: Groundedness Checks (Critical)

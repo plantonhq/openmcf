@@ -8,84 +8,47 @@ componentName: "openfgaauthorizationmodel"
 
 # OpenFGA Authorization Model
 
-Deploys an authorization model into an existing OpenFGA store. The model defines types, relations, and access rules that govern how permission checks are evaluated. Models can be specified in DSL format (recommended) or JSON format, and are immutable — each change creates a new model version with a new ID. This component requires Terraform/Tofu as the provisioner; no Pulumi provider is available.
+Deploys an authorization model into an existing OpenFGA store. The model defines types, relations, and access rules that govern how permission checks are evaluated. Models can be specified in DSL format (recommended) or JSON format, and are immutable -- each update creates a new model version with a new ID. Integrates with Planton's Provider Connections for OpenFGA credential management and ValueFromRef for store dependency wiring.
 
 ## What Gets Created
 
-When you deploy an OpenFgaAuthorizationModel resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Authorization Model Document** — an `openfga_authorization_model_document` data source that converts DSL to JSON, created only when `modelDsl` is provided
-- **Authorization Model** — an `openfga_authorization_model` resource containing the type definitions, relations, and conditions for fine-grained access control
+- **Authorization Model Document** -- when `modelDsl` is provided, a data source converts the human-readable DSL to JSON for the OpenFGA API
+- **Authorization Model** -- an `openfga_authorization_model` resource containing the type definitions, relations, and conditions for fine-grained access control
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenFGA server** — a running OpenFGA instance (self-hosted or cloud-hosted)
-- **OpenFGA credentials** configured via environment variables: `FGA_API_URL` (required), plus either `FGA_API_TOKEN` for token-based auth or `FGA_CLIENT_ID`, `FGA_CLIENT_SECRET`, and `FGA_API_TOKEN_ISSUER` for client credentials auth
-- **An existing OpenFGA store** — provide the store ID directly or reference an OpenFgaStore resource via `valueFrom`
-- **Terraform/Tofu** — this component has no Pulumi provider; set the provisioner label to `tofu`
+### Planton Setup
 
-## Quick Start
+- **OpenFGA Provider Connection** -- an active connection in the Connect module with the OpenFGA API URL and authentication credentials (API token or client credentials). Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline authentication.
 
-Create a file `authz-model.yaml`:
+### OpenFGA Server
 
-```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaAuthorizationModel
-metadata:
-  name: my-model
-  annotations:
-    planton.dev/provisioner: tofu
-spec:
-  storeId: "01HXYZ..."
-  modelDsl: |
-    model
-      schema 1.1
+- **A running OpenFGA instance** -- self-hosted or cloud-hosted, reachable from the Planton Runner or provisioner environment.
+- **An existing OpenFGA store** -- provide the store ID directly or reference an OpenFgaStore Cloud Resource via ValueFromRef.
 
-    type user
+## Deploy
 
-    type document
-      relations
-        define viewer: [user]
-```
+### Console
 
-Deploy:
+Open the deployment store, find **OpenFGA Authorization Model**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **RBAC Model (DSL)** preset in the [Presets](#presets) tab for a common role-based access control pattern.
 
-```shell
-planton apply -f authz-model.yaml
-```
+### CLI
 
-This creates an authorization model with a `user` type and a `document` type that has a `viewer` relation.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `storeId` | `string` | ID of the OpenFGA store where the model is created. Immutable — changing it requires replacing the model. Can reference an OpenFgaStore resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `modelDsl` | `string` | — | Authorization model in DSL format (recommended). More human-readable than JSON. Automatically converted to JSON during deployment. Exactly one of `modelDsl` or `modelJson` must be specified. |
-| `modelJson` | `string` | — | Authorization model in JSON format. Must include `schema_version` and `type_definitions`. Exactly one of `modelDsl` or `modelJson` must be specified. |
-
-## Examples
-
-### Basic Model with DSL
-
-A minimal model defining users and documents with viewer, editor, and owner relations, using the recommended DSL format:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1alpha1
+apiVersion: openfga.planton.dev/v1
 kind: OpenFgaAuthorizationModel
 metadata:
-  name: basic-model
-  annotations:
-    planton.dev/provisioner: tofu
+  name: rbac-model
+  org: acme-corp
+  env: prod
 spec:
-  storeId: "01HXYZ..."
+  storeId:
+    value: "01HXYZ..."
   modelDsl: |
     model
       schema 1.1
@@ -99,95 +62,63 @@ spec:
         define owner: [user]
 ```
 
-### Model with JSON Format
-
-The same model defined in JSON, for teams that prefer structured data or are migrating existing JSON definitions:
-
-```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaAuthorizationModel
-metadata:
-  name: json-model
-  annotations:
-    planton.dev/provisioner: tofu
-spec:
-  storeId: "01HXYZ..."
-  modelJson: |
-    {
-      "schema_version": "1.1",
-      "type_definitions": [
-        {
-          "type": "user",
-          "relations": {}
-        },
-        {
-          "type": "document",
-          "relations": {
-            "viewer": {"this": {}},
-            "editor": {"this": {}},
-            "owner": {"this": {}}
-          },
-          "metadata": {
-            "relations": {
-              "viewer": {"directly_related_user_types": [{"type": "user"}]},
-              "editor": {"directly_related_user_types": [{"type": "user"}]},
-              "owner": {"directly_related_user_types": [{"type": "user"}]}
-            }
-          }
-        }
-      ]
-    }
+```shell
+planton apply -f openfga-authz-model.yaml
 ```
 
-### Hierarchical Model with Foreign Key Reference
+This creates an authorization model with a `user` type and a `document` type that has viewer, editor, and owner relations. A Stack Job tracks the provisioning in real time.
 
-A role-based model with groups, folders, and documents using a foreign key reference to resolve the store ID from an OpenFgaStore resource:
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the model to a store deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1alpha1
-kind: OpenFgaAuthorizationModel
-metadata:
-  name: rbac-model
-  annotations:
-    planton.dev/provisioner: tofu
 spec:
   storeId:
     valueFrom:
       kind: OpenFgaStore
       name: prod-authz
-      field: status.outputs.id
-  modelDsl: |
-    model
-      schema 1.1
-
-    type user
-
-    type group
-      relations
-        define member: [user]
-
-    type folder
-      relations
-        define owner: [user]
-        define viewer: [user, group#member]
-
-    type document
-      relations
-        define parent: [folder]
-        define owner: [user]
-        define editor: [user, group#member]
-        define viewer: [user, group#member] or editor or owner or viewer from parent
+      fieldPath: status.outputs.id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the store first, then creates the authorization model in it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Unique identifier of the authorization model version. Each model change produces a new ID. |
+These are the most important decisions when configuring an OpenFGA authorization model. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Model format** -- Choose between `modelDsl` (recommended) and `modelJson`. The DSL format is more human-readable and is the format used in OpenFGA documentation. The IaC module automatically converts DSL to JSON during deployment. Exactly one of the two must be specified.
 
-- [OpenFgaStore](/docs/catalog/openfga/store) — provides the store where authorization models are created
-- [OpenFgaRelationshipTuple](/docs/catalog/openfga/relationship-tuple) — creates authorization data (who has what relation to which object) evaluated against the model
+**Store ID** -- The `storeId` field identifies which OpenFGA store holds this model. Provide a direct value or reference an OpenFgaStore via ValueFromRef. The store ID is immutable -- changing it requires replacing the model.
+
+**Model immutability** -- Authorization models are immutable in OpenFGA. Each change creates a new model version with a new ID. Existing relationship tuples remain valid across model versions as long as the types and relations they reference are still defined.
+
+**Type design** -- Define types that map to your application's entities (e.g., `user`, `group`, `document`, `folder`). Each type can have relations that control access (e.g., `viewer`, `editor`, `owner`). Use usersets like `group#member` to enable group-based inheritance.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenFgaStore** | `storeId` | `status.outputs.id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | Unique identifier of the authorization model version | Referenced by OpenFGA Relationship Tuple components via `authorizationModelId` |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**RBAC model** -- Defines user, group, and document types with viewer/editor/owner roles and group-based access inheritance. Groups use a `member` relation, and documents grant access to `group#member` usersets. This is the most common starting pattern for applications that need role-based access control. Start from the **RBAC Model (DSL)** preset.
+
+**Hierarchical document access** -- Adds folder and document types with parent relationships so that viewer and editor permissions cascade from folders to their contents. Suitable for file-management and content-management systems with nested permission hierarchies. Start from the **Hierarchical Document Access Model (DSL)** preset.
+
+## Works With
+
+- [**OpenFGA Store**](/cloud-catalog/openfga-store) -- provides the store where authorization models are created

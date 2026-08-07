@@ -6,7 +6,7 @@ spec:
   selector:
     kind: platform
   description: The EKS cluster your full-stack apps land on — everything in the baseline plus the cluster-resident database, messaging, and autoscaling operators applications depend on.
-  iconUrl: https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/aws/awsekscluster/v1/logo.svg
+  iconUrl: https://downloads.planton.dev/catalog/logos/aws/awsekscluster/logo.svg
   isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/aws/kubernetes/eks-full-stack-platform

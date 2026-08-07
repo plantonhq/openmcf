@@ -8,55 +8,64 @@ componentName: "awslblistener"
 
 # AWS LB Listener
 
-Deploys an ELBv2 listener: the port/protocol entry point on a load balancer,
-with TLS certificates (default plus SNI), an optional authentication step,
-and the default action taken when no listener rule matches. One kind serves
-both families -- ALB listeners take the full action set; NLB listeners
-forward only.
+Deploys an ELBv2 listener — the port/protocol entry point on a load balancer, owning the TLS material clients see and the default action taken when no listener rule matches. A listener is a first-class node in the routing graph: one load balancer carries many listeners (80 and 443 at minimum on most ALBs), and listener rules attach to a specific listener as services deploy. The same kind serves both families — ALB listeners (HTTP/HTTPS) take the full action set including authentication; NLB listeners (TCP/UDP/TCP_UDP/TLS) forward only.
 
 ## What Gets Created
 
-When you deploy an AwsLbListener resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Listener** — an `aws_lb_listener` / `lb.Listener` on the referenced load
-  balancer, with the specified port, protocol, TLS configuration, and
-  default-action chain
-- **SNI certificate attachments** — one listener-certificate attachment per
-  entry in `additionalCertificateArns`, for serving multiple domains from one
-  listener
-- **Listener attributes** — TCP idle timeout (NLB) and HTTP header
-  injection/override attributes (ALB), when configured
+- **Listener** -- on the referenced load balancer, with its port, protocol, and default-action chain
+- **Certificate attachments** -- the default certificate plus any SNI certificates (HTTPS/TLS listeners)
+- **Mutual TLS configuration** -- when configured on an ALB HTTPS listener
+- **Header policy attributes** -- edge-served CORS/security response headers and TLS/mTLS request-header injection (ALB listeners)
 
-Per-service routing is **not** created here — attach `AwsLbListenerRule`
-resources to this listener's `listener_arn` output.
+The load balancer, target groups, and listener rules are separate components — rules attach through this listener's `listener_arn` output.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A load balancer**: an `AwsAlb` (default reference) or `AwsNlb`.
-- **An ACM certificate** (e.g. `AwsCertManagerCert`) for `HTTPS` and `TLS` listeners.
-- **A target group** (`AwsLbTargetGroup`) for forward actions.
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Load Balancer** -- an AwsAlb (or AwsNlb) referenced by its `load_balancer_arn` output; the wizard's family toggle swaps the reference target.
+- **Certificates** -- AwsCertManagerCert resources referenced by their `cert_arn` outputs for HTTPS/TLS listeners.
+- **Target Groups** -- AwsLbTargetGroup resources for the forward actions, referenced by their `target_group_arn` outputs.
+
+### AWS Account
+
+- **ELB permissions** -- the credentials used by the Provider Connection must have `elasticloadbalancing:CreateListener`, `ModifyListener`, `AddListenerCertificates`, and `DeleteListener`, plus `iam:CreateServiceLinkedRole` on first use.
+- **Certificate region** -- ACM certificates must live in the listener's own region.
+- **OIDC secret** -- an authenticate-oidc action's client secret is a managed secret reference (`$secret/<slug>`); create the org secret before deploying.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS LB Listener**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTPS Forward** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsLbListener
 metadata:
-  name: https
+  name: https-listener
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   loadBalancerArn:
     valueFrom:
       kind: AwsAlb
-      name: main-alb
+      name: api-gateway
       fieldPath: status.outputs.load_balancer_arn
   port: 443
   protocol: HTTPS
   certificateArn:
     valueFrom:
       kind: AwsCertManagerCert
-      name: main-cert
+      name: wildcard-cert
       fieldPath: status.outputs.cert_arn
   defaultActions:
     - type: forward
@@ -65,7 +74,7 @@ spec:
           - arn:
               valueFrom:
                 kind: AwsLbTargetGroup
-                name: api
+                name: web-servers
                 fieldPath: status.outputs.target_group_arn
 ```
 
@@ -73,143 +82,57 @@ spec:
 planton apply -f listener.yaml
 ```
 
-## Configuration Reference
+This attaches a TLS-terminating HTTPS listener to the ALB, forwarding everything to the web-servers group. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region; must match the load balancer's region. | Required; non-empty |
-| `loadBalancerArn` | `string \| valueFrom` | The load balancer this listener attaches to. Defaults to referencing an `AwsAlb`'s `load_balancer_arn` output; use explicit `valueFrom` for `AwsNlb`. Immutable. | Required |
-| `port` | `int` | Port the listener accepts traffic on. | Required; 1–65535 |
-| `protocol` | `string` | Listener protocol; decides the family and allowed actions. | Required. One of: `HTTP`, `HTTPS` (ALB), `TCP`, `UDP`, `TCP_UDP`, `TLS` (NLB) |
-| `defaultActions` | `object[]` | Action chain for requests no rule matches. Auth actions run first; the chain ends in exactly one of `forward`, `redirect`, or `fixed-response`. NLB protocols: exactly one `forward`. | Required; min 1 item |
+These are the most important decisions when configuring a listener. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**The attachment is a one-way door** -- moving a listener to another load balancer replaces it. Port, protocol, certificates, and actions all update in place.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `certificateArn` | `string \| valueFrom` | — | Default server certificate. Required for `HTTPS`/`TLS`; not valid otherwise. References `AwsCertManagerCert.cert_arn` by default. |
-| `additionalCertificateArns` | `(string \| valueFrom)[]` | `[]` | SNI certificates for serving several domains from one listener. |
-| `sslPolicy` | `string` | AWS default | TLS security policy. Recommended: `ELBSecurityPolicy-TLS13-1-2-2021-06`. `HTTPS`/`TLS` only. |
-| `alpnPolicy` | `string` | — | NLB `TLS` only: `HTTP1Only`, `HTTP2Only`, `HTTP2Optional`, `HTTP2Preferred`, `None`. |
-| `mutualAuthentication` | `object` | off | ALB `HTTPS` only: mTLS `mode` (`off`, `passthrough`, `verify`), `trustStoreArn` (required for `verify`), expiry/CA-advertisement options. |
-| `tcpIdleTimeoutSeconds` | `int` | `350` | NLB `TCP` only: idle timeout, 60–6000. |
-| `httpHeaders` | `object` | — | ALB only: request-header injection (TLS/mTLS details toward targets) and response-header overrides (CORS, HSTS, CSP, X-Frame-Options). |
-| `defaultActions[].type` | `string` | — | `forward`, `redirect`, `fixed-response`, `authenticate-cognito`, `authenticate-oidc`, or `jwt-validation`. Exactly one matching config block must be set. |
-| `defaultActions[].forward.targetGroups` | `object[]` | — | 1–5 weighted destinations; `arn` references `AwsLbTargetGroup.target_group_arn` by default, `weight` 0–999 (default 1). |
-| `defaultActions[].forward.stickiness` | `object` | disabled | Pins clients to the group that served their first request in a weighted forward. |
-| `defaultActions[].redirect` | `object` | — | `statusCode` (`HTTP_301`/`HTTP_302`) plus optional protocol/port/host/path/query overrides; untouched parts pass through. |
-| `defaultActions[].fixedResponse` | `object` | — | `contentType`, `statusCode` (2xx/4xx/5xx, default `503`), `messageBody` (max 1024 chars). |
-| `defaultActions[].authenticateCognito` | `object` | — | `userPoolArn` (references `AwsCognitoUserPool`), `userPoolClientId`, `userPoolDomain`, scope/session options. |
-| `defaultActions[].authenticateOidc` | `object` | — | Issuer, authorization/token/user-info endpoints, `clientId`, `clientSecret` (handled as a secret end to end), scope/session options. |
-| `defaultActions[].jwtValidation` | `object` | — | `issuer`, `jwksEndpoint`, up to 10 additional required claims. |
+**The protocol decides everything** -- HTTP/HTTPS listeners take the full action set (forward, redirect, fixed-response, Cognito, OIDC, JWT validation) plus mTLS and header policy; NLB protocols (TCP/UDP/TCP_UDP/TLS) forward to exactly one target group — AWS rejects everything else at Layer 4.
 
-## Examples
+**Certificates live here, not on the load balancer** -- the default certificate serves clients matching no SNI certificate; additional certificates multiplex several domains on one listener. Reference AwsCertManagerCert outputs so ACM renewals never go stale.
 
-### HTTP-to-HTTPS redirect listener
+**Default actions are the unmatched-request answer** -- a chain may front the terminal action with authentication, and every chain ends in exactly one forward, redirect, or fixed response. A listener whose real traffic flows through rules often defaults to an explicit fixed-response 404.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListener
-metadata:
-  name: http-redirect
-spec:
-  region: us-west-2
-  loadBalancerArn:
-    valueFrom:
-      kind: AwsAlb
-      name: main-alb
-      fieldPath: status.outputs.load_balancer_arn
-  port: 80
-  protocol: HTTP
-  defaultActions:
-    - type: redirect
-      redirect:
-        statusCode: HTTP_301
-        protocol: HTTPS
-        port: "443"
-```
+**Authentication without application code** -- authenticate-oidc puts corporate SSO in front of anything behind the listener; jwt-validation rejects requests without a valid bearer token at the edge. The OIDC client secret is reference-only, resolved just-in-time at deploy.
 
-### Multi-domain HTTPS with SNI and a 404 default
+**Weighted forwards enable canaries** -- up to 5 target groups with weights (90/10 …), plus group stickiness so sessions do not flap between blue and green.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListener
-metadata:
-  name: https-multi-domain
-spec:
-  region: us-west-2
-  loadBalancerArn:
-    valueFrom:
-      kind: AwsAlb
-      name: main-alb
-      fieldPath: status.outputs.load_balancer_arn
-  port: 443
-  protocol: HTTPS
-  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
-  certificateArn:
-    valueFrom:
-      kind: AwsCertManagerCert
-      name: example-com
-      fieldPath: status.outputs.cert_arn
-  additionalCertificateArns:
-    - valueFrom:
-        kind: AwsCertManagerCert
-        name: example-org
-        fieldPath: status.outputs.cert_arn
-  defaultActions:
-    - type: fixed-response
-      fixedResponse:
-        contentType: text/plain
-        statusCode: "404"
-        messageBody: Not found
-```
+## Outputs and Dependencies
 
-### NLB TLS listener
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListener
-metadata:
-  name: nlb-tls
-spec:
-  region: us-west-2
-  loadBalancerArn:
-    valueFrom:
-      kind: AwsNlb
-      name: edge-nlb
-      fieldPath: status.outputs.load_balancer_arn
-  port: 443
-  protocol: TLS
-  certificateArn:
-    valueFrom:
-      kind: AwsCertManagerCert
-      name: edge-cert
-      fieldPath: status.outputs.cert_arn
-  alpnPolicy: HTTP2Preferred
-  defaultActions:
-    - type: forward
-      forward:
-        targetGroups:
-          - arn:
-              valueFrom:
-                kind: AwsLbTargetGroup
-                name: backend
-                fieldPath: status.outputs.target_group_arn
-```
+| Field | References | Via |
+|-------|-----------|-----|
+| `loadBalancerArn` | AwsAlb (default) or AwsNlb | `status.outputs.load_balancer_arn` |
+| `certificateArn` / `additionalCertificateArns[]` | AwsCertManagerCert | `status.outputs.cert_arn` |
+| `defaultActions[].forward.targetGroups[].arn` | AwsLbTargetGroup | `status.outputs.target_group_arn` |
+| `defaultActions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
 
-## Stack Outputs
+### What This Component Provides
 
-| Output | Description |
-| --- | --- |
-| `listener_arn` | ARN of the listener — what `AwsLbListenerRule` resources attach through |
+After provisioning, `status.outputs` contains:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `listener_arn` | ARN of the listener | AwsLbListenerRule resources attach through it |
 
-- [AwsAlb](/docs/catalog/aws/alb) — the Application Load Balancer this listener attaches to by default
-- [AwsNlb](/docs/catalog/aws/nlb) — the Network Load Balancer alternative (forward-only actions)
-- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — the destination of forward actions
-- [AwsLbListenerRule](/docs/catalog/aws/lb-listener-rule) — per-service routing attached to this listener
-- [AwsCertManagerCert](/docs/catalog/aws/certificate) — provides the default and SNI certificates
-- [AwsCognitoUserPool](/docs/catalog/aws/cognito-user-pool) — the user pool behind `authenticate-cognito` actions
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**TLS termination + forward** -- the production 443 listener. Start from the **HTTPS Forward** preset.
+
+**HTTP→HTTPS redirect** -- the one-action port-80 listener every HTTPS site pairs with. Start from the **HTTP Redirect To HTTPS** preset.
+
+**SSO in front of an internal tool** -- an authenticate-oidc action ahead of the forward. Start from the **OIDC Protected** preset.
+
+## Works With
+
+- **AwsAlb / AwsNlb** -- the load balancer this listener attaches to, referenced by `loadBalancerArn`.
+- **AwsLbListenerRule** -- per-service routing attached through this listener's `listener_arn` output.
+- **AwsLbTargetGroup** -- the forward destinations, referenced per action.
+- **AwsCertManagerCert** -- the TLS material, referenced by `certificateArn`.
+- **AwsCognitoUserPool** -- the user pool behind authenticate-cognito actions.

@@ -8,113 +8,125 @@ componentName: "gcpdataprocautoscalingpolicy"
 
 # GCP Dataproc Autoscaling Policy
 
-Creates a Dataproc autoscaling policy — the reusable resource that governs how Dataproc clusters scale their worker groups on YARN memory pressure. One policy can govern many clusters: each attaches it by reference, so scaling behavior is tuned in one place and every attached cluster follows.
+Deploys a reusable Dataproc autoscaling policy: the scaling contract that governs how attached clusters add primary and secondary (spot) workers when YARN memory is pending and remove them when it is idle. One policy can govern many clusters — a platform team tunes scaling behavior in one place, and editing the policy re-tunes every attached cluster in place. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-A regional `google_dataproc_autoscaling_policy` resource holding worker-group bounds, group weights, and the YARN-based scaling algorithm. Clusters attach it through their `clusterConfig.autoscalingPolicyUri` field — an in-place update on the cluster.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Dataproc Autoscaling Policy** -- a regional policy resource with the configured worker bounds, capacity weights, and YARN scaling algorithm
+- **Primary Worker Bounds** -- the min/max envelope and capacity weight for the on-demand worker group (the stable HDFS base)
+- **Secondary Worker Bounds** -- created only when `secondaryWorkerConfig` carries non-zero bounds; the envelope and weight for the preemptible/spot group (the cost-optimized burst arm)
+- **YARN Scaling Algorithm** -- the scale-up/scale-down factors (what fraction of suggested capacity change is applied per evaluation), the graceful decommission window running tasks get before scale-down removes their worker, deadband fractions, and the evaluation cooldown
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** (the Dataproc API is enabled automatically)
-- Clusters that will attach the policy must live in the **same region**
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `policy.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the policy will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Dataproc API** enabled in the target project.
+- **Region co-location** -- a Dataproc cluster can only attach policies in its own region; create the policy in the region your clusters run in.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Dataproc Autoscaling Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Balanced Autoscaling** preset in the [Presets](#presets) tab for a moderate general-purpose policy.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpDataprocAutoscalingPolicy
 metadata:
-  name: etl-autoscaling
+  name: balanced-autoscaling
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
-  policyId: etl-autoscaling
+    value: "acme-prod-12345"
+  policyId: balanced-autoscaling
   location: us-central1
   workerConfig:
     maxInstances: 10
     minInstances: 2
-  secondaryWorkerConfig:
-    maxInstances: 20
-    weight: 3
   basicAlgorithm:
-    cooldownPeriod: "120s"
     yarnConfig:
-      gracefulDecommissionTimeout: "3600s"
+      gracefulDecommissionTimeout: "1800s"
       scaleUpFactor: 0.5
-      scaleDownFactor: 1.0
+      scaleDownFactor: 0.5
 ```
-
-Deploy:
 
 ```shell
-planton apply -f policy.yaml
+planton apply -f autoscaling-policy.yaml
 ```
 
-## Configuration Reference
+A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `policyId` | `string` | The GCP resource name of the policy. Immutable. | 3-50 chars; letters, digits, underscores, hyphens; starts/ends alphanumeric |
-| `location` | `string` | Region the policy lives in (e.g., `us-central1`). Clusters attach same-region policies only. Immutable. | Required, `^[a-z]+-[a-z]+[0-9]+$` |
-| `workerConfig.maxInstances` | `int` | Ceiling on primary workers. | Required, >= 1 |
-| `basicAlgorithm.yarnConfig.gracefulDecommissionTimeout` | `string` | Drain window before a worker is forcefully removed on scale-down (e.g., `"3600s"`). Bounds: 0s to 1 day. | Required, `^[0-9]+s$` |
-| `basicAlgorithm.yarnConfig.scaleUpFactor` | `double` | Fraction of pending YARN memory acted on per evaluation. `1.0` scales up as fast as possible. | Required, 0.0-1.0 |
-| `basicAlgorithm.yarnConfig.scaleDownFactor` | `double` | Fraction of idle YARN memory removed per evaluation. | Required, 0.0-1.0 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default | GCP project. Can reference GcpProject via `valueFrom`. |
-| `workerConfig.minInstances` | `int` | `2` (API default) | Primary floor. `0` accepts the API default; otherwise must be >= 2 (the Dataproc minimum for autoscaled clusters). |
-| `workerConfig.weight` | `int` | `1` | Relative share of new capacity landing on primaries. |
-| `secondaryWorkerConfig` | `object` | not scaled | Bounds for the secondary (spot) group. |
-| `secondaryWorkerConfig.maxInstances` | `int` | `0` | Secondary ceiling. |
-| `secondaryWorkerConfig.minInstances` | `int` | `0` | Secondary floor — `0` lets the group scale to zero when idle. |
-| `secondaryWorkerConfig.weight` | `int` | `1` | Relative share of new capacity landing on secondaries (e.g., primary 1 + secondary 3 sends ~75% of new nodes to spot). |
-| `basicAlgorithm.cooldownPeriod` | `string` | `"120s"` | Time between scaling evaluations. Bounds: 2 minutes to 1 day. |
-| `basicAlgorithm.yarnConfig.scaleUpMinWorkerFraction` | `double` | `0.0` | Minimum fractional cluster change worth acting on when scaling up (e.g., `0.05` ignores sub-5% recommendations). |
-| `basicAlgorithm.yarnConfig.scaleDownMinWorkerFraction` | `double` | `0.0` | Same filter for scale-down. |
-
-## Example: Attaching from a Cluster
+When deploying as part of a multi-resource environment, deploy the policy before the clusters that attach it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpDataprocCluster
-metadata:
-  name: batch-spark
-spec:
-  region: us-central1
-  clusterName: batch-spark
-  clusterConfig:
-    secondaryWorkerConfig:
-      preemptibility: SPOT
-    autoscalingPolicyUri:
-      valueFrom:
-        kind: GcpDataprocAutoscalingPolicy
-        name: etl-autoscaling
-        fieldPath: status.outputs.name
+# In a GcpDataprocCluster spec:
+clusterConfig:
+  autoscalingPolicyUri:
+    valueFrom:
+      kind: GcpDataprocAutoscalingPolicy
+      name: balanced-autoscaling
+      fieldPath: status.outputs.name
 ```
 
-The reference resolves to the policy's full resource name. Attaching, swapping, or detaching the policy updates the cluster in place.
+The InfraPipeline resolves the dependency graph, deploys the policy first, then provisions the cluster with the policy attached.
 
-## Stack Outputs
+## Key Configuration
 
-After deployment, the following outputs are available in `status.outputs`:
+These are the most important decisions when configuring an autoscaling policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `name` | `string` | Fully qualified policy resource name (`projects/{project}/locations/{location}/autoscalingPolicies/{policy_id}`) — the handle a cluster's `autoscalingPolicyUri` reference resolves to |
-| `policy_id` | `string` | The policy ID (same as `spec.policyId`) |
-| `location` | `string` | Region the policy lives in |
+**Scale factors** -- `scaleUpFactor` and `scaleDownFactor` (both required, 0.0-1.0) set the policy's personality: the fraction of YARN's suggested capacity change applied per evaluation. 1.0 reacts at maximum speed; 0.05 creeps smoothly. An explicit `scaleDownFactor: 0.0` disables scale-down entirely — pair it with the cluster's idle-delete TTL.
 
-## Related Components
+**Worker bounds and weights** -- `workerConfig.maxInstances` (required) is the primary group's hard ceiling; `minInstances: 0` accepts the API's default floor of 2. The weight pair splits new capacity between on-demand primaries and spot secondaries — weight 1:3 sends ~75% of new nodes to the spot group.
 
-- [GcpDataprocCluster](/docs/catalog/gcp/dataproc-cluster) — attaches this policy via `clusterConfig.autoscalingPolicyUri`
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project
+**Graceful decommission** -- `gracefulDecommissionTimeout` (required, e.g. `"1800s"`) is the window running tasks get to finish before scale-down removes their worker. Short windows kill long-running tasks.
+
+**Cooldown** -- `basicAlgorithm.cooldownPeriod` sets the evaluation cadence (blank keeps GCP's `"120s"` default). Longer cooldowns smooth scaling further but slow every reaction.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `name` | Fully qualified policy resource name (`projects/{p}/locations/{l}/autoscalingPolicies/{id}`) | The exact value a GcpDataprocCluster's `autoscalingPolicyUri` attaches |
+| `policy_id` | The short policy ID | Display, logging |
+| `location` | The policy's region | Region co-location checks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Balanced autoscaling** -- Half-strength factors, an even primary/secondary split, and a 30-minute drain window. A sensible default for mixed interactive and batch clusters. Start from the **Balanced Autoscaling** preset.
+
+**Aggressive batch** -- Full-strength factors on a spot-heavy weight mix for bursty batch pipelines where reaction speed wins. Start from the **Aggressive Batch** preset.
+
+**Conservative production** -- Small factors and long drain windows for SLA-bound shared clusters where oscillation hurts interactive users. Start from the **Conservative Production** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the policy is created
+- [**GCP Dataproc Cluster**](/cloud-catalog/gcp-dataproc-cluster) -- attaches this policy via `autoscalingPolicyUri`; one policy can govern many clusters

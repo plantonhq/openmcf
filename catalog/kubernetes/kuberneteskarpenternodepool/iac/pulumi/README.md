@@ -54,7 +54,7 @@ make build
 ### With the Planton CLI
 
 ```bash
-planton pulumi up --manifest ../hack/manifest.yaml
+planton pulumi up --manifest ../../e2e/manifest.yaml
 ```
 
 ### Direct Pulumi usage
@@ -64,7 +64,7 @@ The entrypoint loads the `KubernetesKarpenterNodePoolStackInput` from the
 `STACK_INPUT_YAML` (inline YAML content):
 
 ```bash
-export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
+export STACK_INPUT_YAML_FILE=../../e2e/manifest.yaml
 pulumi up
 ```
 

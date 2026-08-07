@@ -8,84 +8,119 @@ componentName: "gcpkmskey"
 
 # GCP KMS Key
 
-Creates a Cloud KMS cryptographic key within an existing key ring — the resource every CMEK-capable GCP service (BigQuery, Spanner, Cloud SQL, GKE, Pub/Sub, and more) references for encryption with keys you control. Also covers asymmetric signing, raw encryption, MAC, HSM protection, and BYOK/external-key-manager arms.
+Deploys a Cloud KMS cryptographic key within an existing key ring for symmetric encryption (CMEK), asymmetric signing, asymmetric decryption, or MAC generation. The key supports automatic rotation, configurable protection levels (software or HSM), and scheduled destruction periods. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to key rings managed as separate Cloud Resources.
 
 ## What Gets Created
 
-- The Cloud KMS API is enabled on the ring's project (never disabled on destroy)
-- A `google_kms_crypto_key` resource in the referenced key ring, carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set)
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **KMS CryptoKey** -- a `kms.CryptoKey` in the specified key ring, configured with the chosen purpose, algorithm, protection level, and rotation schedule
+- **Version Template** -- created only when `versionTemplate` is specified; controls the encryption algorithm and protection level (SOFTWARE, HSM, EXTERNAL, or EXTERNAL_VPC) for new key versions
+- **Automatic Rotation** -- created only when `rotationPeriod` is set; generates a new primary CryptoKeyVersion at the specified interval (minimum 24 hours)
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **An existing key ring** — referenced via `keyRingId` (see `GcpKmsKeyRing`); the key inherits its project and location
-- **IAM permissions** — `roles/cloudkms.admin` to create keys; consumers additionally need `roles/cloudkms.cryptoKeyEncrypterDecrypter`
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `kms-key.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A KMS key ring** where the key will be created. Provide the fully qualified key ring path (`projects/{project}/locations/{location}/keyRings/{name}`) directly or reference a GcpKmsKeyRing Cloud Resource via ValueFromRef.
+- **Cloud KMS API** (`cloudkms.googleapis.com`) enabled in the project that owns the key ring.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Symmetric Encryption** preset in the [Presets](#presets) tab to pre-populate a standard CMEK key with 90-day rotation.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKey
 metadata:
-  name: cmek-data-key
+  name: app-cmek-key
+  org: acme-corp
+  env: prod
+spec:
+  keyRingId:
+    value: "projects/acme-prod-12345/locations/us-central1/keyRings/prod-encryption"
+  keyName: app-data-cmek
+  rotationPeriod: "7776000s"
+```
+
+```shell
+planton apply -f gcp-kms-key.yaml
+```
+
+This creates a symmetric encryption key with 90-day automatic rotation using software-level protection. Purpose defaults to ENCRYPT_DECRYPT. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the key to a key ring deployed in the same InfraPipeline:
+
+```yaml
 spec:
   keyRingId:
     valueFrom:
       kind: GcpKmsKeyRing
       name: prod-encryption
       fieldPath: status.outputs.key_ring_id
-  keyName: cmek-data-key
-  rotationPeriod: "7776000s"
 ```
 
-Deploy:
+The InfraPipeline resolves the dependency graph, deploys the key ring first, then provisions the KMS key with the resolved key ring path.
 
-```shell
-planton apply -f kms-key.yaml
-```
+## Key Configuration
 
-This creates a symmetric encryption key with automatic 90-day rotation — the most common CMEK configuration.
+These are the most important decisions when configuring a KMS key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Configuration Reference
+**Purpose** -- Set `purpose` to define what cryptographic operations the key supports. ENCRYPT_DECRYPT (default) is used for CMEK across BigQuery, Spanner, Cloud SQL, GCS, and GKE. ASYMMETRIC_SIGN is used for artifact and container image signing. Purpose is immutable after creation.
 
-### Required Fields
+**Protection level** -- Set `versionTemplate.protectionLevel` to SOFTWARE (the default when unset), HSM, EXTERNAL, or EXTERNAL_VPC. HSM keys are protected by Cloud HSM hardware modules certified to FIPS 140-2 Level 3, required for PCI DSS, HIPAA, and FedRAMP compliance. The EXTERNAL levels keep the material in your own external key manager (EXTERNAL_VPC pairs with `cryptoKeyBackend`, the EkmConnection reached through your VPC). The protection level is immutable after creation.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `keyRingId` | `StringValueOrRef` | Fully qualified key ring path (`projects/{p}/locations/{l}/keyRings/{name}`). Reference a `GcpKmsKeyRing` via `valueFrom`. Immutable. | Required |
-| `keyName` | `string` | Name of the key in GCP. Immutable — and never reusable within the ring, because keys cannot be deleted. | 1-63 chars; `^[a-zA-Z0-9_-]{1,63}$` |
+**Bring your own key (BYOK)** -- Set `importOnly: true` (with `skipInitialVersionCreation: true` -- GCP cannot generate versions for an import-only key) when regulation requires that Google never generates the key material. Import versions after deploy with `gcloud kms keys versions import`. Start from the **Import-Only BYOK** preset.
 
-### Optional Fields
+**Labels** -- `labels` attach key-value metadata for inventory filtering and cost attribution across a key fleet; freely mutable.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `purpose` | `string` | `ENCRYPT_DECRYPT` | `ENCRYPT_DECRYPT`, `ASYMMETRIC_SIGN`, `ASYMMETRIC_DECRYPT`, `RAW_ENCRYPT_DECRYPT`, `MAC`, or any newer API purpose (free string — the API validates). Immutable. |
-| `rotationPeriod` | `string` | — | Auto-rotation cadence, ≥ `86400s` with ≤ 9 fractional digits (e.g. `"7776000s"` for 90 days). ENCRYPT_DECRYPT keys only (enforced pre-deploy). Mutable. |
-| `destroyScheduledDuration` | `string` | 30 days | Recovery window destroyed versions spend in `DESTROY_SCHEDULED` before the material is gone. Immutable. |
-| `versionTemplate.algorithm` | `string` | `GOOGLE_SYMMETRIC_ENCRYPTION` | Algorithm for new versions (free string — see the algorithm reference). Mutable, affects future versions only. |
-| `versionTemplate.protectionLevel` | `string` | `SOFTWARE` | `SOFTWARE`, `HSM` (FIPS 140-2 L3), `EXTERNAL`, `EXTERNAL_VPC`. Immutable. |
-| `skipInitialVersionCreation` | `bool` | `false` | Create the key with no versions (required for import-only keys). Create-time only. |
-| `importOnly` | `bool` | `false` | BYOK container: only imported versions, ever. Requires `skipInitialVersionCreation` (enforced pre-deploy). Immutable. |
-| `cryptoKeyBackend` | `StringValueOrRef` | — | EKM connection path backing `EXTERNAL_VPC` keys (enforced pre-deploy). Immutable. |
-| `labels` | `map` | — | User labels for cost attribution; merged beneath the platform labels. Mutable. |
+**Rotation period** -- Set `rotationPeriod` for automatic key version rotation (e.g., `"7776000s"` for 90 days). Only applies to ENCRYPT_DECRYPT keys. Asymmetric keys require manual version management. Omit to disable automatic rotation.
 
-## Permanence and Destroy Semantics
+**Destroy scheduled duration** -- `destroyScheduledDuration` controls how long destroyed key versions remain recoverable (default 30 days, minimum 24 hours). Shorter durations reduce the recovery window but limit accidental-destruction protection.
 
-**Keys cannot be deleted from GCP.** Destroying this resource destroys all key *versions* (data encrypted under them becomes permanently unrecoverable once the recovery window elapses), disables rotation, and removes the key from IaC state — the key object itself remains, inert and free, in the ring forever. Plan key names as permanent; use versioned names (`cmek-data-v2`) where replacement is conceivable.
+## Outputs and Dependencies
 
-## Stack Outputs
+### What This Component Consumes
 
-| Output | Description |
-|--------|-------------|
-| `key_id` | Fully qualified key path (`projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{name}`) — the CMEK reference every downstream consumer takes |
-| `key_name` | Short name of the key |
-| `primary_version_name` | Resource name of the current primary version (ENCRYPT_DECRYPT keys; empty otherwise) |
-| `primary_state` | Lifecycle state of the primary version (e.g. `ENABLED`) |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpKmsKeyRing** | `keyRingId` | `status.outputs.key_ring_id` |
 
-## Related Components
+### What This Component Provides
 
-- [GcpKmsKeyRing](../kms-key-ring/) — the parent container (required)
-- [GcpBigQueryDataset](../bigquery-dataset/), [GcpSpannerDatabase](../spanner-database/), [GcpCloudSql](../cloud-sql/), [GcpGkeCluster](../gke-cluster/), [GcpPubSubTopic](../pubsub-topic/) — CMEK consumers referencing `key_id`
-- [GcpProjectIamMember](../project-iam-member/) — models encrypter/decrypter grants as first-class nodes
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `key_id` | Fully qualified crypto key path (`projects/{p}/locations/{l}/keyRings/{kr}/cryptoKeys/{name}`) | CMEK references in BigQuery, Spanner, Cloud SQL, GCS, GKE; GcpKmsKeyIamMember `cryptoKeyId` grants |
+| `key_name` | Short name of the key | Display, logging, human-readable references |
+| `primary_version_name` | The current primary CryptoKeyVersion | Populated only for symmetric encryption keys; empty for asymmetric/MAC/import-only keys |
+| `primary_state` | Lifecycle state of the primary version (e.g. `ENABLED`) | Health checks on the encryption path; same population rules as the version name |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Symmetric encryption (CMEK)** -- Standard customer-managed encryption key with 90-day rotation and software protection. The most common pattern for encrypting data at rest across GCP services. Start from the **Symmetric Encryption** preset.
+
+**HSM-protected symmetric encryption** -- Same CMEK pattern but with HSM protection level for compliance scenarios requiring FIPS 140-2 Level 3 certification (PCI DSS, HIPAA, FedRAMP). Start from the **HSM Symmetric Encryption** preset.
+
+**Asymmetric signing** -- ECDSA P-256 key for signing build artifacts, container images, JWTs, or code. No automatic rotation -- key versions are managed manually. Start from the **Asymmetric Signing** preset.
+
+## Works With
+
+- [**GCP KMS Key Ring**](/cloud-catalog/gcp-kms-key-ring) -- provides the key ring that contains this cryptographic key

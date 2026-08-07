@@ -8,172 +8,101 @@ componentName: "snowflakedatabase"
 
 # Snowflake Database
 
-Deploys a Snowflake database with configurable Time Travel retention, transient mode, Iceberg table defaults, and task execution parameters. All database-level settings are managed declaratively through the spec, including collation, logging, and user task configuration.
+Deploys a Snowflake database with configurable Time Travel retention, transient mode, Iceberg table defaults, and task execution parameters. All database-level settings are declared in the spec and applied idempotently. Integrates with Planton's Snowflake Provider Connection for credential management.
 
 ## What Gets Created
 
-When you deploy a SnowflakeDatabase resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Snowflake Database** — a `snowflake_database` resource with the specified name and all configured parameters including Time Travel retention, collation, and Iceberg settings
-- **Snowflake Provider** — configured using explicit credentials from provider config or environment variables
+- **Snowflake Database** -- a database with the specified name and all configured parameters including Time Travel retention, default collation, Iceberg catalog settings, logging levels, and user task execution behavior
 
-## Prerequisites
+## Before You Deploy
 
-- **Snowflake credentials** configured via environment variables (`SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`) or Planton provider config
-- **A Snowflake account** with permissions to create databases
-- **An external volume** if configuring Iceberg table defaults via `externalVolume`
+### Planton Setup
 
-## Quick Start
+- **Snowflake Provider Connection** -- an active connection in the Connect module with Snowflake account credentials (account name, username, password). Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credential authentication.
 
-Create a file `snowflake-database.yaml`:
+### Snowflake Account
+
+- **A Snowflake account** with permissions to create databases. The user configured in the Provider Connection must have the `CREATE DATABASE` privilege.
+- **An external volume** if configuring Iceberg table defaults -- create the external volume in Snowflake first, then reference it via the `externalVolume` field.
+- **Database naming** -- the `name` field is the Snowflake identifier and must be unique within the account. Snowflake convention uses uppercase identifiers. Avoid characters: `|`, `.`, `(`, `)`, `"`.
+- **A warehouse** (optional) -- required if configuring user task execution with managed warehouses via the `userTask` sub-object.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Snowflake Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production** preset in the [Presets](#presets) tab to pre-populate a standard production configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: snowflake.planton.dev/v1alpha1
+apiVersion: snowflake.planton.dev/v1
 kind: SnowflakeDatabase
 metadata:
-  name: my-database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.SnowflakeDatabase.my-database
+  name: analytics-db
+  org: acme-corp
+  env: prod
 spec:
-  name: MY_DATABASE
+  name: ANALYTICS
+  comment: Production analytics database
+  dataRetentionTimeInDays: 30
+  dropPublicSchemaOnCreation: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f snowflake-database.yaml
 ```
 
-This creates a standard (non-transient) Snowflake database named `MY_DATABASE` with default settings.
+This creates a persistent Snowflake database named `ANALYTICS` with 30-day Time Travel retention and the public schema dropped on creation. No Iceberg, logging, or task settings are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Snowflake database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Snowflake identifier for the database. Must be unique within the account. Avoid characters: `\|`, `.`, `(`, `)`, `"`. | — |
+**Time Travel retention** -- The `dataRetentionTimeInDays` field controls how long CLONE and UNDROP operations remain available. Set to 30 for production databases that need a wide recovery window. Use 1 for development databases to minimize storage costs. Set `maxDataExtensionTimeInDays` to prevent streams from going stale on tables with infrequent changes.
 
-### Optional Fields
+**Transient vs. persistent** -- Set `isTransient` to `true` for databases that do not need Fail-safe protection. Transient databases skip the 7-day Fail-safe period after Time Travel expires, reducing storage costs. Use for development, staging, and ephemeral workloads.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `catalog` | `string` | `""` | Default catalog for Iceberg tables. Sets the `CATALOG` database parameter. |
-| `comment` | `string` | `""` | Comment attached to the database. |
-| `dataRetentionTimeInDays` | `int` | `0` | Number of days for Time Travel actions (CLONE and UNDROP). Also sets the default retention for all schemas in the database. |
-| `defaultDdlCollation` | `string` | `""` | Default collation specification for all schemas and tables. Can be overridden at schema or table level. |
-| `dropPublicSchemaOnCreation` | `bool` | `false` | Drops the `PUBLIC` schema on database creation. Has no effect if changed after creation. |
-| `enableConsoleOutput` | `bool` | `false` | Enables stdout/stderr fast path logging for anonymous stored procedures. |
-| `externalVolume` | `string` | `""` | Default external volume for Iceberg tables. Sets the `EXTERNAL_VOLUME` database parameter. |
-| `isTransient` | `bool` | `false` | Creates a transient database. Transient databases have no Fail-safe period, reducing storage costs but removing Fail-safe data recovery. |
-| `logLevel` | `string` | `""` | Severity level for event table ingestion. Valid values: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`, `OFF`. |
-| `maxDataExtensionTimeInDays` | `int` | `0` | Maximum days Snowflake can extend data retention to prevent streams from becoming stale. |
-| `quotedIdentifiersIgnoreCase` | `bool` | `false` | When `true`, the case of quoted identifiers is ignored. |
-| `replaceInvalidCharacters` | `bool` | `false` | Replaces invalid UTF-8 characters with the Unicode replacement character in Iceberg table query results. Only applies to tables using an external Iceberg catalog. |
-| `storageSerializationPolicy` | `string` | `""` | Storage serialization policy for Iceberg tables using Snowflake as catalog. Valid values: `COMPATIBLE` (interoperable with third-party engines), `OPTIMIZED` (best performance within Snowflake). |
-| `suspendTaskAfterNumFailures` | `int` | `0` | Consecutive task failures before automatic suspension. `0` disables auto-suspending. |
-| `taskAutoRetryAttempts` | `int` | `0` | Maximum automatic retry attempts for user tasks. |
-| `traceLevel` | `string` | `""` | Controls trace event ingestion into the event table. Valid values: `ALWAYS`, `ON_EVENT`, `OFF`. |
-| `userTask.managedInitialWarehouseSize` | `string` | `""` | Initial warehouse size for managed warehouses when no execution history exists. |
-| `userTask.minimumTriggerIntervalInSeconds` | `int` | `0` | Minimum seconds between triggered task executions. |
-| `userTask.timeoutMs` | `int` | `0` | User task execution timeout in milliseconds. |
+**Iceberg table defaults** -- Set `catalog` and `externalVolume` to configure the database for Apache Iceberg tables. Choose `storageSerializationPolicy: OPTIMIZED` for best Snowflake performance, or `COMPATIBLE` when third-party compute engines also read the data files.
 
-## Examples
+**Logging and tracing** -- The `logLevel` field controls event table ingestion severity (TRACE through OFF). Set to WARN or ERROR in production to keep event tables manageable. Enable `enableConsoleOutput` and set `traceLevel` to ON_EVENT during development for stored procedure debugging.
 
-### Transient Database with Short Retention
+**User task execution** -- The `userTask` sub-object controls managed warehouse sizing, minimum trigger intervals, and execution timeouts. Set `suspendTaskAfterNumFailures` to automatically suspend repeatedly failing tasks, and `taskAutoRetryAttempts` to allow automatic retries.
 
-A cost-optimized transient database with 1-day Time Travel retention, suitable for staging or ephemeral workloads:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: snowflake.planton.dev/v1alpha1
-kind: SnowflakeDatabase
-metadata:
-  name: staging-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.SnowflakeDatabase.staging-db
-spec:
-  name: STAGING_DB
-  isTransient: true
-  dataRetentionTimeInDays: 1
-  comment: "Staging environment - transient, short retention"
-```
+### What This Component Consumes
 
-### Production Database with Extended Retention
+This component has no foreign key dependencies.
 
-A production database with 14-day Time Travel retention, extended data retention for stream staleness prevention, and debug-level logging:
+### What This Component Provides
 
-```yaml
-apiVersion: snowflake.planton.dev/v1alpha1
-kind: SnowflakeDatabase
-metadata:
-  name: prod-analytics
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.SnowflakeDatabase.prod-analytics
-spec:
-  name: PROD_ANALYTICS
-  dataRetentionTimeInDays: 14
-  maxDataExtensionTimeInDays: 28
-  logLevel: DEBUG
-  traceLevel: ON_EVENT
-  defaultDdlCollation: "en-ci"
-  comment: "Production analytics database"
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### Full-Featured Database with Iceberg and Task Configuration
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | Provider-assigned unique ID for the database resource | API operations, resource tracking |
+| `name` | Fully-qualified name of the created database | Schema creation, cross-database queries |
+| `owner` | Owner role of the database | Role-based access control verification |
+| `created_on` | Timestamp when the database was created | Audit logs, lifecycle tracking |
+| `is_transient` | Whether the database is transient | Environment classification, cost reporting |
+| `data_retention_time_in_days` | Configured data retention time in days | Compliance verification, backup policy validation |
 
-A database configured for Iceberg table workloads with task execution settings, suitable for data lake integration:
+## Common Patterns
 
-```yaml
-apiVersion: snowflake.planton.dev/v1alpha1
-kind: SnowflakeDatabase
-metadata:
-  name: data-lake-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.SnowflakeDatabase.data-lake-db
-spec:
-  name: DATA_LAKE_DB
-  dataRetentionTimeInDays: 7
-  maxDataExtensionTimeInDays: 14
-  catalog: "my_iceberg_catalog"
-  externalVolume: "my_external_volume"
-  storageSerializationPolicy: COMPATIBLE
-  replaceInvalidCharacters: true
-  logLevel: INFO
-  traceLevel: ON_EVENT
-  suspendTaskAfterNumFailures: 5
-  taskAutoRetryAttempts: 3
-  userTask:
-    managedInitialWarehouseSize: "XSMALL"
-    minimumTriggerIntervalInSeconds: 60
-    timeoutMs: 3600000
-  comment: "Data lake integration database with Iceberg support"
-```
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Stack Outputs
+**Production data warehouse** -- Persistent database with 30-day Time Travel retention, warning-level logging, and the public schema dropped to enforce explicit schema design. Start from the **Production** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Development database** -- Transient database with 1-day retention, debug logging, and console output enabled for stored procedure troubleshooting. Minimal storage costs with no Fail-safe period. Start from the **Development** preset.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Provider-assigned unique ID for the database resource |
-| `name` | `string` | Fully-qualified name of the created database |
-| `owner` | `string` | Owner role of the database |
-| `created_on` | `string` | Timestamp when the database was created |
-| `is_transient` | `string` | Whether the database is transient (`"true"` or `"false"`) |
-| `data_retention_time_in_days` | `string` | Configured data retention time in days |
+**Iceberg analytics** -- Database configured with Snowflake as the Iceberg catalog, an external volume for data storage, and optimized serialization policy. Enables open table format interoperability with Spark, Trino, and other compute engines. Start from the **Iceberg Analytics** preset.
 
-## Related Components
+## Works With
 
-No other Planton components have direct foreign key references to SnowflakeDatabase. This component is typically deployed as a standalone resource within a Snowflake account.
+This component operates independently and does not reference other deployment components.

@@ -10,7 +10,7 @@ alwaysApply: false
 
 **Trigger**: User references this rule or asks to write/create a guide for a component.
 
-**Output**: A single file at `catalog/{provider}/{component}/{version}/GUIDE.md`, followed by `make generate-reference` (the kind's reference page head gains its Guide link and the indexes gain a Guide entry -- committed together with the guide).
+**Output**: A single file at the component root, `catalog/{provider}/{kind}/GUIDE.md` (beside `README.md` and `catalog.md`), followed by `make generate-reference` (the kind's reference page head gains its Guide link and the indexes gain a Guide entry -- committed together with the guide).
 
 ---
 
@@ -75,7 +75,7 @@ reason. Link patterns from the catalog's patterns/ library where they exist.]
 
 ## Grounding Requirements (non-negotiable)
 
-- Every claim must be traceable to source: `spec.proto` comments and options, the IaC module code (`v1/iac/pulumi/module/*.go`, `v1/iac/tf/*.tf`), `docs/README.md` research, or recorded platform behavior. No claim from general memory.
+- Every claim must be traceable to source: `spec.proto` comments and options, the IaC module code (`iac/pulumi/module/*.go`, `iac/tf/*.tf`), the component's `README.md` and `catalog.md`, or recorded platform behavior. No claim from general memory. Research documents are never committed -- the guide itself is where durable judgment lives, so anything worth keeping must be grounded here.
 - Complete embedded manifests (anything with `apiVersion:` + `kind:`) must validate -- catalog checks enforce this in CI (`go test ./pkg/explain/refgen/`). Partial YAML fragments are fine and exempt.
 - Spec field mentions use camelCase (the YAML authoring spelling); `fieldPath` strings use snake_case -- exactly as the reference pages teach.
 - Relative links must resolve (CI-enforced). Link the reference page, presets, and patterns rather than restating them.

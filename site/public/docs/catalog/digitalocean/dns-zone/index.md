@@ -6,218 +6,98 @@ order: 100
 componentName: "digitaloceandnszone"
 ---
 
-# DigitalOcean DNS Zone
+# DNS Zone on DigitalOcean
 
-Deploys a DNS zone (domain) on DigitalOcean with optional inline DNS records. The component creates a `digitalocean_domain` resource for the zone itself and one `digitalocean_record` resource per value entry in the `records` list. Supported record types include A, AAAA, CNAME, MX, TXT, SRV, CAA, NS, SOA, and PTR, with type-specific fields for priority, weight, port, flags, and tag.
+Deploys a DNS zone (domain) on DigitalOcean with optional inline DNS records including A, AAAA, CNAME, MX, TXT, SRV, and CAA types. DigitalOcean manages the authoritative nameservers for the zone, and record values can reference outputs from other Cloud Resources via ValueFromRef. Integrates with Planton's Provider Connections for DigitalOcean API token management.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanDnsZone resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Zone (Domain)** -- a `digitalocean_domain` resource registered under the specified `domainName`
-- **DNS Records** -- one `digitalocean_record` resource for each value in each entry of the `records` list; records with multiple values (e.g., round-robin A records) expand into separate DigitalOcean record resources
-- **Type-Specific Attributes** -- `priority` is set for MX and SRV records; `weight` and `port` are set for SRV records; `flags` and `tag` are set for CAA records; all other record types omit these fields
+- **DigitalOcean Domain** -- a DNS zone registered with DigitalOcean's nameservers (`ns1.digitalocean.com`, `ns2.digitalocean.com`, `ns3.digitalocean.com`)
+- **DNS Records** -- created only when `records` are provided; one DigitalOcean DNS record per value entry, with type-specific fields for MX priority, SRV weight/port, and CAA flags/tag
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **A registered domain** at a third-party registrar (Namecheap, Google Domains, Cloudflare Registrar, etc.) with nameservers pointed to `ns1.digitalocean.com`, `ns2.digitalocean.com`, and `ns3.digitalocean.com`
-- **DNSSEC disabled** at the registrar before delegating to DigitalOcean nameservers (DigitalOcean does not support DNSSEC; leaving it enabled will cause resolution failures)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `dns-zone.yaml`:
+### DigitalOcean Account
+
+- **A registered domain name** -- you must own the domain. After creating the zone, update your domain registrar's nameservers to `ns1.digitalocean.com`, `ns2.digitalocean.com`, and `ns3.digitalocean.com`.
+- **IP addresses or hostnames for records** -- A records require IPv4 addresses, AAAA records require IPv6 addresses, CNAME records require target hostnames, and MX records require mail server hostnames.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Zone on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Simple Website** preset in the [Presets](#presets) tab to create a zone with a root A record.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanDnsZone
 metadata:
-  name: my-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanDnsZone.my-zone
+  name: example-com
+  org: acme-corp
+  env: prod
 spec:
   domainName: example.com
+  records:
+    - name: "@"
+      type: A
+      values:
+        - value: "203.0.113.10"
+      ttlSeconds: 3600
 ```
-
-Deploy:
 
 ```shell
-planton apply -f dns-zone.yaml
+planton apply -f do-dns-zone.yaml
 ```
 
-This creates a DNS zone for `example.com` on DigitalOcean with no inline records. DigitalOcean automatically provisions default NS and SOA records for the zone.
+This creates a DNS zone for `example.com` with a single A record pointing the root domain to the specified IP address. No MX, TXT, or other records are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domainName` | `string` | The fully qualified domain name for the DNS zone (e.g., `example.com`). | Required; must match pattern `^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$` |
+**Domain name** -- The `domainName` field must be a valid fully-qualified domain name (e.g., `example.com`). After provisioning, update the domain's nameservers at your registrar to point to DigitalOcean's nameservers. DNS propagation can take up to 48 hours.
 
-### Optional Fields
+**Record types** -- Each record in the `records` list specifies a `type` (A, AAAA, CNAME, MX, TXT, SRV, CAA), a `name` (use `@` for the apex domain), one or more `values`, and a `ttlSeconds`. MX records require `priority`, SRV records require `priority`, `weight`, and `port`, and CAA records require `flags` and `tag`.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `records` | `DigitalOceanDnsZoneRecord[]` | `[]` | List of DNS records to create within the zone. |
-| `records[].name` | `string` | -- | Hostname relative to the zone. Use `@` for the zone apex. Required per record. |
-| `records[].type` | `DnsRecordType` | -- | DNS record type: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `CAA`, `NS`, `SOA`, `PTR`. Required per record. |
-| `records[].values` | `StringValueOrRef[]` | -- | One or more record values. Each entry is either a literal `value` string or a `valueFrom` reference to another resource's output. Required per record (min 1). |
-| `records[].ttlSeconds` | `uint32` | `3600` | Time-to-live in seconds. Controls how long resolvers cache this record. |
-| `records[].priority` | `uint32` | `0` | Priority for MX and SRV records. Lower values indicate higher priority. Ignored for other types. |
-| `records[].weight` | `uint32` | `0` | Relative weight for SRV records with the same priority. Ignored for non-SRV types. |
-| `records[].port` | `uint32` | `0` | TCP/UDP port for SRV records. Ignored for non-SRV types. |
-| `records[].flags` | `uint32` | `0` | Flags for CAA records (`0` = non-critical, `128` = critical). Ignored for non-CAA types. |
-| `records[].tag` | `string` | `""` | Tag for CAA records (`issue`, `issuewild`, or `iodef`). Ignored for non-CAA types. |
+**TTL** -- The `ttlSeconds` field controls how long resolvers cache the record. Default is 3600 seconds (1 hour). Use shorter TTLs (300 seconds) during migrations for faster propagation, and longer TTLs (86400 seconds) for stable records to reduce lookup latency.
 
-## Examples
+**ValueFromRef in record values** -- Record `values` accept ValueFromRef references, allowing DNS records to point to IP addresses or hostnames output by other Cloud Resources (e.g., a Droplet's `ipv4_address` or a load balancer's IP).
 
-### Minimal Zone (Domain Only)
+## Outputs and Dependencies
 
-Register a domain on DigitalOcean DNS with no inline records. DigitalOcean creates default NS and SOA records automatically.
+### What This Component Consumes
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsZone
-metadata:
-  name: bare-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanDnsZone.bare-zone
-spec:
-  domainName: bare-zone.dev
-```
+This component has no foreign key dependencies.
 
-### Zone with A Records
+### What This Component Provides
 
-A zone with apex and `www` A records pointing to the same IP address, plus a CNAME for the `api` subdomain:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsZone
-metadata:
-  name: web-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.DigitalOceanDnsZone.web-app
-spec:
-  domainName: web-app.io
-  records:
-    - name: "@"
-      type: A
-      values:
-        - value: "203.0.113.10"
-      ttlSeconds: 3600
-    - name: "www"
-      type: A
-      values:
-        - value: "203.0.113.10"
-      ttlSeconds: 3600
-    - name: "api"
-      type: CNAME
-      values:
-        - value: "lb.web-app.io."
-      ttlSeconds: 300
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zone_name` | Domain name of the DNS zone | App Platform custom domain configuration |
+| `zone_id` | Unique identifier of the DNS zone | API operations, record management |
+| `name_servers` | Nameserver addresses for the zone | Domain registrar NS delegation |
 
-### Zone with Mixed Record Types (A, CNAME, MX, TXT, CAA)
+## Common Patterns
 
-A production zone with web records, Google Workspace MX, SPF/DMARC TXT records, and a CAA policy restricting certificate issuance to Let's Encrypt:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsZone
-metadata:
-  name: prod-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsZone.prod-zone
-spec:
-  domainName: prod-app.com
-  records:
-    # Apex A record pointing to a load balancer
-    - name: "@"
-      type: A
-      values:
-        - value: "198.51.100.1"
-      ttlSeconds: 300
-    # www CNAME to apex
-    - name: "www"
-      type: CNAME
-      values:
-        - value: "@"
-      ttlSeconds: 3600
-    # Google Workspace MX records
-    - name: "@"
-      type: MX
-      values:
-        - value: "aspmx.l.google.com."
-      ttlSeconds: 3600
-      priority: 1
-    - name: "@"
-      type: MX
-      values:
-        - value: "alt1.aspmx.l.google.com."
-      ttlSeconds: 3600
-      priority: 5
-    - name: "@"
-      type: MX
-      values:
-        - value: "alt2.aspmx.l.google.com."
-      ttlSeconds: 3600
-      priority: 5
-    # SPF record
-    - name: "@"
-      type: TXT
-      values:
-        - value: "v=spf1 include:_spf.google.com ~all"
-      ttlSeconds: 3600
-    # DMARC policy
-    - name: "_dmarc"
-      type: TXT
-      values:
-        - value: "v=DMARC1; p=reject; rua=mailto:dmarc@prod-app.com"
-      ttlSeconds: 3600
-    # CAA -- only Let's Encrypt may issue certificates
-    - name: "@"
-      type: CAA
-      values:
-        - value: "letsencrypt.org"
-      ttlSeconds: 3600
-      flags: 0
-      tag: issue
-    # CAA -- deny wildcard issuance
-    - name: "@"
-      type: CAA
-      values:
-        - value: ";"
-      ttlSeconds: 3600
-      flags: 0
-      tag: issuewild
-```
+**Simple website zone** -- a DNS zone with a single root A record pointing to a web server or load balancer IP. Minimal configuration for getting a domain live quickly. Start from the **Simple Website** preset.
 
-## Stack Outputs
+**Production zone with email** -- a DNS zone with A, MX, and TXT (SPF) records for a production website that also receives email. MX directs mail to your provider; SPF authorizes the provider to send on behalf of the domain. Start from the **Production With Email** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Works With
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_name` | `string` | The domain name of the created DNS zone (e.g., `example.com`) |
-| `zone_id` | `string` | The unique identifier of the created DNS zone assigned by DigitalOcean |
-| `name_servers` | `string[]` | The list of DigitalOcean nameservers for this zone (`ns1.digitalocean.com`, `ns2.digitalocean.com`, `ns3.digitalocean.com`) |
-
-## Related Components
-
-- [DigitalOceanDroplet](/docs/catalog/digitalocean/droplet) -- provides compute instances whose IPs can be referenced in A records
-- [DigitalOceanLoadBalancer](/docs/catalog/digitalocean/load-balancer) -- provisions load balancers whose IPs can be used as record targets
-- [DigitalOceanVpc](/docs/catalog/digitalocean/vpc) -- defines the network for infrastructure that DNS records resolve to
-- [DigitalOceanKubernetesCluster](/docs/catalog/digitalocean/kubernetes-cluster) -- deploys Kubernetes clusters that can use ExternalDNS to manage records in this zone
+This component operates independently and does not reference other deployment components.

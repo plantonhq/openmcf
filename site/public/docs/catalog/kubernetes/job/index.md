@@ -6,184 +6,132 @@ order: 100
 componentName: "kubernetesjob"
 ---
 
-# Kubernetes Job
+# Job on Kubernetes
 
-Runs work to completion on a Kubernetes cluster as a batch/v1 Job through a single declarative manifest: one-shot tasks like migrations and backfills, or parallel batch processing with Indexed completions, per-index retry budgets, pod failure policies, and success policies. The IaC module handles namespace resolution, secret materialization, and label merging automatically.
-
-Jobs front no Service and create no ingress — pods run, finish, and are found afterward through the exported label selector. For scheduled work, use KubernetesCronJob; for always-on services, KubernetesDeployment.
+Runs work to completion on any Kubernetes cluster as a batch/v1 Job: pods are created, execute until they succeed or exhaust their retry budget, and are never restarted once the Job finishes. This is the kind for one-shot work — data migrations, backfills, report generation, parallel batch processing. Supports the complete batch/v1 surface: parallelism and completions, Indexed completion mode for partitioned workloads, per-index retry budgets, pod failure policies (fail fast on unrecoverable exit codes, forgive node disruptions), success policies for leader/worker topologies, active deadline enforcement, TTL-based cleanup, and the full shared workload surface (sidecars and init containers, all environment variable sources, probes, security contexts). Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
 ## What Gets Created
 
-When you deploy a KubernetesJob resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Job** — a batch/v1 Job with the full set of batch controls (parallelism, completions, completion mode, retry budgets, deadlines, TTL, failure and success policies)
-- **Namespace** (optional) — created when `createNamespace` is true
-- **Env Secret** (conditional) — literal secret env values across all containers are materialized into one workload-scoped Secret named `<metadata.name>-env-secrets`
-- **Image Pull Secret** (conditional) — docker-registry credentials materialized as `<metadata.name>-image-pull`
-- **Labels** — standard Planton tracking labels merged with any user-provided pod labels
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Kubernetes Job** -- the batch workload resource that creates pods and runs them to completion, with the configured fan-out, retry budgets, deadlines, failure/success policies, and container specification
+- **Kubernetes Secret** -- created only when `container.app.env.secrets` carry literal values; stores them and mounts them as environment variables
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that exists, is created via `createNamespace`, or is referenced as a `KubernetesNamespace` resource
-- **A container image** containing the batch workload; the pod succeeds when every container exits 0
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `job.yaml`:
+### Kubernetes Cluster
+
+- **A container registry** accessible from the cluster for pulling the job image. If the registry is private, provide image pull credentials in the container image configuration.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Job on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Database Migration** preset for sequential one-shot work, or **Parallel Batch** for an Indexed fan-out, in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJob
 metadata:
-  name: db-migration
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesJob.db-migration
+  name: etl-pipeline
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: backend
+    value: "jobs"
+  createNamespace: true
   container:
     app:
       image:
-        repo: ghcr.io/acme/migrate
-        tag: v3.2.0
-      command: ["./migrate.sh"]
-  restartPolicy: Never
-  backoffLimit: 2
-  ttlSecondsAfterFinished: 86400
+        repo: ghcr.io/acme-corp/etl-runner
+        tag: v2.0.0
+      command: ["python", "run_etl.py"]
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
 ```
-
-Deploy:
 
 ```shell
 planton apply -f job.yaml
 ```
 
-This runs the migration once to success, retries at most twice, and cleans up the finished Job after 24 hours.
+This creates a single-pod Job (parallelism and completions default to 1) with up to 3 retries on failure and automatic cleanup 1 hour after it finishes.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `spec.namespace` | `StringValueOrRef` | Namespace to run the Job in. Literal name or reference to a `KubernetesNamespace` resource. |
-| `spec.container.app` | `WorkloadContainer` | The main application container: image (repo + tag required), command/args, env, resources, probes, volume mounts, security context. Its exit code decides pod success. |
-
-### Batch Controls (optional)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.parallelism` | `int32` | `1` | Maximum pods running at once. |
-| `spec.completions` | `int32` | `1` | Successful completions required; in Indexed mode, also the number of indexes. |
-| `spec.completionMode` | `string` | `NonIndexed` | `NonIndexed` (interchangeable pods) or `Indexed` (each pod gets an index 0..completions−1 for partitioned work). |
-| `spec.backoffLimit` | `int32` | `6` | Pod-failure retries before the Job fails, with exponential back-off. |
-| `spec.backoffLimitPerIndex` | `uint32` | — | Per-index retry budget (Indexed mode, `restartPolicy: Never` only). |
-| `spec.maxFailedIndexes` | `uint32` | — | Failed indexes tolerated before the Job terminates; requires `backoffLimitPerIndex`. |
-| `spec.activeDeadlineSeconds` | `int64` | — | Hard wall-clock limit for the whole Job; exceeded ⇒ all pods killed, Job failed. |
-| `spec.ttlSecondsAfterFinished` | `int32` | — | Seconds after finish before the Job and pods are auto-deleted. |
-| `spec.suspend` | `bool` | `false` | Create without running; suspending a running Job deletes active pods and resets the deadline timer. |
-| `spec.restartPolicy` | `string` | `Never` | `Never` (fresh pod per attempt) or `OnFailure` (in-place container restart). `Always` is invalid for Jobs. |
-| `spec.podFailurePolicy` | `object` | — | Ordered rules classifying pod failures: `FailJob`, `Ignore`, `Count`, or `FailIndex` triggered by exit codes or pod conditions. Requires `restartPolicy: Never`. |
-| `spec.successPolicy` | `object` | — | Early-success rules for Indexed Jobs (`succeededIndexes`, `succeededCount`). |
-
-### Pod and Workload (optional)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `spec.createNamespace` | `bool` | Create the namespace when it does not exist. |
-| `spec.container.sidecars[]` | `WorkloadContainer` | Named sidecar containers. **Every sidecar must exit for the Job to complete.** |
-| `spec.pod.serviceAccount` | `StringValueOrRef` | Identity pods run as — literal name or `KubernetesServiceAccount` reference. |
-| `spec.pod.initContainers[]` | `WorkloadContainer` | Run to completion, in order, before the app starts. |
-| `spec.pod.scheduling` | `object` | Node selector, tolerations, affinity, topology spread. |
-| `spec.pod.securityContext` | `object` | Pod-level user/group identity and filesystem ownership. |
-
-## Examples
-
-### Indexed Parallel Batch
-
-Ten numbered partitions, three at a time, with per-index retries:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Job to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesJob
-metadata:
-  name: shard-processor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesJob.shard-processor
 spec:
   namespace:
-    value: batch
-  container:
-    app:
-      image:
-        repo: ghcr.io/acme/shard-worker
-        tag: v1.4.0
-      command: ["/bin/sh", "-c", "process --shard $JOB_COMPLETION_INDEX"]
-  completionMode: Indexed
-  completions: 10
-  parallelism: 3
-  restartPolicy: Never
-  backoffLimitPerIndex: 2
-  maxFailedIndexes: 2
-  ttlSecondsAfterFinished: 86400
+    valueFrom:
+      kind: KubernetesNamespace
+      name: jobs-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-### Failure-Aware Batch on Spot Nodes
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the Job with the resolved values.
 
-Fail fast on the application's "unrecoverable" exit code; never charge node disruption against the retry budget:
+## Key Configuration
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesJob
-metadata:
-  name: resilient-batch
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesJob.resilient-batch
-spec:
-  namespace:
-    value: batch
-  container:
-    app:
-      image:
-        repo: ghcr.io/acme/batch
-        tag: v2.0.1
-  restartPolicy: Never
-  backoffLimit: 4
-  podFailurePolicy:
-    rules:
-      - action: FailJob
-        onExitCodes:
-          operator: In
-          values: [42]
-      - action: Ignore
-        onPodConditions:
-          - type: DisruptionTarget
-```
+These are the most important decisions when configuring a Kubernetes Job. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Parallelism and completions** -- `completions` is the number of successful pods required; `parallelism` is how many run concurrently. `completions: 10` with `parallelism: 3` runs up to 3 pods at a time until 10 succeed. `completionMode: "Indexed"` assigns each pod a completion index (0 to completions-1, exposed via the batch.kubernetes.io/job-completion-index annotation and the pod hostname) so each pod claims its own partition of the work.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Retries** -- `backoffLimit` (Kubernetes default 6) is the global retry budget. For partitioned work, `backoffLimitPerIndex` gives each index its OWN budget — one flaky partition exhausts only its own retries — and `maxFailedIndexes` bounds how many indexes may fail before the whole Job does. The per-index dials require Indexed mode and `restartPolicy: "Never"`.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Namespace the Job was created in |
-| `jobName` | `string` | Name of the Job object in the cluster |
-| `selectorLabels` | `string` | Job-name label selector as `k=v` — ready for `kubectl get pods -l` / `kubectl logs -l` post-run inspection |
+**Pod failure policy** -- fine-grained per-failure handling, evaluated in order with first-match-wins: `FailJob` immediately on an unrecoverable exit code (a misconfiguration should not burn six retries), `Ignore` failures caused by node disruption (the DisruptionTarget pod condition) so infrastructure events never count against the budget, or `FailIndex` to stop retrying a single partition. Requires `restartPolicy: "Never"`.
 
-## Related Components
+**Success policy** -- Indexed-only early success: declare the Job succeeded once specific indexes (`succeededIndexes: "0"` for a leader) or enough indexes (`succeededCount`) finish; lingering pods are then terminated.
 
-- [KubernetesCronJob](/docs/catalog/kubernetes/cronjob) — the scheduled counterpart; each run stamps out a Job like this one
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — for always-on services
-- [KubernetesServiceAccount](/docs/catalog/kubernetes/serviceaccount) — the identity pods run as; reference it from `spec.pod.serviceAccount`
-- [KubernetesRbac](/docs/catalog/kubernetes/rbac) — grants permissions to that identity
-- [KubernetesSecret](/docs/catalog/kubernetes/secret) — holds credentials the Job consumes via `secretRef` env entries
+**Deadlines and cleanup** -- `activeDeadlineSeconds` is the hard wall-clock guard: past it, everything is killed regardless of retries (note that suspending the Job resets this timer). `ttlSecondsAfterFinished` deletes the finished Job and its pods automatically; unset preserves them for `kubectl logs` post-mortems.
+
+**The work itself** -- `container.app.command`/`args` override the image entrypoint; the app container's exit code decides the pod's success. Sidecars need an exit story: a Job pod only completes when ALL its containers exit.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `pod.serviceAccount` | `status.outputs.service_account_name` |
+| **KubernetesSecret** | `pod.imagePullSecrets` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Kubernetes namespace the Job was created in | Other workloads deploying into the same namespace |
+| `job_name` | Name of the Job object as created in the cluster | Monitoring dashboards and log queries |
+| `selector_labels` | The controller-generated job-name selector as a `k=v,k=v` string | `kubectl get pods -l` / `kubectl logs -l` post-run inspection |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Database migration** -- Sequential one-shot work with a tight retry budget (retrying a half-applied migration is dangerous), an active deadline to catch runaway processes, and no TTL cleanup so the pods survive for verification. Start from the **Database Migration** preset.
+
+**Parallel batch** -- An Indexed fan-out where each pod processes its own numbered partition, with a per-index retry budget so one flaky shard cannot fail the run. Start from the **Parallel Batch** preset.
+
+**Resilient batch** -- A failure policy that fails fast on the "bad input" exit code and forgives node disruptions — the production posture for long-running batch work on spot capacity. Start from the **Resilient Batch** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the Job
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- keyless cloud access for the run's lifetime via workload identity
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- image pull secrets and referenced credential material
+- [**Kubernetes CronJob**](/cloud-catalog/kubernetes-cron-job) -- the scheduled twin: runs this same batch surface on a cron schedule

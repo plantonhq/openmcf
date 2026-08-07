@@ -6,7 +6,7 @@
 #
 #   presets.zip        -- Preset YAML + MD files, kind enum proto
 #   iac-source.zip     -- IaC source (.go, .tf, .md, .yaml under iac/)
-#   catalog-pages.zip  -- Per-component catalog-page.md files
+#   catalog-pages.zip  -- Per-component kind-root catalog.md files
 #   proto-source.zip   -- Raw proto source (spec, api, input, outputs)
 #   reference-pack.zip -- The component reference pack: generated reference
 #                         pages, catalog indexes, the cross-reference graph,
@@ -145,12 +145,13 @@ if wants iac-source; then
 fi
 
 # ─── Catalog Pages ───────────────────────────────────────────────────────────
-# catalog-page.md is version-resident (RETIRING class: replaced by the
-# kind-root catalog.md); the grammar matches any maturity channel.
+# The catalog page lives at the kind root (catalog/{provider}/{kind}/catalog.md);
+# the anchored grep pins exactly that depth so provider-level or nested
+# markdown can never leak into the artifact.
 if wants catalog-pages; then
   echo "Catalog pages..."
-  find "$CATALOG_ROOT" -type f -name 'catalog-page.md' ! -path '*/_test/*' \
-    | grep -E "/v[0-9]+((alpha|beta)[0-9]+)?/catalog-page\.md$" \
+  find "$CATALOG_ROOT" -type f -name 'catalog.md' ! -path '*/_test/*' \
+    | grep -E "^${CATALOG_ROOT}/[^/]+/[^/]+/catalog\.md$" \
     | create_zip "catalog-pages.zip" "catalog pages"
 fi
 

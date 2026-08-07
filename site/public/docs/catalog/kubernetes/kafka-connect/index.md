@@ -6,88 +6,109 @@ order: 100
 componentName: "kuberneteskafkaconnect"
 ---
 
-# Kubernetes Kafka Connect
+# Kafka Connect
 
-Declares a Kafka Connect cluster reconciled by the Strimzi cluster
-operator — the pluggable integration engine that streams data between
-Kafka and external systems (databases via Debezium CDC, object
-stores, search indexes, SaaS APIs). Connector plugins arrive four
-ways: the stock image, a prebuilt image, OCI image-volume mounts, or
-an operator-driven image build pushed to your registry. Individual
-pipes compose as KubernetesKafkaConnector resources against this
-cluster.
+Deploys a Strimzi **Kafka Connect** cluster — the worker pool that runs connector plugins between Kafka and external systems. Connectors themselves are declared separately as KubernetesKafkaConnector resources against this cluster's `connect_name`. Plugin delivery is the star decision: the stock image carries ONLY the MirrorMaker 2 connector classes; every real integration needs a prebuilt `image`, OCI image-volume `plugins`, or an operator `build`.
 
 ## What Gets Created
 
-- **Namespace** (optional) — created and owned when `create_namespace`
-  is set
-- **KafkaConnect** (`kafka.strimzi.io/v1`, named `metadata.name`) —
-  the worker fleet: replicas, the Kafka connection (TLS trust +
-  authentication), worker config, the plugin arm (image / OCI plugins
-  / build), sizing, rack awareness; always annotated
-  `strimzi.io/use-connector-resources: "true"` so connectors are
-  managed declaratively
-- **JMX metrics ConfigMap** (optional, `metrics.enabled`) — the
-  canonical Strimzi Prometheus rules (`<name>-connect-metrics`),
-  wired as the cluster's `metricsConfig`
+When you deploy this Cloud Resource, the IaC module provisions:
 
-The Strimzi operator reconciles these into Connect worker pods and
-the `<name>-connect-api` REST Service — and, when `build` is set,
-runs the Kaniko/Buildah image build first.
+- **KafkaConnect** — the Strimzi custom resource that runs the worker Deployment and the Connect REST API Service (`<name>-connect-api`)
+- **Internal Connect storage topics** on the target Kafka (config / status / offset) — default names derive from `metadata.name` and must stay unique among Connect-protocol workloads sharing the cluster
+- **Namespace** (optional) — created when `create_namespace` is true; a Strimzi operator must watch that namespace or the resource is accepted and silently never reconciled
 
-## Prerequisites
+## Before You Deploy
 
-- The Strimzi cluster operator on the cluster
-  (KubernetesStrimziKafkaOperator), watching this namespace
-- A reachable Kafka cluster (`bootstrap_servers` — a KubernetesKafka
-  reference or an external literal address)
-- For the `plugins` arm: the Kubernetes ImageVolume feature enabled
-  AND supported by the container runtime (workers fail to schedule
-  without it)
-- For the `build` arm: a registry the build pod can push to
-  (`push_secret` names a docker-registry Secret in this namespace)
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
+
+### Kafka Family Side
+
+- A **Kubernetes Kafka** cluster the workers talk to (bootstrap, TLS trust, authentication)
+- A clear **plugin-delivery** plan — stock image alone cannot run Debezium, JDBC, S3, or other real connectors
+- Unique **group identity** when multiple Connect clusters share one Kafka (colliding group IDs / storage topics corrupt each other's state)
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Kafka Connect**, and click **Deploy**. The creation wizard walks you through placement, the Kafka connection, plugin delivery (the star step), worker count, group identity, worker config, sizing, scheduling, and metrics. Start from the **Debezium prebuilt image** preset in the [Presets](#presets) tab for a real integration posture.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafkaConnect
 metadata:
-  name: dev-connect
+  name: cdc-connect
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: dev-kafka
+    value: kafka
+  create_namespace: false
   bootstrap_servers:
-    value: dev-kafka-kafka-bootstrap.dev-kafka.svc.cluster.local:9092
-  replicas: 1
-  config:
-    config.storage.replication.factor: "-1"
-    offset.storage.replication.factor: "-1"
-    status.storage.replication.factor: "-1"
+    valueFrom:
+      kind: KubernetesKafka
+      name: event-bus
+      fieldPath: status.outputs.internal_bootstrap_endpoint
+  image: quay.io/debezium/connect:2.5
+  replicas: 2
 ```
 
-The operator forms the worker group on the stock image; declare pipes
-as KubernetesKafkaConnector resources in the same namespace. The
-`"-1"` storage entries ride the broker default — Connect's own
-default of 3 wedges on a single-broker dev cluster.
+```shell
+planton apply -f cdc-connect.yaml
+```
 
-## Stack Outputs
+Then declare pipes with **Kubernetes Kafka Connector** against this cluster's `connect_name`.
 
-| Output | Description |
-|---|---|
-| `namespace` | Namespace the Connect cluster runs in |
-| `connect_name` | Connect cluster name (`metadata.name`) — the `strimzi.io/cluster` binding value for KubernetesKafkaConnector resources |
-| `rest_api_service_name` | Connect REST API Service (`<name>-connect-api`) |
-| `rest_api_endpoint` | In-cluster REST endpoint (port 8083) — read-only inspection; connector management stays declarative |
+### InfraChart
 
-## Next Steps
+Wire bootstrap and trust from the sibling Kafka cluster:
 
-Declare connectors as KubernetesKafkaConnector resources in this
-cluster's namespace — the placement contract the operator enforces.
-Graduate the plugin story deliberately: start on the stock image,
-move to a prebuilt `image` when a vendor ships one, and reach for
-`build` when you need an exact artifact set baked and pushed to your
-own registry. In production, set the three storage replication
-factors to `"3"`, size `resources` and `jvm` explicitly, and keep the
-group identity fields unique per Connect cluster sharing a Kafka
-cluster.
+```yaml
+spec:
+  namespace:
+    value: kafka
+  bootstrap_servers:
+    valueFrom:
+      kind: KubernetesKafka
+      name: event-bus
+      fieldPath: status.outputs.internal_bootstrap_endpoint
+  tls:
+    trusted_certificates:
+      - secret_name:
+          valueFrom:
+            kind: KubernetesKafka
+            name: event-bus
+            fieldPath: status.outputs.cluster_ca_cert_secret_name
+  image: quay.io/debezium/connect:2.5
+```
+
+## Presets
+
+| Preset | Use when |
+| --- | --- |
+| Minimal stock Connect | Explore the Connect surface; stock image = MirrorMaker connectors only |
+| Debezium prebuilt image | Run real CDC/integrations from a known Connect image |
+| Operator-built image | Let Strimzi build a Connect image from declared Maven/URL artifacts |
+
+## Outputs
+
+| Output | Purpose |
+| --- | --- |
+| `namespace` | Namespace the workers run in |
+| `connect_name` | Value KubernetesKafkaConnector binds via `connect_cluster` |
+| `rest_api_service_name` | Connect REST API Service name |
+| `rest_api_endpoint` | In-cluster REST endpoint for read-only inspection |
+
+## Related Components
+
+- **Kubernetes Kafka** — the cluster workers connect to
+- **Kubernetes Kafka Connector** — individual pipes on this cluster
+- **Kubernetes Kafka MirrorMaker 2** — purpose-built mirroring (also Connect-protocol)
+- **Kubernetes Kafka UI** — observe Connect status alongside topics

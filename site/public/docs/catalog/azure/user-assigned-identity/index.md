@@ -8,174 +8,130 @@ componentName: "azureuserassignedidentity"
 
 # Azure User Assigned Identity
 
-Deploys a user-assigned managed identity -- the standalone, credential-free Azure AD identity workloads authenticate as. The identity is deliberately just the identity: grant it permissions with `AzureRoleAssignment` resources and trust external workloads to act as it with `AzureFederatedIdentityCredential` resources, each attaching to this identity's outputs.
+Deploys an Azure user-assigned managed identity: a standalone Entra ID identity that workloads authenticate as, with no credential to store, rotate, or leak. Unlike a system-assigned identity (born and destroyed with one resource), a user-assigned identity exists independently and can be shared — the same identity can back an AKS cluster's kubelets, a Function App, a Container App, and a VM at once, and it survives all of them. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the resource group.
 
 ## What Gets Created
 
-When you deploy an AzureUserAssignedIdentity resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **User-Assigned Managed Identity** — an `azurerm_user_assigned_identity` in the specified region and resource group
-- **Azure Tags** — the Planton-derived resource tags (resource name, kind, organization, environment) with your spec tags merged over them (user tags win on key collision)
+- **User-Assigned Managed Identity** -- an Entra ID identity in the specified region and resource group, independent of the resources it is assigned to
+- **Optional regional isolation** -- when `isolationScope: REGIONAL` is set, token issuance for the identity is restricted to its own region (a data-residency / blast-radius control)
+- **Azure Tags** -- your governance tags merged over the Planton-derived resource tags (organization, environment, resource ID); a user tag with the same key wins
 
-## Prerequisites
+The identity is deliberately just the identity. What it may DO is granted through **AzureRoleAssignment** resources referencing its `principal_id` output; who may ACT AS it from outside Azure is declared through **AzureFederatedIdentityCredential** resources referencing its `identity_id` output. Keeping the three concerns as separate composable nodes means grants and trust rules are individually reviewable and removable without touching the identity itself.
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the identity will be created (can reference an AzureResourceGroup resource)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `identity.yaml`:
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **An Azure Resource Group** where the managed identity will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure User Assigned Identity**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureUserAssignedIdentity
 metadata:
-  name: my-identity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureUserAssignedIdentity.my-identity
+  name: ci-deployer
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: my-rg
-  name: my-identity
+    value: "acme-prod-rg"
+  name: acme-ci-deployer
 ```
-
-Deploy:
 
 ```shell
 planton apply -f identity.yaml
 ```
 
-This creates the identity. It has no permissions until `AzureRoleAssignment` resources grant them, and no external workload can act as it until `AzureFederatedIdentityCredential` resources trust one.
+This creates a user-assigned managed identity with NO permissions -- a freshly-created identity can do nothing until AzureRoleAssignment resources grant it access.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the identity (e.g., `eastus`, `westeurope`). The identity is a regional resource. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the identity, unique within the resource group. Renaming replaces the identity and mints a new principal, invalidating existing grants. | Required, 3-128 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `isolationScope` | `enum` | unset | `REGIONAL` restricts token issuance to the identity's own region (a data-residency control). Unset means the identity is usable by resources in any region. Updates in place. |
-| `tags` | `map<string,string>` | `{}` | User tags merged over the Planton-derived tags; a user tag with the same key wins. Updates in place. |
-
-## Examples
-
-### Identity for a Workload
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the identity's resource group, then compose the grant and trust nodes against its outputs:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: payments-identity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.payments-identity
+# The identity
 spec:
   region: eastus
   resourceGroup:
     valueFrom:
-      name: platform-rg
+      kind: AzureResourceGroup
+      name: production-rg
+      fieldPath: status.outputs.resource_group_name
   name: payments-api
-  tags:
-    owner: payments-team
-```
-
-Then grant what it needs -- for example, read access to Key Vault secrets:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleAssignment
-metadata:
-  name: payments-kv-reader
+---
+# A grant (separate AzureRoleAssignment resource)
 spec:
   scope:
     valueFrom:
       kind: AzureKeyVault
-      name: platform-kv
+      name: platform-secrets
       fieldPath: status.outputs.key_vault_id
-  roleDefinitionName: Key Vault Secrets User
+  roleDefinitionName: "Key Vault Secrets User"
   principalId:
     valueFrom:
-      name: payments-identity
+      kind: AzureUserAssignedIdentity
+      name: payments-api
+      fieldPath: status.outputs.principal_id
 ```
 
-### Regionally Isolated, Governance-Tagged Identity
+The InfraPipeline resolves the dependency graph, deploys the resource group and identity first, then provisions the grants with the resolved principal ID.
 
-For regulated environments -- token issuance restricted to the identity's region and tags aligned with the org's Azure Policy conventions:
+## Key Configuration
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: regulated-identity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.regulated-identity
-spec:
-  region: westeurope
-  resourceGroup:
-    valueFrom:
-      name: regulated-rg
-  name: regulated-workload
-  isolationScope: REGIONAL
-  tags:
-    cost-center: compliance
-    data-classification: restricted
-```
+These are the most important decisions when configuring a user-assigned managed identity. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### The Keyless-CI Composition
+**Durable naming** -- Changing the name replaces the identity, and with it the PRINCIPAL -- silently invalidating every role assignment and federated credential written against it. Name identities after the workload or duty they represent (`ci-deployer`, `payments-api`), not after any single consumer, because grants outlive consumers.
 
-The identity anchors keyless CI/CD: an `AzureRoleAssignment` grants it deployment rights, and an `AzureFederatedIdentityCredential` lets a GitHub Actions workflow act as it -- no secret anywhere:
+**Isolation scope** -- By default an identity is usable by resources in any region (its own region only anchors the ARM resource). `REGIONAL` restricts token issuance to the identity's own region -- a data-residency control some regulated environments require. Most deployments leave it unset; it updates in place, so isolation can be adopted later.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureUserAssignedIdentity
-metadata:
-  name: ci-deployer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureUserAssignedIdentity.ci-deployer
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: platform-rg
-  name: ci-deployer
-  tags:
-    purpose: ci-deployment
-```
+**Identity sharing** -- Unlike system-assigned identities (tied to a single resource), user-assigned identities can be attached to multiple Azure resources. Create one identity per logical application or duty, not one per resource, to keep permission auditing to one principal.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Consumes
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `identity_id` | `string` | ARM ID of the identity. Format: `/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{name}`. What consuming resources and federated credentials attach to. |
-| `principal_id` | `string` | Service principal object ID in Azure AD. What `AzureRoleAssignment` grants roles to. |
-| `client_id` | `string` | Client (application) ID. What workloads present to authenticate as the identity (e.g., `AZURE_CLIENT_ID`). |
-| `tenant_id` | `string` | Azure AD tenant ID the identity belongs to. |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
 
-## Related Components
+### What This Component Provides
 
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) -- grants this identity its permissions
-- [AzureFederatedIdentityCredential](/docs/catalog/azure/federated-identity-credential) -- lets external OIDC workloads act as this identity
-- [AzureRoleDefinition](/docs/catalog/azure/role-definition) -- custom roles for grants the built-ins don't express
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group where the identity is created
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) -- AKS clusters can use user-assigned identities for kubelet or control plane authentication
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `identity_id` | Azure Resource Manager ID of the managed identity | AKS kubelet identity, VM/Function/Container App identity blocks, AzureFederatedIdentityCredential parent |
+| `principal_id` | Entra ID service principal object ID | AzureRoleAssignment grants, Key Vault access policies |
+| `client_id` | Client ID (application ID) for SDK authentication | Application environment variable (AZURE_CLIENT_ID) |
+| `tenant_id` | Entra ID tenant ID | Cross-tenant authentication, SDK configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**The identity/grant/trust triad** -- One AzureUserAssignedIdentity, one or more AzureRoleAssignment resources granting it exactly what it needs, and (for keyless CI or AKS workload identity) AzureFederatedIdentityCredential resources declaring who may act as it. Each node is individually reviewable and removable.
+
+**Keyless CI deployment** -- An identity named for the pipeline (`ci-deployer`), a federated credential trusting the repository's OIDC token, and role assignments scoped to exactly the resources the pipeline deploys. No stored service-principal secret anywhere.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the managed identity is created
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants the identity permissions by targeting its `principal_id` output
+- [**Azure Federated Identity Credential**](/cloud-catalog/azure-federated-identity-credential) -- declares keyless trust rules on the identity's `identity_id` output

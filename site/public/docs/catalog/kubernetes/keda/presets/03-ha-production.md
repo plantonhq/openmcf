@@ -5,7 +5,7 @@ type: "preset"
 rank: "03"
 presetSlug: "03-ha-production"
 componentSlug: "keda"
-componentTitle: "KEDA"
+componentTitle: "Keda"
 provider: "kubernetes"
 icon: "package"
 order: 3

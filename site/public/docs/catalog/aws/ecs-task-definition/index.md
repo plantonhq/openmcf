@@ -8,160 +8,139 @@ componentName: "awsecstaskdefinition"
 
 # AWS ECS Task Definition
 
-Registers an ECS task definition: the immutable, versioned blueprint of
-the containers a task runs -- images, ports, environment, secrets, health
-checks, sizing, volumes, and the IAM identities the task assumes. The
-composition anchor of ECS compute: an `AwsEcsService` references it by
-its revision-carrying ARN, so registering a new revision (a new image
-tag) rolls the service through the resource graph.
+Declares the immutable, versioned blueprint of an ECS workload — the containers a task runs, their images, ports, environment and secrets, health checks, sizing, volumes, and the IAM identities the task assumes. A task definition is the composition anchor of ECS compute, the way a launch template anchors EC2 fleets: it has its own lifecycle and is referenced from the places that RUN it — an ECS service for steady-state workloads, EventBridge scheduled tasks, and one-off RunTask calls. Revisions are immutable in AWS: every change registers a NEW revision of the family, so a service referencing the `task_definition_arn` output picks up each new revision on its next deployment — "change the image tag, the service rolls" falls out of the composition.
 
 ## What Gets Created
 
-When you deploy an AwsEcsTaskDefinition resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Task definition revision** — an `aws_ecs_task_definition` /
-  `ecs.TaskDefinition` under the family named by `metadata.name`; every
-  spec change registers the next immutable revision
-- **CloudWatch log group** (by default) — `/ecs/<family>` with 30-day
-  retention; every container without its own log configuration streams
-  there under its own name prefix
+- **ECS Task Definition** -- a new revision of the family (named from the resource metadata), with its containers, sizing, volumes, and IAM wiring
+- **CloudWatch Log Group** -- one group named `/ecs/<family>` (30-day retention unless overridden) when the default logging is left on and no existing group is referenced; each container streams under its own name
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the task definition
 
-The IAM roles the task assumes are never modified: attach the required
-policies on the referenced `AwsIamRole` nodes themselves.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **An execution role** (`AwsIamRole`) whenever the task pulls private ECR images, injects `secrets`, or writes CloudWatch logs.
-- **A task role** (`AwsIamRole`) whenever the application itself calls AWS APIs.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Execution Role** -- an AwsIamRole trusting `ecs-tasks.amazonaws.com` with `AmazonECSTaskExecutionRolePolicy`, referenced by its `role_arn` output. Required in practice: the default CloudWatch wiring, private ECR images, and secret injection all need it.
+- **Task Role** (optional) -- an AwsIamRole scoped to the AWS APIs the application itself calls, referenced by its `role_arn` output.
+- **Log Group** (optional) -- an AwsCloudwatchLogGroup referenced by its name output, when several task families should share one group.
 
-## Quick Start
+### AWS Account
+
+- **ECS permissions** -- the credentials used by the Provider Connection must have `ecs:RegisterTaskDefinition`, `ecs:DeregisterTaskDefinition`, and `ecs:DescribeTaskDefinition`, plus `iam:PassRole` on the execution and task roles and `logs:CreateLogGroup`/`logs:PutRetentionPolicy` for the default log wiring.
+- **Secret access** -- when containers inject secrets, the execution role must be able to read those Secrets Manager secrets / SSM parameters; the values never appear in the task definition.
+- **Image availability** -- images must be pullable from the task's region (ECR via the execution role; other private registries via a repository-credentials secret).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS ECS Task Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web App** preset in the [Presets](#presets) tab for a single-container Fargate service blueprint.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEcsTaskDefinition
 metadata:
   name: api
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
-  cpu: 256
-  memory: 512
+  requiresCompatibilities:
+    - FARGATE
+  cpu: 512
+  memory: 1024
+  networkMode: awsvpc
+  executionRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: ecs-execution
+      fieldPath: status.outputs.role_arn
   containers:
-    - name: app
-      image: public.ecr.aws/nginx/nginx:stable
+    - name: api
+      image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/api:1.4.2
       portMappings:
-        - containerPort: 80
+        - containerPort: 8080
+          protocol: tcp
           name: http
+      environment:
+        LOG_LEVEL: info
+      secrets:
+        DB_PASSWORD: arn:aws:secretsmanager:us-west-2:123456789012:secret:db-pass
+      healthCheck:
+        command:
+          - CMD-SHELL
+          - curl -f http://localhost:8080/healthz || exit 1
 ```
 
 ```shell
 planton apply -f task-definition.yaml
 ```
 
-## Configuration Reference
+This registers revision 1 of the `api` family with a health-checked container, a CloudWatch log group, and a secret injected at task start. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region; must match the service's and cluster's. | Required; non-empty |
-| `containers` | `object[]` | The containers the task runs; sidecars are additional entries ordered by `dependsOn`. | ≥1; at least one essential |
-| `containers[].name` | `string` | Unique name; the service's `containerName` join key and the log stream prefix. | Required |
-| `containers[].image` | `string` | Full image reference (`repo:tag` or `repo@digest`). | Required |
-| `cpu` / `memory` | `int32` | Task-level sizing (CPU units / MiB). | Required for Fargate; CEL-enforced |
+These are the most important decisions when configuring a task definition. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**Revisions, not edits** -- every change to the spec registers a NEW immutable revision; nothing mutates a live one. Consumers referencing the revisioned ARN output roll forward automatically on their next deployment.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `requiresCompatibilities` | `string[]` | `[FARGATE]` | Launch types validated at registration: `FARGATE`, `EC2`, `EXTERNAL`. |
-| `networkMode` | `string` | `awsvpc` | `awsvpc` (required for Fargate), `bridge`, `host`, `none`. |
-| `executionRole` | `string \| valueFrom` | — | The ECS agent's setup identity (image pulls, secrets, logs). |
-| `taskRole` | `string \| valueFrom` | — | The application's runtime AWS identity. |
-| `runtimePlatform.cpuArchitecture` | `string` | `X86_64` | `ARM64` runs on Graviton (~20% cheaper per vCPU). |
-| `ephemeralStorageGib` | `int32` | 20 | Scratch storage, 21-200 GiB beyond the free 20. |
-| `volumes` | `object[]` | `[]` | Named volumes: EFS (durable, Fargate-supported) or host path (EC2). |
-| `logging` | `object` | auto | Task-level CloudWatch default: auto-created `/ecs/<family>` group, or a referenced `AwsCloudwatchLogGroup`; `disabled: true` turns the default off. |
-| `skipDestroy` | `bool` | `false` | Keep old revisions registered on destroy. |
-| `containers[].essential` | `bool` | `true` | An essential container's exit stops the task; sidecars set `false`. |
-| `containers[].environment` / `secrets` | `map` | `{}` | Plain values, and Secrets Manager/SSM ARNs the agent resolves at task start. |
-| `containers[].healthCheck` | `object` | — | In-container probe; `dependsOn: HEALTHY` gates siblings on it. |
-| `containers[].dependsOn` | `object[]` | `[]` | Startup ordering: `START`, `HEALTHY`, `COMPLETE`, `SUCCESS`. |
-| `containers[].restartPolicy` | `object` | — | In-place restarts for a crashing container without cycling the task. |
-| `containers[].firelensConfiguration` | `object` | — | Mark the container as a FireLens log router (fluentbit/fluentd). |
+**Fargate sizing is a pairing table** -- task-level `cpu` selects one of seven fixed sizes (256–16384 units) and constrains the valid `memory` window (e.g. 512 CPU pairs with 1–4 GiB). AWS rejects any combination outside the table at registration. On EC2, task-level sizing is optional and per-container values drive bin-packing.
 
-## Examples
+**Two IAM roles by design** -- the `execution_role` is the ECS agent's setup identity (pull images, resolve secrets, write logs); the `task_role` is what the application assumes at runtime. Never merge them: a compromise of one must not grant the other's access.
 
-### Application with secrets and roles
+**Secrets are references** -- `containers[].secrets` maps a variable name to a Secrets Manager / SSM ARN the agent resolves at task start. Plain `environment` values are visible to anyone who can describe the task definition — anything sensitive belongs in `secrets`.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcsTaskDefinition
-metadata:
-  name: api
-spec:
-  region: us-west-2
-  cpu: 512
-  memory: 1024
-  executionRole:
-    valueFrom: { kind: AwsIamRole, name: api-execution, fieldPath: status.outputs.role_arn }
-  taskRole:
-    valueFrom: { kind: AwsIamRole, name: api-task, fieldPath: status.outputs.role_arn }
-  containers:
-    - name: app
-      image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/api:1.4.2
-      portMappings:
-        - containerPort: 8080
-          name: http
-          appProtocol: http
-      secrets:
-        DATABASE_URL: arn:aws:secretsmanager:us-west-2:123456789012:secret:api-db
-      healthCheck:
-        command: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
-```
+**Essential vs sidecar** -- when an essential container exits, ECS stops the whole task. Leave the application essential (the default) and mark sidecars (log routers, collectors, proxies) non-essential; order startup with `depends_on` (a HEALTHY condition requires the dependency to define a health check).
 
-### Graviton worker with an EFS volume
+**One log group per task** -- default logging creates `/ecs/<family>` and streams each container under its own name. Per-container `log_configuration` is the escape hatch to Splunk, Fluentd, or a FireLens sibling router.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcsTaskDefinition
-metadata:
-  name: media-worker
-spec:
-  region: us-west-2
-  cpu: 1024
-  memory: 2048
-  runtimePlatform:
-    cpuArchitecture: ARM64
-  volumes:
-    - name: media
-      efs:
-        fileSystemId: fs-0123456789abcdef0
-        accessPointId: fsap-0123456789abcdef0
-        iamAuthorization: true
-  containers:
-    - name: worker
-      image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/media-worker:2.1.0
-      mountPoints:
-        - sourceVolume: media
-          containerPath: /var/media
-      stopTimeoutSeconds: 120
-```
+## Outputs and Dependencies
 
-## Stack Outputs
+### What This Component Consumes
 
-| Output | Description |
-| --- | --- |
-| `task_definition_arn` | The revision-carrying ARN (family:revision) services reference — a new revision changes it and rolls the referencing service |
-| `arn_without_revision` | The family ARN for consumers tracking the latest ACTIVE revision |
-| `family` | The family name revisions register under |
-| `revision` | The revision number this deployment registered |
-| `log_group_name` | The CloudWatch log group the containers log to |
-| `log_group_arn` | The ARN of the auto-created log group |
+| Field | References | Via |
+|-------|-----------|-----|
+| `executionRole` | AwsIamRole | `status.outputs.role_arn` |
+| `taskRole` | AwsIamRole | `status.outputs.role_arn` |
+| `logging.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
+| `volumes[].efs.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
+| `volumes[].efs.accessPointId` | AwsEfsAccessPoint | `status.outputs.access_point_id` |
 
-## Related Components
+### What This Component Provides
 
-- [AwsEcsService](/docs/catalog/aws/ecs-service) — schedules this task definition into a cluster
-- [AwsEcsCluster](/docs/catalog/aws/ecs-cluster) — where the tasks run
-- [AwsIamRole](/docs/catalog/aws/iam-role) — the execution and task identities
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — an existing log destination to reference instead of the auto-created group
+After provisioning, `status.outputs` contains:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `task_definition_arn` | The revisioned ARN | An AwsEcsService's `taskDefinition` reference — each new revision rolls the service |
+| `arn_without_revision` | The family-level ARN | Consumers that always want the latest ACTIVE revision |
+| `family` | The family name | Cross-referencing with `aws ecs describe-task-definition` |
+| `revision` | The registered revision number | Deployment verification and rollback bookkeeping |
+| `log_group_name` | The auto-created CloudWatch group's name | Log queries and dashboards |
+| `log_group_arn` | The auto-created CloudWatch group's ARN | IAM policies scoping log access |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web application** -- one container, one HTTP port, health-checked, default CloudWatch logging. Start from the **Web App** preset.
+
+**App with an OpenTelemetry sidecar** -- the application container plus an OTel collector sidecar, ordered with `depends_on` so telemetry is receiving before the app emits. Start from the **App with OTel Sidecar** preset.
+
+**ARM64 worker** -- a queue-consumer on Graviton (~20% cheaper per vCPU on Fargate), no ports at all. Start from the **ARM64 Worker** preset.
+
+## Works With
+
+- **AwsEcsService** -- runs this blueprint as a steady-state service, referencing `task_definition_arn`; the service picks up each new revision on its next deployment.
+- **AwsEcsCluster** -- the compute namespace the service places tasks into.
+- **AwsIamRole** -- the execution and task roles, referenced by `executionRole` / `taskRole`.
+- **AwsCloudwatchLogGroup** -- an existing shared log group, referenced by `logging.logGroup`.
+- **AwsElasticFileSystem** / **AwsEfsAccessPoint** -- durable shared volumes, referenced per volume by `volumes[].efs.fileSystemId` and (recommended) `volumes[].efs.accessPointId`.
+- **AwsLbTargetGroup** -- receives traffic for the container/port a service exposes from this blueprint.

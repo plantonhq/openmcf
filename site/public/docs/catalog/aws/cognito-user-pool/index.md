@@ -8,42 +8,52 @@ componentName: "awscognitouserpool"
 
 # AWS Cognito User Pool
 
-Deploys an Amazon Cognito user pool -- the managed user directory and OIDC token issuer for web and mobile applications. The pool owns everything pool-scoped: the identity model, password and passwordless sign-in policies, MFA (TOTP, email, SMS, passkeys), email/SMS delivery, verification and invitation messaging, custom schema attributes, Lambda triggers, threat protection, log delivery, and the hosted-UI domain. App clients, identity providers, and resource servers compose onto the pool as their own resources.
+Deploys a Cognito User Pool — the user directory at the root of the Cognito family — with the identity model, password and passwordless sign-in factors, MFA and recovery, verification and invitation messaging, email/SMS delivery, custom schema attributes, Lambda lifecycle triggers, threat protection, log exports, and an optional hosted UI domain. App clients, federated identity providers, and OAuth resource servers are their own first-class kinds (AwsCognitoUserPoolClient, AwsCognitoIdentityProvider, AwsCognitoResourceServer) that reference the pool.
 
 ## What Gets Created
 
-When you deploy an AwsCognitoUserPool resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cognito User Pool** -- an `aws_cognito_user_pool` with the configured identity model, policies, MFA, delivery, triggers, and threat protection
-- **User Pool Domain** -- created only when `spec.domain` is set: an `aws_cognito_user_pool_domain` serving the hosted sign-in UI and OAuth2 endpoints (Authorization, Token, UserInfo)
-- **Log delivery configuration** -- created only when `spec.logConfigurations` is set, routing Cognito event logs to CloudWatch, Firehose, or S3
+- **Cognito User Pool** -- a user directory with the configured identity model (email/phone or alias sign-in), feature tier, password policy, passwordless first factors (email OTP, SMS OTP, passkeys), MFA settings, account recovery order, verification/invitation message templates, device tracking, and threat protection
+- **User Pool Domain** -- created only when `domain` is configured; a Cognito-hosted prefix domain or a custom domain backed by an ACM certificate for the hosted sign-in UI and OAuth endpoints
+- **Custom Schema Attributes** -- created only when `customAttributes` entries are provided; extends the pool's user schema beyond the standard set (append-only after creation)
+- **Log Export Configurations** -- created only when `logConfigurations` entries are provided; streams notification errors or auth events to CloudWatch Logs, Kinesis Firehose, or S3
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-App clients (`AwsCognitoUserPoolClient`), federated identity providers (`AwsCognitoIdentityProvider`), and resource servers (`AwsCognitoResourceServer`) are separate resources that reference this pool.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An ACM certificate in us-east-1** if configuring a custom domain (Cognito fronts custom domains with CloudFront)
-- **A verified SES identity** if using `emailConfiguration.emailSendingAccount: DEVELOPER` (production email volumes; required for email MFA)
-- **An IAM role assumable by cognito-idp.amazonaws.com** (with an `sts:ExternalId` condition) for any SMS feature
-- **Lambda function(s)** with `cognito-idp.amazonaws.com` invoke permission if configuring triggers
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `cognito.yaml`:
+- **A verified SES identity** (optional) -- required only when using DEVELOPER email mode for production-volume sending. Provide the SES identity ARN directly or as a ValueFromRef.
+- **An IAM role for SNS** (optional) -- required only when SMS delivery is configured (SMS OTP sign-in, SMS MFA, or phone auto-verification). The role's trust policy must allow `cognito-idp.amazonaws.com` with your external ID; reference an AwsIamRole Cloud Resource or provide the ARN directly.
+- **Lambda functions** (optional) -- required when configuring authentication lifecycle triggers (pre-sign-up, post-confirmation, custom auth challenges, versioned token customization, custom senders). Each Lambda must grant Cognito permission to invoke it. Reference AwsLambda Cloud Resources via ValueFromRef or provide function ARNs directly.
+- **A KMS key** (optional) -- required only when custom email/SMS sender Lambdas are configured; Cognito encrypts verification codes with it before invoking your functions.
+- **An ACM certificate in us-east-1** (optional) -- required only when using a custom domain (FQDN) for the hosted UI. Cognito routes custom domains through CloudFront, so the certificate must be in us-east-1 regardless of the pool's region. Reference an AwsCertManagerCert Cloud Resource or provide the ARN directly.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Cognito User Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Email Auth Basic** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCognitoUserPool
 metadata:
-  name: my-auth
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCognitoUserPool.my-auth
+  name: app-auth
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   usernameAttributes:
     - email
   autoVerifiedAttributes:
@@ -51,286 +61,101 @@ spec:
   accountRecoveryMechanisms:
     - name: verified_email
       priority: 1
+  deletionProtection: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f cognito.yaml
+planton apply -f cognito-user-pool.yaml
 ```
 
-This creates a user pool where users sign in with their email address and email is auto-verified on sign-up. Add an `AwsCognitoUserPoolClient` so an application can authenticate against it.
+This creates a user pool with email as the sign-in identifier, email auto-verification, email-based recovery, and deletion protection. Add an AwsCognitoUserPoolClient resource so an application can authenticate — the pool alone has no app client.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the user pool is created (e.g., `us-east-1`). | Required |
-
-### Identity Model (ForceNew)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `usernameAttributes` | `string[]` | `[]` | Sign-in identifiers: `"email"`, `"phone_number"`. Mutually exclusive with `aliasAttributes`. Changing REPLACES the pool and its users. |
-| `aliasAttributes` | `string[]` | `[]` | Alias identifiers: `"email"`, `"phone_number"`, `"preferred_username"`. Mutually exclusive with `usernameAttributes`. |
-| `usernameCaseSensitive` | `bool` | `false` | Case-sensitive usernames. |
-
-### Pool Posture
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `deletionProtection` | `bool` | `false` | Pool cannot be deleted while true. |
-| `userPoolTier` | `string` | `"ESSENTIALS"` (AWS) | Feature tier: `"LITE"`, `"ESSENTIALS"`, `"PLUS"` (threat protection). |
-
-### Password and Sign-In Policy
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `passwordPolicy.minimumLength` | `int` | 8 (AWS) | Minimum password length. Range: 6-99. |
-| `passwordPolicy.requireLowercase` / `requireUppercase` / `requireNumbers` / `requireSymbols` | `bool` | `false` | Character-class requirements. |
-| `passwordPolicy.passwordHistorySize` | `int` | 0 | Previous passwords a new one must differ from (0-24; ESSENTIALS+). |
-| `passwordPolicy.temporaryPasswordValidityDays` | `int` | 7 (AWS) | Days until admin-created temporary passwords expire (0-365). |
-| `allowedFirstAuthFactors` | `string[]` | `[]` | Passwordless first factors: `"PASSWORD"`, `"EMAIL_OTP"`, `"SMS_OTP"`, `"WEB_AUTHN"`. Empty keeps classic password-first sign-in. |
-
-### MFA
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `mfaConfiguration` | `string` | `"OFF"` | MFA enforcement: `"OFF"`, `"OPTIONAL"`, `"ON"`. |
-| `softwareTokenMfaEnabled` | `bool` | `false` | TOTP authenticator apps. Requires MFA not OFF. |
-| `emailMfa.message` / `emailMfa.subject` | `string` | AWS defaults | Email-OTP second factor templates (`{####}` placeholder). Requires SES DEVELOPER email. |
-| `webAuthn.relyingPartyId` | `string` | pool domain | The domain passkeys are registered against. |
-| `webAuthn.userVerification` | `string` | `"preferred"` | `"required"` or `"preferred"`. |
-
-### SMS Delivery
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `smsConfiguration.snsCallerArn` | `StringValueOrRef` | IAM role Cognito assumes to publish SMS via SNS. Reference an AwsIamRole via `valueFrom`. |
-| `smsConfiguration.externalId` | `string` | The `sts:ExternalId` in the role's trust policy. |
-| `smsConfiguration.snsRegion` | `string` | Region SMS originates from when the pool's region cannot send. |
-| `smsAuthenticationMessage` | `string` | Sign-in code SMS body; must contain `{####}`. |
-
-### Verification and Recovery
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `autoVerifiedAttributes` | `string[]` | Auto-verify on sign-up: `"email"`, `"phone_number"`. |
-| `attributesRequireVerificationBeforeUpdate` | `string[]` | Keep the previous value active until the updated one is verified. |
-| `accountRecoveryMechanisms` | `object[]` | Recovery methods with `.name` (`"verified_email"`, `"verified_phone_number"`, `"admin_only"`) and `.priority` (1-2). |
-| `verificationMessageTemplate.defaultEmailOption` | `string` | `"CONFIRM_WITH_CODE"` (AWS default) or `"CONFIRM_WITH_LINK"`. |
-| `verificationMessageTemplate.emailMessage` / `emailSubject` | `string` | Code-based templates (`{####}`). |
-| `verificationMessageTemplate.emailMessageByLink` / `emailSubjectByLink` | `string` | Link-based templates (`{##link text##}`). |
-| `verificationMessageTemplate.smsMessage` | `string` | Phone verification SMS (`{####}`). |
-
-### Email Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `emailConfiguration.emailSendingAccount` | `string` | `"COGNITO_DEFAULT"` | `"COGNITO_DEFAULT"` (50/day sandbox) or `"DEVELOPER"` (SES). |
-| `emailConfiguration.sourceArn` | `StringValueOrRef` | — | SES identity ARN. Required for `"DEVELOPER"`. |
-| `emailConfiguration.fromEmailAddress` | `string` | — | "From" address for DEVELOPER mode. |
-| `emailConfiguration.replyToEmailAddress` | `string` | — | Reply-to address. |
-| `emailConfiguration.configurationSet` | `string` | — | SES configuration set for delivery metrics. |
-
-### Admin and User Management
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `allowAdminCreateUserOnly` | `bool` | `false` | Disable self-registration. |
-| `inviteMessageTemplate.emailMessage` / `emailSubject` / `smsMessage` | `string` | AWS defaults | Invitation templates; must contain `{username}` and `{####}`. |
-| `deviceConfiguration.challengeRequiredOnNewDevice` | `bool` | `false` | New devices still require a challenge the first time. |
-| `deviceConfiguration.deviceOnlyRememberedOnUserPrompt` | `bool` | `false` | Remember devices only when the user opts in. |
-
-### Custom Attributes (Append-Only)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `customAttributes[].name` | `string` | 1-20 chars, auto-prefixed `custom:`. |
-| `customAttributes[].attributeDataType` | `string` | `"String"`, `"Number"`, `"DateTime"`, `"Boolean"`. |
-| `customAttributes[].mutable` / `required` / `developerOnlyAttribute` | `bool` | Fixed at the moment the attribute is added. |
-| `customAttributes[].stringMinLength` / `stringMaxLength` / `numberMinValue` / `numberMaxValue` | `string` | Type constraints. |
-
-### Lambda Triggers
-
-All trigger fields accept a Lambda ARN or a `valueFrom` reference to an AwsLambda resource.
-
-| Field | Description |
-|-------|-------------|
-| `lambdaConfig.preSignUp` / `preAuthentication` / `postAuthentication` / `postConfirmation` | Lifecycle hooks. |
-| `lambdaConfig.preTokenGeneration` | Claim customization (V1_0 event). |
-| `lambdaConfig.preTokenGenerationConfig.lambdaArn` + `.lambdaVersion` | Versioned claim customization -- `"V2_0"`/`"V3_0"` also customize ACCESS tokens. Set this or `preTokenGeneration`, not both. |
-| `lambdaConfig.customMessage` / `userMigration` | Message customization; on-the-fly user import. |
-| `lambdaConfig.defineAuthChallenge` / `createAuthChallenge` / `verifyAuthChallengeResponse` | Custom auth challenge flow. |
-| `lambdaConfig.customEmailSender` / `customSmsSender` | Self-managed delivery (`lambdaArn` + `lambdaVersion: "V1_0"`); requires `lambdaConfig.kmsKeyId`. |
-| `lambdaConfig.kmsKeyId` | KMS key encrypting custom-sender payloads. Reference an AwsKmsKey via `valueFrom`. |
-
-### Threat Protection and Log Delivery
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `userPoolAddOns.advancedSecurityMode` | `string` | `"OFF"`, `"AUDIT"`, `"ENFORCED"`. AUDIT/ENFORCED require the PLUS tier. |
-| `userPoolAddOns.customAuthMode` | `string` | Extends threat protection to custom auth flows: `"AUDIT"`, `"ENFORCED"`. |
-| `logConfigurations[].eventSource` | `string` | `"userNotification"` (ERROR) or `"userAuthEvents"` (INFO; PLUS tier). |
-| `logConfigurations[].logLevel` | `string` | `"ERROR"` or `"INFO"`. |
-| `logConfigurations[].cloudwatchLogGroupArn` / `firehoseStreamArn` / `s3BucketArn` | `StringValueOrRef` | Exactly one destination per entry; each accepts a `valueFrom` reference. |
-
-### Hosted-UI Domain
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `domain.domain` | `string` | Cognito prefix (e.g., `"myapp-auth"`) or custom FQDN (e.g., `"auth.example.com"`). ForceNew. |
-| `domain.certificateArn` | `StringValueOrRef` | ACM cert for custom domains (us-east-1). Reference an AwsCertManagerCert via `valueFrom`. |
-| `domain.managedLoginVersion` | `int` | 1 = classic hosted UI, 2 = managed login (AWS default for new domains). |
-
-## Examples
-
-### Passwordless Sign-In (Email OTP + Passkeys)
+When deploying as part of a multi-resource environment, use ValueFromRef to wire Lambda triggers and custom domain certificates:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCognitoUserPool
-metadata:
-  name: passwordless-auth
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCognitoUserPool.passwordless-auth
 spec:
-  region: us-east-1
-  usernameAttributes:
-    - email
-  autoVerifiedAttributes:
-    - email
-  allowedFirstAuthFactors:
-    - PASSWORD
-    - EMAIL_OTP
-    - WEB_AUTHN
-  webAuthn:
-    relyingPartyId: auth.example.com
-    userVerification: required
-  emailConfiguration:
-    emailSendingAccount: DEVELOPER
-    sourceArn:
-      value: "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
-    fromEmailAddress: "Acme <noreply@example.com>"
-  accountRecoveryMechanisms:
-    - name: verified_email
-      priority: 1
-```
-
-### Production Pool with MFA, Threat Protection, and a Hosted UI
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCognitoUserPool
-metadata:
-  name: prod-auth
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCognitoUserPool.prod-auth
-spec:
-  region: us-east-1
-  usernameAttributes:
-    - email
-  userPoolTier: PLUS
-  passwordPolicy:
-    minimumLength: 12
-    requireLowercase: true
-    requireUppercase: true
-    requireNumbers: true
-    requireSymbols: true
-    passwordHistorySize: 5
-    temporaryPasswordValidityDays: 3
-  mfaConfiguration: OPTIONAL
-  softwareTokenMfaEnabled: true
-  autoVerifiedAttributes:
-    - email
-  attributesRequireVerificationBeforeUpdate:
-    - email
-  accountRecoveryMechanisms:
-    - name: verified_email
-      priority: 1
-  emailConfiguration:
-    emailSendingAccount: DEVELOPER
-    sourceArn:
-      value: "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
-    fromEmailAddress: "Acme <noreply@example.com>"
-  userPoolAddOns:
-    advancedSecurityMode: ENFORCED
-  deletionProtection: true
+  lambdaConfig:
+    preSignUp:
+      valueFrom:
+        kind: AwsLambda
+        name: signup-validator
+        fieldPath: status.outputs.function_arn
   domain:
-    domain: acme-prod-auth
+    domain: auth.example.com
+    certificateArn:
+      valueFrom:
+        kind: AwsCertManagerCert
+        name: auth-cert
+        fieldPath: status.outputs.cert_arn
 ```
 
-### API Gateway JWT Integration
+The InfraPipeline resolves the dependency graph, deploys the Lambda function and ACM certificate first, then provisions the user pool with the resolved values.
 
-The pool's `issuer` output and an app client's `client_id` output wire directly into an AwsHttpApiGateway JWT authorizer:
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiGateway
-metadata:
-  name: my-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsHttpApiGateway.my-api
-spec:
-  region: us-east-1
-  routes:
-    - routeKey: "GET /users"
-      integration:
-        integrationType: AWS_PROXY
-        integrationUri:
-          valueFrom:
-            kind: AwsLambda
-            name: get-users
-            fieldPath: status.outputs.function_arn
-      authorizationType: JWT
-      authorizerName: cognito
-  authorizers:
-    - name: cognito
-      authorizerType: JWT
-      jwtConfiguration:
-        issuer:
-          valueFrom:
-            kind: AwsCognitoUserPool
-            name: prod-auth
-            fieldPath: status.outputs.issuer
-        audiences:
-          - valueFrom:
-              kind: AwsCognitoUserPoolClient
-              name: web-spa
-              fieldPath: status.outputs.client_id
-```
+These are the most important decisions when configuring a Cognito User Pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Identity model** -- Choose between `usernameAttributes` (email/phone as the sign-in identifier) and `aliasAttributes` (separate username with email/phone/preferred_username as aliases). These fields and `usernameCaseSensitive` are ForceNew in AWS -- changing them destroys and recreates the pool with all users. Choose carefully before your first production deployment.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `user_pool_id` | `string` | Pool identifier (`{region}_{poolId}`) -- the join key app clients, identity providers, and resource servers reference. |
-| `user_pool_arn` | `string` | Pool ARN -- IAM policies and ALB authenticate-cognito actions. |
-| `user_pool_endpoint` | `string` | The endpoint as AWS reports it, WITHOUT a scheme (`cognito-idp.{region}.amazonaws.com/{id}`). |
-| `issuer` | `string` | The full OIDC issuer URL -- what JWT authorizers validate the token's `iss` claim against. |
-| `user_pool_domain` | `string` | The hosted-UI domain exactly as configured (prefix or FQDN, no scheme) -- what ALB actions take as `user_pool_domain`. Empty when no domain. |
-| `hosted_ui_url` | `string` | The full `https://` hosted sign-in URL. Empty when no domain. |
-| `cloudfront_distribution` | `string` | CloudFront domain name fronting a custom domain -- the DNS alias target. Empty for prefix domains. |
-| `cloudfront_distribution_arn` | `string` | ARN of that CloudFront distribution. Empty for prefix domains. |
-| `cloudfront_hosted_zone_id` | `string` | The CloudFront alias-target zone ID for Route53 alias records. Empty for prefix domains. |
+**Feature tier** -- `userPoolTier` selects the pricing plan: `LITE` (password-only basics), `ESSENTIALS` (the AWS default: passwordless factors, passkeys, managed login branding), or `PLUS` (adds threat protection). Several capabilities are tier-gated: passwordless first factors and email MFA need Essentials+; `userPoolAddOns` threat protection and auth-event log exports need Plus.
 
-## Related Components
+**Sign-in factors** -- `allowedFirstAuthFactors` opts users into passwordless sign-in: `EMAIL_OTP`, `SMS_OTP` (requires `smsConfiguration`), and `WEB_AUTHN` passkeys (configure the relying-party domain in `webAuthn`). An empty list keeps the AWS default of password-only.
 
-- [AWS Cognito User Pool Client](/docs/catalog/aws/cognito-user-pool-client) -- app clients that authenticate against this pool; their `client_id` is the JWT audience
-- [AWS Cognito Identity Provider](/docs/catalog/aws/cognito-identity-provider) -- federated Google/Facebook/Amazon/Apple/OIDC/SAML sign-in for this pool
-- [AWS Cognito Resource Server](/docs/catalog/aws/cognito-resource-server) -- custom OAuth scopes for machine-to-machine clients
-- [AWS HTTP API Gateway](/docs/catalog/aws/http-api-gateway) -- JWT authorizers built from this pool's `issuer` output
-- [AWS Lambda](/docs/catalog/aws/lambda) -- trigger functions for the pool's lifecycle hooks
-- [AWS ACM Certificate](/docs/catalog/aws/cert-manager-cert) -- the us-east-1 certificate for custom hosted-UI domains
-- [AWS Route53 DNS Record](/docs/catalog/aws/route53-dns-record) -- the alias record pointing a custom domain at the pool's CloudFront distribution
+**MFA enforcement** -- Set `mfaConfiguration` to `OFF` (default), `OPTIONAL` (users opt in), or `ON` (required for all users). With MFA active, enable `softwareTokenMfaEnabled` for authenticator apps, configure `emailMfa` for email codes, and customize `smsAuthenticationMessage` for SMS codes.
+
+**Message delivery** -- Email defaults to Cognito's built-in service (limited to ~50 emails/day). Set `emailConfiguration.emailSendingAccount` to `DEVELOPER` with a verified SES `sourceArn` for production volumes. SMS always requires `smsConfiguration` with the SNS caller role and external ID.
+
+**Deletion protection** -- Set `deletionProtection: true` for production pools to prevent accidental deletion. The pool is a data store: deleting it deletes every user account.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** (optional) | `smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
+| **AwsLambda** (optional) | `lambdaConfig.preSignUp`, `preAuthentication`, `postAuthentication`, `postConfirmation`, `preTokenGeneration`, `preTokenGenerationConfig.lambdaArn`, `customMessage`, `userMigration`, `defineAuthChallenge`, `createAuthChallenge`, `verifyAuthChallengeResponse`, `customEmailSender.lambdaArn`, `customSmsSender.lambdaArn` | `status.outputs.function_arn` |
+| **AwsKmsKey** (optional) | `lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| **AwsKinesisFirehose** (optional) | `logConfigurations[].firehoseStreamArn` | `status.outputs.delivery_stream_arn` |
+| **AwsS3Bucket** (optional) | `logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
+| **AwsCertManagerCert** (optional) | `domain.certificateArn` | `status.outputs.cert_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `user_pool_id` | User pool identifier ({region}_{poolId}) | AwsCognitoUserPoolClient, AwsCognitoIdentityProvider, and AwsCognitoResourceServer all bind it |
+| `user_pool_arn` | Amazon Resource Name of the user pool | IAM policies, API Gateway authorizers, cross-service permissions |
+| `user_pool_endpoint` | The pool's API endpoint | SDK configuration |
+| `issuer` | OIDC issuer URL | JWT validation, OIDC client configuration |
+| `user_pool_domain` | The configured hosted UI domain | Application redirect configuration, OAuth endpoint discovery |
+| `hosted_ui_url` | Full URL of the hosted sign-in page | Application login links |
+| `cloudfront_distribution` | CloudFront target for custom domains | Route53 alias record target |
+| `cloudfront_distribution_arn` | CloudFront distribution ARN for custom domains | IAM/WAF policies on the distribution |
+| `cloudfront_hosted_zone_id` | CloudFront hosted zone for alias records | Route53 alias record zone ID |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Email authentication** -- Email as sign-in identifier with auto-verification and email recovery. The standard starting point for development and simple applications. Start from the **Email Auth Basic** preset.
+
+**OAuth with hosted UI** -- A Cognito-hosted domain for the sign-in pages plus an AwsCognitoUserPoolClient with the Authorization Code flow. Suitable for web applications needing OAuth/OIDC. Start from the **OAuth with Hosted UI** preset.
+
+**Production hardened** -- Strong password policy with history, optional MFA with TOTP, SES-based email, verify-before-update, threat protection on the Plus tier, and deletion protection. Start from the **Production Hardened** preset.
+
+## Works With
+
+- [**AWS Cognito User Pool Client**](/cloud-catalog/aws-cognito-user-pool-client) -- the app client that applications authenticate through; binds `user_pool_id`
+- [**AWS Cognito Identity Provider**](/cloud-catalog/aws-cognito-identity-provider) -- federates Google/Facebook/Apple/OIDC/SAML sign-in into this pool
+- [**AWS Cognito Resource Server**](/cloud-catalog/aws-cognito-resource-server) -- defines custom OAuth scopes for APIs protected by this pool
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the SNS caller role SMS delivery rides on
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- authentication lifecycle triggers, token customization, and custom message senders
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- encrypts codes handed to custom sender Lambdas
+- [**AWS Certificate Manager Certificate**](/cloud-catalog/aws-cert-manager-cert) -- the us-east-1 certificate for custom hosted UI domains
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group), [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose), [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- log export destinations

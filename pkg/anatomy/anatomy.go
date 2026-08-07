@@ -20,9 +20,6 @@
 //	└── <version>/         the versioned contract ONLY:
 //	    api.proto, spec.proto, input.proto, outputs.proto,
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
-//	    (catalog-page.md is a tolerated RETIRING resident: it is being
-//	    replaced by the kind-root catalog.md and leaves with the forge
-//	    rewrite -- remove the tolerance in the same change that retires it)
 //
 // Two prefix conventions coexist deliberately: underscore dirs at the catalog
 // root (_docs/, _patterns/) hold docs-only content Go tooling must ignore,
@@ -119,9 +116,6 @@ var versionEntries = map[string]bool{
 	"BUILD.bazel":   true,
 	"spec_test.go":  true,
 	"reference.md":  true,
-	// RETIRING: replaced by the kind-root catalog.md; the tolerance leaves
-	// in the same change that retires the files.
-	"catalog-page.md": true,
 }
 
 // requiredContractProtos are the version-dir protos every kind must serve.

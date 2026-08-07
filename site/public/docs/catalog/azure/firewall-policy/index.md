@@ -8,149 +8,141 @@ componentName: "azurefirewallpolicy"
 
 # Azure Firewall Policy
 
-Creates an Azure Firewall Policy -- the reusable rule-and-inspection document Azure Firewall instances enforce. Author security policy once (threat intelligence, DNS proxying, TLS inspection, IDPS, SNAT posture) and attach it to firewalls anywhere; rules nest under the policy as independently-deployed rule collection groups.
+Deploys an Azure Firewall Policy — the reusable rule-and-inspection document Azure Firewall instances enforce. The policy carries everything about WHAT the firewall does (threat intelligence posture, DNS proxying, TLS inspection, intrusion detection, SNAT behavior) while the firewall instance carries WHERE it runs — so security policy is authored once, by the security team, and enforced on every firewall that attaches it, across regions. Rules themselves live in separate AzureFirewallPolicyRuleCollectionGroup children, deployable on their own schedules; policies also support inheritance, where a child policy extends a security-team baseline via `basePolicyId`.
 
 ## What Gets Created
 
-When you deploy an AzureFirewallPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Firewall Policy** — an `azurerm_firewall_policy` in the specified region and resource group, carrying the tier, inspection settings, and posture
+- **Firewall Policy** -- the policy document with its tier, threat-intelligence mode, and every configured block (allowlist, DNS, IDPS, identity, TLS certificate, analytics, explicit proxy, SNAT ranges)
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-Rules are separate `AzureFirewallPolicyRuleCollectionGroup` resources; enforcement is a separate `AzureFirewall` that references this policy.
+The sku and threat-intelligence mode are always sent explicitly (Standard/Alert when unspecified) — Azure's own defaults, made deterministic so both IaC engines produce identical payloads. Rules and firewalls are NOT created here: rule collection groups nest under this policy and firewalls attach it, each with its own lifecycle.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the policy in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/firewallPolicies/write` (Network Contributor, Contributor, or Owner)
-- For TLS inspection (Premium): an `AzureKeyVaultCertificate` holding the CA, and an `AzureUserAssignedIdentity` with secret read access on it
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `firewall-policy.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the policy will be created — conventionally the security team's, since one policy governs many application firewalls.
+- **The tier decision, made deliberately**: the sku is fixed at creation AND must match the tier of every firewall that attaches the policy — Premium features (TLS inspection, IDPS) require choosing PREMIUM now, not later.
+- **For TLS inspection**: an AzureKeyVaultCertificate holding your intermediate CA, and an AzureUserAssignedIdentity with "Key Vault Secrets User" on that vault.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Firewall Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Egress Baseline** preset in the [Presets](#presets) tab for the classic hub-spoke posture.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFirewallPolicy
 metadata:
   name: egress-baseline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFirewallPolicy.egress-baseline
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
+    value: "rg-security-hub"
   name: egress-baseline
+  sku: STANDARD
   threatIntelligenceMode: DENY
   dns:
     proxyEnabled: true
+  tags:
+    cost-center: network-security
 ```
-
-Deploy:
 
 ```shell
 planton apply -f firewall-policy.yaml
 ```
 
-After deployment, read `status.outputs.firewall_policy_id` for the ARM ID that rule collection groups and firewalls reference.
+Threat intelligence blocks known-malicious destinations from day one, and the DNS proxy makes FQDN-based network rules deterministic — point spoke DNS at the attached firewall's private IP.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region. The policy is regional but attachable to firewalls anywhere. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Policy name, unique within the resource group. | Required, 2-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sku` | `enum` | `STANDARD` | `BASIC`, `STANDARD`, or `PREMIUM`. Fixed at creation; must match attached firewalls' tier. |
-| `basePolicyId` | `StringValueOrRef` | -- | Parent policy for inheritance. |
-| `threatIntelligenceMode` | `enum` | `ALERT` | `ALERT`, `DENY`, or `OFF`. |
-| `threatIntelligenceAllowlist` | `object` | -- | IPs/FQDNs the feed must never flag (at least one entry). |
-| `dns` | `object` | -- | Custom upstream servers and/or DNS proxying (required for FQDN network rules). |
-| `intrusionDetection` | `object` | -- | IDPS engine mode, signature overrides, private ranges, traffic bypasses. **PREMIUM only** (validated). |
-| `identity` | `object` | -- | Managed identity; TLS inspection requires USER_ASSIGNED. |
-| `tlsCertificate` | `object` | -- | The CA certificate's Key Vault secret reference + display name. **PREMIUM only** (validated). |
-| `insights` | `object` | -- | Policy analytics into Log Analytics (default workspace + per-region routing). |
-| `explicitProxy` | `object` | -- | Forward-proxy ports and PAC file (ports capped at 35536). |
-| `sqlRedirectAllowed` | `bool` | `false` | Allow SQL redirect ports (11000-11999, 14000-14999) in FQDN rules. |
-| `privateIpRanges` | `list(string)` | IANA private | Ranges never SNATed. |
-| `autoLearnPrivateRangesEnabled` | `bool` | `false` | Learn SNAT-exempt ranges automatically. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags. |
-
-## Examples
-
-### Premium Policy with TLS Inspection and IDPS
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the policy to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureFirewallPolicy
-metadata:
-  name: inspected-egress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFirewallPolicy.inspected-egress
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: inspected-egress
-  sku: PREMIUM
-  threatIntelligenceMode: DENY
-  dns:
-    proxyEnabled: true
-  identity:
-    type: USER_ASSIGNED
-    userAssignedIdentityIds:
-      - valueFrom:
-          name: fw-tls-identity
+      kind: AzureResourceGroup
+      name: security-hub
+      fieldPath: status.outputs.resource_group_name
   tlsCertificate:
     keyVaultSecretId:
       valueFrom:
-        name: egress-ca-cert
+        kind: AzureKeyVaultCertificate
+        name: egress-ca
+        fieldPath: status.outputs.versionless_secret_id
     name: egress-ca
-  intrusionDetection:
-    mode: IDPS_DENY
 ```
 
-### Child Policy Inheriting a Baseline
+The InfraPipeline resolves the dependency graph, deploys the resource group (and, for Premium inspection, the Key Vault certificate and identity) first, then provisions the policy — and the rule collection groups and firewalls that use it reference this policy's `firewall_policy_id`.
 
-```yaml
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: payments-app-policy
-  basePolicyId:
-    valueFrom:
-      name: egress-baseline
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a Firewall Policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `firewall_policy_id` | `string` | Full ARM ID -- referenced by `AzureFirewallPolicyRuleCollectionGroup`, `AzureFirewall`, and child policies |
-| `firewall_policy_name` | `string` | The policy's name as deployed |
-| `identity_principal_id` | `string` | System-assigned identity principal (empty without one) |
+**Tier (`sku`)** -- BASIC (SMB-scale, alert-only threat intelligence), STANDARD (the production default: full rule engine, threat intelligence deny, DNS proxy), PREMIUM (adds TLS inspection, IDPS, URL filtering, web categories). Fixed at creation and matched by every attached firewall — the whole fleet moves together. Unspecified deploys STANDARD.
 
-## Related Components
+**Threat intelligence** -- Microsoft's known-malicious feed, evaluated BEFORE your rules. DENY is the production posture; exempt false positives surgically via `threatIntelligenceAllowlist` (at least one entry when the block is present) instead of lowering the mode.
 
-- [AzureFirewallPolicyRuleCollectionGroup](/docs/catalog/azure/firewall-policy-rule-collection-group) — the rules, nested under this policy
-- [AzureFirewall](/docs/catalog/azure/firewall) — the data plane enforcing this policy
-- [AzureIpGroup](/docs/catalog/azure/ip-group) — reusable address sets referenced by rules and IDPS bypasses
-- [AzureKeyVaultCertificate](/docs/catalog/azure/key-vault-certificate) — the TLS inspection CA
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — reads the CA from Key Vault
-- [AzureLogAnalyticsWorkspace](/docs/catalog/azure/log-analytics-workspace) — receives policy analytics
+**DNS proxy** -- required for FQDN-based NETWORK rules to resolve deterministically: the firewall and its clients must see the same answers, and pointing client DNS at the firewall's proxy guarantees it.
+
+**TLS inspection (Premium)** -- the intermediate CA's Key Vault SECRET reference (versionless by default, so CA renewals flow through automatically) plus a user-assigned identity that can read it. Deploy the CA chain to workload trust stores before enabling on live traffic.
+
+**Inheritance (`basePolicyId`)** -- the enterprise layering pattern: a security-team baseline extended by per-application child policies. Base and child must share a region and a tier (validated at apply time).
+
+**SNAT private ranges** -- when set, the list REPLACES Azure's RFC 1918 default; `autoLearnPrivateRangesEnabled` lets Azure learn the boundary from route tables instead (Azure records only "Enabled" — disabling happens by omission).
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureFirewallPolicy** (base) | `basePolicyId` | `status.outputs.firewall_policy_id` |
+| **AzureKeyVaultCertificate** | `tlsCertificate.keyVaultSecretId` | `status.outputs.versionless_secret_id` |
+| **AzureUserAssignedIdentity** | `identity.userAssignedIdentityIds[]` | `status.outputs.identity_id` |
+| **AzureLogAnalyticsWorkspace** | `insights.defaultLogAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
+| **AzureIpGroup** | `intrusionDetection.trafficBypass[].sourceIpGroups[]` / `destinationIpGroups[]` | `status.outputs.ip_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `firewall_policy_id` | Azure Resource Manager ID of the policy | AzureFirewall attachment (`firewallPolicyId`), AzureFirewallPolicyRuleCollectionGroup nesting, child policies' `basePolicyId` |
+| `firewall_policy_name` | Name of the policy | Automation scripts, inventory |
+| `identity_principal_id` | The system-assigned principal (empty without a system identity) | Role assignments — e.g. Key Vault secret read for TLS inspection |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard egress baseline** -- threat intelligence in DENY with the DNS proxy on: the parent policy of the enterprise pattern. Start from the **Standard Egress Baseline** preset.
+
+**Premium TLS inspection** -- decrypt-inspect-re-encrypt with your CA from Key Vault, plus IDPS in deny: the regulated-environment posture. Start from the **Premium TLS Inspection** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the policy is created
+- [**Azure Firewall**](/cloud-catalog/azure-firewall) -- the enforcement instance that attaches this policy (`firewallPolicyId`)
+- [**Azure Firewall Policy Rule Collection Group**](/cloud-catalog/azure-firewall-policy-rule-collection-group) -- the ordered rule documents that nest under this policy
+- [**Azure IP Group**](/cloud-catalog/azure-ip-group) -- named address sets the policy's IDPS bypasses (and its rule groups) reference
+- [**Azure Key Vault Certificate**](/cloud-catalog/azure-key-vault-certificate) -- holds the intermediate CA TLS inspection signs with
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- the identity that reads the CA from Key Vault
+- [**Azure Log Analytics Workspace**](/cloud-catalog/azure-log-analytics-workspace) -- receives policy analytics

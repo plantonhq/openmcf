@@ -9,9 +9,9 @@ order: 10
 
 The following AUTH0 resources can be deployed using Planton:
 
-- [Auth0Action](/docs/catalog/auth0/auth0action)
-- [Auth0Role](/docs/catalog/auth0/auth0role)
-- [Client](/docs/catalog/auth0/client)
-- [Connection](/docs/catalog/auth0/connection)
+- [Action](/docs/catalog/auth0/action)
+- [Application (Client)](/docs/catalog/auth0/application-client)
+- [Connection (Identity Provider)](/docs/catalog/auth0/connection-identity-provider)
 - [Event Stream](/docs/catalog/auth0/event-stream)
-- [Resource Server](/docs/catalog/auth0/resource-server)
+- [Resource Server (API)](/docs/catalog/auth0/resource-server-api)
+- [Role](/docs/catalog/auth0/role)

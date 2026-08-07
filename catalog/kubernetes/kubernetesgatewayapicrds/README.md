@@ -52,7 +52,7 @@ Our KubernetesGatewayApiCrds module solves these problems by providing:
 
 ## Quick Start
 
-See examples.md for complete YAML manifests.
+See e2e/manifest.yaml for complete YAML manifests.
 
 ### Example: Install Standard Gateway API CRDs
 

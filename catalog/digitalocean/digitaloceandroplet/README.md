@@ -114,7 +114,7 @@ Deploy applications that require OS-level control not available in PaaS offering
 
 ### Basic Usage
 
-See the `examples.md` file in this directory for practical configuration examples, including:
+See the `e2e/manifest.yaml` file in this directory for practical configuration examples, including:
 
 - Minimal development Droplet
 - Standard staging configuration with monitoring
@@ -182,8 +182,8 @@ Before creating a Droplet, ensure you have:
 
 For detailed implementation guidance, refer to:
 
-- **Research Document**: `docs/README.md` - Comprehensive analysis of Droplet deployment methods, 80/20 configuration decisions, and production best practices
-- **Examples**: `examples.md` - Practical configuration patterns for common use cases
+- **Research Document**: `GUIDE.md` - Comprehensive analysis of Droplet deployment methods, 80/20 configuration decisions, and production best practices
+- **Examples**: `e2e/manifest.yaml` - Practical configuration patterns for common use cases
 - **Pulumi Implementation**: `iac/pulumi/README.md` - Pulumi-specific deployment instructions
 - **Terraform Implementation**: `iac/tf/README.md` - Terraform module usage guide
 
@@ -270,8 +270,8 @@ For detailed implementation guidance, refer to:
 
 ## Next Steps
 
-1. Review `examples.md` for configuration patterns
-2. Read `docs/README.md` for in-depth platform analysis
+1. Review `e2e/manifest.yaml` for configuration patterns
+2. Read `GUIDE.md` for in-depth platform analysis
 3. Choose your deployment method:
    - **Pulumi**: See `iac/pulumi/README.md`
    - **Terraform**: See `iac/tf/README.md`

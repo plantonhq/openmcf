@@ -8,320 +8,149 @@ componentName: "azurenetworkinterface"
 
 # Azure Network Interface
 
-Deploys an Azure Network Interface (NIC) — the attachment point that gives a virtual machine its presence in a subnet. The NIC is a first-class resource in Azure's own model: a VM does not contain its network configuration, it references one or more NICs. The catalog mirrors that honestly — an `AzureVirtualMachine` consumes this NIC's `network_interface_id` output, each IP configuration deploys into a referenced `AzureSubnet` and may front a referenced `AzurePublicIp`, a NIC-level network security group attaches here as the per-workload complement to subnet-level filtering, and load-balancer membership is expressed here, from the member side: each IP configuration lists the backend pools it joins and the inbound NAT rules it completes, referencing the load balancer's name-keyed ID outputs.
+Deploys an Azure Network Interface (NIC) — the attachment point that gives a virtual machine its presence in a subnet. The NIC is a first-class resource in Azure's own model: a VM does not contain its network configuration, it **references** one or more NICs (an **AzureVirtualMachine**'s `networkInterfaceIds` consume this NIC's `network_interface_id` output), so network identity — the private address, pool memberships, filtering — outlives any one machine. Load-balancer and Application Gateway membership is expressed HERE, from the member side, and every NSG/ASG/pool membership is realized as its own ARM association resource that never touches the NIC itself.
 
 ## What Gets Created
 
-When you deploy an AzureNetworkInterface resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Network Interface** — a `network.NetworkInterface` in the specified region and resource group, carrying the declared IP configurations, DNS settings, accelerated networking, IP forwarding, and (for appliances on enrolled subscriptions) preview auxiliary NVA acceleration
-- **NSG Association** — a `NetworkInterfaceSecurityGroupAssociation` when `networkSecurityGroupId` is set, attaching the NIC-level network security group as its own ARM operation so filtering can change without touching the NIC
-- **ASG Associations** — a `NetworkInterfaceApplicationSecurityGroupAssociation` for each entry in `applicationSecurityGroupIds`, joining the NIC to workload groups that NSG rules can target
-- **Load-Balancer Pool Associations** — a `NetworkInterfaceBackendAddressPoolAssociation` for each entry in an IP configuration's `loadBalancerBackendAddressPoolIds`, joining the configuration to a load balancer's backend pool from the member side (Azure's own model)
-- **NAT-Rule Associations** — a `NetworkInterfaceNatRuleAssociation` for each entry in `loadBalancerInboundNatRuleIds`, completing a load balancer's single-target inbound NAT rule by picking this NIC as the receiving instance
-- **Application Gateway Pool Associations** — a `NetworkInterfaceApplicationGatewayBackendAddressPoolAssociation` for each entry in `applicationGatewayBackendAddressPoolIds`
-- **Azure Tags** — resource metadata tags applied to the NIC for tracking and governance
+- **Network Interface** -- with one or more IP configurations (a private address in a referenced subnet, dynamic or pinned static, IPv4 or IPv6, optionally fronted by a referenced AzurePublicIp), accelerated networking, IP forwarding, DNS overrides, and the preview NVA-acceleration pair
+- **NSG association** -- when a NIC-level network security group is referenced (the per-workload complement to subnet-level filtering)
+- **ASG associations** -- one per application security group membership, so NSG rules can target workload groups
+- **Pool and NAT-rule associations** -- one per load-balancer backend pool, inbound NAT rule, and Application Gateway pool membership declared on each IP configuration
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-Nothing else is created here. The NIC does not create its subnet, public IP, or NSG (reference existing ones), and it does not attach itself to a VM (the `AzureVirtualMachine` declares the attachment via its `network_interface_ids`, matching Azure's model where the VM references its NICs).
+The VM-side attachment is NOT created here — which VM holds this NIC lives on the referencing AzureVirtualMachine.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the NIC will be created (can reference an AzureResourceGroup resource)
-- **An AzureSubnet** for each IPv4 configuration's private address — all of a NIC's configurations must address subnets of the same virtual network, in the same region as the NIC
-- **Optionally**, an AzurePublicIp to front a configuration and an AzureNetworkSecurityGroup for NIC-level filtering
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `nic.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the NIC will be created (usually the workload's own group, beside the VM).
+- **A subnet** for each IPv4 configuration — reference an AzureSubnet's `subnet_id` output. All of a NIC's configurations must address subnets of ONE virtual network, in the NIC's region.
+- **Optionally**: an AzurePublicIp to front a configuration, an AzureNetworkSecurityGroup for NIC-level filtering, AzureApplicationSecurityGroups to join, and the load balancer / Application Gateway whose name-keyed pool outputs the memberships reference.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Network Interface**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for the everyday workload NIC.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureNetworkInterface
 metadata:
-  name: my-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureNetworkInterface.my-nic
+  name: orders-api-nic
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: my-rg
-  name: app-nic
+    value: "orders-rg"
+  name: orders-api-nic
   ipConfigurations:
     - name: primary
       subnetId:
         valueFrom:
-          name: my-subnet
+          kind: AzureSubnet
+          name: app-subnet
+          fieldPath: status.outputs.subnet_id
+      primary: true
   acceleratedNetworkingEnabled: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f nic.yaml
 ```
 
-This creates a private-only NIC with one dynamic IPv4 configuration in the referenced subnet — Azure picks a free address and holds it stable for the NIC's lifetime — with accelerated networking enabled (right for every supported VM size). To attach it to a VM, reference this NIC's `status.outputs.network_interface_id` from the `AzureVirtualMachine`'s `networkInterfaceIds`.
+This creates a private-only NIC with a dynamic IPv4 address in the referenced subnet and SR-IOV on — ready for the VM that references it.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the NIC (e.g., `eastus`). Must match the region of the virtual network it deploys into and of the VM that will attach it. Changing it replaces the NIC. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the NIC, unique within the resource group. Changing it replaces the NIC — and detaches it from any VM. | Required, 1-80 chars, Azure naming rules |
-| `ipConfigurations` | `object[]` | The NIC's IP configurations — most NICs carry exactly one; multiple serve dual-stack and multi-IP scenarios. When more than one is declared, the first must be marked `primary` (ARM's contract, spec-enforced). | Required, at least 1 |
-
-### IP Configuration Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | — | A label for this configuration, unique within the NIC (e.g., `primary`, `ipv6`). Required. |
-| `subnetId` | `StringValueOrRef` | — | The subnet the private address lives in. Required for IPv4 configurations (ARM's contract); IPv6 configurations inherit the NIC's subnet placement. Defaults to referencing an `AzureSubnet`'s `subnet_id` output. |
-| `privateIpAllocation` | `enum` | `DYNAMIC` | `DYNAMIC` lets Azure pick a free address from the subnet (stable for the NIC's lifetime — right for virtually all workloads); `STATIC` pins a specific address for appliances and servers whose IP is configuration elsewhere. |
-| `privateIpAddress` | `string` | — | For `STATIC` allocation: the exact address to pin, inside the subnet's range and unassigned. Forbidden for `DYNAMIC` (spec-enforced). |
-| `privateIpVersion` | `enum` | `IPV4` | The address family. A dual-stack NIC carries an `IPV4` and an `IPV6` configuration side by side (in a dual-stack subnet). |
-| `publicIpAddressId` | `StringValueOrRef` | — | The public IP fronting this configuration — a first-class `AzurePublicIp` so the address is visible in the resource graph, allowlistable, and reusable. Omit for private-only NICs, the production shape behind a load balancer or NAT gateway. |
-| `primary` | `bool` | `false` | Whether this is the NIC's primary configuration. With a single configuration ARM treats it as primary automatically; with multiple, the first must be marked (spec-enforced). |
-| `gatewayLoadBalancerFrontendIpConfigurationId` | `string` | — | The frontend of a Gateway-SKU load balancer that chains this NIC into a gateway appliance path. A niche service-chaining seam; plain ARM ID. |
-| `loadBalancerBackendAddressPoolIds` | `StringValueOrRef[]` | `[]` | Load-balancer backend pools this configuration joins — membership is expressed from the member side in Azure's model. Reference a pool through the load balancer's name-keyed map output, e.g. `valueFrom` fieldPath `status.outputs.backend_pool_ids.web`. Each membership is realized as its own association resource, so joining and leaving pools never touches the NIC. |
-| `loadBalancerInboundNatRuleIds` | `StringValueOrRef[]` | `[]` | Single-target inbound NAT rules this configuration completes — the load balancer declares the port forward, the NIC-side association picks the receiving instance. Reference a rule through the load balancer's name-keyed map output, e.g. `valueFrom` fieldPath `status.outputs.nat_rule_ids.ssh-admin`. Realized as association resources. |
-| `applicationGatewayBackendAddressPoolIds` | `StringValueOrRef[]` | `[]` | Application Gateway backend pools this configuration joins -- reference a pool through the gateway's map output (e.g. `status.outputs.backend_address_pool_ids.web`). Realized as association resources. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `dnsServers` | `string[]` | `[]` | DNS servers overriding the virtual network's DNS for this NIC only. Rarely set — prefer configuring DNS on the virtual network; this exists for appliances that need different resolution than their network. |
-| `internalDnsNameLabel` | `string` | — | The DNS label other VMs in the same virtual network can resolve this NIC's private IP by (the full name becomes `{label}.{vnet-internal-suffix}`, surfaced in the outputs). Leave unset for IP-only addressing. |
-| `acceleratedNetworkingEnabled` | `bool` | `false` | SR-IOV: the NIC bypasses the host's virtual switch for dramatically lower latency and higher packets-per-second. Azure defaults to false, but production NICs on supported VM sizes (most current general-purpose sizes with 2+ vCPUs) should enable it — the constraint is the VM size, not the workload. |
-| `ipForwardingEnabled` | `bool` | `false` | Whether the NIC forwards traffic not addressed to it. Enable ONLY on network virtual appliances — a route table pointing at an appliance's IP silently blackholes unless the appliance NIC forwards. |
-| `auxiliaryMode` | `enum` | unset | NVA-acceleration auxiliary mode (`ACCELERATED_CONNECTIONS`, `FLOATING`, `MAX_CONNECTIONS`) — a preview Azure feature the subscription must be enrolled in. Unset sends nothing, correct for every non-appliance NIC. Must be set together with `auxiliarySku` (spec-enforced). |
-| `auxiliarySku` | `enum` | unset | The auxiliary SKU sizing the NVA acceleration (`A1` smallest to `A8` largest). Must be set together with `auxiliaryMode`. |
-| `edgeZone` | `string` | — | Azure Edge Zone pinning for edge-computing workloads. Leave unset for regular regional deployment. Fixed at creation. |
-| `networkSecurityGroupId` | `StringValueOrRef` | — | The NSG filtering THIS NIC's traffic — the per-workload complement to the subnet-level NSG. When both are attached, inbound traffic must pass the subnet NSG then the NIC NSG. Omit to rely on subnet-level filtering alone (the common case). Defaults to referencing an `AzureNetworkSecurityGroup`'s `network_security_group_id` output. |
-| `applicationSecurityGroupIds` | `string[]` | `[]` | Application security groups this NIC joins, by plain ARM ID, so NSG rules can target workload groups ("web-servers", "databases") instead of IP ranges. |
-| `tags` | `map<string, string>` | `{}` | Additional tags applied to the NIC, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Standard Private NIC
-
-The shape virtually every VM starts from — one dynamic IPv4 configuration, no public exposure, accelerated networking on:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the NIC to its dependencies — and the VM to the NIC:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: app-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureNetworkInterface.app-nic
 spec:
-  region: eastus
-  resourceGroup:
-    value: dev-rg
-  name: app-nic
   ipConfigurations:
     - name: primary
       subnetId:
         valueFrom:
+          kind: AzureSubnet
           name: app-subnet
-  acceleratedNetworkingEnabled: true
-```
-
-### Public-Facing NIC with NIC-Level NSG
-
-A single internet-facing VM — a bastion host or an appliance's outside arm — fronted by a referenced public IP and carrying its own filtering:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: bastion-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNetworkInterface.bastion-nic
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: bastion-nic
-  ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: bastion-subnet
-      publicIpAddressId:
-        valueFrom:
-          name: bastion-ip
-  acceleratedNetworkingEnabled: true
-  networkSecurityGroupId:
-    valueFrom:
-      name: bastion-nsg
-```
-
-### Load-Balanced Backend NIC
-
-A web-tier NIC that joins an `AzureLoadBalancer`'s backend pool and completes its single-target SSH NAT rule — membership expressed from the member side, referencing the load balancer's name-keyed outputs:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: web-1-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNetworkInterface.web-1-nic
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: web-1-nic
-  ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: web-subnet
+          fieldPath: status.outputs.subnet_id
       loadBalancerBackendAddressPoolIds:
         - valueFrom:
+            kind: AzureLoadBalancer
             name: web-lb
             fieldPath: status.outputs.backend_pool_ids.web
-      loadBalancerInboundNatRuleIds:
-        - valueFrom:
-            name: web-lb
-            fieldPath: status.outputs.nat_rule_ids.ssh-web-1
-  acceleratedNetworkingEnabled: true
 ```
 
-Each membership is its own association resource: adding this NIC to another pool, or removing it, is a spec-list change that never touches the NIC itself.
+The InfraPipeline resolves the dependency graph, deploys the subnet and load balancer first, then the NIC with its memberships — and the VM that attaches it deploys after, referencing this NIC's `network_interface_id`.
 
-### Network Virtual Appliance NIC
+## Key Configuration
 
-The inside interface of a firewall or router that routes other workloads' traffic — static next-hop address, IP forwarding on:
+These are the most important decisions when configuring a NIC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: fw-inside-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNetworkInterface.fw-inside-nic
-spec:
-  region: eastus
-  resourceGroup:
-    value: hub-rg
-  name: fw-inside-nic
-  ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: fw-inside-subnet
-      privateIpAllocation: STATIC
-      privateIpAddress: 10.0.254.4
-  ipForwardingEnabled: true
-  acceleratedNetworkingEnabled: true
-```
+**IP configurations** -- at least one; most NICs carry exactly one. Each is a private address in a subnet: DYNAMIC allocation (Azure picks; stable for the NIC's lifetime — right for virtually all workloads) or STATIC (`privateIpAddress` required exactly then — appliances whose IP is configuration elsewhere). Dual-stack NICs pair an IPv4 configuration with an IPV6 one (which inherits the NIC's subnet placement). With multiple configurations, ARM requires the FIRST to be marked `primary`.
 
-### Dual-Stack NIC
+**Member-side load balancing** -- each configuration lists the LB backend pools it joins (`status.outputs.backend_pool_ids.<pool-name>`), the inbound NAT rules it completes, and the Application Gateway pools it joins — Azure's own model, where the pool never lists its members.
 
-An IPv4 and an IPv6 configuration side by side (in a dual-stack subnet). With multiple configurations, the first must be marked primary:
+**Accelerated networking** -- SR-IOV bypasses the host's virtual switch. Azure defaults it off; production NICs on supported VM sizes (most current sizes with 2+ vCPUs) should enable it.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: dual-stack-nic
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNetworkInterface.dual-stack-nic
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: dual-stack-nic
-  ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: dual-stack-subnet
-      primary: true
-    - name: ipv6
-      privateIpVersion: IPV6
-  acceleratedNetworkingEnabled: true
-```
+**IP forwarding** -- enable ONLY on network virtual appliances. A route table pointing at a non-forwarding NIC silently blackholes.
 
-### NIC Attached to a Virtual Machine
+**Filtering** -- `networkSecurityGroupId` attaches a NIC-level NSG (inbound passes the subnet's NSG first, then the NIC's); `applicationSecurityGroupIds` joins workload groups so NSG rules target roles instead of IP ranges.
 
-The composition the NIC exists for — the VM references the NIC, never contains it:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: web-nic
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: web-rg
-  name: web-nic
-  ipConfigurations:
-    - name: primary
-      subnetId:
-        valueFrom:
-          name: web-subnet
-  acceleratedNetworkingEnabled: true
-  internalDnsNameLabel: web-1
-  tags:
-    tier: web
----
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureVirtualMachine
-metadata:
-  name: web-vm
-spec:
-  # ... region, resourceGroup, name, size, osProfile, osDisk ...
-  networkInterfaceIds:
-    - valueFrom:
-        name: web-nic
-```
+### What This Component Consumes
 
-## Stack Outputs
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureSubnet** (per configuration) | `ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| **AzurePublicIp** (optional, per configuration) | `ipConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
+| **AzureNetworkSecurityGroup** (optional) | `networkSecurityGroupId` | `status.outputs.network_security_group_id` |
+| **AzureApplicationSecurityGroup** (optional, repeated) | `applicationSecurityGroupIds` | `status.outputs.application_security_group_id` |
+| **AzureLoadBalancer** (optional, per membership) | `ipConfigurations[].loadBalancerBackendAddressPoolIds`, `ipConfigurations[].loadBalancerInboundNatRuleIds` | `status.outputs.backend_pool_ids.<pool>`, `status.outputs.nat_rule_ids.<rule>` |
+| **AzureApplicationGateway** (optional, per membership) | `ipConfigurations[].applicationGatewayBackendAddressPoolIds` | `status.outputs.backend_address_pool_ids.<pool>` |
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Provides
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `network_interface_id` | `string` | Azure Resource Manager ID of the NIC — the primary output; `AzureVirtualMachine`'s `networkInterfaceIds` references it to attach the NIC to a VM |
-| `network_interface_name` | `string` | The NIC's name as deployed |
-| `private_ip_address` | `string` | The primary configuration's private IP address — what backends, firewall rules, and DNS records key on |
-| `private_ip_addresses` | `string[]` | The private IP addresses of ALL configurations, in configuration order (multi-IP and dual-stack NICs carry more than one) |
-| `mac_address` | `string` | The NIC's MAC address, populated once attached to a running VM (empty until then) — what license servers and appliance registrations key on |
-| `internal_domain_name_suffix` | `string` | The DNS suffix completing `internalDnsNameLabel` into a resolvable VNet-internal FQDN |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `network_interface_id` | Azure Resource Manager ID of the NIC | AzureVirtualMachine `networkInterfaceIds` — the attachment seam |
+| `network_interface_name` | Name of the NIC | Automation, inventory |
+| `private_ip_address` | The primary configuration's private IP | Backends, firewall rules, DNS records |
+| `private_ip_addresses` | ALL configurations' private IPs, in order | Multi-IP and dual-stack wiring |
+| `mac_address` | The NIC's MAC — populated once attached to a RUNNING VM | License servers, appliance registrations |
+| `internal_domain_name_suffix` | The VNet's internal DNS suffix | Completes `internal_dns_name_label` into a resolvable FQDN |
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for NIC placement
-- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) -- the network whose subnets the NIC's configurations address
-- [AzureSubnet](/docs/catalog/azure/subnet) -- each IP configuration's private address lives in a referenced subnet
-- [AzurePublicIp](/docs/catalog/azure/public-ip) -- the first-class public address that can front an IP configuration
-- [AzureNetworkSecurityGroup](/docs/catalog/azure/network-security-group) -- attaches at the NIC level via `networkSecurityGroupId` for per-workload filtering, layering with subnet-level NSGs
-- [AzureLoadBalancer](/docs/catalog/azure/load-balancer) -- the NIC joins its backend pools and completes its inbound NAT rules by referencing the load balancer's name-keyed `backend_pool_ids` and `nat_rule_ids` outputs
-- [AzureVirtualMachine](/docs/catalog/azure/virtual-machine) -- consumes the NIC's `network_interface_id` output; a VM references one or more NICs
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard workload NIC** -- one dynamic IPv4 configuration in a referenced subnet, accelerated networking on, private-only. Start from the **Standard** preset.
+
+**Public-facing edge NIC** -- a configuration fronted by a referenced AzurePublicIp, with a NIC-level NSG. Start from the **Public Facing** preset.
+
+**Appliance forwarding NIC** -- a STATIC pinned address with IP forwarding on — the NVA shape route tables point at. Start from the **Appliance Forwarding** preset.
+
+## Works With
+
+- [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) -- attaches this NIC by its `network_interface_id` output (the FIRST entry in `networkInterfaceIds` is the primary interface)
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- where each configuration's private address lives
+- [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- fronts a configuration for inbound internet traffic
+- [**Azure Load Balancer**](/cloud-catalog/azure-load-balancer) -- this NIC joins its pools and completes its NAT rules from the member side, through the name-keyed map outputs
+- [**Azure Network Security Group**](/cloud-catalog/azure-network-security-group) -- NIC-level filtering, in series with the subnet's NSG

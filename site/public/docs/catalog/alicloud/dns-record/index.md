@@ -8,144 +8,106 @@ componentName: "aliclouddnsrecord"
 
 # AliCloud DNS Record
 
-Creates and manages DNS records within an Alibaba Cloud Alidns-hosted domain. Supports all standard record types (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) with configurable TTL, priority, resolution lines, and record status.
+Deploys a DNS record on Alibaba Cloud's Alidns service within an existing hosted zone. The record maps a host record (subdomain) to a value such as an IP address, CNAME alias, or mail server. The parent domain must already exist in Alidns -- either managed by the AliCloudDnsZone component or added manually.
 
 ## What Gets Created
 
-When you deploy an AliCloudDnsRecord resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Alidns Record** -- an `alicloud_alidns_record` resource (Pulumi: `dns.AlidnsRecord`) that creates a DNS record within the specified parent domain
+- **DNS Record** -- an `alicloud_dns_record` resource in the specified domain with configurable type, value, TTL, priority, and resolution line
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables (`ALICLOUD_ACCESS_KEY`, `ALICLOUD_SECRET_KEY`) or Planton provider config
-- **Parent domain** registered in Alidns -- either via the AliCloudDnsZone component or manually in the console
-- **Planton CLI** installed with either Pulumi or Terraform (OpenTofu) backend
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `dns-record.yaml`:
+### Alibaba Cloud Account
+
+- **An existing DNS zone** -- the `domainName` must already be registered in Alidns (create one with AliCloudDnsZone).
+- **NS delegation** -- ensure your registrar's NS records point to the Alidns nameservers for the record to resolve publicly.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud DNS Record**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including domain, host record, type, and value.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudDnsRecord
 metadata:
-  name: my-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudDnsRecord.my-record
+  name: api-record
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   domainName: example.com
-  rr: www
+  rr: api
   type: A
-  value: "203.0.113.10"
-```
-
-Deploy:
-
-```shell
-planton apply -f dns-record.yaml
-```
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for provider initialization (e.g., `cn-hangzhou`). Alidns is global, but the provider requires a region. | Required; non-empty |
-| `domainName` | `string` | The parent domain name (e.g., `example.com`). Must already exist in Alidns. Cannot be changed after creation. | Required; 1-253 characters |
-| `rr` | `string` | Host record (subdomain part). `@` for apex, `*` for wildcard, or any valid subdomain label. | Required; 1-253 characters |
-| `type` | `string` | DNS record type. | Required; one of `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `SRV`, `CAA`, `REDIRECT_URL`, `FORWORD_URL` |
-| `value` | `string` | Record value. Interpretation depends on `type` (IP for A/AAAA, domain for CNAME/MX/NS, text for TXT). | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ttl` | `int32` | `600` | Time-to-live in seconds. Range depends on the Alidns plan (Free: 600-86400). |
-| `priority` | `int32` | - | MX record priority, range 1 (highest) to 10 (lowest). Required when `type` is `MX`, ignored for other types. |
-| `line` | `string` | `"default"` | DNS resolution line for ISP/geo-based routing. Use `"default"` for standard resolution. Must be `"default"` when `type` is `FORWORD_URL`. |
-| `status` | `string` | `"ENABLE"` | Record status: `ENABLE` (active) or `DISABLE` (record exists but is not served). |
-| `remark` | `string` | `""` | Description or notes for the record. Visible in the Alidns console. |
-
-## Examples
-
-### A Record
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudDnsRecord
-metadata:
-  name: web-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudDnsRecord.web-server
-spec:
-  region: cn-hangzhou
-  domainName: example.com
-  rr: www
-  type: A
-  value: "203.0.113.10"
+  value: "47.100.1.1"
   ttl: 600
 ```
 
-### CNAME Record
+```shell
+planton apply -f alicloud-dns-record.yaml
+```
+
+This creates an A record for api.example.com pointing to 47.100.1.1. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+DNS records are typically the last resource in a dependency chain. Use ValueFromRef to wire the record value to an upstream resource's output (e.g., an ALB's DNS name):
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudDnsRecord
-metadata:
-  name: cdn-alias
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudDnsRecord.cdn-alias
 spec:
   region: cn-hangzhou
   domainName: example.com
-  rr: cdn
+  rr: www
   type: CNAME
-  value: example.com.cdn-provider.com
+  value: "alb-abc123.cn-hangzhou.alb.aliyuncs.com"
 ```
 
-### MX Record with Priority
+## Key Configuration
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudDnsRecord
-metadata:
-  name: mail-primary
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudDnsRecord.mail-primary
-spec:
-  region: cn-hangzhou
-  domainName: example.com
-  rr: "@"
-  type: MX
-  value: mx1.example.com
-  priority: 5
-  ttl: 3600
-```
+These are the most important decisions when configuring a DNS record. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Record type** -- The `type` field determines what the record maps to: A (IPv4), AAAA (IPv6), CNAME (alias), MX (mail), TXT (verification/SPF), NS (delegation), SRV (service), CAA (certificate authority).
 
-After deployment, the following outputs are available in `status.outputs`:
+**TTL** -- The `ttl` field controls how long resolvers cache this record in seconds. Lower values (60-600) allow faster propagation of changes. Higher values (3600-86400) reduce DNS query load.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `record_id` | `string` | The record ID assigned by Alibaba Cloud. |
+**Priority** -- The `priority` field is required for MX records (1 = highest). Ignored for other types.
 
-## Related Components
+**Resolution line** -- The `line` field enables intelligent DNS routing by ISP or geography. Use "default" for standard resolution.
 
-- [AliCloudDnsZone](/docs/catalog/alicloud/dns-domain) -- registers the parent domain in Alidns (prerequisite for creating records)
-- [AliCloudPrivateDnsZone](/docs/catalog/alicloud/private-zone) -- manages private DNS zones for VPC-internal resolution (separate from public Alidns)
+## Outputs and Dependencies
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `record_id` | Record ID assigned by Alibaba Cloud | Record management |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**A record** -- Maps a subdomain to an IPv4 address. Start from the **A Record** preset.
+
+**CNAME record** -- Aliases a subdomain to another domain (e.g., ALB or CDN endpoint). Start from the **CNAME Record** preset.
+
+**MX record** -- Configures mail delivery with priority routing. Start from the **MX Record** preset.
+
+## Works With
+
+- [**AliCloud DNS Zone**](/cloud-catalog/ali-cloud-dns-zone) -- the parent domain this record belongs to
+- [**AliCloud Application Load Balancer**](/cloud-catalog/ali-cloud-application-load-balancer) -- common CNAME target (ALB dns_name)
+- [**AliCloud Network Load Balancer**](/cloud-catalog/ali-cloud-network-load-balancer) -- common CNAME target (NLB dns_name)
+- [**AliCloud EIP Address**](/cloud-catalog/ali-cloud-eip-address) -- common A record target (EIP ip_address)

@@ -8,136 +8,86 @@ componentName: "openstackproject"
 
 # OpenStack Project
 
-Deploys an OpenStack Identity (Keystone) project, the fundamental organizational unit in OpenStack that provides resource isolation, quota boundaries, and access control scoping for all cloud resources such as instances, volumes, and networks.
+Deploys a Keystone project on OpenStack -- the fundamental organizational unit that provides resource isolation, quota boundaries, and access control scoping. All cloud resources (instances, volumes, networks) belong to a project. The project supports domain assignment, hierarchical nesting, and enable/disable controls.
 
 ## What Gets Created
 
-When you deploy an OpenStackProject resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Keystone Project** — an `openstack_identity_project_v3` resource with the configured description, domain, enabled state, parent hierarchy, and tags
+- **Keystone Project** -- an identity project with configurable domain, enable state, parent hierarchy, and description
+- **OpenStack Tags** -- user-defined tags applied to the project for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Admin role** — creating projects is an admin-level operation; the credentials must have the `admin` role or equivalent permissions in Keystone
+### OpenStack Account
 
-## Quick Start
+- **Admin privileges** -- creating projects is an admin-level operation. The OpenStack credentials must have the `admin` role or equivalent project-creation permissions in Keystone.
+- **Domain** (optional) -- if your deployment uses multiple Keystone domains, provide the `domainId` for the target domain. Single-domain deployments can omit this field to use the default domain.
+- **Parent project** (optional) -- if using hierarchical multi-tenancy, provide the `parentId` of the parent project. Nested projects inherit quota limits from their parent. Most deployments use flat (top-level) projects.
 
-Create a file `project.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Project**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackProject
 metadata:
-  name: my-project
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackProject.backend-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
-    planton.dev/stack.jobId: staging.OpenstackProject.engineering
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackProject.dev-team
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackProject.my-project
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackproject/iac/pulumi/module
-    planton.dev/provisioner: pulumi
-spec: {}
+  name: team-platform
+  org: acme-corp
+  env: prod
+spec:
+  description: Platform team workspace
 ```
-
-Deploy:
 
 ```shell
 planton apply -f project.yaml
 ```
 
-This creates a Keystone project named `my-project` in the default domain with enabled state set to `true`.
+This creates an enabled project in the default domain with no parent hierarchy. The project is ready for role assignments and resource provisioning immediately after creation.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a project. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-All spec fields are optional. The project name is derived from `metadata.name`.
+**Enable state** -- `enabled` defaults to `true`. Set to `false` to create the project in a disabled state -- all users lose access to its resources, but existing resources are preserved. Useful for suspending a tenant without deleting infrastructure.
 
-### Optional Fields
+**Domain assignment** -- `domainId` assigns the project to a specific Keystone domain. This is a ForceNew field -- changing the domain recreates the project. Most single-domain deployments leave this empty to use the default domain.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the project. Visible in the OpenStack API, Horizon dashboard, and CLI output. |
-| `domainId` | `string` | provider default | Keystone domain to which this project belongs. ForceNew: changing the domain recreates the project. Most single-domain deployments can leave this empty. |
-| `enabled` | `bool` | `true` | Whether the project is active. When `false`, all users in the project lose access to its resources, but the resources are not deleted. |
-| `parentId` | `string` | — | UUID of the parent project in the project hierarchy. ForceNew: changing the parent recreates the project. Used for nested quota management and organizational structuring. |
-| `tags` | `string[]` | `[]` | Tags for filtering and organization in the OpenStack API. |
-| `region` | `string` | provider default | Overrides the region from the provider config. Keystone is typically a global service, so this is rarely needed. |
+**Hierarchical nesting** -- `parentId` places the project under a parent project in Keystone's hierarchy. Nested projects inherit quota limits and can be used for organizational structuring in large deployments. This is a ForceNew field.
 
-## Examples
+**Tags** -- `tags` attaches simple string labels for filtering and organizational purposes. Tags are queryable through the OpenStack API and visible in the Horizon dashboard.
 
-### Basic Tenant Project
+## Outputs and Dependencies
 
-A simple project for a development team with default settings:
+### What This Component Consumes
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackProject
-metadata:
-  name: dev-team
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: Development team project
-```
+This component has no foreign key dependencies.
 
-### Project in a Specific Domain
+### What This Component Provides
 
-A project assigned to a custom Keystone domain, useful in multi-domain deployments:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackProject
-metadata:
-  name: engineering
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: Engineering department project
-  domainId: abcdef12-3456-7890-abcd-ef1234567890
-  tags:
-    - engineering
-    - staging
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `project_id` | UUID of the project in OpenStack | Role assignments, resource provisioning scope |
+| `name` | Name of the project | Monitoring labels, configuration references |
+| `domain_id` | Keystone domain the project belongs to | Domain-aware downstream resources |
+| `enabled` | Whether the project is currently active | Health checks, conditional provisioning |
+| `region` | OpenStack region where the project was created | Region-aware downstream resources |
 
-### Nested Project Hierarchy
+## Common Patterns
 
-A child project under a parent project for organizational structuring and nested quota management:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackProject
-metadata:
-  name: backend-team
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  description: Backend team project under engineering
-  parentId: 12345678-abcd-ef01-2345-678901abcdef
-  tags:
-    - backend
-    - production
-```
+**Standard tenant project** -- An enabled project in the default domain with no hierarchy. The starting point for most workloads -- create the project, assign roles to users, then provision instances, networks, and volumes within it. Start from the **Standard** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `project_id` | `string` | UUID of the created Keystone project |
-| `name` | `string` | Name of the project, derived from `metadata.name` |
-| `domain_id` | `string` | Keystone domain to which this project belongs (computed if not specified) |
-| `enabled` | `bool` | Whether the project is currently active |
-| `region` | `string` | OpenStack region where the project was created |
-
-## Related Components
-
-- [OpenStack Network](/docs/catalog/openstack/network) — creates Neutron networks within the project
-- [OpenStack Security Group](/docs/catalog/openstack/security-group) — defines firewall rules for instances in the project
-- [OpenStack Router](/docs/catalog/openstack/router) — provides routing and external connectivity for project networks
-- [OpenStack Instance](/docs/catalog/openstack/instance) — launches compute instances within the project
+This component operates independently and does not reference other deployment components.

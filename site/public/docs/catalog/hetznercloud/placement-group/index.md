@@ -8,147 +8,89 @@ componentName: "hetznercloudplacementgroup"
 
 # Hetzner Cloud Placement Group
 
-Creates a placement group in Hetzner Cloud that controls the physical distribution of servers across infrastructure. Servers assigned to a spread placement group are guaranteed to run on different physical hosts, providing fault tolerance for high-availability workloads.
+Creates a placement group that controls the physical distribution of servers across Hetzner Cloud infrastructure. Servers assigned to a spread placement group are guaranteed to run on different physical hosts, providing hardware-level fault tolerance for high-availability workloads. Hetzner Cloud currently supports only the "spread" strategy, with a maximum of 10 servers per placement group.
 
 ## What Gets Created
 
-- **Placement Group** — an `hcloud_placement_group` resource with the specified strategy (defaults to `spread`), a name derived from `metadata.name`, and standard labels computed from resource metadata. The group is referenced by servers via its numeric ID at creation time.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Placement Group** -- a single `hcloud_placement_group` resource with the spread strategy, ensuring assigned servers run on separate physical hosts
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `placement-group.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud Placement Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPlacementGroup
 metadata:
   name: ha-group
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudPlacementGroup.ha-group
-spec: {}
+  org: acme-corp
+  env: prod
+spec:
+  type: spread
 ```
-
-Deploy:
 
 ```shell
-planton apply -f placement-group.yaml
+planton apply -f hetznercloud-placement-group.yaml
 ```
 
-This creates a spread placement group named `ha-group`. Servers assigned to this group are guaranteed to run on separate physical hosts.
+This creates a spread placement group. A Stack Job tracks the provisioning in real time. Reference the group in HetznerCloudServer manifests via `placement_group_id`.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-This component has no required spec fields. An empty `spec` block (or `spec: {}`) creates a valid spread placement group.
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `type` | `enum` (`spread`) | `spread` | Placement group strategy. Hetzner Cloud currently supports only `spread`, which distributes servers across different physical hosts. |
-
-## Examples
-
-### Minimal Spread Group
-
-The simplest deployment: an empty spec defaults to the `spread` strategy.
+When deploying as part of an HA server cluster, use ValueFromRef to wire servers to this placement group:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPlacementGroup
-metadata:
-  name: ha-group
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudPlacementGroup.ha-group
-spec: {}
-```
-
-### Production HA Group with Org and Environment
-
-A placement group for database replicas scoped to a specific organization and environment. The metadata drives label generation for resource tracking.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPlacementGroup
-metadata:
-  name: ha-db-group
-  org: acme-corp
-  env: production
-  labels:
-    role: database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudPlacementGroup.ha-db-group
+# In the HetznerCloudServer manifest:
 spec:
-  type: spread
-```
-
-### Server Composition via valueFrom
-
-A placement group referenced by a HetznerCloudServer using `valueFrom`. The server receives the group's numeric ID from the placement group's stack outputs, establishing a dependency edge in the deployment DAG.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPlacementGroup
-metadata:
-  name: ha-db-group
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudPlacementGroup.ha-db-group
-spec:
-  type: spread
-```
-
-The server references this placement group:
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: db-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.db-01
-spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
   placementGroupId:
     valueFrom:
       kind: HetznerCloudPlacementGroup
-      name: ha-db-group
+      name: ha-group
       fieldPath: status.outputs.placement_group_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, creates the placement group first, then provisions servers with anti-affinity guarantees.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `placement_group_id` | `string` | Hetzner Cloud numeric ID of the created placement group. Referenced by HetznerCloudServer via `placementGroupId`. |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a placement group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — References placement group IDs for anti-affinity server placement
-- [HetznerCloudSshKey](/docs/catalog/hetznercloud/ssh-key) — Commonly deployed alongside placement groups as a foundation for server provisioning
-- [HetznerCloudFirewall](/docs/catalog/hetznercloud/firewall) — Security boundaries applied to servers in placement groups
+**Type** -- The `type` field selects the placement strategy. Hetzner Cloud currently supports only `spread`, which distributes servers across distinct physical hosts. The type defaults to `spread` and cannot be changed after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `placement_group_id` | Hetzner Cloud numeric ID of the placement group | HetznerCloudServer `placementGroupId` field |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**HA server cluster** -- Create a spread placement group before deploying multiple servers that must tolerate single-host failure. Combine with a load balancer for automatic failover.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- servers reference this placement group via `placementGroupId` for anti-affinity guarantees

@@ -11,33 +11,33 @@ creates the validation CNAME records and (by default) waits for issuance.
 ```shell
 # Preview
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Update (apply)
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
 
 # Refresh
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 
 # Destroy
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
 
 ## Examples
 
-See [`hack/manifest.yaml`](../../e2e/manifest.yaml) and the component presets for
+See [`e2e/manifest.yaml`](../../e2e/manifest.yaml) and the component presets for
 sample manifests covering managed Route53 validation, external DNS, wildcard
 domains, and imported certificates.
 

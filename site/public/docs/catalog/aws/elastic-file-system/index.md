@@ -8,240 +8,157 @@ componentName: "awselasticfilesystem"
 
 # AWS Elastic File System
 
-Deploys an AWS Elastic File System with mount targets across specified subnets (optionally with static IPv4/IPv6 addressing), lifecycle policies for cost-optimized storage tiering, automatic backups, an optional IAM resource policy, replication-overwrite protection, and cross-region/cross-AZ replication for disaster recovery. The component bundles everything needed to make the file system mountable immediately after deployment. Application entry points are separate [AwsEfsAccessPoint](/docs/catalog/aws/efs-access-point) resources that reference the file system.
+Deploys a fully managed NFS file system on Amazon EFS with configurable encryption, throughput modes, lifecycle tiering, per-AZ mount targets with optional static IPv4/IPv6 addressing, an IAM resource policy, and cross-region or cross-AZ disaster-recovery replication. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, and KMS keys. Application-level entry points live on the separate [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resource, which references this file system.
 
 ## What Gets Created
 
-When you deploy an AwsElasticFileSystem resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **EFS File System** — an `efs.FileSystem` resource with the configured encryption, performance mode, throughput mode, lifecycle policies, and replication-overwrite protection
-- **Mount Targets** — one `efs.MountTarget` per declared mount target, placing an elastic network interface in each Availability Zone for NFS client access on TCP port 2049
-- **Backup Policy** — an `efs.BackupPolicy` enabling automatic daily backups via AWS Backup, created only when `backupEnabled` is `true`
-- **File System Policy** — an `efs.FileSystemPolicy` attaching an IAM resource policy to the file system, created only when `policy` is provided
-- **Replication Configuration** — an `efs.ReplicationConfiguration` replicating the file system to another region and/or AZ, created only when `replication` is provided
+- **EFS File System** -- an elastic NFS file system with configurable encryption at rest, performance mode (generalPurpose or maxIO), throughput mode (bursting, provisioned, or elastic), and optional One Zone storage
+- **Mount Targets** -- one per entry in `mountTargets`, each placed in its subnet's Availability Zone; a row can pin a static IPv4/IPv6 address and choose its address family (IPv4-only, IPv6-only, or dual-stack)
+- **Backup Policy** -- created only when `backupEnabled` is `true`; enables automatic daily backups via AWS Backup
+- **File System Policy** -- created only when `policy` is provided; an IAM resource policy for enforcing encryption in transit, restricting principals, or preventing root access
+- **Lifecycle Policies** -- configured only when `transitionToIa`, `transitionToArchive`, or `transitionToPrimaryStorageClass` are set; automates storage class transitions to reduce costs
+- **Replication Configuration** -- created only when `replication` is provided; keeps a read-only replica in sync in another region and/or Availability Zone
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least one subnet** where mount targets will be created (one subnet per AZ for multi-AZ availability)
-- **A security group** allowing inbound NFS traffic (TCP port 2049) from the clients that will mount the file system (when omitted, AWS attaches the VPC's default security group)
-- **A KMS key ARN** if using customer-managed encryption (otherwise EFS uses the AWS-managed `aws/elasticfilesystem` key)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `efs.yaml`:
+### AWS Account
+
+- **At least one subnet** in the target VPC. For regional (multi-AZ) file systems, declare one mount target per AZ for maximum availability. For One Zone file systems, declare exactly one mount target in a subnet of the pinned AZ. Subnet IDs can be provided directly or referenced from an AwsSubnet Cloud Resource via ValueFromRef.
+- **A security group** that allows inbound NFS traffic (TCP port 2049) from the clients that will mount the file system. Provide the ID directly or reference an AwsSecurityGroup Cloud Resource. Empty attaches the VPC's default security group.
+- **A KMS key** (optional) -- required only when using a customer-managed encryption key instead of the default AWS-managed `aws/elasticfilesystem` key. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Elastic File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose Regional** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsElasticFileSystem
 metadata:
-  name: my-efs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsElasticFileSystem.my-efs
+  name: app-shared-storage
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
+  encrypted: true
+  throughputMode: bursting
   mountTargets:
     - subnetId:
-        value: subnet-0a1b2c3d4e5f00001
+        value: "subnet-0a1b2c3d4e5f00001"
     - subnetId:
-        value: subnet-0a1b2c3d4e5f00002
+        value: "subnet-0a1b2c3d4e5f00002"
   securityGroupIds:
-    - value: sg-0a1b2c3d4e5f00001
+    - value: "sg-0a1b2c3d4e5f00001"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f efs.yaml
 ```
 
-This creates an unencrypted, bursting-throughput EFS file system with mount targets in two subnets.
+This creates an encrypted regional EFS file system with bursting throughput and mount targets in two AZs, with no lifecycle policies, resource policy, replication, or backup. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the file system will be created (e.g., `us-east-1`, `us-west-2`). | Required; non-empty |
-| `mountTargets` | `object[]` | Mount targets — one per subnet, at most one per Availability Zone. | Minimum 1 item required |
-| `mountTargets[].subnetId` | `StringValueOrRef` | Subnet for the mount target. Can reference an AwsSubnet resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `encrypted` | `bool` | `false` | Enable encryption at rest. ForceNew. Recommended: `true`. |
-| `kmsKeyId` | `StringValueOrRef` | AWS-managed key | Customer-managed KMS key ARN for encryption. Requires `encrypted` to be `true`. ForceNew. Can reference AwsKmsKey via `valueFrom`. |
-| `performanceMode` | `string` | `generalPurpose` | File system performance mode. ForceNew. Valid values: `generalPurpose`, `maxIO`. |
-| `throughputMode` | `string` | `bursting` | Throughput mode. Valid values: `bursting`, `provisioned`, `elastic`. Elastic requires generalPurpose. |
-| `provisionedThroughputInMibps` | `double` | — | Fixed throughput in MiB/s. Required when `throughputMode` is `provisioned`. AWS accepts 1.0–3414.0 (generalPurpose), 1.0–1024.0 (maxIO). |
-| `availabilityZoneName` | `string` | — | AZ name for One Zone storage (e.g., `us-east-1a`). ForceNew. When set, only one mount target is allowed. |
-| `transitionToIa` | `string` | — | Transition to Infrequent Access after period. Valid values: `AFTER_1_DAY`, `AFTER_7_DAYS`, `AFTER_14_DAYS`, `AFTER_30_DAYS`, `AFTER_60_DAYS`, `AFTER_90_DAYS`, `AFTER_180_DAYS`, `AFTER_270_DAYS`, `AFTER_365_DAYS`. |
-| `transitionToArchive` | `string` | — | Transition to Archive after period. Requires `transitionToIa` to be set. Same valid values as `transitionToIa`. |
-| `transitionToPrimaryStorageClass` | `string` | — | Move files back to Standard on access. Only valid value: `AFTER_1_ACCESS`. |
-| `backupEnabled` | `bool` | `false` | Enable automatic daily backups via AWS Backup. |
-| `replicationOverwriteProtection` | `string` | `ENABLED` | `ENABLED` or `DISABLED`. Must be `DISABLED` before this file system can be a replication destination. |
-| `mountTargets[].ipAddress` | `string` | auto-assigned | Static IPv4 address from the subnet's CIDR. ForceNew. |
-| `mountTargets[].ipAddressType` | `string` | `IPV4_ONLY` | Address family: `IPV4_ONLY`, `IPV6_ONLY`, or `DUAL_STACK`. ForceNew. |
-| `mountTargets[].ipv6Address` | `string` | auto-assigned | Static IPv6 address. Requires an IPv6-capable `ipAddressType`. ForceNew. |
-| `securityGroupIds` | `StringValueOrRef[]` | VPC default SG | Security groups applied to all mount targets. Must allow inbound TCP 2049. Can reference AwsSecurityGroup via `valueFrom`. |
-| `policy` | `object` | — | IAM resource policy for the file system as a JSON object structure. |
-| `bypassPolicyLockoutSafetyCheck` | `bool` | `false` | Skip AWS's policy-lockout safety check. Only set when deliberately deploying a policy that denies the deploying principal future policy updates. Requires `policy`. |
-| `replication.destinationRegion` | `string` | — | Region for the replica. At least one of region / AZ is required when `replication` is set. |
-| `replication.destinationAvailabilityZoneName` | `string` | — | AZ for a One Zone replica — the cheaper DR shape. |
-| `replication.destinationKmsKeyId` | `StringValueOrRef` | AWS-managed key | KMS key for the replica (replicas are always encrypted). |
-| `replication.destinationFileSystemId` | `StringValueOrRef` | AWS creates one | Replicate into an existing file system (its overwrite protection must be `DISABLED`). |
-
-## Examples
-
-### Encrypted Multi-AZ File System
-
-Production-ready file system with encryption and mount targets across two Availability Zones:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the file system to subnets and a security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticFileSystem
-metadata:
-  name: prod-efs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsElasticFileSystem.prod-efs
 spec:
-  region: us-east-1
-  encrypted: true
-  mountTargets:
-    - subnetId:
-        value: subnet-private-az1
-    - subnetId:
-        value: subnet-private-az2
-  securityGroupIds:
-    - value: sg-nfs-access
-```
-
-### One Zone Development with Lifecycle Policies
-
-Cost-optimized single-AZ file system with automatic tiering to Infrequent Access and Archive storage:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticFileSystem
-metadata:
-  name: dev-efs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsElasticFileSystem.dev-efs
-spec:
-  region: us-east-1
-  availabilityZoneName: us-east-1a
-  throughputMode: elastic
-  transitionToIa: AFTER_30_DAYS
-  transitionToArchive: AFTER_90_DAYS
-  transitionToPrimaryStorageClass: AFTER_1_ACCESS
-  mountTargets:
-    - subnetId:
-        value: subnet-dev-az1
-  securityGroupIds:
-    - value: sg-nfs-dev
-```
-
-### Cross-Region Disaster Recovery
-
-File system replicated to another region; the replica stays read-only and in sync automatically:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticFileSystem
-metadata:
-  name: dr-efs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsElasticFileSystem.dr-efs
-spec:
-  region: us-east-1
-  encrypted: true
-  backupEnabled: true
-  throughputMode: elastic
-  mountTargets:
-    - subnetId:
-        value: subnet-private-az1
-    - subnetId:
-        value: subnet-private-az2
-  securityGroupIds:
-    - value: sg-nfs-access
-  replication:
-    destinationRegion: us-west-2
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed VPC subnets, security groups, and KMS keys instead of hardcoding IDs:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsElasticFileSystem
-metadata:
-  name: ref-efs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsElasticFileSystem.ref-efs
-spec:
-  region: us-east-1
-  encrypted: true
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: efs-key
-      fieldPath: status.outputs.key_arn
   mountTargets:
     - subnetId:
         valueFrom:
           kind: AwsSubnet
-          name: my-private-subnet-a
+          name: private-subnet-a
           fieldPath: status.outputs.subnet_id
     - subnetId:
         valueFrom:
           kind: AwsSubnet
-          name: my-private-subnet-b
+          name: private-subnet-b
           fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
-        name: nfs-sg
+        name: efs-nfs-sg
         fieldPath: status.outputs.security_group_id
+  kmsKeyId:
+    valueFrom:
+      kind: AwsKmsKey
+      name: data-encryption-key
+      fieldPath: status.outputs.key_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and KMS key first, then provisions the EFS file system with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `file_system_id` | `string` | File system ID (e.g., `fs-0123456789abcdef0`). Used by EKS PersistentVolumes, ECS task definitions, and AwsEfsAccessPoint references. |
-| `file_system_arn` | `string` | Amazon Resource Name of the file system for IAM policies |
-| `dns_name` | `string` | Regional DNS name for NFS mounting (e.g., `fs-xxx.efs.us-east-1.amazonaws.com`) |
-| `mount_target_ids` | `map<string, string>` | Map of subnet ID to mount target ID |
-| `mount_target_ips` | `map<string, string>` | Map of subnet ID to mount target IPv4 address (empty for IPV6_ONLY targets) |
-| `mount_target_ipv6_addresses` | `map<string, string>` | Map of subnet ID to mount target IPv6 address (IPV6_ONLY / DUAL_STACK targets) |
-| `mount_target_dns_names` | `map<string, string>` | Map of subnet ID to AZ-specific mount target DNS name |
-| `replication_destination_file_system_id` | `string` | Replica's file system ID; empty when replication is not configured |
+These are the most important decisions when configuring an EFS file system. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Performance mode** -- Defaults to `generalPurpose`, which provides lowest per-operation latency for most workloads. Choose `maxIO` only for highly parallelized workloads with thousands of concurrent clients -- and note AWS rejects maxIO combined with elastic throughput or One Zone storage. This is a ForceNew attribute -- changing it requires replacing the file system.
 
-- [AwsEfsAccessPoint](/docs/catalog/aws/efs-access-point) — application-specific entry points enforcing POSIX identity and root directory
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the subnets for mount target placement
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls NFS access (TCP port 2049) to the file system
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides customer-managed encryption keys
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — consumes EFS via the EFS CSI driver for PersistentVolumes
-- [AwsLambda](/docs/catalog/aws/lambda) — mounts EFS via AwsEfsAccessPoint ARNs for serverless file access
+**Throughput mode** -- `bursting` scales throughput with file system size (50 MiB/s per TiB). `provisioned` gives fixed throughput independent of size (set `provisionedThroughputInMibps`; AWS enforces a 24-hour cooldown between changes). `elastic` auto-scales throughput based on workload demand and is recommended for unpredictable access patterns. Elastic requires generalPurpose performance mode.
+
+**Regional vs. One Zone** -- Leave `availabilityZoneName` empty for multi-AZ redundancy (Standard storage). Set it to a specific AZ (e.g., `us-east-1a`) for One Zone storage, which is ~47% cheaper but stores data in a single AZ. One Zone allows exactly one mount target, in a subnet of that AZ. Suitable for dev/test or workloads that tolerate AZ-level failure. This is a ForceNew attribute.
+
+**Lifecycle tiering** -- Configure `transitionToIa` to move files to Infrequent Access storage (~92% cheaper) after a period of no access. Add `transitionToArchive` for further savings (~96% cheaper; requires the IA transition). Set `transitionToPrimaryStorageClass: AFTER_1_ACCESS` to automatically warm frequently accessed files back to Standard.
+
+**File system policy** -- Provide `policy` (a JSON IAM policy document) to enforce non-negotiable guardrails: deny unencrypted NFS connections (`aws:SecureTransport`), prevent root access from clients, or require IAM authentication for all mounts. `bypassPolicyLockoutSafetyCheck` requires a policy and should stay off unless deploying a deliberate lockout posture -- a locked-out policy is recoverable only by the account root.
+
+**Replication** -- Provide `replication` with a destination region and/or Availability Zone to keep a read-only DR replica in sync. Setting the AZ makes the replica a cheaper One Zone file system; same-region-different-AZ is a valid shape. Replicas are always encrypted. To replicate into an existing file system, reference it in `destinationFileSystemId` -- that file system must have set its own `replicationOverwriteProtection` to `DISABLED` first.
+
+**Access points** -- Application-level entry points (POSIX identity enforcement, root-directory pinning) are the separate [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resource. Each access point references this file system's `file_system_id` output, and Lambda functions and ECS task definitions reference the access point's own outputs.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `mountTargets[].subnetId` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsKmsKey** (optional) | `kmsKeyId`, `replication.destinationKmsKeyId` | `status.outputs.key_arn` |
+| **AwsElasticFileSystem** (optional) | `replication.destinationFileSystemId` | `status.outputs.file_system_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `file_system_id` | EFS file system identifier | AwsEfsAccessPoint `fileSystemId`, EKS PersistentVolumes (EFS CSI driver), ECS task definition EFS volumes |
+| `file_system_arn` | Amazon Resource Name of the file system | IAM policies for resource-level permissions |
+| `dns_name` | Regional NFS mount DNS name | EC2 direct NFS mount, EKS CSI driver configuration |
+| `mount_target_ids` | Map of subnet ID to mount target ID | Monitoring and troubleshooting mount target health |
+| `mount_target_ips` | Map of subnet ID to mount target IPv4 address | Static NFS mount configurations, network debugging |
+| `mount_target_ipv6_addresses` | Map of subnet ID to mount target IPv6 address | IPv6-only and dual-stack NFS clients |
+| `mount_target_dns_names` | Map of subnet ID to AZ-specific mount target DNS | AZ-local NFS mounts to avoid cross-AZ traffic |
+| `replication_destination_file_system_id` | File system ID of the replication destination | Failover automation, DR runbooks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**General purpose regional** -- Encrypted multi-AZ file system with bursting throughput and automatic backups. The standard production configuration for shared storage across EKS pods, ECS tasks, or EC2 instances. Start from the **General Purpose Regional** preset.
+
+**One Zone dev** -- Encrypted single-AZ file system with bursting throughput. ~47% cheaper than regional storage, suitable for development and testing environments where AZ-level redundancy is not required. Start from the **One Zone Dev** preset.
+
+**Production elastic tiered** -- Encrypted multi-AZ file system with elastic throughput and lifecycle tiering (IA after 30 days, Archive after 90 days, warm on access). Pair it with [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resources for per-application isolation. Start from the **Production Elastic Tiered** preset.
+
+## Works With
+
+- [**AWS EFS Access Point**](/cloud-catalog/aws-efs-access-point) -- application-specific entry points that enforce POSIX identity and root directory, referenced by Lambda and ECS task definitions
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets for mount target placement across Availability Zones
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls NFS traffic (TCP 2049) access to mount targets
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encryption at rest (and for the replica's encryption)

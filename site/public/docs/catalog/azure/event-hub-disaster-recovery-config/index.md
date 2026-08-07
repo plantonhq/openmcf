@@ -8,63 +8,119 @@ componentName: "azureeventhubdisasterrecoveryconfig"
 
 # Azure Event Hub Disaster Recovery Config
 
-Creates a geo-disaster-recovery pairing between two Event Hubs namespaces -- continuous metadata replication plus a failover-stable alias DNS name clients connect through.
+Creates a geo-disaster-recovery pairing between two Event Hubs namespaces: metadata (hubs, consumer groups, authorization rules -- not event data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name (`{alias}.servicebus.windows.net`) fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a regional failover needs no client reconfiguration. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureEventHubDisasterRecoveryConfig resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Disaster Recovery Config (alias)** -- an `azurerm_eventhub_namespace_disaster_recovery_config` pairing the primary and partner namespaces under the alias name
+- **Geo-DR pairing** -- under the primary namespace, replicating metadata continuously to the partner
+- **The alias** -- the failover-stable DNS name, globally unique in the namespace name scope
 
-## Prerequisites
+The provider manages the pairing's lifecycle choreography: creation waits for the pairing to reach the Succeeded state, changing the partner BREAKS the existing pairing and re-pairs, and destroy breaks the pairing then waits for Azure to release the alias name -- destroys take minutes by the service's own design.
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **Two AzureEventHubNamespaces** at STANDARD tier or above, in DIFFERENT regions, on the SAME tier; the partner must be EMPTY (no hubs) at pairing time
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `geo-dr.yaml`:
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **Two AzureEventHubNamespaces** in DIFFERENT regions, on the same tier (STANDARD or higher -- geo-DR is not available on BASIC), with the partner EMPTY (no hubs) at pairing time -- Azure validates all three when the pairing is created. Reference both namespaces' `namespace_id` outputs via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Event Hub Disaster Recovery Config**, and click **Deploy**. The creation wizard walks you through the alias identity (with a live failover-stable endpoint preview) and the namespace pairing, with Azure's three apply-time contracts taught inline. Start from the **Geo-DR Pairing** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureEventHubDisasterRecoveryConfig
 metadata:
-  name: telemetry-dr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureEventHubDisasterRecoveryConfig.telemetry-dr
+  name: telemetry-geo-dr
+  org: acme-corp
+  env: prod
 spec:
   aliasName: myorg-telemetry-alias
   primaryNamespaceId:
     valueFrom:
       kind: AzureEventHubNamespace
-      name: telemetry-hubs-eastus
+      name: telemetry-hubs
       fieldPath: status.outputs.namespace_id
   partnerNamespaceId:
     valueFrom:
       kind: AzureEventHubNamespace
-      name: telemetry-hubs-westus
+      name: telemetry-hubs-dr
       fieldPath: status.outputs.namespace_id
 ```
-
-Deploy:
 
 ```shell
 planton apply -f geo-dr.yaml
 ```
 
-Point clients at the ALIAS connection strings, not either namespace -- that is what makes failover transparent. Those credentials surface as the `*_connection_string_alias` outputs on the namespace and authorization-rule kinds once the pairing exists. Failover itself is triggered on the secondary during an incident (an operational action, not a config change). Metadata replicates; event data does not. Destroys take minutes by design: Azure breaks the pairing, deletes the config, and holds the alias name briefly before releasing it.
+Two fields are **fixed at creation** -- `aliasName` and `primaryNamespaceId` -- changing either replaces the pairing. Changing `partnerNamespaceId` breaks the current pairing and re-pairs to the new partner.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `disaster_recovery_config_id` | The Azure Resource Manager ID of the pairing (under the primary namespace) |
-| `alias_name` | The stable DNS identity (`{alias}.servicebus.windows.net`) |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pairing to namespaces deployed in the same InfraPipeline:
 
-## Related Resources
+```yaml
+spec:
+  primaryNamespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+```
 
-- [Azure Event Hub Namespace](/docs/catalog/azure/event-hub-namespace) -- the paired namespaces; its `*_connection_string_alias` outputs carry the alias credentials
-- [Azure Event Hub Authorization Rule](/docs/catalog/azure/event-hub-authorization-rule) -- least-privilege alias credentials via scoped rules
+The InfraPipeline resolves the dependency graph, deploys both namespaces first, then creates the pairing.
+
+## Key Configuration
+
+These are the most important decisions when configuring a geo-DR pairing. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**The alias** -- `aliasName` becomes the DNS name DR-aware clients hold. It shares the namespace name uniqueness scope (globally unique; it cannot collide with any existing namespace name either). Move applications onto the alias-addressed connection strings BEFORE an incident -- the alias protects nothing if clients still address the primary directly.
+
+**The pairing** -- `primaryNamespaceId` is the active side the pairing lives under; `partnerNamespaceId` is the standby metadata replicates to. Understand what replicates: STRUCTURE and CREDENTIALS, not events -- after a failover the partner has the same hubs, groups, and rules, but starts with empty streams.
+
+**Failover** -- an operational action, not a config change: triggered from the SECONDARY side (portal/CLI/SDK) during a regional incident, because the primary's region may be unreachable. After failover the alias points at the former partner. Deleting this resource breaks the pairing gracefully -- both namespaces keep running independently.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureEventHubNamespace** | `primaryNamespaceId` | `status.outputs.namespace_id` |
+| **AzureEventHubNamespace** | `partnerNamespaceId` | `status.outputs.namespace_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `disaster_recovery_config_id` | Azure Resource Manager ID of the pairing | Governance tooling and ARM-level references |
+| `alias_name` | The failover-stable alias | Operational runbooks and DNS-level documentation |
+
+The alias-addressed CONNECTION STRINGS surface on the paired kinds, not here: once the pairing exists, the namespace's and each authorization rule's `*_alias` outputs populate -- hand applications those.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Cross-region continuity** -- the everyday shape: an alias fronting the active namespace, paired to an empty partner in the DR region, with applications on alias-addressed credentials from day one. Start from the **Geo-DR Pairing** preset.
+
+## Works With
+
+- [**Azure Event Hub Namespace**](/cloud-catalog/azure-event-hub-namespace) -- both sides of the pairing; their `*_alias` connection-string outputs populate once paired
+- [**Azure Event Hub Authorization Rule**](/cloud-catalog/azure-event-hub-authorization-rule) -- rules replicate to the partner, and their alias-addressed connection strings are what DR-aware clients hold
+- [**Azure Event Hub**](/cloud-catalog/azure-event-hub) -- hub structure replicates; event data does not
+- [**Azure Event Hub Consumer Group**](/cloud-catalog/azure-event-hub-consumer-group) -- group structure replicates; offsets are per-namespace

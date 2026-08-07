@@ -28,11 +28,12 @@ and a **DEPENDENCIES-DOWN** phase after VERIFY-CLN (teardown in reverse order).
 ### Component E2E Structure
 
 Test scenarios, profiles, and fixtures live **next to their components** at the
-`v1/e2e/` level:
+component root's `e2e/` level:
 
 ```
-catalog/{provider}/{component}/v1/
+catalog/{provider}/{component}/
   e2e/
+    manifest.yaml          <-- the canonical validated example manifest
     profile.yaml           <-- E2E profile (tier, status, provisioners, timeout)
     scenarios/             <-- test scenario manifests
       minimal.yaml
@@ -41,10 +42,10 @@ catalog/{provider}/{component}/v1/
     prerequisite.yaml      <-- optional: this kind's install profile, used when it
                                is itself a prerequisite of another component
   iac/
-    hack/manifest.yaml     <-- the canonical example manifest
     pulumi/                <-- Pulumi module
     tf/                    <-- Terraform module
-  spec.proto
+  v1alpha1/
+    spec.proto
 ```
 
 ### Provider Harness Structure
@@ -74,16 +75,16 @@ Each kind declares its prerequisites in the proto registry
 (`CloudResourceKindMeta.prerequisites` in `cloud_resource_kind.proto`). The
 harness resolves them transitively and installs each one using, in order of
 preference, a consumer-scoped override at the consuming component's
-`v1/e2e/prerequisites/<dep>.yaml` (for when the same prerequisite kind needs a
+`e2e/prerequisites/<dep>.yaml` (for when the same prerequisite kind needs a
 different install shape per consumer — e.g. GcpGlobalAddress as an EXTERNAL
 VIP for a forwarding rule vs an INTERNAL VPC_PEERING range for a service
-networking connection), then the dependency's `v1/e2e/prerequisite.yaml` (its
-published install profile), then its `v1/e2e/scenarios/minimal.yaml`. Declaring
+networking connection), then the dependency's `e2e/prerequisite.yaml` (its
+published install profile), then its `e2e/scenarios/minimal.yaml`. Declaring
 `prerequisites: [X]` is all that is needed -- no per-component wiring.
 
 **Transitive prerequisites resolve against the component under test, not against
 intermediate dependencies.** If kind A depends on B and B depends on C, the install
-manifest for C is looked up under A's `v1/e2e/prerequisites/c.yaml` (then C's published
+manifest for C is looked up under A's `e2e/prerequisites/c.yaml` (then C's published
 profile), NOT under B's consumer-scoped overrides. So when B's install profile
 references a specifically shaped C (e.g. a GKE cluster prerequisite referencing a
 subnetwork with named secondary ranges), the consuming kind A must ship its own
@@ -297,7 +298,7 @@ spec:
   max_concurrent_tests: 8
 ```
 
-### Component Profile (`v1/e2e/profile.yaml`)
+### Component Profile (`e2e/profile.yaml`)
 
 Declares a component's E2E readiness:
 
@@ -703,12 +704,12 @@ Some resources cannot apply until a blob already exists in cloud storage — Gen
 cannot be expressed as IaC. The runner has no hook between prerequisite deploy
 and the scenario apply, and `valueFrom` resolution only touches
 `StringValueOrRef` fields (not plain-string bucket/object paths). The pattern is:
-check in a minimal source tree under `v1/e2e/fixtures/`, and in the test
+check in a minimal source tree under `e2e/fixtures/`, and in the test
 entrypoint (before calling the runner) zip it and upload to a run-scoped bucket
 whose name uses the same engine-scoped `${E2E_RUN_ID}` expansion the runner
 applies (`runner.EngineScopedRunID`). Register cleanup on the test handle — the
 harness `Teardown` is a no-op by design. See `e2e/gcp/gcp_test.go`
-`stageCloudFunctionSource` and `gcpcloudfunction/v1/e2e/scenarios/*.yaml`.
+`stageCloudFunctionSource` and `gcpcloudfunction/e2e/scenarios/*.yaml`.
 Serverless VPC Access connectors are slow: budget **≥15m per connector scenario**
 (CREATING → READY is typically 5-10 minutes). Cloud Functions Gen 2 deploys
 (including Cloud Build) need **≥20m per scenario**.
@@ -837,7 +838,7 @@ scenario is as simple as dropping a YAML file into the component's
 
 ## Adding a New Test Scenario
 
-1. Create a YAML manifest in `{component}/v1/e2e/scenarios/` with a descriptive
+1. Create a YAML manifest in `{component}/e2e/scenarios/` with a descriptive
    filename
 2. Use a unique `metadata.name` (and unique namespace if the component creates
    one) to avoid collisions with other scenarios
@@ -847,8 +848,8 @@ scenario is as simple as dropping a YAML file into the component's
 ## Adding a New Component
 
 1. Create the IaC modules (`iac/pulumi/`, `iac/tf/`)
-2. Create `v1/e2e/profile.yaml` with the component's E2E profile
-3. Create at least `v1/e2e/scenarios/minimal.yaml` with a minimal test manifest
+2. Create `e2e/profile.yaml` with the component's E2E profile
+3. Create at least `e2e/scenarios/minimal.yaml` with a minimal test manifest
 4. If the component needs other resources installed first, declare them as
    `prerequisites` on the kind in `cloud_resource_kind.proto` (the harness
    installs them automatically -- see "Component Dependencies").

@@ -8,80 +8,89 @@ componentName: "gcpcloudsqluser"
 
 # GCP Cloud SQL User
 
-Creates a database user on a Cloud SQL instance — classic username/password (`BUILT_IN`) or passwordless IAM authentication for users, service accounts, and groups. One user per application, each with its own rotatable credential, instead of a shared admin login.
+Creates a database user on an existing Google Cloud SQL instance — a classic password (BUILT_IN) user, or a passwordless IAM-authenticated user, service account, or group. Users as first-class resources give every application its own principal on shared infrastructure: created, rotated, and revoked independently, never sharing the admin credential.
 
 ## What Gets Created
 
-When you deploy a GcpCloudSqlUser resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cloud SQL user** — a `google_sql_user` on the referenced instance
+- **Cloud SQL User** -- a `google_sql_user` on the referenced instance: BUILT_IN (username + password, with an optional per-user password policy) or one of the three IAM types (CLOUD_IAM_USER, CLOUD_IAM_SERVICE_ACCOUNT, CLOUD_IAM_GROUP — passwordless, authenticated through IAM)
 
-## Prerequisites
+## Before You Deploy
 
-- **An existing Cloud SQL instance** — a [GcpCloudSql](/docs/catalog/gcp/cloud-sql) resource (or a literal instance name)
-- **For IAM users on PostgreSQL** — the instance must set `databaseFlags: {"cloudsql.iam_authentication": "on"}`
-- **GCP credentials** with Cloud SQL admin permissions on the project
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project.
+- **Org Secret** (BUILT_IN users) -- store the password as an org secret and reference it as `$secret/<slug>`; the runner resolves it just-in-time and the platform rejects plaintext.
+
+### GCP Project
+
+- **A Cloud SQL instance** -- the [GcpCloudSql](/cloud-catalog/gcp-cloud-sql) instance the user authenticates against. Reference it via ValueFromRef so the pipeline deploys the instance first.
+- **IAM authentication flag** (IAM-typed users on PostgreSQL) -- the instance must carry the database flag `cloudsql.iam_authentication: "on"` before IAM users can be created.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud SQL User**, and click **Create**. The wizard walks two decisions: which instance the user lives on, then who the user is and how it authenticates. The [Presets](#presets) tab offers **Application User** (BUILT_IN) and **IAM Service Account User** (passwordless) starting points.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSqlUser
 metadata:
-  name: orders-app-user
+  name: orders-app
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   instance:
     valueFrom:
       kind: GcpCloudSql
-      name: my-postgres
+      name: orders-db-prod
       fieldPath: status.outputs.instance_name
   userName: orders-app
-  password: a-strong-generated-password
+  password: $secret/orders-app-db-password
 ```
 
 ```shell
 planton apply -f user.yaml
 ```
 
-## Configuration Reference
+## Key Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `instance` | `StringValueOrRef` | — (required) | The hosting instance (ref → GcpCloudSql). Immutable. |
-| `userName` | `string` | — (required) | Login name (BUILT_IN) or IAM principal email (IAM types). Immutable. |
-| `projectId` | `StringValueOrRef` | provider default | Project that owns the instance. |
-| `password` | secret | — | BUILT_IN credential; updating rotates in place. Never for IAM types. |
-| `type` | `string` | `BUILT_IN` | `CLOUD_IAM_USER`, `CLOUD_IAM_SERVICE_ACCOUNT`, `CLOUD_IAM_GROUP` for passwordless IAM auth. |
-| `host` | `string` | — | MySQL only: `user@host` scoping. |
-| `passwordPolicy` | object | — | Lockout/expiry hardening for BUILT_IN users. |
+**Authentication type** -- Immutable. `BUILT_IN` (the default) is a classic password user. The IAM types authenticate through Google IAM instead: nothing to store, leak, or rotate, and access is revoked by revoking the IAM role — the strongest posture for workloads that already run as a service account (GKE Workload Identity, Cloud Run).
 
-## Examples
+**User name** -- Immutable, max 128 characters. For IAM types it is the principal's full email; on MySQL, GCP stores IAM user names truncated before the `@` (the `user_name` output reflects the stored name).
 
-### Passwordless IAM Service Account User
+**Password** -- BUILT_IN only, and MUTABLE: updating the value rotates the credential in place, making this resource the rotation lever. Always a `$secret/<slug>` reference. Subject to the instance's password validation policy.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudSqlUser
-metadata:
-  name: ci-runner-user
-spec:
-  instance:
-    valueFrom:
-      kind: GcpCloudSql
-      name: my-postgres
-      fieldPath: status.outputs.instance_name
-  userName: ci-runner@my-project.iam.gserviceaccount.com
-  type: CLOUD_IAM_SERVICE_ACCOUNT
-```
+**Host scope** -- MySQL only: classic `user@host` scoping (e.g. `10.0.0.%`). Immutable; leave empty for PostgreSQL/SQL Server.
 
-## Stack Outputs
+**Per-user password policy** -- BUILT_IN only: failed-attempts lockout, password expiration, and (MySQL) current-password verification — layered on the instance-wide policy.
 
-| Output | Description |
-|--------|-------------|
-| `user_name` | The user name as stored by Cloud SQL (IAM users on MySQL are stored truncated before the `@`) |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — the instance this user lives on
-- [GcpCloudSqlDatabase](/docs/catalog/gcp/cloud-sql-database) — the application database this user works in
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — the identity behind IAM service-account users
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpCloudSql** | `instance` | `status.outputs.instance_name` |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `user_name` | The stored user name (IAM names may be truncated on MySQL) | Application connection strings |
+| `instance_name` | The hosting instance's name | Cross-checking attachment |
+
+## Works With
+
+- [**GCP Cloud SQL**](/cloud-catalog/gcp-cloud-sql) -- the instance this user authenticates against
+- [**GCP Cloud SQL Database**](/cloud-catalog/gcp-cloud-sql-database) -- the database the application connects to with these credentials
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- the workload identity behind a CLOUD_IAM_SERVICE_ACCOUNT user

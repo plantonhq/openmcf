@@ -8,48 +8,56 @@ componentName: "awscodepipeline"
 
 # AWS CodePipeline
 
-Deploys an AWS CodePipeline continuous delivery pipeline with ordered stages, provider-specific actions, S3 artifact stores, and optional V2 features including git-based triggers and pipeline-level variables.
+Deploys a continuous delivery pipeline on AWS CodePipeline with configurable stages, actions, artifact stores, and optional V2 features including git-based triggers and pipeline-level variables. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring to IAM roles, S3 buckets, and KMS keys.
 
 ## What Gets Created
 
-When you deploy an AwsCodePipeline resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **CodePipeline** — an `aws_codepipeline` resource (V1 or V2) with the specified execution mode, IAM role, and artifact configuration
-- **Artifact Stores** — one or more S3 bucket references for storing pipeline artifacts between stages, with optional KMS encryption and cross-region support
-- **Stages and Actions** — an ordered sequence of stages, each containing one or more actions that connect to AWS service providers (CodeBuild, S3, ECS, Lambda, CodeDeploy, etc.)
-- **Triggers (V2 only)** — git-based execution triggers using CodeStar Connections that listen for push or pull request events with branch, tag, and file path filtering
-- **Variables (V2 only)** — pipeline-level parameters referenced in action configurations using `#{variables.Name}` syntax
+- **CodePipeline Pipeline** -- an ordered sequence of stages, each containing one or more actions that fetch source code, run builds, execute tests, request approvals, or deploy to target environments
+- **Artifact Stores** -- one or more S3 bucket bindings for storing pipeline artifacts between stages; supports cross-region artifact stores for multi-region pipelines
+- **Git Triggers** -- created only when `triggers` are configured on V2 pipelines; listens for push or pull request events via CodeStar Connections with branch, tag, and file path filtering
+- **Pipeline Variables** -- created only when `variables` are configured on V2 pipelines; parameterizes action configurations using `#{variables.Name}` syntax
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An IAM role** with policies granting CodePipeline access to all action providers used in the pipeline (CodeBuild, S3, ECS, Lambda, etc.)
-- **An S3 bucket** for artifact storage between pipeline stages
-- **At least two stages** — a Source stage and at least one Build, Test, Deploy, Approval, or Invoke stage
-- **A CodeStar Connection** if using GitHub, Bitbucket, or GitLab as a source provider
-- **A CodeBuild project** if using CodeBuild for build or test actions
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `pipeline.yaml`:
+### AWS Account
+
+- **An IAM role** with permissions for S3 artifact access, source provider interaction (CodeStar Connections, S3, ECR, CodeCommit), and every action provider used in the pipeline (CodeBuild, ECS, Lambda, CloudFormation, etc.). Provide the ARN directly or reference an AwsIamRole Cloud Resource via ValueFromRef.
+- **An S3 bucket** for pipeline artifact storage. Each artifact store requires a bucket. For cross-region pipelines, provide one bucket per region. Provide the bucket name directly or reference an AwsS3Bucket Cloud Resource.
+- **A KMS key** (optional) -- for encrypting pipeline artifacts with a customer-managed key. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
+- **A CodeStar Connection** (optional) -- required when using git-based triggers or CodeStarSourceConnection source actions for GitHub, Bitbucket, or GitLab repositories.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS CodePipeline**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **GitHub Source + CodeBuild** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCodePipeline
 metadata:
-  name: my-app-pipeline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCodePipeline.my-app-pipeline
+  name: api-deploy
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   roleArn:
-    value: arn:aws:iam::123456789012:role/codepipeline-service-role
+    value: "arn:aws:iam::123456789012:role/CodePipelineServiceRole"
   artifactStores:
     - location:
-        value: my-pipeline-artifacts-bucket
+        value: "my-pipeline-artifacts"
   stages:
     - name: Source
       actions:
@@ -59,479 +67,41 @@ spec:
           provider: CodeStarSourceConnection
           version: "1"
           configuration:
-            ConnectionArn: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc-12345
-            FullRepositoryId: my-org/my-repo
-            BranchName: main
-            OutputArtifactFormat: CODE_ZIP
+            ConnectionArn: "arn:aws:codestar-connections:us-east-1:123456789012:connection/abc"
+            FullRepositoryId: "acme-corp/api"
+            BranchName: "main"
           outputArtifacts:
             - SourceOutput
     - name: Build
       actions:
-        - name: BuildApp
+        - name: CodeBuild
           category: Build
           owner: AWS
           provider: CodeBuild
           version: "1"
           configuration:
-            ProjectName: my-app-build
+            ProjectName: "api-build"
           inputArtifacts:
             - SourceOutput
-          outputArtifacts:
-            - BuildOutput
 ```
-
-Deploy:
 
 ```shell
-planton apply -f pipeline.yaml
+planton apply -f codepipeline.yaml
 ```
 
-This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stage, using the default SUPERSEDED execution mode.
+This creates a V2 pipeline with a GitHub source stage and a CodeBuild build stage. No triggers, variables, or cross-region artifact stores are configured. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Top-Level Fields
-
-| Field | Type | Default | Description | Validation |
-|-------|------|---------|-------------|------------|
-| `pipelineType` | `string` | `V2` | Pipeline version. `V1` for legacy pipelines; `V2` for modern pipelines with triggers, variables, and advanced execution modes. | `V1` or `V2` |
-| `executionMode` | `string` | `SUPERSEDED` | How concurrent executions are handled. `SUPERSEDED`: new execution replaces in-progress. `QUEUED`: executions queue behind current (V2 only). `PARALLEL`: executions run simultaneously (V2 only). | `SUPERSEDED`, `QUEUED`, or `PARALLEL` |
-| `roleArn` | `string` | — | IAM role ARN granting CodePipeline permission to access source providers, invoke actions, and manage artifacts. Can reference an AwsIamRole resource via `valueFrom`. | **Required** |
-| `artifactStores` | `ArtifactStore[]` | — | S3 buckets for storing pipeline artifacts between stages. One store for single-region; one per region for cross-region pipelines. | **Required**, minimum 1 item |
-| `stages` | `Stage[]` | — | Ordered sequence of pipeline stages. Each stage contains one or more actions. | **Required**, minimum 2 stages |
-| `triggers` | `Trigger[]` | `[]` | Automatic execution triggers based on git events. V2 pipelines only. | Maximum 50 items |
-| `variables` | `Variable[]` | `[]` | Pipeline-level parameters referenced as `#{variables.Name}` in action configurations. V2 pipelines only. | — |
-
-### ArtifactStore Fields
-
-| Field | Type | Default | Description | Validation |
-|-------|------|---------|-------------|------------|
-| `location` | `string` | — | S3 bucket name for artifact storage. Can reference an AwsS3Bucket resource via `valueFrom`. | **Required** |
-| `region` | `string` | — | AWS region for this artifact store. Required only for cross-region pipelines. Omit for single-region. | — |
-| `encryptionKeyId` | `string` | — | KMS key ARN or ID for artifact encryption. If omitted, the default AWS-managed S3 encryption key is used. Can reference an AwsKmsKey resource via `valueFrom`. | — |
-
-### Stage Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Stage name. Must be unique within the pipeline. | **Required**, 1–100 characters |
-| `actions` | `Action[]` | Operations performed in this stage. Same `runOrder` = parallel; different `runOrder` = sequential. | **Required**, minimum 1 action |
-| `beforeEntry` | `StageCondition` | Entry gate: rules that must pass before the stage starts (e.g., a `DeploymentWindow` rule). V2 only. | — |
-| `onSuccess` | `StageCondition` | Post-success verification: a failing rule fails the stage despite successful actions (e.g., a `CloudWatchAlarm` check). V2 only. | — |
-| `onFailure` | `FailureHandling` | What happens when the stage fails: roll back, retry, or rule-gated handling. V2 only. | — |
-
-### StageCondition Fields (`beforeEntry` / `onSuccess` / `onFailure.condition`)
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `result` | `string` | Outcome when the rules do NOT pass: `FAIL` (default) or `SKIP` (skip the stage; entry gates). | — |
-| `rules` | `Rule[]` | Checks making up the condition, AND'd together. | **Required**, 1–5 rules |
-
-### Rule Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Rule name, unique within the condition. | **Required** |
-| `ruleTypeId` | `RuleTypeId` | Which managed rule runs: `provider` is `DeploymentWindow`, `CloudWatchAlarm`, `LambdaInvoke`, `VariableCheck`, or `Commands`; `category`/`owner` default to `Rule`/`AWS`. | **Required** |
-| `configuration` | `map<string,string>` | Rule-provider-specific keys (e.g., `Cron` + `TimeZone` for DeploymentWindow; `AlarmName` + `WaitTime` for CloudWatchAlarm). | — |
-| `commands` | `string[]` | Shell commands for the `Commands` rule provider. | Max 50, each 1–1000 chars |
-| `inputArtifacts` | `string[]` | Artifacts available to the rule. | — |
-| `region` | `string` | Region the rule executes in. | — |
-| `roleArn` | `StringValueOrRef` | Role the rule assumes instead of the pipeline's role. | — |
-| `timeoutInMinutes` | `int` | Rule timeout. | 5–86400 |
-
-### FailureHandling Fields (`onFailure`)
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `result` | `string` | `ROLLBACK` (revert the stage to its last successful state), `RETRY`, or `FAIL`. | — |
-| `retryConfiguration.retryMode` | `string` | `FAILED_ACTIONS` (re-run only failures) or `ALL_ACTIONS` (whole stage). | Requires `result: RETRY` |
-| `condition` | `StageCondition` | Rules gating the failure handling. | — |
-
-### Action Fields
-
-| Field | Type | Default | Description | Validation |
-|-------|------|---------|-------------|------------|
-| `name` | `string` | — | Action name. Must be unique within the stage. | **Required**, 1–100 characters |
-| `category` | `string` | — | Action type: `Source`, `Build`, `Test`, `Deploy`, `Approval`, `Invoke`, or `Compute`. | **Required** |
-| `owner` | `string` | — | Who created the action type: `AWS`, `ThirdParty`, or `Custom`. | **Required** |
-| `provider` | `string` | — | Service performing the action. Depends on category/owner (e.g., `CodeStarSourceConnection`, `CodeBuild`, `S3`, `ECS`, `Lambda`, `CodeDeploy`). | **Required**, 1–35 characters |
-| `version` | `string` | — | Action type version. Typically `"1"` for all built-in actions. | **Required**, 1–9 characters |
-| `configuration` | `map<string,string>` | `{}` | Provider-specific key-value pairs controlling the action's behavior. Keys depend on the provider. | — |
-| `inputArtifacts` | `string[]` | `[]` | Artifact names from previous stages/actions that this action consumes. | — |
-| `outputArtifacts` | `string[]` | `[]` | Artifact names this action produces for downstream consumption. | — |
-| `namespace` | `string` | — | Variable namespace for this action's output variables. Referenced as `#{namespace.VariableName}`. | Maximum 100 characters |
-| `region` | `string` | — | AWS region where this action executes. Required for cross-region actions. Defaults to the pipeline's region. | — |
-| `roleArn` | `string` | — | IAM role ARN the action assumes instead of the pipeline role. Useful for cross-account deployments. Can reference an AwsIamRole resource via `valueFrom`. | — |
-| `runOrder` | `int` | `1` | Execution order within a stage. Same value = parallel; lower values run first. | 1–999 |
-| `timeoutInMinutes` | `int` | — | Timeout override — AWS supports it ONLY on Manual Approval actions (`category: Approval`, `provider: Manual`); other action types are rejected at creation. | 5–86400 |
-
-### Trigger Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `providerType` | `string` | Trigger provider. Must be `CodeStarSourceConnection`. | **Required** |
-| `gitConfiguration` | `GitConfiguration` | Git event filters that trigger the pipeline. | **Required** |
-
-### GitConfiguration Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `sourceActionName` | `string` | Must match the name of a Source action in the first stage that uses CodeStarSourceConnection. | **Required**, 1–100 characters |
-| `push` | `GitPush[]` | Filters for git push events. Multiple push filters are OR'd. | Maximum 3 items |
-| `pullRequest` | `GitPullRequest[]` | Filters for pull request events. Multiple PR filters are OR'd. | Maximum 3 items |
-
-### GitPush Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `branches` | `GitFilter` | Branch name patterns (glob syntax). |
-| `filePaths` | `GitFilter` | Changed file path patterns (glob syntax). |
-| `tags` | `GitFilter` | Tag name patterns (glob syntax). |
-
-### GitPullRequest Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `branches` | `GitFilter` | Target branch name patterns (glob syntax). |
-| `filePaths` | `GitFilter` | Changed file path patterns (glob syntax). |
-| `events` | `string[]` | PR lifecycle events: `OPEN`, `UPDATED`, `CLOSED`. |
-
-### GitFilter Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `includes` | `string[]` | Glob patterns that must match. At least one must match for the filter to pass. | Maximum 8 items |
-| `excludes` | `string[]` | Glob patterns that reject a match. Exclusions take precedence over inclusions. | Maximum 8 items |
-
-### Variable Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Variable name. Referenced as `#{variables.Name}` in action configurations. | **Required** |
-| `defaultValue` | `string` | Value used when none is supplied at execution time. | — |
-| `description` | `string` | Human-readable explanation of the variable's purpose. | — |
-
-### Cross-Field Validations
-
-| Rule | Description |
-|------|-------------|
-| `triggers_require_v2` | Triggers are only supported on V2 pipelines. Set `pipelineType` to `V2` or remove triggers. |
-| `variables_require_v2` | Variables are only supported on V2 pipelines. Set `pipelineType` to `V2` or remove variables. |
-| `advanced_execution_mode_requires_v2` | Execution modes `QUEUED` and `PARALLEL` are only supported on V2 pipelines. |
-| `stage_conditions_require_v2` | Stage `beforeEntry` / `onSuccess` / `onFailure` conditions are only supported on V2 pipelines. |
-| `artifact_stores_region_shape` | A single artifact store must omit `region`; multiple (cross-region) stores must each set it. |
-| `retry_configuration_requires_retry_result` | `onFailure.retryConfiguration` requires `result: RETRY`. |
-| `git_configuration_needs_filter` | A trigger's git configuration needs at least one push or pull-request filter. |
-| `git_filter_needs_pattern` | A git filter block needs at least one includes or excludes pattern. |
-| `timeout_only_for_approval_actions` | `timeoutInMinutes` is only supported on Manual Approval actions. |
-
-## Examples
-
-### GitHub Source with CodeBuild
-
-A V2 pipeline that pulls source from GitHub via CodeStar Connection, builds with CodeBuild, and triggers automatically on pushes to `main`:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pipeline to an IAM role and S3 bucket deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCodePipeline
-metadata:
-  name: my-app-ci
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCodePipeline.my-app-ci
 spec:
-  region: us-west-2
-  pipelineType: V2
-  executionMode: QUEUED
-  roleArn:
-    value: arn:aws:iam::123456789012:role/codepipeline-service-role
-  artifactStores:
-    - location:
-        value: my-pipeline-artifacts-bucket
-  stages:
-    - name: Source
-      actions:
-        - name: GitHubSource
-          category: Source
-          owner: AWS
-          provider: CodeStarSourceConnection
-          version: "1"
-          configuration:
-            ConnectionArn: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc-12345
-            FullRepositoryId: my-org/my-repo
-            BranchName: main
-            OutputArtifactFormat: CODE_ZIP
-          outputArtifacts:
-            - SourceOutput
-          namespace: SourceVariables
-    - name: Build
-      actions:
-        - name: BuildAndTest
-          category: Build
-          owner: AWS
-          provider: CodeBuild
-          version: "1"
-          configuration:
-            ProjectName: my-app-build
-          inputArtifacts:
-            - SourceOutput
-          outputArtifacts:
-            - BuildOutput
-  triggers:
-    - providerType: CodeStarSourceConnection
-      gitConfiguration:
-        sourceActionName: GitHubSource
-        push:
-          - branches:
-              includes:
-                - main
-```
-
-### ECR Source with ECS Deployment
-
-A pipeline triggered by new ECR image pushes that prepares a deployment bundle and deploys to ECS:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCodePipeline
-metadata:
-  name: my-service-deploy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCodePipeline.my-service-deploy
-spec:
-  region: us-west-2
-  pipelineType: V2
-  executionMode: QUEUED
-  roleArn:
-    value: arn:aws:iam::123456789012:role/codepipeline-service-role
-  artifactStores:
-    - location:
-        value: my-pipeline-artifacts-bucket
-  stages:
-    - name: Source
-      actions:
-        - name: ECRSource
-          category: Source
-          owner: AWS
-          provider: ECR
-          version: "1"
-          configuration:
-            RepositoryName: my-service
-            ImageTag: latest
-          outputArtifacts:
-            - ECROutput
-    - name: Build
-      actions:
-        - name: PrepareDeployment
-          category: Build
-          owner: AWS
-          provider: CodeBuild
-          version: "1"
-          configuration:
-            ProjectName: my-deploy-prep
-          inputArtifacts:
-            - ECROutput
-          outputArtifacts:
-            - DeploymentBundle
-    - name: Deploy
-      actions:
-        - name: ECSDeployProd
-          category: Deploy
-          owner: AWS
-          provider: ECS
-          version: "1"
-          configuration:
-            ClusterName: prod-cluster
-            ServiceName: my-service
-            FileName: imagedefinitions.json
-          inputArtifacts:
-            - DeploymentBundle
-```
-
-### S3 Source with Lambda Deployment
-
-A pipeline that fetches a Lambda deployment package from S3 and invokes a deployer function:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCodePipeline
-metadata:
-  name: my-lambda-deploy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCodePipeline.my-lambda-deploy
-spec:
-  region: us-west-2
-  pipelineType: V2
-  executionMode: SUPERSEDED
-  roleArn:
-    value: arn:aws:iam::123456789012:role/codepipeline-service-role
-  artifactStores:
-    - location:
-        value: my-pipeline-artifacts-bucket
-  stages:
-    - name: Source
-      actions:
-        - name: S3Source
-          category: Source
-          owner: AWS
-          provider: S3
-          version: "1"
-          configuration:
-            S3Bucket: lambda-packages-bucket
-            S3ObjectKey: functions/my-function/package.zip
-            PollForSourceChanges: "false"
-          outputArtifacts:
-            - LambdaPackage
-    - name: Deploy
-      actions:
-        - name: UpdateLambda
-          category: Invoke
-          owner: AWS
-          provider: Lambda
-          version: "1"
-          configuration:
-            FunctionName: lambda-deployer
-            UserParameters: '{"targetFunction":"my-target-function","alias":"live"}'
-          inputArtifacts:
-            - LambdaPackage
-```
-
-### Multi-Stage with Manual Approval and Cross-Region Artifacts
-
-A production pipeline with build, staging deploy, manual approval gate, and production deploy across regions:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCodePipeline
-metadata:
-  name: prod-release-pipeline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCodePipeline.prod-release-pipeline
-spec:
-  region: us-west-2
-  pipelineType: V2
-  executionMode: QUEUED
-  roleArn:
-    value: arn:aws:iam::123456789012:role/codepipeline-service-role
-  artifactStores:
-    - location:
-        value: artifacts-us-east-1
-      region: us-east-1
-    - location:
-        value: artifacts-eu-west-1
-      region: eu-west-1
-  stages:
-    - name: Source
-      actions:
-        - name: GitHubSource
-          category: Source
-          owner: AWS
-          provider: CodeStarSourceConnection
-          version: "1"
-          configuration:
-            ConnectionArn: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc-12345
-            FullRepositoryId: my-org/my-service
-            BranchName: release
-            OutputArtifactFormat: CODE_ZIP
-          outputArtifacts:
-            - SourceOutput
-          namespace: SourceVariables
-    - name: Build
-      actions:
-        - name: BuildApp
-          category: Build
-          owner: AWS
-          provider: CodeBuild
-          version: "1"
-          configuration:
-            ProjectName: my-service-build
-          inputArtifacts:
-            - SourceOutput
-          outputArtifacts:
-            - BuildOutput
-    - name: DeployStaging
-      actions:
-        - name: ECSDeployStaging
-          category: Deploy
-          owner: AWS
-          provider: ECS
-          version: "1"
-          configuration:
-            ClusterName: staging-cluster
-            ServiceName: my-service
-            FileName: imagedefinitions.json
-          inputArtifacts:
-            - BuildOutput
-    - name: Approval
-      actions:
-        - name: ManualApproval
-          category: Approval
-          owner: AWS
-          provider: Manual
-          version: "1"
-          configuration:
-            CustomData: "Approve deployment to production?"
-            NotificationArn: arn:aws:sns:us-east-1:123456789012:pipeline-approvals
-    - name: DeployProduction
-      actions:
-        - name: ECSDeployProd
-          category: Deploy
-          owner: AWS
-          provider: ECS
-          version: "1"
-          configuration:
-            ClusterName: prod-cluster
-            ServiceName: my-service
-            FileName: imagedefinitions.json
-          inputArtifacts:
-            - BuildOutput
-  variables:
-    - name: ReleaseTag
-      defaultValue: latest
-      description: Container image tag to deploy
-  triggers:
-    - providerType: CodeStarSourceConnection
-      gitConfiguration:
-        sourceActionName: GitHubSource
-        push:
-          - tags:
-              includes:
-                - "v*"
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding ARNs and bucket names:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCodePipeline
-metadata:
-  name: ref-pipeline
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCodePipeline.ref-pipeline
-spec:
-  region: us-west-2
   roleArn:
     valueFrom:
       kind: AwsIamRole
-      name: pipeline-role
-      field: status.outputs.role_arn
+      name: codepipeline-service-role
+      fieldPath: status.outputs.role_arn
   artifactStores:
     - location:
         valueFrom:
@@ -541,66 +111,57 @@ spec:
       encryptionKeyId:
         valueFrom:
           kind: AwsKmsKey
-          name: pipeline-key
-          field: status.outputs.key_arn
-  stages:
-    - name: Source
-      actions:
-        - name: GitHubSource
-          category: Source
-          owner: AWS
-          provider: CodeStarSourceConnection
-          version: "1"
-          configuration:
-            ConnectionArn: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc-12345
-            FullRepositoryId: my-org/my-repo
-            BranchName: main
-            OutputArtifactFormat: CODE_ZIP
-          outputArtifacts:
-            - SourceOutput
-    - name: Build
-      actions:
-        - name: BuildApp
-          category: Build
-          owner: AWS
-          provider: CodeBuild
-          version: "1"
-          configuration:
-            ProjectName: my-app-build
-          inputArtifacts:
-            - SourceOutput
-          outputArtifacts:
-            - BuildOutput
-          roleArn:
-            valueFrom:
-              kind: AwsIamRole
-              name: build-role
-              field: status.outputs.role_arn
+          name: pipeline-encryption-key
+          fieldPath: status.outputs.key_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the IAM role, S3 bucket, and KMS key first, then provisions the CodePipeline with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `pipeline_arn` | `string` | ARN of the created CodePipeline. Use for IAM policies, EventBridge targets, and cross-resource references. |
-| `pipeline_name` | `string` | Name of the pipeline. Use when referencing the pipeline in CLI commands or other action configurations. |
+These are the most important decisions when configuring a CodePipeline. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Presets
+**Pipeline type** -- Default is `V2`, which supports git-based triggers, pipeline variables, and advanced execution modes (QUEUED, PARALLEL). Use `V1` only for legacy compatibility. V2 is recommended for all new pipelines.
 
-Presets provide ready-to-use pipeline configurations for common patterns. Apply a preset as your starting point and customize as needed.
+**Execution mode** -- `SUPERSEDED` (default) cancels in-progress executions when a new one starts. Use `QUEUED` to process executions in order without superseding. Use `PARALLEL` to run multiple executions simultaneously. QUEUED and PARALLEL require V2 pipelines.
 
-| Preset | File | Description |
-|--------|------|-------------|
-| **GitHub Source + CodeBuild** | `presets/01-github-source-codebuild.yaml` | V2 pipeline with GitHub source via CodeStar Connection, CodeBuild build stage, and automatic trigger on pushes to `main`. Ideal starting point for CI pipelines. |
-| **ECR + ECS Deploy** | `presets/02-ecr-ecs-deploy.yaml` | V2 pipeline triggered by new ECR image pushes. Prepares a deployment bundle via CodeBuild and deploys to an ECS service. Use for container-based continuous deployment. |
-| **S3 + Lambda Deploy** | `presets/03-s3-lambda-deploy.yaml` | V2 pipeline that fetches a Lambda deployment package from S3 and invokes a deployer Lambda function. Use for serverless function deployment workflows. |
+**Stage and action design** -- A pipeline requires at minimum two stages. Actions within a stage execute in parallel by default; use `runOrder` to enforce sequential execution within a stage. Each action connects to a provider (CodeBuild, S3, ECS, Lambda, Manual) that performs a specific task.
 
-## Related Components
+**Git triggers** -- V2 pipelines can trigger automatically on git push or pull request events via CodeStar Connections. Configure branch, tag, and file path filters to control which events start the pipeline. Triggers replace legacy polling and webhook mechanisms.
 
-- [AwsIamRole](/docs/catalog/aws/iam-role) — provides the service role granting CodePipeline access to action providers
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — provides the artifact store bucket for pipeline artifacts
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides encryption keys for artifact store encryption
-- [AwsCodeBuildProject](/docs/catalog/aws/codebuild-project) — provides build projects referenced in Build and Test actions
-- [AwsEcsService](/docs/catalog/aws/ecs-service) — target for ECS deploy actions
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** | `roleArn` | `status.outputs.role_arn` |
+| **AwsS3Bucket** | `artifactStores[].location` | `status.outputs.bucket_id` |
+| **AwsKmsKey** (optional) | `artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
+| **AwsIamRole** (optional) | `stages[].actions[].roleArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (optional) | `stages[].{beforeEntry,onSuccess,onFailure.condition}.rules[].roleArn` | `status.outputs.role_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `pipeline_arn` | CodePipeline ARN | IAM policies, EventBridge targets, cross-resource references |
+| `pipeline_name` | CodePipeline name | CLI commands, action configurations in other pipelines |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**GitHub CI pipeline** -- GitHub source via CodeStar Connection with a CodeBuild build stage and git push trigger on main. The standard starting point for automated build-and-test on every commit. Start from the **GitHub Source + CodeBuild** preset.
+
+**Container deployment pipeline** -- ECR source triggered by new image pushes, a CodeBuild stage to generate `imagedefinitions.json`, and an ECS deploy stage for rolling updates. Decouples build and deploy into separate pipelines. Start from the **ECR Source + ECS Deploy** preset.
+
+**Serverless deployment pipeline** -- S3 source triggered by new deployment package uploads, with a Lambda invoke action to update function code and shift aliases. Lightweight pipeline for Lambda function releases. Start from the **S3 Source + Lambda Deploy** preset.
+
+## Works With
+
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the pipeline service role and optional per-action cross-account roles
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides artifact storage between pipeline stages
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for artifact encryption

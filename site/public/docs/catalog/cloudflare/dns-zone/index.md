@@ -6,140 +6,92 @@ order: 100
 componentName: "cloudflarednszone"
 ---
 
-# Cloudflare DNS Zone
+# DNS Zone on Cloudflare
 
-Deploys a Cloudflare DNS zone with optional inline DNS records, zone-wide DNS settings, and DNSSEC. The component creates the zone, exports the assigned nameservers and (when enabled) the DNSSEC DS material, and provisions any DNS records defined in the spec.
+Deploys a DNS zone on Cloudflare with configurable plan level, proxy defaults, and optional inline DNS records. The zone integrates with Planton's Provider Connections for Cloudflare credential management and serves as the foundation for DNS record management and Cloudflare proxy services.
 
 ## What Gets Created
 
-When you deploy a CloudflareDnsZone resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Zone** — a `cloudflare_zone` resource attached to the specified account, with configurable type, pause state, and vanity name servers
-- **DNS Records** — one `cloudflare_dns_record` per entry in the `records` list (the lean inline model; use standalone CloudflareDnsRecord resources for the full record feature set)
-- **DNS Settings** — a `cloudflare_zone_dns_settings` resource when `dnsSettings` is provided (CNAME flattening, zone mode, SOA, nameservers, NS TTL)
-- **DNSSEC** — a `cloudflare_zone_dnssec` resource when `dnssec.enabled` is true; the DS material is exported for entry at your registrar
+- **Cloudflare Zone** -- a DNS zone for the specified domain, created under the target Cloudflare account with the selected plan level (Free, Pro, Business, or Enterprise)
+- **DNS Records** -- created only when `records` entries are provided; supports A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA record types with configurable TTL, proxy status, and priority
+- **Cloudflare Labels** -- resource metadata applied to the zone for organization and environment tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Cloudflare credentials** configured via environment variables or Planton provider config
-- **A Cloudflare account ID** with permission to create zones
-- **Domain ownership** — you must control the domain and update its registrar nameservers to the values returned in stack outputs
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `dns-zone.yaml`:
+### Cloudflare Account
+
+- **A Cloudflare account** with the target domain's registrar nameservers pointed to Cloudflare, or the ability to update nameservers after zone creation. The `accountId` field identifies which Cloudflare account owns the zone.
+- **Domain registration** -- the domain specified in `zoneName` must be registered with a domain registrar. Cloudflare will assign nameservers after zone creation that must be configured at the registrar.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Zone on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Free Plan Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
+apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareDnsZone
 metadata:
-  name: my-zone
+  name: example-zone
+  org: acme-corp
+  env: prod
 spec:
   zoneName: example.com
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+  accountId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+  plan: FREE
 ```
-
-Deploy:
 
 ```shell
-planton apply -f dns-zone.yaml
+planton apply -f cloudflare-dns-zone.yaml
 ```
 
-This creates a full (Cloudflare-hosted) DNS zone for `example.com`. Update your domain registrar's nameservers to the values in `status.outputs.nameservers` to activate the zone.
+This creates a Cloudflare DNS zone for example.com on the Free plan with no inline DNS records. Cloudflare assigns nameservers that must be configured at your domain registrar. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneName` | `string` | Fully qualified domain name for the zone (e.g., `example.com`). | Must match a valid FQDN pattern |
-| `accountId` | `string` | Cloudflare account ID under which to create the zone. | Required, non-empty |
+**Plan level** -- Defaults to `FREE`, which includes basic DNS hosting, CDN, and DDoS protection for proxied records. Choose `PRO`, `BUSINESS`, or `ENTERPRISE` for advanced features like WAF rulesets, image optimization, and priority support. Plan changes affect billing immediately.
 
-### Optional Fields
+**Paused mode** -- Set `paused: true` to create the zone in DNS-only mode with no Cloudflare proxy, CDN, or security features active. Useful during initial migration when you want to verify DNS resolution before enabling Cloudflare's proxy layer.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `type` | `enum` | `full` | Zone deployment type: `full`, `partial`, `secondary`, `internal`. |
-| `paused` | `bool` | `false` | When `true`, the zone is DNS-only with no Cloudflare proxy/CDN/security. |
-| `vanityNameServers` | `string[]` | `[]` | Custom (vanity) name servers (Business/Enterprise plans). |
-| `records` | `object[]` | `[]` | Inline DNS records. Each has `name`, `type`, `content`, and optional `proxied`, `ttl`, `priority`, `comment`. |
-| `dnsSettings` | `object` | — | Zone-wide DNS settings: `flattenAllCnames`, `foundationDns`, `multiProvider`, `secondaryOverrides`, `nsTtl`, `zoneMode`, `soa`, `nameservers`, `internalDns`. |
-| `dnssec` | `object` | — | DNSSEC config: `enabled`, `multiSigner`, `presigned`, `useNsec3`. When enabled, Cloudflare signs the zone and the DS material is exported. |
+**Default proxy behavior** -- Set `defaultProxied: true` to make new DNS records default to proxied (orange cloud) mode. When false (default), new records default to DNS-only (grey cloud). This affects only the default for new records created in the Cloudflare dashboard -- records in the `records` field have their own explicit `proxied` setting.
 
-## Examples
+**Inline records vs. separate resources** -- The `records` field lets you manage DNS records as part of the zone configuration. For small, stable record sets this is convenient. For dynamic or individually managed records, use separate CloudflareDnsRecord resources that reference this zone via ValueFromRef.
 
-### Zone with Common DNS Records
+## Outputs and Dependencies
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareDnsZone
-metadata:
-  name: app-zone
-spec:
-  zoneName: myapp.com
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  records:
-    - name: "@"
-      type: A
-      content: "203.0.113.50"
-      proxied: true
-      ttl: 1
-    - name: www
-      type: CNAME
-      content: myapp.com
-      proxied: true
-      ttl: 1
-    - name: "@"
-      type: MX
-      content: mail.myapp.com
-      priority: 10
-      ttl: 3600
-```
+### What This Component Consumes
 
-### Zone with DNS Settings and DNSSEC
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareDnsZone
-metadata:
-  name: secure-zone
-spec:
-  zoneName: production.com
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-  dnsSettings:
-    flattenAllCnames: true
-    zoneMode: standard
-    soa:
-      refresh: 10000
-      retry: 2400
-      expire: 604800
-      minTtl: 1800
-      ttl: 3600
-  dnssec:
-    enabled: true
-    useNsec3: true
-```
+### What This Component Provides
 
-After apply, read `status.outputs.dnssec_ds` (and the individual digest/key-tag fields) and enter them at your registrar to complete the DNSSEC chain of trust.
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-## Stack Outputs
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zone_id` | The Cloudflare Zone ID of the created DNS zone | CloudflareDnsRecord zone references, CloudflareR2Bucket custom domain configuration, CloudflareWorker DNS routing |
+| `nameservers` | The list of nameserver addresses assigned to this DNS zone | Domain registrar NS record configuration |
 
-After deployment, the following outputs are available in `status.outputs`:
+## Common Patterns
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_id` | `string` | The Cloudflare Zone ID of the created DNS zone |
-| `nameservers` | `string[]` | The nameserver addresses assigned to the zone |
-| `status` | `string` | The zone status on Cloudflare |
-| `dnssec_ds` | `string` | The full DS record to enter at the registrar (empty unless DNSSEC is enabled) |
-| `dnssec_digest`, `dnssec_digest_type`, `dnssec_digest_algorithm` | `string` | DS digest material |
-| `dnssec_algorithm`, `dnssec_key_tag`, `dnssec_public_key`, `dnssec_flags` | `string` | DNSKEY material |
-| `dnssec_status` | `string` | DNSSEC status (empty unless enabled) |
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Related Components
+**Free plan zone** -- A DNS zone on the Free plan with no inline records. Add DNS records separately as CloudflareDnsRecord resources for independent lifecycle management. Suitable for most domains that need DNS hosting with basic CDN and DDoS protection. Start from the **Free Plan Zone** preset.
 
-- [CloudflareDnsRecord](/docs/catalog/cloudflare/dns-record) — manages individual DNS records as standalone resources with the full record feature set
-- [CloudflareR2Bucket](/docs/catalog/cloudflare/r2-bucket) — references this zone via `customDomains[].zoneId` for custom domain bucket access
-- [CloudflareWorker](/docs/catalog/cloudflare/worker) — commonly deployed with DNS routes pointing to Worker endpoints
-- [CloudflareLoadBalancer](/docs/catalog/cloudflare/load-balancer) — load balances traffic across origins within the zone
+## Works With
+
+This component operates independently and does not reference other deployment components.

@@ -8,41 +8,50 @@ componentName: "alicloudsecuritygroup"
 
 # AliCloud Security Group
 
-Deploys an Alibaba Cloud Security Group with bundled security rules in a VPC. The component provisions the security group and its ingress/egress rules as a single atomic unit, ensuring the firewall is always created with its intended access policy.
+Deploys an Alibaba Cloud Security Group with bundled ingress and egress rules in a VPC. The component provisions the security group and its traffic rules as a single atomic unit, ensuring the firewall is always created with its intended access policy. Security groups are stateful virtual firewalls that control traffic for ECS instances, ACK worker nodes, RDS instances, and other VPC-aware resources.
 
 ## What Gets Created
 
-When you deploy an AliCloudSecurityGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Security Group** -- an `alicloud_security_group` resource bound to the specified VPC with configurable inner access policy and tags
 - **Security Group Rules** -- one `alicloud_security_group_rule` per entry in `rules`, defining ingress and egress traffic policies
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **An Alibaba Cloud VPC** -- the security group must belong to a VPC (create one with AliCloudVpc)
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `security-group.yaml`:
+### Alibaba Cloud Account
+
+- **An existing VPC** -- the security group must belong to a VPC. Create one with AliCloudVpc or reference an existing VPC via ValueFromRef.
+- **Rule planning** -- rules are evaluated by priority (1-100, lower = higher priority). The first matching rule wins. All rule fields except description are immutable after creation.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including VPC, rules, and inner access policy.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudSecurityGroup
 metadata:
-  name: my-web-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudSecurityGroup.my-web-sg
+  name: web-sg
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   vpcId:
-    valueFrom:
-      name: my-vpc
-  securityGroupName: web-sg
-  description: Security group for web-facing instances
+    value: vpc-bp1234567890
+  securityGroupName: web-tier
+  description: Web tier allowing HTTP/HTTPS inbound
   rules:
     - type: ingress
       ipProtocol: tcp
@@ -53,130 +62,79 @@ spec:
       ipProtocol: all
       portRange: "-1/-1"
       cidrIp: "0.0.0.0/0"
-      description: Allow all outbound traffic
+      description: Allow all outbound
 ```
-
-Deploy:
 
 ```shell
-planton apply -f security-group.yaml
+planton apply -f alicloud-security-group.yaml
 ```
 
-This creates a security group that allows HTTPS inbound and all outbound traffic.
+This creates a security group with HTTPS inbound and unrestricted outbound. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for provider endpoint (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-| `vpcId` | `StringValueOrRef` | VPC ID this security group belongs to. Can be a literal string or a reference to an AliCloudVpc output. | Required |
-| `securityGroupName` | `string` | Security group name. Must start with a letter; can contain Unicode, digits, colons, underscores, periods, hyphens. | Required; 2-128 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the security group's purpose. |
-| `innerAccessPolicy` | `string` | `"Accept"` | Controls intra-group traffic. `Accept` allows free communication between instances in the same SG. `Drop` requires explicit rules for intra-group traffic. |
-| `resourceGroupId` | `string` | `""` | Resource group ID for organizational grouping. |
-| `tags` | `map<string, string>` | `{}` | Tags applied to the security group. Merged with standard Planton tags. |
-| `rules` | `list` | `[]` | Security group rules. Each rule creates a separate rule resource. |
-| `rules[].type` | `string` | -- | `ingress` for inbound, `egress` for outbound. Required. |
-| `rules[].ipProtocol` | `string` | -- | Protocol: `tcp`, `udp`, `icmp`, `gre`, `all`. Required. |
-| `rules[].portRange` | `string` | `"-1/-1"` | Port range in `start/end` format. TCP/UDP: explicit ports required. ICMP/GRE/ALL: must be `"-1/-1"`. |
-| `rules[].cidrIp` | `string` | `""` | IPv4 CIDR for source (ingress) or destination (egress). |
-| `rules[].sourceSecurityGroupId` | `string` | `""` | Source/destination security group ID for SG-to-SG rules. |
-| `rules[].priority` | `int` | `1` | Evaluation priority (1-100, lower = higher priority). |
-| `rules[].policy` | `string` | `"accept"` | Action: `accept` or `drop`. |
-| `rules[].description` | `string` | `""` | Rule description (only field updatable without recreation). |
-
-## Examples
-
-### Web Tier with HTTP/HTTPS Ingress
+When deploying as part of a network stack, use ValueFromRef to wire the VPC dependency:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudSecurityGroup
-metadata:
-  name: web-tier-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudSecurityGroup.web-tier-sg
 spec:
   region: cn-hangzhou
   vpcId:
     valueFrom:
-      name: prod-vpc
+      kind: AliCloudVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
   securityGroupName: web-tier
-  description: Public web tier allowing HTTP/HTTPS
-  tags:
-    tier: web
   rules:
-    - type: ingress
-      ipProtocol: tcp
-      portRange: "80/80"
-      cidrIp: "0.0.0.0/0"
-      description: Allow HTTP
     - type: ingress
       ipProtocol: tcp
       portRange: "443/443"
       cidrIp: "0.0.0.0/0"
       description: Allow HTTPS
-    - type: egress
-      ipProtocol: all
-      portRange: "-1/-1"
-      cidrIp: "0.0.0.0/0"
-      description: Allow all outbound
 ```
 
-### Database Tier Restricted to VPC
+The InfraPipeline resolves the dependency graph and provisions the VPC before this security group.
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudSecurityGroup
-metadata:
-  name: db-tier-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudSecurityGroup.db-tier-sg
-spec:
-  region: cn-hangzhou
-  vpcId:
-    valueFrom:
-      name: prod-vpc
-  securityGroupName: db-tier
-  description: Database tier restricted to VPC traffic
-  innerAccessPolicy: Drop
-  rules:
-    - type: ingress
-      ipProtocol: tcp
-      portRange: "3306/3306"
-      cidrIp: "10.0.0.0/8"
-      description: Allow MySQL from VPC
-    - type: ingress
-      ipProtocol: tcp
-      portRange: "5432/5432"
-      cidrIp: "10.0.0.0/8"
-      description: Allow PostgreSQL from VPC
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a security group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Inner access policy** -- The `innerAccessPolicy` field controls whether instances in the same security group can communicate freely. "Accept" (default) allows all intra-group traffic. "Drop" requires explicit rules for intra-group communication -- use this for database tiers.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `security_group_id` | `string` | The security group ID assigned by Alibaba Cloud |
-| `security_group_name` | `string` | The security group name as created |
+**Rule priority** -- Each rule has a `priority` field (1-100). Lower numbers are evaluated first. Use distinct priorities to create predictable rule ordering.
 
-## Related Components
+**Protocol and ports** -- The `ipProtocol` and `portRange` fields define what traffic the rule matches. For TCP/UDP, specify explicit ports (e.g., "443/443"). For ICMP, GRE, or ALL, use "-1/-1".
 
-- [AliCloudVpc](/docs/catalog/alicloud/vpc) -- create the VPC this security group belongs to
-- [AliCloudEcsInstance](/docs/catalog/alicloud/ecsinstance) -- associate ECS instances with this security group
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) -- use this security group for ACK worker nodes
+**CIDR vs security group source** -- Rules can match by `cidrIp` (IP range) or `sourceSecurityGroupId` (SG-to-SG). Use SG references for intra-VPC service-to-service rules.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `vpcId` | `status.outputs.vpc_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `security_group_id` | Security group ID assigned by Alibaba Cloud | AliCloudEcsInstance, AliCloudKubernetesCluster |
+| `security_group_name` | Security group name as created | Display and tagging |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web tier** -- Allows HTTP (80) and HTTPS (443) inbound from the internet with unrestricted outbound. Start from the **Web Tier** preset.
+
+**Database tier** -- Restricts inbound to MySQL (3306), PostgreSQL (5432), and Redis (6379) from VPC-internal CIDR only, with inner access set to Drop. Start from the **Database Tier** preset.
+
+**Bastion host** -- Allows SSH (22) inbound from trusted CIDRs and SSH/database outbound to VPC instances. Start from the **Bastion Host** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- the VPC this security group belongs to
+- [**AliCloud ECS Instance**](/cloud-catalog/ali-cloud-ecs-instance) -- associate ECS instances with this security group
+- [**AliCloud Kubernetes Cluster**](/cloud-catalog/ali-cloud-kubernetes-cluster) -- use this security group for ACK worker nodes

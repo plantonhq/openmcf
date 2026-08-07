@@ -37,7 +37,7 @@ This module deploys production-grade ClickHouse clusters on Kubernetes using the
 
 ## Usage
 
-See examples.md for usage details and step-by-step examples. In general:
+See ../../e2e/manifest.yaml for usage details and step-by-step examples. In general:
 
 1. Define a YAML resource describing your ClickHouse cluster using the **ClickHouseKubernetes** API.
 2. Run:
@@ -64,7 +64,7 @@ The operator typically installs in the `clickhouse-operator` namespace and watch
    Deploy the Altinity ClickHouse Operator using the operator deployment module.
 
 2. **Define Your ClickHouse Cluster**  
-   Create a YAML specification with cluster name, resources, persistence, and clustering settings. See examples.md for common configurations.
+   Create a YAML specification with cluster name, resources, persistence, and clustering settings. See ../../e2e/manifest.yaml for common configurations.
 
 3. **Deploy the Cluster**  
    Execute `planton pulumi up --stack-input <clickhouse-spec.yaml>`. The module generates a ClickHouseInstallation CRD, and the operator creates all necessary Kubernetes resources.

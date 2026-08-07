@@ -8,34 +8,45 @@ componentName: "azureeventhub"
 
 # Azure Event Hub
 
-Creates an event hub inside an Azure Event Hubs namespace -- one partitioned, replayable event stream. Producers append to partitions; consumer groups read independently, each with its own offset. Capture archives every event to Blob Storage as Avro with no consumer application to run.
+Deploys an event hub inside an Azure Event Hubs namespace -- one partitioned, replayable event stream. Producers append events to partitions; consumers read them through consumer groups, each keeping its own offset, so the same stream feeds real-time processing, batch analytics, and archival independently. Hubs are many-per-namespace with independent lifecycles, which is why the hub is a first-class Cloud Resource referencing the namespace rather than a list folded into it. Kafka clients see the hub as a topic, unchanged. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureEventHub resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Event Hub** -- an `azurerm_eventhub` in the referenced namespace, with your partition layout, retention model, gate state, and optional capture-to-storage
+- **Event Hub** -- on the referenced namespace, with your chosen partition count and exactly one retention model: a simple day count, or the hour-granular block with Kafka-style log compaction
+- **Capture** -- when `captureDescription` is set: continuous archival of every event to Azure Blob Storage in Avro format on a size-or-interval cadence, with SAS or managed-identity authentication
+- **The administrative gate** -- when `status` is set: the hub deploys Active, Disabled, or Send-Disabled (drain mode)
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureEventHubNamespace** to create the hub in (referenced through `namespaceId`)
-- **For capture**: an AzureStorageAccount and AzureStorageContainer to archive into
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `hub.yaml`:
+### Azure Subscription
+
+- **An AzureEventHubNamespace** the hub will live in. Reference its `namespace_id` output via ValueFromRef -- the namespace's tier decides what the hub may use (partition counts above 32, retention beyond 7 days, and log compaction are PREMIUM/dedicated or STANDARD-plus concerns).
+- **For capture**: an AzureStorageAccount and an AzureStorageContainer for the archives -- referenced by `storage_account_id` and `container_name` outputs.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Event Hub**, and click **Deploy**. The creation wizard walks you through the namespace attachment, partition sizing (with every tier contract taught live), the exactly-one retention model, capture to Blob Storage, and the administrative gate. Start from the **Telemetry Stream** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureEventHub
 metadata:
   name: telemetry-stream
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureEventHub.telemetry-stream
+  org: acme-corp
+  env: prod
 spec:
   namespaceId:
     valueFrom:
@@ -47,25 +58,77 @@ spec:
   messageRetention: 3
 ```
 
-Deploy:
-
 ```shell
-planton apply -f hub.yaml
+planton apply -f event-hub.yaml
 ```
 
-Size `partitionCount` for peak up front on shared namespaces: the count can never be decreased, and only PREMIUM or dedicated-cluster namespaces can increase it later (Azure caps it at 32 on shared namespaces, 1024 on PREMIUM/dedicated). Set exactly one retention model -- `messageRetention` in days (tier caps: 1 BASIC, 7 STANDARD, 90 PREMIUM/dedicated) or `retentionDescription` for hour-granular windows and Kafka-style compaction.
+Exactly one of `messageRetention` (days) and `retentionDescription` (hours / compaction) must be set. Two fields are **fixed at creation** -- `eventHubName` and `retentionDescription.cleanupPolicy` -- changing either replaces the hub and its retained events. The partition count can only ever be INCREASED, and only on PREMIUM/dedicated namespaces: on shared namespaces, size for peak up front.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `event_hub_id` | The parent reference for consumer groups and hub-scoped authorization rules, and the hub-level data-plane RBAC scope |
-| `event_hub_name` | What producers and consumers address within the namespace -- the Kafka topic name on the Kafka endpoint |
-| `partition_ids` | The partition identifiers as Azure assigned them -- what partition-aware consumers enumerate |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the hub to a namespace deployed in the same InfraPipeline:
 
-## Related Resources
+```yaml
+spec:
+  namespaceId:
+    valueFrom:
+      kind: AzureEventHubNamespace
+      name: telemetry-hubs
+      fieldPath: status.outputs.namespace_id
+```
 
-- [Azure Event Hub Namespace](/docs/catalog/azure/event-hub-namespace) -- the container and billing boundary
-- [Azure Event Hub Consumer Group](/docs/catalog/azure/event-hub-consumer-group) -- independent read cursors
-- [Azure Event Hub Authorization Rule](/docs/catalog/azure/event-hub-authorization-rule) -- hub-scoped SAS credentials
-- [Azure Storage Account](/docs/catalog/azure/storage-account) / [Azure Storage Container](/docs/catalog/azure/storage-container) -- the capture destination
+The InfraPipeline resolves the dependency graph, deploys the namespace first, then provisions the hub with the resolved values.
+
+## Key Configuration
+
+These are the most important decisions when configuring an event hub. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Partitions** -- `partitionCount` (1-1024) is the unit of parallelism AND ordering: each partition is an independently consumed, ordered sequence, and downstream parallelism cannot exceed the count. 2-4 suits low throughput, 8-16 typical production, 32+ high-throughput ingestion. Azure caps the count at 32 on shared BASIC/STANDARD namespaces (1024 on PREMIUM/dedicated), never accepts a decrease, and only PREMIUM/dedicated namespaces can increase it later.
+
+**The retention model** -- `messageRetention` is the everyday shape: N days of replayable history (tier ceilings: 1 BASIC, 7 STANDARD, 90 PREMIUM/dedicated; unset lets Azure default to 1 day). `retentionDescription` unlocks hour granularity and Kafka-style log COMPACTION: the latest event per partition key is kept forever -- changelog/table semantics for materialized views and cache warming. The cleanup policy is fixed at creation; tombstones (null-value events marking deletions) stay readable for `tombstoneRetentionTimeInHours`.
+
+**Capture** -- `captureDescription` archives every event to Blob Storage in Avro on a size-or-interval cadence (defaults: 300 seconds / 300 MB): the built-in streaming-to-batch bridge with no consumer application to run. The `archiveNameFormat` must carry all nine placeholders ({Namespace}, {EventHub}, {PartitionId}, {Year}, {Month}, {Day}, {Hour}, {Minute}, {Second}) -- the placeholder path IS your batch layout. Authentication is service-managed SAS by default, or keyless via the namespace's system-assigned identity or a user-assigned identity (grant it Storage Blob Data Contributor on the account and attach it via the namespace's identity block).
+
+**The administrative gate** -- `status` is the designed day-two edit: `SEND_DISABLED` drains the stream before a decommission or migration (producers rejected, consumers keep reading); `DISABLED` freezes both directions while retained events stay stored. Unspecified deploys ACTIVE.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureEventHubNamespace** | `namespaceId` | `status.outputs.namespace_id` |
+| **AzureStorageContainer** | `captureDescription.destination.blobContainerName` | `status.outputs.container_name` |
+| **AzureStorageAccount** | `captureDescription.destination.storageAccountId` | `status.outputs.storage_account_id` |
+| **AzureUserAssignedIdentity** | `captureDescription.destination.storageAuthenticationId` | `status.outputs.identity_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `event_hub_id` | Azure Resource Manager ID of the hub | The parent for AzureEventHubConsumerGroup and hub-scoped AzureEventHubAuthorizationRule SAS rules, and the scope for hub-level data-plane role assignments (Azure Event Hubs Data Receiver/Sender) via AzureRoleAssignment |
+| `event_hub_name` | The hub's name within the namespace | SDK configuration, Functions bindings, and the Kafka topic name |
+| `partition_ids` | The hub's partition identifiers | Checkpointing consumers enumerate these -- one active reader per partition per consumer group is the scaling model |
+
+There is deliberately no connection-string output: credentials are minted by AzureEventHubAuthorizationRule (namespace- or hub-scoped) or granted keyless via Entra data-plane roles on `event_hub_id`. SDKs connect to the namespace endpoint and address the hub by name.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Telemetry stream** -- the everyday shape: sized partitions and a multi-day replay window for real-time processing with reprocessing headroom. Start from the **Telemetry Stream** preset.
+
+**Captured archive stream** -- capture enabled so every event lands in Blob Storage as Avro: cold storage and audit trails that outlive the retention window. Start from the **Captured Archive Stream** preset.
+
+**Compacted changelog** -- log compaction keeps the latest event per key forever: materialized views and cache warming read the whole current state by replaying from the start. Start from the **Compacted Changelog** preset.
+
+## Works With
+
+- [**Azure Event Hub Namespace**](/cloud-catalog/azure-event-hub-namespace) -- the parent namespace every hub references
+- [**Azure Event Hub Consumer Group**](/cloud-catalog/azure-event-hub-consumer-group) -- one per consuming application; offsets never collide
+- [**Azure Event Hub Authorization Rule**](/cloud-catalog/azure-event-hub-authorization-rule) -- hub-scoped SAS credentials referencing `event_hub_id`
+- [**Azure Storage Account**](/cloud-catalog/azure-storage-account) -- the capture destination's account
+- [**Azure Storage Container**](/cloud-catalog/azure-storage-container) -- where captured archives land
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- keyless data-plane grants scoped to `event_hub_id`

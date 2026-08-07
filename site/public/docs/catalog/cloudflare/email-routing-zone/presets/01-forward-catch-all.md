@@ -5,7 +5,7 @@ type: "preset"
 rank: "01"
 presetSlug: "01-forward-catch-all"
 componentSlug: "email-routing-zone"
-componentTitle: "Email Routing (Zone)"
+componentTitle: "Email Routing Zone"
 provider: "cloudflare"
 icon: "package"
 order: 1

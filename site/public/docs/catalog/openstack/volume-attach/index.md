@@ -8,192 +8,110 @@ componentName: "openstackvolumeattach"
 
 # OpenStack Volume Attach
 
-Attaches an OpenStack Cinder volume to a compute instance, making the volume appear as a block device (e.g., `/dev/vdb`) inside the instance. This is a join resource that connects two independently managed resources -- a volume and an instance -- and makes the attachment relationship explicit in the deployment graph.
+Attaches an OpenStack Cinder volume to a compute instance, making the volume appear as a block device (e.g., `/dev/vdb`) inside the instance. This is a join resource that connects two independently managed resources -- a volume and an instance -- and makes the attachment relationship explicit in the deployment graph. Supports ValueFromRef for wiring both instance and volume dependencies in InfraCharts.
 
 ## What Gets Created
 
-When you deploy an OpenStackVolumeAttach resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Volume Attachment** -- an `openstack_compute_volume_attach_v2` resource that connects a Cinder volume to a compute instance via the Nova API. The volume transitions from "available" to "in-use" state, and the hypervisor presents the block device to the instance at the specified (or auto-assigned) device path.
+- **Volume Attachment** -- an `openstack_compute_volume_attach_v2` resource that connects a Cinder volume to a compute instance via the Nova API. The volume transitions from "available" to "in-use" state, and the hypervisor presents the block device to the instance at the specified or auto-assigned device path.
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **A compute instance** in running state (created via OpenStackInstance or referenced by UUID)
-- **A Cinder volume** in "available" state (created via OpenStackVolume or referenced by UUID)
-- **Same availability zone** for both the volume and instance (required by most OpenStack deployments)
+### OpenStack Account
 
-## Quick Start
+- **A compute instance** in running state -- provide the instance UUID directly or reference an OpenStackInstance Cloud Resource via ValueFromRef.
+- **A Cinder volume** in "available" state -- provide the volume UUID directly or reference an OpenStackVolume Cloud Resource via ValueFromRef.
+- **Same availability zone** for both the volume and instance, as required by most OpenStack deployments.
 
-Create a file `volume-attach.yaml`:
+## Deploy
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackVolumeAttach
-metadata:
-  name: my-attach
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-wal-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-disk
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.app-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackVolumeAttach.db-data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackVolumeAttach.data-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackVolumeAttach.my-attach
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackvolumeattach/iac/pulumi/module
-    planton.dev/provisioner: pulumi
-spec:
-  instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
-  volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-```
+### Console
 
-Deploy:
+Open the deployment store, find **OpenStack Volume Attach**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for a basic volume attachment.
 
-```shell
-planton apply -f volume-attach.yaml
-```
+### CLI
 
-This attaches the specified Cinder volume to the compute instance. Nova automatically assigns the next available device path (e.g., `/dev/vdb`).
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `instanceId` | `StringValueOrRef` | UUID of the compute instance to attach the volume to. Can reference an OpenStackInstance resource via `valueFrom`. | Required |
-| `volumeId` | `StringValueOrRef` | UUID of the Cinder volume to attach. Can reference an OpenStackVolume resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `device` | `string` | auto-assigned | Device path where the volume appears inside the instance (e.g., `/dev/vdb`, `/dev/vdc`). If omitted, Nova selects the next available device. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this attachment. ForceNew: changing the region recreates the attachment. |
-
-All fields on this resource are ForceNew. Any change to the spec recreates the attachment (detach + reattach).
-
-## Examples
-
-### Basic Attachment with Literal IDs
-
-Attach a volume to an instance using their UUIDs directly:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackVolumeAttach
-metadata:
-  name: data-attach
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
-  volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-```
-
-### Attachment with Explicit Device Path
-
-Specify an exact device path for the volume instead of letting Nova auto-assign one. Useful when the application expects the disk at a known path:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackVolumeAttach
-metadata:
-  name: db-data-attach
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  instanceId: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
-  volumeId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-  device: /dev/vdb
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding UUIDs. The FK resolver middleware resolves these references at deployment time:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackVolumeAttach
 metadata:
   name: app-data-attach
-  annotations:
-    planton.dev/provisioner: pulumi
+  org: acme-corp
+  env: prod
+spec:
+  instanceId:
+    value: "3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e"
+  volumeId:
+    value: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+```
+
+```shell
+planton apply -f openstack-volume-attach.yaml
+```
+
+This attaches the specified Cinder volume to the compute instance. Nova automatically assigns the next available device path (e.g., `/dev/vdb`). No explicit device path is requested.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the attachment to an instance and volume deployed in the same InfraPipeline:
+
+```yaml
 spec:
   instanceId:
     valueFrom:
       kind: OpenStackInstance
       name: app-server
-      field: status.outputs.instance_id
+      fieldPath: status.outputs.instance_id
   volumeId:
     valueFrom:
       kind: OpenStackVolume
       name: app-data
-      field: status.outputs.volume_id
-  device: /dev/vdc
+      fieldPath: status.outputs.volume_id
 ```
 
-### Multiple Volumes on One Instance
+The InfraPipeline resolves the dependency graph, deploys the instance and volume first, then provisions the attachment with the resolved IDs.
 
-Attach several volumes to the same instance, each at a different device path. Deploy each attachment as a separate resource:
+## Key Configuration
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackVolumeAttach
-metadata:
-  name: db-data-disk
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  instanceId:
-    valueFrom:
-      kind: OpenStackInstance
-      name: db-server
-      field: status.outputs.instance_id
-  volumeId:
-    valueFrom:
-      kind: OpenStackVolume
-      name: db-data
-      field: status.outputs.volume_id
-  device: /dev/vdb
----
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackVolumeAttach
-metadata:
-  name: db-wal-disk
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  instanceId:
-    valueFrom:
-      kind: OpenStackInstance
-      name: db-server
-      field: status.outputs.instance_id
-  volumeId:
-    valueFrom:
-      kind: OpenStackVolume
-      name: db-wal
-      field: status.outputs.volume_id
-  device: /dev/vdc
-```
+These are the most important decisions when configuring an OpenStack volume attachment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Instance and volume references** -- The `instanceId` and `volumeId` fields are both required. Each accepts a literal UUID or a ValueFromRef reference to another Cloud Resource. Using ValueFromRef creates an explicit dependency edge in InfraCharts, ensuring the instance and volume exist before the attachment is created.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Device path** -- The `device` field optionally specifies where the volume appears inside the instance (e.g., `/dev/vdb`, `/dev/vdc`). If omitted, Nova selects the next available device. Specify a device path when your application expects the disk at a known location.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Terraform resource identifier for the attachment. Format: `{instance_id}/{volume_id}` |
-| `instance_id` | `string` | UUID of the compute instance the volume is attached to |
-| `volume_id` | `string` | UUID of the Cinder volume that was attached |
-| `device` | `string` | Device path where the volume appears inside the instance (e.g., `/dev/vdb`). Computed by OpenStack if not explicitly specified in the spec. |
-| `region` | `string` | OpenStack region where the attachment was created |
+**Immutability** -- All fields on this resource are ForceNew. Changing `instanceId`, `volumeId`, `device`, or `region` recreates the attachment (detach + reattach). Plan attachment configuration carefully before deploying.
 
-## Related Components
+## Outputs and Dependencies
 
-- [OpenStack Instance](/docs/catalog/openstack/instance) -- the compute instance that the volume attaches to
-- [OpenStack Volume](/docs/catalog/openstack/volume) -- the Cinder block storage volume being attached
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackInstance** | `instanceId` | `status.outputs.instance_id` |
+| **OpenStackVolume** | `volumeId` | `status.outputs.volume_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | Resource identifier for the attachment (`{instance_id}/{volume_id}`) | Audit logs, lifecycle tracking |
+| `instance_id` | UUID of the compute instance the volume is attached to | Operational dashboards |
+| `volume_id` | UUID of the Cinder volume that was attached | Operational dashboards |
+| `device` | Device path where the volume appears in the instance | Application configuration, mount scripts |
+| `region` | OpenStack region where the attachment was created | Multi-region deployment coordination |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard attachment** -- Connects a volume to an instance with auto-assigned device path. Nova picks the next available device. Suitable for most data volume use cases where device path is not significant. Start from the **Standard** preset.
+
+## Works With
+
+- [**OpenStack Instance**](/cloud-catalog/openstack-instance) -- the compute instance that the volume attaches to
+- [**OpenStack Volume**](/cloud-catalog/openstack-volume) -- the Cinder block storage volume being attached

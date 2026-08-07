@@ -8,243 +8,133 @@ componentName: "awswafwebacl"
 
 # AWS WAF Web ACL
 
-Deploys an AWS WAFv2 Web Access Control List with ordered rules for managed rule groups, rate limiting, geographic filtering, and IP-based access control. Includes optional request logging with field redaction. Rules are evaluated by priority; the first match takes action.
+Deploys a WAFv2 Web ACL — the ordered rule set that decides which requests reach your application. Rules evaluate managed rule groups, rate limits, geo and ASN matches, IP-set and regex-pattern-set references, and match statements (byte / SQLi / XSS / size / label), with AND / OR / NOT composition for multi-condition logic. REGIONAL scope protects ALB, API Gateway, AppSync, Cognito, and App Runner; CLOUDFRONT scope protects CloudFront distributions and must live in `us-east-1`. Optional logging, custom block responses, CAPTCHA/challenge immunity, body-inspection ceilings, and field-masking data protection round out a production posture. Integrates with Planton's Provider Connections for AWS credential management, and its `web_acl_arn` output is what CloudFront and load balancers associate via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AwsWafWebAcl resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **WAFv2 Web ACL** — an `aws_wafv2_web_acl` resource with the specified scope (REGIONAL or CLOUDFRONT), default action, visibility config, and rules passed via `rule_json`
-- **Rules** — an ordered set of rules constructed from managed rule group references, rate-based limits, geographic match conditions, IP set references, and custom statement escape hatches
-- **Custom Response Bodies** — reusable response templates referenced by block actions
-- **Logging Configuration** — an `aws_wafv2_web_acl_logging_configuration` resource created only when `logging` is provided, with destination ARN and optional field redaction
+- **WAFv2 Web ACL** — the named access-control list with its default action, visibility metrics, and sampled-request posture
+- **Rules** — an ordered priority list evaluated top-down; each rule carries either a match `action` or a group `override_action`, plus optional per-rule CAPTCHA/challenge immunity and custom responses
+- **Custom response bodies** — reusable HTML / plain-text / JSON templates referenced by block actions (the ACL's own response namespace)
+- **Logging configuration** — created only when `logging` is set; ships request logs to CloudWatch Logs, S3, or Kinesis Firehose (destination name must start with `aws-waf-logs-`)
+- **Association and data-protection policies** — optional body-inspection size ceilings per protected-resource type, and field-masking rules that apply to every WAF output
+- **AWS tags** — organization, environment, resource kind, and resource ID applied automatically
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **Appropriate IAM permissions** for `wafv2:*` operations
-- **us-east-1 provider region** if using CLOUDFRONT scope
-- **WAFv2 IP Sets** created separately if using `ipSetReference` rules
-- **A logging destination** named starting with `aws-waf-logs-` if enabling logging (CloudWatch Logs log group, S3 bucket, or Kinesis Firehose delivery stream)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** — an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `waf.yaml`:
+### AWS Account
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsWafWebAcl
-metadata:
-  name: my-web-acl
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsWafWebAcl.my-web-acl
-spec:
-  region: us-east-1
-  scope: REGIONAL
-  defaultAction:
-    type: allow
-  rules:
-    - name: aws-common-rules
-      priority: 1
-      overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesCommonRuleSet
-        vendorName: AWS
-```
+- **Region selection** — CLOUDFRONT-scoped web ACLs must be created in `us-east-1`. REGIONAL web ACLs live in the same region as the protected resource.
+- **A logging destination** (optional) — a CloudWatch Log Group, S3 bucket, or Kinesis Firehose delivery stream whose name starts with `aws-waf-logs-` (AWS enforces the prefix).
+- **IP sets and regex pattern sets** (optional) — referenceable Planton kinds (`AwsWafIpSet`, `AwsWafRegexPatternSet`) or literal ARNs in the same region and scope as the web ACL.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f waf.yaml
-```
+### Console
 
-This creates a REGIONAL Web ACL that allows all traffic by default and blocks known threats via the AWS Common Rule Set.
+Open the deployment store, find **AWS WAF Web ACL**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the six-step authoring flow — scope & posture first, then the response-body namespace (so rule block actions can pick keys), then the protection rules, then token/challenge, inspection/data protection, and logging. Start from the **Managed Rules Basic** preset in the [Presets](#presets) tab to pre-populate the two most common AWS managed groups.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the Web ACL will be created. Use `us-east-1` for CLOUDFRONT scope. | Required |
-| `scope` | `string` | Where the Web ACL can be used: `REGIONAL` or `CLOUDFRONT` | Must be one of the two valid values |
-| `defaultAction.type` | `string` | Baseline action when no rule matches: `allow` or `block` | Must be `allow` or `block` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description. Max 256 characters. |
-| `rules` | `object[]` | `[]` | Ordered rule set evaluated by priority. |
-| `visibilityConfig.cloudwatchMetricsEnabled` | `bool` | `true` | Enable CloudWatch metrics for the Web ACL. |
-| `visibilityConfig.sampledRequestsEnabled` | `bool` | `true` | Enable request sampling. |
-| `visibilityConfig.metricName` | `string` | resource name | CloudWatch metric name. |
-| `customResponseBodies` | `object[]` | `[]` | Reusable response body templates referenced by block actions. |
-| `tokenDomains` | `string[]` | `[]` | Domains for CAPTCHA/Challenge token validation. |
-| `logging.destinationArn` | `string` | — | ARN of CloudWatch Logs, S3, or Firehose destination. Supports `valueFrom`. |
-| `logging.redactedHeaderNames` | `string[]` | `[]` | HTTP headers to redact from logs. |
-| `logging.redactUriPath` | `bool` | `false` | Redact URI path from logs. |
-| `logging.redactQueryString` | `bool` | `false` | Redact query string from logs. |
-
-### Rule Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | Unique rule name (1-128 characters). |
-| `priority` | `int` | Evaluation order (lower numbers first). |
-| `action` | `string` | For custom rules: `allow`, `block`, `count`, `captcha`, or `challenge`. |
-| `overrideAction` | `string` | For managed rule groups: `count` or `none`. |
-| `managedRuleGroup.name` | `string` | Managed rule group name (e.g., `AWSManagedRulesCommonRuleSet`). |
-| `managedRuleGroup.vendorName` | `string` | Vendor name (e.g., `AWS`). |
-| `managedRuleGroup.version` | `string` | Pin to a specific version. |
-| `managedRuleGroup.ruleActionOverrides` | `object[]` | Override actions for specific rules within the group. |
-| `managedRuleGroup.scopeDownStatement` | `object` | Struct narrowing which requests the group evaluates. |
-| `rateBased.limit` | `int` | Max requests per evaluation window (10–2,000,000,000). |
-| `rateBased.evaluationWindowSec` | `int` | Window in seconds: 60, 120, 300, or 600. |
-| `rateBased.aggregateKeyType` | `string` | `IP`, `FORWARDED_IP`, `CONSTANT`, or `CUSTOM_KEYS`. |
-| `geoMatch.countryCodes` | `string[]` | ISO 3166-1 alpha-2 country codes. |
-| `ipSetReference.arn` | `string` | ARN of a WAFv2 IP Set. |
-| `customStatement` | `object` | Raw AWS WAFv2 JSON statement (escape hatch). |
-
-## Examples
-
-### Managed Rules with Rate Limiting
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsWafWebAcl
 metadata:
   name: api-protection
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsWafWebAcl.api-protection
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   scope: REGIONAL
   defaultAction:
     type: allow
   rules:
-    - name: rate-limit
+    - name: aws-managed-common
       priority: 1
-      action: block
-      rateBased:
-        limit: 2000
-    - name: aws-common-rules
-      priority: 10
       overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesCommonRuleSet
-        vendorName: AWS
-    - name: aws-sqli-rules
-      priority: 20
-      overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesSQLiRuleSet
-        vendorName: AWS
+      statement:
+        managedRuleGroup:
+          name: AWSManagedRulesCommonRuleSet
+          vendorName: AWS
 ```
 
-### Geographic Blocking with Custom Error Response
+```shell
+planton apply -f waf-web-acl.yaml
+```
+
+This creates a REGIONAL web ACL with the AWS Common Rule Set enforced and all other traffic allowed. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+IP-set and regex-pattern-set references resolve through ValueFromRef. Associate the web ACL with CloudFront via its `webAclArn` field:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsWafWebAcl
-metadata:
-  name: geo-restricted
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsWafWebAcl.geo-restricted
+# On an AwsCloudFront in the same InfraPipeline:
 spec:
-  region: us-east-1
-  scope: REGIONAL
-  defaultAction:
-    type: allow
-  rules:
-    - name: block-embargoed
-      priority: 1
-      action: block
-      geoMatch:
-        countryCodes: [RU, CN, KP, IR]
-      customResponse:
-        responseCode: 403
-        customResponseBodyKey: geo-blocked
-  customResponseBodies:
-    - key: geo-blocked
-      content: '{"error":"geo_restricted","message":"Service not available in your region"}'
-      contentType: APPLICATION_JSON
+  webAclArn:
+    valueFrom:
+      kind: AwsWafWebAcl
+      name: api-protection
+      fieldPath: status.outputs.web_acl_arn
 ```
 
-### Production Web ACL with Logging
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsWafWebAcl
-metadata:
-  name: prod-waf
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsWafWebAcl.prod-waf
-spec:
-  region: us-east-1
-  scope: REGIONAL
-  description: Production Web ACL
-  defaultAction:
-    type: allow
-  rules:
-    - name: rate-limit
-      priority: 1
-      action: block
-      rateBased:
-        limit: 3000
-    - name: aws-ip-reputation
-      priority: 10
-      overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesAmazonIpReputationList
-        vendorName: AWS
-    - name: aws-common-rules
-      priority: 20
-      overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesCommonRuleSet
-        vendorName: AWS
-    - name: aws-sqli-rules
-      priority: 30
-      overrideAction: none
-      managedRuleGroup:
-        name: AWSManagedRulesSQLiRuleSet
-        vendorName: AWS
-  logging:
-    destinationArn:
-      value: arn:aws:logs:us-east-1:123456789012:log-group:aws-waf-logs-prod
-    redactedHeaderNames:
-      - authorization
-      - cookie
-    redactQueryString: true
-```
+These are the most important decisions when configuring a WAF Web ACL. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Scope** — `REGIONAL` protects in-region resources; `CLOUDFRONT` protects distributions and pins the region to `us-east-1`. Scope is create-only: changing it replaces the ACL and every association.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Default action** — `allow` when rules block known threats; `block` when rules allow known-good traffic. A default-block ACL that ships with no allow rules is an outage — the wizard surfaces that callout before you continue.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `web_acl_arn` | `string` | ARN of the Web ACL, used to associate with ALB, API Gateway, CloudFront, and other protected resources |
-| `web_acl_id` | `string` | Unique identifier of the Web ACL |
-| `web_acl_name` | `string` | Name of the Web ACL |
-| `capacity` | `int` | Web ACL Capacity Units consumed (maximum 5,000 per Web ACL) |
+**Protection rules** — managed groups, rate limits, geo/ASN matches, IP-set and regex-set references, match statements, and one level of AND/OR/NOT composition. Group rules take `overrideAction` (`none` / `count`); match rules take `action` (`allow` / `block` / `count` / `captcha` / `challenge`). Deeper nesting is preserved on CLI-authored statements and editable via the custom JSON escape hatch.
 
-## Related Components
+**Custom response bodies** — declare named bodies before the rules that reference them. Block actions pick a body key from the declared namespace so a dangling key cannot be typed.
 
-- [AwsAlb](/docs/catalog/aws/alb) — commonly protected by a WAF Web ACL via association
-- [AwsHttpApiGateway](/docs/catalog/aws/http-api-gateway) — protectable via WAF association
-- [AwsCloudFront](/docs/catalog/aws/cloudfront) — protected by CLOUDFRONT-scoped Web ACLs
-- [AwsCognitoUserPool](/docs/catalog/aws/cognito-user-pool) — protectable via WAF association
+**Logging** — destination may be CloudWatch Logs, S3, or Firehose; the name must start with `aws-waf-logs-`. Redact Authorization and Cookie headers in production.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Field | References | How |
+|-------|------------|-----|
+| `rules[].statement.ipSetReference.arn` | AwsWafIpSet | ValueFromRef → `status.outputs.ip_set_arn` |
+| `rules[].statement.regexPatternSetReference.arn` | AwsWafRegexPatternSet | ValueFromRef → `status.outputs.regex_pattern_set_arn` |
+| `logging.destinationArn` | CloudWatch Log Group / S3 / Firehose | Literal ARN or reference (no single default kind — three destination types) |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `capacity` | Total WCUs consumed by all rules (5,000 per-ACL default budget) | Capacity planning before adding rules |
+| `web_acl_arn` | Amazon Resource Name of the Web ACL | CloudFront `webAclArn`, ALB / API Gateway association |
+| `web_acl_id` | Unique identifier of the Web ACL | AWS console navigation, API calls |
+| `web_acl_name` | Name of the Web ACL | CloudWatch metric filtering, inventory |
+| `application_integration_url` | SDK integration endpoint | AWS WAF JavaScript SDK for CAPTCHA / challenge |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Managed rules basic** — A permissive web ACL with the AWS Common Rule Set. Suitable for getting started on public-facing applications. Start from the **Managed Rules Basic** preset.
+
+**Rate limiting with managed rules** — Combines managed groups with a rate-based rule. Suitable for APIs and login pages. Start from the **Rate Limiting with Managed Rules** preset.
+
+**Production web app** — Multiple managed groups (common rules, known bad inputs, IP reputation, anonymous IP), rate limiting, and logging. Start from the **Production Web App** preset.
+
+## Works With
+
+- [**AWS WAF IP Set**](/cloud-catalog/aws-waf-ip-set) — allow / deny lists referenced by `ipSetReference` rules
+- [**AWS WAF Regex Pattern Set**](/cloud-catalog/aws-waf-regex-pattern-set) — reusable regex catalogs for path and header matching
+- [**AWS CloudFront**](/cloud-catalog/aws-cloud-front) — associates via `webAclArn`
+- [**AWS ALB**](/cloud-catalog/aws-alb) / API Gateway / App Runner — associate the ARN after deploy

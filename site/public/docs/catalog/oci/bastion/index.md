@@ -6,138 +6,44 @@ order: 100
 componentName: "ocibastion"
 ---
 
-# OCI Bastion
+# Bastion on OCI
 
-Deploys an Oracle Cloud Infrastructure Bastion — a managed SSH gateway that provides secure, time-limited access to resources in private subnets without requiring a public IP on the target. Supports managed SSH sessions, port forwarding, and optional DNS proxy (FQDN and SOCKS5) for FQDN-based target resolution.
+Deploys an OCI Bastion -- a managed SSH gateway that provides secure, time-limited access to resources in private subnets without requiring a public IP on the target. The bastion creates a private endpoint in the target subnet and allows authorized clients (by CIDR) to establish managed SSH sessions, port forwarding, and optional SOCKS5 dynamic port forwarding through it. Integrates with Planton's Provider Connections for OCI credential management and ValueFromRef for compartment and subnet wiring.
 
 ## What Gets Created
 
-When you deploy an OciBastion resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Bastion** — a `bastion.Bastion` resource (type STANDARD) in the specified compartment with a private endpoint in the target subnet. The bastion controls which client CIDR ranges can establish sessions and enforces a maximum session TTL.
+- **Bastion** -- a managed STANDARD bastion with a private endpoint in the target subnet, configurable client CIDR allow list, and maximum session TTL enforcement
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the bastion
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the bastion will be created — either a literal value or a reference to an OciCompartment resource
-- **A subnet OCID** — the private subnet that the bastion connects to, either as a literal value or via `valueFrom` referencing an OciSubnet resource
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `bastion.yaml`:
+### OCI Tenancy
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBastion
-metadata:
-  name: my-bastion
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciBastion.my-bastion
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  targetSubnetId:
-    value: "ocid1.subnet.oc1..example"
-```
+- A compartment to place the bastion in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A private subnet that the bastion will connect to. The bastion creates its endpoint in this subnet and can reach any resource accessible from it, including resources in peered VCNs if route rules are configured. Provide the subnet OCID directly or reference an OciSubnet Cloud Resource via ValueFromRef.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f bastion.yaml
-```
+### Console
 
-This creates a bastion with a private endpoint in the target subnet, no CIDR restrictions, and the OCI default maximum session TTL (3 hours). The bastion OCID and private endpoint IP are exported as stack outputs.
+Open the deployment store, find **Bastion on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard SSH Gateway** preset in the [Presets](#presets) tab to pre-populate a bastion with a 3-hour session TTL.
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the bastion will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `targetSubnetId` | `StringValueOrRef` | OCID of the subnet where the bastion creates its private endpoint. Immutable after creation. Can reference an OciSubnet resource via `valueFrom` using `status.outputs.subnetId`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | metadata name | Display name for the bastion. Immutable after creation. |
-| `clientCidrBlockAllowList` | `string[]` | — | CIDR ranges allowed to connect to sessions (e.g., `["10.0.0.0/16"]`). When empty, all client IPs are allowed. Updatable. |
-| `maxSessionTtlInSeconds` | `int32` | `10800` (3 hours) | Maximum TTL in seconds for any session on this bastion. Updatable. |
-| `isDnsProxyEnabled` | `bool` | `false` | Enable FQDN and SOCKS5 proxy support. When `true`, sessions can use DNS names to reach targets. Immutable after creation. |
-
-## Examples
-
-### Minimal Bastion
-
-A bastion with default settings — no CIDR restrictions, 3-hour maximum session TTL:
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciBastion
 metadata:
-  name: dev-bastion
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciBastion.dev-bastion
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  targetSubnetId:
-    value: "ocid1.subnet.oc1..example"
-```
-
-### CIDR-Restricted with Extended Session TTL
-
-A bastion that only allows connections from a corporate network, with an 8-hour maximum session TTL:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBastion
-metadata:
-  name: corp-bastion
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciBastion.corp-bastion
-spec:
-  compartmentId:
-    valueFrom:
-      kind: OciCompartment
-      name: prod-compartment
-      fieldPath: status.outputs.compartmentId
-  targetSubnetId:
-    valueFrom:
-      kind: OciSubnet
-      name: private-subnet
-      fieldPath: status.outputs.subnetId
-  displayName: "corp-bastion-prod"
-  clientCidrBlockAllowList:
-    - "10.0.0.0/8"
-    - "172.16.0.0/12"
-  maxSessionTtlInSeconds: 28800
-```
-
-### DNS Proxy Enabled
-
-A bastion with DNS proxy support for FQDN-based target resolution and SOCKS5 dynamic port forwarding:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBastion
-metadata:
-  name: dns-bastion
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciBastion.dns-bastion
+  name: platform-bastion
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
@@ -145,21 +51,74 @@ spec:
     value: "ocid1.subnet.oc1..example"
   clientCidrBlockAllowList:
     - "10.0.0.0/16"
-  maxSessionTtlInSeconds: 14400
-  isDnsProxyEnabled: true
+  maxSessionTtlInSeconds: 10800
 ```
 
-## Stack Outputs
+```shell
+planton apply -f bastion.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+This creates a bastion with a 3-hour maximum session TTL, restricted to clients in the 10.0.0.0/16 range. DNS proxy is not enabled. Sessions are created on-demand via the OCI Console or CLI -- they are ephemeral operational artifacts, not infrastructure managed by this component.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bastion_id` | `string` | OCID of the bastion |
-| `private_endpoint_ip_address` | `string` | Private IP address of the bastion's endpoint in the target subnet |
+### InfraChart
 
-## Related Components
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the bastion to a compartment and subnet deployed in the same InfraPipeline:
 
-- [OciSubnet](/docs/catalog/oci/subnet) — provides the target subnet referenced by `targetSubnetId` via `valueFrom`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciComputeInstance](/docs/catalog/oci/compute-instance) — common target for bastion sessions in private subnets
+```yaml
+spec:
+  compartmentId:
+    valueFrom:
+      kind: OciCompartment
+      name: platform-compartment
+      fieldPath: status.outputs.compartmentId
+  targetSubnetId:
+    valueFrom:
+      kind: OciSubnet
+      name: private-app-subnet
+      fieldPath: status.outputs.subnetId
+```
+
+The InfraPipeline resolves the dependency graph, deploys the compartment and subnet first, then provisions the bastion with the resolved values.
+
+## Key Configuration
+
+These are the most important decisions when configuring a bastion. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Target subnet** -- The `targetSubnetId` determines which subnet the bastion creates its private endpoint in. Sessions can reach any resource accessible from this subnet. This field is immutable after creation -- changing it requires recreating the bastion.
+
+**Client CIDR allow list** -- The `clientCidrBlockAllowList` restricts which source IPs can create and connect to sessions. Use your corporate VPN range, office IP ranges, or CI/CD runner subnets. This is the primary access control mechanism and can be updated after creation without recreation.
+
+**Maximum session TTL** -- The `maxSessionTtlInSeconds` sets the upper bound for any session on this bastion. The OCI default of 10800 (3 hours) balances convenience with security. Reduce to 1800 (30 minutes) for high-security environments or increase to 28800 (8 hours) for extended maintenance windows. Updatable after creation.
+
+**DNS proxy** -- Set `isDnsProxyEnabled: true` to allow sessions to target resources by FQDN instead of IP address and to enable SOCKS5 dynamic port forwarding. Essential for environments with dynamic IPs or DNS-based service discovery. This field is immutable after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciSubnet** | `targetSubnetId` | `status.outputs.subnetId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bastion_id` | OCID of the bastion | OCI CLI session creation, monitoring dashboards |
+| `private_endpoint_ip_address` | Private IP address of the bastion's endpoint in the target subnet | Network troubleshooting, connectivity validation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard SSH gateway** -- A bastion with CIDR-restricted client access and 3-hour session TTL. Covers the majority of use cases: SSH to private compute instances, port forwarding to private databases, and secure access to private API endpoints. Start from the **Standard SSH Gateway** preset.
+
+**DNS proxy enabled** -- A bastion with FQDN-based target resolution and SOCKS5 proxy support. Use when targets have dynamic IPs (auto-scaling groups, container instances) or when browsing multiple private web UIs through a single session. Start from the **DNS Proxy Enabled** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this bastion
+- [**Subnet on OCI**](/cloud-catalog/oci-subnet) -- provides the private subnet where the bastion creates its endpoint

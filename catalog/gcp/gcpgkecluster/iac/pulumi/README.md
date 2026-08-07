@@ -11,11 +11,11 @@ On Standard clusters the API-mandated default node pool is removed at create tim
 ## Usage with Planton CLI
 
 ```shell
-planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
-planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi up --manifest ../../e2e/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
-Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../../e2e/manifest.yaml`.
 
 ## Build
 

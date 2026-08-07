@@ -27,7 +27,7 @@ storage.ObjectReplication (single resource -- the two-sided policy pair)
   provider's own OnlyNewObjects default on both engines.
 - **`metrics_enabled` is a recorded skip** -- pulumi-azure v6.38 has
   not bridged it; a one-engine-only input would ship silent-drop
-  divergence (see docs/README.md for the re-enable trigger).
+  divergence (see ../../GUIDE.md for the re-enable trigger).
 - **No Azure tags**: ARM does not support tags on
   objectReplicationPolicies; the platform's identity tags live on the
   two accounts.

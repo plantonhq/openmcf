@@ -39,7 +39,7 @@ Use complete when you want to:
 
 **Simplest usage:**
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 ```
 
 **With target score:**
@@ -49,7 +49,7 @@ Use complete when you want to:
 
 **Preview mode:**
 ```bash
-@complete-planton-component PostgresKubernetes --dry-run
+@complete-planton-component KubernetesPostgres --dry-run
 ```
 
 ## Workflow
@@ -59,7 +59,7 @@ Use complete when you want to:
 **Action:** Run audit to assess current state
 
 ```
-🔍 Auditing MongodbAtlas...
+🔍 Auditing AtlasMongodb...
 
 Current State:
   Overall Score: 65%
@@ -67,11 +67,11 @@ Current State:
   
 Missing Items:
   ❌ Terraform module (4.44%)
-  ❌ Research documentation (13.34%)
-  ❌ Pulumi overview (5%)
+  ❌ Component guide GUIDE.md (13.34%)
+  ❌ Pulumi module README (5%)
   ⚠️  Examples incomplete (3.33%)
 
-Audit report saved: v1/docs/audit/2025-11-13-094500.md
+Audit report delivered in session
 ```
 
 **Decision Logic:**
@@ -89,7 +89,7 @@ IF score < target_score:
 **Action:** Run update --fill-gaps to complete component
 
 ```
-🔄 Completing MongodbAtlas (65% → 95%+)...
+🔄 Completing AtlasMongodb (65% → 95%+)...
 
 Phase 1: Generate Terraform Module
 [1/7] ✅ Generated variables.tf (matches spec.proto)
@@ -101,16 +101,16 @@ Phase 1: Generate Terraform Module
 [7/7] ✅ Passed terraform validate
 
 Phase 2: Generate Documentation
-[8/8] ✅ Generated v1/docs/README.md (research document, 850 lines)
+[8/8] ✅ Wrote GUIDE.md (component guide)
 
 Phase 3: Enhance Presets
 [10/10] ✅ Verified presets match current spec.proto
 
 Phase 4: Final Validation
 [11/14] ✅ Proto stubs regenerated (make protos)
-[12/14] ✅ Component tests passed (go test ./catalog/.../v1/)
-[13/14] ✅ Build validation passed (go build ./catalog/.../v1/...)
-[14/14] ✅ Component tests passed (go test -v ./catalog/.../v1/)
+[12/14] ✅ Component tests passed (go test ./catalog/<provider>/<component>/...)
+[13/14] ✅ Build validation passed (go build ./catalog/<provider>/<component>/...)
+[14/14] ✅ Component tests passed (go test -v ./catalog/<provider>/<component>/...)
 ```
 
 **What Gets Created:**
@@ -118,8 +118,8 @@ Phase 4: Final Validation
 The update --fill-gaps scenario will run appropriate forge flow rules to create:
 - Missing proto files (if any)
 - Missing IaC modules (Pulumi or Terraform)
-- Missing documentation (research, user-facing, examples)
-- Missing supporting files (manifests, overviews)
+- Missing documentation (guide, user-facing, presets)
+- Missing supporting files (e2e manifests, module READMEs)
 - Missing `GUIDE.md` (authored wisdom seeded per forge flow rule 023, following
   `_rules/docs/write-planton-component-guide.mdc`) -- followed by
   `make generate-reference` so the reference page's guide link and the catalog
@@ -128,11 +128,11 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 **Validation (Execute in Sequence):**
 - After proto file creation/changes: Run `make protos` to regenerate Go stubs
 - After each creation: Validate builds and tests pass
-- Run component-specific tests: `go test ./catalog/<provider>/<component>/v1/`
+- Run component-specific tests: `go test ./catalog/<provider>/<component>/...`
   - Validates buf.validate rules in spec.proto are correct
   - Validates spec_test.go tests pass with current validation logic
-- After Pulumi/Go code changes: Run `go build ./catalog/<provider>/<component>/v1/...` to validate complete build
-- Run full test suite: `go test -v ./catalog/<provider>/<component>/v1/` to validate all tests pass
+- After Pulumi/Go code changes: Run `go build ./catalog/<provider>/<component>/...` to validate complete build
+- Run full test suite: `go test -v ./catalog/<provider>/<component>/...` to validate all tests pass
 - Retries up to 3 times on fixable errors
 - Reports progress in real-time
 
@@ -143,7 +143,7 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 **Action:** Re-run audit to verify completion
 
 ```
-🔍 Re-auditing MongodbAtlas...
+🔍 Re-auditing AtlasMongodb...
 
 Final State:
   Overall Score: 98%
@@ -152,7 +152,7 @@ Final State:
 Remaining Items:
   ⚠️  1 minor item (Terraform E2E test logs)
 
-Audit report saved: v1/docs/audit/2025-11-13-094530.md
+Re-audit report delivered in session
 ```
 
 ### Step 4: Summary Report
@@ -160,7 +160,7 @@ Audit report saved: v1/docs/audit/2025-11-13-094530.md
 **Action:** Show before/after comparison
 
 ```
-✅ Completion Successful: MongodbAtlas
+✅ Completion Successful: AtlasMongodb
 
 Before:
   Score: 65%
@@ -176,21 +176,21 @@ Improvement: +33% (65% → 98%)
 
 Files Created:
   ✅ iac/tf/ (6 files) - Terraform module
-  ✅ v1/docs/README.md (850 lines) - Research documentation
+  ✅ GUIDE.md - Component guide (authored judgment)
   ✅ Verified presets are up to date
 
 Audit Reports:
-  📊 Before: v1/docs/audit/2025-11-13-094500.md
-  📊 After: v1/docs/audit/2025-11-13-094530.md
+  📊 Before: audit delivered in session
+  📊 After: re-audit delivered in session
 
 Duration: 18 minutes
 
 Next Steps:
   1. Review generated files
-  2. Test deployment with: iac/hack/manifest.yaml
+  2. Test deployment with: e2e/manifest.yaml
   3. Commit changes:
      git add -A
-     git commit -m "improve: complete MongodbAtlas to 98%"
+     git commit -m "improve: complete AtlasMongodb to 98%"
 ```
 
 ## Flags and Options
@@ -200,23 +200,23 @@ Next Steps:
 Preview what would be done without making changes:
 
 ```bash
-@complete-planton-component MongodbAtlas --dry-run
+@complete-planton-component AtlasMongodb --dry-run
 ```
 
 **Output:**
 ```
-🔍 Dry-Run: Complete MongodbAtlas
+🔍 Dry-Run: Complete AtlasMongodb
 
 Current State (from audit):
   Score: 65%
   Missing:
     ❌ Terraform module (4.44%)
-    ❌ Research docs (13.34%)
+    ❌ Component guide (13.34%)
     ⚠️  Examples incomplete (3.33%)
 
 Planned Actions:
   1. Run forge rules 013-015 → Create Terraform module
-  2. Run forge rule 020 → Generate research docs
+  2. Run forge rule 019 → Write GUIDE.md
   3. Run validation (rules 018-019)
 
 Expected Result:
@@ -234,7 +234,7 @@ To proceed: remove --dry-run flag
 Stop when target score is reached:
 
 ```bash
-@complete-planton-component MongodbAtlas --target-score 90
+@complete-planton-component AtlasMongodb --target-score 90
 ```
 
 **Behavior:**
@@ -254,7 +254,7 @@ Stop when target score is reached:
 Skip final build and test validation (faster but riskier):
 
 ```bash
-@complete-planton-component MongodbAtlas --skip-validation
+@complete-planton-component AtlasMongodb --skip-validation
 ```
 
 **Warning:** Use only when confident updates won't break builds.
@@ -279,13 +279,13 @@ Current State:
 
 No action needed. Great job! 🎉
 
-Audit report: v1/docs/audit/2025-11-13-094600.md
+Audit report delivered in session
 ```
 
 ### Partial Completion Scenario
 
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 ```
 
 **Output:**
@@ -298,8 +298,8 @@ Current State:
   
 Gaps Identified:
   ❌ Critical (4.44%): Terraform module missing
-  ❌ Important (13.34%): Research docs missing
-  ❌ Important (5%): Pulumi overview missing
+  ❌ Important (13.34%): Component guide missing
+  ❌ Important (5%): Pulumi module README missing
   ⚠️  Important (3.33%): Examples incomplete
 
 Target: 95% (need +30%)
@@ -330,15 +330,15 @@ Summary:
   
   Created:
     ✅ Terraform module (6 files)
-    ✅ Research docs (850 lines)
-    ✅ Pulumi overview
+    ✅ GUIDE.md (component guide)
+    ✅ Pulumi module README
     ✅ Enhanced examples (3 added)
   
   Duration: 18 minutes
 
 Audit Reports:
-  📊 Before: v1/docs/audit/2025-11-13-094500.md
-  📊 After: v1/docs/audit/2025-11-13-094530.md
+  📊 Before: audit delivered in session
+  📊 After: re-audit delivered in session
 
 Next: Review files and commit changes
 ```
@@ -346,19 +346,19 @@ Next: Review files and commit changes
 ### Nearly Complete Scenario
 
 ```bash
-@complete-planton-component PostgresKubernetes
+@complete-planton-component KubernetesPostgres
 ```
 
 **Output:**
 ```
-🔍 Auditing PostgresKubernetes...
+🔍 Auditing KubernetesPostgres...
 
 Current State:
   Score: 92%
   Status: Functionally Complete
   
 Small Gaps:
-  ⚠️  Pulumi overview missing (5%)
+  ⚠️  Pulumi module README missing (5%)
   ⚠️  Terraform README could be expanded (2%)
 
 Target: 95% (need +3%)
@@ -384,14 +384,14 @@ Duration: 3 minutes
 ### Component Not Found
 
 ```
-❌ Error: MongodbAtlas not found
+❌ Error: AtlasMongodb not found
 
 Checked:
   ✓ cloud_resource_kind.proto - No enum entry
   ✓ File system - No component folder
 
 Did you mean to create it first?
-  @forge-planton-component MongodbAtlas --provider atlas
+  @forge-planton-component AtlasMongodb --provider atlas
 ```
 
 ### Already at Target
@@ -408,7 +408,7 @@ Nothing to do. Component is production-ready! 🎉
 ### Update Failed
 
 ```
-❌ Error: Failed to complete MongodbAtlas
+❌ Error: Failed to complete AtlasMongodb
 
 Initial Audit: ✅ 65%
 Gap Filling: ❌ Failed at rule 013 (Terraform module generation)
@@ -419,12 +419,12 @@ Error: terraform validate failed
 Recommendation:
   1. Check provider.tf configuration
   2. Run update manually to debug:
-     @update-planton-component MongodbAtlas --scenario fill-gaps
+     @update-planton-component AtlasMongodb --scenario fill-gaps
   3. Or resume from failed rule:
-     @update-planton-component MongodbAtlas --resume-from 013
+     @update-planton-component AtlasMongodb --resume-from 012
 
 Partial Progress:
-  ✅ Research docs generated
+  ✅ GUIDE.md written
   ❌ Terraform module failed
   ⏸️  Remaining items skipped
 
@@ -438,12 +438,12 @@ Current Score: 78% (was 65%, +13%)
 
 Updates Applied Successfully:
   ✅ Terraform module created
-  ✅ Research docs generated
+  ✅ GUIDE.md written
   ✅ Examples enhanced
 
 Validation Results:
-  ✅ Build passed (go build ./catalog/.../v1/...)
-  ❌ Tests failed (go test -v ./catalog/.../v1/)
+  ✅ Build passed (go build ./catalog/<provider>/<component>/...)
+  ❌ Tests failed (go test -v ./catalog/<provider>/<component>/...)
 
 Test Failures:
   1. spec_test.go:45 - Validation test failed
@@ -451,7 +451,7 @@ Test Failures:
 
 Recommendation:
   Fix test failures manually, then re-run:
-  @complete-planton-component MongodbAtlas
+  @complete-planton-component AtlasMongodb
 
 Current Score: 95% (validation issues don't affect score)
 ```
@@ -463,7 +463,7 @@ Current Score: 95% (validation issues don't affect score)
 Preview entire workflow without changes:
 
 ```bash
-@complete-planton-component MongodbAtlas --dry-run
+@complete-planton-component AtlasMongodb --dry-run
 ```
 
 **Shows:**
@@ -504,15 +504,15 @@ Default target is **95% not 100%**:
 
 ```bash
 # Step 1: Check status
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Read report, identify gaps
 
 # Step 2: Fill gaps
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 # Monitor progress, handle errors
 
 # Step 3: Verify
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Check score improved
 
 # Total: 3 commands, manual monitoring
@@ -522,7 +522,7 @@ Default target is **95% not 100%**:
 
 ```bash
 # Single command
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 
 # Automatically:
 # - Audits current state
@@ -603,12 +603,12 @@ done
 
 ```bash
 # Manual workflow
-@audit-planton-component MongodbAtlas
-@update-planton-component MongodbAtlas --scenario fill-gaps
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
+@update-planton-component AtlasMongodb --scenario fill-gaps
+@audit-planton-component AtlasMongodb
 
 # Automated workflow (equivalent)
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 ```
 
 ### Before Delete
@@ -631,7 +631,7 @@ done
 Complete provides detailed progress through all phases:
 
 ```
-🎯 Complete: MongodbAtlas
+🎯 Complete: AtlasMongodb
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -642,13 +642,13 @@ Step 1/3: Initial Audit
 
 Gaps to Fill:
   ❌ Terraform module (4.44%)
-  ❌ Research docs (13.34%)
-  ❌ Pulumi overview (5%)
+  ❌ Component guide (13.34%)
+  ❌ Pulumi module README (5%)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Step 2/3: Filling Gaps
-├─ Reading v1/docs/README.md for context... (if exists)
+├─ Reading GUIDE.md for context... (if exists)
 ├─ Running forge rules to fill gaps...
 
 Phase 1: Terraform Module
@@ -661,14 +661,14 @@ Phase 1: Terraform Module
   [7/7] ✅ validation
 
 Phase 2: Documentation
-  [8/9] ✅ Research docs (850 lines)
-  [9/9] ✅ Pulumi overview
+  [8/9] ✅ GUIDE.md (component guide)
+  [9/9] ✅ Pulumi module README
 
 Phase 3: Validation
   [10/13] ✅ Proto stubs regenerated (make protos)
   [11/13] ✅ Component tests passed (spec_test.go)
-  [12/13] ✅ Build passed (go build ./catalog/.../v1/...)
-  [13/13] ✅ Component tests passed (go test -v ./catalog/.../v1/)
+  [12/13] ✅ Build passed (go build ./catalog/<provider>/<component>/...)
+  [13/13] ✅ Component tests passed (go test -v ./catalog/<provider>/<component>/...)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -686,8 +686,8 @@ Summary:
   Files Created: 12
   
 Audit Trail:
-  📊 Initial: v1/docs/audit/2025-11-13-094500.md
-  📊 Final: v1/docs/audit/2025-11-13-094530.md
+  📊 Initial: audit delivered in session
+  📊 Final: re-audit delivered in session
 ```
 
 ## Best Practices
@@ -717,7 +717,7 @@ Audit Trail:
 ### After Running Complete
 
 1. **Review generated files** - Don't blindly trust automation
-2. **Test deployment** - Use iac/hack/manifest.yaml
+2. **Test deployment** - Use e2e/manifest.yaml
 3. **Review audit reports** - Compare before/after
 4. **Commit changes** - With meaningful commit message
 5. **Share results** - Show improvement metrics to team
@@ -740,11 +740,11 @@ No gaps to fill. Component is production-ready!
 ⚠️  Partial completion: Reached 88% (target was 95%)
 
 Some gaps could not be filled automatically:
-  ❌ Rule 020 failed (research docs)
+  ❌ Rule 019 failed (component guide)
   
 Recommendation:
   Run manual update with specific scenario:
-  @update-planton-component MongodbAtlas --scenario refresh-docs
+  @update-planton-component AtlasMongodb --scenario refresh-docs
 ```
 
 **Action:** Use manual update to fix specific failures.
@@ -771,21 +771,21 @@ After complete finishes successfully:
 ✅ All important gaps filled (unless target <95%)
 ✅ spec_test.go exists with validation tests
 ✅ Proto stubs regenerated if proto files changed (`make protos`)
-✅ Component tests execute and pass (`go test ./catalog/.../v1/`)
-✅ Build validation passed (`go build ./catalog/<provider>/<component>/v1/...`)
-✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/v1/`)
+✅ Component tests execute and pass (`go test ./catalog/<provider>/<component>/...`)
+✅ Build validation passed (`go build ./catalog/<provider>/<component>/...`)
+✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/...`)
 ✅ Two audit reports generated (before/after)
 ✅ Summary report shows improvement
 ✅ Files ready to commit
 
-**Critical:** All validation steps must pass for component to be considered complete. The complete operation executes `make protos`, component tests, `go build ./catalog/<provider>/<component>/v1/...`, and `go test -v ./catalog/<provider>/<component>/v1/` as part of the validation workflow.
+**Critical:** All validation steps must pass for component to be considered complete. The complete operation executes `make protos`, component tests, `go build ./catalog/<provider>/<component>/...`, and `go test -v ./catalog/<provider>/<component>/...` as part of the validation workflow.
 
 ## Examples
 
 ### Example 1: Complete Incomplete Component
 
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 
 # Before: 65% (missing Terraform, docs)
 # Process: 18 minutes
@@ -806,7 +806,7 @@ After complete finishes successfully:
 ### Example 3: Preview Mode
 
 ```bash
-@complete-planton-component PostgresKubernetes --dry-run
+@complete-planton-component KubernetesPostgres --dry-run
 
 # Shows what would be created
 # Estimates time and file count

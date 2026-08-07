@@ -8,152 +8,75 @@ componentName: "hetznercloudsshkey"
 
 # Hetzner Cloud SSH Key
 
-Registers an SSH public key in a Hetzner Cloud account for injection into servers at creation time. Supports RSA (>= 1024 bits), ED25519, and ECDSA key types. The key name and labels are derived from resource metadata, leaving only the public key content as the user-specified field.
+Registers an SSH public key in Hetzner Cloud for injection into servers at creation time. Servers reference imported SSH keys via their `ssh_key_ids` field, enabling secure password-less access without storing private key material in IaC state. Supports RSA (>= 1024-bit), ED25519, and ECDSA key types in OpenSSH authorized_keys format.
 
 ## What Gets Created
 
-When you deploy a HetznerCloudSshKey resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **SSH Key** — an `hcloud_ssh_key` resource containing the public key material, a display name derived from `metadata.name`, and standard labels computed from resource metadata. The key is registered at the account level and referenced by servers via its numeric ID.
+- **SSH Key** -- a single `hcloud_ssh_key` resource registered in Hetzner Cloud with the specified public key material and metadata name
 
-## Prerequisites
+## Before You Deploy
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **An SSH key pair** generated locally (e.g., `ssh-keygen -t ed25519`). Only the public key is needed.
+### Hetzner Cloud Account
 
-## Quick Start
+- **A Hetzner Cloud account** with an active project and API token.
+- **An SSH key pair** generated locally (e.g., `ssh-keygen -t ed25519`). Only the public key is imported -- the private key never enters IaC state or the Hetzner Cloud API.
 
-Create a file `ssh-key.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud SSH Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Import Public Key** preset in the [Presets](#presets) tab to register an existing key.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudSshKey
 metadata:
   name: deploy-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudSshKey.deploy-key
+  org: acme-corp
+  env: prod
 spec:
-  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyData deploy@ci"
+  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... user@host"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f ssh-key.yaml
+planton apply -f hetznercloud-ssh-key.yaml
 ```
 
-This registers an ED25519 SSH public key named `deploy-key` in your Hetzner Cloud account.
+This registers the public key in Hetzner Cloud. A Stack Job tracks the provisioning in real time. Reference the key in HetznerCloudServer manifests via `ssh_key_ids`.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an SSH key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `publicKey` | `string` | SSH public key in OpenSSH `authorized_keys` format. Supports ED25519, RSA (>= 1024 bits), and ECDSA. Changing this value forces replacement of the resource. | Required, non-empty (`min_len = 1`) |
+**Public key** -- The `publicKey` field accepts an SSH public key in OpenSSH authorized_keys format. Hetzner Cloud supports ED25519, RSA (>= 1024-bit), and ECDSA key types. Changing the public key after creation forces replacement of the resource because Hetzner Cloud does not allow in-place key material updates.
 
-### Optional Fields
+## Outputs and Dependencies
 
-This component has no optional spec fields. The SSH key name is derived from `metadata.name` and labels are computed from resource metadata.
+### What This Component Consumes
 
-## Examples
+This component has no foreign key dependencies.
 
-### Minimal ED25519 Key
+### What This Component Provides
 
-The simplest deployment: a single ED25519 key with no organizational context.
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSshKey
-metadata:
-  name: my-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudSshKey.my-key
-spec:
-  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleKeyData user@host"
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `ssh_key_id` | Hetzner Cloud numeric ID of the SSH key | HetznerCloudServer `ssh_key_ids` field |
+| `fingerprint` | MD5 fingerprint of the public key | Key identification and verification |
 
-### Production Key with Org and Environment
+## Common Patterns
 
-A key scoped to a specific organization and environment. The metadata drives label generation for resource tracking.
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSshKey
-metadata:
-  name: prod-deploy-key
-  org: acme-corp
-  env: production
-  labels:
-    team: platform
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudSshKey.prod-deploy-key
-spec:
-  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIProdDeployKeyData deploy@acme-ci"
-```
+**Import existing key** -- Register a locally generated SSH public key for server injection. The most common pattern. Start from the **Import Public Key** preset.
 
-### Server Composition via valueFrom
+## Works With
 
-An SSH key referenced by a HetznerCloudServer using `valueFrom`. The server receives the key's numeric ID from the SSH key's stack outputs, establishing a dependency edge in the deployment DAG.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSshKey
-metadata:
-  name: web-key
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudSshKey.web-key
-spec:
-  publicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIWebKeyData web-deploy@acme"
-```
-
-The server references this key:
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: web-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.web-01
-spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
-  sshKeyIds:
-    - valueFrom:
-        kind: HetznerCloudSshKey
-        name: web-key
-        fieldPath: status.outputs.ssh_key_id
-```
-
-## Stack Outputs
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `ssh_key_id` | `string` | Hetzner Cloud numeric ID of the created SSH key. Referenced by HetznerCloudServer via `sshKeyIds`. |
-| `fingerprint` | `string` | MD5 fingerprint of the SSH public key (e.g., `"aa:bb:cc:dd:..."`). Computed by Hetzner Cloud from the uploaded key material. |
-
-## Related Components
-
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — References SSH key IDs for password-less access at server boot
-- [HetznerCloudFirewall](/docs/catalog/hetznercloud/firewall) — Commonly deployed alongside SSH keys to restrict SSH port access
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- servers reference this SSH key via `ssh_key_ids` for password-less access

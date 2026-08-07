@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	kuberneteskafkauiv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kuberneteskafkaui/v1alpha1"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"sigs.k8s.io/yaml"
@@ -373,10 +374,19 @@ func secretMappings(locals *Locals) map[string]interface{} {
 	return mappings
 }
 
+// passwordSecretSource abstracts the spec's two password-secret shapes —
+// the SASL message (KafkaUser-referencing) and the HTTP Basic message
+// (plain Secret reference) — which share the same {secret name, key}
+// surface. Both generated types satisfy it.
+type passwordSecretSource interface {
+	GetSecretName() *foreignkeyv1.StringValueOrRef
+	GetKey() string
+}
+
 // secretMapping renders one password_secret reference into the chart's
 // {name, keyName} mapping shape, resolving the key to the spec default
-// ("password" — the KubernetesKafkaUser credential-Secret layout).
-func secretMapping(passwordSecret *kuberneteskafkauiv1alpha1.KubernetesKafkaUiPasswordSecret) map[string]interface{} {
+// ("password" — both password-secret messages share that default).
+func secretMapping(passwordSecret passwordSecretSource) map[string]interface{} {
 	key := passwordSecret.GetKey()
 	if key == "" {
 		key = "password"

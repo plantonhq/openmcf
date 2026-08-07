@@ -1,9 +1,9 @@
 ---
 title: "Presets"
-description: "Ready-to-deploy configuration presets for Managed Redis Geo-Replication"
+description: "Ready-to-deploy configuration presets for Managed Redis Geo Replication"
 type: "preset-list"
 componentSlug: "managed-redis-geo-replication"
-componentTitle: "Managed Redis Geo-Replication"
+componentTitle: "Managed Redis Geo Replication"
 provider: "azure"
 icon: "package"
 order: 200
@@ -18,6 +18,6 @@ presets:
     excerpt: "This preset links four Managed Redis instances across continents into one active geo-replication group -- a write-anywhere global cache where every region serves local reads and writes and Azure..."
 ---
 
-# Managed Redis Geo-Replication Presets
+# Managed Redis Geo Replication Presets
 
-Ready-to-deploy configuration presets for Managed Redis Geo-Replication. Each preset is a complete manifest you can copy, customize, and deploy.
+Ready-to-deploy configuration presets for Managed Redis Geo Replication. Each preset is a complete manifest you can copy, customize, and deploy.

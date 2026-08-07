@@ -205,7 +205,7 @@ no automatic DAG edge. To order this EnvoyFilter relative to the workloads it pa
 declare the dependency on `metadata.relationships`
 (`depends_on` -> KubernetesDeployment).
 
-See `docs/README.md` for the full composability rationale and the escape-hatch posture.
+See `GUIDE.md` for the full composability rationale and the escape-hatch posture.
 
 ## Stack Outputs
 

@@ -8,133 +8,90 @@ componentName: "awslambda"
 
 # AWS Lambda
 
-Deploys an AWS Lambda function — zip archive from S3 or container image from ECR — with execution environment, VPC attachment, integrations, and function-scoped satellites (aliases, function URL, invoke permissions, async invoke config, recursion detection, runtime management) folded into the same spec. The function name is `metadata.name` (create-time immutable). Event sources attach through the separate `AwsLambdaEventSourceMapping` kind.
+Deploys a complete AWS Lambda function: the code source (an S3 zip archive or an ECR container image), the execution environment (memory, timeout, ephemeral storage, environment variables), VPC attachment with an optional EFS mount, and the function-scoped surface AWS models as separate resources but that are honestly part of the function's own configuration — aliases with canary traffic shifting and provisioned concurrency, the function URL, resource-policy invoke permissions, the asynchronous-invocation config, recursion detection, and runtime patch management. Event sources (SQS, Kinesis, DynamoDB Streams, Kafka) attach through the separate AwsLambdaEventSourceMapping Cloud Resource, which references this function.
 
 ## What Gets Created
 
-When you deploy an AwsLambda resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Lambda function** — an `aws_lambda_function` with exactly one code source (`spec.s3` zip or `spec.image_uri` container), the referenced execution role, and any configured satellites materialized as their own AWS resources (aliases, function URL, resource-policy permissions, async invoke config, provisioned concurrency on aliases)
-- **CloudWatch Logs** — when `logging_config` is unset, AWS creates and writes to `/aws/lambda/<function-name>` on first invoke (Planton does not pre-create a log group). Set `logging_config.log_group` to write into an `AwsCloudwatchLogGroup` you manage (retention, encryption, subscription filters)
+- **Lambda Function** -- configured with the specified code source, runtime or image, memory, timeout, architecture, and every environment setting in the spec
+- **Aliases** (when defined) -- one alias resource per entry, keyed by name, each optionally splitting traffic between two published versions and carrying provisioned concurrency
+- **Function URL** (when configured) -- the built-in HTTPS endpoint with its authorization mode and CORS rules
+- **Invoke Permissions** (when defined) -- one resource-policy statement per entry, keyed by statement ID
+- **Async Invocation Config** (when configured) -- retry, event-age, and success/failure destination settings
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically
 
-Planton never creates an execution IAM role or invoke permissions unless you declare them: `role_arn` references an existing `AwsIamRole`, and `invoke_permissions` lists the resource-policy statements you need.
+The function's **name comes from `metadata.name`** — create-time immutable in AWS. Its CloudWatch log group is AWS-created (`/aws/lambda/<function-name>`) unless `loggingConfig.logGroup` points at a log group you manage.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An IAM execution role** (`AwsIamRole`) trusting `lambda.amazonaws.com` with at minimum `AWSLambdaBasicExecutionRole` (add `AWSLambdaVPCAccessExecutionRole` for VPC attachment)
-- **A deployment artifact** — zip in S3 (`spec.s3`) or container image in ECR (`spec.image_uri`); exactly one, never both
-- **VPC subnets and security groups** (`AwsSubnet`, `AwsSecurityGroup`) only when the function needs private network access — both lists are required together
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `lambda.yaml`:
+### AWS Account
+
+- **An IAM execution role** trusting `lambda.amazonaws.com` with `AWSLambdaBasicExecutionRole` attached (add `AWSLambdaVPCAccessExecutionRole` for VPC attachment). Provide the ARN directly or reference an AwsIamRole Cloud Resource.
+- **A deployment artifact** -- a zip archive in an S3 bucket in the function's region, or a container image in ECR.
+- **VPC subnets and security groups** (optional) -- only when the function must reach private resources. Both travel together, and attachment removes default internet access (route through a NAT gateway to restore it).
+- **KMS keys** (optional) -- one for environment variables at rest (`kmsKeyArn`), one for the deployment package in S3 (`sourceKmsKeyArn`).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Lambda**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from a preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsLambda
 metadata:
-  name: my-function
+  name: payment-processor
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
-  role_arn:
-    valueFrom:
-      kind: AwsIamRole
-      name: lambda-exec
-      fieldPath: status.outputs.role_arn
-  runtime: nodejs22.x
-  handler: index.handler
+  region: us-east-1
+  roleArn:
+    value: "arn:aws:iam::123456789012:role/lambda-exec-role"
   s3:
     bucket:
       value: my-deploy-bucket
-    key: functions/my-function.zip
+    key: functions/payment-processor.zip
+  runtime: nodejs22.x
+  handler: index.handler
+  memorySizeMb: 512
+  timeoutSeconds: 30
 ```
-
-Deploy:
 
 ```shell
 planton apply -f lambda.yaml
 ```
 
-## Configuration Reference
+This creates the function from the S3 deployment package. A Stack Job tracks the provisioning and streams progress in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region (must match S3 bucket, VPC subnets, EFS access point). | Required; non-empty |
-| `role_arn` | `StringValueOrRef` | Execution role. Defaults to `AwsIamRole` → `status.outputs.role_arn`. | Required |
-| `s3` or `image_uri` | `object` / `string` | Exactly one code source. | CEL-enforced |
-| `runtime` | `string` | Managed runtime (e.g. `nodejs22.x`, `python3.13`). Required for zip; empty for container. | Conditional |
-| `handler` | `string` | Entrypoint for zip (e.g. `index.handler`). Required for zip; empty for container. | Conditional |
-| `s3.bucket` | `StringValueOrRef` | S3 bucket for the zip. Defaults to `AwsS3Bucket` → `status.outputs.bucket_id`. | Required with `s3` |
-| `s3.key` | `string` | Object key for the zip archive. | Required with `s3` |
-
-### Common Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Console description (max 256 characters). |
-| `memory_size_mb` | `int32` | 128 | Memory 128–10240 MB; CPU scales linearly. |
-| `timeout_seconds` | `int32` | 3 | Max invocation time 1–900 seconds. |
-| `architecture` | `string` | `x86_64` | `x86_64` or `arm64`. |
-| `environment` | `map<string,string>` | — | Plain config vars (not for secrets). |
-| `kms_key_arn` | `StringValueOrRef` | AWS-managed | Encrypts environment variables at rest. |
-| `subnet_ids` | `StringValueOrRef[]` | — | VPC subnets for ENIs; requires `security_group_ids`. |
-| `security_group_ids` | `StringValueOrRef[]` | — | Security groups for ENIs; requires `subnet_ids`. |
-| `layer_arns` | `StringValueOrRef[]` | — | Up to five layer version ARNs (zip only). |
-| `publish` | `bool` | `false` | Publish immutable version on each change (required for aliases, SnapStart). |
-| `reserved_concurrent_executions` | `int32` | unreserved pool | `0` throttles all invocations; positive reserves capacity. |
-| `logging_config` | `object` | AWS default on invoke | Log format, levels, and optional `log_group` ref. |
-| `aliases` | `object[]` | — | Named version pointers with optional canary routing and provisioned concurrency. |
-| `function_url` | `object` | — | Built-in HTTPS endpoint (`authorization_type` required). |
-| `invoke_permissions` | `object[]` | — | Resource-policy statements for services/accounts to invoke. |
-| `async_invoke_config` | `object` | — | Retry, event age, and on-success/on-failure destinations. |
-| `recursive_loop` | `string` | `Terminate` | `Allow` or `Terminate` for self-invocation loops. |
-| `runtime_management` | `object` | — | How runtime patches roll out (`Auto`, `FunctionUpdate`, `Manual`). |
-
-Event sources (SQS, Kinesis, DynamoDB Streams, MSK, self-managed Kafka) are **not** on this spec — use [AwsLambdaEventSourceMapping](/docs/catalog/aws/lambda-event-source-mapping).
-
-## Examples
-
-### Container Image
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the function to resources deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLambda
-metadata:
-  name: image-function
 spec:
-  region: us-west-2
-  role_arn:
-    value: arn:aws:iam::123456789012:role/lambda-exec
-  image_uri: 123456789012.dkr.ecr.us-west-2.amazonaws.com/my-func:latest
-  architecture: arm64
-  memory_size_mb: 512
-  timeout_seconds: 30
-```
-
-### VPC-Connected with Managed Log Group
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLambda
-metadata:
-  name: vpc-function
-spec:
-  region: us-west-2
-  role_arn:
+  roleArn:
     valueFrom:
       kind: AwsIamRole
-      name: lambda-vpc
+      name: lambda-exec-role
       fieldPath: status.outputs.role_arn
-  runtime: python3.13
-  handler: app.handler
   s3:
     bucket:
-      value: deploy-artifacts
-    key: functions/vpc-function.zip
-  subnet_ids:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: lambda-artifacts
+        fieldPath: status.outputs.bucket_id
+  subnetIds:
     - valueFrom:
         kind: AwsSubnet
         name: private-a
@@ -143,72 +100,84 @@ spec:
         kind: AwsSubnet
         name: private-b
         fieldPath: status.outputs.subnet_id
-  security_group_ids:
+  securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
         name: lambda-sg
         fieldPath: status.outputs.security_group_id
-  logging_config:
-    log_format: JSON
-    log_group:
-      valueFrom:
-        kind: AwsCloudwatchLogGroup
-        name: lambda-logs
-        fieldPath: status.outputs.log_group_name
-```
-
-### Aliases and Function URL
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLambda
-metadata:
-  name: api-function
-spec:
-  region: us-west-2
-  role_arn:
+  kmsKeyArn:
     valueFrom:
-      kind: AwsIamRole
-      name: lambda-exec
-      fieldPath: status.outputs.role_arn
-  runtime: nodejs22.x
-  handler: index.handler
-  s3:
-    bucket:
-      value: deploy-bucket
-    key: api.zip
-  publish: true
-  aliases:
-    - name: live
-      function_version: "1"
-  function_url:
-    authorization_type: AWS_IAM
-  invoke_permissions:
-    - statement_id: allow-events
-      principal: events.amazonaws.com
-      source_arn: arn:aws:events:us-west-2:123456789012:rule/my-rule
+      kind: AwsKmsKey
+      name: lambda-env-key
+      fieldPath: status.outputs.key_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the referenced resources first, then provisions the function with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `function_arn` | `string` | Function ARN — join key for event-source mappings and IAM policies |
-| `function_name` | `string` | Function name (matches `metadata.name`) |
-| `invoke_arn` | `string` | API Gateway–shaped invocation ARN |
-| `qualified_arn` | `string` | Qualified ARN of the latest published version (empty when `publish` is false) |
-| `version` | `string` | Latest published version number (empty when `publish` is false) |
-| `function_url` | `string` | HTTPS endpoint (empty when no function URL configured) |
-| `alias_arns` | `map<string,string>` | Alias name → alias ARN |
-| `log_group_name` | `string` | Log group receiving function logs (AWS default or `logging_config.log_group`) |
+These are the most important decisions when configuring AWS Lambda. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Code source** -- Exactly one of `s3` (a zip archive, with `runtime` and `handler` required) or `imageUri` (an ECR image carrying its own runtime and entrypoint; `imageConfig` can override the entrypoint without rebuilding). S3 zip is the right default for most services; images suit heavy dependency trees (up to 10 GB).
 
-- [AwsIamRole](/docs/catalog/aws/iam-role) — execution role (required prerequisite)
-- [AwsLambdaEventSourceMapping](/docs/catalog/aws/lambda-event-source-mapping) — SQS, Kinesis, DynamoDB Streams, MSK event sources
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — hosts zip deployment packages
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — managed log destination when you need retention or encryption
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — encrypts environment variables at rest
-- [AwsSubnet](/docs/catalog/aws/subnet) / [AwsSecurityGroup](/docs/catalog/aws/security-group) — VPC attachment for private resources
+**Memory buys CPU** -- `memorySizeMb` (128–10240) is Lambda's only sizing dial: CPU and network scale linearly with it, and a full vCPU arrives around 1769 MB. For CPU-bound code, a larger size often costs less overall by finishing sooner.
+
+**Architecture** -- Empty keeps the AWS default (`x86_64`). Set `arm64` for ~20% better price-performance when your runtime and native dependencies support Graviton.
+
+**VPC attachment travels as a unit** -- `subnetIds` and `securityGroupIds` go together, and the optional `fileSystemConfig` (EFS) requires them. Attachment removes default internet access.
+
+**The deploy model** -- Enable `publish` to freeze an immutable version on every change, then define `aliases` (e.g. `live`) as the stable invocation targets. Repointing an alias ships or rolls back without touching callers; a canary weight splits an alias's traffic with one additional version. `snapStart` (JVM cold-start elimination) applies to published versions only.
+
+**Reserved concurrency is tri-state** -- Unset draws from the account pool; a positive value is both a guarantee and a ceiling; an explicit `0` throttles every invocation — the operational kill switch.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** | `roleArn` | `status.outputs.role_arn` |
+| **AwsS3Bucket** | `s3.bucket` | `status.outputs.bucket_id` |
+| **AwsKmsKey** (optional) | `kmsKeyArn`, `sourceKmsKeyArn` | `status.outputs.key_arn` |
+| **AwsSubnet** (optional) | `subnetIds` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsSqsQueue** (optional) | `deadLetterTargetArn`, `asyncInvokeConfig.*DestinationArn` | `status.outputs.queue_arn` |
+| **AwsEfsAccessPoint** (optional) | `fileSystemConfig.accessPointArn` | `status.outputs.access_point_arn` |
+| **AwsCloudwatchLogGroup** (optional) | `loggingConfig.logGroup` | `status.outputs.log_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `function_arn` | The function ARN | Event source mappings, trigger configs, IAM policies |
+| `function_name` | The function name | SDK invoke calls, CLI commands, CloudWatch alarms |
+| `invoke_arn` | The apigateway-shaped invocation ARN | API Gateway integrations |
+| `qualified_arn` | ARN of the most recently published version | Version-pinned invocation (empty when publish is off) |
+| `version` | The most recently published version number | Alias definitions, deploy automation |
+| `function_url` | The HTTPS endpoint | Webhook registration (empty when no URL is configured) |
+| `alias_arns` | Alias ARNs keyed by alias name | Stable invocation targets, e.g. `status.outputs.alias_arns.live` |
+| `log_group_name` | The CloudWatch log group receiving the logs | Log subscriptions, metric filters |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Zip-based event handler** -- S3 code source, a current runtime, explicit sizing, and a failure destination on the async config. The standard configuration for API endpoints, webhook handlers, and queue workers.
+
+**Container-based function** -- ECR image code source for functions with large dependency trees or image-standardized build pipelines.
+
+**Traffic-shifted production service** -- `publish` on, a `live` alias with a canary weight for progressive rollouts, and provisioned concurrency on the steady alias when cold starts matter.
+
+## Works With
+
+- [**AWS Lambda Event Source Mapping**](/cloud-catalog/aws-lambda-event-source-mapping) -- wires SQS queues, Kinesis/DynamoDB streams, and Kafka topics into this function
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the execution role
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- holds the zip deployment package
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides subnets for VPC-attached functions
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls network access for the function's ENIs
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- encrypts environment variables and the deployment artifact
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- receives dead-letter and async failure records
+- [**AWS Elastic File System**](/cloud-catalog/aws-elastic-file-system) -- durable shared storage mounted into the execution environment
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- a managed destination for the function's logs

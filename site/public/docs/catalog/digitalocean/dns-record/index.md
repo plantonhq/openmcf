@@ -6,225 +6,117 @@ order: 100
 componentName: "digitaloceandnsrecord"
 ---
 
-# DigitalOcean DNS Record
+# DNS Record on DigitalOcean
 
-Creates a single DNS record within an existing DigitalOcean DNS zone (domain). The component supports A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA record types, with type-specific fields for priority, weight, port, flags, and tag applied conditionally based on the record type.
+Creates a single DNS record within an existing DigitalOcean DNS zone. Supports A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA record types, with type-specific fields for priority, weight, port, flags, and tag applied conditionally. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for DNS zone and target dependency wiring.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanDnsRecord resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Record** — a single `digitalocean_record` resource in the specified domain with the configured type, name, value, and TTL
-- **Type-Specific Attributes** — `priority` is set for MX and SRV records; `weight` and `port` are set for SRV records; `flags` and `tag` are set for CAA records. These attributes are omitted for inapplicable record types.
+- **DNS Record** -- a `digitalocean_record` resource in the specified domain with the configured type, name, value, and TTL
+- **Type-Specific Attributes** -- `priority` is set for MX and SRV records; `weight` and `port` are set for SRV records; `flags` and `tag` are set for CAA records; all are omitted for inapplicable record types
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **An existing DigitalOcean DNS zone (domain)** managed by DigitalOcean's DNS service. The `domain` field can reference a DigitalOceanDnsZone resource via `valueFrom`.
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `dns-record.yaml`:
+### DigitalOcean Account
+
+- **An existing DigitalOcean DNS zone (domain)** managed by DigitalOcean's DNS service. Provide the domain name directly or reference a DigitalOceanDnsZone Cloud Resource via ValueFromRef.
+- **A valid record value** matching the record type: an IPv4 address for A records, a hostname for CNAME records, a mail server for MX records, etc.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Record on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **A Record** preset in the [Presets](#presets) tab to point a hostname to an IP address.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digital-ocean.planton.dev/v1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanDnsRecord.www-a-record
+  org: acme-corp
+  env: prod
 spec:
   domain:
     value: "example.com"
-  name: "www"
+  name: www
   type: A
   value:
     value: "192.0.2.1"
   ttlSeconds: 3600
 ```
-
-Deploy:
 
 ```shell
 planton apply -f dns-record.yaml
 ```
 
-This creates an A record pointing `www.example.com` to `192.0.2.1` with a one-hour TTL.
+This creates an A record pointing `www.example.com` to `192.0.2.1` with a one-hour TTL. No MX, SRV, or CAA-specific fields are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domain` | `StringValueOrRef` | The DigitalOcean domain name (DNS zone) where the record will be created. Can reference a DigitalOceanDnsZone resource via `valueFrom` (default field path: `status.outputs.zone_name`). | Required |
-| `name` | `string` | Hostname or subdomain for the record. Use `@` for root domain records, or specify the subdomain (e.g., `www`, `api.v1`). | Required |
-| `type` | `enum` | DNS record type. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `NS`, `CAA`. | Required, must not be `record_type_unspecified` |
-| `value` | `StringValueOrRef` | The record value. Format depends on type: IPv4 address for A, IPv6 for AAAA, target hostname for CNAME/MX/NS/SRV, text string for TXT, CA domain for CAA. Can reference another resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ttlSeconds` | `int32` | `1800` | Time to live in seconds. Determines how long resolvers cache the record. Range: 30--86400. |
-| `priority` | `int32` | `0` | Priority for MX and SRV records. Lower values indicate higher priority. Range: 0--65535. Ignored for other record types. |
-| `weight` | `int32` | `0` | Relative weight for SRV records with the same priority. Higher values receive proportionally more traffic. Range: 0--65535. Ignored for non-SRV types. |
-| `port` | `int32` | — | TCP or UDP port for SRV records. Range: 0--65535. Required when `type` is `SRV`. Ignored for other types. |
-| `flags` | `int32` | `0` | Flags for CAA records. `0` = non-critical (CA may ignore unknown tags), `128` = critical (CA must refuse if tag is unknown). Range: 0--255. Ignored for non-CAA types. |
-| `tag` | `string` | — | Property tag for CAA records: `issue` (authorize CA), `issuewild` (authorize wildcard), or `iodef` (violation reporting URL). Required when `type` is `CAA`. Ignored for other types. |
-
-### Cross-Field Validation
-
-The protobuf schema enforces two cross-field rules:
-
-- `port` must be greater than 0 when `type` is `SRV`.
-- `tag` must be non-empty when `type` is `CAA`.
-
-## Examples
-
-### A Record
-
-Points a subdomain to an IPv4 address:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the record to a DNS zone deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: www-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsRecord.www-a-record
-spec:
-  domain:
-    value: "example.com"
-  name: "www"
-  type: A
-  value:
-    value: "192.0.2.1"
-  ttlSeconds: 3600
-```
-
-### CNAME Record
-
-Creates an alias from one hostname to another:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: blog-cname
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsRecord.blog-cname
-spec:
-  domain:
-    value: "example.com"
-  name: "blog"
-  type: CNAME
-  value:
-    value: "www.example.com."
-  ttlSeconds: 3600
-```
-
-### MX Record with Priority
-
-Routes email to a mail server with explicit priority:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: mail-mx
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsRecord.mail-mx
-spec:
-  domain:
-    value: "example.com"
-  name: "@"
-  type: MX
-  value:
-    value: "mail.example.com."
-  ttlSeconds: 3600
-  priority: 10
-```
-
-### CAA Record
-
-Restricts which certificate authorities may issue certificates for the domain:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: caa-letsencrypt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsRecord.caa-letsencrypt
-spec:
-  domain:
-    value: "example.com"
-  name: "@"
-  type: CAA
-  value:
-    value: "letsencrypt.org"
-  ttlSeconds: 3600
-  flags: 0
-  tag: "issue"
-```
-
-### Domain Reference with valueFrom
-
-Uses a `valueFrom` reference to resolve the domain from a DigitalOceanDnsZone resource instead of specifying it inline:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: api-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDnsRecord.api-a-record
 spec:
   domain:
     valueFrom:
       kind: DigitalOceanDnsZone
-      name: prod-zone
+      name: example-zone
       fieldPath: status.outputs.zone_name
-  name: "api"
-  type: A
-  value:
-    value: "198.51.100.10"
-  ttlSeconds: 300
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the DNS zone first, then provisions the DNS record within it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `record_id` | `string` | Unique identifier of the created DNS record in DigitalOcean |
-| `hostname` | `string` | Fully qualified hostname (e.g., `www.example.com` or `example.com` for root records) |
-| `record_type` | `string` | DNS record type that was created (`A`, `AAAA`, `CNAME`, etc.) |
-| `domain` | `string` | Domain name (DNS zone) where the record was created |
-| `ttl_seconds` | `int32` | TTL in seconds applied to the record |
+These are the most important decisions when configuring a DNS record. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Record type** -- The `type` field determines the DNS record type. A and AAAA resolve to IP addresses. CNAME creates an alias to another hostname (cannot be used on the root domain `@` on DigitalOcean). MX routes mail to a specified server. TXT stores arbitrary text (SPF, DKIM, domain verification). SRV and CAA have additional required fields.
 
-- [DigitalOceanDnsZone](/docs/catalog/digitalocean/dns-zone) -- provides the domain (DNS zone) in which records are created
-- [DigitalOceanDroplet](/docs/catalog/digitalocean/droplet) -- provisions Droplets whose IP addresses can be used as A/AAAA record values
-- [DigitalOceanLoadBalancer](/docs/catalog/digitalocean/load-balancer) -- provisions load balancers whose IPs or hostnames can serve as record targets
+**TTL** -- The `ttlSeconds` field controls how long DNS resolvers cache this record, defaulting to 1800 seconds (30 minutes). Use lower values (60-300) during migrations or when records change frequently, and higher values (3600-86400) for stable production records.
+
+**Type-specific fields** -- MX records require `priority` (lower values = higher priority). SRV records require `priority`, `weight`, and `port`. CAA records require `flags` and `tag` (`issue`, `issuewild`, or `iodef`). The protobuf schema enforces these cross-field constraints at validation time.
+
+**Value references** -- The `value` field supports ValueFromRef, allowing you to reference outputs from other Cloud Resources (e.g., a Droplet's IP address or a Load Balancer's hostname) instead of hardcoding values.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **DigitalOceanDnsZone** | `domain` | `status.outputs.zone_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `record_id` | Unique identifier of the DNS record in DigitalOcean | API operations, record management |
+| `hostname` | Fully qualified hostname (e.g., `www.example.com`) | Application configuration, health check targets |
+| `record_type` | DNS record type that was created (A, CNAME, etc.) | Audit logs, inventory tracking |
+| `domain` | Domain name (DNS zone) where the record was created | Cross-referencing with zone management |
+| `ttl_seconds` | TTL in seconds applied to the record | Cache behavior verification |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**A record** -- Points a hostname to an IPv4 address with a one-hour TTL. Use for root domain or subdomain records targeting Droplets, Load Balancers, or external IP addresses. Start from the **A Record** preset.
+
+**CNAME record** -- Aliases a subdomain to another hostname. Common for `www` pointing to the root domain, subdomains pointing to CDN origins, or third-party service integrations. Start from the **CNAME Record** preset.
+
+## Works With
+
+- [**DNS Zone on DigitalOcean**](/cloud-catalog/digital-ocean-dns-zone) -- provides the domain (DNS zone) in which records are created

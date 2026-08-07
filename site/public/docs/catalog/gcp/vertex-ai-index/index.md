@@ -8,210 +8,127 @@ componentName: "gcpvertexaiindex"
 
 # GCP Vertex AI Index
 
-Deploys a GCP Vertex AI Vector Search index — the managed data structure that holds embedding vectors and answers nearest-neighbor queries for semantic search, recommendations, and RAG retrieval. Configure the search geometry (dimensions, algorithm, distance measure, sharding), pick a batch or streaming update regime, and optionally point at initial vector data in Cloud Storage. Serving queries is a separate step: deploy the index onto a `GcpVertexAiIndexEndpoint` with a `GcpVertexAiDeployedIndex`.
+Deploys a Vertex AI Vector Search index: the data structure that holds embedding vectors and answers nearest-neighbor queries. The index is the first resource of the vector-search trio — a GcpVertexAiIndexEndpoint provides the serving surface and a GcpVertexAiDeployedIndex places the index onto it, after which queries can be served. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-When you deploy a GcpVertexAiIndex resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Vector Search Index** — a `google_vertex_ai_index` resource in the specified region, labeled with your `labels` merged beneath the platform's attribution labels
-- **API Enablement** — the Vertex AI API (`aiplatform.googleapis.com`) is enabled in the target project (never disabled on destroy)
+- **Vertex AI Index** -- a regional Vector Search index with the configured embedding geometry (dimensions, distance measure, normalization, shard size)
+- **Nearest-Neighbor Algorithm** -- tree-AH approximate search (tuned or GCP-default) or brute-force exact search, chosen by which algorithm block the spec carries; omitting both applies GCP's default tree-AH tuning
+- **Initial Data Load** -- when `contentsDeltaUri` points at a Cloud Storage directory, GCP builds the index from those files on the first deploy; otherwise an empty index is created (the norm for stream-update regimes)
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A Cloud Storage directory of vector files** if seeding initial data via `contentsDeltaUri` (format: https://cloud.google.com/vertex-ai/docs/vector-search/setup/format-structure)
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `index.yaml`:
+### GCP Project
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiIndex
-metadata:
-  name: product-embeddings
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiIndex.product-embeddings
-spec:
-  location: us-central1
-  displayName: Product Embeddings
-  indexUpdateMethod: STREAM_UPDATE
-  config:
-    dimensions: 768
-    approximateNeighborsCount: 150
-    treeAhConfig: {}
-```
+- **A GCP project** where the index will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Vertex AI API** enabled in the target project.
+- **Embedding model decided** -- the index's dimensions and distance measure must match the embedding model's output exactly, and both are immutable.
+- **Data format** (batch loads) -- vector files in Cloud Storage laid out per GCP's Vector Search format, in the same region.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f index.yaml
-```
+### Console
 
-This creates an empty streaming index in the provider's default project, ready for vector upserts via the Vertex AI API. Creation of an empty streaming index takes a few minutes; large batch builds can take hours.
+Open the deployment store, find **GCP Vertex AI Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Streaming Tree-AH** preset in the [Presets](#presets) tab for a production-shaped streaming index.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `location` | `string` | Region for the index (e.g., `us-central1`). Deployed indexes must live in the same region. Immutable. | Required, min length 1 |
-| `displayName` | `string` | Human-readable name for the index (the numeric resource ID is GCP-assigned). Mutable. | Required, 1-128 characters |
-| `config` | `object` | Vector-search geometry. The whole block is immutable. | Required |
-| `config.dimensions` | `int32` | The embedding model's output size (e.g., 768). | Required, >= 1 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the index is created. Can reference a GcpProject resource via `valueFrom`. |
-| `description` | `string` | `""` | Description of the index. Mutable. |
-| `indexUpdateMethod` | `string` | `BATCH_UPDATE` | `BATCH_UPDATE` (bulk rebuilds from Cloud Storage) or `STREAM_UPDATE` (near-real-time upserts via the API). Immutable. |
-| `contentsDeltaUri` | `string` | — | Cloud Storage DIRECTORY holding initial/delta vector data (`gs://bucket/path/`). May be set later to load data. Changes travel in their own single-field update; GCP never reports the value back on read. |
-| `isCompleteOverwrite` | `bool` | `false` | When an update carries `contentsDeltaUri`: `true` replaces the whole index contents, `false` applies the files as a delta. |
-| `config.approximateNeighborsCount` | `int32` | — | Candidates fetched by approximate search before exact reordering. Required when `treeAhConfig` is set. |
-| `config.shardSize` | `string` | GCP picks | `SHARD_SIZE_SMALL` (2 GB), `SHARD_SIZE_MEDIUM` (20 GB), or `SHARD_SIZE_LARGE` (50 GB). Determines which machine types can serve the index. Immutable. |
-| `config.distanceMeasureType` | `string` | `DOT_PRODUCT_DISTANCE` | `SQUARED_L2_DISTANCE`, `L1_DISTANCE`, `COSINE_DISTANCE`, or `DOT_PRODUCT_DISTANCE`. Match the embedding model's training. |
-| `config.featureNormType` | `string` | `NONE` | `UNIT_L2_NORM` or `NONE`. Unit-normalized vectors with dot-product distance rank like cosine similarity. |
-| `config.treeAhConfig` | `object` | — | Tree-AH approximate search (the production choice for large corpora). Mutually exclusive with `bruteForceConfig`. |
-| `config.treeAhConfig.leafNodeEmbeddingCount` | `int32` | `1000` | Embeddings per leaf node. |
-| `config.treeAhConfig.leafNodesToSearchPercent` | `int32` | `10` | Percent of leaves any query may search, 1-100. Raises recall at the cost of latency. |
-| `config.bruteForceConfig` | `object` | — | Exact (exhaustive) search: perfect recall, linear cost. For small corpora and ground-truth evaluation. Mutually exclusive with `treeAhConfig`. |
-| `labels` | `map(string)` | `{}` | User labels for cost attribution and ownership; merged beneath platform labels. Mutable. |
-
-## Examples
-
-### Streaming Index for RAG Retrieval
-
-Near-real-time upserts with cosine-equivalent ranking:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiIndex
-metadata:
-  name: rag-chunks
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiIndex.rag-chunks
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  displayName: RAG Document Chunks
-  indexUpdateMethod: STREAM_UPDATE
-  config:
-    dimensions: 1536
-    approximateNeighborsCount: 150
-    distanceMeasureType: DOT_PRODUCT_DISTANCE
-    featureNormType: UNIT_L2_NORM
-    shardSize: SHARD_SIZE_MEDIUM
-    treeAhConfig:
-      leafNodeEmbeddingCount: 1000
-      leafNodesToSearchPercent: 10
-```
-
-### Batch Index Built from Cloud Storage
-
-Bulk-built from a directory of embedding files:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiIndex
 metadata:
   name: catalog-embeddings
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiIndex.catalog-embeddings
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
+    value: "acme-prod-12345"
   location: us-central1
-  displayName: Catalog Embeddings
-  contentsDeltaUri: gs://ml-embeddings/catalog/
-  config:
-    dimensions: 768
-    approximateNeighborsCount: 100
-    treeAhConfig: {}
-```
-
-### Brute-Force Ground-Truth Index
-
-Exact search for measuring an approximate index's recall:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiIndex
-metadata:
-  name: eval-ground-truth
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiIndex.eval-ground-truth
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  displayName: Eval Ground Truth
-  contentsDeltaUri: gs://ml-embeddings/eval-sample/
-  config:
-    dimensions: 768
-    bruteForceConfig: {}
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources for composable infrastructure:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiIndex
-metadata:
-  name: composed-index
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: ml-platform
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiIndex.composed-index
-spec:
-  projectId:
-    valueFrom:
-      kind: GcpProject
-      name: ml-project
-      fieldPath: status.outputs.project_id
-  location: us-central1
-  displayName: Composed Vector Index
+  displayName: product-catalog-embeddings
   indexUpdateMethod: STREAM_UPDATE
   config:
     dimensions: 768
     approximateNeighborsCount: 150
+    distanceMeasureType: DOT_PRODUCT_DISTANCE
+    featureNormType: UNIT_L2_NORM
     treeAhConfig: {}
 ```
 
-## Stack Outputs
+```shell
+planton apply -f vertex-index.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+A Stack Job tracks the provisioning in real time.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `index_id` | `string` | Fully qualified index resource path: `projects/{project}/locations/{location}/indexes/{indexId}` — the value a `GcpVertexAiDeployedIndex` passes as its `index` reference |
-| `index_name` | `string` | The GCP-assigned numeric index ID (the last path segment of `index_id`) |
-| `metadata_schema_uri` | `string` | Cloud Storage URI of the YAML schema describing index-type-specific metadata |
-| `create_time` | `string` | RFC3339 timestamp of when the index was created |
-| `update_time` | `string` | RFC3339 timestamp of when the index was last updated |
+### InfraChart
 
-## Related Components
+When deploying the full vector-search composition, deploy the index (and endpoint) before the deployment that joins them:
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project for the index
-- [GcpVertexAiIndexEndpoint](/docs/catalog/gcp/vertex-ai-index-endpoint) — the serving surface the index deploys onto
-- [GcpVertexAiDeployedIndex](/docs/catalog/gcp/vertex-ai-deployed-index) — places this index onto an index endpoint for querying
-- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — holds the embedding files referenced by `contentsDeltaUri`
+```yaml
+# In a GcpVertexAiDeployedIndex spec:
+index:
+  valueFrom:
+    kind: GcpVertexAiIndex
+    name: catalog-embeddings
+    fieldPath: status.outputs.index_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the index first, then the deployment that serves it.
+
+## Key Configuration
+
+These are the most important decisions when configuring an index. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Geometry** -- `config.dimensions` (required) is the embedding model's output size; `distanceMeasureType` must match how the model was trained (blank keeps GCP's dot-product default). The ENTIRE config block is immutable — changing any of it recreates the index.
+
+**Algorithm** -- `treeAhConfig` (approximate, the production choice) and `bruteForceConfig` (exact, for small corpora and ground truth) are mutually exclusive; omitting both applies GCP's default tree-AH tuning. `approximateNeighborsCount` is required whenever tree-AH is configured.
+
+**Update regime** -- `indexUpdateMethod` is immutable: `BATCH_UPDATE` (bulk rebuilds from Cloud Storage, GCP's default) or `STREAM_UPDATE` (near-real-time upserts at a higher cost per GB).
+
+**Data source** -- `contentsDeltaUri` points at a Cloud Storage DIRECTORY (not file). It is write-only on read and travels in its own single-field update, so out-of-band data loads show as a one-field diff on the next plan — expected, not drift.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `index_id` | Fully qualified index path (`projects/{p}/locations/{l}/indexes/{id}`) | The exact value a GcpVertexAiDeployedIndex's `index` join consumes |
+| `index_name` | The GCP-assigned numeric index ID | Display, logging |
+| `metadata_schema_uri` | Cloud Storage URI of the index's metadata schema | Tooling that inspects index metadata |
+| `create_time` | RFC3339 creation timestamp | Audit |
+| `update_time` | RFC3339 last-update timestamp | Data-freshness checks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Streaming tree-AH** -- A stream-update index with tuned tree-AH for production corpora that must reflect writes within seconds. Start from the **Streaming Tree-AH** preset.
+
+**Batch from Cloud Storage** -- A batch-update index built from embedding files in a GCS directory, with explicit shard sizing for predictable serving machine types. Start from the **Batch From GCS** preset.
+
+**Brute-force evaluation** -- An exact-search twin used to measure a production index's recall against ground truth. Start from the **Brute Force Eval** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the index is created
+- [**GCP Vertex AI Index Endpoint**](/cloud-catalog/gcp-vertex-ai-index-endpoint) -- the serving surface this index is deployed onto
+- [**GCP Vertex AI Deployed Index**](/cloud-catalog/gcp-vertex-ai-deployed-index) -- joins this index to an endpoint via `index`; the final resource that makes queries servable
+- [**GCP GCS Bucket**](/cloud-catalog/gcp-gcs-bucket) -- holds the vector data files a batch index loads from (compose the bucket name into `contentsDeltaUri`)

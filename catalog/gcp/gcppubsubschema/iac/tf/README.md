@@ -11,13 +11,13 @@ The module enables the Pub/Sub API with `disable_on_destroy=false` so a fresh pr
 ## Usage with Planton CLI
 
 ```shell
-planton tofu init --manifest ../hack/manifest.yaml --module-dir .
-planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
-planton tofu apply --manifest ../hack/manifest.yaml --module-dir . --auto-approve
-planton tofu destroy --manifest ../hack/manifest.yaml --module-dir . --auto-approve
+planton tofu init --manifest ../../e2e/manifest.yaml --module-dir .
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
+planton tofu apply --manifest ../../e2e/manifest.yaml --module-dir . --auto-approve
+planton tofu destroy --manifest ../../e2e/manifest.yaml --module-dir . --auto-approve
 ```
 
-Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../../e2e/manifest.yaml`.
 
 ## Module Layout
 

@@ -8,266 +8,154 @@ componentName: "awss3bucket"
 
 # AWS S3 Bucket
 
-Deploys an Amazon S3 bucket with its complete behavioral surface: versioning, default encryption, public-access posture, bucket policy, lifecycle management, replication, static website hosting, server access logging, CORS, event notifications, Object Lock, transfer acceleration, requester pays, and Intelligent-Tiering archive configurations.
+Deploys an S3 bucket with its full behavioral surface folded into one document: public-access guards, object ownership, bucket policy, versioning and Object Lock, default encryption, lifecycle rules and Intelligent-Tiering archive, replication, static website hosting, CORS, access logging, event notifications, and the transfer/cost knobs. New buckets are private by default — all four public-access guards on, ACLs disabled, every object encrypted.
 
 ## What Gets Created
 
-When you deploy an AwsS3Bucket resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **S3 Bucket** — the bucket itself, named from `metadata.name` (immutable, globally unique), with identity tags
-- **Public Access Block** — always configured; ALL four guards enabled unless `publicAccessBlock` explicitly relaxes them
-- **Ownership Controls** — `BucketOwnerEnforced` (ACLs disabled) unless `objectOwnership` overrides it, plus an optional canned ACL when ACLs are re-enabled
-- **Bucket Policy** — when `policy` is provided
-- **Versioning** — when `versioningStatus` is set
-- **Server-Side Encryption** — when `encryption` is set (otherwise AWS's own SSE-S3 default applies); supports SSE-S3, SSE-KMS, DSSE-KMS, and the S3 Bucket Key
-- **Lifecycle Configuration** — transitions, expiration, noncurrent-version handling, and multipart-upload cleanup, when `lifecycleRules` are provided
-- **Replication Configuration** — cross-region or same-region rules with RTC, replica KMS, and cross-account ownership translation, when `replication` is provided
-- **Website Configuration** — website or redirect mode with routing rules, when `website` is provided
-- **Access Logging** — when `logging` is provided, with optional partitioned log-object keys
-- **CORS Configuration** — when `corsRules` are provided
-- **Event Notifications** — EventBridge and/or Lambda/SQS/SNS targets, when `notification` is provided
-- **Object Lock Default Retention** — when `objectLockDefaultRetention` is provided (requires `objectLockEnabled`)
-- **Transfer Acceleration / Requester Pays / Intelligent-Tiering configurations** — when their fields are set
+- **S3 Bucket** — named after the resource (bucket names are immutable and globally unique across all AWS accounts)
+- **Bucket-scoped configurations** — only the blocks the spec sets: versioning state, default encryption, public-access block, ownership controls, bucket policy, lifecycle rules, replication configuration, website configuration, logging, CORS, notifications, Object Lock default retention, Intelligent-Tiering archive configurations, acceleration, and request-payer
+- **AWS Tags** — resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-Both engines (Terraform/OpenTofu and Pulumi) implement the same contract with identical stack outputs.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A KMS key** (or `AwsKmsKey` resource) if using SSE-KMS/DSSE-KMS
-- **An IAM role and a versioned destination bucket** if configuring replication
-- **Delivery permission on the target** (queue policy / topic policy / Lambda invoke permission) before configuring SQS/SNS/Lambda notifications — the EventBridge arm needs no such grant
+- **AWS Provider Connection** — an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `bucket.yaml`:
+- **A KMS key** (optional) — for SSE-KMS default encryption or replica encryption. Reference an AwsKmsKey Cloud Resource or pass a key ARN.
+- **A replication role and destination buckets** (only for replication) — an IAM role trusting `s3.amazonaws.com` with read access here and replicate permissions on every destination; versioning must be Enabled on the source and every destination.
+- **Notification targets with delivery grants** (only for eventing) — SQS/SNS/Lambda targets must permit `s3.amazonaws.com` BEFORE the notification is configured (queue/topic policy or Lambda resource permission — AwsLambda's `invoke_permissions` models the Lambda side). The EventBridge arm needs no grant.
+- **A log-delivery bucket** (only for access logging) — same region, never the bucket itself; under BucketOwnerEnforced ownership it needs a policy granting `logging.s3.amazonaws.com`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS S3 Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Encrypted**, **Public Static Website**, or **Log Archive Lifecycle** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsS3Bucket
 metadata:
-  name: my-bucket
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsS3Bucket.my-bucket
+  name: acme-app-artifacts
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
+  versioningStatus: Enabled
 ```
-
-Deploy:
 
 ```shell
-planton apply -f bucket.yaml
+planton apply -f s3-bucket.yaml
 ```
 
-This creates a fully private bucket in `us-east-1`: all four public-access guards on, ACLs disabled, AWS-default SSE-S3 encryption.
+This creates a fully private, versioned bucket — all four public-access guards on, ACLs disabled, SSE-S3 encryption by AWS default. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the bucket will be created (e.g., `us-west-2`). | Required; non-empty |
-
-### Bucket Root
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `forceDestroy` | `bool` | `false` | Delete all objects (including versions) when destroying the bucket. |
-| `objectLockEnabled` | `bool` | `false` | Enable Object Lock (WORM). Immutable after creation; requires `versioningStatus: Enabled`. |
-
-### Versioning and Encryption
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `versioningStatus` | `string` | unversioned | `Enabled` or `Suspended`. Enabled buckets can never return to unversioned. |
-| `encryption.sseAlgorithm` | `string` | AWS default (SSE-S3) | `AES256`, `aws:kms`, or `aws:kms:dsse`. |
-| `encryption.kmsKeyId` | `string \| valueFrom` | AWS-managed `aws/s3` key | Customer-managed KMS key for the KMS algorithms. References `AwsKmsKey`. |
-| `encryption.bucketKeyEnabled` | `bool` | `false` | S3 Bucket Key — cuts KMS request costs by up to 99%. |
-
-### Public Access, Ownership, and Policy
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `publicAccessBlock` | `object` | all four guards ON | Four independent guards: `blockPublicAcls`, `blockPublicPolicy`, `ignorePublicAcls`, `restrictPublicBuckets`. Absence = fully private. |
-| `objectOwnership` | `string` | `BucketOwnerEnforced` | `BucketOwnerPreferred` / `ObjectWriter` re-enable ACLs for legacy patterns. |
-| `acl` | `string` | — | Canned ACL; only valid when ownership re-enables ACLs (validated). |
-| `policy` | `object` | — | Bucket resource policy as a native YAML structure — the primary access-control surface. |
-
-### Lifecycle
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `transitionDefaultMinimumObjectSize` | `string` | `all_storage_classes_128K` (AWS default) or `varies_by_storage_class`. |
-| `lifecycleRules[].id` | `string` | Unique rule identifier. |
-| `lifecycleRules[].status` | `string` | `Enabled` (default) or `Disabled`. |
-| `lifecycleRules[].filter` | `object` | Scope: `prefix`, `tags`, `objectSizeGreaterThan`, `objectSizeLessThan` (AND-combined). Absent = whole bucket. |
-| `lifecycleRules[].transitions[]` | `object[]` | `{days XOR date, storageClass}` — STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE. |
-| `lifecycleRules[].expiration` | `object` | Exactly one of `days`, `date`, or `expiredObjectDeleteMarker`. |
-| `lifecycleRules[].noncurrentVersionTransitions[]` | `object[]` | `{noncurrentDays, newerNoncurrentVersions, storageClass}`. |
-| `lifecycleRules[].noncurrentVersionExpiration` | `object` | `{noncurrentDays, newerNoncurrentVersions}` — the essential cost control for versioned buckets. |
-| `lifecycleRules[].abortIncompleteMultipartUploadDays` | `int` | Days to abort failed multipart uploads (7 is a common choice). |
-
-### Replication
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `replication.roleArn` | `string \| valueFrom` | IAM role S3 assumes. References `AwsIamRole`. Required. |
-| `replication.rules[].destination.bucketArn` | `string \| valueFrom` | Destination bucket (must be versioned). References `AwsS3Bucket`. |
-| `replication.rules[].destination.account` | `string` | Destination account for cross-account replication. |
-| `replication.rules[].destination.storageClass` | `string` | Storage class for replicas (empty keeps source class). |
-| `replication.rules[].destination.replicaKmsKeyId` | `string \| valueFrom` | Destination KMS key; required when replicating SSE-KMS objects. |
-| `replication.rules[].destination.metricsEnabled` / `replicationTimeControlEnabled` | `bool` | Replication metrics / the 15-minute RTC SLA (RTC requires metrics — validated). |
-| `replication.rules[].filter` | `object` | `prefix` and/or `tags` scope. |
-| `replication.rules[].deleteMarkerReplication` | `bool` | Keep deletions in sync. |
-| `replication.rules[].existingObjectReplication` | `bool` | Replicate pre-existing objects (may require an AWS entitlement). |
-| `replication.rules[].replicateSseKmsEncryptedObjects` | `bool` | Include SSE-KMS objects (requires `replicaKmsKeyId` — validated). |
-
-### Website, Logging, CORS, Notifications
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `website.indexDocumentSuffix` / `errorDocumentKey` | `string` | Website mode (e.g., `index.html` / `error.html`). |
-| `website.redirectAllRequestsTo` | `object` | Redirect-bucket mode — mutually exclusive with website mode (validated). |
-| `website.routingRules[]` | `object[]` | Conditional redirects (`condition` + `redirect`). |
-| `logging.targetBucket` | `string \| valueFrom` | Log destination bucket (same region). References `AwsS3Bucket`. |
-| `logging.targetPrefix` | `string` | Log object key prefix. |
-| `logging.partitionedPrefixDateSource` | `string` | `EventTime` or `DeliveryTime` — Athena-friendly partitioned log keys. |
-| `corsRules[]` | `object[]` | `allowedMethods`, `allowedOrigins` (required), headers, `maxAgeSeconds`. |
-| `notification.eventbridge` | `bool` | Deliver all events to EventBridge (no permission setup needed). |
-| `notification.lambdaFunctions[]` / `queues[]` / `topics[]` | `object[]` | Targets by ARN or reference (`AwsLambda`, `AwsSqsQueue`, `AwsSnsTopic`) with `events` + key prefix/suffix filters. |
-
-### Object Lock, Acceleration, Requester Pays, Intelligent-Tiering
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `objectLockDefaultRetention` | `object` | `{mode: GOVERNANCE\|COMPLIANCE, days XOR years}`. COMPLIANCE is absolute until expiry. |
-| `accelerationStatus` | `string` | `Enabled` or `Suspended` — Transfer Acceleration. |
-| `requestPayer` | `string` | `BucketOwner` (default) or `Requester`. |
-| `intelligentTieringConfigurations[]` | `object[]` | Named archive configs: `{name, status, filterPrefix, filterTags, tiers: [{accessTier, days}]}` — ARCHIVE_ACCESS ≥ 90 days, DEEP_ARCHIVE_ACCESS ≥ 180 (validated). |
-
-## Examples
-
-### Private Versioned Bucket with KMS and Version Pruning
+When wiring KMS encryption or replication, use ValueFromRef to reference resources deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsS3Bucket
-metadata:
-  name: app-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsS3Bucket.app-data
 spec:
-  region: us-east-1
-  versioningStatus: Enabled
   encryption:
     sseAlgorithm: aws:kms
     kmsKeyId:
       valueFrom:
         kind: AwsKmsKey
-        name: app-data-key
+        name: data-key
         fieldPath: status.outputs.key_arn
     bucketKeyEnabled: true
-  lifecycleRules:
-    - id: prune-noncurrent
-      noncurrentVersionExpiration:
-        noncurrentDays: 30
-      abortIncompleteMultipartUploadDays: 7
-```
-
-### Log Bucket with Tiering and Expiration
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsS3Bucket
-metadata:
-  name: app-logs
-  annotations:
-    planton.dev/provisioner: tofu
-    terraform.planton.dev/stack.name: prod.AwsS3Bucket.app-logs
-spec:
-  region: us-west-2
-  lifecycleRules:
-    - id: tier-and-expire
-      filter:
-        prefix: "logs/"
-      transitions:
-        - days: 30
-          storageClass: STANDARD_IA
-        - days: 90
-          storageClass: GLACIER
-      expiration:
-        days: 365
-      abortIncompleteMultipartUploadDays: 7
-```
-
-### Cross-Region Replication with RTC
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsS3Bucket
-metadata:
-  name: dr-source
-spec:
-  region: us-east-1
-  versioningStatus: Enabled
   replication:
     roleArn:
       valueFrom:
         kind: AwsIamRole
-        name: s3-replication-role
+        name: replication-role
         fieldPath: status.outputs.role_arn
     rules:
-      - id: everything-to-dr
+      - id: dr-copy
         destination:
           bucketArn:
             valueFrom:
               kind: AwsS3Bucket
-              name: dr-replica
+              name: dr-bucket
               fieldPath: status.outputs.bucket_arn
-          metricsEnabled: true
-          replicationTimeControlEnabled: true
-        deleteMarkerReplication: true
 ```
 
-### Event Notifications into EventBridge
+The InfraPipeline resolves the dependency graph, deploys the key, role, and destination bucket first, then provisions this bucket with the resolved ARNs.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsS3Bucket
-metadata:
-  name: media-uploads
-spec:
-  region: us-east-1
-  notification:
-    eventbridge: true
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Access posture** — Leaving `publicAccessBlock` unset keeps ALL FOUR guards on: nothing can make the bucket public. Set the block (relaxing specific guards) only when the bucket must serve public content directly; for production sites, prefer CloudFront with Origin Access Control and keep the bucket private. `objectOwnership` defaults to BucketOwnerEnforced (ACLs disabled); `acl` is only valid under the two legacy ownership modes. The `policy` document is the primary access-control surface.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bucket_id` | `string` | Name/ID of the S3 bucket |
-| `bucket_arn` | `string` | ARN of the bucket (e.g., `arn:aws:s3:::my-bucket`) |
-| `region` | `string` | AWS region where the bucket was created |
-| `bucket_regional_domain_name` | `string` | Regional domain name (e.g., `my-bucket.s3.us-east-1.amazonaws.com`) — also the right CloudFront origin domain |
-| `bucket_domain_name` | `string` | Legacy global domain name (`my-bucket.s3.amazonaws.com`) |
-| `hosted_zone_id` | `string` | Route53 hosted zone ID for the bucket's region, used for alias records |
-| `website_endpoint` | `string` | Website endpoint (only when website hosting is configured) |
-| `website_domain` | `string` | Website service domain for Route53 aliases (only when website hosting is configured) |
+**Versioning** — `versioningStatus: Enabled` keeps every version of every object: the foundation for replication, Object Lock, and recovery from accidental overwrite/delete. AWS never allows returning to the unversioned state — only Suspended. Bound the cost with lifecycle `noncurrentVersionExpiration`.
 
-## Related Components
+**Object Lock (WORM)** — `objectLockEnabled` is create-time only and requires versioning Enabled. Pair it with `objectLockDefaultRetention`: GOVERNANCE allows privileged bypass; COMPLIANCE is immutable for everyone — including the root account — until retention expires.
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — customer-managed key for SSE-KMS encryption
-- [AwsS3ObjectSet](/docs/catalog/aws/s3-object-set) — manage objects inside a bucket
-- [AwsCloudFront](/docs/catalog/aws/cloudfront) — serve a private bucket publicly with TLS and caching via Origin Access Control
-- [AwsIamRole](/docs/catalog/aws/iam-role) — replication role
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) / [AwsSnsTopic](/docs/catalog/aws/sns-topic) / [AwsLambda](/docs/catalog/aws/lambda) — event notification targets
+**Encryption** — AWS already encrypts every object with SSE-S3; set `encryption` only to move to `aws:kms`/`aws:kms:dsse` with a customer-managed key. Enable `bucketKeyEnabled` with KMS to cut key-request costs by up to 99%.
+
+**Lifecycle** — `lifecycleRules` are the standard cost levers: storage-class transitions (days XOR absolute date per transition), expiration (exactly one of days/date/delete-marker cleanup), noncurrent-version pruning, and multipart-upload abort (prefix-filtered rules only). `intelligentTieringConfigurations` opt INTELLIGENT_TIERING objects into the archive tiers after 90/180+ days without access.
+
+**Replication** — `replication` copies objects asynchronously to destination buckets: cross-region for disaster recovery, same-region for cross-account backup. Not retroactive — rules cover new objects; backfill with S3 Batch Operations. Replication Time Control (15-minute SLA) requires metrics.
+
+**Website hosting** — `website` serves EITHER a normal site (`indexDocumentSuffix` + optional error document and routing rules) OR a pure redirect bucket (`redirectAllRequestsTo`), never both. The website endpoint is HTTP-only and requires public reads.
+
+**Eventing** — `notification` delivers object events to EventBridge (no grant needed) and/or Lambda/SQS/SNS targets (grant delivery BEFORE configuring). `logging` delivers request-level access logs; partitioned prefixes make them Athena-queryable.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `encryption.kmsKeyId` | `status.outputs.key_arn` |
+| **AwsKmsKey** (optional, per rule) | `replication.rules[].destination.replicaKmsKeyId` | `status.outputs.key_arn` |
+| **AwsIamRole** (with replication) | `replication.roleArn` | `status.outputs.role_arn` |
+| **AwsS3Bucket** (optional, per rule) | `replication.rules[].destination.bucketArn` | `status.outputs.bucket_arn` |
+| **AwsS3Bucket** (with logging) | `logging.targetBucket` | `status.outputs.bucket_id` |
+| **AwsLambda** (optional, per target) | `notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
+| **AwsSqsQueue** (optional, per target) | `notification.queues[].queueArn` | `status.outputs.queue_arn` |
+| **AwsSnsTopic** (optional, per target) | `notification.topics[].topicArn` | `status.outputs.topic_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bucket_id` | The bucket name | Logging targets, CLI addressing, SDK configuration |
+| `bucket_arn` | ARN of the bucket | IAM policies, replication destinations, notification scoping |
+| `region` | The bucket's region | Client configuration |
+| `bucket_regional_domain_name` | Regional endpoint hostname | CloudFront origins (the recommended origin form) |
+| `bucket_domain_name` | Global endpoint hostname | Legacy integrations |
+| `hosted_zone_id` | The S3 Route 53 hosted zone for this region | Route 53 alias records to the bucket |
+| `website_endpoint` | Website endpoint (when hosting is configured) | DNS records for direct website hosting |
+| `website_domain` | Website domain (when hosting is configured) | Route 53 alias records |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Private encrypted bucket** — the production default: fully private, versioned, KMS-encrypted with the bucket key on. Start from the **Private Encrypted** preset.
+
+**Public static website** — website hosting with relaxed guards and a public-read policy; the pattern for internal or throwaway sites (production sites belong behind CloudFront). Start from the **Public Static Website** preset.
+
+**Log archive** — a destination for logs with tiering transitions to Glacier and scheduled expiration. Start from the **Log Archive Lifecycle** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) — customer-managed keys for default and replica encryption
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) — the role S3 assumes to replicate
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) — object-event processing targets (and buckets hold Lambda code archives)
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) / [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) — event delivery targets
+- [**AWS CloudFront**](/cloud-catalog/aws-cloud-front) — the TLS/caching front for content served from private buckets

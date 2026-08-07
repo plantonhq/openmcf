@@ -304,6 +304,28 @@ message KubernetesKafkaUiPasswordSecret {
 }
 
 /**
+ * An HTTP Basic password source — one key within a Secret you
+ * created. No catalog kind produces these credentials (Karapace and
+ * KafkaConnect export endpoints, not auth Secrets), so there is
+ * deliberately no default reference target: name the Secret holding
+ * the password you configured on the registry/Connect API.
+ */
+message KubernetesKafkaUiBasicAuthPasswordSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint (a Kubernetes
+   * rule, not a chart one): the Secret must live in the namespace
+   * the console installs into.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The key within the Secret whose value is the password. Empty =
+   * "password".
+   */
+  optional string key = 2 [(dev.planton.shared.options.default) = "password"];
+}
+
+/**
  * A schema registry connection.
  */
 message KubernetesKafkaUiSchemaRegistry {
@@ -326,7 +348,7 @@ message KubernetesKafkaUiSchemaRegistry {
   /**
    * HTTP Basic password source, when the registry requires it.
    */
-  KubernetesKafkaUiPasswordSecret password_secret = 3;
+  KubernetesKafkaUiBasicAuthPasswordSecret password_secret = 3;
 }
 
 /**
@@ -363,7 +385,7 @@ message KubernetesKafkaUiConnectCluster {
    * HTTP Basic password source, when the Connect API sits behind
    * one.
    */
-  KubernetesKafkaUiPasswordSecret password_secret = 4;
+  KubernetesKafkaUiBasicAuthPasswordSecret password_secret = 4;
 }
 
 /**

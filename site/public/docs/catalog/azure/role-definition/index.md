@@ -8,171 +8,138 @@ componentName: "azureroledefinition"
 
 # Azure Role Definition
 
-Creates a custom Azure RBAC role -- a named, reusable bundle of permissions that role assignments then grant to principals. Use it when the built-in roles don't express what a team or workload should be allowed to do, and manage your organization's role catalog as version-controlled infrastructure.
+Deploys a custom Azure RBAC role: a named, reusable bundle of permissions that principals can then be granted through role assignments. Azure ships hundreds of built-in roles, but real organizations routinely need permission sets the built-ins don't express — "Contributor, except role assignments and policy writes", "can restart VMs but not create or delete them", "read-only plus blob data access". A custom role captures such a set once, with a meaningful name, and every grant of it stays consistent as the definition evolves. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource-group scopes.
 
 ## What Gets Created
 
-When you deploy an AzureRoleDefinition resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Role Definition** — an `azurerm_role_definition` holding the role's display name, permission blocks (control-plane and data-plane), and assignable scopes at the target ARM scope
+- **Custom Role Definition** -- one tenant-visible RBAC role at the chosen scope (management group, subscription, or resource group), with its permission blocks and assignable scopes
 
-Role definitions carry no Azure tags -- the `Microsoft.Authorization` resource type does not support them.
+A definition grants nothing by itself -- permissions only take effect when an **AzureRoleAssignment** binds the role to a principal at a scope. The definition's `role_definition_id` output is exactly what an assignment's `roleDefinitionId` field consumes.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **Authorization-plane rights**: the deploying credential needs `Microsoft.Authorization/roleDefinitions/write` at the target scope (Owner, User Access Administrator, or Role Based Access Control Administrator -- Contributor alone is not sufficient)
-- **A tenant-unique role name** (Azure rejects duplicates; prefer org-prefixed names)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `roledefinition.yaml`:
+### Azure Subscription
+
+- **Authorization-plane rights on the target scope** -- creating role definitions requires `Microsoft.Authorization/roleDefinitions/write`, held via Owner, User Access Administrator, or Role Based Access Control Administrator. A Contributor-level deploying credential fails with "AuthorizationFailed".
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Role Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-add templates for the classic permission-block shapes. Start from the **VM Operator Role** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureRoleDefinition
 metadata:
-  name: vm-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleDefinition.vm-operator
+  name: acme-vm-operator
+  org: acme-corp
+  env: prod
 spec:
   name: acme-vm-operator
   scope:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000
-  description: Operate existing VMs (start/stop/restart) without create or delete rights
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000"
+  description: "Operate existing VMs: start/stop/restart, no create or delete"
   permissions:
     - actions:
         - Microsoft.Compute/virtualMachines/read
         - Microsoft.Compute/virtualMachines/start/action
         - Microsoft.Compute/virtualMachines/restart/action
+        - Microsoft.Compute/virtualMachines/powerOff/action
         - Microsoft.Compute/virtualMachines/deallocate/action
 ```
 
-Deploy:
-
 ```shell
-planton apply -f roledefinition.yaml
+planton apply -f role.yaml
 ```
 
-This creates a subscription-scoped custom role that any `AzureRoleAssignment` can then grant by its definition ID.
+Assignable scopes are omitted, so Azure defaults them to the definition's own scope (the subscription).
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | The role's display name, unique within the Azure AD tenant. | Required, non-empty |
-| `scope` | `StringValueOrRef` | The ARM scope the definition is created at: management group, subscription, or resource group. Defaults to referencing an `AzureResourceGroup`'s ARM ID; subscription/management-group IDs pass as literals. | Required |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `description` | `string` | Intent text shown beside the role in the portal's role picker. |
-| `permissions` | `list` | Permission blocks, each with `actions`, `notActions`, `dataActions`, `notDataActions` (ARM operation patterns, `*` wildcards allowed). Azure unions multiple blocks; one block is the norm. |
-| `assignableScopes` | `list of StringValueOrRef` | Where the role may be assigned. Defaults to the definition's own scope. At most one management group may appear. |
-| `roleDefinitionId` | `string` | Pinned GUID for the definition's ARM resource name; generated when omitted. |
-
-## Examples
-
-### Broad Grant with an RBAC Carve-Out
-
-"Contributor, except changing RBAC" -- the classic wildcard-minus-carve-out:
+Compose the definition with the assignments that grant it -- the assignment consumes the definition's output:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleDefinition
-metadata:
-  name: project-admin
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleDefinition.project-admin
+# The custom role
 spec:
-  name: acme-project-admin
-  scope:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000
-  description: Manage all project resources but never RBAC or policy
-  permissions:
-    - actions:
-        - "*"
-      notActions:
-        - Microsoft.Authorization/*/write
-        - Microsoft.Authorization/*/delete
-```
-
-### Data-Plane Role for Blob Access
-
-Control-plane actions manage resources; data-plane actions read the data inside them. A role that reads blob contents needs `dataActions`:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleDefinition
-metadata:
-  name: blob-auditor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleDefinition.blob-auditor
-spec:
-  name: acme-blob-auditor
-  scope:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000
-  description: Read blob data across the analytics accounts, nothing else
-  permissions:
-    - actions:
-        - Microsoft.Storage/storageAccounts/read
-      dataActions:
-        - Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read
-```
-
-### Resource-Group-Scoped Role in a Composed Environment
-
-Scope the definition to a deployed resource group by reference -- the default kind resolves it to the group's ARM ID:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRoleDefinition
-metadata:
-  name: env-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRoleDefinition.env-operator
-spec:
-  name: acme-env-operator
+  name: acme-blob-reader
   scope:
     valueFrom:
-      name: platform-rg
-  description: Restart and observe workloads in the platform environment
+      kind: AzureResourceGroup
+      name: data-rg
+      fieldPath: status.outputs.resource_group_id
   permissions:
-    - actions:
-        - Microsoft.Compute/virtualMachines/read
-        - Microsoft.Compute/virtualMachines/restart/action
-        - Microsoft.Insights/metrics/read
+    - dataActions:
+        - Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read
+---
+# The grant (separate AzureRoleAssignment resource)
+spec:
+  scope:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: data-rg
+      fieldPath: status.outputs.resource_group_id
+  roleDefinitionId: "<from the definition's role_definition_id output>"
+  principalId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: analytics-reader
+      fieldPath: status.outputs.principal_id
 ```
 
-## Stack Outputs
+## Key Configuration
 
-After deployment, the following outputs are available in `status.outputs`:
+These are the most important decisions when configuring a custom role. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `role_definition_id` | `string` | Fully-scoped ARM ID of the definition (`{scope}/providers/Microsoft.Authorization/roleDefinitions/{guid}`) -- what an `AzureRoleAssignment`'s `role_definition_id` consumes |
-| `role_definition_guid` | `string` | The definition's GUID resource name |
-| `role_name` | `string` | The role's display name as deployed |
-| `scope` | `string` | The scope the definition was created at |
-| `assignable_scopes` | `list` | The assignable scopes Azure recorded (the definition's own scope when omitted) |
+**Control plane vs data plane** -- THE distinction to get right. `actions` govern managing resources through ARM ("restart a VM"); `dataActions` govern the data inside them ("read this blob", "read a secret's value in RBAC mode"). A role with `Microsoft.Storage/storageAccounts/*` actions can manage the account yet cannot read one byte of blob data.
 
-## Related Components
+**Carve-outs are trims, not denies** -- `notActions`/`notDataActions` subtract from THIS role's own grant; they cannot take away permissions another assignment gives the same principal (that is Azure deny assignments' job). The classic shape: actions `["*"]`, notActions `["Microsoft.Authorization/*/write"]` -- everything except changing RBAC.
 
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) — grants this custom role to a principal at a scope
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the workload identity custom roles are most often granted to
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — the default creation scope in composed environments
+**Scope and assignability** -- The definition's scope anchors its ARM ID (ForceNew) and defaults where it can be assigned. Choose the highest scope the role will ever be assigned at; narrow `assignableScopes` below it to pre-authorize where the role may ever be granted. At most one management group may appear in the list.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `scope`, `assignableScopes` | `status.outputs.resource_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `role_definition_id` | Fully-scoped ARM ID of the definition | AzureRoleAssignment's `roleDefinitionId` field |
+| `role_definition_guid` | The definition's GUID resource name | Authorization API automation |
+| `role_name` | The display name as deployed | Portal cross-reference |
+| `scope` | The creation scope as resolved | Auditing |
+| `assignable_scopes` | The scopes Azure recorded (incl. the provider-defaulted own scope) | Auditing where grants may exist |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Operational roles** -- Verb-scoped control-plane roles ("operate, don't create"): the VM operator pattern. Start from the **VM Operator Role** preset.
+
+**Data-access roles** -- Pure data-plane grants with zero management surface: the blob-data-reader pattern. Start from the **Blob Data Reader Role** preset.
+
+**Admin-minus-carve-out** -- Broad grants with the RBAC-write carve-out, keeping permission changes in the hands of the few. Start from the **Project Admin Carve-Out Role** preset.
+
+## Works With
+
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- binds this role to a principal at a scope, consuming `role_definition_id`
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- a common definition scope and assignable-scope boundary
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- the principal most grants of custom roles target

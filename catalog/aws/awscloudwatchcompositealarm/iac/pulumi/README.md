@@ -21,8 +21,8 @@ The module is executed by the Planton runtime with a stack input carrying the
 target resource and provider config. For a local run:
 
 ```shell
-planton pulumi up --manifest hack/manifest.yaml
-planton pulumi destroy --manifest hack/manifest.yaml
+planton pulumi up --manifest e2e/manifest.yaml
+planton pulumi destroy --manifest e2e/manifest.yaml
 ```
 
 ## Outputs

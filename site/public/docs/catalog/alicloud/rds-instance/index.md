@@ -8,32 +8,48 @@ componentName: "alicloudrdsinstance"
 
 # AliCloud RDS Instance
 
-Deploys an Alibaba Cloud RDS (Relational Database Service) instance with bundled databases, accounts, and account privileges. Supports MySQL, PostgreSQL, SQL Server, MariaDB, and PPAS engines through a single component type.
+Deploys a managed relational database instance on Alibaba Cloud with bundled databases, accounts, and fine-grained account privileges. Supports MySQL, PostgreSQL, SQL Server, MariaDB, and PPAS engines through a single component type. The instance integrates with Planton's Provider Connections for AliCloud credential management and supports ValueFromRef wiring to VSwitches for network placement.
 
 ## What Gets Created
 
-When you deploy an AliCloudRdsInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **RDS Instance** -- an `alicloud_db_instance` with the selected engine, instance class, and storage
-- **Databases** -- one `alicloud_db_database` per entry in the databases list
-- **Accounts** -- one `alicloud_rds_account` per entry in the accounts list
-- **Account Privileges** -- one `alicloud_db_account_privilege` per privilege entry, granting specific access levels on databases
+- **RDS Instance** -- an `alicloud_db_instance` with the selected engine, instance class, storage size, and HA category, placed in the specified VSwitch
+- **Databases** -- one `alicloud_db_database` per entry in the `databases` list, with engine-appropriate default character sets (e.g., `utf8mb4` for MySQL, `UTF8` for PostgreSQL)
+- **Accounts** -- one `alicloud_rds_account` per entry in the `accounts` list, created after all databases are provisioned
+- **Account Privileges** -- one `alicloud_db_account_privilege` per privilege entry, granting specific access levels (ReadOnly, ReadWrite, DDLOnly, DMLOnly, DBOwner) on named databases
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **A VSwitch** -- the RDS instance is placed in a VSwitch (create one with AliCloudVswitch)
-- The VSwitch's VPC and availability zone determine the instance's network placement
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `rds-instance.yaml`:
+### Alibaba Cloud Account
+
+- **A VSwitch** in the target region and availability zone. The RDS instance inherits its VPC and AZ from the VSwitch. Provide the VSwitch ID directly or reference an AliCloudVswitch Cloud Resource via ValueFromRef.
+- **A standby AZ VSwitch** (optional) -- for HighAvailability or Finance category deployments, set `zoneIdSlaveA` to a different AZ for cross-zone failover.
+- **A KMS key** (optional) -- for disk encryption (`encryptionKey`) or Transparent Data Encryption (`tdeStatus`). Once TDE is enabled, it cannot be disabled.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud RDS Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **MySQL Basic** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRdsInstance
 metadata:
-  name: my-mysql
+  name: app-database
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
   engine: MySQL
@@ -41,8 +57,7 @@ spec:
   instanceType: rds.mysql.s2.large
   instanceStorage: 50
   vswitchId:
-    valueFrom:
-      name: my-db-vswitch
+    value: "vsw-abc123"
   databases:
     - name: myapp
   accounts:
@@ -53,94 +68,70 @@ spec:
           privilege: ReadWrite
 ```
 
-Deploy:
-
 ```shell
 planton apply -f rds-instance.yaml
 ```
 
-This creates a MySQL 8.0 HA instance with one database, one account, and ReadWrite access.
+This creates a MySQL 8.0 HighAvailability instance with 50 GB cloud storage, one database, one account with ReadWrite access, and Postpaid billing. SSL, TDE, and deletion protection are not configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the RDS instance to a VSwitch deployed in the same InfraPipeline:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | string | Alibaba Cloud region (e.g., `cn-hangzhou`) | Required; non-empty |
-| `engine` | string | Database engine | Required; one of: MySQL, PostgreSQL, SQLServer, MariaDB, PPAS |
-| `engineVersion` | string | Engine version (e.g., `8.0`, `16.0`) | Required; non-empty |
-| `instanceType` | string | Instance class (e.g., `rds.mysql.s2.large`) | Required; non-empty |
-| `instanceStorage` | int32 | Storage size in GB | Required; > 0 |
-| `vswitchId` | StringValueOrRef | VSwitch ID. Can reference AliCloudVswitch via `valueFrom`. | Required |
+```yaml
+spec:
+  vswitchId:
+    valueFrom:
+      kind: AliCloudVswitch
+      name: db-vswitch
+      fieldPath: status.outputs.vswitch_id
+```
 
-### Optional Fields
+The InfraPipeline resolves the dependency graph, deploys the VSwitch first, then provisions the RDS instance with the resolved VSwitch ID.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `instanceName` | string | metadata.name | Instance display name (2-256 chars) |
-| `instanceChargeType` | string | `Postpaid` | Billing: `Postpaid` or `Prepaid` |
-| `category` | string | `HighAvailability` | Architecture: `Basic`, `HighAvailability`, `AlwaysOn`, `Finance`, `cluster` |
-| `dbInstanceStorageType` | string | | Storage type: `local_ssd`, `cloud_ssd`, `cloud_essd`, `cloud_essd2`, `cloud_essd3` |
-| `zoneId` | string | | Primary availability zone |
-| `zoneIdSlaveA` | string | | Standby availability zone (for HA) |
-| `securityIps` | list | | IP whitelist for access control |
-| `securityGroupIds` | list | | VPC security group IDs |
-| `monitoringPeriod` | int32 | | Monitoring interval: 5, 10, 60, 300 seconds |
-| `maintainTime` | string | | Maintenance window (e.g., `02:00Z-06:00Z`) |
-| `deletionProtection` | bool | `false` | Prevent accidental deletion |
-| `sslAction` | string | | SSL: `Open` or `Close` |
-| `tdeStatus` | string | | TDE: `Enabled` or `Disabled` |
-| `encryptionKey` | string | | KMS key ID for disk encryption |
-| `autoRenew` | bool | `false` | Auto-renewal for Prepaid |
-| `autoRenewPeriod` | int32 | | Auto-renewal period in months (1-12) |
-| `period` | int32 | | Subscription period in months |
-| `resourceGroupId` | string | | Resource group for organizational grouping |
-| `tags` | map | | Key-value tags |
-| `parameters` | list | | Database engine parameter overrides |
-| `databases` | list | | Databases to create (see below) |
-| `accounts` | list | | Accounts to create (see below) |
+## Key Configuration
 
-### Database Fields
+These are the most important decisions when configuring an RDS instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | | Database name (required) |
-| `characterSet` | string | engine default | Character set (e.g., `utf8mb4`, `UTF8`) |
-| `description` | string | | Database description |
+**Engine choice** -- Set `engine` to one of MySQL, PostgreSQL, SQLServer, MariaDB, or PPAS, and `engineVersion` to a supported version string (e.g., `"8.0"` for MySQL, `"16.0"` for PostgreSQL). The engine determines valid instance types, character sets, and parameter names. The engine choice is immutable after creation.
 
-### Account Fields
+**HA category** -- Set `category` to control the deployment architecture. `HighAvailability` (default) provisions a primary + standby pair with automatic failover. `Basic` is a single node suitable for dev/test. `AlwaysOn` enables SQL Server Availability Groups. `Finance` deploys a three-node enterprise cluster. Set `zoneIdSlaveA` to a different AZ for cross-zone high availability.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `accountName` | string | | Login name (required) |
-| `accountPassword` | string | | Password (required; 8+ chars) |
-| `accountType` | string | `Normal` | `Normal` or `Super` |
-| `accountDescription` | string | | Account description |
-| `privileges` | list | | Database privileges (see below) |
+**Bundled databases and accounts** -- The `databases`, `accounts`, and `accounts[].privileges` fields let you declare the full database topology in a single manifest. Accounts are created after databases, and privileges are granted after both exist. Use `accountType: Super` for administrative access or `accountType: Normal` with explicit privilege grants for application accounts.
 
-### Privilege Fields
+**Encryption** -- Two independent encryption mechanisms: `encryptionKey` encrypts the underlying storage disk with a customer-managed KMS key, while `tdeStatus: Enabled` turns on Transparent Data Encryption at the engine level. TDE is irreversible once enabled. Both can be used together.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `databaseNames` | list | | Databases to grant access to (required; min 1) |
-| `privilege` | string | `ReadOnly` | `ReadOnly`, `ReadWrite`, `DDLOnly`, `DMLOnly`, `DBOwner` |
+**Billing and protection** -- Defaults to `Postpaid` (pay-as-you-go). Set `instanceChargeType: Prepaid` with `period` for subscription billing. Enable `deletionProtection` to prevent accidental deletion via console or API.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Consumes
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | string | RDS instance ID (e.g., `rm-xxxxx`) |
-| `connection_string` | string | Intranet (VPC-internal) connection endpoint |
-| `port` | string | Database service port |
-| `database_ids` | map | Map of database names to their IDs |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVswitch** | `vswitchId` | `status.outputs.vswitch_id` |
 
-## Related Components
+### What This Component Provides
 
-- **AliCloudVswitch** -- VSwitch where the RDS instance is placed
-- **AliCloudVpc** -- VPC that provides network isolation
-- **AliCloudSecurityGroup** -- Network security rules for instance access
-- **AliCloudKmsKey** -- Customer-managed key for disk/TDE encryption
-- **AliCloudPrivateDnsZone** -- Private DNS resolution for the instance endpoint
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | RDS instance ID (e.g., `rm-xxxxx`) | Monitoring dashboards, audit references |
+| `connection_string` | Intranet (VPC-internal) connection endpoint | Application connection strings, DNS CNAME records |
+| `port` | Database service port (e.g., `3306` for MySQL, `5432` for PostgreSQL) | Application connection configuration |
+| `database_ids` | Map of database names to their IDs | Resource tracking, audit references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**MySQL for development** -- A Basic-category MySQL 8.0 instance with minimal storage, one database, and one ReadWrite account. Postpaid billing for cost efficiency. Start from the **MySQL Basic** preset.
+
+**PostgreSQL with high availability** -- A HighAvailability PostgreSQL instance with cross-AZ standby, increased storage, and SSL enabled. Start from the **PostgreSQL HA** preset.
+
+**MySQL for production** -- A HighAvailability MySQL 8.0 instance with cloud ESSD storage, deletion protection, maintenance window, and security IP whitelist configured. Start from the **MySQL Production** preset.
+
+## Works With
+
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- provides the VSwitch for VPC and availability zone placement

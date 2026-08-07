@@ -305,11 +305,11 @@ planton/
 
 #### `/apis`
 
-All Protocol Buffer definitions organized by provider. Each component's v1 directory contains:
-- API definitions (api.proto, spec.proto)
+All Protocol Buffer definitions organized by provider. Each component directory contains:
+- API definitions in the version dir (api.proto, spec.proto, input.proto, outputs.proto)
 - Validation tests (spec_test.go)
-- IaC modules (iac/pulumi, iac/terraform)
-- Documentation (README.md, docs/README.md)
+- IaC modules at the component root (iac/pulumi, iac/tf)
+- Documentation at the component root (README.md, catalog.md, GUIDE.md)
 
 #### `/architecture`
 
@@ -492,7 +492,9 @@ Planton provides a sophisticated lifecycle management system for deployment comp
 - Quick wins (easy improvements)
 - Critical gaps (blocking issues)
 - Prioritized recommendations
-- Timestamped reports saved to `<component>/v1/docs/audit/<timestamp>.md`
+- Reports are delivered in the session that runs the audit -- never saved
+  into the component (the component file set is closed; the anatomy
+  conformance gate enforces it)
 
 **Example:**
 ```bash
@@ -1091,11 +1093,11 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 5. **Local Testing**
    ```bash
-   cd catalog/atlas/mongodbatlas/v1alpha1/iac/pulumi
-   planton pulumi update --manifest ../hack/manifest.yaml --module-dir .
+   cd catalog/atlas/atlasmongodb/iac/pulumi
+   planton pulumi update --manifest ../../e2e/manifest.yaml --module-dir .
    ```
    - Test Pulumi module locally (the CLI builds the stack input and drives the module)
-   - Repeat for the Terraform module with `planton tofu apply --manifest ../hack/manifest.yaml --module-dir ../tf`
+   - Repeat for the Terraform module with `planton tofu apply --manifest ../../e2e/manifest.yaml --module-dir ../tf`
 
 6. **Validation**
    ```bash
@@ -1117,7 +1119,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 ```bash
 # 1. Edit spec.proto
-vim catalog/atlas/mongodbatlas/v1alpha1/spec.proto
+vim catalog/atlas/atlasmongodb/v1alpha1/spec.proto
 
 # 2. Add field with validation
 # message Spec {
@@ -1499,8 +1501,8 @@ chore: improve component completeness to 95%+
 
 **Documentation:**
 - User-facing README.md (what and how)
-- Research docs/README.md (why and design rationale)
-- Examples.md (real-world use cases)
+- GUIDE.md (why and design rationale)
+- The validated example manifest at e2e/manifest.yaml (a real, deployable use case)
 - IaC module docs (architecture overview)
 
 ### Development Environment Setup
@@ -1545,7 +1547,7 @@ planton version
 
 Test validation rules:
 ```bash
-cd catalog/atlas/mongodbatlas/v1alpha1
+cd catalog/atlas/atlasmongodb/v1alpha1
 go test -v
 ```
 
@@ -1553,8 +1555,8 @@ go test -v
 
 Test IaC modules locally:
 ```bash
-cd catalog/atlas/mongodbatlas/v1alpha1/iac/pulumi
-planton pulumi preview --manifest ../hack/manifest.yaml --module-dir .
+cd catalog/atlas/atlasmongodb/iac/pulumi
+planton pulumi preview --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
 **3. End-to-End Tests**

@@ -8,184 +8,125 @@ componentName: "alicloudceninstance"
 
 # AliCloud CEN Instance
 
-Deploys an Alibaba Cloud Cloud Enterprise Network (CEN) instance with bundled child-instance attachments for private multi-VPC, multi-region, and hybrid connectivity. CEN is a global resource — a single instance can connect networks across any Alibaba Cloud region.
+Deploys an Alibaba Cloud Cloud Enterprise Network (CEN) instance with bundled child-instance attachments. CEN is a global networking service that provides high-quality, low-latency private connectivity between VPCs in different regions, or between VPCs and on-premises data centers via Virtual Border Routers (VBR). Unlike most Alibaba Cloud resources, CEN is region-agnostic -- the instance itself is not bound to a single region.
 
 ## What Gets Created
 
-When you deploy an AliCloudCenInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **CEN Instance** — an `alicloud_cen_instance` resource serving as the global networking hub with optional CIDR overlap protection and resource group assignment
-- **CEN Instance Attachments** — one `alicloud_cen_instance_attachment` per entry in `spec.attachments[]`, connecting a VPC, VBR (Virtual Border Router), or CCN (Cloud Connect Network) to the CEN hub
+- **CEN Instance** -- a `alicloud_cen_instance` resource that serves as the global backbone for connecting child instances
+- **CEN Attachments** -- one `alicloud_cen_instance_attachment` per entry in `attachments`, connecting VPCs, VBRs, or CCNs to the CEN instance for private inter-network communication
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **At least one VPC** (or VBR/CCN) to attach to the CEN instance
-- **VPC IDs and their regions** for each network to attach — the VPCs can be in any Alibaba Cloud region
-- **Non-overlapping CIDR blocks** across attached VPCs (unless `protectionLevel` is set to `REDUCED`)
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `cen.yaml`:
+### Alibaba Cloud Account
+
+- **At least two VPCs** (or VBRs/CCNs) to connect -- CEN is only useful with multiple child instances.
+- **CIDR planning** -- by default, CEN rejects overlapping CIDR blocks between attached VPCs. Set `protectionLevel` to "REDUCED" if you need overlapping CIDRs with route map control.
+- **Cross-account considerations** -- attaching VPCs from different Alibaba Cloud accounts requires cross-account authorization (not managed by this component).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud CEN Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including CEN name, protection level, and child-instance attachments.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudCenInstance
 metadata:
-  name: my-cen
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudCenInstance.my-cen
+  name: platform-cen
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  cenInstanceName: my-cen
+  cenInstanceName: platform-backbone
+  description: Connects production and staging VPCs
   attachments:
     - childInstanceId:
-        value: vpc-abc123
+        value: vpc-prod-001
       childInstanceRegionId: cn-hangzhou
+    - childInstanceId:
+        value: vpc-staging-001
+      childInstanceRegionId: cn-shanghai
 ```
-
-Deploy:
 
 ```shell
-planton apply -f cen.yaml
+planton apply -f alicloud-cen.yaml
 ```
 
-This creates a CEN instance and attaches one VPC in cn-hangzhou. Additional VPCs in any region can be added to the `attachments` list.
+This creates a CEN instance connecting two VPCs across cn-hangzhou and cn-shanghai. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region for API routing. CEN is global, so this does not restrict attachment regions. | Required; non-empty |
-| `cenInstanceName` | `string` | CEN instance name. | Required; 2-128 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Human-readable description of the CEN instance. |
-| `protectionLevel` | `string` | strict (empty) | CIDR overlap protection. Set to `REDUCED` to allow overlapping CIDR blocks between attached networks (routing controlled by route maps). Leave empty for strict mode that rejects overlaps. |
-| `resourceGroupId` | `string` | — | Alibaba Cloud resource group ID for organizational access control. |
-| `tags` | `map(string)` | — | Tags to apply to the CEN instance. |
-| `attachments` | `list` | `[]` | Child-instance attachments. See attachment fields below. |
-
-### Attachment Fields (`attachments[]`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `childInstanceId` | `StringValueOrRef` | (required) | ID of the child instance to attach (VPC ID, VBR ID, or CCN ID). Can reference an `AliCloudVpc` resource via `valueFrom`. ForceNew. |
-| `childInstanceType` | `string` | `VPC` | Type of child instance: `VPC`, `VBR`, or `CCN`. ForceNew. |
-| `childInstanceRegionId` | `string` | (required) | Region where the child instance resides (e.g., `cn-hangzhou`, `us-west-1`). ForceNew. |
-
-## Examples
-
-### Same-Region Multi-VPC
-
-Connect multiple VPCs in the same region for private inter-VPC communication without VPC peering:
+When deploying as part of a multi-VPC topology, use ValueFromRef to wire VPC dependencies:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudCenInstance
-metadata:
-  name: intra-region-cen
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: dev.AliCloudCenInstance.intra-region-cen
 spec:
   region: cn-hangzhou
-  cenInstanceName: intra-region-backbone
-  description: Connects production and shared-services VPCs
-  attachments:
-    - childInstanceId:
-        value: vpc-production
-      childInstanceRegionId: cn-hangzhou
-    - childInstanceId:
-        value: vpc-shared-services
-      childInstanceRegionId: cn-hangzhou
-```
-
-### Cross-Region Global Backbone
-
-Connect VPCs across multiple regions with REDUCED protection for overlapping CIDRs:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudCenInstance
-metadata:
-  name: global-cen
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: prod.AliCloudCenInstance.global-cen
-spec:
-  region: cn-hangzhou
-  cenInstanceName: global-backbone
-  description: Multi-region backbone connecting China and international regions
-  protectionLevel: REDUCED
-  resourceGroupId: rg-networking
-  tags:
-    team: platform
-    purpose: global-connectivity
-  attachments:
-    - childInstanceId:
-        value: vpc-hangzhou
-      childInstanceRegionId: cn-hangzhou
-    - childInstanceId:
-        value: vpc-shanghai
-      childInstanceRegionId: cn-shanghai
-    - childInstanceId:
-        value: vpc-singapore
-      childInstanceRegionId: ap-southeast-1
-```
-
-### Managed VPC References with valueFrom
-
-Connect VPCs managed as Planton resources, automatically resolving VPC IDs from their stack outputs:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudCenInstance
-metadata:
-  name: managed-cen
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: prod.AliCloudCenInstance.managed-cen
-spec:
-  region: cn-hangzhou
-  cenInstanceName: managed-backbone
-  description: CEN connecting Planton-managed VPCs
+  cenInstanceName: platform-backbone
   attachments:
     - childInstanceId:
         valueFrom:
-          name: prod-vpc-hangzhou
+          kind: AliCloudVpc
+          name: prod-vpc
+          fieldPath: status.outputs.vpc_id
       childInstanceRegionId: cn-hangzhou
     - childInstanceId:
         valueFrom:
-          name: prod-vpc-shanghai
+          kind: AliCloudVpc
+          name: staging-vpc
+          fieldPath: status.outputs.vpc_id
       childInstanceRegionId: cn-shanghai
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph and provisions VPCs before the CEN attachments.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cen_id` | `string` | CEN instance ID assigned by Alibaba Cloud (e.g., `cen-xxxxx`) |
-| `cen_instance_name` | `string` | CEN instance name as configured in the spec |
+These are the most important decisions when configuring a CEN instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Protection level** -- The `protectionLevel` field controls CIDR overlap behavior. Leave empty for strict mode (rejects overlaps). Set to "REDUCED" to allow overlapping CIDRs between attached VPCs -- useful when migrating workloads or using route maps for traffic steering.
 
-- [AliCloudVpc](/docs/catalog/alicloud/vpc) — provides VPCs to attach to the CEN
-- [AliCloudVpnGateway](/docs/catalog/alicloud/vpn-gateway) — alternative point-to-point VPN connectivity
-- [AliCloudVswitch](/docs/catalog/alicloud/vswitch) — subnets within attached VPCs
+**Child instance type** -- Each attachment's `childInstanceType` defaults to "VPC". Use "VBR" for Virtual Border Router connections (Express Connect to on-premises) or "CCN" for Cloud Connect Networks (Smart Access Gateway).
+
+**Region** -- The CEN's `region` field is for API routing only. Attached child instances can reside in any region -- each attachment declares its own `childInstanceRegionId`.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `attachments[].childInstanceId` | `status.outputs.vpc_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cen_id` | CEN instance ID (e.g., cen-xxxxx) | Bandwidth packages, route maps |
+| `cen_instance_name` | CEN instance name as configured | Display and tagging |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Multi-VPC same region** -- Connects multiple VPCs within one region for private communication without public internet exposure. Start from the **Multi VPC Same Region** preset.
+
+**Cross-region backbone** -- Connects VPCs across multiple regions (e.g., China and international) with REDUCED protection level for flexible routing. Start from the **Cross Region Backbone** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- the VPCs connected by this CEN instance
+- [**AliCloud VPN Gateway**](/cloud-catalog/ali-cloud-vpn-gateway) -- alternative connectivity for site-to-site VPN

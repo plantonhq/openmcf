@@ -8,110 +8,73 @@ componentName: "awsiampolicy"
 
 # AWS IAM Policy
 
-Deploys a customer-managed IAM policy: a standalone, versioned permission
-document with its own ARN. Attach it to many roles and users at once through
-their `managedPolicyArns` fields, or use it as a permissions boundary -- one
-definition, referenced everywhere it is needed, updated in one place.
+Deploys a customer-managed IAM policy — the reusable unit of AWS permissions: a standalone, versioned permission document with its own ARN that can be attached to many roles and users at once. Define a grant once ("read-only access to the analytics bucket", "the permissions boundary for CI jobs"), attach it everywhere it is needed, and update it in exactly one place. Roles and users attach it through their `managedPolicyArns` fields, and a `permissionsBoundary` also takes a policy ARN, which makes this kind a leaf that much of an AWS architecture composes onto. The policy integrates with Planton's Provider Connections for AWS credential management, and its `policy_arn` output is what every attachment references via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AwsIamPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Managed policy** — an `aws_iam_policy` / `iam.Policy` holding the permission
-  document, with the name taken from `metadata.name` and an optional IAM path
-  and description. Document updates create a new policy version and mark it
-  default; the oldest non-default version is pruned automatically so updates
-  never hit AWS's 5-version cap.
+- **Managed Policy** -- the named permission document under its IAM path. The policy name comes from `metadata.name`; name, path, and description are create-only in AWS (changing any of them replaces the policy)
+- **Policy Versions** -- each document update becomes a new version and is promoted to default. AWS keeps at most 5 versions, and the module prunes the oldest non-default version before saving a new one, so updates keep working indefinitely without manual version cleanup
 
-Role and user attachments are **not** created here — reference this policy's
-`policy_arn` output from an `AwsIamRole` or `AwsIamUser` component's
-`managedPolicyArns` (or `permissionsBoundary`) field.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A permission document**: an IAM policy JSON with `Version` and `Statement`.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
+
+- **The ARNs the policy will govern** -- statements name exact resources (bucket ARNs, table ARNs, queue ARNs). Gather them before authoring; wildcards that stand in for unknown ARNs are how over-broad policies are born.
+- **No pre-existing resources required** -- the policy is a leaf: it references nothing and grants nothing until attached.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS IAM Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the document editor opens seeded with the current policy language version so you author statements directly. Start from the **S3 Read Only** preset in the [Presets](#presets) tab to pre-populate the most common shared grant.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsIamPolicy
 metadata:
   name: s3-read-only
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   description: Read-only access to the analytics bucket
   policyDocument:
     Version: "2012-10-17"
     Statement:
-      - Effect: Allow
+      - Sid: AnalyticsReadOnly
+        Effect: Allow
         Action:
           - s3:GetObject
           - s3:ListBucket
         Resource:
-          - arn:aws:s3:::analytics-bucket
-          - arn:aws:s3:::analytics-bucket/*
+          - arn:aws:s3:::analytics
+          - arn:aws:s3:::analytics/*
 ```
 
 ```shell
-planton apply -f policy.yaml
+planton apply -f iam-policy.yaml
 ```
 
-## Configuration Reference
+This publishes the shared read-only grant; every role that attaches it inherits exactly these permissions, and widening the grant later is a one-place edit. A Stack Job tracks the provisioning in real time.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `region` | `string` | — | AWS region for the provider's API calls. IAM is global — the policy is attachable in every region. Required. |
-| `policyDocument` | `object` | — | The permission document (IAM policy JSON with `Version` and `Statement`). The only field updatable after creation. Required. |
-| `description` | `string` | — | Human-readable purpose, shown in the IAM console. Immutable — changing it replaces the policy. Max 1000 characters. |
-| `path` | `string` | `/` | IAM path for organizing and wildcard-matching policies (e.g. `/service-boundaries/`). Must begin and end with `/`. Immutable. |
+### InfraChart
 
-## Examples
-
-### Permissions boundary for CI principals
+When deploying as part of a multi-resource environment, downstream roles wire to the policy through ValueFromRef:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamPolicy
-metadata:
-  name: ci-permissions-boundary
+# On an AwsIamRole in the same InfraPipeline:
 spec:
-  region: us-west-2
-  description: Maximum permissions any CI-created principal can hold
-  path: /boundaries/
-  policyDocument:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Action:
-          - s3:*
-          - dynamodb:*
-          - logs:*
-        Resource: "*"
-      - Effect: Deny
-        Action:
-          - iam:*
-          - organizations:*
-        Resource: "*"
-```
-
-### Attaching to a role by reference
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsIamRole
-metadata:
-  name: analytics-reader
-spec:
-  region: us-west-2
-  trustPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          Service: lambda.amazonaws.com
-        Action: sts:AssumeRole
   managedPolicyArns:
     - valueFrom:
         kind: AwsIamPolicy
@@ -119,16 +82,47 @@ spec:
         fieldPath: status.outputs.policy_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the policy first, then provisions the role with the resolved ARN.
 
-| Output | Description |
-| --- | --- |
-| `policy_arn` | ARN of the managed policy — what attachments and permissions boundaries reference |
-| `policy_id` | Stable unique ID AWS assigns to the policy (`ANPA...`) |
-| `policy_name` | Friendly name of the policy |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring an IAM policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [AwsIamRole](/docs/catalog/aws/iam-role) — attaches this policy via `managedPolicyArns` or uses it as a permissions boundary
-- [AwsIamUser](/docs/catalog/aws/iam-user) — attaches this policy via `managedPolicyArns`
-- [AwsIamInstanceProfile](/docs/catalog/aws/iam-instance-profile) — wraps a role whose permissions come from policies like this one
+**The document is the policy** -- `policyDocument` is the IAM policy language: each statement pairs an Effect (Allow or Deny) with the Actions it covers and the Resources it applies to. Prefer exact actions and exact ARNs — `"Action": "s3:*"` on `"Resource": "*"` works today and becomes the finding in next year's audit. An explicit Deny anywhere overrides every Allow any attached policy grants, which is what makes Deny statements the backbone of permission boundaries.
+
+**Only the document updates in place** -- Each document edit becomes a new policy version, promoted to default, with attachments following immediately. Everything else — name, path, description — is create-only: changing any of them REPLACES the policy, and the IaC engine re-creates its attachments. Write the description as if it is permanent, because it is.
+
+**The path is a policy-administration handle** -- The IAM path (`/service-boundaries/`) is an ARN infix that IAM conditions can match on: delegated administrators can be restricted to attaching only the policies published under a given path. Most teams leave it as `/`; organizations that delegate IAM administration choose paths deliberately.
+
+**Region is a management detail** -- IAM is global: the policy is visible and attachable in every region. The region only picks the API endpoint the provider calls while managing it.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+The policy is a leaf — it references no other Cloud Resources.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_arn` | Amazon Resource Name of the managed policy | AwsIamRole / AwsIamUser `managedPolicyArns[]` and `permissionsBoundary` |
+| `policy_id` | The stable unique ID AWS assigns (ANPA…) | Audit trails — it never encodes the name or path |
+| `policy_name` | The friendly name (mirrors `metadata.name`) | IAM console URLs and CLI commands |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Shared read-only grant** -- One managed policy granting read access to a bucket or table, attached by every consumer role — the most common shared permission set in an AWS estate. Start from the **S3 Read Only** preset.
+
+**Permissions boundary** -- An allow-list of workload services plus an explicit Deny on identity escalation, applied through roles' `permissionsBoundary` field: the ceiling no attached policy can escalate past, and the mechanism that makes delegated role creation safe. Start from the **Permissions Boundary** preset.
+
+## Works With
+
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- attaches this policy through `managedPolicyArns` and can carry it as a `permissionsBoundary`
+- [**AWS IAM Instance Profile**](/cloud-catalog/aws-iam-instance-profile) -- delivers a role (and the policies attached to it) to EC2 instances
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- the most common Resource target of shared read/write grants
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- its execution role attaches managed policies for the function's data access

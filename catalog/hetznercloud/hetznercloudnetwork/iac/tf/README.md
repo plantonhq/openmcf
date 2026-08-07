@@ -33,11 +33,11 @@ Terraform IaC module for creating private networks with subnets and static route
 bazel build //catalog/hetznercloud/hetznercloudnetwork/iac/tf:terraform_module
 
 # Initialize
-terraform init
+planton tofu init --manifest ../../e2e/manifest.yaml --module-dir .
 
 # Plan
-terraform plan -var-file=../hack/manifest.tfvars
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
 
 # Apply
-terraform apply -var-file=../hack/manifest.tfvars
+planton tofu apply --manifest ../../e2e/manifest.yaml --module-dir . --auto-approve
 ```

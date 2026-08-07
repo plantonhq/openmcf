@@ -8,207 +8,112 @@ componentName: "scalewaykapsulepool"
 
 # Scaleway Kapsule Pool
 
-Deploys an additional node pool into an existing Scaleway Kapsule Kubernetes cluster. This is a standalone resource that creates a single `scaleway_k8s_pool` and supports autoscaling, autohealing, Kubernetes labels, taints, and custom upgrade policies.
+Deploys an additional node pool in an existing Scaleway Kapsule cluster with configurable instance types, autoscaling, autohealing, Kubernetes labels, taints, and upgrade policies. Node pools provide dedicated compute capacity for workload isolation -- use separate pools for different instance types, GPU workloads, or teams with distinct scheduling requirements. Supports ValueFromRef for cluster dependency wiring in InfraCharts.
 
 ## What Gets Created
 
-When you deploy a ScalewayKapsulePool resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kapsule Node Pool** — a `kubernetes.Pool` resource providing a group of identically configured worker nodes (same instance type, root volume, container runtime) in the referenced Kapsule cluster. Kubernetes labels and taints are applied via Scaleway's Cloud Controller Manager tag convention.
+- **Kapsule Node Pool** -- a `kubernetes.Pool` attached to the referenced cluster with the configured instance type, node count, and optional autoscaling bounds
+- **Kubernetes Labels** -- applied to all nodes in the pool via Scaleway's Cloud Controller Manager tag convention, enabling pod scheduling with `nodeSelector` and node affinity rules
+- **Kubernetes Taints** -- applied to all nodes in the pool via CCM tags, preventing pods without matching tolerations from being scheduled on these nodes
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) plus CCM-formatted label and taint tags applied automatically
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **An existing Kapsule cluster** — the pool attaches to a cluster referenced by `clusterId`. Can be created via a ScalewayKapsuleCluster resource.
-- **A valid instance type** eligible for Kapsule (instances with insufficient memory such as DEV1-S, PLAY2-PICO, STARDUST are not eligible)
+### Scaleway Account
 
-## Quick Start
+- **An existing Kapsule cluster** in the target region. Provide the cluster ID directly or reference a ScalewayKapsuleCluster Cloud Resource via ValueFromRef. The pool's region must match the cluster's region.
+- **Sufficient instance quota** in the target zone for the requested instance type and node count. Check Scaleway quotas in the console if provisioning fails with capacity errors.
 
-Create a file `kapsule-pool.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Kapsule Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General-Purpose** preset in the [Presets](#presets) tab for a fixed-size pool with GP1-XS instances.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayKapsulePool
 metadata:
-  name: my-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayKapsulePool.my-pool
+  name: workers
+  org: acme-corp
+  env: prod
 spec:
   region: fr-par
   clusterId:
-    valueFrom:
-      kind: ScalewayKapsuleCluster
-      name: my-cluster
-      fieldPath: status.outputs.cluster_id
-  nodeType: DEV1-M
-  size: 2
+    value: "fr-par/abc12345-6789-def0-1234-567890abcdef"
+  nodeType: GP1-XS
+  size: 3
+  autohealing: true
+  publicIpDisabled: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f kapsule-pool.yaml
+planton apply -f scaleway-kapsule-pool.yaml
 ```
 
-This creates a two-node pool of `DEV1-M` instances in the `fr-par` region, attached to the `my-cluster` Kapsule cluster.
+This creates a fixed-size 3-node pool with GP1-XS instances, autohealing enabled, and no public IPs. No autoscaling, labels, or taints are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Scaleway region where the pool will be created. Must match the parent cluster's region. Cannot be changed after creation. | Required |
-| `clusterId` | `StringValueOrRef` | Reference to the Kapsule cluster. Can be a literal cluster ID or a `valueFrom` reference to a ScalewayKapsuleCluster resource's output. Cannot be changed after creation. | Required |
-| `nodeType` | `string` | Instance type for worker nodes (e.g., `"DEV1-M"`, `"GP1-XS"`, `"PRO2-S"`). Cannot be changed after creation. | Required |
-| `size` | `int` | Number of nodes in the pool. When autoscaling is enabled, this is the initial size. | Required, minimum 1 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `autoScale` | `bool` | `false` | Enables the cluster autoscaler for this pool. Requires `minSize` and `maxSize`. |
-| `minSize` | `int` | — | Minimum node count when autoscaling is enabled. The autoscaler will not scale below this number. |
-| `maxSize` | `int` | — | Maximum node count when autoscaling is enabled. Controls cost ceiling. |
-| `autohealing` | `bool` | `false` | When `true`, Scaleway automatically detects and replaces unhealthy nodes. Recommended for production. |
-| `containerRuntime` | `string` | `"containerd"` | Container runtime for pool nodes. Cannot be changed after creation. |
-| `rootVolumeType` | `string` | — | Root volume storage type. Depends on instance type and availability zone. Cannot be changed after creation. |
-| `rootVolumeSizeInGb` | `int` | — | Root volume size in GB. If omitted, uses the instance type default. Cannot be changed after creation. |
-| `publicIpDisabled` | `bool` | `false` | When `true`, nodes have only private IPs. Requires a Public Gateway or NAT for external access. Cannot be changed after creation. |
-| `zone` | `string` | — | Zone within the region for node placement (e.g., `"fr-par-1"`). If omitted, Scaleway chooses automatically. Cannot be changed after creation. |
-| `placementGroupId` | `string` | — | Placement group UUID for anti-affinity scheduling. Spreads nodes across different hypervisors. Cannot be changed after creation. |
-| `kubernetesLabels` | `map<string, string>` | `{}` | Key-value pairs applied as Kubernetes node labels via the Scaleway CCM tag convention. Used for `nodeSelector` and affinity-based scheduling. |
-| `taints` | `ScalewayKapsulePoolTaint[]` | `[]` | Kubernetes taints applied to all nodes. Each taint has `key` (required), `value`, and `effect` (required). Effect must be `"NoSchedule"`, `"PreferNoSchedule"`, or `"NoExecute"`. |
-| `upgradePolicy.maxSurge` | `int` | `0` | Maximum extra nodes created during a rolling upgrade. Higher values speed up upgrades but increase cost temporarily. |
-| `upgradePolicy.maxUnavailable` | `int` | `1` | Maximum nodes unavailable simultaneously during a rolling upgrade. |
-| `kubeletArgs` | `map<string, string>` | `{}` | Custom kubelet arguments for pool nodes. Use with caution — incorrect values can prevent nodes from joining the cluster. |
-
-## Examples
-
-### Development Pool
-
-A minimal additional pool for development workloads:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pool to a cluster deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayKapsulePool
-metadata:
-  name: dev-workers
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayKapsulePool.dev-workers
 spec:
-  region: fr-par
   clusterId:
     valueFrom:
       kind: ScalewayKapsuleCluster
-      name: dev-cluster
+      name: app-cluster
       fieldPath: status.outputs.cluster_id
-  nodeType: DEV1-M
-  size: 2
-  autohealing: true
-  containerRuntime: containerd
 ```
 
-### Production Pool with Autoscaling and Labels
+The InfraPipeline resolves the dependency graph, deploys the VPC, Private Network, and cluster first, then provisions the node pool with the resolved cluster ID.
 
-A production pool with autoscaling, private nodes, Kubernetes labels for workload scheduling, and a safe upgrade policy:
+## Key Configuration
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayKapsulePool
-metadata:
-  name: app-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayKapsulePool.app-pool
-spec:
-  region: fr-par
-  clusterId:
-    valueFrom:
-      kind: ScalewayKapsuleCluster
-      name: prod-cluster
-      fieldPath: status.outputs.cluster_id
-  nodeType: PRO2-M
-  size: 3
-  autoScale: true
-  minSize: 3
-  maxSize: 10
-  autohealing: true
-  publicIpDisabled: true
-  containerRuntime: containerd
-  rootVolumeSizeInGb: 100
-  kubernetesLabels:
-    workload: application
-    tier: frontend
-  upgradePolicy:
-    maxSurge: 1
-    maxUnavailable: 0
-```
+These are the most important decisions when configuring a node pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### GPU Pool with Taints and Zone Pinning
+**Instance type** -- The `nodeType` field determines CPU, RAM, and local storage per node. Use `DEV1-M` for development, `GP1-XS` for general workloads, or `PRO2-S`/`PRO2-M` for production with guaranteed resources. Cannot be changed after creation -- to change instance types, create a new pool and migrate workloads.
 
-A dedicated pool for GPU workloads using taints to prevent non-GPU pods from being scheduled, pinned to a specific zone:
+**Autoscaling** -- Set `autoScale` to true with `minSize` and `maxSize` bounds for elastic workloads. The cluster-level `autoscalerConfig` on the parent ScalewayKapsuleCluster controls autoscaler behavior (scale-down delays, utilization thresholds). When autoscaling is enabled, the `size` field sets only the initial node count.
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayKapsulePool
-metadata:
-  name: gpu-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayKapsulePool.gpu-pool
-spec:
-  region: fr-par
-  zone: fr-par-2
-  clusterId:
-    valueFrom:
-      kind: ScalewayKapsuleCluster
-      name: prod-cluster
-      fieldPath: status.outputs.cluster_id
-  nodeType: GP1-S
-  size: 2
-  autoScale: true
-  minSize: 1
-  maxSize: 4
-  autohealing: true
-  publicIpDisabled: true
-  containerRuntime: containerd
-  kubernetesLabels:
-    accelerator: gpu
-    team: ml
-  taints:
-    - key: nvidia.com/gpu
-      value: "true"
-      effect: NoSchedule
-  kubeletArgs:
-    maxPods: "150"
-  upgradePolicy:
-    maxSurge: 1
-    maxUnavailable: 1
-```
+**Labels and taints** -- Use `kubernetesLabels` to tag nodes for scheduling (e.g., `{"pool": "gpu", "team": "ml"}`). Use `taints` to restrict scheduling to pods with matching tolerations (e.g., `NoSchedule` taints for dedicated GPU pools). Labels and taints are synced to Kubernetes nodes via Scaleway's Cloud Controller Manager.
 
-## Stack Outputs
+**Public IP** -- Set `publicIpDisabled` to true for production pools so nodes are reachable only via the Private Network. Requires a Public Gateway or NAT for outbound internet access to container registries and APIs.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Upgrade policy** -- Configure `upgradePolicy` with `maxSurge` and `maxUnavailable` to control rolling update behavior during Kubernetes version upgrades. The default (0 surge, 1 unavailable) replaces one node at a time. Set `maxSurge: 1` for zero-downtime upgrades at the cost of temporarily running an extra node.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `pool_id` | `string` | Regional ID of the created node pool (e.g., `fr-par/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). |
-| `pool_version` | `string` | Actual Kubernetes version running on pool nodes. May differ from the cluster version during rolling upgrades. |
-| `current_size` | `int` | Actual number of nodes currently in the pool. When autoscaling is enabled, this may differ from the `size` field in the spec. |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — provides the Kapsule cluster that this pool attaches to
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — provides the Private Network used by the parent cluster
-- [ScalewayPublicGateway](/docs/catalog/scaleway/public-gateway) — required when `publicIpDisabled` is `true` to give nodes outbound internet access
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **ScalewayKapsuleCluster** | `clusterId` | `status.outputs.cluster_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `pool_id` | Unique identifier of the created node pool | Monitoring, management API calls, distinguishing pools |
+| `pool_version` | Kubernetes version running on pool nodes | Version tracking, upgrade verification |
+| `current_size` | Actual number of nodes in the pool | Capacity monitoring, autoscaler verification |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**General-purpose pool** -- A fixed 3-node pool with GP1-XS instances, autohealing, and private-only nodes. The standard additional pool for extending a cluster with general workloads. Start from the **General-Purpose** preset.
+
+**Autoscaling worker pool** -- PRO2-M instances scaling between 1 and 8 nodes with a surge-based upgrade policy for zero-downtime rolling updates. The standard pattern for elastic production workloads, batch jobs, and queue consumers. Start from the **Autoscaling Workers** preset.
+
+## Works With
+
+- [**Scaleway Kapsule Cluster**](/cloud-catalog/scaleway-kapsule-cluster) -- provides the cluster that this node pool belongs to

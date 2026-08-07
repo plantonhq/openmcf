@@ -188,11 +188,11 @@ The module does not include unit tests (Pulumi modules are typically integration
 
 To test the module end-to-end:
 
-1. Create a test manifest in `hack/manifest.yaml`
-2. Run `planton apply -f hack/manifest.yaml`
+1. Create a test manifest in `e2e/manifest.yaml`
+2. Run `planton apply -f e2e/manifest.yaml`
 3. Verify the database is created in the Cloudflare dashboard
 4. Verify outputs: `planton output database-id`
-5. Clean up: `planton destroy -f hack/manifest.yaml`
+5. Clean up: `planton destroy -f e2e/manifest.yaml`
 
 ## Dependencies
 

@@ -117,7 +117,7 @@ await CONFIG.delete("expired_token");
 
 ## Further Reading
 
-For comprehensive deployment guidance, architecture patterns, and best practices, see docs/README.md.
+For comprehensive deployment guidance, architecture patterns, and best practices, see GUIDE.md.
 
 ## References
 

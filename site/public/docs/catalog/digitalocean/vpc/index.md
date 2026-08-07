@@ -6,138 +6,85 @@ order: 100
 componentName: "digitaloceanvpc"
 ---
 
-# DigitalOcean VPC
+# VPC on DigitalOcean
 
-Deploys a Virtual Private Cloud (VPC) on DigitalOcean, providing a private, isolated network for Droplets, Kubernetes clusters, managed databases, and other resources within a single region. The component supports both explicit CIDR allocation and DigitalOcean's automatic IP range generation.
+Deploys a DigitalOcean Virtual Private Cloud with configurable CIDR range and region placement, providing an isolated private network for Droplets, Kubernetes clusters, databases, and load balancers. Integrates with Planton's Provider Connections for DigitalOcean API token management.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanVpc resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VPC** — a `digitalocean_vpc` resource in the specified region, with an optional user-defined CIDR block or an auto-generated `/20` range when no IP range is specified
+- **DigitalOcean VPC** -- a regional private network with the configured IP range (or an auto-generated /20 CIDR if omitted), optional description, and default-for-region setting
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **A target region** selected from DigitalOcean's available datacenter regions
-- **CIDR planning** (optional) — if you need a specific IP range, ensure it does not overlap with existing VPCs or DigitalOcean's reserved ranges (`10.244.0.0/16`, `10.245.0.0/16`, `10.246.0.0/24`, `10.229.0.0/16`)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `vpc.yaml`:
+### DigitalOcean Account
+
+- **A target region** -- DigitalOcean VPCs are regional and cannot span regions. Choose the region where your resources will be deployed (e.g., `nyc1`, `sfo3`, `fra1`).
+- **IP address planning** (optional) -- if you need specific, non-overlapping CIDR blocks across multiple VPCs, plan your ranges before deployment. Only /16, /20, and /24 blocks are supported.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **VPC on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration with an explicit /16 CIDR block.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanVpc
 metadata:
-  name: my-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanVpc.my-vpc
+  name: app-network
+  org: acme-corp
+  env: prod
 spec:
-  region: nyc3
+  region: nyc1
 ```
-
-Deploy:
 
 ```shell
-planton apply -f vpc.yaml
+planton apply -f do-vpc.yaml
 ```
 
-This creates a VPC in the NYC3 region with a DigitalOcean auto-generated `/20` CIDR block (4,096 IPs).
+This creates a VPC in the NYC1 region with a DigitalOcean auto-generated /20 CIDR block. No explicit IP range or default-for-region setting is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `enum` | DigitalOcean region where the VPC will be created. Valid values: `nyc3`, `sfo3`, `fra1`, `sgp1`, `lon1`, `tor1`, `blr1`, `ams3`. | Required |
+**IP range** -- The `ipRangeCidr` field accepts /16, /20, or /24 CIDR blocks (e.g., `"10.10.0.0/16"`). When omitted, DigitalOcean auto-generates a non-conflicting /20 block with 4,096 IPs. Specify an explicit range for production environments with IPAM requirements or when running multiple VPCs that must not overlap.
 
-### Optional Fields
+**Region** -- The `region` field determines where the VPC is created. All resources placed in this VPC (Droplets, databases, Kubernetes clusters) must be in the same region.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | A human-readable description for the VPC. Maximum 100 characters. |
-| `ipRangeCidr` | `string` | `""` (auto-generated `/20`) | The IP range for the VPC in CIDR notation. Only `/16`, `/20`, or `/24` blocks are supported. When omitted, DigitalOcean auto-generates a non-conflicting `/20` block. |
-| `isDefaultForRegion` | `bool` | `false` | Whether this VPC should be set as the default for the specified region. Only one VPC can be the default per region. |
+**Default for region** -- Set `isDefaultForRegion: true` to make this VPC the automatic default for new resources in the region. Only one VPC can be the default per region.
 
-## Examples
+## Outputs and Dependencies
 
-### Dev VPC with Auto-Generated IP Range
+### What This Component Consumes
 
-A minimal VPC for development, letting DigitalOcean auto-assign a `/20` CIDR block:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanVpc
-metadata:
-  name: dev-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanVpc.dev-vpc
-spec:
-  region: sfo3
-  description: "Development environment VPC"
-```
+### What This Component Provides
 
-### Staging VPC with Explicit /20 CIDR
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A staging VPC with a specific IP range to avoid conflicts when peering with other VPCs:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vpc_id` | Unique VPC identifier (UUID) on DigitalOcean | Droplet VPC placement, Kubernetes cluster networking, database cluster VPC attachment, load balancer VPC placement |
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanVpc
-metadata:
-  name: staging-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.DigitalOceanVpc.staging-vpc
-spec:
-  region: fra1
-  description: "Staging environment VPC"
-  ipRangeCidr: "10.100.16.0/20"
-```
+## Common Patterns
 
-### Production VPC with Large /16 CIDR
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A production VPC with the maximum `/16` block (65,536 IPs) for workloads expected to scale, such as VPC-native Kubernetes clusters and managed databases:
+**Standard VPC** -- explicit /16 CIDR block providing 65,536 IPs, suitable for production environments with multiple Droplets, Kubernetes clusters, and databases. Adjust the second octet to avoid overlap when running multiple VPCs. Start from the **Standard** preset.
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanVpc
-metadata:
-  name: prod-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanVpc.prod-vpc
-spec:
-  region: nyc3
-  description: "Production VPC for all services"
-  ipRangeCidr: "10.101.0.0/16"
-  isDefaultForRegion: true
-```
+## Works With
 
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `vpcId` | `string` | The unique identifier (UUID) of the created DigitalOcean VPC |
-
-## Related Components
-
-- [DigitalOceanKubernetesCluster](/docs/catalog/digitalocean/kubernetes-cluster) — deploys a managed Kubernetes cluster into the VPC
-- [DigitalOceanDatabaseCluster](/docs/catalog/digitalocean/database-cluster) — provisions managed databases with private VPC connectivity
-- [DigitalOceanDroplet](/docs/catalog/digitalocean/droplet) — creates Droplets placed within the VPC
-- [DigitalOceanLoadBalancer](/docs/catalog/digitalocean/load-balancer) — provisions load balancers that route traffic to VPC resources
-- [DigitalOceanFirewall](/docs/catalog/digitalocean/firewall) — controls network access to resources within the VPC
+This component operates independently and does not reference other deployment components.

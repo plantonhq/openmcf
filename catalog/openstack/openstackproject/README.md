@@ -41,7 +41,7 @@ A project (historically called a "tenant") provides resource isolation, quota bo
 
 ## Examples
 
-See examples.md for YAML manifests.
+See e2e/manifest.yaml for YAML manifests.
 
 ## Terraform Resource
 

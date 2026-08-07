@@ -172,7 +172,6 @@ violations:
   - catalog/cloudflare/cloudflarepagesproject/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarequeue/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarequeue/iac/tf:missing-iac-readme
-  - catalog/cloudflare/cloudflareruleset:missing-catalog-md
   - catalog/cloudflare/cloudflareturnstilewidget/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareturnstilewidget/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflareworkerskvpair/iac/pulumi:missing-iac-readme

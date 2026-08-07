@@ -109,7 +109,7 @@ output via `valueFrom`. The `from`/`to` entries are trust assertions about kinds
 not foreign keys; the one genuine cross-resource reference is `from[].namespace`,
 which (when Planton-managed) is wired via `metadata.relationships`. The grant
 itself is a low-dependency leaf -- the consuming Gateway/Route is what must order
-itself after the grant. See `docs/README.md` for the full pattern.
+itself after the grant. See `GUIDE.md` for the full pattern.
 
 ## Stack Outputs
 

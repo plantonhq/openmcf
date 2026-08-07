@@ -133,23 +133,24 @@ Both engines produce the same outputs. A `KubernetesPostgres` deployment produce
 Every component's IaC directory contains both implementations side by side:
 
 ```text
-catalog/kubernetes/kubernetespostgres/v1alpha1/iac/
+catalog/kubernetes/kubernetespostgres/iac/
 |-- pulumi/
 |   |-- main.go                  # Entry point: load stack input, call module
 |   |-- Pulumi.yaml              # Pulumi project definition
-|   |-- module/
-|   |   |-- main.go              # Resource creation
-|   |   |-- namespace.go         # Namespace management
-|   |   |-- outputs.go           # Stack outputs
-|   |   |-- locals.go            # Derived values
-|   |   \-- variables.go         # Constants
-|   \-- Makefile
+|   |-- README.md                # Module documentation
+|   \-- module/
+|       |-- main.go              # Resource creation
+|       |-- namespace.go         # Namespace management
+|       |-- outputs.go           # Stack outputs
+|       |-- locals.go            # Derived values
+|       \-- vars.go              # Constants
 \-- tf/
     |-- main.tf                  # Resource creation
     |-- variables.tf             # Input variables (mirrors spec.proto)
     |-- provider.tf              # Provider configuration
     |-- outputs.tf               # Stack outputs
-    \-- locals.tf                # Derived values
+    |-- locals.tf                # Derived values
+    \-- README.md                # Module documentation
 ```
 
 The Pulumi modules are intentionally designed to be straightforward. They use simple, linear code with minimal abstraction -- making them readable by engineers who are more familiar with Terraform-style infrastructure code.

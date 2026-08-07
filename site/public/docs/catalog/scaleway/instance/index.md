@@ -8,128 +8,62 @@ componentName: "scalewayinstance"
 
 # Scaleway Instance
 
-Deploys a Scaleway compute Instance as a composite resource that bundles the server, an optional dedicated Flexible IP, optional additional local volumes, and an optional Private Network attachment into a single declarative manifest. The instance is provisioned in a specific Scaleway zone and can reference ScalewayInstanceSecurityGroup and ScalewayPrivateNetwork resources for network configuration.
+Deploys a compute instance on Scaleway as a composite resource that bundles the server, an optional dedicated Flexible IP (public IPv4), optional additional local volumes, and an optional Private Network attachment into a single declarative unit. Configurable cloud-init bootstrapping, deletion protection, and security group assignment provide production-ready instance management. Supports ValueFromRef for Private Network and security group dependency wiring in InfraCharts.
 
 ## What Gets Created
 
-When you deploy a ScalewayInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Instance Server** — an `instance.Server` resource in the specified zone with the chosen commercial type, base image, root volume configuration, optional cloud-init script, instance state control, and deletion protection
-- **Flexible IP** (optional) — a dedicated `instance.Ip` resource providing a public IPv4 address that has an independent lifecycle, surviving instance replacement to preserve DNS records and firewall rules. Created only when `publicIp` is set.
-- **Additional Volumes** (optional) — one or more `instance.Volume` resources (local SSD or scratch) created and attached to the instance via `additionalVolumeIds`. These volumes share the instance's lifecycle.
-- **Private Network Attachment** (optional) — an inline private NIC on the server connecting it to a ScalewayPrivateNetwork, enabling communication with other resources over private IPs. Created only when `privateNetworkId` is set.
+- **Instance Server** -- a zonal compute instance with the configured instance type, OS image, root volume, and optional cloud-init script
+- **Flexible IP** -- created only when `publicIp` is set; a dedicated public IPv4 address with independent lifecycle that survives instance replacement
+- **Additional Local Volumes** -- created only when `additionalVolumes` entries are provided; local SSD or scratch volumes attached to the instance
+- **Private Network NIC** -- created only when `privateNetworkId` is set; an inline network interface on the specified Private Network for private connectivity
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **A target zone** where the instance will be created (e.g., `fr-par-1`, `nl-ams-1`, `pl-waw-1`). The zone must match the zone of any referenced Private Network or security group.
-- **A base image** — either a UUID or a human-friendly label (e.g., `ubuntu_jammy`, `debian_bullseye`) available in the target zone
-- **(Optional) A ScalewayPrivateNetwork** if you want the instance on an internal network
-- **(Optional) A ScalewayInstanceSecurityGroup** if you need custom firewall rules
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway account** with an active project and API access key pair.
+- **A Private Network** in the target region for internal connectivity. Provide the Private Network UUID directly or reference a ScalewayPrivateNetwork Cloud Resource via ValueFromRef. Optional for isolated development instances.
+- **A security group** with appropriate inbound/outbound rules. Provide the security group UUID directly or reference a ScalewayInstanceSecurityGroup Cloud Resource via ValueFromRef. If omitted, Scaleway assigns its default allow-all security group.
 
-Create a file `instance.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Development Instance** preset in the [Presets](#presets) tab to get a small instance with a public IP running quickly.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayInstance
 metadata:
   name: web-01
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayInstance.web-01
+  org: acme-corp
+  env: prod
 spec:
   zone: fr-par-1
   type: DEV1-S
   image: ubuntu_jammy
   publicIp: {}
-  state: started
 ```
-
-Deploy:
 
 ```shell
-planton apply -f instance.yaml
+planton apply -f scaleway-instance.yaml
 ```
 
-This creates a `DEV1-S` instance running Ubuntu Jammy in `fr-par-1` with a dedicated public IP address.
+This creates a DEV1-S instance with Ubuntu 22.04 and a public IP in the Paris zone. No Private Network, security group, or additional volumes are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zone` | `string` | Scaleway zone where the instance will be created (e.g., `"fr-par-1"`, `"nl-ams-1"`, `"pl-waw-1"`). Determines the physical data center. Cannot be changed after creation. | Required |
-| `type` | `string` | Instance commercial type determining CPU, RAM, and storage allocation. Examples: `"DEV1-S"` (2 vCPU, 2 GB), `"DEV1-M"` (3 vCPU, 4 GB), `"GP1-S"` (8 vCPU, 32 GB), `"PRO2-S"` (2 vCPU, 8 GB). Can be changed after creation (causes stop/migrate/restart). | Required |
-| `image` | `string` | Base image UUID or label. Labels: `"ubuntu_jammy"`, `"ubuntu_focal"`, `"debian_bullseye"`, `"centos_stream_9"`. Use UUIDs for reproducible deployments. Available images depend on the zone. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `publicIp` | `object` | not set | When present, a dedicated Flexible IPv4 address is created and attached. Omit for instances behind a Load Balancer or Public Gateway. |
-| `publicIp.reverseDns` | `string` | Scaleway default | Reverse DNS hostname for the public IP (e.g., `"web-01.example.com"`). A matching DNS A record must exist before setting this. |
-| `securityGroupId` | `string` or `valueFrom` | Scaleway default SG | Security group UUID or reference to a ScalewayInstanceSecurityGroup output. If omitted, Scaleway assigns its default security group (allows all traffic). |
-| `privateNetworkId` | `string` or `valueFrom` | not set | Private Network UUID or reference to a ScalewayPrivateNetwork output. When set, the instance receives a private NIC for internal communication. |
-| `rootVolume` | `object` | image defaults | Root volume configuration. If omitted, the image's default root volume settings are used. |
-| `rootVolume.sizeInGb` | `int` | image default | Root volume size in GB. Minimum depends on the image (typically 10 GB). Can only be increased after creation. |
-| `rootVolume.volumeType` | `string` | `"l_ssd"` | Root disk type: `"l_ssd"` (local SSD, high performance) or `"sbs_volume"` (network-attached, resizable, snapshottable). Changing after creation recreates the instance. |
-| `rootVolume.deleteOnTermination` | `bool` | `true` | Delete the root volume when the instance is terminated. Set to `false` to preserve data. Only meaningful for SBS volumes. |
-| `rootVolume.sbsIops` | `int` | Scaleway default | Guaranteed IOPS for the root volume. Only relevant when `volumeType` is `"sbs_volume"`. |
-| `additionalVolumes` | `list` | `[]` | Additional local volumes to create and attach. These share the instance's lifecycle. |
-| `additionalVolumes[].name` | `string` | auto-generated | Descriptive name for the volume. |
-| `additionalVolumes[].volumeType` | `string` | `"l_ssd"` | Volume type: `"l_ssd"` (local SSD) or `"scratch"` (ephemeral, data lost on stop/restart). | Required per item |
-| `additionalVolumes[].sizeInGb` | `int` | — | Volume size in GB. Total of all local volumes cannot exceed the instance type's maximum. | Required per item |
-| `cloudInit` | `string` | not set | Cloud-init script (e.g., `#!/bin/bash` or `#cloud-config`) executed on first boot. Maximum ~127 KB. |
-| `state` | `string` | `"started"` | Desired instance state: `"started"` (running), `"stopped"` (shut down, not billed for compute), or `"standby"` (suspended to RAM, faster resume). |
-| `protected` | `bool` | `false` | When `true`, the instance cannot be deleted via the API without first disabling protection. Enable for production workloads. |
-
-## Examples
-
-### Minimal Development Instance
-
-A small development instance with a public IP and the default root volume:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a Private Network and security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayInstance
-metadata:
-  name: dev-box
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayInstance.dev-box
 spec:
-  zone: fr-par-1
-  type: DEV1-S
-  image: ubuntu_jammy
-  publicIp: {}
-  state: started
-```
-
-### Production Instance with Private Network and Security Group
-
-A production instance on a Private Network, behind a custom security group, with a larger SBS root volume, cloud-init bootstrapping, and deletion protection enabled. The security group and Private Network are referenced from other Planton resources:
-
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayInstance
-metadata:
-  name: app-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayInstance.app-server
-spec:
-  zone: fr-par-1
-  type: PRO2-S
-  image: ubuntu_jammy
   securityGroupId:
     valueFrom:
       kind: ScalewayInstanceSecurityGroup
@@ -140,75 +74,53 @@ spec:
       kind: ScalewayPrivateNetwork
       name: app-network
       fieldPath: status.outputs.private_network_id
-  rootVolume:
-    sizeInGb: 50
-    volumeType: sbs_volume
-    deleteOnTermination: true
-    sbsIops: 5000
-  cloudInit: |
-    #!/bin/bash
-    apt-get update && apt-get install -y docker.io
-    systemctl enable docker
-    systemctl start docker
-  state: started
-  protected: true
 ```
 
-### Instance with Additional Volumes and Custom Root Volume
+The InfraPipeline resolves the dependency graph, deploys the VPC, Private Network, and security group first, then provisions the instance with the resolved values.
 
-A general-purpose instance with a larger local SSD root volume and two additional volumes — one for application data and one for temporary processing:
+## Key Configuration
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayInstance
-metadata:
-  name: data-processor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.ScalewayInstance.data-processor
-spec:
-  zone: nl-ams-1
-  type: GP1-S
-  image: debian_bullseye
-  publicIp:
-    reverseDns: data-processor.example.com
-  rootVolume:
-    sizeInGb: 40
-    volumeType: l_ssd
-  additionalVolumes:
-    - name: app-data
-      volumeType: l_ssd
-      sizeInGb: 100
-    - name: scratch-space
-      volumeType: scratch
-      sizeInGb: 50
-  cloudInit: |
-    #!/bin/bash
-    mkfs.ext4 /dev/vdb
-    mkdir -p /mnt/app-data
-    mount /dev/vdb /mnt/app-data
-    echo '/dev/vdb /mnt/app-data ext4 defaults 0 2' >> /etc/fstab
-  state: started
-```
+These are the most important decisions when configuring an instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Instance type** -- The `type` field sets CPU, RAM, and local storage. Use `DEV1-S` or `DEV1-M` for development, `PRO2-S` or `PRO2-M` for production workloads with guaranteed resources. Type can be changed after creation (the instance is stopped, migrated, and restarted automatically).
 
-After deployment, the following outputs are available in `status.outputs`:
+**Public IP** -- Include `publicIp` to create a dedicated Flexible IP for internet-reachable instances. Omit it for production workloads behind a Load Balancer or Public Gateway -- keeping instances off the public internet reduces attack surface. The Flexible IP survives instance replacement, preserving DNS records.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `server_id` | `string` | Zoned ID of the created instance server (format: `{zone}/{uuid}`, e.g., `fr-par-1/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). Used for management, monitoring, and lifecycle operations. |
-| `public_ip_address` | `string` | Public IPv4 address of the instance's Flexible IP. Empty string if `publicIp` was not set. Use for DNS A records, SSH access, and external service whitelisting. |
-| `public_ip_id` | `string` | Zoned ID of the Flexible IP resource. Empty string if `publicIp` was not set. The Flexible IP survives instance replacement, preserving DNS records and firewall rules. |
-| `private_ip_address` | `string` | Private IP address on the attached Private Network. Empty string if `privateNetworkId` was not set. Use for Load Balancer backends, internal service discovery, and database connection allowlists. |
+**Root volume** -- Configure `rootVolume` to override the image defaults. Use `l_ssd` for high-performance local storage or `sbs_volume` for network-attached storage with snapshots and resizing. Changing `volumeType` after creation recreates the instance.
 
-## Related Components
+**Deletion protection** -- Set `protected` to true for production instances to prevent accidental deletion via the API. The instance cannot be terminated without first disabling protection.
 
-- [ScalewayInstanceSecurityGroup](/docs/catalog/scaleway/instance-security-group) — zonal firewall that controls inbound and outbound traffic rules; referenced via the `securityGroupId` field
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — internal network for private communication between instances, databases, and load balancers; referenced via the `privateNetworkId` field
-- [ScalewayVpc](/docs/catalog/scaleway/vpc) — regional VPC that contains Private Networks
-- [ScalewayPublicGateway](/docs/catalog/scaleway/public-gateway) — provides NAT and DHCP for instances on a Private Network that do not have a public IP
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — managed Kubernetes cluster; instances can serve as standalone workloads alongside Kapsule clusters on the same Private Network
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — managed database that instances connect to over the Private Network using `private_ip_address`
+**Cloud-init** -- Provide a `cloudInit` script to install packages, configure services, or join configuration management systems on first boot. Maximum size is approximately 127 KB.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **ScalewayInstanceSecurityGroup** (optional) | `securityGroupId` | `status.outputs.security_group_id` |
+| **ScalewayPrivateNetwork** (optional) | `privateNetworkId` | `status.outputs.private_network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `server_id` | Zoned identifier of the created instance | Monitoring dashboards, management API calls |
+| `public_ip_address` | Public IPv4 address (empty if no public IP configured) | ScalewayDnsRecord A records, SSH access, external whitelisting |
+| `public_ip_id` | Flexible IP resource identifier (empty if no public IP configured) | IP lifecycle management, reassignment to replacement instances |
+| `private_ip_address` | Private IP on the attached Private Network (empty if no network configured) | Load Balancer backend servers, internal service discovery, database allowlists |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development instance** -- A DEV1-S instance with Ubuntu 22.04 and a public IP for quick development and prototyping. No Private Network or security group for simplicity. Start from the **Development Instance** preset.
+
+**Production private instance** -- A PRO2-S instance on a Private Network with no public IP, an explicit security group, and deletion protection enabled. Only reachable through the Private Network via a Public Gateway, Load Balancer, or VPN. Start from the **Production Private** preset.
+
+## Works With
+
+- [**Scaleway Instance Security Group**](/cloud-catalog/scaleway-instance-security-group) -- provides firewall rules controlling inbound and outbound traffic
+- [**Scaleway Private Network**](/cloud-catalog/scaleway-private-network) -- provides private connectivity to other resources in the same network

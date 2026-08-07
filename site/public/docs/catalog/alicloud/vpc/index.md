@@ -12,157 +12,110 @@ Deploys an Alibaba Cloud Virtual Private Cloud with a configurable IPv4 CIDR blo
 
 ## What Gets Created
 
-When you deploy an AliCloudVpc resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VPC** — an `alicloud_vpc` resource (Pulumi: `vpc.Network`) with the specified CIDR block, name, and optional IPv6 configuration
-- **VRouter** — automatically created by Alibaba Cloud as part of VPC creation, responsible for routing traffic between VSwitches and managing route tables
-- **System Route Table** — the default route table associated with the VRouter, containing system routes for intra-VPC communication
-- **Tags** — system metadata tags (`resource`, `resource_name`, `resource_kind`, `organization`, `environment`) merged with user-defined `spec.tags`, with user values taking precedence on key conflict
+- **VPC** -- an `alicloud_vpc` resource with the specified CIDR block, name, region, and optional IPv6 configuration
+- **VRouter** -- automatically created by Alibaba Cloud as part of VPC creation, responsible for routing traffic between VSwitches
+- **System Route Table** -- the default route table associated with the VRouter, containing system routes for intra-VPC communication
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables (`ALICLOUD_ACCESS_KEY`, `ALICLOUD_SECRET_KEY`) or Planton provider config
-- **CIDR block planning** — the primary IPv4 CIDR cannot be changed after creation; choose a range that accommodates future growth and avoids overlap with other VPCs if using VPC peering or CEN
-- **Planton CLI** installed with either Pulumi or Terraform (OpenTofu) backend
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `vpc.yaml`:
+### Alibaba Cloud Account
+
+- **CIDR block planning** -- the primary IPv4 CIDR cannot be changed after creation. Choose a range that accommodates future growth and avoids overlap with other VPCs if using VPC peering or CEN.
+- **Region selection** -- choose the region closest to your workloads (e.g., cn-hangzhou, cn-shanghai, us-west-1, ap-southeast-1).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud VPC**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including region, CIDR block, and IPv6 settings.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVpc
 metadata:
-  name: my-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudVpc.my-vpc
+  name: platform-vpc
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  vpcName: my-vpc
+  vpcName: platform-vpc
   cidrBlock: "10.0.0.0/16"
-```
-
-Deploy:
-
-```shell
-planton apply -f vpc.yaml
-```
-
-This creates a VPC with a `/16` CIDR block in the `cn-hangzhou` region. Alibaba Cloud auto-creates a VRouter and system route table as part of the VPC.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region where the VPC will be created (e.g., `cn-hangzhou`, `cn-shanghai`, `us-west-1`, `ap-southeast-1`). | Required; non-empty |
-| `vpcName` | `string` | VPC name. Cannot start with `http://` or `https://`. | Required; 1-128 characters |
-| `cidrBlock` | `string` | Primary IPv4 CIDR block. Must be a private range (`10.0.0.0/8`, `172.16.0.0/12`, or `192.168.0.0/16`) with a mask length of 8-28. Cannot be changed after creation. | Required; non-empty |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the VPC. 1-256 characters; cannot start with `http://` or `https://`. |
-| `enableIpv6` | `bool` | `false` | When `true`, Alibaba Cloud allocates a `/56` IPv6 CIDR block to the VPC. VSwitches can then be assigned IPv6 subnets. |
-| `resourceGroupId` | `string` | `""` | Alibaba Cloud resource group ID for organizational grouping, access control, and cost attribution. If omitted, the VPC is placed in the account's default resource group. |
-| `tags` | `map<string, string>` | `{}` | User-defined key-value tags applied to the VPC. Merged with system tags; user values take precedence on key conflict. |
-
-## Examples
-
-### Development VPC
-
-A minimal VPC for non-production workloads with the smallest standard private CIDR range.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVpc
-metadata:
-  name: dev-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudVpc.dev-vpc
-spec:
-  region: cn-hangzhou
-  vpcName: dev-vpc
-  cidrBlock: "192.168.0.0/16"
-```
-
-### Production VPC with Tags and Resource Group
-
-A production VPC with a large address space, resource group assignment for access control and billing, and organizational tags.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVpc
-metadata:
-  name: prod-vpc
-  org: my-org
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudVpc.prod-vpc
-spec:
-  region: cn-shanghai
-  vpcName: prod-platform-vpc
-  cidrBlock: "10.0.0.0/8"
   description: Production VPC for platform workloads
-  resourceGroupId: rg-prod-123
   tags:
     team: platform
-    costCenter: engineering
 ```
 
-### IPv6-Enabled VPC
+```shell
+planton apply -f alicloud-vpc.yaml
+```
 
-A dual-stack VPC with IPv6 support enabled at creation time. Alibaba Cloud allocates a `/56` IPv6 CIDR block automatically.
+This creates a VPC with a /16 CIDR block in cn-hangzhou. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+No upstream dependencies are required for a VPC. Downstream components reference the VPC via ValueFromRef:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVpc
-metadata:
-  name: ipv6-vpc
-  env: staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AliCloudVpc.ipv6-vpc
 spec:
-  region: us-west-1
-  vpcName: ipv6-enabled-vpc
-  cidrBlock: "172.16.0.0/12"
-  description: Dual-stack VPC with IPv6 support
-  enableIpv6: true
-  resourceGroupId: rg-staging-456
-  tags:
-    networkType: dual-stack
+  vpcId:
+    valueFrom:
+      kind: AliCloudVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph and provisions the VPC before any dependent resources.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `vpc_id` | `string` | The VPC ID assigned by Alibaba Cloud. Referenced by downstream components (AliCloudVswitch, AliCloudSecurityGroup, AliCloudNatGateway, etc.) via `StringValueOrRef`. |
-| `vpc_name` | `string` | The VPC name as created. |
-| `cidr_block` | `string` | The primary IPv4 CIDR block of the VPC. Useful for downstream VSwitch CIDR planning. |
-| `router_id` | `string` | The virtual router ID automatically created with the VPC. |
-| `route_table_id` | `string` | The system route table ID associated with the VPC. |
+These are the most important decisions when configuring a VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**CIDR block** -- The `cidrBlock` field defines the private address space. Must be in 10.0.0.0/8, 172.16.0.0/12, or 192.168.0.0/16 with a mask length of 8-28. This is immutable after creation -- plan for growth.
 
-- [AliCloudVswitch](/docs/catalog/alicloud/vswitch) — creates VSwitches (subnets) within this VPC
-- [AliCloudSecurityGroup](/docs/catalog/alicloud/security-group) — creates security groups bound to this VPC
-- [AliCloudNatGateway](/docs/catalog/alicloud/nat-gateway) — creates NAT gateways for outbound internet access from private VSwitches
-- [AliCloudApplicationLoadBalancer](/docs/catalog/alicloud/alb-load-balancer) — deploys Application Load Balancers in this VPC
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) — deploys managed Kubernetes clusters in this VPC
+**IPv6 dual-stack** -- The `enableIpv6` field allocates a /56 IPv6 CIDR block to the VPC. VSwitches can then be assigned IPv6 subnets. Enable at creation time if you anticipate IPv6 workloads.
+
+**Resource group** -- The `resourceGroupId` field places the VPC in an Alibaba Cloud resource group for access control and cost attribution. If omitted, the account's default resource group is used.
+
+## Outputs and Dependencies
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vpc_id` | VPC ID assigned by Alibaba Cloud | AliCloudVswitch, AliCloudSecurityGroup, AliCloudNatGateway, AliCloudKubernetesCluster |
+| `vpc_name` | VPC name as created | Display and tagging |
+| `cidr_block` | Primary IPv4 CIDR block | VSwitch CIDR planning, security group rules |
+| `router_id` | VRouter ID auto-created with the VPC | Advanced routing configuration |
+| `route_table_id` | System route table ID | Custom route entries |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard production** -- A /16 VPC with organizational tags. Start from the **Standard Production** preset.
+
+**Development** -- A minimal /16 VPC using the 192.168.0.0 range for isolated dev environments. Start from the **Development** preset.
+
+**Dual-stack IPv6** -- A VPC with IPv6 enabled for modern applications that need native IPv6 connectivity. Start from the **Dual Stack IPv6** preset.
+
+## Works With
+
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- creates subnets within this VPC
+- [**AliCloud Security Group**](/cloud-catalog/ali-cloud-security-group) -- creates security groups bound to this VPC
+- [**AliCloud NAT Gateway**](/cloud-catalog/ali-cloud-nat-gateway) -- provides outbound internet access for private VSwitches
+- [**AliCloud EIP Address**](/cloud-catalog/ali-cloud-eip-address) -- standalone public IPs for NAT gateways and load balancers
+- [**AliCloud Application Load Balancer**](/cloud-catalog/ali-cloud-application-load-balancer) -- deploys ALBs in this VPC
+- [**AliCloud Kubernetes Cluster**](/cloud-catalog/ali-cloud-kubernetes-cluster) -- deploys managed Kubernetes clusters in this VPC

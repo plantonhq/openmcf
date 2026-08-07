@@ -40,7 +40,7 @@ These paths are always available on this machine:
 |----------|------|
 | Planton repo (this repo) | `~/scm/github.com/plantonhq/planton` |
 | InfraCharts | `~/scm/github.com/plantonhq/planton/charts` |
-| Provider proto specs | `~/scm/github.com/plantonhq/planton/catalog/<provider>/<kind>/v1/spec.proto` |
+| Provider proto specs | `~/scm/github.com/plantonhq/planton/catalog/<provider>/<kind>/v1alpha1/spec.proto` |
 | Shared relationship proto | `~/scm/github.com/plantonhq/planton/shared/relationship/v1/relationship.proto` |
 | CloudResourceKind enum | `~/scm/github.com/plantonhq/planton/shared/cloudresourcekind/cloud_resource_kind.proto` |
 

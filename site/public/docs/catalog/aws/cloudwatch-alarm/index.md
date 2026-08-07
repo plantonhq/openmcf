@@ -8,294 +8,131 @@ componentName: "awscloudwatchalarm"
 
 # AWS CloudWatch Alarm
 
-Deploys an AWS CloudWatch metric alarm that monitors a metric, a metric math expression, or a PromQL query against an Amazon Managed Service for Prometheus workspace, and triggers actions when the alarm condition holds. Supports M-of-N evaluation to reduce false positives, anomaly detection bands, cross-account metrics, and can target SNS topics, Auto Scaling policies, or EC2 automation actions.
+Deploys a CloudWatch alarm that watches a single metric, a metric math expression, or a PromQL query against an Amazon Managed Prometheus workspace, and triggers actions on breach. The component supports simple metric mode, metric query mode for computed expressions and anomaly detection, PromQL mode for Prometheus-native alerting, M-of-N evaluation windows, and integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring SNS notification targets.
 
 ## What Gets Created
 
-When you deploy an AwsCloudwatchAlarm resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **CloudWatch Metric Alarm** — an `aws_cloudwatch_metric_alarm` resource configured with the specified metric source (single metric or metric math queries), threshold, evaluation window, and actions
+- **CloudWatch Metric Alarm** -- a metric alarm configured with the specified comparison operator, evaluation periods, threshold (static or anomaly detection band), and optional M-of-N datapoints-to-alarm evaluation
+- **Alarm Actions** -- created only when `alarmActions` entries are provided; executes the specified ARNs (typically SNS topics) when the alarm transitions to ALARM state
+- **OK Actions** -- created only when `okActions` entries are provided; executes the specified ARNs when the alarm transitions to OK state
+- **Insufficient Data Actions** -- created only when `insufficientDataActions` entries are provided; executes the specified ARNs when the alarm transitions to INSUFFICIENT_DATA state
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-No additional sub-resources are created. The alarm is a standalone monitoring resource.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A metric to monitor** — the metric must exist in CloudWatch (published by an AWS service or custom application)
-- **An SNS topic** if configuring alarm actions (the most common action target)
-- **IAM permissions** — `cloudwatch:PutMetricAlarm`, `cloudwatch:DeleteAlarms`, `cloudwatch:DescribeAlarms`, `cloudwatch:TagResource`
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `alarm.yaml`:
+- **An SNS topic** (optional) -- required when configuring alarm, OK, or insufficient data actions. Provide the topic ARN directly or reference an AwsSnsTopic Cloud Resource via ValueFromRef.
+- **A CloudWatch metric** -- the alarm monitors an existing metric in CloudWatch. Ensure the metric is being published by the target AWS service or custom application before creating the alarm.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchAlarm
-metadata:
-  name: cpu-high
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchAlarm.cpu-high
-spec:
-  region: us-west-2
-  comparisonOperator: GreaterThanThreshold
-  evaluationPeriods: 3
-  threshold: 80.0
-  metricName: CPUUtilization
-  namespace: AWS/EC2
-  period: 300
-  statistic: Average
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f alarm.yaml
-```
+Open the deployment store, find **AWS CloudWatch Alarm**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CPU Utilization Alarm** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-This creates an alarm that triggers when EC2 CPU utilization exceeds 80% for 3 consecutive 5-minute periods.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the alarm will be created (e.g., `us-west-2`). | Required |
-| `comparisonOperator` | `string` | Arithmetic operation comparing the statistic to the threshold. Required for simple-metric and metric-query alarms; must be omitted for PromQL alarms. | One of: `GreaterThanOrEqualToThreshold`, `GreaterThanThreshold`, `LessThanThreshold`, `LessThanOrEqualToThreshold`, `LessThanLowerOrGreaterThanUpperThreshold`, `LessThanLowerThreshold`, `GreaterThanUpperThreshold` |
-| `evaluationPeriods` | `int` | Number of consecutive periods over which data is compared to the threshold. Required for simple-metric and metric-query alarms; must be omitted for PromQL alarms. | >= 1 |
-
-Exactly one of the following metric source modes is required:
-
-**Simple Metric Mode** — set `metricName`, `namespace`, `period`, and one of `statistic` or `extendedStatistic`:
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `metricName` | `string` | CloudWatch metric name (e.g., `CPUUtilization`, `RequestCount`). | Max 255 chars. Mutually exclusive with `metricQueries` and `evaluationCriteria`. |
-| `namespace` | `string` | Metric namespace (e.g., `AWS/EC2`, `AWS/SQS`). | Required when `metricName` is set. Max 255 chars. |
-| `period` | `int` | Period in seconds for statistic evaluation. | Required when `metricName` is set. Valid: 10, 20, 30, or multiple of 60. |
-| `statistic` | `string` | Standard statistic. | One of: `SampleCount`, `Average`, `Sum`, `Minimum`, `Maximum`. Mutually exclusive with `extendedStatistic`. |
-
-**Metric Query Mode** — set `metricQueries` for metric math or anomaly detection:
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `metricQueries` | `object[]` | Metric math expressions or multi-metric queries. | Max 20 items. Exactly one query sets `returnData: true`; each query sets exactly one of `expression`/`metric`. Mutually exclusive with `metricName` and `evaluationCriteria`. |
-
-**PromQL Mode** — set `evaluationCriteria` to alarm on an Amazon Managed Service for Prometheus workspace:
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `evaluationCriteria.promqlCriteria.query` | `string` | PromQL query producing a boolean-style firing signal; the query itself is the alarm condition. | Required in this mode. Max 10000 chars. |
-| `evaluationCriteria.promqlCriteria.pendingPeriod` | `int` | Seconds the query must continuously fire before ALARM (Prometheus `for:`). | 0–86400. |
-| `evaluationCriteria.promqlCriteria.recoveryPeriod` | `int` | Seconds the query must be quiet before returning to OK. | 0–86400. |
-| `evaluationInterval` | `int` | Query evaluation cadence in seconds. | 10, 20, 30, or multiple of 60. Only valid with `evaluationCriteria`. |
-
-In PromQL mode the threshold fields (`comparisonOperator`, `evaluationPeriods`, `threshold`, `datapointsToAlarm`, and the simple-metric fields) must be omitted — the query expresses the condition.
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `threshold` | `double` | — | Static threshold value. Mutually exclusive with `thresholdMetricId`. |
-| `thresholdMetricId` | `string` | — | ID of the ANOMALY_DETECTION_BAND function for anomaly detection alarms. Mutually exclusive with `threshold`. |
-| `datapointsToAlarm` | `int` | Same as `evaluationPeriods` | Number of breaching data points to trigger alarm (M-of-N evaluation). Must be <= `evaluationPeriods`. |
-| `treatMissingData` | `string` | `missing` | How missing data is treated. One of: `missing`, `ignore`, `breaching`, `notBreaching`. |
-| `actionsEnabled` | `bool` | `true` | Whether actions execute on state transitions. Set to `false` during tuning or maintenance. |
-| `extendedStatistic` | `string` | — | Percentile statistic (e.g., `p95`, `p99.9`, `IQM`). Mutually exclusive with `statistic`. |
-| `dimensions` | `map<string,string>` | — | Dimensions to narrow the metric to a specific resource. |
-| `unit` | `string` | — | Filters data points to matching unit. |
-| `alarmActions` | `StringValueOrRef[]` | `[]` | Actions for ALARM transitions. Can reference AwsSnsTopic via `valueFrom`. Max 5. |
-| `okActions` | `StringValueOrRef[]` | `[]` | Actions for OK transitions. Can reference AwsSnsTopic via `valueFrom`. Max 5. |
-| `insufficientDataActions` | `StringValueOrRef[]` | `[]` | Actions for INSUFFICIENT_DATA transitions. Can reference AwsSnsTopic via `valueFrom`. Max 5. |
-| `alarmDescription` | `string` | — | Human-readable description. Max 1024 chars. |
-| `evaluateLowSampleCountPercentiles` | `string` | — | Percentile alarm behavior with low sample counts. One of: `evaluate`, `ignore`. |
-
-### Metric Query Fields
-
-Each item in `metricQueries`:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `string` | **Required.** Variable name for expressions (e.g., `m1`, `errors`). Must start with lowercase letter. |
-| `expression` | `string` | Metric math expression (e.g., `m1/m2*100`). Mutually exclusive with `metric`. |
-| `metric` | `object` | Raw metric definition. Mutually exclusive with `expression`. |
-| `metric.metricName` | `string` | **Required.** Metric name. |
-| `metric.namespace` | `string` | **Required.** Metric namespace. |
-| `metric.period` | `int` | **Required.** Period in seconds. |
-| `metric.stat` | `string` | **Required.** Statistic (standard or extended). |
-| `metric.dimensions` | `map<string,string>` | Dimensions for the metric. |
-| `label` | `string` | Display label for the query. |
-| `returnData` | `bool` | Set `true` on exactly one query to use its result as the alarm signal. |
-| `accountId` | `string` | AWS account ID for cross-account monitoring. |
-
-## Examples
-
-### Simple Metric with SNS Notification
-
-An EC2 CPU alarm that sends to an SNS topic when CPU exceeds 80%:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchAlarm
 metadata:
-  name: ec2-cpu-alarm
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchAlarm.ec2-cpu-alarm
-spec:
-  region: us-west-2
-  comparisonOperator: GreaterThanThreshold
-  evaluationPeriods: 3
-  datapointsToAlarm: 2
-  threshold: 80.0
-  metricName: CPUUtilization
-  namespace: AWS/EC2
-  period: 300
-  statistic: Average
-  dimensions:
-    InstanceId: i-0abcdef1234567890
-  treatMissingData: breaching
-  alarmDescription: "EC2 CPU exceeds 80% for 2 of 3 periods"
-  alarmActions:
-    - value: arn:aws:sns:us-east-1:123456789012:ops-alerts
-```
-
-### Error Rate with Metric Math
-
-Computes ALB 5xx error rate as a percentage and alerts when it exceeds 5%:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchAlarm
-metadata:
-  name: error-rate-alarm
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchAlarm.error-rate-alarm
-spec:
-  region: us-west-2
-  comparisonOperator: GreaterThanThreshold
-  evaluationPeriods: 3
-  datapointsToAlarm: 2
-  threshold: 5.0
-  treatMissingData: notBreaching
-  alarmDescription: "ALB 5xx error rate exceeds 5%"
-  metricQueries:
-    - id: errors
-      metric:
-        metricName: HTTPCode_Target_5XX_Count
-        namespace: AWS/ApplicationELB
-        period: 300
-        stat: Sum
-        dimensions:
-          LoadBalancer: app/my-alb/1234567890abcdef
-    - id: requests
-      metric:
-        metricName: RequestCount
-        namespace: AWS/ApplicationELB
-        period: 300
-        stat: Sum
-        dimensions:
-          LoadBalancer: app/my-alb/1234567890abcdef
-    - id: error_rate
-      expression: "errors/requests*100"
-      label: "Error Rate %"
-      returnData: true
-  alarmActions:
-    - value: arn:aws:sns:us-east-1:123456789012:ops-alerts
-```
-
-### Production Multi-Action with Foreign Key References
-
-A production SQS depth alarm using `valueFrom` to reference an Planton-managed SNS topic, with actions on all three state transitions:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchAlarm
-metadata:
-  name: sqs-depth-alarm
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchAlarm.sqs-depth-alarm
+  name: high-cpu-alarm
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   comparisonOperator: GreaterThanOrEqualToThreshold
-  evaluationPeriods: 5
-  datapointsToAlarm: 3
-  threshold: 1000.0
-  metricName: ApproximateNumberOfMessagesVisible
-  namespace: AWS/SQS
-  period: 60
-  statistic: Maximum
-  treatMissingData: notBreaching
-  alarmDescription: "SQS queue depth exceeds 1000 — consumers may be backed up"
+  evaluationPeriods: 3
+  datapointsToAlarm: 2
+  threshold: 80
+  metricName: CPUUtilization
+  namespace: "AWS/EC2"
+  period: 300
+  statistic: Average
+  treatMissingData: breaching
+  alarmActions:
+    - value: "arn:aws:sns:us-west-2:123456789012:alerts"
+```
+
+```shell
+planton apply -f cloudwatch-alarm.yaml
+```
+
+This creates a CloudWatch alarm monitoring EC2 CPU utilization with 2-of-3 M-of-N evaluation. No OK or insufficient data actions are configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the alarm to an SNS topic deployed in the same InfraPipeline:
+
+```yaml
+spec:
   alarmActions:
     - valueFrom:
         kind: AwsSnsTopic
-        name: ops-critical
+        name: alerts-topic
         fieldPath: status.outputs.topic_arn
   okActions:
     - valueFrom:
         kind: AwsSnsTopic
-        name: ops-resolved
-        fieldPath: status.outputs.topic_arn
-  insufficientDataActions:
-    - valueFrom:
-        kind: AwsSnsTopic
-        name: ops-warnings
+        name: recovery-topic
         fieldPath: status.outputs.topic_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the SNS topics first, then provisions the alarm with the resolved ARNs.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `alarm_arn` | `string` | ARN of the CloudWatch metric alarm. Used by composite alarms and operational tooling. |
-| `alarm_name` | `string` | Name of the alarm, unique within the AWS account and region. |
+These are the most important decisions when configuring a CloudWatch alarm. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### PromQL Alarm on a Prometheus Workspace
+**Simple metric vs. metric queries vs. PromQL** -- Use simple metric mode (`metricName`, `namespace`, `period`, `statistic`, optional `unit`) for single-metric alarms like CPU utilization or queue depth. Use `metricQueries` for metric math (error rate = errors / total * 100), anomaly detection (ANOMALY_DETECTION_BAND), or multi-metric evaluations -- exactly one query carries `returnData: true` as the alarmed signal. Use `evaluationCriteria.promqlCriteria` to alarm on a PromQL query against an Amazon Managed Prometheus workspace; the query carries its own comparison, so the threshold fields do not apply, and `evaluationInterval` plus the pending/recovery periods control cadence and flap-guarding. The three modes are mutually exclusive.
 
-Alarm on a PromQL query with Prometheus-style pending/recovery semantics:
+**M-of-N evaluation** -- Set `datapointsToAlarm` lower than `evaluationPeriods` to require only M of N periods to breach before triggering. For example, `evaluationPeriods: 5` with `datapointsToAlarm: 3` means 3 of the last 5 periods must breach. This reduces false positives from transient spikes.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchAlarm
-metadata:
-  name: promql-cpu-saturation
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchAlarm.promql-cpu-saturation
-spec:
-  region: us-west-2
-  evaluationCriteria:
-    promqlCriteria:
-      query: 'avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) > 0.8'
-      pendingPeriod: 300
-      recoveryPeriod: 120
-  evaluationInterval: 60
-  alarmDescription: "Prometheus-reported CPU saturation above 80% for 5 minutes"
-  alarmActions:
-    - value: arn:aws:sns:us-east-1:123456789012:ops-alerts
-```
+**Missing data treatment** -- Controls alarm behavior when data points are absent. Use `notBreaching` for intermittent metrics (low-traffic services) to avoid false alarms during idle periods. Use `breaching` for metrics that must always report (heartbeat checks). Defaults to `missing` which preserves the current alarm state.
 
-## Related Components
+**Comparison operator** -- Standard operators (`GreaterThanThreshold`, `LessThanOrEqualToThreshold`, etc.) for static thresholds. Anomaly detection operators (`LessThanLowerOrGreaterThanUpperThreshold`) for dynamic thresholds using `thresholdMetricId`.
 
-- [AwsCloudwatchCompositeAlarm](/docs/catalog/aws/cloudwatch-composite-alarm) — combines this alarm's state with others by name for shared-cause paging and maintenance suppression
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — the most common alarm action target for notifications
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — log storage that generates metrics (via metric filters) for alarm evaluation
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) — queues commonly monitored by depth and age alarms
-- [AwsLambda](/docs/catalog/aws/lambda) — functions monitored by error and duration alarms
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSnsTopic** (optional) | `alarmActions` | `status.outputs.topic_arn` |
+| **AwsSnsTopic** (optional) | `okActions` | `status.outputs.topic_arn` |
+| **AwsSnsTopic** (optional) | `insufficientDataActions` | `status.outputs.topic_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `alarm_arn` | Amazon Resource Name of the metric alarm | Composite alarms, dashboards, operational tooling |
+| `alarm_name` | Name of the metric alarm (unique per account/region) | CloudWatch API calls, CLI operations, dashboard widgets |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**CPU utilization alarm** -- Single-metric alarm on EC2 CPUUtilization with 2-of-3 M-of-N evaluation and SNS notification. The standard monitoring pattern for compute workloads. Start from the **CPU Utilization Alarm** preset.
+
+**Error rate metric math** -- Three-query metric math alarm computing error rate as a percentage (errors / requests * 100). Suitable for ALB, API Gateway, and any ratio-based alerting where raw counts are misleading. Start from the **Error Rate Metric Math** preset.
+
+**Production multi-action alarm** -- Full lifecycle alerting with separate SNS topics for alarm, recovery, and insufficient data state transitions. Recommended for any production workload where knowing about recovery is as important as knowing about the incident. Start from the **Production Multi-Action** preset.
+
+**PromQL Prometheus alarm** -- Alarms on a PromQL query evaluated against an Amazon Managed Prometheus workspace, with pending/recovery flap guards and an explicit evaluation interval. The bridge between Prometheus-native monitoring and CloudWatch's alarm-state and SNS action machinery. Start from the **PromQL Prometheus Alarm** preset.
+
+## Works With
+
+- [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- provides notification targets for alarm, OK, and insufficient data state transitions

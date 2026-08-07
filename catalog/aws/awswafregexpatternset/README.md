@@ -84,7 +84,7 @@ spec:
             uriPath: {}
 ```
 
-See docs/README.md and [AwsWafWebAcl](../awswafwebacl/README.md).
+See GUIDE.md and [AwsWafWebAcl](../awswafwebacl/README.md).
 
 ---
 

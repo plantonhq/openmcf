@@ -104,7 +104,7 @@ resource_profile = {
 
 ## Examples
 
-See ../../examples.md for complete YAML manifest examples that can be used with `planton tofu apply`.
+See ../../e2e/manifest.yaml for complete YAML manifest examples that can be used with `planton tofu apply`.
 
 ## References
 

@@ -8,149 +8,84 @@ componentName: "scalewaycontainerregistry"
 
 # Scaleway Container Registry
 
-Deploys a Scaleway Container Registry namespace, providing a fully managed, OCI-compliant registry for storing, managing, and deploying container images and Helm charts. Each namespace produces a Docker-compatible endpoint URL for push and pull operations.
+Deploys a fully managed, OCI-compliant Container Registry namespace on Scaleway for storing and distributing container images and Helm charts. Each namespace provides a dedicated Docker endpoint for push and pull operations, with configurable visibility (private or public). The registry integrates with Scaleway Kapsule clusters, Serverless Containers, and CI/CD pipelines for image distribution.
 
 ## What Gets Created
 
-When you deploy a ScalewayContainerRegistry resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Registry Namespace** — a `registry.Namespace` resource providing a dedicated OCI container image registry with a Docker endpoint at `rg.<region>.scw.cloud/<namespace-name>`
+- **Registry Namespace** -- a `scaleway_registry_namespace` in the specified region with a Docker endpoint at `rg.<region>.scw.cloud/<namespace-name>` and the configured visibility setting
 
-Container Registry namespaces are regional resources. The namespace name becomes part of the endpoint URL and must be unique within the Scaleway project.
+Note: Scaleway Container Registry namespaces do not support tags. Standard metadata tags are not applied to this resource.
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **A unique namespace name** that is 4-63 characters, lowercase alphanumeric with hyphens, and DNS-compatible (it appears in the endpoint URL)
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway account** with an active project and API access key pair (Access Key + Secret Key). The IaC module authenticates through the Scaleway provider configuration.
+- **Choose a region** -- registry namespaces are regional resources. Available regions: `fr-par` (Paris), `nl-ams` (Amsterdam), `pl-waw` (Warsaw). Cannot be changed after creation.
+- **Namespace naming** -- the name is derived from `metadata.name` and becomes part of the Docker endpoint URL. It must be 4-63 characters, lowercase alphanumeric with hyphens, and unique within the Scaleway project.
 
-Create a file `container-registry.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Container Registry**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Registry** preset in the [Presets](#presets) tab to create a private namespace that requires authentication for image pulls.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayContainerRegistry
 metadata:
-  name: my-registry
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayContainerRegistry.my-registry
+  name: app-images
+  org: acme-corp
+  env: prod
 spec:
   region: fr-par
 ```
 
-Deploy:
-
 ```shell
-planton apply -f container-registry.yaml
+planton apply -f scaleway-container-registry.yaml
 ```
 
-This creates a private container registry namespace in the Paris region. After deployment, authenticate and push images:
+This creates a private registry namespace in the Paris region. After provisioning, authenticate with `docker login rg.fr-par.scw.cloud/app-images -u nologin -p <SCW_SECRET_KEY>` and push images with `docker push rg.fr-par.scw.cloud/app-images/myapp:latest`. A Stack Job tracks the provisioning in real time.
 
-```shell
-docker login rg.fr-par.scw.cloud/my-registry -u nologin -p <SCW_SECRET_KEY>
-docker tag myapp:latest rg.fr-par.scw.cloud/my-registry/myapp:latest
-docker push rg.fr-par.scw.cloud/my-registry/myapp:latest
-```
+## Key Configuration
 
-## Configuration Reference
+These are the most important decisions when configuring a container registry. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Required Fields
+**Visibility** -- The `isPublic` field controls whether images require authentication to pull. When false (default), only authenticated users and services can pull images -- the standard choice for proprietary application images. When true, anyone can pull without credentials, suitable for open-source projects and public base images. Pushing always requires authentication regardless of this setting. Can be toggled after creation.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Scaleway region for the registry namespace (e.g., `"fr-par"`, `"nl-ams"`, `"pl-waw"`). Determines the Docker endpoint URL. Cannot be changed after creation. | Required |
+**Region** -- The `region` field determines the Docker endpoint URL and where images are stored. Choose the region closest to your build infrastructure and deployment targets for lowest push/pull latency. Consider data residency requirements for container images.
 
-### Optional Fields
+**Description** -- The `description` field provides a human-readable label for the namespace (e.g., "Production microservices images"). Displayed in the Scaleway Console for identification. No effect on registry behavior.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the registry namespace. Displayed in the Scaleway Console for identification. Has no effect on registry behavior. |
-| `isPublic` | `bool` | `false` | When `true`, anyone can pull images without authentication. Pushing always requires authentication regardless of this setting. Can be changed after creation. |
+## Outputs and Dependencies
 
-## Examples
+### What This Component Consumes
 
-### Private Registry for Development
+This component has no foreign key dependencies.
 
-A minimal private registry namespace for storing development container images:
+### What This Component Provides
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayContainerRegistry
-metadata:
-  name: dev-images
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayContainerRegistry.dev-images
-spec:
-  region: fr-par
-  description: Development environment container images
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### Public Registry for Open-Source Projects
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace_id` | Regional ID of the registry namespace (`{region}/{uuid}`) | Terraform state references, Scaleway API operations |
+| `endpoint` | Docker endpoint URL (`rg.<region>.scw.cloud/<name>`) | CI/CD `docker push` target, Kubernetes imagePullSecrets, serverless image source |
+| `namespace_name` | Name of the registry namespace in Scaleway | CI/CD pipeline variables, dashboard labels |
+| `region` | Region where the namespace is deployed | Co-location decisions for Kapsule clusters and serverless functions |
 
-A public registry namespace for distributing open-source container images and base images that external consumers can pull without credentials:
+## Common Patterns
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayContainerRegistry
-metadata:
-  name: oss-images
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayContainerRegistry.oss-images
-spec:
-  region: nl-ams
-  description: Public base images and community tools
-  isPublic: true
-```
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-### Production Registry Co-Located with Kapsule Cluster
+**Private registry** -- A private namespace requiring authentication for image pulls. The standard and most common configuration for proprietary application images, internal tools, and CI/CD artifacts. Start from the **Private Registry** preset.
 
-A private production registry in the same region as a Kapsule cluster for lowest image pull latency during deployments and pod scaling:
+## Works With
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayContainerRegistry
-metadata:
-  name: prod-services
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayContainerRegistry.prod-services
-spec:
-  region: pl-waw
-  description: Production microservices images for Warsaw Kapsule cluster
-```
-
-After deployment, create a Kubernetes image pull secret using the registry endpoint from stack outputs:
-
-```shell
-kubectl create secret docker-registry scw-registry \
-  --docker-server=rg.pl-waw.scw.cloud/prod-services \
-  --docker-username=nologin \
-  --docker-password=<SCW_SECRET_KEY>
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace_id` | `string` | Unique identifier of the registry namespace. Format: `"{region}/{uuid}"`. Used for Scaleway API and Terraform state references. |
-| `endpoint` | `string` | Docker endpoint URL for login, push, and pull operations. Format: `"rg.<region>.scw.cloud/<namespace-name>"`. |
-| `namespace_name` | `string` | Name of the registry namespace as it exists in Scaleway. Typically matches `metadata.name`. |
-| `region` | `string` | Region where the registry namespace is deployed. Useful for downstream resources requiring region-aware configuration. |
-
-## Related Components
-
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — deploys Kubernetes clusters whose workloads pull images from this registry via imagePullSecrets
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — provides private connectivity for workloads accessing the registry
+This component operates independently and does not reference other deployment components.

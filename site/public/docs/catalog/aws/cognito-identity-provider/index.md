@@ -8,201 +8,120 @@ componentName: "awscognitoidentityprovider"
 
 # AWS Cognito Identity Provider
 
-Deploys an external identity provider federated into an Amazon Cognito User Pool. Configures social (Google, Facebook, Amazon, Apple), enterprise OIDC (Okta, Azure AD, Auth0), or SAML 2.0 providers so users can sign in through the IdP and receive Cognito tokens. The `provider_name` output is referenced by User Pool Clients in `supportedIdentityProviders` to enable federated sign-in.
+Deploys a federated identity provider into an existing Cognito User Pool, enabling sign-in through social providers (Google, Facebook, Amazon, Apple), enterprise OIDC (Okta, Azure AD, Auth0), or SAML 2.0 (ADFS, Salesforce). The component integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent User Pool.
 
 ## What Gets Created
 
-When you deploy an AwsCognitoIdentityProvider resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cognito Identity Provider** — an `aws_cognito_identity_provider` resource attached to the specified User Pool, with provider-specific configuration (OAuth credentials, OIDC issuer, or SAML metadata) and attribute mapping
+- **Cognito Identity Provider** -- a federation registration attached to the specified User Pool, configured with provider-specific details (OAuth client credentials, OIDC issuer, or SAML metadata) and optional attribute mapping from provider claims to pool schema attributes
 
-## Prerequisites
+## Before You Deploy
 
-- **AwsCognitoUserPool** (or equivalent) must exist; `userPoolId` references its `status.outputs.user_pool_id`
-- **Provider credentials** — OAuth client ID/secret from the IdP, or SAML metadata URL/file
-- **AWS credentials** configured via environment variables or Planton provider config
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `google-idp.yaml`:
+### AWS Account
+
+- **A Cognito User Pool** -- the identity provider attaches to an existing pool. Provide the `userPoolId` directly or reference an AwsCognitoUserPool Cloud Resource via ValueFromRef.
+- **Provider credentials** -- OAuth client ID and secret (for Google, Facebook, Amazon, OIDC), Apple private key and team ID (for Sign In with Apple), or SAML metadata URL/file (for SAML 2.0). Obtain these from the external identity provider's developer console.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Cognito Identity Provider**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Google OAuth** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCognitoIdentityProvider
 metadata:
-  name: google-idp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCognitoIdentityProvider.google-idp
+  name: google-login
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   userPoolId:
-    valueFrom:
-      kind: AwsCognitoUserPool
-      name: my-auth
-      fieldPath: status.outputs.user_pool_id
+    value: "us-west-2_Ab1Cd2EfG"
   providerName: Google
   providerType: Google
   google:
-    clientId: "${GOOGLE_CLIENT_ID}"
-    clientSecret: "${GOOGLE_CLIENT_SECRET}"
+    clientId: "123456789.apps.googleusercontent.com"
+    clientSecret: "$secret/google-oauth-client-secret"
     authorizeScopes: "email profile openid"
   attributeMapping:
     email: email
     username: sub
 ```
-
-Deploy:
 
 ```shell
-planton apply -f google-idp.yaml
+planton apply -f cognito-idp.yaml
 ```
 
-Then add `Google` to the User Pool Client's `supportedIdentityProviders` list.
+This creates a Google identity provider attached to the specified User Pool with email and username attribute mapping. The client secret is a managed-secret reference (`$secret/<slug>`) — the platform rejects plaintext secrets and resolves the reference just-in-time at deploy. After creation, add `"Google"` to the `supportedIdentityProviders` list on your User Pool Client to enable federated sign-in. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the resource will be created (e.g., `us-west-2`). | Required |
-| `userPoolId` | `StringValueOrRef` | User Pool ID (e.g., `us-east-1_Ab1Cd2EfG`). Can reference AwsCognitoUserPool via `valueFrom`. | Required. ForceNew. |
-| `providerName` | `string` | Display name for this IdP. Referenced in User Pool Client `supportedIdentityProviders`. | 1-32 UTF-8 chars. ForceNew. |
-| `providerType` | `string` | Provider type, exactly as the AWS API spells it: `Google`, `Facebook`, `LoginWithAmazon`, `SignInWithApple`, `OIDC`, `SAML`. | Required. ForceNew. |
-| `google` / `facebook` / `loginWithAmazon` / `signInWithApple` / `oidc` / `saml` | oneof | Provider-specific config. Must match `providerType`. | Exactly one required. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `attributeMapping` | `map<string, string>` | Provider defaults | Maps IdP attributes to Cognito user pool attributes. Keys: Cognito attrs; values: IdP claim names. |
-| `idpIdentifiers` | `string[]` | `[]` | Alternative identifiers for `idp_identifier` query param. Max 50, each 1-40 chars. |
-| `facebook.apiVersion` | `string` | — | Graph API version (e.g., `v17.0`). Omit for Cognito default. |
-| `oidc.authorizeScopes` | `string` | — | Space-separated scopes. Defaults to `openid email profile` when omitted. |
-| `oidc.clientSecret` | `string` | — | OIDC client secret. Omit for public clients using PKCE. |
-| `oidc.attributesRequestMethod` | `string` | `GET` | `GET` or `POST` for userinfo endpoint. |
-| `oidc.authorizeUrl` | `string` | — | Override auto-discovered authorization endpoint. |
-| `oidc.tokenUrl` | `string` | — | Override auto-discovered token endpoint. |
-| `oidc.attributesUrl` | `string` | — | Override auto-discovered userinfo endpoint. |
-| `oidc.jwksUri` | `string` | — | Override auto-discovered JWKS endpoint. |
-| `oidc.attributesUrlAddAttributes` | `bool` | `false` | Append requested attributes as query parameters to the userinfo request (only some providers need this). |
-| `saml.metadataFile` | `string` | — | Inline SAML metadata XML. For SAML, set one of `metadataFile` or `metadataUrl`. |
-| `saml.metadataUrl` | `string` | — | URL to IdP SAML metadata. For SAML, set one of `metadataFile` or `metadataUrl`. |
-| `saml.idpSignOut` | `bool` | `false` | Enable single logout (SLO). |
-| `saml.idpInit` | `bool` | `false` | Enable IdP-initiated SSO. |
-| `saml.encryptedResponses` | `bool` | `false` | Require encrypted SAML assertions. |
-| `saml.requestSigningAlgorithm` | `string` | — | Algorithm for signing AuthnRequest (e.g., `rsa-sha256`). |
-
-## Examples
-
-### Google OAuth
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the identity provider to a User Pool deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCognitoIdentityProvider
-metadata:
-  name: google-idp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: auth
-    pulumi.planton.dev/stack.name: prod.AwsCognitoIdentityProvider.google-idp
 spec:
-  region: us-west-2
   userPoolId:
     valueFrom:
       kind: AwsCognitoUserPool
-      name: prod-auth
+      name: app-auth
       fieldPath: status.outputs.user_pool_id
-  providerName: Google
-  providerType: Google
-  google:
-    clientId: "${GOOGLE_CLIENT_ID}"
-    clientSecret: "${GOOGLE_CLIENT_SECRET}"
-    authorizeScopes: "email profile openid"
-  attributeMapping:
-    email: email
-    username: sub
-    given_name: given_name
-    family_name: family_name
 ```
 
-### Enterprise OIDC
+The InfraPipeline resolves the dependency graph, deploys the User Pool first, then provisions the identity provider with the resolved pool ID.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCognitoIdentityProvider
-metadata:
-  name: corp-oidc-idp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: auth
-    pulumi.planton.dev/stack.name: prod.AwsCognitoIdentityProvider.corp-oidc-idp
-spec:
-  region: us-west-2
-  userPoolId:
-    valueFrom:
-      kind: AwsCognitoUserPool
-      name: prod-auth
-      fieldPath: status.outputs.user_pool_id
-  providerName: CorpSSO
-  providerType: OIDC
-  oidc:
-    clientId: "${OIDC_CLIENT_ID}"
-    clientSecret: "${OIDC_CLIENT_SECRET}"
-    oidcIssuer: "https://login.microsoftonline.com/${TENANT_ID}/v2.0"
-    authorizeScopes: "openid email profile"
-  attributeMapping:
-    email: email
-    username: sub
-    given_name: given_name
-    family_name: family_name
-```
+## Key Configuration
 
-### SAML Federation
+These are the most important decisions when configuring a Cognito Identity Provider. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCognitoIdentityProvider
-metadata:
-  name: corp-saml-idp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: auth
-    pulumi.planton.dev/stack.name: prod.AwsCognitoIdentityProvider.corp-saml-idp
-spec:
-  region: us-west-2
-  userPoolId:
-    valueFrom:
-      kind: AwsCognitoUserPool
-      name: prod-auth
-      fieldPath: status.outputs.user_pool_id
-  providerName: CorpAD
-  providerType: SAML
-  saml:
-    metadataUrl: "https://idp.example.com/saml/metadata"
-    idpSignOut: true
-    idpInit: true
-  attributeMapping:
-    email: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
-    given_name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
-    family_name: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"
-```
+**Provider type** -- Determines the authentication protocol and which configuration block to populate: `google`, `facebook`, `loginWithAmazon`, `signInWithApple` for social login; `oidc` for enterprise SSO with Okta, Azure AD, or any OIDC-compliant provider; `saml` for SAML 2.0 federation. The `providerType` field is ForceNew -- changing it requires replacing the identity provider.
 
-## Stack Outputs
+**Provider name** -- A unique identifier within the User Pool (e.g., "Google", "CorpOkta", "AzureAD-SAML"). This name appears in the User Pool Client's `supportedIdentityProviders` list and in the hosted UI provider selection. ForceNew -- cannot be changed after creation.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `provider_name` | `string` | Name of the identity provider. Add this value to the User Pool Client's `supportedIdentityProviders` to enable federated sign-in. |
-| `provider_type` | `string` | Provider type (e.g., `Google`, `OIDC`, `SAML`). Informational. |
-| `user_pool_id` | `string` | The pool this provider is attached to, resolved from the spec reference. |
+**Attribute mapping** -- Maps provider-specific attribute names to Cognito pool attributes (e.g., Google's `sub` to `username`, SAML claim URIs to `email`). When omitted, AWS applies default mappings based on the provider type. Custom mappings are essential when your provider uses non-standard claim names.
 
-## Related Components
+**SAML metadata source** -- For SAML providers, choose between `metadataUrl` (Cognito fetches metadata from the IdP) and `metadataFile` (inline XML metadata for air-gapped environments). Exactly one must be set.
 
-- [AWS Cognito User Pool](/docs/catalog/aws/cognito-user-pool) — parent resource; provides the `user_pool_id` this IdP attaches to
-- [AWS Cognito User Pool Client](/docs/catalog/aws/cognito-user-pool-client) — lists this IdP (by reference to its `provider_name` output) in `supportedIdentityProviders` to enable federated sign-in
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsCognitoUserPool** | `userPoolId` | `status.outputs.user_pool_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `provider_name` | Identity provider name as registered in the User Pool | User Pool Client `supportedIdentityProviders` list |
+| `provider_type` | Identity provider type (Google, OIDC, SAML, etc.) | Downstream tooling and display |
+| `user_pool_id` | The pool this provider is attached to | Correlating the provider with its pool in composed environments |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Google social login** -- Google OAuth 2.0 with email, profile, and openid scopes. The quickest path to social sign-in for consumer-facing applications. Start from the **Google OAuth** preset.
+
+**Enterprise OIDC** -- Generic OIDC configuration for Okta, Azure AD, Auth0, Keycloak, or any OIDC-compliant identity provider. Cognito auto-discovers endpoints from the issuer URL. Start from the **Enterprise OIDC** preset.
+
+**SAML 2.0 federation** -- SAML federation with metadata URL, single logout enabled, and standard claim URI attribute mapping. Works with Azure AD, ADFS, Salesforce, and other SAML 2.0 IdPs. Start from the **SAML Federation** preset.
+
+## Works With
+
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- provides the parent user pool that this identity provider attaches to
+- [**AWS Cognito User Pool Client**](/cloud-catalog/aws-cognito-user-pool-client) -- lists this provider's name in `supportedIdentityProviders` to offer the sign-in option to an application

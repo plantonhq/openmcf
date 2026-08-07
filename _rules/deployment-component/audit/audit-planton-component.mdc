@@ -20,7 +20,7 @@ driven to 100% parity (see "Driving All Components to Parity" near the end).
 You are the Planton Code Auditor. Your job is to systematically evaluate a deployment
 component's completeness AND its cross-engine parity, identify gaps, and provide actionable
 recommendations. Neither engine is privileged: both must be behaviorally identical, judged
-against the proto contract (`spec.proto` + `*_stack_outputs.proto`) and intended behavior.
+against the proto contract (`spec.proto` + `outputs.proto`, whose message is `{Kind}StackOutputs`) and intended behavior.
 An **undocumented** divergence between the two engines is a critical defect, not a stylistic
 difference.
 
@@ -35,9 +35,9 @@ User: @audit-planton-component <ComponentName>
 ```
 
 **Examples:**
-- `@audit-planton-component MongodbAtlas`
+- `@audit-planton-component AtlasMongodb`
 - `@audit-planton-component GcpCertManagerCert`
-- `@audit-planton-component postgresKubernetes` (case-insensitive)
+- `@audit-planton-component kubernetesPostgres` (case-insensitive)
 
 **Parity-focused run (optional flag):**
 - `@audit-planton-component KubernetesPostgres --parity` — run the FULL audit but lead with
@@ -50,9 +50,9 @@ User: @audit-planton-component <ComponentName>
 ### Step 1: Validate Input and Locate Component
 
 1. **Accept component name** in various formats:
-   - PascalCase: `MongodbAtlas`, `GcpCertManagerCert`
-   - lowercase: `mongodbatlas`, `gcpcertmanagercert`
-   - With spaces: `Mongodb Atlas` → normalize to `MongodbAtlas`
+   - PascalCase: `AtlasMongodb`, `GcpCertManagerCert`
+   - lowercase: `atlasmongodb`, `gcpcertmanagercert`
+   - With spaces: `Atlas Mongodb` → normalize to `AtlasMongodb`
 
 2. **Lookup in cloud_resource_kind.proto**:
    - Read `~/scm/github.com/plantonhq/planton/shared/cloudresourcekind/cloud_resource_kind.proto`
@@ -60,9 +60,8 @@ User: @audit-planton-component <ComponentName>
    - Extract metadata: provider, id_prefix, version, kubernetes_meta (if applicable)
 
 3. **Determine component path**:
-   - For non-Kubernetes: `catalog/<provider>/<component_lowercase>/v1/`
-   - For Kubernetes: `catalog/kubernetes/<category>/<component_lowercase>/v1/`
-     - Category determined from `kubernetes_meta.category` (addon, workload, or config)
+   - `catalog/<provider>/<component_lowercase>/`
+   - The versioned contract lives in the component's version directory (e.g., `v1alpha1/`); everything living (iac, presets, e2e, docs) sits at the component root
 
 4. **Verify base path exists**:
    - If path doesn't exist, report error and suggest possible reasons
@@ -99,29 +98,40 @@ For each category, check files and record results. Use the following structure t
 
 **Scoring:** Pass all checks = 4.44%, partial = proportional, fail all = 0%
 
-#### Category 2: Folder Structure (Critical - 4.44%)
+#### Category 2: Anatomy Conformance (Critical - 4.44%)
+
+Folder structure and file-set presence/absence are machine-enforced by the `pkg/anatomy`
+conformance gate (CI lane `lint.component-anatomy.yaml`) -- do NOT re-derive the file
+inventory by hand. The gate owns: required root files (`README.md`, `catalog.md`,
+`logo.svg`), the `iac/` module set shape (both engines with READMEs, no Makefile, no
+.gitignore), `presets/` with `.md` sidecars, the version-dir contract file set, and the
+closed entry sets at both levels.
 
 **Checks:**
-- [ ] Folder exists under correct provider hierarchy
-- [ ] For Kubernetes: folder is under correct category (addon/workload/config)
-- [ ] Folder name is lowercase version of enum name
-- [ ] `v1/` subfolder exists
+- [ ] Run the gate and confirm this component carries no violations:
+  ```bash
+  go test ./pkg/anatomy/...
+  ```
+- [ ] If the component appears in `pkg/anatomy/baseline.yaml` (the accepted-gaps burn-down
+      list), report each baselined violation as a gap to burn down
 
-**Scoring:** Pass all checks = 4.44%, partial = proportional, fail all = 0%
+**Scoring:** Gate clean = 4.44%, baselined violations = proportional, gate failures = 0%
 
 #### Category 3: Protobuf API Definitions (Critical - 22.20% total)
 
 **Proto Files (3.33% each = 13.32% total):**
-- [ ] `api.proto` exists and is non-empty (>500 bytes)
-- [ ] `spec.proto` exists and is non-empty (>500 bytes)
-- [ ] `stack_input.proto` exists and is non-empty (>300 bytes)
-- [ ] `stack_outputs.proto` exists and is non-empty (>300 bytes)
+
+File presence for the four contract protos (`api.proto`, `spec.proto`, `input.proto`,
+`outputs.proto`) and their `.pb.go` stubs is owned by the anatomy gate (Category 2) --
+here, judge substance:
+
+- [ ] `api.proto` is non-empty (>500 bytes) with correct apiVersion/kind constants
+- [ ] `spec.proto` is non-empty (>500 bytes) with documented, validated fields
+- [ ] `input.proto` is non-empty (>300 bytes) and carries the `{Kind}StackInput` message
+- [ ] `outputs.proto` is non-empty (>300 bytes) and carries the `{Kind}StackOutputs` message
 
 **Generated Stubs (3.33%):**
-- [ ] `api.pb.go` exists
-- [ ] `spec.pb.go` exists
-- [ ] `stack_input.pb.go` exists
-- [ ] `stack_outputs.pb.go` exists
+- [ ] All four `.pb.go` stubs are regenerated and current (a proto without its regenerated stub is the silent-staleness class the anatomy gate also flags)
 
 **Validation Message Quality (scored as part of Proto Files):**
 - [ ] Every CEL `message` in `spec.proto` is a complete, user-facing sentence (not terse: "required", "invalid")
@@ -141,7 +151,7 @@ For each category, check files and record results. Use the following structure t
 - [ ] Tests compile (no syntax errors)
 - [ ] Tests execute successfully when running:
   ```bash
-  go test ./catalog/<provider>/<component>/v1/
+  go test ./catalog/<provider>/<component>/...
   ```
 - [ ] All tests pass (no failures)
 - [ ] Tests validate buf.validate rules are correct
@@ -161,8 +171,8 @@ only mirrors the schema silently misses them. For every audited component:
       `ValidateFunc`/`validate.*` helper the schema references
 - [ ] For each apply-time contract found, confirm the spec either (a) front-loads it
       as a field/message CEL when it is statically checkable, or (b) documents it on
-      the field and in `docs/README.md` when it is not (cross-resource contracts,
-      cross-update contracts like downgrade blocks)
+      the field and in the component's `GUIDE.md` when it is not (cross-resource
+      contracts, cross-update contracts like downgrade blocks)
 - [ ] Confirm no spec CEL INVENTS a rule the provider and its API do not enforce
       (an invented rule is a defect equal to a missing one)
 - [ ] Record the sweep's findings in the audit report under an
@@ -191,9 +201,9 @@ only mirrors the schema silently misses them. For every audited component:
       (a misplaced entrypoint in a subdir is a FAIL even if `main.go` exists there -- the
       release build is non-recursive and only consumes the root `iac/pulumi/` package)
 - [ ] `iac/pulumi/Pulumi.yaml` exists
-- [ ] `iac/pulumi/Makefile` exists
+- [ ] NO `iac/pulumi/Makefile` exists (nothing consumes it; the anatomy gate forbids it)
 - [ ] Release-equivalent build passes:
-      `go build -o /dev/null ./catalog/<provider>/<component>/v1/iac/pulumi`
+      `go build -o /dev/null ./catalog/<provider>/<component>/iac/pulumi`
       (this is the EXACT command the release pipeline runs; presence checks alone are not
       sufficient -- a component can have files yet still fail this build)
 
@@ -247,9 +257,9 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 - [ ] **Dependency ordering** — the same edges exist (`pulumi.DependsOn` ↔ `depends_on` /
       `metadata.relationships`).
 - [ ] **Stack outputs** — both engines emit shapes that flatten onto the SAME
-      `*_stack_outputs.proto` fields. VERIFY with the automated guard, not by eye:
+      `outputs.proto` (`{Kind}StackOutputs`) fields. VERIFY with the automated guard, not by eye:
       ```bash
-      planton validate-outputs --kind <Kind> --module-dir catalog/.../v1/iac/tf --sample-outputs <sample>.json
+      planton validate-outputs --kind <Kind> --module-dir catalog/<provider>/<component>/iac/tf --sample-outputs <sample>.json
       ```
       A field that stays empty (e.g. a flat `password_secret_name` output that never reaches the
       nested `password_secret{name,key}` proto field) is a parity defect. If a per-kind case
@@ -264,46 +274,45 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
   missing feature, or an unpopulated stack-output field). Report as a Critical Gap and mark
   Categories 4 & 5 ❌.
 
-#### Category 6: Documentation - Research (Important - 13.34% total)
+#### Category 6: Documentation - Authored Judgment (Important - 13.34% total)
 
-**Research Doc (10.00%):**
-- [ ] `docs/README.md` exists
-- [ ] File size is substantial (>10KB = comprehensive, 5-10KB = moderate, <5KB = minimal)
+Research documents are never committed -- durable judgment lives in the component's
+`GUIDE.md` (component root, optional), backed by `README.md` and `catalog.md`. A missing
+guide is not a finding by itself: guides exist where judgment earns a place.
+
+**Guide Presence and Substance (10.00%, when a guide is warranted):**
+- [ ] `GUIDE.md` exists at the component root where the component carries non-obvious judgment (state-ownership flags, component-vs-flag choices, operational surprises)
+- [ ] Content is substantial relative to the component's complexity (short is fine; empty scaffolding is not)
 
 **Content Quality (3.34%):**
-- [ ] Contains landscape analysis sections (check for headers like "Level", "Approach", "Method", "Comparison")
-- [ ] Contains best practices or recommendations section
 - [ ] States the pinned provider version, affirms full configurable-argument coverage of the mapped provider resources, and enumerates any compositions and recorded exclusions (deprecated/superseded only) with reasons
-- [ ] Documents deployment methods comparison
+- [ ] Teaches judgment ("when X vs when Y, and what breaks if you choose wrong"), never feature lists
+- [ ] Grounded: every claim traces to `spec.proto`, the IaC modules, or recorded platform behavior
 
-**Note:** This document is the **primary source of truth** for understanding:
-- Component's purpose and design philosophy
-- The parity accounting: which provider resources the component maps to, how their arguments are represented, and every recorded composition or exclusion
-- Provider-specific considerations and gotchas
-- Deployment architecture and best practices
+**Note:** For a deeper guide audit (groundedness, five-laws compliance, wiring), use `_rules/docs/audit-planton-component-guide.mdc`.
 
-**When auditing, assess not just presence but quality** - a well-researched docs/README.md is essential for maintainability.
-
-**Scoring:** Research doc scored by size, content quality separate
+**Scoring:** Judged on substance and grounding, not file size
 
 #### Category 7: Documentation - User-Facing (Important - 13.33% total)
 
-**README (13.33%):**
-- [ ] `README.md` exists (at v1/ level)
-- [ ] File size is substantial (>2KB = good, 1-2KB = minimal, <1KB = stub)
+**README and Catalog Page (13.33%):**
+- [ ] `README.md` (component root) is substantial (>2KB = good, 1-2KB = minimal, <1KB = stub)
+- [ ] `catalog.md` (component root -- THE catalog page, rendered by the public site and the console) follows the catalog page standard (`_rules/docs/write-planton-component-catalog-md.mdc`)
 
-**Scoring:** Scored by file size
+**Scoring:** Scored on substance and standard-adherence
 
 #### Category 8: Supporting Files (Important - 13.33% total)
 
+Presence of module READMEs is owned by the anatomy gate -- here, judge substance:
+
 **Pulumi Supporting Docs (6.67%):**
-- [ ] `iac/pulumi/README.md` exists
+- [ ] `iac/pulumi/README.md` documents the module usefully (it ships in the console catalog and the iac-source zip)
 
 **Terraform Supporting Docs (3.33%):**
-- [ ] `iac/tf/README.md` exists
+- [ ] `iac/tf/README.md` documents the module usefully
 
 **Helper Files (3.33%):**
-- [ ] `iac/hack/manifest.yaml` exists
+- [ ] `e2e/manifest.yaml` exists at the component root (the deployable test manifest)
 
 **Scoring:** Each sub-category scored independently
 
@@ -319,9 +328,10 @@ Open `iac/pulumi/module/*.go` and `iac/tf/*.tf` and compare each dimension from
 **Reference:** See `architecture/presets.md` for the full convention and authoring guide.
 
 **Directory and File Checks (2.50%):**
-- [ ] `presets/` directory exists under `v1/`
-- [ ] At least 1 `.yaml` preset file exists (rank 01 at minimum)
-- [ ] Every `.yaml` file has a companion `.md` file with the same base name
+
+The anatomy gate owns `presets/` presence and `.yaml`/`.md` sidecar pairing -- here, judge convention:
+
+- [ ] `presets/` at the component root has at least 1 `.yaml` preset (rank 01 at minimum)
 - [ ] No orphan `.md` files without a companion `.yaml`
 - [ ] File naming follows `{NN}-{kebab-case-description}.yaml` + `.md` convention
 - [ ] No duplicate rank numbers within the `presets/` directory
@@ -392,13 +402,13 @@ Total Score = (Critical Items Score) + (Important Items Score) + (Nice to Have S
 Where:
 - Critical Items = 48.64% weight:
   - Cloud Resource Registry: 4.44%
-  - Folder Structure: 4.44%
+  - Anatomy Conformance: 4.44%
   - Protobuf API Definitions: 22.20% (includes test execution)
   - IaC Modules - Pulumi: 13.32%
   - IaC Modules - Terraform: 4.24%
   
 - Important Items = 41.36% weight:
-  - Documentation - Research: 13.18%
+  - Documentation - Authored Judgment: 13.18%
   - Documentation - User-Facing: 13.09%
   - Supporting Files: 10.09%
   - Presets: 5.00%
@@ -551,12 +561,12 @@ Before writing the report file, verify:
 | Category | Weight | Score | Status |
 |----------|--------|-------|--------|
 | Cloud Resource Registry | 4.44% | X.XX% | ✅/⚠️/❌ |
-| Folder Structure | 4.44% | X.XX% | ✅/⚠️/❌ |
+| Anatomy Conformance | 4.44% | X.XX% | ✅/⚠️/❌ |
 | Protobuf API Definitions | 22.20% | X.XX% | ✅/⚠️/❌ |
 | IaC Modules - Pulumi | 13.32% | X.XX% | ✅/⚠️/❌ |
 | IaC Modules - Terraform | 4.24% | X.XX% | ✅/⚠️/❌ |
 | Cross-Engine IaC Parity | gate | PARITY ✅/⚠️/❌ | ✅/⚠️/❌ |
-| Documentation - Research | 13.18% | X.XX% | ✅/⚠️/❌ |
+| Documentation - Authored Judgment | 13.18% | X.XX% | ✅/⚠️/❌ |
 | Documentation - User-Facing | 13.09% | X.XX% | ✅/⚠️/❌ |
 | Supporting Files | 10.09% | X.XX% | ✅/⚠️/❌ |
 | Presets | 5.00% | X.XX% | ✅/⚠️/❌ |
@@ -612,7 +622,7 @@ Blocking issues that prevent production readiness:
 
 - Enum entry exists in `cloud_resource_kind.proto`
 - Enum value 51 is in correct range for provider (atlas: 50-199)
-- ID prefix `mongodb-atlas` is unique
+- ID prefix is unique
 
 ❌ **Failed:**
 
@@ -626,13 +636,12 @@ Blocking issues that prevent production readiness:
 
 ---
 
-### 2. Folder Structure (4.44%)
+### 2. Anatomy Conformance (4.44%)
 
 ✅ **Passed:**
 
-- Folder exists: `catalog/atlas/mongodbatlas/v1alpha1/`
-- Folder name matches lowercase enum name
-- `v1/` subfolder exists
+- `go test ./pkg/anatomy/...` reports no violation for `catalog/atlas/atlasmongodb/`
+- Component has no entries in `pkg/anatomy/baseline.yaml`
 
 ❌ **Failed:**
 
@@ -648,10 +657,10 @@ Blocking issues that prevent production readiness:
 
 ✅ **Passed:**
 
-- `api.proto` exists (2.5 KB)
-- `spec.proto` exists (8.3 KB)
-- `stack_input.proto` exists (450 bytes)
-- `stack_outputs.proto` exists (1.2 KB)
+- `api.proto` is substantial (2.5 KB)
+- `spec.proto` is substantial (8.3 KB)
+- `input.proto` carries `{Kind}StackInput` (450 bytes)
+- `outputs.proto` carries `{Kind}StackOutputs` (1.2 KB)
 
 ❌ **Failed:**
 
@@ -682,7 +691,7 @@ Blocking issues that prevent production readiness:
 To verify tests, run:
 
 ```bash
-cd catalog/atlas/mongodbatlas/v1alpha1/
+cd catalog/atlas/atlasmongodb/v1alpha1/
 go test -v
 ```
 
@@ -727,8 +736,8 @@ go test -v
 - `iac/pulumi/main.go` exists at root and declares `package main`
 - No `main/` or `entrypoint/` subdir under `iac/pulumi/`
 - `iac/pulumi/Pulumi.yaml` exists
-- `iac/pulumi/Makefile` exists
-- Release-equivalent build passes: `go build -o /dev/null ./catalog/.../v1/iac/pulumi`
+- No `iac/pulumi/Makefile` (gate-enforced absence)
+- Release-equivalent build passes: `go build -o /dev/null ./catalog/<provider>/<component>/iac/pulumi`
 
 ❌ **Failed:**
 
@@ -790,7 +799,7 @@ Verified outputs with `planton validate-outputs` (full proto population, zero un
 
 ---
 
-### 6. Documentation - Research (13.34%)
+### 6. Documentation - Authored Judgment (13.34%)
 
 <Same structure>
 
@@ -892,7 +901,7 @@ manifest change landed without `make generate-reference`.
 
 **Guide verdict: <GUIDE PRESENT — audited ✅/❌ | NO GUIDE (allowed)>**
 
-When a `GUIDE.md` sits beside the kind's protos, audit it against
+When a `GUIDE.md` sits at the component root, audit it against
 `_rules/docs/audit-planton-component-guide.mdc` (groundedness, five-laws
 compliance, schema freshness, wiring — including the `**Guide**:` head line
 on the kind's `reference.md`, which is generated from the guide's presence).
@@ -937,15 +946,17 @@ To complete missing items, consider running these forge rules in sequence:
 - **Rule 001** - spec.proto generation (if spec.proto is missing/incomplete)
 - **Rule 002** - spec validations (if validations missing)
 - **Rule 003** - spec tests (if spec_test.go missing)
-- **Rule 004** - stack_outputs.proto (if missing)
+- **Rule 004** - outputs.proto (if missing)
 - **Rule 005** - api.proto (if missing)
-- **Rule 006** - stack_input.proto (if missing)
-- **Rule 007** - docs/README.md (if missing)
+- **Rule 006** - input.proto (if missing)
+- **Rule 007** - README.md (if missing)
+- **Rule 008** - e2e manifest (if e2e/manifest.yaml missing)
 - **Rule 009** - Pulumi module (if Pulumi missing)
-- **Rule 013** - Terraform module (if Terraform missing OR diverges from Pulumi — rule 013's
+- **Rule 012** - Terraform module (if Terraform missing OR diverges from Pulumi — rule 012's
   "PARITY WITH PULUMI" section is the reconciliation procedure)
-- **Rule 016** - cloud_resource_kind.proto entry (if enum missing)
-- **Rule 022** - Presets (if presets/ directory is missing or empty)
+- **Rule 014** - cloud_resource_kind.proto entry (if enum missing)
+- **Rule 018** - Presets (if presets/ directory is missing or empty)
+- **Rule 019** - GUIDE.md (if authored judgment is warranted but missing)
 
 For a parity divergence specifically (Category 5b ⚠️/❌), prefer `@fix-planton-component`:
 make the targeted change in whichever engine is wrong (decide via the proto contract +
@@ -1044,20 +1055,12 @@ parity before closing the session.
 
 ```
 
-### Step 5: Write Report to File
+### Step 5: Deliver the Report
 
-1. **Create directory structure** (if doesn't exist):
-   ```bash
-   mkdir -p <component-path>/docs/audit/
-   ```
-
-2. **Write report**:
-   - File path: `<component-path>/docs/audit/<timestamp>.md`
-   - Use the timestamp from `date` command
-
-3. **Handle errors gracefully**:
-   - If directory creation fails, report error
-   - If file write fails, output report to chat instead
+Component directories carry no audit artifacts -- the anatomy gate keeps the component
+file set closed, so NEVER write the report into `catalog/`. Output the full report in the
+chat. If the user wants it persisted, write it to a location they name outside the catalog
+(e.g., a scratch directory or a shared issue).
 
 ### Step 6: Display Summary in Chat
 
@@ -1070,7 +1073,7 @@ After writing the report, display a concise summary in the chat:
 **Status:** <Status>
 **Cross-Engine Parity:** PARITY ✅ / ⚠️ / ❌
 
-**Report Location:** `<path-to-report>`
+**Full report:** delivered above in this session
 
 ### Key Findings:
 
@@ -1111,12 +1114,13 @@ List every registered component and pick the next unaudited one:
 rg -n '= [0-9]+ \[\(kind_meta\)' shared/cloudresourcekind/cloud_resource_kind.proto
 
 # Components that even HAVE both engines (parity is only meaningful when both exist):
-# (a tf/ dir AND a pulumi/module/ dir under the same version dir's iac/)
+# (a tf/ dir AND a pulumi/module/ dir under the same component's iac/)
 fd -t d 'tf$' catalog | sed 's:/tf$::' | while read d; do [ -d "$d/pulumi/module" ] && echo "$d"; done
 ```
 
 Track progress with a simple ledger so successive sessions don't repeat work — e.g. a
-`docs/audit/PARITY_LEDGER.md` (or a shared issue) with one row per component:
+shared issue, or a ledger file OUTSIDE the catalog (the component file set is closed) with
+one row per component:
 `Component | Last audited | Parity verdict | Open divergences | Report`.
 
 ### Per-session loop
@@ -1149,7 +1153,7 @@ parity, with an auditable trail.
 4. **Reference documentation** - Point to `architecture/deployment-component.md` for details
 5. **Handle edge cases** - Component might be partially implemented, completely missing, or in unusual state
 6. **Use accurate timestamps** - Always run `date` command, never hardcode or guess
-7. **Create directories as needed** - Don't fail if `docs/audit/` doesn't exist yet
+7. **Never write into the component** - The anatomy gate keeps the component file set closed; deliver the report in chat (or a user-named location outside the catalog)
 8. **Follow markdown formatting** - Use proper tables, code blocks, spacing, and hierarchy as defined in Step 4
 
 ## Error Handling
@@ -1160,7 +1164,7 @@ parity, with an auditable trail.
 
 Possible reasons:
 1. Component name is misspelled (check cloud_resource_kind.proto for exact name)
-2. Component hasn't been registered yet (run forge rule 016)
+2. Component hasn't been registered yet (run forge rule 014)
 3. Component is in a different repository
 
 Please verify the component name and try again.
@@ -1174,7 +1178,7 @@ This suggests the component registration exists but implementation is missing.
 
 Expected path: <path>
 
-Recommendation: Run forge rules 001-015 to bootstrap the component.
+Recommendation: Run the forge flow rules to bootstrap the component.
 ```
 
 **File System Error:**
@@ -1191,18 +1195,18 @@ Displaying report in chat instead...
 
 **Input:**
 ```
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 ```
 
 **Expected behavior:**
-1. Search cloud_resource_kind.proto for `MongodbAtlas` enum entry
-2. Find: `MongodbAtlas = 51` with provider `atlas`
-3. Determine path: `catalog/atlas/mongodbatlas/v1alpha1/`
+1. Search cloud_resource_kind.proto for `AtlasMongodb` enum entry
+2. Find the enum entry with provider `atlas`
+3. Determine path: `catalog/atlas/atlasmongodb/` (contract in `v1alpha1/`)
 4. Run all audit checks
 5. Calculate score (e.g., 65%)
 6. Get timestamp: `2025-11-13-143022`
-7. Write report to: `catalog/atlas/mongodbatlas/v1alpha1/docs/audit/2025-11-13-143022.md`
-8. Display summary in chat with key findings
+7. Deliver the full report in chat
+8. Display summary with key findings
 
 ---
 

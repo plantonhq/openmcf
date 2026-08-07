@@ -27,7 +27,7 @@ pulumi login --local
 make test
 
 # Or use debug script
-./debug.sh ../hack/manifest.yaml
+./debug.sh ../../e2e/manifest.yaml
 ```
 
 ## Environment Variables

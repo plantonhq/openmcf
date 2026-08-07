@@ -8,265 +8,134 @@ componentName: "gcppubsubsubscription"
 
 # GCP Pub/Sub Subscription
 
-Deploys a GCP Pub/Sub subscription attached to a topic, with support for four delivery methods: pull (default), push to an HTTPS endpoint, streaming to a BigQuery table, or batched writes to Cloud Storage. Only one delivery method can be active per subscription.
+Deploys a Pub/Sub subscription attached to a topic with configurable delivery method (pull, push, BigQuery, or Cloud Storage), acknowledgement deadlines, message ordering, exactly-once delivery, dead-letter handling, and retry policies. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, topics, and GCS buckets.
 
 ## What Gets Created
 
-When you deploy a GcpPubSubSubscription resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Pub/Sub Subscription** — a `google_pubsub_subscription` resource bound to the specified topic, configured with the chosen delivery method, acknowledgement deadline, retention policy, and retry/dead-letter settings
-- **GCP Labels** — automatically applied labels containing the organization, environment, resource ID, resource name, and resource kind for consistent resource tracking
+- **Pub/Sub Subscription** -- a named subscription resource in the specified GCP project, attached to the referenced topic, with the configured delivery method and message handling policies
+- **Push Configuration** -- created only when `pushConfig` is set; configures HTTP POST delivery to an HTTPS endpoint with optional OIDC authentication and unwrapped payload mode
+- **BigQuery Configuration** -- created only when `bigqueryConfig` is set; streams messages directly into a BigQuery table with optional schema mapping and metadata columns
+- **Cloud Storage Configuration** -- created only when `cloudStorageConfig` is set; batches messages into Cloud Storage objects based on size, duration, or message count thresholds
+- **Dead Letter Policy** -- created only when `deadLetterPolicy` is set; forwards messages that exceed the maximum delivery attempts to a dead-letter topic
+- **Retry Policy** -- created only when `retryPolicy` is set; configures exponential backoff between delivery attempts after a NACK or ack deadline exceeded event
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** where the subscription will be created
-- **An existing Pub/Sub topic** that the subscription will receive messages from
-- **An HTTPS endpoint** if using push delivery
-- **A BigQuery table** if using BigQuery delivery (the Pub/Sub service account must have `bigquery.dataEditor` on the dataset)
-- **A Cloud Storage bucket** if using Cloud Storage delivery (the Pub/Sub service account must have `storage.objectCreator` on the bucket)
-- **A dead-letter topic** if using dead-letter policy (the Pub/Sub service account must have Publisher permissions on the dead-letter topic and Subscriber permissions on this subscription)
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `pubsub-subscription.yaml`:
+### GCP Project
+
+- **A GCP project** where the subscription will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **An existing Pub/Sub topic** to subscribe to. Provide the fully qualified topic ID or reference a GcpPubSubTopic Cloud Resource via ValueFromRef.
+- **Cloud Pub/Sub API** enabled in the target project.
+- **BigQuery Data Editor role** on the target table (if using BigQuery delivery).
+- **Storage Object Creator role** on the target bucket (if using Cloud Storage delivery).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Pub/Sub Subscription**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Pull** preset in the [Presets](#presets) tab to pre-populate a minimal pull subscription.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSubscription
 metadata:
-  name: my-subscription
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpPubSubSubscription.my-subscription
+  name: order-processor
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
-  subscriptionName: my-subscription
+    value: "acme-prod-12345"
+  subscriptionName: order-processor
   topic:
-    value: projects/my-gcp-project/topics/my-topic
+    value: "projects/acme-prod-12345/topics/order-events"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f pubsub-subscription.yaml
 ```
 
-This creates a pull subscription with default settings: 10-second ack deadline, 7-day message retention, and 31-day expiration for inactivity.
+This creates a pull subscription with a 10-second ack deadline, 7-day message retention, no dead-letter handling, and no message ordering. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `subscriptionName` | `string` | Name of the Pub/Sub subscription. Immutable after creation. | 3–255 characters, starts with a letter, alphanumeric plus `-_. ~+%`; must not begin with the reserved `goog` prefix |
-| `topic` | `StringValueOrRef` | Topic from which this subscription receives messages. Immutable after creation. Can reference GcpPubSubTopic via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ackDeadlineSeconds` | `int` | `10` | Maximum time in seconds a subscriber has to acknowledge a message before redelivery. Range: 10–600. |
-| `messageRetentionDuration` | `string` | `"604800s"` | How long unacknowledged messages are retained. Also controls seek range when `retainAckedMessages` is true. Range: `"600s"` to `"2678400s"`. |
-| `retainAckedMessages` | `bool` | `false` | When true, acknowledged messages are retained in the backlog for the `messageRetentionDuration` window, enabling replay via seek. |
-| `expirationPolicy.ttl` | `string` | `"2678400s"` | Duration of inactivity before the subscription is automatically deleted. Minimum: `"86400s"`. Set to `""` for a subscription that never expires. |
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the subscription will be created. Can reference GcpProject via `valueFrom`. |
-| `labels` | `map<string,string>` | — | User labels for cost attribution and fleet queries, merged beneath the platform attribution labels (which win on key conflicts). |
-| `filter` | `string` | — | Attribute filter expression. Non-matching messages are auto-acknowledged. Max 256 bytes. Immutable after creation. |
-| `enableMessageOrdering` | `bool` | `false` | Delivers messages with the same ordering key in publish order. Immutable after creation. |
-| `enableExactlyOnceDelivery` | `bool` | `false` | Guarantees each message is not resent before its ack deadline expires. Does not prevent duplicates from the publisher. |
-| `deadLetterPolicy.deadLetterTopic` | `string` | — | Topic to forward undeliverable messages to. Can reference GcpPubSubTopic via `valueFrom`. |
-| `deadLetterPolicy.maxDeliveryAttempts` | `int` | `5` | Number of delivery attempts before dead-lettering. Range: 5–100. |
-| `retryPolicy.minimumBackoff` | `string` | `"10s"` | Minimum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
-| `retryPolicy.maximumBackoff` | `string` | `"600s"` | Maximum delay between delivery retries after a NACK. Range: `"0s"` to `"600s"`. |
-| `pushConfig.pushEndpoint` | `StringValueOrRef` | — | HTTPS URL to which Pub/Sub pushes messages. Can reference GcpCloudRun via `valueFrom` (its `url` output) — the canonical serverless consumer wiring. Required when using push delivery. |
-| `pushConfig.attributes` | `map<string,string>` | — | Endpoint configuration attributes. Supports `x-goog-version` (`"v1beta1"` or `"v1"`). |
-| `pushConfig.oidcToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account used to generate OIDC tokens for authenticated push requests. Can reference GcpServiceAccount via `valueFrom`. |
-| `pushConfig.oidcToken.audience` | `string` | push endpoint URL | Audience claim for the OIDC token. |
-| `pushConfig.noWrapper.writeMetadata` | `bool` | `false` | When true, sends the raw message body without the Pub/Sub envelope and writes metadata as HTTP headers. |
-| `bigqueryConfig.table` | `StringValueOrRef` | — | BigQuery table to write messages to. Format: `{project}.{dataset}.{table}`. Can reference GcpBigQueryTable via `valueFrom` (its `qualified_name` output). Required when using BigQuery delivery. |
-| `bigqueryConfig.useTopicSchema` | `bool` | `false` | Maps message fields to BigQuery columns using the topic schema. Mutually exclusive with `useTableSchema`. |
-| `bigqueryConfig.useTableSchema` | `bool` | `false` | Maps message fields to BigQuery columns using the table schema. Mutually exclusive with `useTopicSchema`. |
-| `bigqueryConfig.dropUnknownFields` | `bool` | `false` | Silently drops message fields not present in the BigQuery table schema. Requires `useTopicSchema` or `useTableSchema`. |
-| `bigqueryConfig.writeMetadata` | `bool` | `false` | Writes subscription name, messageId, publishTime, attributes, and orderingKey to additional BigQuery columns. |
-| `bigqueryConfig.serviceAccountEmail` | `StringValueOrRef` | Pub/Sub service agent | Service account for BigQuery writes. Can reference GcpServiceAccount via `valueFrom`. |
-| `cloudStorageConfig.bucket` | `StringValueOrRef` | — | Cloud Storage bucket name (without `gs://`). Required when using Cloud Storage delivery. Can reference GcpGcsBucket via `valueFrom`. |
-| `cloudStorageConfig.filenamePrefix` | `string` | — | Prefix for Cloud Storage object names. |
-| `cloudStorageConfig.filenameSuffix` | `string` | — | Suffix for Cloud Storage object names. Must not end in `/`. |
-| `cloudStorageConfig.filenameDatetimeFormat` | `string` | — | Datetime format string for Cloud Storage object names. |
-| `cloudStorageConfig.maxBytes` | `int` | — | Maximum bytes per object before a new object is created. Range: 1024–10737418240. |
-| `cloudStorageConfig.maxDuration` | `string` | `"300s"` | Maximum duration before a new object is created. Range: `"60s"` to `"600s"`. Must not exceed `ackDeadlineSeconds`. |
-| `cloudStorageConfig.maxMessages` | `int` | — | Maximum messages per object. Minimum: 1000. |
-| `cloudStorageConfig.avroConfig.useTopicSchema` | `bool` | `false` | Serializes output in Avro format using the topic schema. |
-| `cloudStorageConfig.avroConfig.writeMetadata` | `bool` | `false` | Includes subscription metadata as additional Avro fields. |
-| `cloudStorageConfig.serviceAccountEmail` | `StringValueOrRef` | Pub/Sub service agent | Service account for Cloud Storage writes. Can reference GcpServiceAccount via `valueFrom`. |
-| `messageTransforms[]` | `object` | — | Ordered JavaScript UDF pipeline applied to every message before delivery to this subscription. Each entry carries `javascriptUdf` (`functionName` + `code`) and an optional `disabled` staging flag. |
-
-## Examples
-
-### Push Subscription with OIDC Authentication
-
-Delivers messages to an HTTPS endpoint with OIDC-based authentication:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the subscription to a project and topic deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpPubSubSubscription
-metadata:
-  name: push-subscription
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpPubSubSubscription.push-subscription
-spec:
-  projectId:
-    value: my-gcp-project
-  subscriptionName: push-subscription
-  topic:
-    value: projects/my-gcp-project/topics/events-topic
-  ackDeadlineSeconds: 30
-  pushConfig:
-    pushEndpoint:
-      value: https://my-service.example.com/pubsub/push
-    oidcToken:
-      serviceAccountEmail:
-        value: push-invoker@my-gcp-project.iam.gserviceaccount.com
-      audience: https://my-service.example.com
-```
-
-### BigQuery Delivery with Dead-Letter Policy
-
-Streams messages directly to a BigQuery table, forwarding failures to a dead-letter topic after 10 attempts:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpPubSubSubscription
-metadata:
-  name: bq-subscription
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpPubSubSubscription.bq-subscription
-spec:
-  projectId:
-    value: my-gcp-project
-  subscriptionName: bq-subscription
-  topic:
-    value: projects/my-gcp-project/topics/analytics-topic
-  enableExactlyOnceDelivery: true
-  bigqueryConfig:
-    table:
-      value: my-gcp-project.analytics_dataset.events
-    useTopicSchema: true
-    dropUnknownFields: true
-    writeMetadata: true
-  deadLetterPolicy:
-    deadLetterTopic:
-      value: projects/my-gcp-project/topics/analytics-dlq
-    maxDeliveryAttempts: 10
-  retryPolicy:
-    minimumBackoff: "15s"
-    maximumBackoff: "300s"
-```
-
-### Cloud Storage Delivery with Avro Format
-
-Batches messages into Avro-formatted objects in Cloud Storage:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpPubSubSubscription
-metadata:
-  name: gcs-subscription
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpPubSubSubscription.gcs-subscription
-spec:
-  projectId:
-    value: my-gcp-project
-  subscriptionName: gcs-subscription
-  topic:
-    value: projects/my-gcp-project/topics/logs-topic
-  ackDeadlineSeconds: 600
-  messageRetentionDuration: "2678400s"
-  cloudStorageConfig:
-    bucket:
-      value: my-logs-archive-bucket
-    filenamePrefix: pubsub/logs/
-    filenameSuffix: .avro
-    maxBytes: 1073741824
-    maxDuration: "600s"
-    maxMessages: 10000
-    avroConfig:
-      useTopicSchema: true
-      writeMetadata: true
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding values:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpPubSubSubscription
-metadata:
-  name: ref-subscription
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpPubSubSubscription.ref-subscription
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  subscriptionName: ref-subscription
+      name: production-project
+      fieldPath: status.outputs.project_id
   topic:
     valueFrom:
       kind: GcpPubSubTopic
-      name: my-topic
-      field: status.outputs.topic_id
-  retainAckedMessages: true
-  enableMessageOrdering: true
-  expirationPolicy:
-    ttl: ""
-  deadLetterPolicy:
-    deadLetterTopic:
-      valueFrom:
-        kind: GcpPubSubTopic
-        name: my-dlq-topic
-        field: status.outputs.topic_id
-    maxDeliveryAttempts: 20
-  cloudStorageConfig:
-    bucket:
-      valueFrom:
-        kind: GcpGcsBucket
-        name: my-archive-bucket
-        field: status.outputs.bucket_id
-    filenamePrefix: events/
-    maxDuration: "300s"
+      name: order-events
+      fieldPath: status.outputs.topic_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and topic first, then provisions the subscription with the resolved topic reference.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `subscription_id` | `string` | Fully qualified subscription ID (e.g., `projects/my-project/subscriptions/my-subscription`) |
-| `subscription_name` | `string` | Short subscription name, same as the `subscriptionName` input |
+These are the most important decisions when configuring a Pub/Sub subscription. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Delivery method** -- Choose between pull (default, no config needed), push (`pushConfig`), BigQuery (`bigqueryConfig`), or Cloud Storage (`cloudStorageConfig`). Only one delivery method can be active. Pull requires application-side polling; push delivers to an HTTPS endpoint; BigQuery and Cloud Storage write directly without consumer code.
 
-- [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) — provides the topic that the subscription receives messages from
-- [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) — provides the Cloud Storage bucket for Cloud Storage delivery
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project where the subscription is created
+**Acknowledgement deadline** -- Set `ackDeadlineSeconds` (10-600, default 10) to control how long Pub/Sub waits for an acknowledgement before redelivering a message. Set higher for long-running processing tasks. Too low causes unnecessary redeliveries; too high delays retry on actual failures.
+
+**Dead-letter handling** -- Configure `deadLetterPolicy` with a dead-letter topic and `maxDeliveryAttempts` (5-100) to route unprocessable messages instead of retrying indefinitely. The Pub/Sub service account needs Subscriber permissions on this subscription and Publisher permissions on the dead-letter topic.
+
+**Exactly-once delivery** -- Set `enableExactlyOnceDelivery: true` to guarantee each message is delivered exactly once within the ack deadline window. Adds latency to acknowledgement processing. Does not prevent duplicates from publishers sending the same message multiple times.
+
+**Message ordering** -- Set `enableMessageOrdering: true` to deliver messages with the same ordering key in publish order. Immutable after creation. Requires publishers to set an ordering key on messages.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpPubSubTopic** | `topic` | `status.outputs.topic_id` |
+| **GcpPubSubTopic** (optional) | `deadLetterPolicy.deadLetterTopic` | `status.outputs.topic_id` |
+| **GcpGcsBucket** (optional) | `cloudStorageConfig.bucket` | `status.outputs.bucket_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `subscription_id` | Fully qualified subscription ID (`projects/{project}/subscriptions/{name}`) | Application configuration, monitoring filters |
+| `subscription_name` | Short subscription name | Display, logging, consumer identification |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic pull** -- Minimal pull subscription with default ack deadline and retention. Suitable for application-driven message consumption where the subscriber controls the pull rate. Start from the **Basic Pull** preset.
+
+**Push with OIDC** -- Push delivery to an HTTPS endpoint with OIDC-based authentication. Suitable for webhook integrations, Cloud Run services, and serverless backends that receive messages as HTTP POST requests. Start from the **Push with OIDC** preset.
+
+**BigQuery delivery** -- Direct streaming into a BigQuery table with topic schema mapping and metadata columns. Suitable for analytics pipelines, event archival, and real-time dashboards without writing consumer code. Start from the **BigQuery Delivery** preset.
+
+**Dead letter** -- Subscription with exactly-once delivery, 14-day retention, retained ack'd messages, dead-letter routing after 10 attempts, and exponential retry backoff. Suitable for payment processing, order fulfillment, and other workflows that require reliable delivery with poison message isolation. Start from the **Dead Letter** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the subscription is created
+- [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- provides the topic that the subscription receives messages from, and optionally the dead-letter topic
+- [**GCP GCS Bucket**](/cloud-catalog/gcp-gcs-bucket) -- provides the destination bucket for Cloud Storage delivery

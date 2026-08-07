@@ -25,7 +25,7 @@ iac/tf/
 ├── main.tf         # Database resource definition
 ├── outputs.tf      # Output value definitions
 ├── provider.tf     # Provider configuration
-├── examples.md     # Usage examples
+├── ../../e2e/manifest.yaml     # Usage examples
 └── README.md       # This file
 ```
 

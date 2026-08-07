@@ -293,7 +293,7 @@ the README. Conventions:
   polymorphic references resolve nothing by default; writing the explicit
   triple is the designed usage, not a workaround), and then always set
   `fieldPath` explicitly too. `fieldPath` field names are snake_case, exactly
-  as the target kind's `stack_outputs.proto` spells them.
+  as the target kind's `outputs.proto` spells them.
 - Reference chart-internal resources by their rendered `metadata.name`
   (including any `{{ values.* }}` prefix used when defining them). A reference
   whose target another render variant defines but the current one does not

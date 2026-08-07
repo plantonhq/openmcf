@@ -13,25 +13,25 @@ Every component follows the same structure: Protocol Buffer API definitions, dua
 
 ## Anatomy of a Component
 
-A complete deployment component lives at `catalog/<provider>/<component>/v1/` and contains:
+A complete deployment component lives at `catalog/<provider>/<component>/` and contains:
 
 ```text
-catalog/aws/awss3bucket/v1alpha1/
-|-- api.proto              # KRM resource model (apiVersion, kind, metadata, spec, status)
-|-- spec.proto             # Configuration fields for the resource
-|-- stack_input.proto      # IaC input contract (target resource + provider config)
-|-- stack_outputs.proto    # IaC output contract (what the module exports)
-|-- spec_test.go           # Validation tests for the spec
+catalog/aws/awss3bucket/
 |-- README.md              # Component overview
-|-- docs/
-|   \-- README.md          # Research doc with design rationale
+|-- catalog.md             # Public catalog page rendered on the docs site
+|-- logo.svg               # Component icon
+|-- v1alpha1/
+|   |-- api.proto          # KRM resource model (apiVersion, kind, metadata, spec, status)
+|   |-- spec.proto         # Configuration fields for the resource
+|   |-- input.proto        # IaC input contract (target resource + provider config)
+|   |-- outputs.proto      # IaC output contract (what the module exports)
+|   |-- spec_test.go       # Validation tests for the spec
+|   \-- reference.md       # Field reference for the spec
 |-- iac/
-|   |-- hack/
-|   |   \-- manifest.yaml  # Development test manifest
 |   |-- pulumi/
 |   |   |-- main.go        # Pulumi entrypoint (loads stack input, calls module)
 |   |   |-- Pulumi.yaml    # Pulumi project configuration
-|   |   |-- Makefile        # Build targets for the Pulumi module
+|   |   |-- README.md      # Module documentation
 |   |   \-- module/
 |   |       |-- main.go    # Resource creation and exports
 |   |       |-- locals.go  # Local variables from stack input
@@ -41,8 +41,14 @@ catalog/aws/awss3bucket/v1alpha1/
 |       |-- variables.tf   # Input variables (metadata + spec)
 |       |-- outputs.tf     # Output definitions
 |       |-- provider.tf    # Provider and backend configuration
-|       \-- locals.tf      # Derived local values
+|       |-- locals.tf      # Derived local values
+|       \-- README.md      # Module documentation
+|-- presets/               # Ready-to-deploy manifests (.yaml + .md description pairs)
+\-- e2e/
+    \-- manifest.yaml      # End-to-end test manifest
 ```
+
+Generated Go stubs (`*.pb.go`) and Bazel `BUILD.bazel` files sit alongside the protos in `v1alpha1/`. This file set is machine-enforced: the `pkg/anatomy` conformance gate runs in CI (`lint.component-anatomy.yaml`) and fails any component that drifts from it.
 
 ## Naming Conventions
 
@@ -50,8 +56,8 @@ catalog/aws/awss3bucket/v1alpha1/
 |---------|-----------|---------|
 | Folder name | `<provider><resource>` lowercase, no separators | `awss3bucket` |
 | Kind name | `<Provider><Resource>` PascalCase | `AwsS3Bucket` |
-| apiVersion | `<provider>.planton.dev/v1` | `aws.planton.dev/v1alpha1` |
-| Proto package | `dev.planton.<provider>.<component>.v1` | `dev.planton.aws.awss3bucket.v1` |
+| apiVersion | `<provider>.planton.dev/v1alpha1` | `aws.planton.dev/v1alpha1` |
+| Proto package | `dev.planton.<provider>.<component>.v1alpha1` | `dev.planton.aws.awss3bucket.v1alpha1` |
 | Pulumi project | `<component>-pulumi-project` | `awss3bucket-pulumi-project` |
 
 ## Step-by-Step Creation Workflow
@@ -116,7 +122,7 @@ option (buf.validate.message).cel = {
 };
 ```
 
-#### 1.3 Create `stack_outputs.proto`
+#### 1.3 Create `outputs.proto`
 
 Define the outputs that the IaC module will export after deployment:
 
@@ -144,8 +150,8 @@ syntax = "proto3";
 package dev.planton.aws.awss3bucket.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "catalog/aws/awss3bucket/v1alpha1/outputs.proto";
 import "catalog/aws/awss3bucket/v1alpha1/spec.proto";
-import "catalog/aws/awss3bucket/v1alpha1/stack_outputs.proto";
 import "shared/metadata.proto";
 
 message AwsS3Bucket {
@@ -173,7 +179,7 @@ message AwsS3BucketStatus {
 
 The `api_version` and `kind` fields use `string.const` validation to enforce exact values.
 
-#### 1.5 Create `stack_input.proto`
+#### 1.5 Create `input.proto`
 
 The stack input combines the target resource with provider-specific configuration:
 
@@ -266,8 +272,8 @@ The Pulumi module translates the protobuf spec into actual cloud resources using
 package main
 
 import (
-    "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1/iac/pulumi/module"
-    "github.com/plantonhq/planton/pkg/iac/pulumi/stackinput"
+    "github.com/plantonhq/planton/catalog/aws/awss3bucket/iac/pulumi/module"
+    "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/stackinput"
     awss3bucketv1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -319,7 +325,7 @@ func Resources(ctx *pulumi.Context, stackInput *awss3bucketv1.AwsS3BucketStackIn
 
 `module/locals.go` extracts values from the stack input into a `Locals` struct for clean access throughout the module.
 
-`module/outputs.go` defines output key constants that match the `stack_outputs.proto` field names:
+`module/outputs.go` defines output key constants that match the `outputs.proto` field names:
 
 ```go
 package module
@@ -386,7 +392,7 @@ resource "aws_s3_bucket_versioning" "this" {
 
 #### 4.3 Outputs (`iac/tf/outputs.tf`)
 
-Match the fields defined in `stack_outputs.proto`:
+Match the fields defined in `outputs.proto`:
 
 ```hcl
 output "bucket_id" {
@@ -424,13 +430,13 @@ provider "aws" {
 
 Create `README.md` at the component root with a concise overview of what the component deploys and its key configuration options.
 
-#### 5.2 Research Doc
+#### 5.2 Catalog Page
 
-Create `docs/README.md` with deeper design rationale: the parity accounting (which provider resources the component maps to at which pinned provider version, how their arguments are represented, and any recorded exclusions or compositions), deployment best practices, and anti-patterns to avoid.
+Create `catalog.md` at the component root. This is the public catalog page rendered on the docs site: what the component deploys, the key configuration areas, and example manifests.
 
-#### 5.3 Hack Manifest
+#### 5.3 E2E Manifest
 
-Create `iac/hack/manifest.yaml` with a minimal working manifest for development testing:
+Create `e2e/manifest.yaml` at the component root with a minimal working manifest used for end-to-end testing and local development:
 
 ```yaml
 apiVersion: aws.planton.dev/v1alpha1
@@ -457,13 +463,13 @@ make generate-cloud-resource-kind-map
 go build ./catalog/aws/awss3bucket/v1alpha1/...
 
 # Vet check
-go vet ./catalog/aws/awss3bucket/v1alpha1/iac/pulumi/...
+go vet ./catalog/aws/awss3bucket/iac/pulumi/...
 
 # Run validation tests
 go test -v ./catalog/aws/awss3bucket/v1alpha1/...
 
 # Validate Terraform module
-cd catalog/aws/awss3bucket/v1alpha1/iac/tf
+cd catalog/aws/awss3bucket/iac/tf
 terraform init && terraform validate
 ```
 

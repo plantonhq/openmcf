@@ -16,17 +16,23 @@ Planton ships with 362 deployment components spanning 17 cloud providers. Each c
 Every deployment component lives at a predictable path in the repository:
 
 ```text
-catalog/{provider}/{component}/v1/
+catalog/{provider}/{component}/
 ```
 
 Inside that directory, every component contains the same set of files:
 
 ```text
-catalog/kubernetes/kubernetespostgres/v1alpha1/
-|-- api.proto              # Resource envelope: apiVersion, kind, metadata, spec, status
-|-- spec.proto             # Configuration fields with types and validation rules
-|-- stack_input.proto      # IaC input contract: the resource + provider credentials
-|-- stack_outputs.proto    # IaC output contract: what the deployment produces
+catalog/kubernetes/kubernetespostgres/
+|-- README.md              # Component overview
+|-- catalog.md             # Public catalog page rendered on the docs site
+|-- logo.svg               # Component icon
+|-- v1alpha1/
+|   |-- api.proto          # Resource envelope: apiVersion, kind, metadata, spec, status
+|   |-- spec.proto         # Configuration fields with types and validation rules
+|   |-- input.proto        # IaC input contract: the resource + provider credentials
+|   |-- outputs.proto      # IaC output contract: what the deployment produces
+|   |-- spec_test.go       # Validation tests for the spec
+|   \-- reference.md       # Field reference for the spec
 |-- iac/
 |   |-- pulumi/            # Pulumi module (Go)
 |   |   |-- main.go
@@ -37,8 +43,9 @@ catalog/kubernetes/kubernetespostgres/v1alpha1/
 |       |-- variables.tf
 |       |-- provider.tf
 |       \-- outputs.tf
-\-- docs/
-    \-- README.md          # Auto-generated documentation
+|-- presets/               # Ready-to-deploy manifests (.yaml + .md description pairs)
+\-- e2e/
+    \-- manifest.yaml      # End-to-end test manifest
 ```
 
 This structure is not a convention. It is a contract. Every one of the 362 components follows it exactly.
@@ -120,9 +127,9 @@ message AwsS3BucketSpec {
 
 This is the provider-specific design philosophy in action. `KubernetesPostgres` and `AwsS3Bucket` share the same structural envelope (apiVersion, kind, metadata, spec, status), but their specs expose the full, native capability of their respective platforms. Planton does not abstract these differences away.
 
-### stack_input.proto -- The IaC Input Contract
+### input.proto -- The IaC Input Contract
 
-The `stack_input.proto` file defines what the IaC modules receive when they run. It always contains two fields: the `target` resource (the full manifest including metadata and spec) and a `provider_config` (credentials and connection details for the cloud provider).
+The `input.proto` file defines what the IaC modules receive when they run. It always contains two fields: the `target` resource (the full manifest including metadata and spec) and a `provider_config` (credentials and connection details for the cloud provider).
 
 ```protobuf
 message KubernetesPostgresStackInput {
@@ -142,9 +149,9 @@ message AwsS3BucketStackInput {
 
 The stack input is the bridge between the manifest you write and the IaC module that provisions the resource. The CLI loads your manifest, constructs the stack input, and passes it to the IaC engine.
 
-### stack_outputs.proto -- The IaC Output Contract
+### outputs.proto -- The IaC Output Contract
 
-The `stack_outputs.proto` file defines what the IaC module produces after deployment. These are the values you need to connect to or reference the deployed resource.
+The `outputs.proto` file defines what the IaC module produces after deployment. These are the values you need to connect to or reference the deployed resource.
 
 For `KubernetesPostgres`, the outputs include connection details:
 

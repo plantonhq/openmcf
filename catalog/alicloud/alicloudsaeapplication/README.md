@@ -24,7 +24,7 @@ This component creates and manages a single `alicloud_sae_application` resource.
 
 ## Configuration Reference
 
-See [catalog-page.md](./catalog.md) for the full configuration reference, or examples.md for YAML examples.
+See [catalog.md](./catalog.md) for the full configuration reference and examples.
 
 ## Stack Outputs
 

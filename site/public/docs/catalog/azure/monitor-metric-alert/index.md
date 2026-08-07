@@ -8,54 +8,59 @@ componentName: "azuremonitormetricalert"
 
 # Azure Monitor Metric Alert
 
-Deploys an Azure Monitor metric alert rule -- static thresholds, machine-learned dynamic thresholds, or Application Insights web-test availability conditions over platform metrics, firing action groups when they hold.
+Deploys an Azure Monitor metric alert rule -- the watchdog on platform metrics. It evaluates a metric (CPU, latency, queue depth, transactions -- anything a resource emits to Azure Monitor Metrics) against a condition on a rolling window and fires action groups when the condition holds. Three condition families exist: static thresholds (the classic "metric crosses a value"), dynamic machine-learning thresholds (Azure learns the metric's normal band), and web-test availability (fires when an Application Insights availability test fails from N locations -- how a failed probe becomes a page). The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, watched resources, web tests, and action groups.
 
 ## What Gets Created
 
-When you deploy an AzureMonitorMetricAlert resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Metric alert rule** -- an `azurerm_monitor_metric_alert` (global) carrying the scopes, exactly one condition family, the evaluation cadence, and the action-group wiring
-- **Azure Tags** -- Planton-derived governance tags merged with your own (your values win)
+- **Metric Alert Rule** -- a `Microsoft.Insights/metricAlerts` resource (GLOBAL -- no region) carrying the scopes, exactly one condition family, the evaluation cadence, severity, and the action-group wiring
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource to monitor** -- any kind's `*_id` output becomes a scope
-- **An AzureMonitorActionGroup** to fire into
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `metric-alert.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the alert RULE will be created (independent of where the watched resources live). Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **Something to watch** -- the scoped resources must exist and emit the metric; for the web-test family, the Application Insights standard web test and its component.
+- **An action group** to notify (optional but recommended) -- a rule with no actions records state but notifies nobody.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Monitor Metric Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **static-threshold** preset in the [Presets](#presets) tab to pre-populate the classic threshold rule.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureMonitorMetricAlert
 metadata:
-  name: storage-availability
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureMonitorMetricAlert.storage-availability
+  name: checkout-latency-alert
+  org: acme-corp
+  env: prod
 spec:
   resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: observability-rg
-      fieldPath: status.outputs.resource_group_name
-  alertName: storage-availability-low
+    value: "observability-rg"
+  alertName: checkout-api-high-latency
   scopes:
-    - valueFrom:
-        kind: AzureStorageAccount
-        name: app-storage
-        fieldPath: status.outputs.storage_account_id
+    - value: "/subscriptions/.../sites/checkout-api"
+  description: p95 latency above 500ms -- runbook wiki/checkout-latency
   severity: 1
   staticCriteria:
-    - metricNamespace: Microsoft.Storage/storageAccounts
-      metricName: Availability
+    - metricNamespace: Microsoft.Web/sites
+      metricName: HttpResponseTime
       aggregation: AVERAGE
-      operator: LESS_THAN
-      threshold: 99.9
+      operator: GREATER_THAN
+      threshold: 0.5
   actions:
     - actionGroupId:
         valueFrom:
@@ -64,21 +69,85 @@ spec:
           fieldPath: status.outputs.action_group_id
 ```
 
-Deploy it:
-
-```bash
-planton pulumi up --manifest metric-alert.yaml
+```shell
+planton apply -f metric-alert.yaml
 ```
 
-## Common Configurations
+This creates a rule on the platform defaults: evaluated every minute over the last five minutes, stateful (one firing per incident, self-resolving).
 
-- **Dynamic anomaly detection**: replace `staticCriteria` with `dynamicCriteria` (operator `GREATER_OR_LESS_THAN`, an `alertSensitivity`) -- Azure learns the normal band, seasonality included
-- **Web-test availability**: `webTestAvailabilityCriteria` with the test's ARM ID, the Application Insights FK, and a `failedLocationCount`
-- **Dimension splits**: add `dimensions` with `INCLUDE` + `"*"` to alert per dimension value independently
-- **Multi-resource rules**: several scopes (or a resource group / subscription scope) plus `targetResourceType` and `targetResourceLocation`
+### InfraChart
 
-## Key Outputs
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the rule to resources deployed in the same InfraPipeline -- the web-test availability family is the canonical example:
 
-| Output | Use |
-| --- | --- |
-| `metric_alert_id` | The rule's ARM ID |
+```yaml
+spec:
+  scopes:
+    - valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: checkout-availability
+        fieldPath: status.outputs.web_test_id
+  webTestAvailabilityCriteria:
+    webTestId:
+      valueFrom:
+        kind: AzureApplicationInsightsStandardWebTest
+        name: checkout-availability
+        fieldPath: status.outputs.web_test_id
+    componentId:
+      valueFrom:
+        kind: AzureApplicationInsights
+        name: checkout-api-insights
+        fieldPath: status.outputs.application_insights_id
+    failedLocationCount: 3
+```
+
+The InfraPipeline resolves the dependency graph, deploys the web test first, then provisions the alert with the resolved IDs.
+
+## Key Configuration
+
+These are the most important decisions when configuring a metric alert. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Exactly one condition family** -- `staticCriteria` (one or more thresholds -- ALL must breach), `dynamicCriteria` (one ML criterion with sensitivity and the failing-periods flap damper), or `webTestAvailabilityCriteria` (N simultaneous location failures). Static operators compare in one direction; both-directions deviation (GREATER_OR_LESS_THAN) belongs to the dynamic family.
+
+**Scopes** -- ARM IDs of what the rule watches: a resource, a resource group, or a subscription. Multiple scopes (or a group/subscription scope) require `targetResourceType` + `targetResourceLocation` so Azure can resolve the metric definition -- multi-resource rules evaluate each resource independently.
+
+**Cadence** -- `frequency` (PT1M...PT1H; default every minute) and `windowSize` (PT1M...P1D; default five minutes). The window must be at least the frequency. `severity` is 0 (critical) through 4 (verbose), defaulting to 3 -- zero is a real choice, raise deliberately for paging conditions.
+
+**Stateful behavior** -- `autoMitigate` (Azure's default true) fires once per incident and self-resolves; false fires on every breaching evaluation. `enabled: false` pauses evaluation for maintenance without deleting the rule.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **Any metric-emitting kind** | `scopes[]` | the watched resource's `*_id` output (explicit valueFrom) |
+| **AzureApplicationInsightsStandardWebTest** | `webTestAvailabilityCriteria.webTestId` | `status.outputs.web_test_id` |
+| **AzureApplicationInsights** | `webTestAvailabilityCriteria.componentId` | `status.outputs.application_insights_id` |
+| **AzureMonitorActionGroup** | `actions[].actionGroupId` | `status.outputs.action_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values for operators (the rule is a leaf -- nothing references it downstream):
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `metric_alert_id` | Azure Resource Manager ID of the alert rule | Portal navigation, filtering alert history in Azure Monitor |
+| `metric_alert_name` | Name of the alert rule | Azure CLI references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Static threshold** -- the classic paging rule: an average crosses a number you know means trouble. Start from the **static-threshold** preset.
+
+**Dynamic anomaly** -- Azure learns the metric's seasonal normal and alerts on deviation -- for request volume, queue depth, and anything where a fixed number is wrong half the day. Start from the **dynamic-anomaly** preset.
+
+**Web-test availability** -- the outside-in pager: fires when the availability probe fails from three or more locations. Start from the **webtest-availability** preset.
+
+## Works With
+
+- [**Azure Monitor Action Group**](/cloud-catalog/azure-monitor-action-group) -- the notification hub the rule fires into
+- [**Azure Application Insights Standard Web Test**](/cloud-catalog/azure-application-insights-standard-web-test) -- the availability probe the web-test family watches
+- [**Azure Application Insights**](/cloud-catalog/azure-application-insights) -- the component behind the web test
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the rule is created

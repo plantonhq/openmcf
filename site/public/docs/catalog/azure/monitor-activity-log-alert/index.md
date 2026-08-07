@@ -8,88 +8,117 @@ componentName: "azuremonitoractivitylogalert"
 
 # Azure Monitor Activity Log Alert
 
-Creates an Azure Monitor Activity Log Alert — a rule that fires actions when a matching entry appears in the Azure Activity Log. It is the only way to alert on control-plane operations, service-health incidents, resource-health transitions, policy events, and Advisor recommendations — the events that never appear as metrics.
+Deploys an Azure Monitor Activity Log Alert -- the control-plane watchdog. It fires when a matching entry appears in the Azure Activity Log: the subscription-level record of control-plane operations, service-health incidents, resource-health transitions, policy events, and Advisor recommendations. It is the ONLY way to alert on the events that never show up as metrics -- a VM someone deleted, a region-wide Azure incident, a resource going Unavailable, a policy denial. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and action groups.
 
 ## What Gets Created
 
-When you deploy an AzureMonitorActivityLogAlert resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Activity Log Alert** — an `azurerm_monitor_activity_log_alert` watching the configured scopes, matching on the criteria, and firing the configured actions
+- **Activity Log Alert** -- a `Microsoft.Insights/activityLogAlerts` resource carrying the scopes, the category-driven matching criteria, and the action-group wiring. The definition defaults to the global location (the alert evaluates the subscription-global Activity Log regardless)
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the alert in (an `AzureResourceGroup`)
-- **An action group** to notify (an `AzureMonitorActionGroup`)
-- **Monitoring write rights**: `Microsoft.Insights/activityLogAlerts/write`
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **An Azure Resource Group** where the alert definition will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **An action group** to notify (optional but recommended) -- an alert with no actions records matches but notifies nobody.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Monitor Activity Log Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **service-health** preset in the [Presets](#presets) tab to pre-populate the incident watch every subscription should carry.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureMonitorActivityLogAlert
 metadata:
-  name: vm-delete-alert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMonitorActivityLogAlert.vm-delete-alert
+  name: vm-delete-watch
+  org: acme-corp
+  env: prod
 spec:
   resourceGroup:
-    value: platform-rg
-  name: vm-delete-alert
+    value: "governance-rg"
+  name: vm-delete-watch
   scopes:
-    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg
+    - valueFrom:
+        kind: AzureResourceGroup
+        name: production-rg
+        fieldPath: status.outputs.resource_group_id
   criteria:
     category: ADMINISTRATIVE
     operationName: Microsoft.Compute/virtualMachines/delete
-    levels: [CRITICAL]
+    statuses:
+      - Succeeded
   actions:
     - actionGroupId:
-        value: /subscriptions/.../Microsoft.Insights/actionGroups/ops
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: platform-governance
+          fieldPath: status.outputs.action_group_id
+  description: Pages when a production VM is deleted
 ```
-
-Deploy:
 
 ```shell
-planton apply -f activity-log-alert.yaml
+planton apply -f activity-alert.yaml
 ```
 
-## Configuration Reference
+This creates a deletion watch: any successful VM delete under the production resource group notifies the governance action group.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `resourceGroup` | `StringValueOrRef` | Resource group. Defaults to an `AzureResourceGroup` reference. |
-| `name` | `string` | Alert name, unique in the resource group. Fixed at creation. |
-| `scopes` | `StringValueOrRef[]` | What the alert watches (subscription, RG, or resources). Defaults to `AzureResourceGroup`. |
-| `criteria` | `object` | The matching criteria; `category` (required) selects the log slice. |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the alert to the resource group it watches and the action group it fires -- the InfraPipeline resolves the dependency graph and deploys them in order.
 
-### Optional Fields
+## Key Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `location` | `enum` | `GLOBAL` | Alert-resource region (GLOBAL / WEST_EUROPE / NORTH_EUROPE / EAST_US_2_EUAP). |
-| `actions` | `object[]` | `[]` | Action groups to notify (`actionGroupId` + optional `webhookProperties`). |
-| `description` | `string` | `""` | Human-readable description. |
-| `enabled` | `bool` | `true` | Whether the alert is active. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins). |
+These are the most important decisions when configuring an activity log alert. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Criteria
+**Category first** -- `criteria.category` selects WHICH slice of the Activity Log the alert watches (Administrative, Service Health, Resource Health, Policy, Autoscale, Security, Recommendation); every other filter narrows within it. Empty filters match anything in the category -- scope wide, filter precisely.
 
-`category` is one of `ADMINISTRATIVE`, `AUTOSCALE`, `POLICY`, `RECOMMENDATION`, `RESOURCE_HEALTH`, `SECURITY`, `SERVICE_HEALTH`. Narrow with `operationName`, `caller`, `levels`, `resourceProviders`, `resourceTypes`, `resourceGroups`, `resourceIds`, `statuses`, `subStatuses`; the `resourceHealth` and `serviceHealth` blocks and the `recommendation*` fields apply to their categories. `caller`, `resourceHealth`, and `serviceHealth` are mutually exclusive.
+**Category-specific filters** -- the Recommendation category matches by category/impact OR by one recommendation type ID (mutually exclusive, Azure's rule); Resource Health matches state TRANSITIONS (current Unavailable + reason Platform-initiated is the "Azure broke it" watch); Service Health matches incident types, affected regions, and services. The caller filter has no meaning for the health categories.
 
-## Stack Outputs
+**Scopes** -- a subscription ARM path watches everything in it; a resource-group reference watches one environment; a specific resource ID watches one resource. Events UNDER a scope are evaluated.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `activity_log_alert_id` | `string` | Full ARM ID of the alert |
-| `activity_log_alert_name` | `string` | The alert's name as deployed |
+**Definition location** -- unspecified means global, the correct choice for virtually every alert; the named regions exist only for data residency of the alert definition itself.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AzureMonitorActionGroup](/docs/catalog/azure/monitor-action-group) — the notification target the alert fires
-- [AzureMonitorMetricAlert](/docs/catalog/azure/monitor-metric-alert) — the metric-based counterpart
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group and a common scope
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureResourceGroup** | `scopes[]` | `status.outputs.resource_group_id` |
+| **AzureMonitorActionGroup** | `actions[].actionGroupId` | `status.outputs.action_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains (the alert is a leaf -- operator identifiers):
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `activity_log_alert_id` | Azure Resource Manager ID of the alert | Portal navigation, CLI references |
+| `activity_log_alert_name` | Name of the alert | Azure CLI references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Service health** -- Azure incident notifications for your regions and services: the alert every subscription should carry. Start from the **service-health** preset.
+
+**Resource delete** -- successful deletions under a scope, into the governance channel. Start from the **resource-delete** preset.
+
+## Works With
+
+- [**Azure Monitor Action Group**](/cloud-catalog/azure-monitor-action-group) -- the notification hub the alert fires into
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- both the definition's home and the classic watch scope

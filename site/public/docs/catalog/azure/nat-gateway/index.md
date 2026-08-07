@@ -8,248 +8,141 @@ componentName: "azurenatgateway"
 
 # Azure NAT Gateway
 
-Deploys an Azure NAT Gateway — the managed source-network-address-translation (SNAT) service that gives every workload in its attached subnets stable, scalable outbound internet connectivity. The gateway is deliberately just the gateway: the public IPs and prefixes it SNATs through are referenced first-class resources, and subnets attach themselves to it via `AzureSubnet`'s `natGatewayId`.
+Deploys an Azure NAT Gateway -- the managed source-network-address-translation (SNAT) service that gives every workload in its attached subnets stable, scalable outbound internet connectivity, and the production answer to Azure retiring implicit default outbound access. The gateway is deliberately just the gateway: the public addresses it SNATs through are first-class AzurePublicIp / AzurePublicIpPrefix resources referenced by ID, and the subnets it serves declare the attachment themselves (each AzureSubnet's `natGatewayId`), matching Azure's one-gateway-many-subnets model. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureNatGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **NAT Gateway** — a `network.NatGateway` in the specified region and resource group, with the configured SKU (Standard or StandardV2), idle timeout, and availability zone
-- **Public IP Associations** — a `NatGatewayPublicIpAssociation` for each referenced `AzurePublicIp`, binding that address to the gateway for SNAT
-- **Public IP Prefix Associations** — a `NatGatewayPublicIpPrefixAssociation` for each referenced `AzurePublicIpPrefix`, binding that contiguous range to the gateway for SNAT
-- **Azure Tags** — resource metadata tags applied to the gateway for tracking and governance
+- **NAT Gateway** -- a Standard or StandardV2 SKU gateway in the specified region and resource group, with configurable idle timeout and (for Standard) optional availability-zone pinning
+- **Public IP Associations** -- links to the referenced `publicIpIds`, each adding 64,512 SNAT ports
+- **Public IP Prefix Associations** -- links to the referenced `publicIpPrefixIds`, contiguous reserved ranges for scalable, allowlistable egress
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with your `tags`, applied to the gateway
 
-Nothing else is created here. The gateway does not allocate its own IPs or prefixes (reference existing ones), and it does not modify subnets (each `AzureSubnet` declares the attachment itself via `natGatewayId`, matching Azure's model where one gateway serves many subnets).
+Subnet attachments are NOT created here -- each AzureSubnet declares its own `natGatewayId`.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the NAT Gateway will be created (can reference an AzureResourceGroup resource)
-- **At least one AzurePublicIp or AzurePublicIpPrefix** to associate — a gateway with no addresses deploys but cannot translate anything (a StandardV2 gateway needs StandardV2 addresses)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `natgateway.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the NAT Gateway will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **Public addresses** -- a gateway with no addresses deploys but cannot translate anything. Reference AzurePublicIp / AzurePublicIpPrefix Cloud Resources (a StandardV2 gateway needs StandardV2 addresses).
+- **Region alignment** -- the gateway only serves subnets in its own region.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure NAT Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a zonal gateway SNATing through one referenced public IP.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureNatGateway
 metadata:
-  name: my-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureNatGateway.my-natgw
+  name: prod-nat
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: my-rg
-  name: egress-nat
+    value: "network-rg"
+  name: prod-nat
+  zones:
+    - "1"
   publicIpIds:
-    - valueFrom:
-        name: my-egress-ip
+    - value: "/subscriptions/.../publicIPAddresses/nat-egress-ip"
+  idleTimeoutInMinutes: 10
 ```
-
-Deploy:
 
 ```shell
-planton apply -f natgateway.yaml
+planton apply -f azure-nat-gateway.yaml
 ```
 
-This creates a Standard SKU NAT Gateway that SNATs through the referenced public IP, with Azure's default 4-minute idle timeout. To route a subnet's outbound traffic through it, set `natGatewayId` on that `AzureSubnet` to this gateway's `status.outputs.nat_gateway_id`.
+This creates a zonal Standard gateway SNATing through one public IP with a 10-minute idle timeout. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the NAT Gateway (e.g., `eastus`, `westeurope`). A gateway only serves subnets in its own region. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the NAT Gateway, unique within the resource group. | Required, 1-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `skuName` | `enum` | `STANDARD` | `STANDARD` (zonal, optionally pinned to one zone) or `STANDARD_V2` (zone-redundant automatically; `zones` must be empty and referenced IPs/prefixes must be StandardV2). Fixed at creation. |
-| `idleTimeoutInMinutes` | `int32` | `4` | How long an idle outbound TCP connection's SNAT port stays reserved. Range: 4--120. Raise it only for long-lived idle connections; higher values hold ports longer and hasten SNAT exhaustion. |
-| `zones` | `string[]` | `[]` | Availability zone to pin a `STANDARD` gateway to (e.g., `["1"]`). Empty means non-zonal. Must be empty for `STANDARD_V2`. Fixed at creation. |
-| `publicIpIds` | `StringValueOrRef[]` | `[]` | ARM IDs of public IPs the gateway SNATs through. Each address adds 64,512 SNAT ports. Defaults to referencing an `AzurePublicIp`'s `public_ip_id` output. |
-| `publicIpPrefixIds` | `StringValueOrRef[]` | `[]` | ARM IDs of public IP prefixes (contiguous reserved ranges) the gateway SNATs through — the scalable, allowlistable alternative to individual addresses. Defaults to referencing an `AzurePublicIpPrefix`'s `public_ip_prefix_id` output. |
-| `tags` | `map<string, string>` | `{}` | Additional tags applied to the NAT Gateway, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Single Public IP
-
-A zonal NAT Gateway with default settings, SNATing through one referenced public IP:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the gateway to its resource group and addresses -- and wire each subnet to the gateway:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: basic-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureNatGateway.basic-natgw
+# On the AzureNatGateway:
 spec:
-  region: eastus
-  resourceGroup:
-    value: dev-rg
-  name: dev-egress-nat
-  zones:
-    - "1"
-  publicIpIds:
-    - valueFrom:
-        name: dev-egress-ip
-```
-
-### Custom Idle Timeout with Tags
-
-A NAT Gateway with a longer idle timeout for workloads that hold long-lived outbound TCP connections:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: long-lived-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNatGateway.long-lived-natgw
-spec:
-  region: westeurope
-  resourceGroup:
-    value: prod-rg
-  name: prod-egress-nat
-  idleTimeoutInMinutes: 30
-  publicIpIds:
-    - valueFrom:
-        name: prod-egress-ip
-  tags:
-    team: platform
-    cost-center: infra
-```
-
-### Public IP Prefix for Scale
-
-A NAT Gateway backed by a referenced /28 Public IP Prefix (16 addresses, over 1M SNAT ports) for high-throughput subnets that need multiple outbound IPs to avoid SNAT port exhaustion:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: scale-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNatGateway.scale-natgw
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: prod-scale-nat
-  zones:
-    - "1"
-  idleTimeoutInMinutes: 10
-  publicIpPrefixIds:
-    - valueFrom:
-        name: prod-snat-prefix
-  tags:
-    workload: high-throughput
-```
-
-### Zone-Redundant StandardV2
-
-A next-generation StandardV2 gateway — zone-redundant automatically, so `zones` stays empty. The referenced address must also be StandardV2:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: v2-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNatGateway.v2-natgw
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: prod-egress-nat-v2
-  skuName: STANDARD_V2
-  publicIpIds:
-    - valueFrom:
-        name: prod-v2-egress-ip
-```
-
-### Production AKS Cluster Egress
-
-A NAT Gateway serving as the outbound egress for an AKS cluster node subnet, with a referenced prefix for SNAT scale and a 120-minute idle timeout for long-running batch jobs. The node subnet attaches itself by setting `natGatewayId`:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: aks-egress-natgw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureNatGateway.aks-egress-natgw
-spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: aks-rg
-  name: aks-egress-nat
-  zones:
-    - "1"
-  idleTimeoutInMinutes: 120
-  publicIpPrefixIds:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+  publicIpIds:
     - valueFrom:
-        name: aks-snat-prefix
-  tags:
-    purpose: aks-egress
-    environment: production
----
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureSubnet
-metadata:
-  name: aks-nodes
+        kind: AzurePublicIp
+        name: nat-egress-ip
+        fieldPath: status.outputs.public_ip_id
+
+# On each AzureSubnet that should egress through it:
 spec:
-  virtualNetworkId:
-    valueFrom:
-      name: aks-vnet
-  name: aks-nodes
-  addressPrefixes:
-    - 10.0.1.0/24
   natGatewayId:
     valueFrom:
-      name: aks-egress-natgw
+      kind: AzureNatGateway
+      name: prod-nat
+      fieldPath: status.outputs.nat_gateway_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the group and addresses first, then the gateway, then the subnets that attach it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `nat_gateway_id` | `string` | Azure Resource Manager ID of the NAT Gateway — the primary output; `AzureSubnet`'s `natGatewayId` references it to attach the gateway to a subnet |
-| `nat_gateway_name` | `string` | The NAT Gateway's name as deployed |
-| `resource_guid` | `string` | The immutable GUID ARM assigns the gateway — useful when correlating with Azure billing, monitoring, or support data keyed on the GUID |
+These are the most important decisions when configuring a NAT gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**SKU** -- `skuName` unset applies Azure's default (STANDARD): a zonal gateway, optionally pinned to one availability zone via `zones`. STANDARD_V2 is zone-redundant automatically (`zones` must be empty -- the spec enforces it) and requires StandardV2 public IPs/prefixes. Fixed at creation.
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for gateway placement
-- [AzurePublicIp](/docs/catalog/azure/public-ip) -- the individual public addresses the gateway SNATs through, referenced via `publicIpIds`
-- [AzurePublicIpPrefix](/docs/catalog/azure/public-ip-prefix) -- contiguous, allowlistable address ranges the gateway SNATs through, referenced via `publicIpPrefixIds`
-- [AzureSubnet](/docs/catalog/azure/subnet) -- attaches the gateway via its `natGatewayId` field so all outbound traffic from the subnet routes through it
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) -- AKS clusters commonly use a NAT Gateway for predictable outbound IPs and SNAT port scaling
+**Public addresses** -- `publicIpIds` references individual addresses (64,512 SNAT ports each); `publicIpPrefixIds` references contiguous reserved ranges -- the scalable, allowlistable alternative (a /28 prefix multiplies capacity by 16 in one block). Both updatable in place.
+
+**Idle timeout** -- `idleTimeoutInMinutes` controls how long an idle outbound TCP connection's SNAT port stays reserved (4-120, Azure default 4). Higher values hold ports longer and hasten SNAT exhaustion -- raise only for long-lived idle connections that must not re-establish.
+
+**Zone resilience** -- a STANDARD gateway lives in one zone (or non-zonal when `zones` is empty); zone-resilient architectures deploy one gateway per zone with per-zone subnets, or use STANDARD_V2 for built-in redundancy.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzurePublicIp** (repeated) | `publicIpIds` | `status.outputs.public_ip_id` |
+| **AzurePublicIpPrefix** (repeated) | `publicIpPrefixIds` | `status.outputs.public_ip_prefix_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `nat_gateway_id` | Azure Resource Manager ID of the gateway | AzureSubnet's `natGatewayId` references it to attach the gateway to a subnet |
+| `nat_gateway_name` | Name of the gateway | Diagnostics and operational tooling |
+| `resource_guid` | The immutable GUID ARM assigns | Correlating with Azure billing, monitoring, or support data |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard zonal gateway** -- A zonal Standard gateway SNATing through one referenced public IP: stable outbound with a known source address for every attached subnet. Start from the **Standard** preset.
+
+**Prefix-backed SNAT range** -- A gateway SNATing through a public IP prefix: one contiguous, allowlistable range that scales SNAT capacity for high-throughput estates. Start from the **Prefix SNAT Range** preset.
+
+**Zone-redundant V2** -- Azure's next-generation StandardV2 gateway: zone-redundant automatically, no zone pinning, StandardV2 addresses. Start from the **Zone-Redundant V2** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the gateway is created in
+- [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- the addresses the gateway SNATs through
+- [**Azure Public IP Prefix**](/cloud-catalog/azure-public-ip-prefix) -- contiguous reserved ranges for scalable egress
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- attaches the gateway via its `natGatewayId` to route the subnet's egress

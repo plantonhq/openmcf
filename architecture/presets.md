@@ -67,7 +67,7 @@ A preset consists of two files:
 ### What Presets Are NOT
 
 - **Not documentation** -- Presets are deployable artifacts, not prose with embedded YAML. That role belongs to the component `README.md`.
-- **Not test manifests** -- Presets represent production-quality configurations. Test manifests live at `iac/hack/manifest.yaml`.
+- **Not example manifests** -- Presets represent production-quality configurations. The canonical validated example manifest lives at `e2e/manifest.yaml`.
 - **Not abstractions** -- Each preset is a complete, concrete manifest. There is no templating engine or variable substitution system. Users copy a preset, replace angle-bracket placeholders with real values, and deploy.
 - **Not exhaustive** -- Presets cover common patterns, not every possible configuration. Advanced or niche configurations are documented in the component `README.md` or left to the user.
 
@@ -87,7 +87,7 @@ Consider `AwsAlb`. Its `spec.proto` defines fields for subnets, security groups,
 - Should I enable DNS management or handle it separately?
 - What combination of these fields represents a "standard production" ALB?
 
-The answers are available across `docs/README.md`, `README.md`, and provider documentation, but the user must synthesize them. Presets eliminate this synthesis step.
+The answers are available across the component's `README.md`, `catalog.md`, `GUIDE.md` (where one exists), and provider documentation, but the user must synthesize them. Presets eliminate this synthesis step.
 
 ### The Solution
 
@@ -103,7 +103,7 @@ Rank 01 answers the question: **"If you had 30 seconds to deploy this resource a
 
 Each deployment component has several YAML-related artifacts. They serve different purposes for different audiences:
 
-**Presets** (`v1/presets/*.yaml`):
+**Presets** (`presets/*.yaml` at the component root):
 
 - **Purpose:** Ready-to-deploy configuration templates for common use cases
 - **Audience:** Platform engineers who want a fast, opinionated starting point
@@ -111,7 +111,7 @@ Each deployment component has several YAML-related artifacts. They serve differe
 - **Deployability:** Directly deployable after replacing placeholders
 - **StringValueOrRef:** Uses proto-correct `value:` wrapper form (see [StringValueOrRef Fields](#stringvalueorref-fields))
 
-**README** (`v1/README.md`):
+**README** (`README.md` at the component root):
 
 - **Purpose:** Documentation showing various configuration scenarios with explanatory prose
 - **Audience:** Users learning the component's capabilities
@@ -119,15 +119,15 @@ Each deployment component has several YAML-related artifacts. They serve differe
 - **Deployability:** Informational -- may use simplified YAML for readability
 - **StringValueOrRef:** Currently uses simplified plain-string form for readability (see [Known Issues](#known-issues))
 
-**Hack Manifest** (`v1/iac/hack/manifest.yaml`):
+**Example Manifest** (`e2e/manifest.yaml` at the component root):
 
-- **Purpose:** Minimal test manifest for IaC module development and CI
+- **Purpose:** The canonical validated example manifest, exercised during IaC module development and CI
 - **Audience:** Component developers testing their Pulumi/Terraform code
-- **Format:** Bare-minimum KRM manifest with hardcoded test values
-- **Deployability:** For testing only -- uses non-production values
+- **Format:** Complete KRM manifest with concrete, working values
+- **Deployability:** Deployable in test environments -- values are chosen for validation, not production
 - **StringValueOrRef:** Uses proto-correct `value:` wrapper form
 
-**Relationship summary:** Presets complement rather than replace existing artifacts. A user might discover a component through its README, understand its capabilities via the research doc, then grab a preset as their starting point for actual deployment.
+**Relationship summary:** Presets complement rather than replace existing artifacts. A user might discover a component through its README, understand its capabilities and design rationale via `catalog.md` and `GUIDE.md`, then grab a preset as their starting point for actual deployment.
 
 ---
 
@@ -135,18 +135,18 @@ Each deployment component has several YAML-related artifacts. They serve differe
 
 ### Location
 
-Presets live in a `presets/` directory within the component's `v1/` folder:
+Presets live in a `presets/` directory at the component root (version directories such as `v1alpha1/` hold only the versioned API contract):
 
 ```
-catalog/{provider}/{component}/v1/presets/
+catalog/{provider}/{component}/presets/
 ```
 
 **Examples:**
 
 ```
-catalog/aws/awsalb/v1alpha1/presets/
-catalog/gcp/gcpgkecluster/v1alpha1/presets/
-catalog/kubernetes/kubernetesdeployment/v1alpha1/presets/
+catalog/aws/awsalb/presets/
+catalog/gcp/gcpgkecluster/presets/
+catalog/kubernetes/kubernetesdeployment/presets/
 ```
 
 ### Naming
@@ -216,7 +216,7 @@ Rank reflects **real-world deployment frequency**, not complexity or feature cov
 Every preset YAML is a complete KRM manifest:
 
 ```yaml
-apiVersion: <provider>.planton.dev/v1
+apiVersion: <provider>.planton.dev/<version>
 kind: <Kind>
 metadata:
   name: <descriptive-name>
@@ -487,8 +487,8 @@ When creating presets for a component:
 
 1. **Read `spec.proto`** -- Understand all available fields, their types, validations, and default annotations
 2. **Read `api.proto`** -- Extract the exact `apiVersion` and `kind` constant values
-3. **Read `docs/README.md`** -- Understand common configurations and design rationale
-4. **Read `iac/hack/manifest.yaml`** -- See the minimal test manifest for structural reference
+3. **Read `GUIDE.md` and `catalog.md`** -- Understand common configurations and design rationale (the guide, where one exists, carries the authored operational judgment)
+4. **Read `e2e/manifest.yaml`** -- See the validated example manifest for structural reference
 5. **Identify common patterns** -- Based on cloud provider documentation and real-world usage, determine which configurations most users deploy
 6. **Create presets in rank order** -- Start with rank 01 (most common), then work outward
 7. **Validate structurally** -- Ensure apiVersion/kind match, required fields are present, naming is correct
@@ -580,11 +580,11 @@ Some legacy component documentation used a simplified YAML form for `StringValue
 subnets:
   - subnet-12345abc
 
-# Proto-correct form used in hack manifests and presets
+# Proto-correct form used in example manifests and presets
 subnets:
   - value: subnet-12345abc
 ```
 
-This inconsistency is being addressed incrementally. As presets are created for each provider (T02-T08), all documentation is being updated to use the proto-correct form. The `value:` wrapper is required for proper protobuf deserialization of the `StringValueOrRef` message type.
+Where the two forms disagree, the proto-correct form wins: the `value:` wrapper is required for proper protobuf deserialization of the `StringValueOrRef` message type.
 
 **Presets always use the proto-correct form.** This is non-negotiable for a "directly deployable" artifact.

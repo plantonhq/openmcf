@@ -8,123 +8,82 @@ componentName: "azurefirewall"
 
 # Azure Firewall
 
-Creates an Azure Firewall -- the managed, stateful firewall data plane that enforces an Azure Firewall Policy from a dedicated subnet (or Virtual WAN hub). Spoke route tables send egress to its private IP; the attached policy decides what gets through.
+Deploys an Azure Firewall — the managed, stateful network firewall data plane that enforces an AzureFirewallPolicy. The firewall carries WHERE enforcement runs (the dedicated subnet, public IPs, availability zones, deployment model) while the attached policy carries WHAT is enforced (rules, threat intelligence, TLS inspection, IDPS). Its `private_ip_address` output anchors the hub-spoke pattern: spoke route tables send 0.0.0.0/0 to it as a VIRTUAL_APPLIANCE next hop, and everything egresses through one inspected chokepoint.
+
+**Two deployment models**, fixed at creation: **AZFW_VNET** (the default) deploys into a dedicated subnet of your virtual network — named exactly `AzureFirewallSubnet`, /26 or larger; **AZFW_HUB** deploys into a Virtual WAN hub, where Azure manages the addressing.
 
 ## What Gets Created
 
-When you deploy an AzureFirewall resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Azure Firewall** — an `azurerm_firewall` in the specified region and resource group, deployed into the referenced `AzureFirewallSubnet` (or Virtual WAN hub), fronted by the referenced Standard static public IPs, enforcing the referenced policy
+- **Azure Firewall** -- the firewall instance with its deployment model, tier, zones, IP configurations (or Virtual WAN hub binding), optional management path, and policy attachment
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-Rules and inspection live on the `AzureFirewallPolicy`; the firewall is the enforcement point.
+The subnet, public IPs, and policy are NOT created here — they are referenced Cloud Resources with their own lifecycles. Azure Firewall provisions and deletes SLOWLY (10-20+ minutes each way) — design changes to avoid replacement.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A subnet named exactly `AzureFirewallSubnet`** (at least /26) in the hub VNet — an `AzureSubnet`
-- **A Standard-SKU static public IP** — an `AzurePublicIp`
-- **A firewall policy** to enforce — an `AzureFirewallPolicy` (same tier)
-- **Network write rights**: `Microsoft.Network/azureFirewalls/write`
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `firewall.yaml`:
+### Azure Subscription
+
+- **An AzureSubnet named exactly `AzureFirewallSubnet`** (/26+, no other workloads) in the hub VNet — ARM rejects any other name.
+- **A Standard-SKU static AzurePublicIp** for the data path (zone-redundant to match the firewall's zones).
+- **An AzureFirewallPolicy whose tier MATCHES** the firewall's — the pair moves together.
+- **For forced tunneling or BASIC tier**: a second subnet named exactly `AzureFirewallManagementSubnet` (/26+) with its own public IP — the management block is FIXED at creation.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Firewall**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Hub-Spoke Egress** preset in the [Presets](#presets) tab for the classic chokepoint.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFirewall
 metadata:
   name: hub-egress-fw
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFirewall.hub-egress-fw
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    valueFrom:
-      name: network-rg
+    value: "rg-network-hub"
   name: hub-egress-fw
+  skuName: AZFW_VNET
+  skuTier: STANDARD
+  zones: ["1", "2", "3"]
   ipConfigurations:
     - name: primary
       subnetId:
         valueFrom:
-          name: firewall-subnet
+          name: hub-vnet-firewall-subnet
       publicIpAddressId:
         valueFrom:
-          name: firewall-pip
+          name: fw-pip
   firewallPolicyId:
     valueFrom:
       name: egress-baseline
-  zones: ["1", "2", "3"]
+  tags:
+    cost-center: network-security
 ```
-
-Deploy (expect 10-20 minutes):
 
 ```shell
 planton apply -f firewall.yaml
 ```
 
-After deployment, read `status.outputs.private_ip_address` — the address spoke route tables send egress to.
+After deploy, point spoke route tables' 0.0.0.0/0 at the firewall's `private_ip_address` output — the last step that closes the hub-spoke loop.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region; must match the VNet/hub. | Required, ForceNew |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. | Required |
-| `name` | `string` | Firewall name, unique within the resource group. | Required, 1-80 chars, ForceNew |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `skuName` | `enum` | `AZFW_VNET` | `AZFW_VNET` (your subnet) or `AZFW_HUB` (Virtual WAN). ForceNew. |
-| `skuTier` | `enum` | `STANDARD` | `BASIC`, `STANDARD`, `PREMIUM`. Must match the policy's tier. |
-| `ipConfigurations` | `list` | -- | Exactly one carries `subnetId` (the AzureFirewallSubnet); extra entries add public IPs (more SNAT ports, more DNAT frontends). |
-| `managementIpConfiguration` | `object` | -- | Dedicated `AzureFirewallManagementSubnet` + required public IP. Required for BASIC tier and forced tunneling. ForceNew. |
-| `firewallPolicyId` | `StringValueOrRef` | -- | The `AzureFirewallPolicy` to enforce. |
-| `threatIntelMode` | `enum` | Azure's `Alert` | Only meaningful without a policy. |
-| `dnsServers` | `list(string)` | -- | Custom upstreams; setting them implicitly enables the DNS proxy. Policy-less firewalls only -- a policy-attached firewall takes DNS from the policy (validated). |
-| `dnsProxyEnabled` | `bool` | `false` | Run the firewall as a DNS proxy (needed for FQDN network rules). Policy-less firewalls only. |
-| `privateIpRanges` | `list(string)` | IANA private | SNAT-exempt ranges; CIDRs or the literal `IANAPrivateRanges`. |
-| `virtualHub` | `object` | -- | `AZFW_HUB` model: hub ARM id + Azure-assigned public IP count. |
-| `zones` | `list(string)` | -- | Availability zones (free on Azure Firewall). ForceNew. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags. |
-
-## Examples
-
-### Hub-Spoke Egress Control (the flagship shape)
-
-The firewall in the hub, spokes default-routing through it:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRouteTable
-metadata:
-  name: spoke-routes
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: spoke-routes
-  routes:
-    - name: default-via-firewall
-      addressPrefix: "0.0.0.0/0"
-      nextHopType: VIRTUAL_APPLIANCE
-      # Resolves to the firewall's private_ip_address output -- the route
-      # follows the firewall instead of pinning a hand-copied IP.
-      nextHopInIpAddress:
-        valueFrom:
-          name: hub-firewall
-  bgpRoutePropagationEnabled: false
-```
-
-### Forced Tunneling (private data path)
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the firewall to its dependencies:
 
 ```yaml
 spec:
@@ -132,32 +91,76 @@ spec:
     - name: primary
       subnetId:
         valueFrom:
-          name: firewall-subnet
-  managementIpConfiguration:
-    name: management
-    subnetId:
-      valueFrom:
-        name: firewall-mgmt-subnet
-    publicIpAddressId:
-      valueFrom:
-        name: firewall-mgmt-pip
+          kind: AzureSubnet
+          name: hub-vnet-firewall-subnet
+          fieldPath: status.outputs.subnet_id
+      publicIpAddressId:
+        valueFrom:
+          kind: AzurePublicIp
+          name: fw-pip
+          fieldPath: status.outputs.public_ip_id
+  firewallPolicyId:
+    valueFrom:
+      kind: AzureFirewallPolicy
+      name: egress-baseline
+      fieldPath: status.outputs.firewall_policy_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph — VNet, subnet, public IP, policy, then the firewall — and the route tables that steer traffic reference this firewall's `private_ip_address`.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `firewall_id` | `string` | Full ARM ID of the firewall |
-| `firewall_name` | `string` | The firewall's name as deployed |
-| `private_ip_address` | `string` | The data-path private IP — spoke route tables' next hop |
-| `management_private_ip_address` | `string` | The management path's private IP (when configured) |
-| `virtual_hub_public_ip_addresses` | `list` | Azure-assigned public IPs (hub model) |
-| `virtual_hub_private_ip_address` | `string` | Azure-assigned private IP (hub model) |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring an Azure Firewall. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [AzureFirewallPolicy](/docs/catalog/azure/firewall-policy) — WHAT the firewall enforces
-- [AzureFirewallPolicyRuleCollectionGroup](/docs/catalog/azure/firewall-policy-rule-collection-group) — the rules
-- [AzureSubnet](/docs/catalog/azure/subnet) — the `AzureFirewallSubnet` home
-- [AzurePublicIp](/docs/catalog/azure/public-ip) — the firewall's frontends
-- [AzureRouteTable](/docs/catalog/azure/route-table) — steers spokes through the firewall's private IP
+**Deployment model (`skuName`)** -- AZFW_VNET (your subnet, your route tables — the default) or AZFW_HUB (Virtual WAN hub, Azure-managed addressing). Fixed at creation; the wizard reshapes around the choice.
+
+**Tier (`skuTier`)** -- must MATCH the attached policy's tier. BASIC additionally requires the management IP configuration. The tier updates in place; the policy's does not.
+
+**Zones** -- zone redundancy is FREE on Azure Firewall (you pay only the normal deployment cost); spanning all three is the production posture. Fixed at creation.
+
+**IP configurations** -- exactly ONE carries the subnet; every additional configuration adds a public IP (more SNAT ports for high-connection egress, more DNAT frontends). Public IPs add/remove in place; the subnet does not.
+
+**Management path** -- the forced-tunneling enabler: with it, the data path may be fully private (0.0.0.0/0 leaves via ExpressRoute/VPN). FIXED at creation — it cannot be retrofitted.
+
+**Policy attachment** -- the hot-swappable major part: attach, detach, and re-point in place. With a policy attached, ARM rejects firewall-level DNS parameters — the policy's dns block owns them.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureSubnet** | `ipConfigurations[].subnetId`, `managementIpConfiguration.subnetId` | `status.outputs.subnet_id` |
+| **AzurePublicIp** | `ipConfigurations[].publicIpAddressId`, `managementIpConfiguration.publicIpAddressId` | `status.outputs.public_ip_id` |
+| **AzureFirewallPolicy** | `firewallPolicyId` | `status.outputs.firewall_policy_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `private_ip_address` | The firewall's private IP in AzureFirewallSubnet | Route tables' VIRTUAL_APPLIANCE next hop (`routes[].nextHopInIpAddress`) — the hub-spoke seam |
+| `firewall_id` | Azure Resource Manager ID of the firewall | Automation scripts, diagnostics wiring |
+| `firewall_name` | Name of the firewall | Automation scripts, inventory |
+| `management_private_ip_address` | The management path's private IP (empty without the block) | Forced-tunneling diagnostics |
+| `virtual_hub_public_ip_addresses` | Azure-assigned public IPs (hub model only) | Partner allowlists |
+| `virtual_hub_private_ip_address` | The hub firewall's private IP (hub model only) | Hub route intent |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Hub-spoke egress** -- the zone-redundant VNet firewall enforcing the baseline policy, with spoke route tables steering 0.0.0.0/0 through it. Start from the **Hub-Spoke Egress** preset.
+
+**Forced tunneling** -- a fully-private data path with the management block: all egress leaves via ExpressRoute/VPN to on-premises inspection. Start from the **Forced Tunneling** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the firewall is created
+- [**Azure Virtual Network**](/cloud-catalog/azure-virtual-network) -- hosts the dedicated AzureFirewallSubnet
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- the exact-name firewall (and management) subnets
+- [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- the Standard-SKU static addresses the firewall fronts
+- [**Azure Firewall Policy**](/cloud-catalog/azure-firewall-policy) -- the rule-and-inspection document this instance enforces
+- [**Azure Route Table**](/cloud-catalog/azure-route-table) -- steers spoke traffic to this firewall's private IP (the VIRTUAL_APPLIANCE next hop)

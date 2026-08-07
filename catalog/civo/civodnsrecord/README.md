@@ -244,11 +244,11 @@ Ensure SPF/DKIM/DMARC TXT records are also configured.
 
 ## Examples
 
-For detailed usage examples, see examples.md.
+For detailed usage examples, see e2e/manifest.yaml.
 
 ## Architecture Details
 
-For in-depth architectural guidance and production best practices, see docs/README.md.
+For in-depth architectural guidance and production best practices, see GUIDE.md.
 
 ## Terraform and Pulumi
 

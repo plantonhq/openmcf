@@ -8,94 +8,119 @@ componentName: "gcppubsubschema"
 
 # GCP Pub/Sub Schema
 
-Creates a Pub/Sub schema — the message contract publishers and subscribers agree on. One schema can validate messages on many topics: each topic attaches it by reference, so the event contract is evolved in one place and every attached topic enforces it at publish time.
+Deploys a Pub/Sub schema — the message contract publishers and subscribers agree on. A schema is a first-class, shareable resource: one schema can validate messages on many topics (each topic attaches it by reference), so a platform team evolves the event contract in one place. Attaching a schema to a topic makes Pub/Sub reject any published message that does not conform, moving contract violations from the consumer to the publisher. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-A project-level `google_pubsub_schema` resource holding a typed message definition — an Avro record (JSON) or a protobuf message. Topics attach it through their `schemaSettings.schema` field; from then on Pub/Sub rejects any published message that does not conform to the schema.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Pub/Sub Schema** -- a named schema resource in the specified GCP project, holding the contract definition in Avro or Protocol Buffers form
+- **Initial Revision** -- the first committed revision of the definition; later definition edits commit additional in-place revisions (up to 20 kept per schema)
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** (the Pub/Sub API is enabled automatically)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `schema.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the schema will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Cloud Pub/Sub API** enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Pub/Sub Schema**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Avro Event Contract** preset in the [Presets](#presets) tab to pre-populate a minimal configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpPubSubSchema
 metadata:
-  name: order-events-schema
+  name: order-event-contract
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
-  schemaName: order-events
+    value: "acme-prod-12345"
+  schemaName: order-event-contract
   type: AVRO
   definition: |
     {
       "type": "record",
-      "name": "OrderEvent",
+      "name": "OrderCreated",
       "fields": [
-        {"name": "order_id", "type": "string"},
-        {"name": "amount_cents", "type": "long"}
+        { "name": "orderId", "type": "string" },
+        { "name": "amountCents", "type": "long" }
       ]
     }
 ```
 
-Deploy:
-
 ```shell
-planton apply -f schema.yaml
+planton apply -f pubsub-schema.yaml
 ```
 
-Attach it from a topic:
+This creates the schema with its first revision committed. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the schema to a GCP project deployed in the same InfraPipeline — and wire topics to the schema:
 
 ```yaml
-# In a GcpPubSubTopic spec:
-schemaSettings:
-  schema:
+spec:
+  projectId:
     valueFrom:
-      kind: GcpPubSubSchema
-      name: order-events-schema
-      fieldPath: status.outputs.schema_id
-  encoding: JSON
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
 ```
 
-## Configuration Reference
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the schema — and any GcpPubSubTopic referencing this schema's `schema_id` output deploys after it.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `schemaName` | `string` | The GCP resource name of the schema. Immutable — renaming replaces the resource. | 3-255 chars; starts with a letter; letters, digits, `-_.~+%`; must not begin with the reserved `goog` prefix |
-| `type` | `string` | The definition language. | `AVRO` or `PROTOCOL_BUFFER` |
-| `definition` | `string` | The schema text (Avro JSON or a single protobuf message). Changing it commits a new revision in place. | Required |
+These are the most important decisions when configuring a Pub/Sub schema. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**Schema name** -- The `schemaName` field is immutable; changing it REPLACES the resource, and topics reference schemas by name, so plan replacements deliberately across every attached topic.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `projectId` | `StringValueOrRef` | GCP project for the schema. Omitted rides the provider's default project; reference a `GcpProject` to compose |
+**Contract language** -- The `type` field (`AVRO` or `PROTOCOL_BUFFER`) is stable for the schema's lifetime. Avro is the common choice for event contracts and analytics pipelines; Protocol Buffers suits fleets already speaking protobuf.
 
-## Revision Lifecycle
+**Definition and revisions** -- Changing `definition` does NOT replace the resource: it commits a new in-place REVISION. Attached topics accept messages conforming to any available revision, which is how contracts evolve without a coordinated publisher deploy. A schema holds at most 20 revisions — beyond that, old revisions must be deleted before new commits succeed.
 
-Definition changes never replace the schema — each change commits a new **revision** (a schema retains up to 20; beyond that, old revisions must be deleted manually). Attached topics accept messages conforming to any available revision, so evolve additively: add fields with defaults in Avro, add tagged fields in protobuf, and never repurpose existing ones.
+**Deletion order** -- Deleting a schema while topics still reference it leaves those topics validating against the `_deleted-schema_` sentinel, and every publish fails. Detach or destroy topics first.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-| Output | Description |
-|--------|-------------|
-| `schema_id` | Fully qualified schema path (`projects/{p}/schemas/{name}`) — what a topic's `schemaSettings.schema` consumes |
-| `schema_name` | The short name of the schema |
+### What This Component Consumes
 
-## Operational Notes
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 
-- **Deletion ordering**: deleting a schema that topics still reference leaves them validating against the `_deleted-schema_` sentinel — publishes fail. Detach or recreate topics first.
-- **AVRO pairs with delivery integrations**: BigQuery delivery (`useTopicSchema`) and Cloud Storage Avro export derive their layout from an Avro topic schema.
+### What This Component Provides
 
-## Related Components
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-- [GcpPubSubTopic](../pubsub-topic/) — attaches this schema for publish-time validation
-- [GcpPubSubSubscription](../pubsub-subscription/) — consumes schema-validated messages
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `schema_id` | Fully qualified schema ID (`projects/{project}/schemas/{name}`) | GcpPubSubTopic `schemaSettings.schema` — attaches publish-time validation |
+| `schema_name` | Short schema name | Display, logging, governance inventories |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Avro event contract** -- A JSON-defined record schema validating a domain event stream. The default posture for event-driven architectures. Start from the **Avro Event Contract** preset.
+
+**Protobuf binary contract** -- A proto3 message definition for services already speaking protobuf end to end, paired with BINARY encoding on the attaching topic. Start from the **Protobuf Binary Contract** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the schema is created
+- [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- attaches this schema to enforce the contract at publish time

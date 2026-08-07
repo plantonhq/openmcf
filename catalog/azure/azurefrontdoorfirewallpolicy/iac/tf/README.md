@@ -31,5 +31,5 @@ empty.
 ## Validate offline
 
 ```shell
-planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
 ```

@@ -74,7 +74,7 @@ spec:
       state: RUNNABLE
 ```
 
-See docs/README.md for routing semantics and the fairness model.
+See GUIDE.md for routing semantics and the fairness model.
 
 ---
 

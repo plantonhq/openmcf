@@ -58,13 +58,13 @@ This module manages **two Kubernetes resources as one governance pair**:
 
 ```bash
 # Preview changes
-make preview manifest=../../hack/manifest.yaml
+make preview manifest=../../e2e/manifest.yaml
 
 # Deploy
-make up manifest=../../hack/manifest.yaml
+make up manifest=../../e2e/manifest.yaml
 
 # Destroy
-make down manifest=../../hack/manifest.yaml
+make down manifest=../../e2e/manifest.yaml
 ```
 
 ## Debug

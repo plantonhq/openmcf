@@ -8,201 +8,136 @@ componentName: "awsalb"
 
 # AWS ALB
 
-Deploys an AWS Application Load Balancer: the Layer-7 entry point that owns
-placement (two or more subnets across Availability Zones), security groups,
-HTTP behavior attributes, S3 log delivery, and optional Route53 alias DNS.
-Routing lives in separate components -- listeners, rules, and target groups
-attach to this ALB by ARN.
+Deploys an Application Load Balancer — the Layer-7 entry point that terminates HTTP/HTTPS and hands requests to the routing graph. The ALB itself carries no routing configuration by design: listeners (AwsLbListener) attach to it and own ports, TLS material, and default actions; listener rules (AwsLbListenerRule) own per-service routing; target groups (AwsLbTargetGroup) receive the traffic. This component owns what is truly load-balancer-wide — placement, security groups, and the HTTP behavior attributes.
 
 ## What Gets Created
 
-When you deploy an AwsAlb resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Application Load Balancer** — an `aws_lb` / `lb.LoadBalancer` of type
-  `application`, placed in the specified subnets with the attached security
-  groups and the configured load balancer attributes (timeouts, HTTP/2,
-  desync mitigation, XFF handling, WAF fail-open, zonal shift)
-- **S3 log delivery** — access, connection, and health-check log streams,
-  each enabled by the presence of its block in the spec
-- **Route53 A records** — created only when DNS is enabled, one alias record
-  per hostname pointing to the ALB's DNS name
+- **Application Load Balancer** -- with its scheme, subnets, security groups, address family, and the configured HTTP behavior attributes (timeouts, HTTP/2, header handling, desync mitigation, WAF fail mode, zonal shift)
+- **S3 log delivery** -- for whichever of the three streams (access, connection, health-check logs) has a bucket configured
+- **Route53 alias A records** -- created only when DNS is enabled, one alias record per hostname pointing at the ALB's DNS name
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the load balancer
 
-Listeners, listener rules, and target groups are **not** created here —
-attach `AwsLbListener` resources to this ALB's `load_balancer_arn` output,
-`AwsLbListenerRule` resources to those listeners, and `AwsLbTargetGroup`
-resources as destinations.
+Listeners, rules, and target groups are **not** created here — attach AwsLbListener resources through this ALB's `load_balancer_arn` output; TLS certificates live on the listeners.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **At least two subnets** in different Availability Zones (public subnets
-  for internet-facing, private for internal).
-- **A security group** allowing inbound traffic on the ports your listeners
-  will use.
-- **An S3 bucket with the ELB log-delivery bucket policy** if enabling any
-  log stream — delivery fails silently otherwise.
-- **A Route53 hosted zone** if enabling DNS management.
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Subnets** -- at least two AwsSubnet resources in different Availability Zones, referenced by their `subnet_id` outputs (public for internet-facing, private for internal).
+- **Security Groups** -- AwsSecurityGroup resources opening exactly the listener ports; without them AWS attaches the VPC's default group (fine for a first boot, wrong for production).
+- **S3 Bucket / Route53 Zone** -- optional AwsS3Bucket and AwsRoute53Zone resources for log delivery and alias DNS.
+
+### AWS Account
+
+- **ELB permissions** -- the credentials used by the Provider Connection must have `elasticloadbalancing:CreateLoadBalancer`, `DescribeLoadBalancers`, `ModifyLoadBalancerAttributes`, and `DeleteLoadBalancer`, plus `ec2:Describe*` on the subnets.
+- **Two-AZ minimum** -- AWS requires ALB subnets in at least two Availability Zones.
+- **Log-delivery bucket policy** -- when enabling any log stream, the S3 bucket must grant the regional ELB log-delivery service write access; delivery fails silently otherwise.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS ALB**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Internet Facing** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsAlb
 metadata:
-  name: main-alb
+  name: api-gateway
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   subnets:
-    - value: subnet-0a1b2c3d4e5f00001
-    - value: subnet-0a1b2c3d4e5f00002
+    - valueFrom:
+        kind: AwsSubnet
+        name: public-subnet-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: public-subnet-b
+        fieldPath: status.outputs.subnet_id
   securityGroups:
-    - value: sg-0a1b2c3d4e5f00001
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: alb-ingress
+        fieldPath: status.outputs.security_group_id
+  deleteProtectionEnabled: true
 ```
 
 ```shell
 planton apply -f alb.yaml
 ```
 
-This creates an internet-facing ALB across two subnets. Add an
-`AwsLbListener` against its `load_balancer_arn` output to start accepting
-traffic.
+This creates an internet-facing ALB across two zones with explicit security groups and deletion protection. Attach AwsLbListener resources to route traffic. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an ALB. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region where the ALB is created (e.g., `us-west-2`). | Required; non-empty |
-| `subnets` | `(string \| valueFrom)[]` | Subnets for the ALB's nodes — public for internet-facing, private for internal. References `AwsSubnet.subnet_id` by default. | Required; minimum 2 items, in different Availability Zones |
+**Routing lives elsewhere** -- listeners own ports, TLS certificates, and default actions; rules own per-service routing; target groups receive traffic. The ALB spec is placement and behavior only.
 
-### Optional Fields
+**The scheme is a one-way door** -- `internal` decides internet-facing vs VPC-only and cannot change; AWS replaces the load balancer. Everything else — subnets, security groups, timeouts, header handling — updates in place.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `securityGroups` | `(string \| valueFrom)[]` | VPC default SG | Security groups controlling traffic to and from the ALB. The VPC default is fine for a first boot, wrong for production. References `AwsSecurityGroup.security_group_id` by default. |
-| `internal` | `bool` | `false` | When `true`, the ALB is reachable only inside the VPC. Immutable — changing it replaces the load balancer. |
-| `ipAddressType` | `string` | `ipv4` | `ipv4`, `dualstack`, or `dualstack-without-public-ipv4` (public IPv6 with private IPv4 — avoids public-IPv4 charges). |
-| `deleteProtectionEnabled` | `bool` | `false` | Prevents deletion while enabled. Recommended for production: deleting an ALB silently orphans every listener and rule attached to it. |
-| `idleTimeoutSeconds` | `int` | `60` (AWS) | Seconds an idle connection stays open, 1–4000. Raise above the application's slowest response to avoid 504s. |
-| `clientKeepAliveSeconds` | `int` | `3600` (AWS) | Seconds an HTTP client connection may stay alive across requests, 60–604800. |
-| `http2Enabled` | `bool` | `true` (AWS) | Whether HTTP/2 is offered to clients. Optional so that an explicit `false` is distinguishable from "keep the AWS default". |
-| `wafFailOpenEnabled` | `bool` | `false` | When an attached WAF is unreachable: `true` passes requests through, `false` rejects them. An availability-versus-security call. |
-| `zonalShiftEnabled` | `bool` | `false` | Allows Amazon Application Recovery Controller to shift traffic away from an impaired Availability Zone. |
-| `dropInvalidHeaderFields` | `bool` | `false` | Drop request headers with invalid names instead of forwarding them — hardens against header smuggling. |
-| `preserveHostHeader` | `bool` | `false` | Forward the client's original Host header unchanged instead of rewriting it to the target address. |
-| `xffClientPortEnabled` | `bool` | `false` | Append the client's source port to `X-Forwarded-For`. |
-| `xffHeaderProcessingMode` | `string` | `append` | `append`, `preserve`, or `remove` — `preserve`/`remove` matter when the ALB sits behind another proxy whose XFF chain must win. |
-| `desyncMitigationMode` | `string` | `defensive` | Protection against HTTP desync attacks: `monitor` (classify only), `defensive`, or `strictest` (block everything not RFC 7230 compliant). |
-| `tlsVersionAndCipherSuiteHeadersEnabled` | `bool` | `false` | Inject `x-amzn-tls-version` / `x-amzn-tls-cipher-suite` headers toward targets. |
-| `accessLogs` | `object` | off | Per-request logs to S3: `bucket` (references `AwsS3Bucket.bucket_id` by default) and optional `prefix`. |
-| `connectionLogs` | `object` | off | Per-connection logs to S3 (TLS handshake details) — where negotiation failures that never become requests show up. Same shape as `accessLogs`. |
-| `healthCheckLogs` | `object` | off | Per-probe health-check logs to S3, for debugging flapping targets without packet captures. Same shape as `accessLogs`. |
-| `dns` | `object` | off | Route53 alias DNS: `enabled`, `route53ZoneId` (references `AwsRoute53Zone.zone_id` by default), `hostnames` (unique). |
+**Security groups: explicit beats default** -- omitted groups fall back to the VPC's default security group. Production ALBs attach explicit groups opening exactly the listener ports.
 
-## Examples
+**Idle timeout causes the classic 504** -- a response slower than the idle timeout (default 60s) times out at the ALB while the target still works. Raise it above the slowest legitimate response, and keep it below the targets' own keep-alive timeouts.
 
-### Internal ALB
+**Header handling matters behind proxies** -- an ALB behind CloudFront or a corporate gateway should usually preserve (not append to) the X-Forwarded-For chain; applications that route by hostname need the Host header preserved.
 
-An ALB reachable only inside the VPC, for internal microservice routing:
+**Hardening is editable** -- desync mitigation ("defensive" by default; "monitor" to observe before enforcing "strictest"), invalid-header dropping, and the WAF fail-open/fail-closed call all update in place.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAlb
-metadata:
-  name: internal-api-alb
-spec:
-  region: us-west-2
-  subnets:
-    - value: subnet-private-az1
-    - value: subnet-private-az2
-  securityGroups:
-    - value: sg-internal-alb
-  internal: true
-```
+**WAF attaches here** -- `webAclArn` associates a REGIONAL-scope WAFv2 web ACL (same region, at most one per ALB) so every request is inspected before listener rules run; the fail-open toggle decides behavior while the WAF is unreachable.
 
-### Production ALB with hardening and access logs
+**Deletion protection is recommended** -- deleting an ALB silently orphans every listener and rule attached to it. The wizard preselects protection ON.
 
-Deletion protection, strict desync mitigation, invalid-header dropping, and
-per-request logging:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAlb
-metadata:
-  name: prod-alb
-spec:
-  region: us-west-2
-  subnets:
-    - value: subnet-public-az1
-    - value: subnet-public-az2
-  securityGroups:
-    - value: sg-prod-alb
-  deleteProtectionEnabled: true
-  idleTimeoutSeconds: 120
-  desyncMitigationMode: strictest
-  dropInvalidHeaderFields: true
-  accessLogs:
-    bucket:
-      value: prod-alb-logs-bucket
-    prefix: alb/prod
-```
+### What This Component Consumes
 
-### ALB with Route53 alias DNS and references
+| Field | References | Via |
+|-------|-----------|-----|
+| `subnets[]` | AwsSubnet | `status.outputs.subnet_id` |
+| `securityGroups[]` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `accessLogs.bucket` / `connectionLogs.bucket` / `healthCheckLogs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
+| `dns.route53ZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
+| `webAclArn` | AwsWafWebAcl | `status.outputs.web_acl_arn` |
 
-Everything by reference — subnets, security group, and hosted zone resolve
-from other components' outputs at deploy time:
+### What This Component Provides
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAlb
-metadata:
-  name: web-alb
-spec:
-  region: us-west-2
-  subnets:
-    - valueFrom:
-        kind: AwsSubnet
-        name: public-az1
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: public-az2
-        fieldPath: status.outputs.subnet_id
-  securityGroups:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: alb-sg
-        fieldPath: status.outputs.security_group_id
-  dns:
-    enabled: true
-    route53ZoneId:
-      valueFrom:
-        kind: AwsRoute53Zone
-        name: example-com
-        fieldPath: status.outputs.zone_id
-    hostnames:
-      - app.example.com
-      - api.example.com
-```
+After provisioning, `status.outputs` contains:
 
-## Stack Outputs
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `load_balancer_arn` | ARN of the ALB | AwsLbListener resources attach through it |
+| `load_balancer_name` | The ALB's name (truncated to AWS's 32-character limit) | Console URLs and CLI queries |
+| `load_balancer_dns_name` | The AWS-assigned DNS name | CNAME targets and Route53 alias records |
+| `load_balancer_hosted_zone_id` | Route53 hosted zone ID for the DNS name | Required when creating alias records manually |
+| `arn_suffix` | The ARN's final segment | The CloudWatch LoadBalancer metric dimension — alarms, dashboards, request-count autoscaling |
 
-After deployment, the following outputs are available in `status.outputs`:
+## Common Patterns
 
-| Output | Type | Description |
-| --- | --- | --- |
-| `load_balancer_arn` | `string` | ARN of the ALB — what `AwsLbListener` resources attach through |
-| `load_balancer_name` | `string` | Name assigned to the ALB (`metadata.name`, truncated to AWS's 32-character limit when necessary) |
-| `load_balancer_dns_name` | `string` | DNS name automatically assigned by AWS (e.g., `main-alb-123456.us-west-2.elb.amazonaws.com`) |
-| `load_balancer_hosted_zone_id` | `string` | Route53 hosted zone ID for the ALB's DNS entry, used for alias records |
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Related Components
+**Public HTTP entry point** -- an internet-facing ALB with explicit security groups; listeners add HTTPS with ACM certificates. Start from the **Internet Facing** preset.
 
-- [AwsLbListener](/docs/catalog/aws/lb-listener) — attaches to this ALB by ARN; owns ports, TLS material, and default actions
-- [AwsLbListenerRule](/docs/catalog/aws/lb-listener-rule) — per-service routing attached to a listener
-- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — the destination of forward actions
-- [AwsSubnet](/docs/catalog/aws/subnet) — provides the subnets for ALB placement
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — controls inbound and outbound traffic to the ALB
-- [AwsS3Bucket](/docs/catalog/aws/s3-bucket) — receives access, connection, and health-check logs
-- [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — hosts the DNS zone for alias records
+**Internal service front** -- an internal ALB for service-to-service HTTP inside the VPC. Start from the **Internal Hardened** preset.
+
+**Static IPs in front** -- put an AwsNlb with Elastic IPs in front and register this ALB in an `alb`-type AwsLbTargetGroup — static Layer-4 addresses, full Layer-7 routing.
+
+## Works With
+
+- **AwsLbListener** -- attaches to this ALB's `load_balancer_arn` output and owns ports, TLS certificates, and default actions.
+- **AwsLbListenerRule** -- attaches to listeners for path/host/header routing.
+- **AwsLbTargetGroup** -- receives the routed traffic; an `alb`-type group also lets an NLB front this ALB.
+- **AwsSubnet / AwsSecurityGroup** -- placement and traffic filtering, referenced by `subnets` and `securityGroups`.
+- **AwsS3Bucket** -- the log destinations, referenced per stream.
+- **AwsRoute53Zone** -- the hosted zone for alias records, referenced by `dns.route53ZoneId`.
+- **AwsWafWebAcl** -- a REGIONAL-scope web ACL inspecting requests in front of the listeners, referenced by `webAclArn`.

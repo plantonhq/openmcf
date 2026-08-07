@@ -12,9 +12,9 @@
 #  1. Gateway API CRDs (cluster-scoped)
 #
 # For more information see:
-#  - examples.md for usage examples
+#  - ../../e2e/manifest.yaml for usage examples
 #  - ../README.md for component documentation
-#  - ../../docs/README.md for deployment patterns
+#  - ../../GUIDE.md for deployment patterns
 ##############################################
 
 ##############################################

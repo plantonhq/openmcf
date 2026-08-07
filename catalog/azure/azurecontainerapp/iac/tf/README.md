@@ -30,5 +30,5 @@ tf/
 
 ```bash
 tofu init -backend=false && tofu validate
-planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
 ```

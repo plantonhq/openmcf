@@ -235,7 +235,20 @@ var _ = ginkgo.Describe("KubernetesAirflow Validation Tests", func() {
 				RemoteRead: &KubernetesAirflowLogging_Opensearch{Opensearch: &KubernetesAirflowLogSearchBackend{
 					Host:     valueFrom(cloudresourcekind.CloudResourceKind_KubernetesOpenSearch, "logs", "status.outputs.service_name"),
 					Username: "airflow",
-					PasswordSecret: &KubernetesAirflowPasswordSecret{
+					PasswordSecret: &KubernetesAirflowLogBackendPasswordSecret{
+						SecretName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesOpenSearch, "logs", "status.outputs.admin_credentials_secret_name"),
+					},
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("opensearch log read path with an explicit credential Secret should be valid", func() {
+			input.Spec.Logging = &KubernetesAirflowLogging{
+				RemoteRead: &KubernetesAirflowLogging_Opensearch{Opensearch: &KubernetesAirflowLogSearchBackend{
+					Host:     literal("logs-opensearch"),
+					Username: "airflow",
+					PasswordSecret: &KubernetesAirflowLogBackendPasswordSecret{
 						SecretName: literal("logs-airflow-auth"),
 					},
 				}},

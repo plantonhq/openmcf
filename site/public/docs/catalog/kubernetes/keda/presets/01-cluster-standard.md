@@ -5,7 +5,7 @@ type: "preset"
 rank: "01"
 presetSlug: "01-cluster-standard"
 componentSlug: "keda"
-componentTitle: "KEDA"
+componentTitle: "Keda"
 provider: "kubernetes"
 icon: "package"
 order: 1

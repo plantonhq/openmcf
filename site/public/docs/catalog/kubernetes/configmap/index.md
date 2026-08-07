@@ -8,159 +8,98 @@ componentName: "kubernetesconfigmap"
 
 # Kubernetes ConfigMap
 
-Deploys a Kubernetes ConfigMap to a target cluster through a single declarative manifest, covering the complete ConfigMap surface: UTF-8 `data` entries, base64-encoded `binaryData` entries, and the `immutable` flag. The IaC module handles label merging and namespace resolution automatically.
+Deploys a Kubernetes ConfigMap carrying UTF-8 configuration entries and base64 binary payloads that workloads consume as environment variables or mounted files. Supports the immutable flag for versioned, rollout-friendly configuration. Manages configuration declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
 
 ## What Gets Created
 
-When you deploy a KubernetesConfigMap resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **ConfigMap** — a Kubernetes ConfigMap with the given `data`, `binaryData`, and `immutable` settings
-- **Labels** — standard Planton tracking labels (`managed-by`, `resource`, `resource-kind`) merged with any user-provided labels
-- **Annotations** — user-provided annotations applied to the ConfigMap metadata
+- **Kubernetes ConfigMap** -- a single ConfigMap in the specified namespace carrying the `data` (UTF-8) and `binaryData` (base64) entries, with the `immutable` flag applied when set
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or a `KubernetesNamespace` resource referenced from `spec.namespace` so both deploy in one run
-- **Configuration values** ready to supply — plain strings for `data`, base64-encoded content for `binaryData`
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `configmap.yaml`:
+### Kubernetes Cluster
+
+- The target namespace must already exist (the module does not create it). Use the Kubernetes Namespace component to manage namespaces declaratively.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **ConfigMap on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **App Config** preset for flag-style settings or **Immutable Versioned** for production rollout discipline in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesConfigMap
 metadata:
-  name: app-config
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesConfigMap.app-config
+  name: checkout-settings
+  org: acme-corp
+  env: prod
 spec:
-  name: app-config
+  name: checkout-settings
+  namespace:
+    value: backend-services
   data:
-    LOG_LEVEL: info
-    FEATURE_X: "enabled"
+    LOG_LEVEL: "info"
+    FEATURE_FLAGS: "fast-search,checkout-v2"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f configmap.yaml
 ```
 
-This creates a ConfigMap named `app-config` in the `default` namespace with two keys.
+This creates a mutable ConfigMap in the `backend-services` namespace with two flag-style entries, ready to consume via `envFrom.configMapRef`.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Kubernetes ConfigMap. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.name` | `string` | Name of the ConfigMap (`metadata.name` in the cluster). Pods reference this name in `configMapRef`/`configMapKeyRef` env sources and `configMap` volumes. | 1–253 characters, matches `^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$` |
+**Key style follows consumption** -- Env-var-style keys (`LOG_LEVEL`) suit `envFrom` injection; file-style keys (`application.yaml`, `nginx.conf`) suit volume mounts where each key becomes a file. Keys allow alphanumerics, dashes, underscores, and dots (max 253 characters).
 
-### Optional Fields
+**Data vs binary data** -- `data` holds UTF-8 values (from single flags to whole embedded config files); `binaryData` holds base64-encoded payloads for non-UTF-8 content like keystores. A key may live in one map or the other, never both -- inside the ConfigMap they merge into one key space, capped at 1 MiB combined.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.namespace` | `StringValueOrRef` | `default` | Namespace where the ConfigMap is created. Accepts a literal name (`{ value: my-namespace }`) or a reference to a `KubernetesNamespace` resource. |
-| `spec.data` | `map<string, string>` | `{}` | UTF-8 configuration entries. Keys become file names (volume mounts) or env var names (`envFrom`); keys match `^[-._a-zA-Z0-9]+$`, max 253 chars. |
-| `spec.binaryData` | `map<string, string>` | `{}` | Binary entries with base64-encoded values, for payloads that are not valid UTF-8. Same key rules as `data`; keys must not overlap with `data` keys. Consumable only as mounted files. |
-| `spec.immutable` | `bool` | `false` | When `true`, data cannot be updated after creation (delete-and-recreate only). Reduces API server watch load; recommended for versioned production config. |
-| `spec.labels` | `map<string, string>` | `{}` | Additional labels merged with standard Planton labels. |
-| `spec.annotations` | `map<string, string>` | `{}` | Additional annotations applied to the ConfigMap. |
+**Immutability** -- Set `immutable` to `true` to freeze the data forever (Kubernetes rejects every subsequent edit) and reduce API server watch load. Changing immutable config means creating a NEW ConfigMap with a versioned name and repointing workloads -- an explicit, reviewable rollout.
 
-**Size limit:** the Kubernetes API server caps the combined size of `data` and `binaryData` at 1MiB; oversized ConfigMaps are rejected at apply time.
+**Rotation reality for mutable ConfigMaps** -- In-place edits do NOT restart consumers: env vars refresh only on pod restart; volume-mounted files refresh within about a minute.
 
-## Examples
+## Outputs and Dependencies
 
-### Application Configuration
+### What This Component Consumes
 
-Scalar settings plus a properties file, consumed as env vars and a mounted file respectively:
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the ConfigMap is created in; omitted means the cluster's `default` namespace |
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesConfigMap
-metadata:
-  name: backend-config
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesConfigMap.backend-config
-spec:
-  name: backend-config
-  namespace:
-    value: backend
-  data:
-    LOG_LEVEL: info
-    CACHE_TTL_SECONDS: "300"
-    application.properties: |
-      server.port=8080
-      management.endpoints.web.exposure.include=health,metrics
-```
+### What This Component Provides
 
-### Immutable, Versioned Configuration
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A roll-forward config version — changes ship as `app-config-v2` plus a workload update, never as an in-place edit:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `configmap_name` | The name of the created ConfigMap | Pod `envFrom.configMapRef`, `configMapKeyRef`, and `configMap` volume sources |
+| `namespace` | The namespace where the ConfigMap was created | Verifying consumer co-location (consumption is namespace-local) |
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesConfigMap
-metadata:
-  name: app-config-v1
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesConfigMap.app-config-v1
-spec:
-  name: app-config-v1
-  namespace:
-    value: production
-  immutable: true
-  data:
-    LOG_LEVEL: warn
-    MAX_CONNECTIONS: "100"
-```
+## Common Patterns
 
-### Binary Payload
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A base64-encoded binary entry alongside a text entry. Binary keys mount as files only:
+**Application settings** -- Flag-style entries (log levels, feature flags) injected as env vars via `envFrom`. Start from the **App Config** preset.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesConfigMap
-metadata:
-  name: branding-assets
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesConfigMap.branding-assets
-spec:
-  name: branding-assets
-  namespace:
-    value: frontend
-  data:
-    theme: dark
-  binaryData:
-    favicon.ico: AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAA=
-```
+**Immutable versioned config** -- A versioned name (`app-settings-v1`) with `immutable: true`; every config change becomes a new object and a visible diff in the workload's reference. Start from the **Immutable Versioned** preset.
 
-## Stack Outputs
+**Binary payloads** -- Keystores or binary certificates carried as base64 in `binaryData`, mounted as files. Start from the **Binary Payload** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Works With
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `configmapName` | `string` | Name of the created ConfigMap — the handle workloads use in `configMapRef`, `configMapKeyRef`, and volume definitions |
-| `namespace` | `string` | Namespace where the ConfigMap was created. Consumers must live in the same namespace — ConfigMap references never cross namespaces |
-
-## Related Components
-
-- [KubernetesSecret](/docs/catalog/kubernetes/secret) — the confidential mirror of this component; use it for passwords, tokens, keys, and certificates
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace; reference it from `spec.namespace` to deploy both in one run
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — consumes ConfigMaps as environment variables or mounted files
+- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this ConfigMap in dependency order.
+- **Kubernetes Deployment and the other workload kinds** -- consume entries as env vars (`envFrom`, `configMapKeyRef`) or mounted files (`configMap` volume source), from the same namespace only.

@@ -8,120 +8,156 @@ componentName: "awsbatchcomputeenvironment"
 
 # AWS Batch Compute Environment
 
-Deploys a MANAGED AWS Batch compute environment — the elastic pool of EC2 On-Demand, EC2 Spot, Fargate, or Fargate Spot compute that AWS Batch scales up and down to run submitted jobs. Job queues (`AwsBatchJobQueue`) map onto the environment in preference order, and job definitions (`AwsBatchJobDefinition`) describe what runs on it.
+Deploys a managed AWS Batch compute environment: the elastic pool of compute (EC2 On-Demand, EC2 Spot, Fargate, or Fargate Spot) that AWS Batch scales up and down to run submitted jobs. The compute environment is one node of the Batch resource graph — jobs are submitted to an [AWS Batch Job Queue](/cloud-catalog/aws-batch-job-queue) (which maps onto one or more compute environments in preference order) using an [AWS Batch Job Definition](/cloud-catalog/aws-batch-job-definition) as the container blueprint. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsBatchComputeEnvironment resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Environment** — an `aws_batch_compute_environment` of type `MANAGED` with the specified resource type (EC2/SPOT/FARGATE/FARGATE_SPOT), vCPU bounds, VPC placement, instance selection, optional launch template and AMI configuration, optional EKS attachment, and optional update policy
+- **Batch Compute Environment** -- a MANAGED compute environment with the specified resource type (EC2, SPOT, FARGATE, or FARGATE_SPOT), vCPU scaling limits, VPC networking, and optional instance type selection and allocation strategy
+- **Optional EKS attachment** -- when `eksConfiguration` is set, the environment schedules jobs as Kubernetes pods on your existing EKS cluster instead of ECS tasks (Batch on EKS)
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+Job queues and fair-share scheduling policies are **separate Cloud Resources** ([AwsBatchJobQueue](/cloud-catalog/aws-batch-job-queue), [AwsBatchSchedulingPolicy](/cloud-catalog/aws-batch-scheduling-policy)) that reference this environment by ARN — one queue can span a Spot environment with an On-Demand overflow, and an environment can be replaced behind a queue with zero queue downtime.
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least one VPC subnet** (private subnets recommended) — use `AwsSubnet` to provision
-- **A security group** — **required for FARGATE/FARGATE_SPOT**; use `AwsSecurityGroup` to provision
-- **For EC2/SPOT types**: an ECS instance profile — use `AwsIamInstanceProfile` wrapping a role with `AmazonEC2ContainerServiceforEC2Role`
-- **For SPOT + BEST_FIT strategy only**: a Spot Fleet IAM role with `AmazonEC2SpotFleetTaggingRole` (the capacity-optimized strategies need no role)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `batch-ce.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **VPC subnets** in one or more Availability Zones for compute resource placement. Private subnets are recommended. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef.
+- **Security groups** -- recommended for all resource types; required for FARGATE and FARGATE_SPOT. Provide IDs directly or reference an AwsSecurityGroup Cloud Resource.
+- **An IAM instance profile** (EC2 and SPOT only) -- grants the ECS agent on each instance permission to communicate with AWS Batch. Reference an AwsIamInstanceProfile Cloud Resource or provide the profile ARN.
+- **A Spot Fleet IAM role** (SPOT with the BEST_FIT allocation strategy only) -- allows EC2 Spot Fleet to request and manage Spot instances. The modern capacity-optimized strategies do not use Spot Fleet and need no role.
+- **An EKS cluster with a prepared namespace** (Batch on EKS only) -- the cluster must exist and the namespace must be RBAC-configured for AWS Batch before the environment is created.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Batch Compute Environment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Fargate Batch** preset in the [Presets](#presets) tab to pre-populate a serverless configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsBatchComputeEnvironment
 metadata:
-  name: etl-fargate
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsBatchComputeEnvironment.etl-fargate
+  name: data-processing
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   computeResources:
     type: FARGATE
     maxVcpus: 256
     subnetIds:
-      - value: subnet-0a1b2c3d4e5f00001
-      - value: subnet-0a1b2c3d4e5f00002
+      - value: "subnet-0a1b2c3d4e5f00001"
+      - value: "subnet-0a1b2c3d4e5f00002"
     securityGroupIds:
-      - value: sg-0a1b2c3d4e5f00001
+      - value: "sg-0a1b2c3d4e5f00001"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f batch-ce.yaml
+planton apply -f batch-compute-environment.yaml
 ```
 
-This creates a serverless Fargate environment with up to 256 vCPUs of capacity. Add an `AwsBatchJobQueue` mapped onto it to start submitting jobs.
+This creates a Fargate compute environment with a 256 vCPU ceiling. To start submitting jobs, create an AwsBatchJobQueue that references this environment's ARN. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the compute environment to a VPC and security group deployed in the same InfraPipeline:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region (e.g., `us-west-2`). | Required; non-empty |
-| `computeResources.type` | string | `EC2`, `SPOT`, `FARGATE`, or `FARGATE_SPOT` | Required |
-| `computeResources.maxVcpus` | int32 | Scale-out ceiling — the one knob updatable on every environment | >= 1 |
-| `computeResources.subnetIds` | list(StringValueOrRef → AwsSubnet) | VPC placement; spread across AZs | At least 1 |
-| `computeResources.securityGroupIds` | list(StringValueOrRef → AwsSecurityGroup) | Attached to instances / Fargate task ENIs | **Required for Fargate types** |
-| `computeResources.instanceRole` | StringValueOrRef → AwsIamInstanceProfile | ECS instance profile | **Required for EC2/SPOT** |
+```yaml
+spec:
+  computeResources:
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-b
+          fieldPath: status.outputs.subnet_id
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: batch-sg
+          fieldPath: status.outputs.security_group_id
+    instanceRole:
+      valueFrom:
+        kind: AwsIamInstanceProfile
+        name: batch-instance-profile
+        fieldPath: status.outputs.instance_profile_arn
+```
 
-### Optional Fields — Top Level
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and instance profile first, then provisions the Batch compute environment with the resolved values.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `state` | string | `ENABLED` | `ENABLED` / `DISABLED` — the drain switch for maintenance or replacement. |
-| `serviceRole` | StringValueOrRef → AwsIamRole | Service-linked role | Leave unset (recommended): the service-linked role is also a precondition for in-place infrastructure updates. |
-| `eksConfiguration.eksClusterArn` | StringValueOrRef → AwsEksCluster | — | Attach the environment to an EKS cluster (Batch-on-EKS). Create-time only. |
-| `eksConfiguration.kubernetesNamespace` | string | — | Namespace Batch launches job pods into. Create-time only. |
-| `updatePolicy.terminateJobsOnUpdate` | bool | false | Terminate running jobs when instances are replaced during in-place updates. |
-| `updatePolicy.jobExecutionTimeoutMinutes` | int32 | 30 (AWS) | How long to wait for running jobs before replacing instances anyway (1-360). |
+## Key Configuration
 
-### Optional Fields — Compute Resources (EC2/SPOT only)
+These are the most important decisions when configuring a Batch compute environment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `minVcpus` | int32 | vCPU floor (default 0 — scale to zero when idle). |
-| `desiredVcpus` | int32 | Initial vCPU target; Batch adjusts it continuously. |
-| `instanceTypes` | list(string) | `["optimal"]` or explicit families/sizes. |
-| `allocationStrategy` | string | `BEST_FIT`, `BEST_FIT_PROGRESSIVE`, `BEST_FIT_PROGRESSIVE_ORDERED`, `SPOT_CAPACITY_OPTIMIZED`, `SPOT_PRICE_CAPACITY_OPTIMIZED`, `SPOT_CAPACITY_OPTIMIZED_PRIORITIZED`. Only the middle three support in-place infrastructure updates. |
-| `ec2KeyPair` | string | SSH key pair name (prefer SSM Session Manager). |
-| `bidPercentage` | int32 | SPOT only: max % of On-Demand price (0-100; omit for 100). |
-| `spotIamFleetRole` | StringValueOrRef → AwsIamRole | SPOT + BEST_FIT only: the Spot Fleet role. |
-| `launchTemplate.launchTemplateId` | StringValueOrRef → AwsLaunchTemplate | Custom AMI / user data / IMDSv2 posture. |
-| `launchTemplate.version` | string | Version number, `$Latest`, or `$Default`. |
-| `ec2Configurations` | list(object), max 2 | Image family (`ECS_AL2023`, `ECS_AL2_NVIDIA`, `EKS_AL2023`, …), AMI override, EKS AMI Kubernetes version. |
-| `placementGroup` | string | EC2 placement group for tightly-coupled multi-node jobs. Create-time only. |
-| `resourceTags` | map(string) | Tags applied to launched EC2 instances / Spot requests. |
+**Resource type** -- `FARGATE` provides serverless, zero-management compute -- AWS handles all infrastructure. Use `EC2` for GPU instances, custom AMIs, or sustained throughput. Use `SPOT` for up to 90% cost savings on interruption-tolerant workloads. `FARGATE_SPOT` combines serverless convenience with Spot pricing.
 
-The spec rejects EC2-only fields on Fargate environments at validation time (AWS would reject them at deploy time).
+**vCPU scaling** -- `computeResources.maxVcpus` caps total concurrent capacity — it is the one sizing knob AWS allows updating on every environment. For EC2/SPOT, `minVcpus` controls the always-on baseline (keep it 0 to scale to zero when idle). Fargate types only use `maxVcpus` since AWS manages scaling dynamically.
 
-## Outputs
+**Instance selection** -- EC2 and SPOT types support `instanceTypes` (e.g., `["m5.xlarge", "c5.xlarge"]`) or `"optimal"` to let AWS Batch select from the C, M, and R families. `allocationStrategy` controls selection from the full six-strategy set — note that only `BEST_FIT_PROGRESSIVE`, `SPOT_CAPACITY_OPTIMIZED`, and `SPOT_PRICE_CAPACITY_OPTIMIZED` support in-place infrastructure updates; the others (including the AWS default `BEST_FIT`) force replacement on most compute changes.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `compute_environment_arn` | string | What job queues reference in `computeEnvironmentOrder`. |
-| `compute_environment_name` | string | The environment's name (from `metadata.name`). |
-| `ecs_cluster_arn` | string | The ECS cluster Batch provisions behind the environment. |
-| `status` | string | `VALID` / `INVALID` — queues can only associate VALID environments. |
+**Custom launch surfaces** -- `launchTemplate` carries custom AMIs, user data, and IMDSv2 posture; `ec2Configurations` picks the image family (use `ECS_AL2_NVIDIA` alongside GPU instance types); `placementGroup` co-locates tightly-coupled multi-node jobs; `resourceTags` land on the launched EC2 instances for cost attribution.
 
-## Presets
+**Batch on EKS** -- set `eksConfiguration` to schedule jobs as Kubernetes pods on an existing EKS cluster. Both fields are create-time only, and the namespace must be RBAC-prepared before deployment.
 
-| Name | Description |
-|------|-------------|
-| [01-fargate-batch](../presets/01-fargate-batch.yaml) | Serverless Fargate — zero instance management |
-| [02-ec2-managed-batch](../presets/02-ec2-managed-batch.yaml) | EC2 with optimal instances and an update policy |
-| [03-spot-cost-optimized-batch](../presets/03-spot-cost-optimized-batch.yaml) | Spot with the price-capacity-optimized strategy |
+**Update policy** -- for EC2/SPOT in-place updates, `updatePolicy` decides what happens to running jobs when instances are replaced: wait for them to finish (`jobExecutionTimeoutMinutes`, AWS default 30) or terminate them immediately (`terminateJobsOnUpdate`).
 
-## Related Components
+## Outputs and Dependencies
 
-- [AwsBatchJobQueue](/docs/catalog/aws/batch-job-queue) — maps onto this environment in preference order
-- [AwsBatchJobDefinition](/docs/catalog/aws/batch-job-definition) — the container blueprint jobs run from
-- [AwsBatchSchedulingPolicy](/docs/catalog/aws/batch-scheduling-policy) — fair-share capacity division for queues
-- [AwsLaunchTemplate](/docs/catalog/aws/launch-template) — custom AMI / user data for EC2 environments
-- [AwsIamInstanceProfile](/docs/catalog/aws/iam-instance-profile) — the ECS instance profile EC2/SPOT environments require
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** (optional) | `serviceRole` | `status.outputs.role_arn` |
+| **AwsSubnet** | `computeResources.subnetIds` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `computeResources.securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsIamInstanceProfile** (EC2/SPOT only) | `computeResources.instanceRole` | `status.outputs.instance_profile_arn` |
+| **AwsIamRole** (SPOT + BEST_FIT only) | `computeResources.spotIamFleetRole` | `status.outputs.role_arn` |
+| **AwsLaunchTemplate** (optional) | `computeResources.launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| **AwsEksCluster** (Batch on EKS only) | `eksConfiguration.eksClusterArn` | `status.outputs.cluster_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `compute_environment_arn` | Compute environment ARN | AwsBatchJobQueue `computeEnvironmentOrder` rows, IAM policies |
+| `compute_environment_name` | Compute environment name | CLI commands, monitoring dashboards |
+| `ecs_cluster_arn` | Underlying ECS cluster ARN managed by AWS Batch | Monitoring, debugging compute capacity |
+| `status` | Compute environment status (VALID, INVALID) | Health checks, operational monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Serverless batch processing** -- Fargate compute with 256 max vCPUs. Zero infrastructure management for container-based batch jobs. Start from the **Fargate Batch** preset.
+
+**EC2 managed batch** -- On-demand EC2 instances with optimal instance selection, 0-512 vCPU scaling, and an update policy that waits for running jobs. Production configuration for GPU workloads or custom AMI requirements. Start from the **EC2 Managed Batch** preset.
+
+**Spot cost-optimized batch** -- Spot instances with capacity-optimized allocation and 1024 max vCPUs. Maximizes throughput per dollar for large-scale, interruption-tolerant processing. Pair with an AwsBatchJobQueue that overflows to an On-Demand environment. Start from the **Spot Cost-Optimized Batch** preset.
+
+## Works With
+
+- [**AWS Batch Job Queue**](/cloud-catalog/aws-batch-job-queue) -- routes submitted jobs onto this environment (and up to two others) in preference order
+- [**AWS Batch Job Definition**](/cloud-catalog/aws-batch-job-definition) -- the container blueprint jobs are submitted from
+- [**AWS Batch Scheduling Policy**](/cloud-catalog/aws-batch-scheduling-policy) -- fair-share capacity division for queues mapped onto this environment
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides subnets for compute resource placement across Availability Zones
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls network access for compute resources
+- [**AWS IAM Instance Profile**](/cloud-catalog/aws-iam-instance-profile) -- wraps the ECS instance role for EC2/SPOT environments
+- [**AWS Launch Template**](/cloud-catalog/aws-launch-template) -- custom AMIs, user data, and instance hardening
+- [**AWS EKS Cluster**](/cloud-catalog/aws-eks-cluster) -- the pod-scheduling target for Batch on EKS

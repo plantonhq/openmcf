@@ -89,7 +89,7 @@ make test
 Use the debug script for local testing:
 
 ```bash
-./debug.sh ../hack/manifest.yaml
+./debug.sh ../../e2e/manifest.yaml
 ```
 
 ## Troubleshooting

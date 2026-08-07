@@ -8,191 +8,134 @@ componentName: "gcpfirestoredatabase"
 
 # GCP Firestore Database
 
-Deploys a Google Cloud Firestore database with configurable type (Native or Datastore mode), edition, point-in-time recovery, CMEK encryption, and delete protection. Supports both the project's default database and additional named databases.
+Deploys a Firestore database in a GCP project with configurable database type (Native or Datastore mode), location (single-region or multi-region), concurrency mode, point-in-time recovery, delete protection, edition tier (Standard or Enterprise), and CMEK encryption. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
 
 ## What Gets Created
 
-- **Firestore Database** -- a `google_firestore_database` resource in the specified location with the chosen type and edition
-- **CMEK Encryption** -- configured only when `kmsKeyName` is provided, encrypts the database with a customer-managed KMS key
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Firestore Database** -- a named database resource in the specified GCP project and location, configured with the chosen database type, concurrency mode, and edition
+- **Point-in-Time Recovery** -- created only when `pointInTimeRecoveryEnablement` is set to `POINT_IN_TIME_RECOVERY_ENABLED`; retains 7 days of version history for timestamp-based reads and recovery
+- **Delete Protection** -- enabled when `deleteProtectionState` is set to `DELETE_PROTECTION_ENABLED` (GCP's default leaves the database deletable); prevents accidental database deletion through any interface until explicitly disabled
+- **CMEK Encryption** -- created only when `kmsKeyName` is provided; encrypts database data at rest using a customer-managed Cloud KMS key in the same location as the database
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Firestore API enabled
-- **A KMS key** in the same location as the database if enabling CMEK encryption (nam5 requires KMS multi-region `us`; eur3 requires KMS multi-region `europe`)
+Firestore databases do not support GCP labels. Resource tracking relies on the Planton metadata (organization, environment, resource kind) stored in the Cloud Resource record.
 
-## Quick Start
+## Before You Deploy
 
-Create a file `firestore-database.yaml`:
+### Planton Setup
+
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the Firestore database will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Firestore API** (`firestore.googleapis.com`) enabled in the target project.
+- **Cloud KMS key** in the same location as the database (if using CMEK). For multi-region databases: `nam5` requires a key in the `us` multi-region; `eur3` requires a key in the `europe` multi-region.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Firestore Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Native** preset in the [Presets](#presets) tab to create the project's default Firestore Native database.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreDatabase
 metadata:
-  name: my-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpFirestoreDatabase.my-db
+  name: app-database
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project-123
+    value: "acme-prod-12345"
   locationId: nam5
   databaseName: "(default)"
   type: FIRESTORE_NATIVE
 ```
-
-Deploy:
 
 ```shell
 planton apply -f firestore-database.yaml
 ```
 
-This creates the project's default Firestore Native database in the US multi-region with Google-managed encryption and 1-hour version retention.
+This creates the project's default Firestore Native database in the US multi-region with optimistic concurrency, no PITR, delete protection disabled, and Google-managed encryption. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `locationId` | `string` | Database location. Multi-region (`nam5`, `eur3`) or single-region (`us-east1`, `europe-west1`). Immutable after creation. | Required |
-| `databaseName` | `string` | Database name. Use `(default)` for the primary database or a custom name. Immutable after creation. | `(default)` or 4-63 chars: `^[a-z][a-z0-9-]*[a-z0-9]$` |
-| `type` | `string` | Database type. Determines the data model and API surface. | `FIRESTORE_NATIVE` or `DATASTORE_MODE` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `concurrencyMode` | `string` | Per type | Concurrency control. `OPTIMISTIC` (default for Native), `PESSIMISTIC` (default for Datastore), `OPTIMISTIC_WITH_ENTITY_GROUPS` (legacy Datastore only). |
-| `pointInTimeRecoveryEnablement` | `string` | `POINT_IN_TIME_RECOVERY_DISABLED` | `POINT_IN_TIME_RECOVERY_ENABLED` retains 7 days of version history for disaster recovery. |
-| `deleteProtectionState` | `string` | `DELETE_PROTECTION_DISABLED` | `DELETE_PROTECTION_ENABLED` prevents deletion through any interface until disabled. |
-| `databaseEdition` | `string` | `STANDARD` | `STANDARD` or `ENTERPRISE`. ENTERPRISE provides enhanced SLA and advanced features. Requires `type: FIRESTORE_NATIVE`. Immutable. |
-| `kmsKeyName` | `StringValueOrRef` | -- | Fully qualified KMS key name for CMEK encryption. Must be in the same location as the database. Immutable. Can reference a GcpKmsKey resource via `valueFrom`. |
-
-## Examples
-
-### Default Firestore Native Database
-
-The simplest starting point -- creates the project's default database that client libraries connect to by default:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the database to a GCP project and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirestoreDatabase
-metadata:
-  name: default-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpFirestoreDatabase.default-db
-spec:
-  projectId:
-    value: my-gcp-project-123
-  locationId: nam5
-  databaseName: "(default)"
-  type: FIRESTORE_NATIVE
-```
-
-### Named Database with PITR and Delete Protection
-
-A production database with 7-day point-in-time recovery and protection against accidental deletion:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirestoreDatabase
-metadata:
-  name: orders-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpFirestoreDatabase.orders-db
-spec:
-  projectId:
-    value: my-gcp-project-123
-  locationId: us-east1
-  databaseName: orders-db
-  type: FIRESTORE_NATIVE
-  pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED
-  deleteProtectionState: DELETE_PROTECTION_ENABLED
-```
-
-### Enterprise Edition with CMEK Encryption
-
-Maximum security configuration with Enterprise SLA, customer-managed encryption, and delete protection:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirestoreDatabase
-metadata:
-  name: secure-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpFirestoreDatabase.secure-db
-spec:
-  projectId:
-    value: my-gcp-project-123
-  locationId: nam5
-  databaseName: secure-db
-  type: FIRESTORE_NATIVE
-  databaseEdition: ENTERPRISE
-  pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED
-  deleteProtectionState: DELETE_PROTECTION_ENABLED
-  kmsKeyName:
-    value: projects/my-gcp-project-123/locations/us/keyRings/firestore-ring/cryptoKeys/firestore-key
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding values:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirestoreDatabase
-metadata:
-  name: composed-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpFirestoreDatabase.composed-db
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  locationId: nam5
-  databaseName: composed-db
-  type: FIRESTORE_NATIVE
+      name: production-project
+      fieldPath: status.outputs.project_id
   kmsKeyName:
     valueFrom:
       kind: GcpKmsKey
-      name: firestore-key
-      field: status.outputs.key_id
-  pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED
-  deleteProtectionState: DELETE_PROTECTION_ENABLED
+      name: firestore-encryption-key
+      fieldPath: status.outputs.key_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and KMS key first, then provisions the Firestore database with CMEK encryption.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `database_id` | `string` | Fully qualified database path (`projects/{project}/databases/{database}`) |
-| `database_name` | `string` | Database name as specified in `databaseName` (e.g., `(default)` or custom name) |
-| `uid` | `string` | Server-generated UUID4, unique across all Firestore databases |
-| `create_time` | `string` | Timestamp when the database was created (RFC3339 UTC) |
-| `earliest_version_time` | `string` | Earliest timestamp for point-in-time recovery reads (RFC3339 UTC). 1 hour without PITR, 7 days with PITR enabled. |
+These are the most important decisions when configuring a Firestore database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Database type** -- Choose `FIRESTORE_NATIVE` for the modern Firestore API with real-time listeners and offline support, or `DATASTORE_MODE` for the legacy Datastore API with entity-group transactions. The type can be changed after creation, but this is a significant operational change affecting client library compatibility.
 
-- [GcpProject](/docs/catalog/gcp/project) -- provides the GCP project that hosts this database
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) -- provides the encryption key for CMEK
-- [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) -- provides the key ring containing the encryption key
+**Location** -- Set `locationId` to a multi-region (`nam5` for US, `eur3` for Europe) for higher availability, or a single region (e.g., `us-east1`) for lower latency and cost. Immutable after creation.
+
+**Database name** -- Use `"(default)"` for the project's primary database that client libraries connect to by default. Use a custom name (4-63 characters) for additional databases when isolating workloads. Immutable after creation.
+
+**Point-in-time recovery** -- Set `pointInTimeRecoveryEnablement` to `POINT_IN_TIME_RECOVERY_ENABLED` to retain 7 days of version history. Enables reads at any timestamp within the past hour or any 1-minute snapshot within 7 days. Essential for production data protection.
+
+**Edition and encryption** -- Set `databaseEdition` to `ENTERPRISE` for enhanced SLA and advanced security (requires `FIRESTORE_NATIVE` type). Add `kmsKeyName` for CMEK encryption. Both are immutable after creation.
+
+**App Engine integration** -- Leave `appEngineIntegrationMode` unset (or `DISABLED`) unless the database serves a legacy App Engine application: `ENABLED` couples the database's lifecycle to the project's App Engine app, so disabling the app disables the database with it. Immutable after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `database_id` | Fully qualified database ID (`projects/{project}/databases/{database}`) | Application configuration, IAM bindings, backup schedules |
+| `database_name` | Database name (`(default)` or custom name) | Client library database selection, `GcpFirestoreIndex`/`GcpFirestoreBackupSchedule` attachment |
+| `uid` | Server-generated UUID4 | Correlation, audit trails |
+| `create_time` | Database creation timestamp (RFC3339 UTC) | Audit, lifecycle tracking |
+| `earliest_version_time` | Earliest timestamp for version reads (RFC3339 UTC) | Point-in-time recovery planning, data freshness validation |
+| `version_retention_period` | How long past versions are retained (`3600s` without PITR, `604800s` with PITR) | Recovery-window verification |
+| `key_prefix` | Datastore Mode app-identifier prefix (empty without a legacy App Engine app) | Legacy Datastore key construction |
+| `update_time` | Last configuration-update timestamp (RFC3339 UTC) | Audit, change tracking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Default Native** -- The project's default Firestore Native database in the US multi-region with delete protection enabled. The starting point for most applications using the Firestore client libraries. Start from the **Default Native** preset.
+
+**Named Native with PITR** -- A custom-named Firestore Native database with point-in-time recovery enabled and delete protection. Suitable for production workloads that need data recovery capabilities and workload isolation from the default database. Start from the **Named Native PITR** preset.
+
+**Enterprise with CMEK** -- Enterprise edition Firestore Native database with PITR, delete protection, and customer-managed encryption. Suitable for regulated industries requiring enhanced SLA, advanced security, and encryption key control. Start from the **Enterprise CMEK** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the database is created
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the CMEK encryption key for data at rest

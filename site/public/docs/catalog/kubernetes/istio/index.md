@@ -6,176 +6,110 @@ order: 100
 componentName: "kubernetesistio"
 ---
 
-# Kubernetes Istio
+# Istio on Kubernetes
 
-Installs the Istio service-mesh control plane from the official Helm charts, with a typed spec over the charts' meaningful configuration surface and the data plane mode (sidecar or ambient) as a first-class choice. One installation per cluster; gateways and mesh policy compose as separate resources against its outputs.
+Deploys the Istio service mesh control plane on a Kubernetes cluster: istiod, the Istio CRDs, and -- in ambient mode -- the istio-cni node agent and ztunnel node proxies. Control-plane-only by design: no ingress gateway ships with it; gateways are provisioned on demand from Gateway API Gateways that use the `istio` GatewayClass. One version pin drives every chart, and per-release Helm value escape hatches cover the long tail.
 
 ## What Gets Created
 
-- **Namespace** (optional) — the control-plane namespace (`istio-system` by convention), created and owned when `createNamespace` is set
-- **Istio CRDs** — the full pinned CRD bundle, applied by the module via server-side apply (co-ownable with a CRDs-only [KubernetesIstioBaseCrds](/docs/catalog/kubernetes/kubernetesistiobasecrds-design-notes) install, so upgrading a CRDs-only cluster to a full mesh is a plain redeploy)
-- **Helm Release `istio-base`** — the validation-webhook plumbing (CRDs excluded — module-owned above)
-- **Helm Release `istiod`** — the control plane (`istiod-<revision>` when a revision is named)
-- **Helm Release `istio-cni`** — the node agent, in ambient mode or when `cni.enabled` in sidecar mode
-- **Helm Release `ztunnel`** — the per-node L4 proxy, in ambient mode
+When you deploy this Cloud Resource, the IaC module provisions:
 
-No gateway is deployed: istiod implements the Kubernetes Gateway API, so gateways compose from [KubernetesGateway](/docs/catalog/kubernetes/gateway) resources with `gatewayClassName: istio` and istiod provisions their deployments automatically.
+- **Istio CRDs** -- applied by the module itself via server-side apply, outside any Helm release. Module-owned CRDs are co-ownable with the CRDs-only Istio Base CRDs component, so a cluster running just the CRDs upgrades to the full mesh with a plain redeploy.
+- **base Helm Release** -- the validation-webhook plumbing and cluster-wide resources istiod requires.
+- **istiod Helm Release** -- the control plane, with your capacity, autoscaling, mesh configuration, proxy defaults, and scheduling choices rendered as chart values.
+- **cni Helm Release** -- the istio-cni node agent. Always installed in ambient mode (it is how traffic reaches ztunnel); opt-in in sidecar mode, where it replaces the injected privileged init-container.
+- **ztunnel Helm Release** -- the ambient L4 node proxy. Installed in ambient mode only.
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; hosts everything above.
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking.
 
-## Prerequisites
+## Before You Deploy
 
-- A Kubernetes cluster (EKS, GKE, AKS, kind, or any conformant cluster) — the control plane itself calls no cloud APIs
-- No existing Istio control plane on the cluster (the CRDs and validation webhooks are cluster singletons)
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-### Minimal (sidecar mode)
+### Kubernetes Cluster
+
+- One KubernetesIstio per cluster: the CRDs and the validation-webhook plumbing are cluster singletons.
+- In sidecar mode, namespaces that should participate in the mesh need the `istio-injection: enabled` label (or workloads opt in individually when the injection policy is `disabled`).
+- Auto-provisioned gateways default to LoadBalancer Services -- on clusters without a cloud load-balancer controller (bare metal, kind, k3s), set the gateway service type to NodePort or ClusterIP.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Istio on Kubernetes**, and click **Deploy**. The wizard walks you through placement, the release pin, the sidecar-vs-ambient decision, control-plane capacity, mesh identity, proxy defaults, the node agents, gateway defaults, and the Helm escape hatches -- with guidance at each step.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
-  name: my-istio
+  name: mesh
+  org: acme-corp
+  env: prod
 spec:
   namespace:
     value: istio-system
   createNamespace: true
-```
-
-Sidecar mode is the default. Enroll a namespace by labeling it `istio-injection=enabled`; pods created after that get a sidecar proxy.
-
-### Ambient (sidecar-less)
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesIstio
-metadata:
-  name: ambient-mesh
-spec:
-  namespace:
-    value: istio-system
-  createNamespace: true
-  dataplaneMode: ambient
-  # On clusters without a cloud load balancer (kind, k3s, bare metal):
-  gatewayDefaults:
-    serviceType: NodePort
-```
-
-Ambient additionally installs the `istio-cni` node agent and the `ztunnel` per-node proxy. Namespaces enroll with the `istio.io/dataplane-mode=ambient` label — no sidecars, no pod restarts.
-
-### Production (sidecar, hardened)
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesIstio
-metadata:
-  name: prod-mesh
-spec:
-  namespace:
-    value: istio-system
-  createNamespace: true
+  version: 1.30.3
   dataplaneMode: sidecar
-  istiod:
-    autoscale:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 5
-      targetCpuUtilizationPercent: 75
-    podDisruptionBudget: true
-    priorityClassName: system-cluster-critical
   meshConfig:
-    # Set a stable, organization-unique trust domain BEFORE production —
-    # changing it later re-identifies every workload in the mesh.
-    trustDomain: prod.mesh.example.internal
-    # Egress lockdown: external destinations must be declared with a
-    # KubernetesServiceEntry.
-    outboundTrafficPolicyMode: REGISTRY_ONLY
-    accessLogFile: /dev/stdout
-  cni:
-    enabled: true
+    trustDomain: prod.acme.internal
+  istiod:
+    priorityClassName: system-cluster-critical
 ```
 
-## Composing Against the Mesh
-
-### North-south: a Gateway and a route
-
-istiod serves the `istio` GatewayClass. Creating a Gateway with that class makes istiod provision and program the gateway deployment (named `<gateway>-istio`) — no gateway install step exists or is needed:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesGateway
-metadata:
-  name: web-gateway
-spec:
-  namespace:
-    value: istio-system
-  gatewayClassName:
-    value: istio
-  listeners:
-    - name: http
-      port: 80
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: All
----
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesHttpRoute
-metadata:
-  name: web-route
-spec:
-  namespace:
-    value: app-ns
-  parentRefs:
-    - name:
-        value: web-gateway
-      namespace: istio-system
-  hostnames:
-    - app.example.com
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name:
-            value: web-service
-          port: 8080
+```shell
+planton apply -f istio.yaml
 ```
 
-`gatewayClassName` can also be wired as a `valueFrom` reference to the mesh's `status.outputs.gateway_class_name`, so the Gateway deploys after the control plane in one infra chart. `spec.gatewayDefaults.serviceType` on the mesh sets the default Service type for every gateway provisioned this way (LoadBalancer upstream default; NodePort/ClusterIP for clusters without a cloud LB).
+This installs the control plane into `istio-system` with a production trust domain and eviction protection for istiod; everything else runs on the chart defaults.
 
-### Mesh policy: the typed Istio kinds
+## Key Configuration
 
-Traffic policy composes from the typed kinds, which need only the CRDs this component installs — for example strict mTLS plus an allow-list:
+- **Version** -- one chart version for every release (Istio versions its charts in lockstep). Upgrades step ONE minor at a time -- skipping minors in place is unsupported upstream.
+- **Data Plane Mode** -- `sidecar` (a proxy per pod, the classic mode) or `ambient` (sidecar-less: per-node ztunnel for L4/mTLS, optional waypoints for L7). An install-time decision: switching later is a workload-by-workload migration.
+- **Control Plane (istiod)** -- fixed replicas or the chart-managed HPA (mutually exclusive), resources, log level, PodDisruptionBudget, priority class, and node placement.
+- **Mesh Configuration** -- the trust domain (set a stable, organization-unique value BEFORE production -- changing it re-identifies every workload), the outbound traffic policy (`REGISTRY_ONLY` is the egress-lockdown posture), access logging, and the multi-cluster naming trio.
+- **Proxies & Injection** -- per-proxy resources (they multiply across every injected pod), log level, the injection policy, and probe rewriting for strict mTLS.
+- **CNI Node Agent / ztunnel** -- node-level traffic redirection and the ambient node proxy, each with chart-default tuning.
+- **Gateways & Images** -- the Service type for auto-provisioned gateways, plus the image hub/variant/pull-secret knobs for air-gapped and hardened environments.
+- **Helm Values** -- per-release YAML documents merged LAST over the typed fields, for chart surface beyond them.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesPeerAuthentication
-metadata:
-  name: strict-mtls
-spec:
-  namespace:
-    value: app-ns
-  mtls:
-    mode: STRICT
-```
+## Outputs and Dependencies
 
-The mesh's `status.outputs.trust_domain` is the prefix of the SPIFFE principals that [KubernetesAuthorizationPolicy](/docs/catalog/kubernetes/authorization-policy) rules match on.
+### What This Component Consumes
 
-## Stack Outputs
+| Dependency | Description |
+|------------|-------------|
+| `namespace` | The namespace the control plane installs into. Reference an existing Namespace on Kubernetes or supply the name directly. |
 
-| Output | Description |
-|---|---|
-| `namespace` | Control-plane namespace |
-| `istiod_service_name` | istiod Service name (`istiod`, or `istiod-<revision>`) — the discovery address |
-| `revision` | Installed control-plane revision (`default` when unnamed) |
-| `gateway_class_name` | GatewayClass istiod serves (`istio`) |
-| `trust_domain` | Identity root of every workload certificate |
-| `dataplane_mode` | `sidecar` or `ambient` |
+### What This Component Provides
 
-## Related Components
+After provisioning, `status.outputs` contains values that downstream Cloud Resources and operators can reference:
 
-- [KubernetesGateway](/docs/catalog/kubernetes/gateway) / [KubernetesHttpRoute](/docs/catalog/kubernetes/http-route) — north-south exposure through the mesh's `istio` GatewayClass
-- [KubernetesDestinationRule](/docs/catalog/kubernetes/destination-rule), [KubernetesPeerAuthentication](/docs/catalog/kubernetes/peer-authentication), [KubernetesAuthorizationPolicy](/docs/catalog/kubernetes/authorization-policy), [KubernetesRequestAuthentication](/docs/catalog/kubernetes/request-authentication), [KubernetesServiceEntry](/docs/catalog/kubernetes/service-entry), [KubernetesTelemetry](/docs/catalog/kubernetes/telemetry), [KubernetesEnvoyFilter](/docs/catalog/kubernetes/envoy-filter) — mesh traffic policy
-- [KubernetesIstioBaseCrds](/docs/catalog/kubernetes/kubernetesistiobasecrds-design-notes) — CRDs only, for clusters that use the typed Istio kinds without running a mesh
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — the control-plane namespace via `valueFrom` reference
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Where the control plane runs | Placing mesh-adjacent tooling beside istiod |
+| `istiod_service_name` | The discovery Service proxies connect to | Debugging and custom bootstrap configuration |
+| `revision` | The control-plane revision (empty = default) | Labeling workloads `istio.io/rev` under revisioned operation |
+| `gateway_class_name` | The GatewayClass this control plane serves | Gateway API Gateways reference it to be provisioned by this mesh |
+| `trust_domain` | The identity root (`spiffe://<trust_domain>/...`) | Writing authorization policies that match workload identities |
+| `dataplane_mode` | `sidecar` or `ambient` | Runbooks and tooling that branch on the mesh's mode |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+- **Classic sidecar mesh** -- the widely documented default: label namespaces for injection and get a proxy per pod.
+- **Ambient mesh** -- sidecar-less L4/mTLS everywhere with waypoints added only where L7 policy is needed -- lower overhead, no workload restarts on proxy upgrades.
+- **Egress lockdown** -- `REGISTRY_ONLY` outbound policy with every external service declared as a Service Entry.
+
+## Works With
+
+Istio is the control plane the typed Istio resources configure: **DestinationRule** and **Service Entry** (traffic management), **Peer Authentication**, **Request Authentication**, and **Authorization Policy** (security), **Telemetry** (observability), and **EnvoyFilter** (extensibility). Gateway API **Gateways** using the `istio` GatewayClass are provisioned by this control plane, with **HTTPRoutes** and their siblings attaching to them. A cluster that only needs the API types (no mesh runtime) can install the **Istio Base CRDs** component instead and upgrade to this full mesh later with a plain redeploy.

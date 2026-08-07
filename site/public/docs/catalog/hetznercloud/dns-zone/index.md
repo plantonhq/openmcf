@@ -8,217 +8,140 @@ componentName: "hetznerclouddnszone"
 
 # Hetzner Cloud DNS Zone
 
-Deploys a DNS zone on Hetzner Cloud's authoritative nameservers with declarative record set management. Supports **primary** mode (records managed via the manifest) and **secondary** mode (records synchronized from an external primary nameserver via zone transfer). Record values accept cross-component references via `valueFrom` for DNS records that automatically track infrastructure IP addresses.
+Deploys a DNS zone on Hetzner Cloud's authoritative nameservers with configurable record sets. Supports primary mode (records managed directly through this component) and secondary mode (records synchronized from an external primary nameserver via AXFR/IXFR zone transfer). Record sets group DNS records by (name, type) pair using `hcloud_zone_rrset`, allowing in-place value updates without destroying the record set. Record values support ValueFromRef for cross-resource wiring in InfraChart deployments.
 
 ## What Gets Created
 
-- **DNS Zone** — an `hcloud_zone` resource that establishes the domain on Hetzner Cloud nameservers with the specified mode, default TTL, and delete protection settings.
-- **Record Sets** — one `hcloud_zone_rrset` resource per entry in `recordSets`. Each record set groups all DNS records sharing the same (name, type) pair. Created only in primary mode; in secondary mode, records are pulled from the external primary nameserver.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **DNS Zone** -- an `hcloud_zone` resource representing the domain on Hetzner Cloud's nameservers
+- **Record Sets** -- one `hcloud_zone_rrset` per entry in the record sets list, each managing all records for a unique (name, type) pair
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **Domain registration** — you must own the domain and have access to its registrar to configure NS delegation after zone creation
+## Before You Deploy
 
-For **secondary** zones:
-- An external primary nameserver accessible from Hetzner Cloud's infrastructure
-- TSIG credentials if the primary requires authenticated zone transfers
+### Hetzner Cloud Account
 
-## Quick Start
+- **A Hetzner Cloud account** with an active project and DNS API access.
+- **A domain name** you own or control -- you will need to update the domain's NS records at your registrar to point to Hetzner's nameservers after zone creation.
 
-Create a file `dns-zone.yaml`:
+### For Secondary Mode
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudDnsZone
-metadata:
-  name: my-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudDnsZone.my-zone
-spec:
-  domainName: example.com
-  mode: primary
-```
+- **An external primary nameserver** with zone transfer (AXFR/IXFR) enabled for Hetzner Cloud's nameserver IPs.
+- **TSIG credentials** (optional) if the primary nameserver requires authenticated zone transfers.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f dns-zone.yaml
-```
+### Console
 
-This creates an empty primary DNS zone for `example.com`. Check the `nameservers` stack output and configure these NS records at your domain registrar to activate the zone. Add record sets to the manifest to populate the zone with DNS records.
+Open the deployment store, find **Hetzner Cloud DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including domain name, mode, and record sets.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domainName` | `string` | The DNS domain name for the zone (e.g., `example.com`). This becomes the zone's Hetzner Cloud name. Changing this value forces replacement. | min length: 1 |
-| `mode` | `enum` | Zone operating mode. Valid values: `primary` (Hetzner Cloud is authoritative, records managed via `recordSets`) or `secondary` (records synchronized from external primary via zone transfer). Changing this value forces replacement. | required, defined values only |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ttl` | `int32` | `3600` | Default TTL in seconds for records in the zone. Individual record sets can override this. |
-| `deleteProtection` | `bool` | `false` | Prevents accidental deletion of the zone via the Hetzner Cloud API. |
-| `primaryNameservers` | `PrimaryNameserver[]` | — | External primary nameservers for zone transfer. Required when mode is `secondary`; forbidden when mode is `primary`. |
-| `primaryNameservers[].address` | `string` | — | Public IPv4 or IPv6 address of the primary nameserver. Required within each entry. |
-| `primaryNameservers[].port` | `int32` | `53` | Port of the primary nameserver. |
-| `primaryNameservers[].tsigAlgorithm` | `string` | — | TSIG algorithm for authenticating zone transfers (e.g., `hmac-sha256`, `hmac-sha512`). |
-| `primaryNameservers[].tsigKey` | `string` | — | TSIG shared secret key for authenticating zone transfers. |
-| `recordSets` | `RecordSet[]` | — | DNS record sets. Each entry manages all records for a unique (name, type) pair. Only valid when mode is `primary`; forbidden when mode is `secondary`. |
-| `recordSets[].name` | `string` | — | Record name relative to the zone. Use `@` for the apex, a subdomain label (e.g., `www`), or `*` for wildcard. Required within each entry. |
-| `recordSets[].type` | `string` | — | DNS record type: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `SRV`, `CAA`, `PTR`, `TLSA`, `DS`. Required within each entry. |
-| `recordSets[].ttl` | `int32` | zone TTL | Per-record-set TTL override in seconds. |
-| `recordSets[].records` | `RecordValue[]` | — | Record values. At least one required per record set. |
-| `recordSets[].records[].value` | `StringValueOrRef` | — | The record value. Accepts a literal string or a `valueFrom` reference to another component's output. Format depends on record type (see examples). Required within each entry. |
-| `recordSets[].records[].comment` | `string` | — | Optional comment for this record. |
-
-## Examples
-
-### Primary Zone with Common Records
-
-A production zone with A records, a CNAME alias, MX records for email, and TXT records for SPF and DMARC.
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudDnsZone
 metadata:
-  name: acme-zone
+  name: example-zone
   org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: dns
-    pulumi.planton.dev/stack.name: production.HetznerCloudDnsZone.acme-zone
+  env: prod
 spec:
-  domainName: acme-corp.com
+  domainName: "example.com"
   mode: primary
   ttl: 3600
-  deleteProtection: true
   recordSets:
     - name: "@"
       type: A
+      records:
+        - value:
+            value: "93.184.216.34"
+    - name: "www"
+      type: CNAME
       ttl: 300
       records:
-        - value: "93.184.216.34"
-          comment: "web server 1"
-        - value: "93.184.216.35"
-          comment: "web server 2"
-    - name: www
-      type: CNAME
-      records:
-        - value: "acme-corp.com."
-    - name: "@"
-      type: MX
-      records:
-        - value: "10 mail.acme-corp.com."
-        - value: "20 backup.acme-corp.com."
-    - name: "@"
-      type: TXT
-      records:
-        - value: "\"v=spf1 include:_spf.google.com ~all\""
-    - name: _dmarc
-      type: TXT
-      records:
-        - value: "\"v=DMARC1; p=reject; rua=mailto:dmarc@acme-corp.com\""
+        - value:
+            value: "example.com."
 ```
 
-### Primary Zone with Cross-Component References
+```shell
+planton apply -f hetznercloud-dns-zone.yaml
+```
 
-DNS records that reference IP addresses from other Hetzner Cloud resources using `valueFrom`. When the referenced resource's IP changes, the DNS record updates automatically.
+This creates a DNS zone for example.com with an A record at the apex and a CNAME for www. A Stack Job tracks the provisioning in real time. Update your domain's NS records at your registrar to the nameservers returned in the outputs.
+
+### InfraChart
+
+When deploying as part of a web application, use ValueFromRef to wire DNS records to a load balancer's public IP:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudDnsZone
-metadata:
-  name: webapp-dns
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: webapp
-    pulumi.planton.dev/stack.name: production.HetznerCloudDnsZone.webapp-dns
 spec:
-  domainName: webapp.acme-corp.com
+  domainName: "example.com"
   mode: primary
-  ttl: 3600
   recordSets:
     - name: "@"
       type: A
-      ttl: 60
       records:
         - value:
             valueFrom:
               kind: HetznerCloudLoadBalancer
               name: web-lb
               fieldPath: status.outputs.ipv4_address
-    - name: api
-      type: A
-      ttl: 60
-      records:
-        - value:
-            valueFrom:
-              kind: HetznerCloudServer
-              name: api-server
-              fieldPath: status.outputs.ipv4_address
-    - name: www
+    - name: "www"
       type: CNAME
       records:
-        - value: "webapp.acme-corp.com."
-    - name: "@"
-      type: CAA
-      records:
-        - value: "0 issue \"letsencrypt.org\""
+        - value:
+            value: "example.com."
 ```
 
-### Secondary Zone with TSIG Authentication
+The InfraPipeline resolves the dependency graph, provisions the load balancer first, then creates DNS records pointing to its IP.
 
-A secondary zone that synchronizes records from an external primary nameserver, authenticated with TSIG.
+## Key Configuration
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudDnsZone
-metadata:
-  name: internal-dns
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: internal
-    pulumi.planton.dev/stack.name: production.HetznerCloudDnsZone.internal-dns
-spec:
-  domainName: internal.acme-corp.com
-  mode: secondary
-  primaryNameservers:
-    - address: "10.0.0.1"
-      port: 53
-      tsigAlgorithm: hmac-sha256
-      tsigKey: "dGhpcyBpcyBhIHNlY3JldCBrZXk="
-    - address: "10.0.0.2"
-      port: 53
-      tsigAlgorithm: hmac-sha256
-      tsigKey: "dGhpcyBpcyBhIHNlY3JldCBrZXk="
-```
+These are the most important decisions when configuring a DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Domain name** -- The `domainName` field specifies the DNS domain (e.g., "example.com"). Changing forces replacement.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_id` | `string` | The Hetzner Cloud numeric ID of the created zone. Can be referenced by other components via `StringValueOrRef`. |
-| `nameservers` | `string[]` | The authoritative Hetzner nameservers assigned to the zone (e.g., `["helium.ns.hetzner.de", "hydrogen.ns.hetzner.com", "oxygen.ns.hetzner.com"]`). Configure these NS records at your domain registrar to activate the zone. |
+**Mode** -- The `mode` field selects `primary` (records managed here) or `secondary` (records pulled from an external primary). In secondary mode, `recordSets` must be empty and `primaryNameservers` is required.
 
-## Related Components
+**Default TTL** -- The `ttl` field sets the default Time To Live for records (default: 3600 seconds). Individual record sets can override with their own TTL.
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — A records can reference `status.outputs.ipv4_address` via `valueFrom` to point DNS at server IPs.
-- [HetznerCloudFloatingIp](/docs/catalog/hetznercloud/floating-ip) — A records can reference `status.outputs.ip_address` for failover-capable DNS.
-- [HetznerCloudLoadBalancer](/docs/catalog/hetznercloud/load-balancer) — A records can reference `status.outputs.ipv4_address` to point DNS at load balancer IPs.
-- [HetznerCloudCertificate](/docs/catalog/hetznercloud/certificate) — Managed certificates require DNS records pointing to a load balancer for the ACME HTTP-01 challenge.
+**Record sets** -- The `recordSets` field defines DNS records grouped by (name, type). Each record set specifies a `name` (relative to the zone, "@" for apex), `type` (A, AAAA, CNAME, MX, TXT, etc.), optional `ttl` override, and one or more record `values`. Values support ValueFromRef for cross-resource wiring.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+Record values can reference any component output via ValueFromRef. Common patterns:
+
+| Dependency | Record Type | ValueFromRef Path |
+|------------|------------|-------------------|
+| **HetznerCloudServer** | A | `status.outputs.ipv4_address` |
+| **HetznerCloudLoadBalancer** | A | `status.outputs.ipv4_address` |
+| **HetznerCloudFloatingIp** | A | `status.outputs.ip_address` |
+| **HetznerCloudPrimaryIp** | A | `status.outputs.ip_address` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zone_id` | Hetzner Cloud numeric ID of the zone | API operations, resource tracking |
+| `nameservers` | Authoritative nameservers assigned to the zone | Domain registrar NS record configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Primary zone with A records** -- A primary zone with apex and www records pointing to server or load balancer IPs. The standard starting point for hosting a domain on Hetzner Cloud.
+
+**Secondary zone** -- A secondary zone that synchronizes records from an external primary nameserver, providing redundancy and geographic distribution.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- A records point to server IPv4 addresses
+- [**Hetzner Cloud Load Balancer**](/cloud-catalog/hetznercloud-load-balancer) -- A records point to LB IPv4 addresses
+- [**Hetzner Cloud Primary IP**](/cloud-catalog/hetznercloud-primary-ip) -- A records point to managed IP addresses
+- [**Hetzner Cloud Floating IP**](/cloud-catalog/hetznercloud-floating-ip) -- A records point to failover IP addresses
+- [**Hetzner Cloud Certificate**](/cloud-catalog/hetznercloud-certificate) -- managed certificates require DNS records pointing to a load balancer

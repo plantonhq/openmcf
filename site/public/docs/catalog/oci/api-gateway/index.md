@@ -6,40 +6,48 @@ order: 100
 componentName: "ociapigateway"
 ---
 
-# OCI API Gateway
+# API Gateway on OCI
 
-Deploys an Oracle Cloud Infrastructure API Gateway with a bundled API deployment. The gateway provides the managed network endpoint (public or private) while the deployment defines the API specification: routes with HTTP, OCI Functions, or stock-response backends, optional JWT authentication, CORS, rate limiting, and per-route authorization.
+Deploys an Oracle Cloud Infrastructure API Gateway bundled with a single API deployment. The gateway provides the managed network endpoint (public or private) while the deployment defines routes, backends (HTTP services, OCI Functions, or stock responses), optional JWT authentication, CORS, rate limiting, and per-route authorization. Integrates with Planton's Provider Connections for OCI credential management and ValueFromRef for wiring to compartments, subnets, and security groups.
 
 ## What Gets Created
 
-When you deploy an OciApiGateway resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **API Gateway** — an `apigateway.Gateway` resource in the specified compartment and subnet with configurable endpoint type (public or private), optional TLS certificate, and optional NSG bindings.
-- **API Deployment** — an `apigateway.Deployment` resource on the gateway with a path prefix, route definitions, and optional request policies (JWT authentication, CORS, rate limiting). The deployment depends on the gateway and is always created.
+- **API Gateway** -- the managed network endpoint in the specified compartment and subnet with configurable endpoint type (public or private), optional TLS certificate, and optional NSG bindings
+- **API Deployment** -- a deployment on the gateway with a path prefix, route definitions mapping URL paths to backends, and optional request policies (JWT authentication, CORS, rate limiting). The deployment is always created in the same compartment as the gateway.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the gateway
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the gateway and deployment will be created — either a literal value or a reference to an OciCompartment resource
-- **A subnet OCID** — for public gateways, this must be a public subnet. Either a literal value or via `valueFrom` referencing an OciSubnet resource
-- **An OCI Certificates service certificate OCID** (optional) — if terminating TLS on the gateway
-- **OCI Functions function OCIDs** (for Functions backends) — if routing to serverless functions
-- **A JWKS endpoint URL or static keys** (for JWT authentication) — if enabling token-based authentication
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `api-gateway.yaml`:
+### OCI Tenancy
+
+- A compartment to place the gateway and deployment in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A subnet for the gateway. For public gateways, this must be a public subnet. Provide the subnet OCID directly or reference an OciSubnet Cloud Resource via ValueFromRef. Changing the subnet forces recreation.
+- A JWKS endpoint URL or static public keys (for JWT authentication) -- required only when enabling token-based authentication on the deployment.
+- OCI Functions function OCIDs (for Functions backends) -- required only when routing requests to serverless functions.
+- An OCI Certificates service certificate OCID (optional) -- for TLS termination on public gateways.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **API Gateway on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public HTTP Proxy** preset in the [Presets](#presets) tab to pre-populate a public gateway proxying requests to an HTTP backend with CORS and access logging.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciApiGateway
 metadata:
   name: my-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciApiGateway.my-api
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
@@ -47,287 +55,103 @@ spec:
   subnetId:
     value: "ocid1.subnet.oc1..example"
   deployment:
-    pathPrefix: "/api/v1"
+    pathPrefix: /api/v1
     routes:
-      - path: "/health"
+      - path: /health
         methods:
-          - "GET"
+          - GET
         backend:
           type: stock_response
           status: 200
           body: '{"status":"ok"}'
+      - path: /{path*}
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        backend:
+          type: http
+          url: "https://backend.example.com:8080"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f api-gateway.yaml
 ```
 
-This creates a public API gateway with a single health-check route that returns a stock response. The gateway OCID, hostname, and deployment endpoint URL are exported as stack outputs.
+This creates a public API gateway with a health check route returning a stock response and a catch-all route proxying to an HTTP backend. No JWT authentication, CORS, or rate limiting is configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the gateway and deployment will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `endpointType` | `enum` | Whether the gateway is internet-facing or VCN-internal. Values: `public`, `private`. Immutable after creation. | Required, not `unspecified` |
-| `subnetId` | `StringValueOrRef` | OCID of the subnet for the gateway. Public gateways require a public subnet. Immutable after creation. Can reference an OciSubnet resource via `valueFrom`. | Required |
-| `deployment` | `Deployment` | The API deployment defining routes, backends, and policies. | Required |
-| `deployment.pathPrefix` | `string` | URL path prefix for all routes (e.g., `"/api/v1"`). Must start with `"/"`. Immutable after creation. | Min length 1, starts with `/` |
-| `deployment.routes` | `Route[]` | Route definitions. Routes are evaluated in order; first match wins. | Min 1 item |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | metadata name | Display name for the gateway. |
-| `certificateId` | `string` | — | OCID of an OCI Certificates service certificate for TLS termination. |
-| `networkSecurityGroupIds` | `StringValueOrRef[]` | — | NSGs applied to the gateway. Can reference OciSecurityGroup resources via `valueFrom`. |
-| `deployment.displayName` | `string` | `"{gatewayName}-deployment"` | Display name for the deployment. |
-| `deployment.loggingPolicies` | `LoggingPolicies` | — | Access and execution logging configuration. |
-| `deployment.requestPolicies` | `RequestPolicies` | — | Deployment-level JWT authentication, CORS, and rate limiting. |
-
-### Route
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `path` | `string` | URL path pattern (e.g., `"/users/{userId}"`, `"/health"`). |
-| `methods` | `string[]` | HTTP methods this route handles (e.g., `["GET", "POST"]`). When empty, all methods are accepted. |
-| `backend` | `Backend` | Backend that processes matching requests. Required. |
-| `authorization` | `RouteAuthorization` | Per-route authorization policy. |
-| `loggingPolicies` | `LoggingPolicies` | Per-route logging override. |
-
-### Backend
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | `enum` | Backend type. Values: `http`, `oracle_functions`, `stock_response`. |
-| `url` | `string` | Target URL for HTTP backends. Required when `type` is `http`. |
-| `functionId` | `string` | OCID of the OCI function. Required when `type` is `oracle_functions`. |
-| `status` | `int32` | HTTP status code for stock responses. |
-| `body` | `string` | Response body for stock responses. |
-| `connectTimeoutInSeconds` | `float` | Connection timeout. Applicable to `http` and `oracle_functions`. |
-| `readTimeoutInSeconds` | `float` | Read timeout. Applicable to `http` and `oracle_functions`. |
-| `sendTimeoutInSeconds` | `float` | Send timeout. Applicable to `http` and `oracle_functions`. |
-| `isSslVerifyDisabled` | `bool` | Skip TLS verification for HTTP backends. |
-| `headers` | `BackendHeader[]` | Custom headers added to backend requests. |
-
-### RequestPolicies (Deployment-Level)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `authentication` | `Authentication` | JWT-based authentication. See below. |
-| `cors` | `CorsPolicy` | Cross-Origin Resource Sharing policy. See below. |
-| `rateLimiting` | `RateLimiting` | Rate limiting policy. See below. |
-
-### Authentication (JWT)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `issuers` | `string[]` | Allowed token issuers (iss claim). |
-| `audiences` | `string[]` | Allowed audiences (aud claim). |
-| `tokenHeader` | `string` | HTTP header containing the token. Defaults to `"Authorization"`. |
-| `tokenQueryParam` | `string` | Query parameter containing the token. |
-| `tokenAuthScheme` | `string` | Auth scheme prefix (e.g., `"Bearer"`). Defaults to `"Bearer"`. |
-| `maxClockSkewInSeconds` | `float` | Clock skew tolerance for exp/nbf/iat claims. |
-| `isAnonymousAccessAllowed` | `bool` | Allow unauthenticated requests (routes can still enforce authorization). |
-| `publicKeys` | `PublicKeys` | Public key configuration for signature verification. Required. |
-| `verifyClaims` | `VerifyClaim[]` | Additional claims to verify. |
-
-### CorsPolicy
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `allowedOrigins` | `string[]` | Allowed origins (e.g., `["*"]` or `["https://app.example.com"]`). Min 1. |
-| `allowedMethods` | `string[]` | Allowed HTTP methods. |
-| `allowedHeaders` | `string[]` | Allowed request headers. |
-| `exposedHeaders` | `string[]` | Response headers exposed to the browser. |
-| `isAllowCredentialsEnabled` | `bool` | Allow credentials (cookies, auth headers). |
-| `maxAgeInSeconds` | `int32` | Preflight response cache duration. |
-
-### RateLimiting
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `rateInRequestsPerSecond` | `int32` | Maximum requests per second. Must be > 0. |
-| `rateKey` | `enum` | Grouping key. Values: `client_ip` (per-IP), `total` (aggregate). |
-
-## Examples
-
-### Public Gateway with HTTP Backend
-
-A public gateway proxying requests to an upstream service:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the gateway to a compartment, subnet, and security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciApiGateway
-metadata:
-  name: api-proxy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciApiGateway.api-proxy
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  endpointType: endpoint_type_public
-  subnetId:
-    value: "ocid1.subnet.oc1..example"
-  deployment:
-    pathPrefix: "/api/v1"
-    routes:
-      - path: "/users"
-        methods:
-          - "GET"
-          - "POST"
-        backend:
-          type: http
-          url: "https://backend.example.com:8080"
-      - path: "/users/{userId}"
-        methods:
-          - "GET"
-          - "PUT"
-          - "DELETE"
-        backend:
-          type: http
-          url: "https://backend.example.com:8080"
-```
-
-### Functions Backend with JWT Authentication
-
-A gateway routing to OCI Functions with JWT authentication via remote JWKS and CORS for a browser client:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciApiGateway
-metadata:
-  name: serverless-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciApiGateway.serverless-api
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-compartment
+      name: api-compartment
       fieldPath: status.outputs.compartmentId
-  endpointType: endpoint_type_public
   subnetId:
     valueFrom:
       kind: OciSubnet
       name: public-subnet
       fieldPath: status.outputs.subnetId
-  deployment:
-    pathPrefix: "/fn"
-    loggingPolicies:
-      accessLog:
-        isEnabled: true
-      executionLog:
-        isEnabled: true
-        logLevel: info
-    requestPolicies:
-      authentication:
-        issuers:
-          - "https://auth.example.com/"
-        audiences:
-          - "https://api.example.com"
-        publicKeys:
-          type: remote_jwks
-          uri: "https://auth.example.com/.well-known/jwks.json"
-          maxCacheDurationInHours: 24
-      cors:
-        allowedOrigins:
-          - "https://app.example.com"
-        allowedMethods:
-          - "GET"
-          - "POST"
-          - "OPTIONS"
-        allowedHeaders:
-          - "Authorization"
-          - "Content-Type"
-        maxAgeInSeconds: 3600
-    routes:
-      - path: "/process"
-        methods:
-          - "POST"
-        backend:
-          type: oracle_functions
-          functionId: "ocid1.fnfunc.oc1..example"
-        authorization:
-          type: authentication_only
-      - path: "/health"
-        methods:
-          - "GET"
-        backend:
-          type: stock_response
-          status: 200
-          body: '{"status":"ok"}'
-        authorization:
-          type: anonymous
-```
-
-### Private Gateway with Rate Limiting
-
-A VCN-internal gateway with rate limiting for internal microservice communication:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciApiGateway
-metadata:
-  name: internal-api
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciApiGateway.internal-api
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  endpointType: private
-  subnetId:
-    value: "ocid1.subnet.oc1..example"
   networkSecurityGroupIds:
     - valueFrom:
         kind: OciSecurityGroup
-        name: api-nsg
+        name: gateway-nsg
         fieldPath: status.outputs.networkSecurityGroupId
-  deployment:
-    pathPrefix: "/internal"
-    requestPolicies:
-      rateLimiting:
-        rateInRequestsPerSecond: 100
-        rateKey: client_ip
-    routes:
-      - path: "/data"
-        methods:
-          - "GET"
-        backend:
-          type: http
-          url: "http://data-service.internal:8080"
-          connectTimeoutInSeconds: 5
-          readTimeoutInSeconds: 30
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment, subnet, and security group first, then provisions the API gateway with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `gateway_id` | `string` | OCID of the API gateway |
-| `hostname` | `string` | Hostname assigned by OCI (e.g., `"abc123.apigateway.us-ashburn-1.oci.customer-oci.com"`) |
-| `deployment_endpoint` | `string` | Full endpoint URL (gateway hostname + deployment path prefix) |
+These are the most important decisions when configuring an API gateway. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Endpoint type** -- Set `endpointType` to `endpoint_type_public` for internet-facing APIs or `endpoint_type_private` for VCN-internal APIs. Public gateways require a public subnet. The endpoint type is immutable after creation.
 
-- [OciSubnet](/docs/catalog/oci/subnet) — provides the subnet referenced by `subnetId` via `valueFrom`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciSecurityGroup](/docs/catalog/oci/network-security-group) — provides NSGs referenced by `networkSecurityGroupIds` via `valueFrom`
-- [OciFunctionsApplication](/docs/catalog/oci/functions-application) — hosts the functions invoked by `oracle_functions` backends
-- [OciDnsRecord](/docs/catalog/oci/dns-record) — creates CNAME records pointing to the gateway hostname
+**Backend types** -- Each route maps to one of three backend types: `http` for proxying to upstream services (with configurable connect/read/send timeouts and TLS verification), `oracle_functions` for invoking OCI Functions by OCID, or `stock_response` for returning a fixed HTTP status and body (health checks, maintenance pages). Routes are evaluated in order; first match wins.
+
+**JWT authentication** -- Configure `deployment.requestPolicies.authentication` to validate JWT tokens before requests reach backends. Specify `issuers` (allowed iss claims), `audiences` (allowed aud claims), and `publicKeys` sourced from a remote JWKS endpoint or static PEM/JWK keys. Set `isAnonymousAccessAllowed: true` to allow unauthenticated requests to reach routes that enforce authorization individually.
+
+**Per-route authorization** -- When deployment-level authentication is enabled, each route can set `authorization.type` to `anonymous` (no token required), `authentication_only` (valid token required, no scope check), or `any_of` with `allowedScope` (token must contain at least one listed OAuth2 scope). This enables mixed public/private API surfaces on a single gateway.
+
+**Rate limiting and CORS** -- Configure `deployment.requestPolicies.rateLimiting` with `rateInRequestsPerSecond` and `rateKey` (`client_ip` for per-IP limits, `total` for aggregate). Configure `deployment.requestPolicies.cors` with `allowedOrigins`, `allowedMethods`, and credential/preflight cache settings for browser-based API consumers.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciSubnet** | `subnetId` | `status.outputs.subnetId` |
+| **OciSecurityGroup** (optional) | `networkSecurityGroupIds` | `status.outputs.networkSecurityGroupId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `gatewayId` | OCID of the API gateway | Monitoring, IAM policy scoping, resource management |
+| `hostname` | Hostname assigned to the gateway by OCI | DNS CNAME records (OciDnsRecord), client configuration |
+| `deploymentEndpoint` | Full endpoint URL (gateway hostname + deployment path prefix) | API client base URL, integration testing |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Public HTTP proxy** -- A public gateway proxying all requests to an HTTP backend with CORS configured for a frontend domain, access and execution logging enabled, and a health check stock-response route. The standard pattern for exposing backend services as a managed API. Start from the **Public HTTP Proxy** preset.
+
+**JWT-authenticated API** -- A public gateway with JWT authentication via remote JWKS, scope-based per-route authorization (anonymous health check, authenticated user routes, admin routes requiring admin scope), CORS, and rate limiting. Start from the **JWT Authenticated API** preset.
+
+**Private Functions backend** -- A private VCN-internal gateway routing requests to OCI Functions for serverless API backends. No authentication or CORS (internal traffic only). Access and execution logging enabled. Start from the **Private Functions Backend** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this gateway and its deployment
+- [**Subnet on OCI**](/cloud-catalog/oci-subnet) -- provides the subnet where the gateway endpoint is deployed
+- [**Network Security Group on OCI**](/cloud-catalog/oci-security-group) -- provides network security rules applied to the gateway

@@ -204,7 +204,7 @@ spec:
       credential_name: db-client-cert
 ```
 
-See `docs/README.md` for the full composability rationale.
+See `GUIDE.md` for the full composability rationale.
 
 ## Stack Outputs
 

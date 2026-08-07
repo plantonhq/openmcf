@@ -6,215 +6,114 @@ order: 100
 componentName: "ociblockvolume"
 ---
 
-# OCI Block Volume
+# Block Volume on OCI
 
-Deploys an Oracle Cloud Infrastructure Block Volume with configurable performance tiers (VPUs/GB), optional autotune policies for automatic performance adjustment, cross-region replicas for disaster recovery, and an optional backup policy assignment for scheduled backups.
+Deploys an Oracle Cloud Infrastructure Block Volume -- a high-performance, durable block storage device that can be attached to compute instances. Supports configurable performance tiers (VPUs/GB), automatic performance tuning via autotune policies, cross-region replication for disaster recovery, and optional backup policy assignment for scheduled backups. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments.
 
 ## What Gets Created
 
-When you deploy an OciBlockVolume resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Block Volume** — an `oci_core_volume` in the specified compartment and availability domain with configurable size (50-32768 GB), performance tier (VPUs/GB), optional KMS encryption, autotune policies, cross-region replicas, and SCSI persistent reservation support.
-- **Backup Policy Assignment** — created only when `backupPolicyId` is set. An `oci_core_volume_backup_policy_assignment` that links the volume to an Oracle-defined (Gold, Silver, Bronze) or custom backup policy for scheduled backups.
+- **Block Volume** -- a `core.Volume` in the specified compartment and availability domain with configurable size, performance tier, encryption, autotune policies, and cross-region replicas
+- **Backup Policy Assignment** -- created only when `backupPolicyId` is set; a `core.VolumeBackupPolicyAssignment` linking the volume to an Oracle-defined or custom backup policy for scheduled backups
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the volume
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the volume will be created — either a literal value or a reference to an OciCompartment resource
-- **An availability domain** name within the target region (e.g., `"Uocm:US-ASHBURN-AD-1"`) — the volume and any attached compute instance must be in the same AD
-- **A KMS key OCID** (optional) if using customer-managed encryption
-- **A backup policy OCID** (optional) if assigning a scheduled backup policy — retrieve Oracle-defined policy OCIDs via `oci bv volume-backup-policy list`
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `block-volume.yaml`:
+### OCI Tenancy
+
+- A compartment to place the volume in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- An availability domain name (e.g., `Uocm:US-ASHBURN-AD-1`). The volume and any attached compute instance must be in the same AD. Changing the AD forces recreation.
+- For customer-managed encryption: a KMS master encryption key OCID. When omitted, Oracle-managed keys are used.
+- For scheduled backups: an OCI backup policy OCID (Oracle-defined Gold/Silver/Bronze or custom).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Block Volume on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Balanced with Backup** preset in the [Presets](#presets) tab to pre-populate a cost-effective volume with scheduled backups and detach-based autotune.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciBlockVolume
 metadata:
-  name: my-volume
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciBlockVolume.my-volume
+  name: data-volume
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
   availabilityDomain: "Uocm:US-ASHBURN-AD-1"
-  sizeInGbs: 50
+  sizeInGbs: 100
+  vpusPerGb: 10
 ```
-
-Deploy:
 
 ```shell
 planton apply -f block-volume.yaml
 ```
 
-This creates a 50 GB block volume with Balanced performance (10 VPUs/GB) and Oracle-managed encryption. The volume OCID is exported as a stack output.
+This creates a 100 GB volume at the Balanced performance tier (60 IOPS/GB, 480 KB/s/GB). No backup policy, encryption key, autotune policies, or cross-region replicas are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the volume will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `availabilityDomain` | `string` | Availability domain for volume placement (e.g., `"Uocm:US-ASHBURN-AD-1"`). The volume and any attached compute instance must share the same AD. Changing this forces recreation. | Min length 1 |
-| `sizeInGbs` | `int32` | Size of the volume in gigabytes. Must be specified explicitly to prevent accidental creation at OCI's 1 TB default. | >= 50, max 32768 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | metadata name | Display name for the volume in the OCI Console. |
-| `vpusPerGb` | `int32` | `10` (Balanced) | Volume Performance Units per GB. Controls IOPS and throughput. Values: `0` (Lower Cost, 2 IOPS/GB), `10` (Balanced, 60 IOPS/GB), `20` (Higher Performance, 75 IOPS/GB), `30`-`120` (Ultra High Performance, increments of 10). |
-| `kmsKeyId` | `StringValueOrRef` | — | OCID of a KMS master encryption key. When unset, Oracle-managed keys are used. Can reference an OciKmsKey resource via `valueFrom`. |
-| `isReservationsEnabled` | `bool` | `false` | Enables SCSI persistent reservation support. Required for shared-storage clustering (e.g., Oracle RAC). |
-| `autotunePolicies` | `AutotunePolicy[]` | — | Autotune policies for automatic performance adjustment. See below. |
-| `blockVolumeReplicas` | `BlockVolumeReplica[]` | — | Cross-region replicas for disaster recovery. See below. |
-| `backupPolicyId` | `StringValueOrRef` | — | OCID of a backup policy (Oracle-defined: Gold, Silver, Bronze, or custom). When set, creates a backup policy assignment sub-resource. |
-| `xrcKmsKeyId` | `StringValueOrRef` | — | OCID of a KMS key for encrypting cross-region volume backups. Only relevant when a backup policy with cross-region copy is assigned. Changing this forces recreation. |
-
-### AutotunePolicy
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `autotuneType` | `enum` | Policy type. Values: `detached_volume` (reduce VPUs to 0 when detached, restore on re-attach), `performance_based` (dynamically adjust VPUs based on workload). |
-| `maxVpusPerGb` | `int32` | Maximum VPUs/GB for `performance_based` autotune. Required when `autotuneType` is `performance_based`. Must be > 0. |
-
-### BlockVolumeReplica
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `availabilityDomain` | `string` | Availability domain for the replica (e.g., `"Uocm:US-PHOENIX-AD-1"`). Can be in a different region from the source volume. |
-| `displayName` | `string` | Display name for the replica. When omitted, OCI generates one. |
-| `xrrKmsKeyId` | `StringValueOrRef` | OCID of a KMS key for encrypting the replica. Can reference an OciKmsKey resource via `valueFrom`. |
-
-## Examples
-
-### Minimal Volume
-
-A 50 GB volume with default Balanced performance — suitable for development or low-IOPS workloads:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the volume to a compartment deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBlockVolume
-metadata:
-  name: dev-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciBlockVolume.dev-data
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  availabilityDomain: "Uocm:US-ASHBURN-AD-1"
-  sizeInGbs: 50
-```
-
-### High-Performance Database Volume
-
-A 500 GB volume with Higher Performance tier and KMS encryption for a database workload:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBlockVolume
-metadata:
-  name: db-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciBlockVolume.db-data
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  availabilityDomain: "Uocm:US-ASHBURN-AD-1"
-  displayName: "db-data-prod"
-  sizeInGbs: 500
-  vpusPerGb: 20
-  kmsKeyId:
-    value: "ocid1.key.oc1..example"
-```
-
-### Autotune with Backup Policy
-
-A volume with detached-volume autotune (reduces cost when not attached) and a Gold backup policy for daily backups with cross-region copy:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBlockVolume
-metadata:
-  name: app-storage
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciBlockVolume.app-storage
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  availabilityDomain: "Uocm:US-ASHBURN-AD-1"
-  sizeInGbs: 200
-  vpusPerGb: 10
-  autotunePolicies:
-    - autotuneType: detached_volume
-  backupPolicyId:
-    value: "ocid1.volumebackuppolicy.oc1..gold-example"
-  xrcKmsKeyId:
-    value: "ocid1.key.oc1..xrc-example"
-```
-
-### Cross-Region Replica with Performance Autotune
-
-A production volume with performance-based autotune and a cross-region replica for disaster recovery:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciBlockVolume
-metadata:
-  name: critical-data
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciBlockVolume.critical-data
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-compartment
+      name: workloads
       fieldPath: status.outputs.compartmentId
-  availabilityDomain: "Uocm:US-ASHBURN-AD-1"
-  sizeInGbs: 1024
-  vpusPerGb: 20
-  kmsKeyId:
-    value: "ocid1.key.oc1..example"
-  isReservationsEnabled: false
-  autotunePolicies:
-    - autotuneType: performance_based
-      maxVpusPerGb: 60
-  blockVolumeReplicas:
-    - availabilityDomain: "Uocm:US-PHOENIX-AD-1"
-      displayName: "critical-data-dr-phx"
-      xrrKmsKeyId:
-        value: "ocid1.key.oc1..phx-example"
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the block volume with the resolved compartment OCID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `volume_id` | `string` | OCID of the created block volume |
+These are the most important decisions when configuring a block volume. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Performance tier** -- Set `vpusPerGb` to control IOPS and throughput. `0` = Lower Cost (2 IOPS/GB), `10` = Balanced (60 IOPS/GB, the OCI default), `20` = Higher Performance (75 IOPS/GB), `30-120` = Ultra High Performance (in increments of 10). Higher tiers cost proportionally more. Use Balanced for general workloads; Higher Performance or Ultra High for databases and latency-sensitive applications.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciKmsKey](/docs/catalog/oci/kms-key) — provides encryption keys referenced by `kmsKeyId`, `xrcKmsKeyId`, and replica `xrrKmsKeyId`
-- [OciComputeInstance](/docs/catalog/oci/compute-instance) — attaches block volumes for persistent storage
-- [OciKmsVault](/docs/catalog/oci/kms-vault) — contains the KMS keys used for volume encryption
+**Autotune policies** -- Add entries to `autotunePolicies` for automatic performance adjustment. `detached_volume` drops VPUs to 0 (Lower Cost) when the volume is detached and restores the original tier on reattach -- saves cost on infrequently used volumes. `performance_based` dynamically adjusts VPUs up to `maxVpusPerGb` based on workload demand.
+
+**Size** -- Set `sizeInGbs` between 50 and 32768 (50 GB to 32 TB). Must be specified explicitly to avoid OCI's 1 TB default. Size can be increased after creation but not decreased.
+
+**Cross-region replicas** -- Add entries to `blockVolumeReplicas` for asynchronous cross-region replication. Each replica is placed in a target availability domain (can be in a different region) and optionally encrypted with a region-specific KMS key. Used for disaster recovery.
+
+**Backup policy** -- Set `backupPolicyId` to an Oracle-defined policy (Gold = daily + weekly + monthly, Silver = weekly + monthly, Bronze = monthly) or a custom policy for scheduled backups. The policy assignment is created as a separate sub-resource.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `volume_id` | OCID of the block volume | Compute instance volume attachments, volume group membership |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Balanced with backup** -- A 100 GB Balanced-tier volume with a backup policy and detach-based autotune. Cost-effective for general workloads with automated protection. Start from the **Balanced with Backup** preset.
+
+**High-performance encrypted** -- A 200 GB Higher Performance volume with customer-managed KMS encryption, performance-based autotune (up to 40 VPUs/GB), and a cross-region replica for disaster recovery. Designed for database and latency-sensitive workloads. Start from the **High-Performance Encrypted** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this block volume

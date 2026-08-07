@@ -8,39 +8,55 @@ componentName: "awshttpapidomain"
 
 # AWS HTTP API Domain
 
-Deploys an API Gateway v2 custom domain name with its API mappings -- binding an owned domain (e.g. `api.example.com`) to an ACM certificate and publishing one or more HTTP APIs under it, optionally namespaced by path keys.
+Deploys an API Gateway v2 custom domain name — the production front door for HTTP APIs ([AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway)). It binds an owned domain (e.g. `api.example.com`) to an ACM certificate ([AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert)) and maps one or more APIs onto the domain through API mappings. The domain is deliberately its own resource: it outlives any one API, many APIs compose onto it under distinct path keys ("orders", "billing"), and the certificate rotates on its own lifecycle. DNS is composed, not embedded — the domain exports `target_domain_name` and `hosted_zone_id`, and an [AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record) alias points your name at them.
 
 ## What Gets Created
 
-When you deploy an AwsHttpApiDomain resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Custom domain name** -- an API Gateway v2 domain with your ACM certificate, REGIONAL endpoint, TLS 1.2 policy, and optional mutual TLS
-- **API mappings** -- one mapping per entry, binding an API's stage under an optional path key (empty key = the domain root)
+- **API Gateway v2 Custom Domain** -- the REGIONAL endpoint with the TLS_1_2 security policy (v2 domains support only these, so the modules set both)
+- **Certificate Binding** -- TLS termination with the referenced ACM certificate (same region, covering the domain name)
+- **Mutual TLS Configuration** -- the S3-hosted truststore requiring client certificates, when configured
+- **API Mappings** -- one binding per row, each serving an API's stage at the root or under a path key
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-DNS is composed downstream: the exported `target_domain_name` / `hosted_zone_id` feed a Route 53 alias record (`AwsRoute53DnsRecord`).
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **An ACM certificate** in the same region covering the domain name (exact or wildcard match) -- compose with `AwsCertManagerCert`
-- **An HTTP API** to map -- compose with `AwsHttpApiGateway`
-- (Optional) **A Route 53 zone** to publish the alias record
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Certificate first** -- deploy the [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) (in the same region, covering the domain) before the domain and reference its `cert_arn` output.
+- **APIs to map** -- the [AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway) resources whose `api_id` outputs the mappings reference.
 
-## Quick Start
+### AWS Account
 
-Create a file `domain.yaml`:
+- **A validated certificate** -- an unvalidated ACM certificate cannot bind; DNS-validated certificates in the same environment are the composed path.
+- **For mTLS** -- a versioned S3 bucket (same region) holding the PEM truststore bundle, and `disable_execute_api_endpoint` set on the mapped APIs so callers cannot bypass the client-certificate check.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS HTTP API Domain**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single API Domain** preset in the [Presets](#presets) tab to pre-populate the common shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsHttpApiDomain
 metadata:
   name: api-example-com
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   domainName: api.example.com
   certificateArn:
     valueFrom:
       kind: AwsCertManagerCert
-      name: api-example-cert
+      name: api-example-com-cert
       fieldPath: status.outputs.cert_arn
   apiMappings:
     - apiId:
@@ -51,96 +67,73 @@ spec:
       stage: $default
 ```
 
-Deploy:
-
 ```shell
-planton apply -f domain.yaml
+planton apply -f http-api-domain.yaml
 ```
 
-Then create a Route 53 alias record pointing `api.example.com` at the exported `target_domain_name` / `hosted_zone_id`.
+This binds `api.example.com` to its certificate and serves the orders API at the domain root. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region. Must match the certificate's and mapped APIs' region. | Non-empty |
-| `domainName` | `string` | The fully qualified custom domain. Immutable -- changing it replaces the domain. Wildcards (`*.example.com`) allowed. | Lowercase; 1-512 chars |
-| `certificateArn` | `StringValueOrRef` | ACM certificate covering the domain, issued/imported in the same region. Can reference `AwsCertManagerCert` via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ipAddressType` | `string` | AWS default (dualstack) | `"ipv4"` or `"dualstack"` |
-| `mutualTls.truststoreUri` | `string` | — | S3 URI of the PEM CA bundle clients must chain to (e.g. `s3://bucket/truststore.pem`). Bucket must be in the same region. |
-| `mutualTls.truststoreVersion` | `string` | — | S3 object version pin -- makes CA rotation an explicit, auditable change |
-| `apiMappings[].apiId` | `StringValueOrRef` | — | The API to map. Can reference `AwsHttpApiGateway` via `valueFrom`. |
-| `apiMappings[].stage` | `string` | — | The API stage to serve (typically `"$default"`) |
-| `apiMappings[].apiMappingKey` | `string` | `""` (root) | Path key under which the API is served (no slashes). Keys must be unique across mappings; only one API can serve the root. |
-
-## Examples
-
-### Multi-API Domain with Path Keys
+When deploying as part of a multi-resource environment, the certificate and APIs deploy first, then the domain, then the alias record that routes traffic:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiDomain
-metadata:
-  name: api-example-com
+# In an AwsRoute53DnsRecord manifest (an A alias):
 spec:
-  region: us-east-1
-  domainName: api.example.com
-  certificateArn:
-    value: arn:aws:acm:us-east-1:123456789012:certificate/abc-123
-  apiMappings:
-    - apiId:
-        value: a1b2c3d4    # https://api.example.com/
-      stage: $default
-    - apiId:
-        value: e5f6g7h8    # https://api.example.com/orders/...
-      stage: $default
-      apiMappingKey: orders
+  # api.example.com ALIAS -> the domain's API Gateway endpoint
+  aliasTarget:
+    dnsName:
+      valueFrom:
+        kind: AwsHttpApiDomain
+        name: api-example-com
+        fieldPath: status.outputs.target_domain_name
+    hostedZoneId:
+      valueFrom:
+        kind: AwsHttpApiDomain
+        name: api-example-com
+        fieldPath: status.outputs.hosted_zone_id
 ```
 
-### Mutual TLS for Machine-to-Machine APIs
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsHttpApiDomain
-metadata:
-  name: partner-api-domain
-spec:
-  region: us-east-1
-  domainName: partner-api.example.com
-  certificateArn:
-    value: arn:aws:acm:us-east-1:123456789012:certificate/abc-123
-  mutualTls:
-    truststoreUri: s3://example-security/truststore.pem
-    truststoreVersion: 3JpbWFyeSB0cnVzdHN0b3Jl
-  apiMappings:
-    - apiId:
-        value: a1b2c3d4
-      stage: $default
-```
+These are the most important decisions when configuring a custom domain. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-When mTLS is enabled, also set `disableExecuteApiEndpoint: true` on every mapped API -- otherwise callers can bypass mTLS via the default execute-api endpoint.
+**The domain name is the one-way door** -- create-time immutable; changing it replaces the domain, and the DNS alias must re-point at the new target. A wildcard (`*.example.com`) matches all first-level subdomains but requires a certificate covering the wildcard.
 
-## Stack Outputs
+**The certificate contract** -- issued (or imported) in the SAME region as the domain, covering the domain name exactly or by wildcard. Unlike CloudFront-backed REST domains, the certificate lives in the domain's own region — not us-east-1. Swapping certificates rotates in place.
 
-After deployment, the following outputs are available in `status.outputs`:
+**API mappings compose the domain** -- an empty path key serves an API at the root; distinct keys serve others under `https://<domain>/<key>/`. Keys are unique (only one root), single-segment (no slashes), and edit in place as APIs come and go.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `domain_name` | `string` | The custom domain name (the domain's join key) |
-| `domain_name_arn` | `string` | ARN of the domain name resource |
-| `target_domain_name` | `string` | The API Gateway regional domain to alias/CNAME to |
-| `hosted_zone_id` | `string` | Route 53 hosted zone ID of the regional endpoint (the alias target zone) |
+**Mutual TLS is half a lock by itself** -- the S3 truststore requires client certificates at the domain edge, but each mapped API's default execute-api endpoint bypasses it. Disable that endpoint on the mapped APIs whenever mTLS is on.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AwsHttpApiGateway](/docs/catalog/aws/http-api-gateway) — The HTTP APIs mapped onto this domain
-- [AwsCertManagerCert](/docs/catalog/aws/certificate) — The TLS certificate the domain terminates with
-- [AwsRoute53DnsRecord](/docs/catalog/aws/route53-dns-record) — The alias record publishing the domain in DNS
-- [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — The hosted zone carrying the alias record
+### What This Component Consumes
+
+References an [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) (`cert_arn`, required) and [AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway) resources (`api_id`) through its mappings.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `domain_name` | The custom domain name | Join key for downstream automation |
+| `domain_name_arn` | Amazon Resource Name of the domain | IAM policies and tag-based governance |
+| `target_domain_name` | The API Gateway-managed regional domain to target from DNS | AwsRoute53DnsRecord alias target |
+| `hosted_zone_id` | The Route 53 zone of the API Gateway endpoint | AwsRoute53DnsRecord alias target zone |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single API front door** -- one API at the domain root; the everyday production shape. Start from the **Single API Domain** preset.
+
+**Composed multi-API domain with mTLS** -- several teams' APIs under path keys, client certificates required at the edge. Start from the **Multi API mTLS Domain** preset.
+
+## Works With
+
+- [**AWS HTTP API Gateway**](/cloud-catalog/aws-http-api-gateway) -- the APIs mapped onto this domain (references `api_id`)
+- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- TLS termination (references `cert_arn`)
+- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the alias that routes the domain to API Gateway (consumes `target_domain_name` + `hosted_zone_id`)
+- [**AWS HTTP API VPC Link**](/cloud-catalog/aws-http-api-vpc-link) -- lets the mapped APIs reach private backends behind this front door

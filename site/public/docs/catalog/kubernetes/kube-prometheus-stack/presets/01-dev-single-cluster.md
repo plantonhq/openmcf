@@ -5,7 +5,7 @@ type: "preset"
 rank: "01"
 presetSlug: "01-dev-single-cluster"
 componentSlug: "kube-prometheus-stack"
-componentTitle: "Kube Prometheus Stack"
+componentTitle: "kube-prometheus-stack"
 provider: "kubernetes"
 icon: "package"
 order: 1

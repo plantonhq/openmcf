@@ -8,59 +8,60 @@ componentName: "awsplantonrunner"
 
 # AWS Planton Runner
 
-Runs a standing Planton runner appliance inside your AWS network on ECS
-Fargate: an always-on, outbound-only worker that executes deploy
-operations and cloud operations from within the VPC -- the piece that
-makes private endpoints (most notably private Kubernetes cluster APIs)
-deployable and operable.
+Deploys a standing Planton runner appliance inside your AWS VPC -- an always-on, outbound-only worker that receives deploy operations from the control plane and executes them from within the network. It is the piece that makes private endpoints (most notably private EKS cluster APIs) deployable and operable, with subnets, security groups, and the runtime role wired through ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an AwsPlantonRunner resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Secrets Manager secret** — holds the runner's credentials document;
-  the container reads it at start through AWS's native secret injection,
-  so the credentials never appear in the task definition
-- **ECS task execution role** — the setup identity: pulls the runner
-  image, writes logs, and reads exactly the one credentials secret
-- **Runtime IAM role** — the runner's own AWS identity while executing
-  work (skipped when you reference your own via `taskRole`)
-- **CloudWatch log group** — the audit trail of every operation the
-  runner executes, with configurable retention
-- **Security group** — outbound-only, no inbound rules, created in the
-  VPC derived from the referenced subnets
-- **ECS cluster** — a dedicated, per-runner cluster (clusters are free
-  scheduling boundaries; a dedicated one keeps the appliance's blast
-  radius and teardown self-contained)
-- **ECS task definition + Fargate service** — the runner container
-  itself, kept at exactly one copy, restarted automatically on exit
+- **Secrets Manager secret** -- holds the runner's credentials document; the container reads it at start through native secret injection, so the credentials never appear in the task definition
+- **IAM execution role** -- the setup identity: pulls the runner image, writes logs, and reads exactly the one credentials secret
+- **IAM runtime role** -- the runner's own AWS identity while executing work; created permissionless, and only when `taskRole` does not reference an existing role
+- **CloudWatch log group** -- the audit trail of every operation the runner executes, with configurable retention
+- **Security group** -- outbound-only, no inbound rules, created in the VPC derived from the referenced subnets
+- **ECS cluster** -- dedicated to this runner, keeping the appliance's blast radius and teardown self-contained
+- **ECS task definition and Fargate service** -- the runner container itself, kept at exactly one copy and restarted automatically on exit
+- **AWS Tags** -- resource tags derived from the resource's organization, environment, and name
 
-The subnets (and any extra security groups or the runtime role) are
-referenced resources -- the appliance never creates or mutates them.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **A runner registration and its credentials document** — created with
-  `planton runner generate-credentials <runner-name>` and stored as a
-  managed secret the manifest references.
-- **Subnets** (`AwsSubnet`) in the VPC whose private endpoints the runner
-  must reach — private subnets with a NAT route recommended (the runner
-  needs outbound internet for its image and the control plane); public
-  subnets require `assignPublicIp: true`.
+- **AWS Provider Connection** -- the credential used to provision the appliance itself. Required.
+- **Runner registration and credentials** -- create the registration and mint its credentials document with `planton runner generate-credentials <runner-name>`, store the JSON as a managed secret, and reference it as `$secret/<slug>` in the `credentials` field. Plaintext is rejected.
 
-## Quick Start
+### AWS Account
+
+- **Subnets** -- the VPC placement decision. Prefer private subnets with a NAT route (the runner needs outbound internet for its image and the control plane) across two Availability Zones; public subnets work with `assignPublicIp: true`. Reference `AwsSubnet` resources via ValueFromRef or pass literal subnet IDs.
+- **Security groups (optional)** -- only when a private target (a cluster API endpoint, a database) admits traffic by source security group; attach the group that target trusts.
+- **IAM role (optional)** -- a role trusted by `ecs-tasks.amazonaws.com` when the runner needs AWS permissions of its own for keyless cloud access.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Planton Runner**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **private-vpc-worker** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsPlantonRunner
 metadata:
   name: vpc-runner
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-b
+        fieldPath: status.outputs.subnet_id
   credentials: $secret/vpc-runner-credentials
 ```
 
@@ -68,91 +69,78 @@ spec:
 planton apply -f runner.yaml
 ```
 
-## Configuration Reference
+This minimal manifest deploys a pull-based (temporal-mode) worker at the default sizing (0.5 vCPU, 1 GiB) tracking the latest runner release, with a permissionless runtime role and 30-day log retention -- sizing, version pinning, execution mode, and the runtime identity are not configured.
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region; deploy the runner beside the private endpoints it must reach. | Required; non-empty |
-| `subnets` | `(string \| valueFrom)[]` | The subnets the runner's network interfaces are placed in; all must belong to one VPC. Two AZs recommended. | Required |
-| `credentials` | `string` | The runner's credentials document (from `planton runner generate-credentials`), supplied as a managed-secret reference. | Required; secret |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `securityGroups` | `(string \| valueFrom)[]` | `[]` | Extra groups beside the created outbound-only one — attach the group a private target trusts. |
-| `assignPublicIp` | `bool` | `false` | Assign public IPv4 to the runner — required in public subnets without a NAT gateway. |
-| `cpu` | `int32` | `512` | CPU units (1024 = 1 vCPU); one of 256–16384 (Fargate sizes). |
-| `memory` | `int32` | `1024` | Memory in MiB; must form a valid pairing with `cpu` (validated up front). |
-| `runnerVersion` | `string` | `latest` | The runner image tag to run; pin for change control. |
-| `imageRepository` | `string` | `ghcr.io/plantonhq/planton/runner` | Override only for air-gapped/mirrored registries. |
-| `executionMode` | `string` | `temporal` | `temporal` (pull-based deploy worker), `dual` (adds the real-time CloudOps channel via outbound tunnel), or `grpc` (CloudOps only). |
-| `taskRole` | `string \| valueFrom` | created | The runner's runtime IAM role — reference an `AwsIamRole` when the runner needs AWS permissions of its own. |
-| `logRetentionDays` | `int32` | `30` | CloudWatch retention for the runner's operation logs. |
-
-## Examples
-
-### Runner for a private EKS cluster (recommended posture)
+### InfraChart
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsPlantonRunner
-metadata:
-  name: prod-vpc-runner
 spec:
-  region: us-west-2
   subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  credentials: $secret/prod-vpc-runner-credentials
-  cpu: 1024
-  memory: 4096
-  runnerVersion: v0.4.0
-```
-
-The private cluster's API endpoint admits traffic from the runner's
-security group -- reference this runner's `security_group_id` output from
-the cluster's allowed sources.
-
-### Dual-mode runner with its own AWS identity
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsPlantonRunner
-metadata:
-  name: ops-runner
-spec:
-  region: us-west-2
-  subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  credentials: $secret/ops-runner-credentials
-  executionMode: dual
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+  securityGroups:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: eks-api-clients
+        fieldPath: status.outputs.security_group_id
   taskRole:
-    valueFrom: { kind: AwsIamRole, name: ops-runner-runtime, fieldPath: status.outputs.role_arn }
+    valueFrom:
+      kind: AwsIamRole
+      name: runner-runtime
+      fieldPath: status.outputs.role_arn
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the subnets, security groups, and IAM role first, then provisions the runner with the resolved values.
 
-| Output | Description |
-| --- | --- |
-| `service_arn` | The ECS service keeping the runner running |
-| `service_name` | The service's name (metadata.name) |
-| `cluster_arn` | The dedicated ECS cluster's ARN |
-| `task_definition_arn` | The running task-definition revision |
-| `log_group_name` | The CloudWatch log group — the runner's operation audit trail |
-| `security_group_id` | The outbound-only group; private targets reference it to trust the runner |
-| `execution_role_arn` | The setup identity (image pull, logs, secret read) |
-| `task_role_arn` | The runner's runtime identity — grant it permissions for keyless cloud access |
-| `credentials_secret_arn` | The Secrets Manager secret holding the credentials document |
-| `region` | The region the runner was deployed in |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring the runner. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [AwsSubnet](/docs/catalog/aws/subnet) — where the runner's network interfaces live
-- [AwsSecurityGroup](/docs/catalog/aws/security-group) — extra groups a private target trusts
-- [AwsIamRole](/docs/catalog/aws/iam-role) — the runner's runtime identity, composed first-class
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — the private-endpoint cluster the runner typically serves
-- [AwsVpc](/docs/catalog/aws/vpc) — the network the runner is placed into
+- **Subnet placement** -- `subnets` is the whole point of the appliance: whatever those subnets' route tables can reach, the runner can deploy to. All subnets must belong to the same VPC; two Availability Zones let the service reschedule across an AZ event.
+- **Execution mode** -- `executionMode` defaults to `temporal`, a pull-based worker that polls its queue and needs no inbound path at all. `dual` adds the real-time CloudOps channel through an outbound-initiated tunnel (the credentials must carry tunnel material); `grpc` executes no deploy operations and is rarely right for a standing appliance.
+- **Sizing** -- `cpu` and `memory` must form one of the fixed serverless pairings (validated up front; AWS would otherwise reject them only at deploy time). The 512/1024 default handles typical IaC operations; memory pressure shows up as failed operations mid-apply, so size memory up before CPU.
+- **Runner build** -- empty `runnerVersion` tracks the newest release on every task (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
+- **Runtime identity** -- leave `taskRole` empty to get a permissionless role (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference an `AwsIamRole` composed with exactly the permissions keyless cloud access needs.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnets` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `securityGroups` | `status.outputs.security_group_id` |
+| **AwsIamRole** (optional) | `taskRole` | `status.outputs.role_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `service_arn` | The ECS service keeping the runner running | Inspecting the appliance with AWS tooling |
+| `service_name` | The service's name | Console and CLI lookups |
+| `cluster_arn` | The dedicated ECS cluster's ARN | Scoping AWS operations to the appliance |
+| `task_definition_arn` | The running family:revision | Tracking configuration/version rollouts |
+| `log_group_name` | The CloudWatch log group | Tailing the operation audit trail (`aws logs tail <name> --follow`) |
+| `security_group_id` | The outbound-only group's id | Private targets reference it to trust the runner (e.g. an EKS API's allowed sources) |
+| `execution_role_arn` | The setup identity | Auditing image-pull/log/secret access |
+| `task_role_arn` | The runtime identity | Granting the runner AWS permissions for keyless operations |
+| `credentials_secret_arn` | The credentials secret's ARN | Auditing secret access; rotation tooling |
+| `region` | The deployed region | Targeting follow-up AWS operations correctly |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+- **Private VPC worker** -- the standard appliance: a pull-based worker on two private subnets that makes a private-endpoint cluster deployable. Start from the **private-vpc-worker** preset.
+- **Dual-mode operations runner** -- adds the real-time CloudOps channel for live resource browsing through the runner, still outbound-only. Start from the **dual-mode** preset.
+- **High-capacity deploy worker** -- pinned version and larger sizing for heavy Terraform/Pulumi stacks and concurrent operations. Start from the **high-capacity** preset.
+
+## Works With
+
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- where the runner's network interfaces live; the placement that defines what it can reach
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- extra groups a private target trusts, attached beside the created outbound-only group
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the runner's runtime identity, composed first-class with exactly the permissions its workloads need

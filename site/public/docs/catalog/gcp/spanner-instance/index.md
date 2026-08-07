@@ -8,163 +8,118 @@ componentName: "gcpspannerinstance"
 
 # GCP Spanner Instance
 
-Deploys a Google Cloud Spanner instance with configurable compute capacity via fixed nodes, processing units, or managed autoscaling (including asymmetric per-replica scaling for multi-region topologies). Supports PROVISIONED and FREE_INSTANCE types, three editions (STANDARD, ENTERPRISE, ENTERPRISE_PLUS), user labels, and automatic backup scheduling for databases created within the instance.
+Deploys a Cloud Spanner instance with configurable compute capacity (fixed nodes, processing units, or autoscaling), edition selection (Standard, Enterprise, Enterprise Plus), regional or multi-region placement, and automatic backup scheduling. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-When you deploy a GcpSpannerInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Spanner Instance** — a `google_spanner_instance` with the specified configuration, capacity, and edition; the Spanner API (`spanner.googleapis.com`) is enabled automatically
-- **Labels** — your labels merged with Planton's attribution labels (resource kind, name, organization, environment)
+- **Spanner Instance** -- a managed instance in the specified GCP project with the chosen instance configuration (regional or multi-region), edition, and compute capacity allocation
+- **Compute Capacity** -- allocated via one of three modes: fixed nodes (each node = ~10,000 QPS reads), processing units (finer-grained, multiples of 100), or autoscaling with CPU and storage utilization targets
+- **Automatic Backup Scheduling** -- created only when `defaultBackupScheduleType` is set to `AUTOMATIC`; GCP creates backup schedules for new databases in this instance
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** (omit `projectId` to use the provider's default project)
-- **Billing account** attached to the project (required even for FREE_INSTANCE — limited to one per billing account)
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `spanner-instance.yaml`:
+### GCP Project
+
+- **A GCP project** where the Spanner instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Cloud Spanner API** (`spanner.googleapis.com`) enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Spanner Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Free Instance** preset in the [Presets](#presets) tab for a zero-cost development instance, or the **Regional Production** preset for production workloads.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerInstance
 metadata:
-  name: orders-spanner
+  name: app-spanner
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
+  instanceName: app-spanner-prod
   config: regional-us-central1
-  displayName: Orders Spanner
+  displayName: App Spanner Production
   numNodes: 1
+  edition: ENTERPRISE
 ```
-
-Deploy:
 
 ```shell
 planton apply -f spanner-instance.yaml
 ```
 
-This creates a single-node Spanner instance in `us-central1`, named after `metadata.name`, in the provider's default project.
+This creates a 1-node Enterprise Spanner instance in `us-central1` with no automatic backup scheduling. Databases must be created separately using GcpSpannerDatabase.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `config` | `string` | Instance configuration defining replication topology (e.g., `regional-us-central1`, `nam6`). Immutable. | Required |
-| `displayName` | `string` | Human-readable display name. | 4-30 chars |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default | GCP project ID. Can reference a GcpProject resource via `valueFrom`. |
-| `instanceName` | `string` | `metadata.name` | Unique instance name. Immutable. 6-30 chars, pattern `^[a-z][-a-z0-9]*[a-z0-9]$`. |
-| `labels` | `map<string,string>` | — | User labels for cost attribution; merged with Planton's platform labels. |
-| `numNodes` | `int32` | — | Node count (1 node = ~10,000 QPS reads, 10 TB storage). Mutually exclusive with the other capacity fields. Mutable, online. |
-| `processingUnits` | `int32` | — | Fine-grained capacity (1 node = 1000 PUs; multiples of 100 below 1000). Mutually exclusive. Mutable, online. |
-| `autoscalingConfig` | `object` | — | Managed autoscaling within bounds. Mutually exclusive with fixed capacity. |
-| `autoscalingConfig.autoscalingLimits` | `object` | required | Min/max in ONE unit: `minNodes`+`maxNodes` or `minProcessingUnits`+`maxProcessingUnits`. |
-| `autoscalingConfig.autoscalingTargets` | `object` | GCP defaults | `highPriorityCpuUtilizationPercent` (65 regional / 45 multi-region guidance) and `storageUtilizationPercent` (80). |
-| `autoscalingConfig.asymmetricAutoscalingOptions[]` | `list` | — | Per-replica node bounds for multi-region instances: `replicaLocation` + `overrides.minNodes`/`maxNodes`. Requires ENTERPRISE+. |
-| `instanceType` | `string` | `PROVISIONED` | `PROVISIONED` or `FREE_INSTANCE`. Free instances cannot set capacity, edition, or AUTOMATIC backups. |
-| `edition` | `string` | GCP default | `STANDARD`, `ENTERPRISE`, or `ENTERPRISE_PLUS`. Upgrades apply in place. |
-| `defaultBackupScheduleType` | `string` | `NONE` | `NONE` or `AUTOMATIC` — whether new databases get a default backup schedule. |
-| `forceDestroy` | `bool` | `false` | When `true`, destroy deletes all backups on the instance first; when `false`, destroy fails while any backup exists. |
-
-## Examples
-
-### Free Instance for Development
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a GCP project deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerInstance
-metadata:
-  name: dev-spanner
-spec:
-  config: regional-us-central1
-  displayName: Dev Spanner
-  instanceType: FREE_INSTANCE
-```
-
-### Regional Production with Autoscaling
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerInstance
-metadata:
-  name: prod-spanner
-spec:
-  config: regional-us-central1
-  displayName: Production Spanner
-  edition: ENTERPRISE
-  defaultBackupScheduleType: AUTOMATIC
-  autoscalingConfig:
-    autoscalingLimits:
-      minNodes: 1
-      maxNodes: 5
-    autoscalingTargets:
-      highPriorityCpuUtilizationPercent: 65
-      storageUtilizationPercent: 80
-```
-
-### Multi-Region with Asymmetric Read-Region Scaling
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerInstance
-metadata:
-  name: global-spanner
-spec:
-  config: nam6
-  displayName: Global Spanner
-  edition: ENTERPRISE_PLUS
-  defaultBackupScheduleType: AUTOMATIC
-  autoscalingConfig:
-    autoscalingLimits:
-      minNodes: 2
-      maxNodes: 8
-    asymmetricAutoscalingOptions:
-      - replicaLocation: us-east1
-        overrides:
-          minNodes: 3
-          maxNodes: 12
-```
-
-### Using Foreign Key References
-
-Reference a GcpProject managed by Planton instead of hardcoding the project ID:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerInstance
-metadata:
-  name: ref-spanner
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
+      name: production-project
       fieldPath: status.outputs.project_id
-  config: regional-us-central1
-  displayName: Referenced Spanner
-  numNodes: 1
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the Spanner instance with the resolved project ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | `string` | Fully qualified instance ID (`projects/{project}/instances/{name}`) |
-| `instance_name` | `string` | Short instance name, referenced by GcpSpannerDatabase and GcpSpannerBackupSchedule |
-| `state` | `string` | Instance state: `CREATING` or `READY` |
-| `config` | `string` | Instance configuration (geographic topology) |
+These are the most important decisions when configuring a Spanner instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Instance configuration** -- The `config` field determines geographic placement and replication topology. Regional configs (e.g., `regional-us-central1`) provide lower latency and cost. Multi-region configs (e.g., `nam-eur-asia1`, `nam6`) provide higher availability across geographic failures. Immutable after creation.
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the project where the Spanner instance is created
-- [GcpSpannerDatabase](/docs/catalog/gcp/spanner-database) — creates databases within this instance (references `instance_name`)
-- [GcpSpannerBackupSchedule](/docs/catalog/gcp/spanner-backup-schedule) — cron-driven full/incremental backups for a database on this instance
+**Capacity mode** -- Three mutually exclusive options: `numNodes` for coarse-grained allocation (1 node = ~10,000 QPS reads), `processingUnits` for finer control (multiples of 100 below 1000, multiples of 1000 above), or `autoscalingConfig` with min/max bounds and CPU/storage utilization targets. FREE_INSTANCE instances must not set any capacity fields.
+
+**Edition** -- `STANDARD` is cost-optimized for most workloads. `ENTERPRISE` enables granular instance sizing and advanced features. `ENTERPRISE_PLUS` provides a 99.999% multi-region SLA and advanced compliance controls. Cannot be set for FREE_INSTANCE.
+
+**Instance type** -- `PROVISIONED` (default) requires explicit capacity. `FREE_INSTANCE` provides a zero-cost instance with ~10 GB storage, limited to one per billing account. Free instances cannot configure edition, capacity, or automatic backups.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | Fully qualified instance ID (`projects/{p}/instances/{i}`) | IAM bindings, API calls, monitoring dashboards |
+| `instance_name` | Short instance name | GcpSpannerDatabase and GcpSpannerBackupSchedule `instance` fields, client library connections |
+| `state` | Instance state (`CREATING` or `READY`) | Deployment validation, health checks |
+| `config` | The instance configuration the instance was created with (e.g. `regional-us-central1`, `nam6`) | Choosing the matching CMEK key shape (regional vs one-key-per-region) for databases and backup schedules |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Free instance** -- Zero-cost instance for development and testing with ~10 GB storage and limited throughput. One per billing account. No edition, capacity, or automatic backup configuration. Start from the **Free Instance** preset.
+
+**Regional production** -- Single-node Enterprise instance with automatic backup scheduling. Suitable for production workloads with predictable capacity in a single region. Start from the **Regional Production** preset.
+
+**Autoscaling production** -- Enterprise instance with autoscaling between 1 and 3 nodes, targeting 65% CPU and 80% storage utilization. Ideal for workloads with variable or unpredictable traffic patterns. Start from the **Autoscaling Production** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the Spanner instance is created

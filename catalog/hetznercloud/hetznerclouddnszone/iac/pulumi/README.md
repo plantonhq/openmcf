@@ -35,7 +35,7 @@ Pulumi (Go) IaC module for provisioning Hetzner Cloud DNS zones with record sets
 bazel build //catalog/hetznercloud/hetznerclouddnszone/iac/pulumi:pulumi
 
 # Test with local manifest
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 pulumi up
 ```
 
@@ -43,7 +43,7 @@ pulumi up
 
 ```bash
 # Run locally against the hack manifest
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 export HCLOUD_TOKEN="your-api-token"
 pulumi up --stack dev
 ```

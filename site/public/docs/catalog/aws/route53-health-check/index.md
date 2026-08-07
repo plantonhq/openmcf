@@ -8,157 +8,113 @@ componentName: "awsroute53healthcheck"
 
 # AWS Route53 Health Check
 
-Deploys an Amazon Route 53 health check — the availability probe DNS records reference to keep unhealthy endpoints out of DNS answers. Supports all eight check types: internet-facing endpoint probes (HTTP, HTTPS, string-match variants, TCP), calculated aggregation over child checks, CloudWatch alarm mirroring for private resources, and Application Recovery Controller routing-control mirroring.
+Deploys a Route 53 health check — the availability signal DNS records ([AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record)) reference via `health_check_id` to keep unhealthy endpoints out of DNS answers. Health checks power failover routing (primary/secondary), health-aware weighted routing, and multivalue answers. The `check_type` selects one of four monitoring models: endpoint probing from Route 53's global checker fleet (HTTP, HTTPS, body-match variants, TCP), CALCULATED aggregation of child checks into service-level health, CLOUDWATCH_METRIC mirroring of an alarm (the way to health-check private resources), and RECOVERY_CONTROL mirroring of an Application Recovery Controller switch for DR runbooks.
 
 ## What Gets Created
 
-When you deploy an AwsRoute53HealthCheck resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Route 53 Health Check** — the health check with the chosen monitoring model, probe tuning (interval, threshold, checker regions, latency measurement, SNI), state shaping (inversion, administrative disable), and Planton resource tags (the `Name` tag is the console display name)
+- **Route 53 Health Check** -- the monitoring model chosen by `check_type` (create-time immutable), with its per-model surface: probe target, child set, mirrored alarm, or routing control
+- **Probe Configuration** -- interval (10s/30s, create-time immutable), failure threshold, optional latency graphing (create-time immutable), SNI, and an optional checker-region subset (min 3)
+- **Behavior Dials** -- inversion and the administrative disable switch (the maintenance lever), both editable in place
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A publicly reachable endpoint** for the probing check types (the checker fleet probes from the internet)
-- **A CloudWatch alarm** for `CLOUDWATCH_METRIC` checks (the private-resource pattern)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Model prerequisites** -- CALCULATED checks reference other [AwsRoute53HealthCheck](/cloud-catalog/aws-route53-health-check) resources (deploy the children first); CLOUDWATCH_METRIC checks name an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (or composite) by its `alarm_name` output.
 
-Create a file `health-check.yaml`:
+### AWS Account
+
+- **Endpoint checks probe from the public internet** -- the target must be reachable by Route 53's checker fleet (security groups / firewalls admitting the checker ranges). For private resources, use the CLOUDWATCH_METRIC model instead.
+- **Recovery-control checks** need an Application Recovery Controller cluster, control panel, and routing control already configured.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Route53 Health Check**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the monitoring model you pick on the first step shapes the rest of the flow. Start from the **HTTPS Endpoint** preset in the [Presets](#presets) tab for the production web shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsRoute53HealthCheck
 metadata:
-  name: app-https-check
+  name: orders-api-health
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   checkType: HTTPS
-  fqdn: app.example.com
+  fqdn: api.example.com
   resourcePath: /healthz
+  failureThreshold: 3
+  measureLatency: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f health-check.yaml
 ```
 
-## Configuration Reference
+This probes `https://api.example.com/healthz` from the global checker fleet — about 90 seconds from outage to DNS reaction at the default cadence. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | `string` | The AWS region used for provider API calls (health checks are global objects). |
-| `checkType` | `string` | The monitoring model: `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC`, or `RECOVERY_CONTROL`. Create-time immutable. |
-
-### Endpoint Check Fields (HTTP / HTTPS / *_STR_MATCH / TCP)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `fqdn` | `string` | — | Domain name to probe (also the Host header when `ipAddress` is set). One of `fqdn`/`ipAddress` required. |
-| `ipAddress` | `string` | — | IPv4/IPv6 address to probe. |
-| `port` | `int32` | 80 / 443 | Endpoint port. Required for `TCP` (no default). |
-| `resourcePath` | `string` | `/` | Path to probe (HTTP-shaped types only). |
-| `searchString` | `string` | — | Body substring that must appear. Required for, and only valid with, the `*_STR_MATCH` types. |
-| `requestInterval` | `int32` | `30` | Seconds between probes: `10` or `30`. Create-time immutable. |
-| `failureThreshold` | `int32` | `3` | Consecutive results (1–10) required to flip the health state. |
-| `measureLatency` | `bool` | `false` | Latency graphs in the console. Create-time immutable. |
-| `enableSni` | `bool` | AWS default | Send SNI in the TLS handshake (HTTPS types). |
-| `regions` | `list(string)` | all | Checker regions to probe from (minimum 3 when set). |
-
-### Aggregation, Mirroring, and State Shaping
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `childHealthChecks` | `list(string \| ref)` | Child check IDs for `CALCULATED` (max 256; references other AwsRoute53HealthCheck resources). |
-| `childHealthThreshold` | `int32` | Minimum healthy children (defaults to all when omitted). |
-| `cloudwatchAlarmName` / `cloudwatchAlarmRegion` | `string` | The alarm a `CLOUDWATCH_METRIC` check mirrors. |
-| `insufficientDataHealthStatus` | `string` | `Healthy`, `Unhealthy`, or `LastKnownStatus` while the alarm lacks data. |
-| `routingControlArn` | `string` | The ARC routing control a `RECOVERY_CONTROL` check mirrors. Create-time immutable. |
-| `invertHealthcheck` | `bool` | Report the opposite of the underlying result. |
-| `disabled` | `bool` | Stop probing; the check reports healthy (the maintenance-window switch). |
-
-## Examples
-
-### Failover pair's primary probe
+When deploying as part of a multi-resource environment, the health check deploys before the DNS records that gate on it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsRoute53HealthCheck
-metadata:
-  name: primary-region-check
+# In an AwsRoute53DnsRecord with failover routing:
 spec:
-  region: us-east-1
-  checkType: HTTPS
-  fqdn: api.example.com
-  resourcePath: /healthz
-  requestInterval: 10
-  failureThreshold: 2
+  healthCheckId:
+    valueFrom:
+      kind: AwsRoute53HealthCheck
+      name: orders-api-health
+      fieldPath: status.outputs.health_check_id
 ```
 
-### String-match content check
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsRoute53HealthCheck
-metadata:
-  name: status-content-check
-spec:
-  region: us-east-1
-  checkType: HTTPS_STR_MATCH
-  fqdn: status.example.com
-  resourcePath: /status
-  searchString: '"healthy":true'
-```
+These are the most important decisions when configuring a health check. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Private resource via CloudWatch alarm
+**The monitoring model is the one-way door** -- `check_type`, the probe interval, latency graphing, and the routing-control ARN are all create-time immutable: changing any of them replaces the check (new ID), and every referencing DNS record must re-point. Decide the model first; everything else in the wizard derives from it.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsRoute53HealthCheck
-metadata:
-  name: internal-api-check
-spec:
-  region: us-west-2
-  checkType: CLOUDWATCH_METRIC
-  cloudwatchAlarmName: internal-api-5xx-rate
-  cloudwatchAlarmRegion: us-west-2
-  insufficientDataHealthStatus: LastKnownStatus
-```
+**Detection speed is interval × threshold** -- the default 30s × 3 reacts in ~90 seconds; fast checks (10s) with threshold 2 cut that to ~20 seconds at higher cost. The threshold updates in place — tune it freely.
 
-### Service-level calculated check
+**Private resources use the CloudWatch model** -- the checker fleet cannot reach a private ALB or internal API. A CloudWatch alarm watches from inside (by metric or heartbeat), and the health check mirrors its state into DNS — also the way to gate DNS on application-level signals like checkout success rate.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsRoute53HealthCheck
-metadata:
-  name: service-health
-spec:
-  region: us-west-2
-  checkType: CALCULATED
-  childHealthChecks:
-    - valueFrom:
-        kind: AwsRoute53HealthCheck
-        name: web-check
-        fieldPath: status.outputs.health_check_id
-    - valueFrom:
-        kind: AwsRoute53HealthCheck
-        name: api-check
-        fieldPath: status.outputs.health_check_id
-  childHealthThreshold: 1
-```
+**The disable switch is the maintenance lever** -- `disabled` stops evaluation and reports always-healthy so planned work never triggers failover; it flips in place. Re-enabling is the runbook's last step — a forgotten disabled check permanently defeats the failover it gates.
 
-## Stack Outputs
+## Outputs and Dependencies
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `health_check_id` | `string` | The health check ID — referenced by DNS records (`healthCheckId`) and calculated parents. |
-| `health_check_arn` | `string` | The health check ARN — for IAM policies and the CloudWatch `HealthCheckStatus` metric dimension. |
+### What This Component Consumes
 
-## Related Components
+A CALCULATED check references other [AwsRoute53HealthCheck](/cloud-catalog/aws-route53-health-check) resources (`health_check_id`) as its children. A CLOUDWATCH_METRIC check names an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (or [AwsCloudwatchCompositeAlarm](/cloud-catalog/aws-cloudwatch-composite-alarm)) by alarm name and region.
 
-- [AwsRoute53DnsRecord](/docs/catalog/aws/route53-dns-record) — references the check to gate failover, weighted, and multivalue answers
-- [AwsRoute53Zone](/docs/catalog/aws/route53-zone) — the hosted zone the gated records live in
-- [AwsCloudwatchAlarm](/docs/catalog/aws/cloudwatch-alarm) — the alarm a CLOUDWATCH_METRIC check mirrors
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `health_check_id` | The health check's UUID | An AwsRoute53DnsRecord's `health_check_id` (failover / weighted / multivalue routing); a CALCULATED parent's `child_health_checks` |
+| `health_check_arn` | Amazon Resource Name of the check | IAM policies; the CloudWatch `HealthCheckStatus` metric dimension |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**HTTPS endpoint probe** -- the production web default: probe a real health endpoint over TLS. Start from the **HTTPS Endpoint** preset.
+
+**Alarm-backed private health** -- a CLOUDWATCH_METRIC check mirroring an alarm on a private service, gating DNS failover on internal telemetry. Start from the **CloudWatch Alarm** preset.
+
+## Works With
+
+- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the records whose failover / weighted / multivalue routing gates on this check's `health_check_id`
+- [**AWS Route53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone those records live in
+- [**AWS CloudWatch Alarm**](/cloud-catalog/aws-cloudwatch-alarm) -- the alarm a CLOUDWATCH_METRIC check mirrors
+- [**AWS CloudWatch Composite Alarm**](/cloud-catalog/aws-cloudwatch-composite-alarm) -- a whole-service verdict a CLOUDWATCH_METRIC check can mirror into DNS

@@ -8,165 +8,90 @@ componentName: "openstackimage"
 
 # OpenStack Image
 
-Deploys an OpenStack Glance image from a URL or as a metadata entry, with configurable container and disk formats, visibility controls, minimum hardware requirements, and optional deletion protection.
+Deploys a Glance image on OpenStack by importing a virtual disk from a URL or registering image metadata. Images serve as boot templates for compute instances and bootable volumes, and are referenced by Magnum cluster templates for container cluster node provisioning. Supports configurable container and disk formats, minimum hardware requirements, visibility controls, and tagging.
 
 ## What Gets Created
 
-When you deploy an OpenStackImage resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Glance Image** — an `openstack_images_image_v2` resource registered in the OpenStack Image (Glance) service. When `imageSourceUrl` is provided, Glance downloads the image data from the specified URL. The image name is derived from `metadata.name`. Visibility, deletion protection, and minimum hardware requirements are applied as configured.
+- **Glance Image** -- a virtual disk image registered in the OpenStack Image service with the specified container format, disk format, and optional source URL for data import
+- **Image Data** -- created only when `imageSourceUrl` is provided; Glance downloads the image data from the URL and stores it in its configured backend (Ceph, Swift, or filesystem)
+- **OpenStack Tags** -- user-defined tags applied to the image for filtering in Glance API queries and the Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **A publicly accessible URL** for the image data if using `imageSourceUrl` (Glance must be able to reach it)
-- **Admin role** if setting `visibility` to `public`
+### OpenStack Account
 
-## Quick Start
+- **An HTTP/HTTPS URL** (optional) -- if importing an image from a URL, the Glance service must be able to reach the download endpoint. If omitted, the image is created as a metadata entry only and the data must be uploaded separately.
+- **Sufficient Glance storage** -- the backend storage (Ceph, Swift, or filesystem) must have capacity for the image file. Cloud images range from 200 MB to several GB depending on the distribution and pre-installed software.
 
-Create a file `image.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Image**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Cloud Image from URL** preset in the [Presets](#presets) tab to import a standard Linux cloud image.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackImage
 metadata:
-  name: ubuntu-2204
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenstackImage.ubuntu-2204
+  name: ubuntu-22-04
+  org: acme-corp
+  env: prod
 spec:
   containerFormat: bare
   diskFormat: qcow2
   imageSourceUrl: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f image.yaml
 ```
 
-This uploads an Ubuntu 22.04 cloud image to Glance with `bare` container format and `qcow2` disk format. The image is private by default.
+This imports an Ubuntu 22.04 cloud image in qcow2 format with private visibility. No minimum disk or RAM requirements are set, and the image is not protected from deletion.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Glance image. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `containerFormat` | `string` | Container or envelope format of the image. ForceNew: cannot be changed after creation. | One of: `bare`, `ovf`, `aki`, `ari`, `ami`, `ova`, `docker`, `compressed` |
-| `diskFormat` | `string` | Format of the disk image data. ForceNew: cannot be changed after creation. | One of: `raw`, `vhd`, `vhdx`, `vmdk`, `vdi`, `iso`, `ploop`, `qcow2`, `aki`, `ari`, `ami` |
+**Container and disk format** -- Most Linux cloud images use `containerFormat: bare` (no envelope) and `diskFormat: qcow2` (QEMU copy-on-write). Use `raw` for maximum I/O performance at the cost of larger file size. Use `vmdk` for VMware-originated images. Both fields are immutable after creation.
 
-### Optional Fields
+**Image source** -- Set `imageSourceUrl` to an HTTP/HTTPS URL for pipeline-based imports. Glance downloads the image asynchronously. If omitted, the image is created as a metadata-only entry -- useful when uploading via the Glance CLI or when the image data already exists in the backend.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `imageSourceUrl` | `string` | — | HTTP or HTTPS URL from which Glance downloads the image data. ForceNew: cannot be changed after creation. If omitted, the image is created as a metadata entry only and the data must be uploaded separately (e.g., via the `glance` CLI). |
-| `minDiskGb` | `int` | `0` | Minimum disk size in GB required to boot this image. Zero means no minimum. |
-| `minRamMb` | `int` | `0` | Minimum RAM in MB required to boot this image. Zero means no minimum. |
-| `protected` | `bool` | `false` | Prevents the image from being deleted. Set to `true` for production images that should not be accidentally removed. |
-| `hidden` | `bool` | `false` | Hides the image from default listing queries. Hidden images are still accessible by UUID. |
-| `tags` | `string[]` | `[]` | Tags for filtering images in Glance. Example: `["ubuntu", "22.04", "cloud-init"]`. |
-| `visibility` | `string` | `private` | Controls who can see and use this image. `private`: only the owner project. `shared`: owner can share with specific projects. `community`: visible to all but not in default listings. `public`: visible and usable by all (requires admin). |
-| `region` | `string` | provider default | Overrides the region from the provider config for this image. |
+**Minimum requirements** -- Set `minDiskGb` and `minRamMb` to prevent users from booting the image on undersized flavors. Zero means no minimum. Useful for images with known hardware requirements (e.g., databases, GPU workloads).
 
-## Examples
+**Visibility and protection** -- Default `visibility` is `private` (only the owning project). Change to `shared` to grant access to specific projects, or `public` for all projects (requires admin). Set `protected: true` to prevent accidental deletion of production images.
 
-### Cloud Image from URL
+## Outputs and Dependencies
 
-Upload an Ubuntu 22.04 cloud image from the official Canonical repository:
+### What This Component Consumes
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackImage
-metadata:
-  name: ubuntu-2204
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenstackImage.ubuntu-2204
-spec:
-  containerFormat: bare
-  diskFormat: qcow2
-  imageSourceUrl: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-  tags:
-    - ubuntu
-    - "22.04"
-    - cloud-init
-```
+This component has no foreign key dependencies.
 
-### Protected Golden Image with Hardware Requirements
+### What This Component Provides
 
-A production golden image with deletion protection, minimum hardware requirements, and shared visibility so it can be distributed to specific projects:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackImage
-metadata:
-  name: golden-rhel9
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenstackImage.golden-rhel9
-spec:
-  containerFormat: bare
-  diskFormat: qcow2
-  imageSourceUrl: "https://images.internal.example.com/rhel9-golden-20250101.qcow2"
-  minDiskGb: 20
-  minRamMb: 2048
-  protected: true
-  visibility: shared
-  tags:
-    - rhel
-    - "9"
-    - golden
-    - hardened
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `image_id` | UUID of the image in Glance | OpenStackInstance `imageName`, container cluster templates, bootable volume creation |
+| `name` | Image name | Labels, audit trails |
+| `checksum` | MD5 checksum of the image data | Image integrity verification |
+| `size_bytes` | Size of the image data in bytes | Capacity planning, download estimation |
+| `status` | Lifecycle state (active, queued, saving) | Health checks, provisioning validation |
+| `file` | URL path to image data in Glance | Direct Glance API access |
+| `region` | OpenStack region of the image | Region-aware downstream resources |
 
-### ISO Image for Installation Media
+## Common Patterns
 
-Register an ISO image for use as installation media, hidden from default listings:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackImage
-metadata:
-  name: debian-12-netinst
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenstackImage.debian-12-netinst
-spec:
-  containerFormat: bare
-  diskFormat: iso
-  imageSourceUrl: "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.9.0-amd64-netinst.iso"
-  hidden: true
-  tags:
-    - debian
-    - "12"
-    - installer
-```
+**Cloud image from URL** -- Imports a standard Linux cloud image (Ubuntu, CentOS, Fedora CoreOS) from an HTTP URL in bare/qcow2 format with private visibility. Covers the most common image import workflow. Start from the **Cloud Image from URL** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `image_id` | `string` | UUID of the created Glance image. Used as a foreign key by OpenStackInstance and OpenStackVolume. |
-| `name` | `string` | Name of the image, derived from `metadata.name`. |
-| `checksum` | `string` | MD5 checksum of the image data, computed by Glance after upload. |
-| `size_bytes` | `int64` | Size of the image data in bytes, computed by Glance after upload. |
-| `status` | `string` | Current lifecycle state of the image (e.g., `active`, `queued`, `saving`). |
-| `file` | `string` | URL path to the image data in the Glance store (e.g., `/v2/images/<uuid>/file`). |
-| `region` | `string` | OpenStack region where the image was created. |
-
-## Related Components
-
-- [OpenStackInstance](/docs/catalog/openstack/instance) — boots compute instances from this image via `imageName` or `imageId`
-- [OpenStackVolume](/docs/catalog/openstack/volume) — creates bootable Cinder volumes from this image
+This component operates independently and does not reference other deployment components.

@@ -44,13 +44,13 @@ Each backend (default and per-path) sets exactly one of port number or port name
 
 ```bash
 # Preview changes
-make preview manifest=../../hack/manifest.yaml
+make preview manifest=../../e2e/manifest.yaml
 
 # Deploy
-make up manifest=../../hack/manifest.yaml
+make up manifest=../../e2e/manifest.yaml
 
 # Destroy
-make down manifest=../../hack/manifest.yaml
+make down manifest=../../e2e/manifest.yaml
 ```
 
 ## Debug

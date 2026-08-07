@@ -8,133 +8,81 @@ componentName: "scalewayvpc"
 
 # Scaleway VPC
 
-Deploys a Scaleway VPC (Virtual Private Cloud) — a regional, logical container that groups Private Networks. The VPC itself does not define IP ranges or CIDR blocks; IP planning happens at the Private Network level. Planton provisions the VPC with optional inter-Private-Network routing and custom routes propagation, and tags it with standard resource metadata.
+Deploys a regional VPC on Scaleway that serves as a logical container for grouping Private Networks. Configurable inter-network routing enables communication between Private Networks within the same VPC, supporting multi-tier architectures where workloads in separate networks need connectivity. Supports ValueFromRef for dependency wiring in InfraCharts.
 
 ## What Gets Created
 
-When you deploy a ScalewayVpc resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VPC** — a `network.Vpc` resource in the specified Scaleway region, named after `metadata.name`, with standard Planton tags (`resource`, `resource-name`, `resource-kind`, plus optional `organization`, `environment`, and `resource-id` tags derived from metadata)
+- **VPC** -- a regional `network.Vpc` in the specified Scaleway region with the configured routing mode and custom routes propagation settings
+- **Scaleway Tags** -- resource metadata tags (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **A target region** — one of the Scaleway regions (e.g., `fr-par`, `nl-ams`, `pl-waw`)
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway account** with an active project and API access key pair (Access Key + Secret Key). The IaC module authenticates through the Scaleway provider configuration.
+- **Choose a region** -- VPCs are regional resources. All Private Networks attached to this VPC must reside in the same region. Available regions include `fr-par` (Paris), `nl-ams` (Amsterdam), and `pl-waw` (Warsaw).
 
-Create a file `vpc.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway VPC**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a basic VPC with routing disabled.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayVpc
 metadata:
-  name: my-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayVpc.my-vpc
+  name: main-vpc
+  org: acme-corp
+  env: prod
 spec:
   region: fr-par
 ```
-
-Deploy:
 
 ```shell
-planton apply -f vpc.yaml
+planton apply -f scaleway-vpc.yaml
 ```
 
-This creates a VPC in `fr-par` with routing disabled. The VPC ID is exported as a stack output for use by downstream resources such as ScalewayPrivateNetwork.
+This creates a VPC in the Paris region with routing disabled and no custom routes propagation. Private Networks can be added to this VPC using ScalewayPrivateNetwork. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Scaleway region where the VPC will be created (e.g., `"fr-par"`, `"nl-ams"`, `"pl-waw"`). Cannot be changed after creation. | Required |
+**Region** -- The `region` field determines where the VPC is created (`fr-par`, `nl-ams`, or `pl-waw`). All Private Networks attached to this VPC must be in the same region. Cannot be changed after creation.
 
-### Optional Fields
+**Inter-network routing** -- Set `enableRouting` to true when Private Networks in the VPC need to communicate with each other. Required for multi-tier architectures where a Kapsule cluster in one Private Network reaches an RDB instance or Redis cluster in another. Once enabled, routing cannot be disabled -- plan accordingly.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enableRouting` | `bool` | `false` | Enables routing between Private Networks attached to this VPC. Once enabled, routing cannot be disabled. Required for multi-tier architectures where resources in separate Private Networks need to communicate (e.g., a Kapsule cluster talking to an RDB instance). |
-| `enableCustomRoutesPropagation` | `bool` | `false` | Enables custom routes propagation between Private Networks in this VPC. Once enabled, it cannot be disabled. Useful for advanced networking scenarios such as VPN gateways or network appliances. |
+**Custom routes propagation** -- Set `enableCustomRoutesPropagation` to true when using VPN gateways or network appliances that advertise routes across Private Networks. Only relevant when routing is also enabled. Like routing, this is a one-way toggle -- once enabled, it cannot be disabled.
 
-## Examples
+## Outputs and Dependencies
 
-### Minimal VPC
+### What This Component Consumes
 
-A VPC with no routing — suitable for isolating a single Private Network:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayVpc
-metadata:
-  name: isolated-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayVpc.isolated-vpc
-spec:
-  region: nl-ams
-```
+### What This Component Provides
 
-### VPC with Inter-Network Routing
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-Enable routing so that resources in different Private Networks within the VPC can reach each other. This is the typical setup for multi-tier applications:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vpc_id` | Unique identifier (UUID) of the created VPC | ScalewayPrivateNetwork VPC reference, network topology tracking |
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayVpc
-metadata:
-  name: app-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayVpc.app-vpc
-  env: prod
-  org: acme
-spec:
-  region: fr-par
-  enableRouting: true
-```
+## Common Patterns
 
-### VPC with Routing and Custom Routes Propagation
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-Full networking capabilities enabled — routing between Private Networks plus custom routes advertised across them. Use this when deploying VPN gateways or network appliances that inject custom routes:
+**Standard VPC** -- A VPC in the Paris region with routing disabled. The simplest starting configuration for single-tier environments or architectures with a single Private Network where cross-network communication is unnecessary. Start from the **Standard** preset.
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayVpc
-metadata:
-  name: network-vpc
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayVpc.network-vpc
-  env: prod
-  org: acme
-spec:
-  region: pl-waw
-  enableRouting: true
-  enableCustomRoutesPropagation: true
-```
+**Routing-enabled VPC** -- A VPC with inter-Private-Network routing enabled for multi-tier production architectures. Resources in separate Private Networks (e.g., application tier, database tier, cache tier) can communicate over private IPs. Start from the **Routing-Enabled** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `vpcId` | `string` | UUID of the created Scaleway VPC. Referenced by downstream resources (e.g., ScalewayPrivateNetwork) via `StringValueOrRef`. |
-
-## Related Components
-
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — creates Private Networks attached to this VPC for workload-level IP planning and isolation
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — deploys a managed Kubernetes cluster that requires a Private Network (and therefore a VPC)
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — provisions managed databases that can be attached to a Private Network within this VPC
+This component operates independently and does not reference other deployment components.

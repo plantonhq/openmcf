@@ -6,83 +6,45 @@ order: 100
 componentName: "ocidynamicgroup"
 ---
 
-# OCI Dynamic Group
+# Dynamic Group on OCI
 
-Deploys an Oracle Cloud Infrastructure dynamic group for enabling workload identity — the mechanism that lets compute instances, OKE pods, and Functions authenticate to OCI services without stored credentials. A dynamic group uses a matching rule to select which OCI resources are members. Combined with an `OciIdentityPolicy`, dynamic groups enable the credential-less authentication pattern: the dynamic group defines *who* (matching rule), and the policy defines *what they can do* (statements).
+Deploys an Oracle Cloud Infrastructure dynamic group for enabling workload identity -- the mechanism that lets compute instances, OKE pods, and Functions authenticate to OCI services without stored credentials. A dynamic group uses a matching rule to select which OCI resources are members, and combined with an OciIdentityPolicy, enables the credential-less authentication pattern: the dynamic group defines *who* (matching rule), and the policy defines *what they can do* (statements). The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to the tenancy compartment.
 
 ## What Gets Created
 
-When you deploy an OciDynamicGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Identity Dynamic Group** — an `oci_identity_dynamic_group` resource in the tenancy with the provided name, description, and matching rule. Standard Planton freeform tags are applied automatically. The dynamic group name defaults to `metadata.name` if not explicitly set in the spec.
+- **Identity Dynamic Group** -- an `oci_identity_dynamic_group` in the tenancy with the provided name, description, and matching rule. The dynamic group name defaults to `metadata.name` if not explicitly set in the spec.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the dynamic group
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **The tenancy OCID** — dynamic groups are tenancy-level IAM resources and must be created in the tenancy root compartment, not in a child compartment (literal value or via `valueFrom` referencing an OciCompartment resource)
-- **Knowledge of matching rule syntax** — rules follow OCI's `Any {condition}` or `All {condition, condition}` syntax. See [Managing Dynamic Groups](https://docs.oracle.com/iaas/Content/Identity/Tasks/managingdynamicgroups.htm)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `dynamic-group.yaml`:
+### OCI Tenancy
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicGroup
-metadata:
-  name: my-compute-workers
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDynamicGroup.my-compute-workers
-spec:
-  compartmentId:
-    value: "ocid1.tenancy.oc1..example"
-  description: "Dynamic group matching all compute instances in the project compartment"
-  matchingRule: "Any {instance.compartment.id = 'ocid1.compartment.oc1..example'}"
-```
+- The tenancy OCID (root compartment). Dynamic groups are tenancy-level IAM resources and must be created in the tenancy root compartment, not in a child compartment. Provide the tenancy OCID directly or reference an OciCompartment Cloud Resource that represents the tenancy root via ValueFromRef.
+- Knowledge of OCI's matching rule syntax: `Any {condition}` matches resources satisfying any single condition, `All {condition, condition}` requires all conditions. Common conditions include `instance.compartment.id`, `resource.type`, and `tag.<namespace>.<key>.value`.
+- A companion OciIdentityPolicy is needed to grant the dynamic group's members actual permissions -- without a policy, group membership alone grants no access.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f dynamic-group.yaml
-```
+### Console
 
-This creates a dynamic group named `my-compute-workers` in the tenancy. All compute instances in the specified compartment automatically become members. To grant these instances permissions, create a companion `OciIdentityPolicy` with statements like `Allow dynamic-group my-compute-workers to read secret-family in compartment production`. The dynamic group OCID is exported as a stack output.
+Open the deployment store, find **Dynamic Group on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Compute Instance Principal** preset in the [Presets](#presets) tab to pre-populate a dynamic group matching all compute instances in a compartment.
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the tenancy (root compartment). Dynamic groups are tenancy-level IAM resources and must be created in the tenancy compartment. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `description` | `string` | Description of the dynamic group's purpose. Required by the OCI API. Updatable after creation. | Minimum 1 character |
-| `matchingRule` | `string` | Rule that defines which OCI resources belong to this dynamic group. Uses `Any {conditions}` (match any condition) or `All {conditions}` (match all conditions) syntax. | Minimum 1 character |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | `metadata.name` | Name assigned to the dynamic group. Must be unique across all groups (including user groups) in the tenancy. Cannot be changed after creation. Falls back to `metadata.name` if not provided. |
-
-## Examples
-
-### Compute Instance Principal
-
-A dynamic group matching all compute instances in a compartment — the most common pattern for enabling instance principal authentication:
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciDynamicGroup
 metadata:
   name: compute-workers
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDynamicGroup.compute-workers
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.tenancy.oc1..example"
@@ -90,87 +52,61 @@ spec:
   matchingRule: "Any {instance.compartment.id = 'ocid1.compartment.oc1..production'}"
 ```
 
-### Functions Workload Identity
-
-A dynamic group matching all OCI Functions in a compartment for serverless workload identity. Uses `All` to require both the resource type and compartment conditions:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicGroup
-metadata:
-  name: serverless-functions
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDynamicGroup.serverless-functions
-spec:
-  compartmentId:
-    value: "ocid1.tenancy.oc1..example"
-  description: "All OCI Functions in the production compartment for serverless workload identity"
-  matchingRule: "All {resource.type = 'fnfunc', resource.compartment.id = 'ocid1.compartment.oc1..production'}"
+```shell
+planton apply -f dynamic-group.yaml
 ```
 
-### Tag-Based Matching
+This creates a dynamic group named `compute-workers` in the tenancy. All compute instances in the specified compartment automatically become members. To grant these members permissions, create a companion OciIdentityPolicy with statements referencing this dynamic group.
 
-A dynamic group matching resources by freeform tag rather than compartment. This pattern allows fine-grained grouping that spans compartments or selects a subset of resources within a compartment:
+### InfraChart
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicGroup
-metadata:
-  name: tagged-workers
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDynamicGroup.tagged-workers
-spec:
-  compartmentId:
-    value: "ocid1.tenancy.oc1..example"
-  description: "All compute instances tagged with workload-identity=enabled"
-  matchingRule: "Any {tag.workload-identity.enabled.value = 'true'}"
-```
-
-### Full-Featured with Foreign Key References
-
-A dynamic group using `valueFrom` to reference the tenancy compartment, with a custom name and metadata labels for organizational tracking:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the dynamic group to the tenancy compartment:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicGroup
-metadata:
-  name: oke-worker-nodes
-  labels:
-    team: platform
-    cost-center: infrastructure
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: platform-infra
-    pulumi.planton.dev/stack.name: prod.OciDynamicGroup.oke-worker-nodes
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
       name: tenancy-root
       fieldPath: status.outputs.compartmentId
-  name: "prod-oke-worker-dynamic-group"
-  description: "OKE worker nodes in the production compartment for instance principal authentication"
-  matchingRule: "All {instance.compartment.id = 'ocid1.compartment.oc1..production', tag.oke-cluster.name.value = 'prod-cluster'}"
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the dynamic group with the resolved tenancy OCID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `dynamic_group_id` | `string` | OCID of the created dynamic group. |
+These are the most important decisions when configuring a dynamic group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Matching rule** -- The `matchingRule` defines which OCI resources are members of this group. Use `Any {condition}` when a resource needs to satisfy only one condition (e.g., all instances in a compartment). Use `All {condition, condition}` when multiple conditions must all be met (e.g., Functions of a specific type in a specific compartment). Common conditions: `instance.compartment.id` for compute instances, `resource.type = 'fnfunc'` for Functions, `tag.<namespace>.<key>.value` for tag-based matching.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the tenancy OCID referenced by `compartmentId`; matching rules typically reference compartment OCIDs to scope group membership
-- [OciIdentityPolicy](/docs/catalog/oci/identity-policy) — grants dynamic group members permissions via policy statements (`Allow dynamic-group ... to ...`); every dynamic group needs a companion policy to be useful
-- [OciComputeInstance](/docs/catalog/oci/compute-instance) — compute instances matched by `instance.compartment.id` rules become dynamic group members for instance principal authentication
-- [OciFunctionsApplication](/docs/catalog/oci/functions-application) — functions matched by `resource.type = 'fnfunc'` rules become dynamic group members for serverless workload identity
+**Tenancy-level placement** -- The `compartmentId` field must be the tenancy OCID, not a child compartment OCID. Dynamic groups are tenancy-level IAM resources in OCI. The matching rule itself can reference any compartment to scope membership, but the group resource lives at the tenancy root.
+
+**Name immutability** -- The `name` field (or `metadata.name` fallback) cannot be changed after creation and must be unique across all groups (including user groups) in the tenancy. Choose a descriptive, stable name. Dynamic group names appear in policy statements (`Allow dynamic-group <name> to ...`), so renaming requires updating all referencing policies.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `dynamic_group_id` | OCID of the created dynamic group | Policy auditing, resource management |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Compute instance principal** -- A dynamic group matching all compute instances in a compartment for instance principal authentication. Pairs with an OciIdentityPolicy granting the group access to services like Vault, KMS, and Object Storage. Start from the **Compute Instance Principal** preset.
+
+**Functions workload identity** -- A dynamic group matching all OCI Functions in a compartment for serverless workload identity. Uses `All {resource.type = 'fnfunc', resource.compartment.id = '...'}` to restrict membership to Functions only. Start from the **Functions Workload Identity** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the tenancy OCID referenced by `compartmentId`; matching rules typically reference compartment OCIDs to scope group membership

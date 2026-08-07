@@ -8,23 +8,36 @@ componentName: "gcpserviceconnectionpolicy"
 
 # GCP Service Connection Policy
 
-Creates a service connection policy — the per-network authorization that lets Google's service connectivity automation create Private Service Connect endpoints in your VPC on a managed-service producer's behalf. PSC-first services (Memorystore for Valkey, Redis Cluster) require a policy for their service class in the instance's region before any instance can be created.
+Authorizes Google's service connectivity automation to place Private Service Connect endpoints in your VPC for a producer's service class — required before PSC-first managed services (Memorystore for Valkey, Redis Cluster, and others) can create instances in a region.
 
 ## What Gets Created
 
-One policy per (network, service class, region) triple. When a producer instance is created, the automation places PSC forwarding rules in the listed subnets and the instance's endpoint IPs surface on the instance.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Service Connection Policy** — per (network, service class, region) authorization with PSC subnet address space and optional connection limit / producer hierarchy allowlist
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A VPC network** — referenced via `network` (a `GcpVpcNetwork` resource or a literal resource path)
-- **At least one subnet** in the policy's region — referenced in `pscConfig.subnetworks`
-- **IAM permissions** — `networkconnectivity.serviceConnectionPolicies.create` (e.g. `roles/networkconnectivity.consumerNetworkAdmin`)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **GCP Provider Connection** with credentials for the target project
+- **Planton Runner** when using Runner-based credential delivery
+
+### GCP Prerequisites
+
+- **GcpVpcNetwork** — consumer VPC (`network_id` resource path, not self link)
+- **GcpSubnetwork** — at least one subnet in the policy region for endpoint IPs
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Service Connection Policy**, and click **Deploy**. Start from the **Memorystore Valkey** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpServiceConnectionPolicy
 metadata:
   name: memorystore-valkey-policy
@@ -44,33 +57,43 @@ spec:
           fieldPath: status.outputs.subnetwork_self_link
 ```
 
-```shell
-planton apply -f scp.yaml
-```
+## Key Configuration
 
-## Configuration Reference
+**Identity & placement** — Policy name, region, network, and service class are create-time. One policy per (network, service class, region).
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `location` | `string` | — (required) | Region the policy applies to. Immutable. |
-| `network` | `StringValueOrRef` | — (required) | Consumer VPC network. Can reference a GcpVpcNetwork. Immutable. |
-| `serviceClass` | `string` | — (required) | The producer's published class (e.g. `gcp-memorystore`). Immutable. |
-| `pscConfig.subnetworks` | `StringValueOrRef[]` | — (min 1 when set) | Subnets endpoint IPs come from. Mutable. |
-| `pscConfig.limit` | `int32` | GCP default | Max PSC connections under this policy. Mutable. |
-| `policyName` | `string` | `metadata.name` | Policy resource name. Immutable. |
-| `projectId` | `StringValueOrRef` | provider default | Project owning the network and policy. |
+**PSC address space** — Subnets the automation draws endpoint IPs from (same region as the policy). Optional connection limit caps instance attachments.
 
-## Stack Outputs
+**Producer authorization** — Default accepts any producer; custom hierarchy restricts to listed projects, folders, or organizations.
+
+## Outputs and Dependencies
+
+### Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** | `network` | `status.outputs.network_id` |
+| **GcpSubnetwork** | `pscConfig.subnetworks` | `status.outputs.subnetwork_self_link` |
+
+### Provides
 
 | Output | Description |
 |--------|-------------|
 | `policy_id` | Fully qualified policy resource path |
 | `name` | Short policy name |
-| `infrastructure` | Underlying connectivity mechanism (PSC) |
-| `etag` | Server-computed etag |
+| `infrastructure` | Connectivity mechanism (PSC) |
+| `etag` | Server-computed change token |
 
-## Related Components
+## Presets
 
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — the network the policy authorizes connections into
-- [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — supplies the endpoint IP space
-- [GcpMemorystoreInstance](/docs/catalog/gcp/memorystore-instance) — the first PSC-first consumer of this policy
+**Memorystore Valkey** — Authorizes `gcp-memorystore` in one region with a single subnet. Start from the **Memorystore Valkey** preset.
+
+**Shared VPC Guarded** — Adds a connection limit for shared-network guardrails. Start from the **Shared VPC Guarded** preset.
+
+**Producer Allowlist** — Custom hierarchy mode restricting which producer projects may attach. Start from the **Producer Allowlist** preset.
+
+## Works With
+
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) — authorized consumer network
+- [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) — endpoint IP address space
+- [**GCP Memorystore Instance**](/cloud-catalog/gcp-memorystore-instance) — deploy after the matching policy

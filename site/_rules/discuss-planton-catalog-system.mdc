@@ -11,8 +11,8 @@ alwaysApply: false
 **Trigger**: User references this rule, asks about how the catalog system works, wants to discuss design decisions, or is planning changes to the catalog infrastructure.
 
 **Scope boundary**: This rule covers the catalog **system infrastructure** (build pipeline, rendering, configuration). For the content standard of individual catalog pages (what sections they must contain, how to write them), see the rules in `_rules/docs/`:
-- `write-planton-component-catalog-page.mdc` -- writing new catalog pages
-- `audit-planton-component-catalog-page.mdc` -- auditing existing catalog page content
+- `write-planton-component-catalog-md.mdc` -- writing new catalog pages
+- `audit-planton-component-catalog-md.mdc` -- auditing existing catalog page content
 
 For hands-on auditing and fixing of the system infrastructure, see the companion rule:
 - `site/_rules/audit-and-fix-planton-catalog-system.mdc`
@@ -21,7 +21,7 @@ For hands-on auditing and fixing of the system infrastructure, see the companion
 
 ## What the Catalog System Is
 
-The catalog system transforms hand-written `catalog-page.md` files co-located with each deployment component into the public documentation site at `/docs/catalog/`. It handles:
+The catalog system transforms hand-written `catalog.md` files co-located with each deployment component into the public documentation site at `/docs/catalog/`. It handles:
 
 - Copying source markdown from the API directory tree to the site's public directory
 - Extracting titles from H1 headings and stripping provider prefixes for sidebar labels
@@ -39,10 +39,9 @@ The catalog system transforms hand-written `catalog-page.md` files co-located wi
 
 | Path | Role |
 |------|------|
-| `catalog/{provider}/{component}/v1/catalog-page.md` | The source catalog page for a component. Hand-written, follows the catalog page standard. Contains an H1 heading with the component's display name (including provider prefix). |
-| `catalog/{provider}/{component}/v1/docs/README.md` | Legacy research document. Used as fallback when no `catalog-page.md` exists. Being gradually replaced. |
-| `catalog/{provider}/{component}/v1/presets/*.yaml` | Preset manifest files. Each is a complete, deployable YAML manifest. |
-| `catalog/{provider}/{component}/v1/presets/*.md` | Preset description files. Each pairs with a YAML file of the same base name. |
+| `catalog/{provider}/{component}/catalog.md` | The source catalog page for a component, at the component root. Hand-written, follows the catalog page standard. Contains an H1 heading with the component's display name (including provider prefix). |
+| `catalog/{provider}/{component}/presets/*.yaml` | Preset manifest files, at the component root. Each is a complete, deployable YAML manifest. |
+| `catalog/{provider}/{component}/presets/*.md` | Preset description files. Each pairs with a YAML file of the same base name. |
 
 ### Canonical Provider Definitions
 
@@ -84,7 +83,7 @@ The catalog system transforms hand-written `catalog-page.md` files co-located wi
 ### Phase 1: Build (static, runs once)
 
 ```
-catalog-page.md (or legacy docs/README.md)
+catalog.md (component root)
   -> copy-component-docs.ts reads content
   -> extractTitleFromContent() pulls H1 heading
   -> stripProviderPrefix() removes provider name from title
@@ -124,11 +123,11 @@ docs-structure.json
 
 ### Co-located Source
 
-Catalog pages live alongside the component's API definitions at `catalog/{provider}/{component}/v1/catalog-page.md`. This keeps documentation close to the code it describes and makes it natural for component forge workflows to create the catalog page as part of the component creation process.
+Catalog pages live at each component's root, `catalog/{provider}/{component}/catalog.md`, beside the component's API definitions and IaC modules. This keeps documentation close to the code it describes and makes it natural for component forge workflows to create the catalog page as part of the component creation process.
 
-### Gradual Migration
+### Single Source Per Component
 
-The build script checks for `catalog-page.md` first, falls back to `docs/README.md` (the legacy research document). This allows components to be migrated one at a time from research docs to proper catalog pages without breaking the site.
+`catalog.md` is the only page source the build reads. A component without a `catalog.md` is skipped by the build and does not appear on the site -- there is no fallback source.
 
 ### Title Extraction from H1
 
@@ -167,7 +166,7 @@ These are the places that must be updated when providers or components change:
 
 ### When Adding a New Component
 
-No system changes needed. The build script auto-discovers components by scanning provider directories. Just create the `catalog-page.md` file.
+No system changes needed. The build script auto-discovers components by scanning provider directories. Just create the `catalog.md` file at the component root.
 
 ### When Renaming a Provider
 
@@ -197,8 +196,8 @@ yarn dev                  # Phase 3: start dev server (loads structure at runtim
 
 | Rule | Scope |
 |------|-------|
-| `_rules/docs/write-planton-component-catalog-page.mdc` | How to **write** the content of a single `catalog-page.md` file (section structure, field reference format, tone, verification protocol) |
-| `_rules/docs/audit-planton-component-catalog-page.mdc` | How to **audit** the content of a single `catalog-page.md` file (structural checks, field verification, manifest validation, tone audit) |
+| `_rules/docs/write-planton-component-catalog-md.mdc` | How to **write** the content of a single `catalog.md` file (section structure, field reference format, tone, verification protocol) |
+| `_rules/docs/audit-planton-component-catalog-md.mdc` | How to **audit** the content of a single `catalog.md` file (structural checks, field verification, manifest validation, tone audit) |
 | `site/_rules/audit-and-fix-planton-catalog-system.mdc` | How to **audit and fix** the catalog system infrastructure (build pipeline, provider maps, sidebar rendering, slug generation) |
 | `site/_rules/discuss-planton-catalog-system.mdc` | **This rule.** Architectural context for discussing the catalog system. |
 

@@ -8,135 +8,114 @@ componentName: "azureapplicationsecuritygroup"
 
 # Azure Application Security Group
 
-Creates an Azure Application Security Group -- a named grouping of network interfaces that network security group rules target by name instead of by IP address. Micro-segmentation policy follows the workload as instances scale and change addresses.
+Deploys an Azure Application Security Group (ASG) — a named, logical grouping of network interfaces that NSG rules can target by name instead of by IP address. An ASG lets a security policy say "allow the web tier to reach the app tier" rather than "allow 10.0.1.0/24 to reach 10.0.2.0/24" — the rule follows the workload as instances scale in and out and change addresses, so micro-segmentation stops being tied to a fragile CIDR plan. The group itself is **deliberately empty**: membership is declared from the member's side — a network interface lists the ASGs it joins, and NSG security rules reference source/destination groups.
 
 ## What Gets Created
 
-When you deploy an AzureApplicationSecurityGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Application Security Group** — an `azurerm_application_security_group` in the specified region and resource group
+- **Application Security Group** -- the named grouping anchor, holding no members and no rules of its own
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-The group holds no members. Membership is declared from the member side: `AzureNetworkInterface` and `AzureVirtualMachineScaleSet` list the ASGs they join, and `AzureNetworkSecurityGroup` security rules reference source/destination ASGs.
+Memberships and rules are NOT created here — a NIC joins from its own spec (`applicationSecurityGroupIds`), and NSG rules target the group from theirs. That inversion is what makes the ASG a stable composition anchor: created once, referenced by many, each with its own lifecycle.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the group in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/applicationSecurityGroups/write` (Network Contributor, Contributor, or Owner)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `application-security-group.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the group will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **A naming plan**: one group per workload ROLE (web, app-tier, db) — the names become the vocabulary your NSG rules are written in.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Application Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Tier** preset in the [Presets](#presets) tab for the classic role-named group.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: web-tier
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationSecurityGroup.web-tier
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
+    value: "rg-network-prod"
   name: web-tier
+  tags:
+    cost-center: platform-network
 ```
-
-Deploy:
 
 ```shell
-planton apply -f application-security-group.yaml
+planton apply -f asg.yaml
 ```
 
-After deployment, read `status.outputs.application_security_group_id` for the ARM ID to reference from network interfaces and NSG rules.
+Create one group per tier and the security policy reads as intent — "web reaches app-tier on 8080" — surviving every scale event without a firewall rewrite.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region; must match every network interface that joins the group. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Group name, unique within the resource group. | Required, 1-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). The only field that updates in place. |
-
-## Examples
-
-### Three-Tier Micro-Segmentation
-
-Group workloads by role so security rules express intent, not addresses:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the group to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureApplicationSecurityGroup
-metadata:
-  name: app-tier
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureApplicationSecurityGroup.app-tier
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: app-tier
+      kind: AzureResourceGroup
+      name: network-prod
+      fieldPath: status.outputs.resource_group_name
 ```
 
-Join a network interface to the group:
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the group — and the NICs that join it reference this group's `application_security_group_id`.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNetworkInterface
-metadata:
-  name: app-vm-nic
-spec:
-  applicationSecurityGroupIds:
-    - valueFrom:
-        name: app-tier
-```
+## Key Configuration
 
-Target the group in an NSG rule:
+These are the most important decisions when configuring an Application Security Group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-spec:
-  securityRules:
-    - name: allow-web-to-app
-      direction: INBOUND
-      access: ALLOW
-      protocol: TCP
-      priority: 100
-      destinationPortRange: "8080"
-      sourceApplicationSecurityGroupIds:
-        - valueFrom:
-            name: web-tier
-      destinationApplicationSecurityGroupIds:
-        - valueFrom:
-            name: app-tier
-```
+**Name** -- the workload role's identity ("web", "app-tier", "db"), unique within the resource group, up to 80 characters following ARM's Microsoft.Network naming contract. The name IS the security vocabulary — NSG rules read it as intent — so name the role, never a machine. Renaming replaces the group, and every rule and NIC that referenced it must be re-pointed.
 
-## Stack Outputs
+**Region** -- an ASG can only be joined by network interfaces in the same region. A multi-region application stamps the same tier groups per region so the rule vocabulary stays identical everywhere.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Tags** -- the ONLY field on an ASG that updates in place; everything else is fixed at creation.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `application_security_group_id` | `string` | Full ARM ID -- referenced by `AzureNetworkInterface`, `AzureVirtualMachineScaleSet`, and `AzureNetworkSecurityGroup` rules |
-| `application_security_group_name` | `string` | The group's name as deployed |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [AzureNetworkInterface](/docs/catalog/azure/network-interface) — joins ASGs via `applicationSecurityGroupIds`
-- [AzureNetworkSecurityGroup](/docs/catalog/azure/network-security-group) — targets ASGs in `source`/`destinationApplicationSecurityGroupIds`
-- [AzureVirtualMachineScaleSet](/docs/catalog/azure/virtual-machine-scale-set) — declares ASG membership on instance IP configurations
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for placement
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `application_security_group_id` | Azure Resource Manager ID of the group | AzureNetworkInterface `applicationSecurityGroupIds` (membership), NSG rule source/destination groups (targeting) |
+| `application_security_group_name` | Name of the group | Automation scripts, inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Workload tier** -- one group per application tier ("web", "app-tier", "db"); each tier's NICs join their group and the NSG rules read as an architecture diagram. Start from the **Workload Tier** preset.
+
+**Tagged governance** -- the same role-named group with the ownership tags your Azure Policy regime enforces, for organizations that gate deployments on tag compliance. Start from the **Tagged Governance** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the ASG is created
+- [**Azure Network Interface**](/cloud-catalog/azure-network-interface) -- joins the group by referencing its `application_security_group_id` output (membership lives on the NIC)
+- [**Azure Network Security Group**](/cloud-catalog/azure-network-security-group) -- targets the group in security rules as source/destination, turning CIDR rules into role rules
+- [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) -- the workload whose NICs carry the memberships that make the group mean something

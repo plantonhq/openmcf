@@ -8,66 +8,144 @@ componentName: "azurefrontdoorcustomdomain"
 
 # Azure Front Door Custom Domain
 
-Creates a custom domain inside an AzureFrontDoorProfile -- your own hostname served by Front Door with managed or bring-your-own TLS. The domain deploys pending DNS validation and exports the TXT challenge (`validation_token`); AzureFrontDoorRoute resources serve it through their `customDomainIds`.
+Deploys a custom domain inside an Azure Front Door (Standard/Premium) profile -- your own hostname (www.example.com, or the wildcard *.example.com) served at Microsoft's edge instead of the generated `*.azurefd.net` endpoint hostname. TLS is always on: Azure manages the certificate end to end by default, or the domain serves a bring-your-own certificate wrapped by an AzureFrontDoorSecret. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the profile, the DNS zone, and the secret.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorCustomDomain resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Custom Domain** -- an `azurerm_cdn_frontdoor_custom_domain` on the referenced profile, in the pending-validation state until the DNS TXT challenge is published
+- **Front Door Custom Domain** -- a named child of the profile in a pending-validation state, exporting a `validation_token`
+- **TLS configuration** -- an Azure-managed DV certificate (free, auto-rotated) or a customer certificate served from a Front Door secret, optionally with a pinned cipher-suite policy
+- **DNS zone binding** -- when `dnsZoneId` references an AzureDnsZone, Front Door watches that zone for the validation records
 
-## Prerequisites
+## The Two-Step Lifecycle
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureFrontDoorProfile** to create the domain in (referenced through `profileId`)
-- **Control of the hostname's DNS** -- validation publishes a TXT record; serving traffic needs a CNAME to the endpoint
-- **For BYO certificates**: an AzureFrontDoorSecret, and a one-time grant of Key Vault read access to Front Door's service principal (`Microsoft.AzureFrontDoor-Cdn`)
+A custom domain goes live in two moves:
 
-## Quick Start
+1. **Create** -- the domain deploys immediately as pending and exports a `validation_token`.
+2. **Validate & point** -- publish the token as a TXT record at `_dnsauth.<host_name>` (Azure flips the domain to approved), then CNAME the hostname to the endpoint's `host_name` output so traffic arrives.
 
-Create a file `custom-domain.yaml`:
+Both records are AzureDnsRecord resources when the zone lives in Azure DNS; with external DNS, publish the same two records at your provider.
+
+## The Domain in the Front Door Family
+
+- **AzureFrontDoorProfile** -- the parent container, referenced by `profileId`
+- **AzureFrontDoorSecret** -- the BYO certificate, referenced by `tls.secretId` with CUSTOMER_CERTIFICATE
+- **AzureDnsZone / AzureDnsRecord** -- where the validation TXT and traffic CNAME live
+- **AzureFrontDoorRoute** -- serves this hostname by listing the domain in its `customDomainIds` (the route side owns the attachment)
+- **AzureFrontDoorSecurityPolicy** -- scopes a WAF to this domain through the same ID
+
+## Before You Deploy
+
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Planton Runner** -- required when using Runner-based credential delivery.
+
+### Azure Subscription
+
+- **An Azure Front Door Profile** the domain nests under.
+- **Control of the hostname's DNS** -- validation publishes a TXT record under it.
+- **For wildcards or hostnames over 64 characters**: an AzureFrontDoorSecret wrapping a customer certificate (Azure's managed certificates cannot cover them).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Custom Domain**, and click **Deploy**. The wizard walks you through the hostname (wildcards flagged live when they force a customer certificate), the dot-free ARM resource name, the TLS decision, and the DNS zone binding with a live preview of the exact validation records. Start from the **Managed Certificate** preset in the [Presets](#presets) tab.
+
+### CLI
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorCustomDomain
 metadata:
   name: www-example-com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorCustomDomain.www-example-com
+  org: acme-corp
+  env: prod
 spec:
   profileId:
     valueFrom:
       kind: AzureFrontDoorProfile
-      name: my-front-door
+      name: cdn-profile
       fieldPath: status.outputs.profile_id
   domainName: www-example-com
   hostName: www.example.com
+  dnsZoneId:
+    valueFrom:
+      kind: AzureDnsZone
+      name: example-com-zone
+      fieldPath: status.outputs.zone_id
   tls: {}
 ```
 
-Deploy:
-
 ```shell
-planton apply -f custom-domain.yaml
+planton apply -f front-door-custom-domain.yaml
 ```
 
-Then read the `validation_token` output, publish it as a TXT record at `_dnsauth.www.example.com`, wait for Azure to approve the domain, CNAME the hostname to the endpoint's `host_name`, and attach the domain to a route. An empty `tls` block means Azure's managed certificate; wildcards and EV/OV certificates use `certificateType: CUSTOMER_CERTIFICATE` with a `secretId` reference.
+The empty `tls` block deploys Azure's managed certificate. After deploy, publish the `validation_token` output as a TXT record at `_dnsauth.www.example.com`, then CNAME `www.example.com` to the endpoint's hostname.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `custom_domain_id` | The ARM id -- what routes reference in `customDomainIds` and security policies scope WAFs to |
-| `host_name` | The hostname to CNAME to the endpoint once validated |
-| `validation_token` | The DNS TXT challenge for `_dnsauth.<host_name>` |
-| `expiration_date` | When the current token expires |
+```yaml
+spec:
+  profileId:
+    valueFrom:
+      kind: AzureFrontDoorProfile
+      name: cdn-profile
+      fieldPath: status.outputs.profile_id
+  domainName: www-example-com
+  hostName: www.example.com
+  tls:
+    certificateType: CUSTOMER_CERTIFICATE
+    secretId:
+      valueFrom:
+        kind: AzureFrontDoorSecret
+        name: wildcard-cert-secret
+        fieldPath: status.outputs.secret_id
+```
 
-## Related Resources
+## Key Configuration
 
-- [Azure Front Door Profile](/docs/catalog/azure/front-door-profile) -- the parent profile
-- [Azure Front Door Secret](/docs/catalog/azure/front-door-secret) -- the BYO certificate node
-- [Azure Front Door Route](/docs/catalog/azure/front-door-route) -- serves this domain
-- [Azure DNS Zone](/docs/catalog/azure/dns-zone) -- hosts the validation and CNAME records
+**Hostname** -- the FQDN the domain serves; only the FIRST label may be the wildcard `*`. ForceNew: the hostname IS the domain's identity. With an Azure-managed certificate the hostname caps at 64 characters and cannot be a wildcard.
+
+**Domain resource name** -- the ARM label, NOT the hostname (dots forbidden); convention is the hostname with dots as hyphens. ForceNew: renaming replaces the domain and restarts validation.
+
+**Certificate type** -- unspecified deploys MANAGED_CERTIFICATE (Azure's default). CUSTOMER_CERTIFICATE requires `tls.secretId` and unlocks wildcards, EV/OV, and org-mandated CAs.
+
+**Cipher suite** -- unset serves Azure's default suite set. Pin TLS12_2022/TLS12_2023 or hand-pick suites (CUSTOMIZED: at least one TLS 1.2 suite; TLS 1.3 suites both-or-none). The minimum TLS version is not configurable -- every domain floors at TLS 1.2.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureFrontDoorProfile** | `profileId` | `status.outputs.profile_id` |
+| **AzureDnsZone** (optional) | `dnsZoneId` | `status.outputs.zone_id` |
+| **AzureFrontDoorSecret** (customer certificate) | `tls.secretId` | `status.outputs.secret_id` |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `custom_domain_id` | ARM resource ID of the domain | AzureFrontDoorRoute.`customDomainIds`; AzureFrontDoorSecurityPolicy.`domainIds` |
+| `host_name` | The hostname the domain serves | The CNAME source at your DNS provider |
+| `validation_token` | The DNS challenge (public by design) | The `_dnsauth.<host>` TXT record's value |
+| `expiration_date` | When the current token expires (RFC-3339) | Re-validation scheduling |
+
+## Presets
+
+| Preset | Rank | Description |
+|--------|------|-------------|
+| Managed Certificate | 1 | Single-host domain with Azure's free auto-rotated certificate |
+| Wildcard BYO Certificate | 2 | Wildcard hostname served from a Front Door secret |
+| Hardened Ciphers | 3 | Customer certificate with a pinned cipher-suite policy |
+
+## Related Components
+
+- **AzureFrontDoorProfile** -- the parent container
+- **AzureFrontDoorSecret** -- wraps the BYO certificate
+- **AzureDnsZone / AzureDnsRecord** -- host the validation TXT and traffic CNAME
+- **AzureFrontDoorRoute** -- attaches this domain to serving paths
+- **AzureFrontDoorSecurityPolicy** -- scopes a WAF to this domain

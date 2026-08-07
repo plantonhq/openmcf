@@ -6,199 +6,103 @@ order: 100
 componentName: "digitaloceanfunction"
 ---
 
-# DigitalOcean Function
+# Function on DigitalOcean
 
-Deploys a serverless function on DigitalOcean App Platform with GitHub-based source deployment, configurable runtime and memory, environment variable and secret management, and optional scheduled execution via cron. Currently supported with the Pulumi provisioner only; Terraform support is not available. Under the hood, the component provisions a `digitalocean.App` resource with an `AppSpecFunction` definition, so the function runs inside App Platform rather than as a standalone DigitalOcean Function.
+Deploys a serverless function on DigitalOcean via App Platform with configurable runtime, memory, timeout, environment variables, and optional cron scheduling. Functions can serve as HTTP endpoints or run as scheduled background jobs. Integrates with Planton's Provider Connections for DigitalOcean API token management.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanFunction resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **App Platform Application** -- a `digitalocean.App` resource containing a single function component, deployed to the specified region
-- **Function Definition** -- an `AppSpecFunction` within the app spec, configured with the chosen runtime, memory, timeout, entrypoint, and source directory
-- **GitHub Integration** -- when `githubSource` is provided, connects the function to a GitHub repository and branch, with optional automatic redeployment on push
-- **Environment Variables** -- plain and secret environment variables are translated into `AppSpecFunctionEnv` entries; secrets are stored in App Platform's encrypted secret store
-- **HTTP Endpoint** -- when `isWeb` is true (the default), the function is exposed as a public HTTPS endpoint; the URL is available in stack outputs
+- **App Platform Application** -- a managed application container that hosts the serverless function in the specified DigitalOcean region
+- **Function Component** -- the serverless function within the App Platform app, configured with the specified runtime, memory, and timeout
+- **Environment Variables** -- regular and encrypted secret environment variables injected into the function runtime
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **A GitHub repository** containing the function source code and a valid `project.yml` (required when using `githubSource`)
-- **DigitalOcean App Platform access** enabled on the account (App Platform is available in all regions that support it)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `do-function.yaml`:
+### DigitalOcean Account
+
+- **A GitHub repository** containing the function source code. The `githubSource` configuration specifies the repository, branch, and optional auto-deploy on push.
+- **A source directory** within the repository that contains the function code and `project.yml` file required by DigitalOcean Functions.
+- **A supported runtime** -- Node.js 18/20, Python 3.9/3.10/3.11, Go 1.20/1.21, or PHP 8.2.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Function on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web API** preset in the [Presets](#presets) tab to deploy an HTTP-accessible function from GitHub.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanFunction
 metadata:
-  name: my-function
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanFunction.my-function
+  name: api-handler
+  org: acme-corp
+  env: prod
 spec:
-  functionName: my-function
-  region: nyc3
+  functionName: api-handler
+  region: nyc1
   runtime: nodejs_20
-  sourceDirectory: "/functions/api-handler"
   githubSource:
-    repo: "my-org/my-functions"
-    branch: "main"
+    repo: "acme-corp/functions"
+    branch: main
     deployOnPush: true
+  sourceDirectory: /functions/api
+  memoryMb: 256
+  timeoutMs: 3000
+  isWeb: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f do-function.yaml
 ```
 
-This creates a Node.js 20 function deployed via App Platform in the NYC3 region, with automatic redeployment on push to the `main` branch.
+This creates a Node.js 20 serverless function exposed as an HTTP endpoint with 256 MB memory, a 3-second timeout, and automatic redeployment on push. No environment variables or cron schedule are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a serverless function. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `functionName` | `string` | Name of the function. Must be unique within the project. | Min 1, max 64 characters |
-| `region` | `enum` | DigitalOcean region for the function. Valid values: `nyc3`, `sfo3`, `fra1`, `sgp1`, `lon1`, `tor1`, `blr1`, `ams3`. | Required |
-| `runtime` | `enum` | Runtime environment. Valid values: `nodejs_18`, `nodejs_20`, `python_39`, `python_310`, `python_311`, `go_120`, `go_121`, `php_82`. | Required |
-| `sourceDirectory` | `string` | Path within the repository containing the function code and `project.yml`. | Min 1 character |
+**Runtime selection** -- The `runtime` field sets the language and version (e.g., `nodejs_20`, `python_311`, `go_121`). Choose the runtime that matches your function code. Each runtime has its own entry point conventions and dependency management.
 
-### Optional Fields
+**Memory and timeout** -- The `memoryMb` field sets the memory allocation (128, 256, 512, 1024, or 2048 MB). The `timeoutMs` field sets the maximum execution time (up to 300,000 ms / 5 minutes). Default is 256 MB and 3,000 ms, sufficient for most API handlers. Increase both for data-processing workloads.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `githubSource.repo` | `string` | -- | GitHub repository in `owner/repo` format. |
-| `githubSource.branch` | `string` | -- | Git branch to deploy from (e.g., `main`). Max 255 characters. |
-| `githubSource.deployOnPush` | `bool` | `true` | Enables automatic redeployment when changes are pushed to the branch. |
-| `memoryMb` | `uint32` | `256` | Memory allocated to the function in megabytes. Valid values: `128`, `256`, `512`, `1024`, `2048`. |
-| `timeoutMs` | `uint32` | `3000` | Maximum execution time in milliseconds. Max: `300000` (5 minutes). |
-| `environmentVariables` | `map<string, string>` | `{}` | Non-secret environment variables passed to the function. |
-| `secretEnvironmentVariables` | `map<string, string>` | `{}` | Encrypted environment variables stored in App Platform's secret store. |
-| `entrypoint` | `string` | -- | Function or script entrypoint name (e.g., `main` for Go, `handler` for Node.js). |
-| `cronSchedule` | `string` | -- | Cron expression for scheduled execution (e.g., `0 * * * *` for hourly). When set, the function is not exposed as an HTTP endpoint. |
-| `isWeb` | `bool` | `true` | Exposes the function as an HTTP endpoint. Set to `false` for background or scheduled functions. |
+**Web vs. scheduled execution** -- Set `isWeb: true` (default) to expose the function as an HTTP endpoint. Set `isWeb: false` with a `cronSchedule` (standard cron expression) to run the function on a timer. A function cannot be both web-accessible and cron-triggered simultaneously.
 
-## Examples
+**Auto-deploy** -- Set `githubSource.deployOnPush: true` to automatically redeploy when changes are pushed to the configured branch. Disable for production environments where you want manual deployment control.
 
-### Node.js API Handler with Secrets
+## Outputs and Dependencies
 
-A function that connects to a database using secret credentials and runs with increased memory:
+### What This Component Consumes
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFunction
-metadata:
-  name: api-handler
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanFunction.api-handler
-spec:
-  functionName: api-handler
-  region: fra1
-  runtime: nodejs_20
-  sourceDirectory: "/functions/api"
-  memoryMb: 512
-  timeoutMs: 10000
-  githubSource:
-    repo: "my-org/backend-functions"
-    branch: "production"
-    deployOnPush: true
-  environmentVariables:
-    LOG_LEVEL: "info"
-    NODE_ENV: "production"
-  secretEnvironmentVariables:
-    DATABASE_URL: "postgresql://user:pass@db-host:5432/mydb"
-    API_SECRET_KEY: "sk-live-abc123"
-```
+This component has no foreign key dependencies.
 
-### Scheduled Python Cleanup Job
+### What This Component Provides
 
-A Python function that runs on a cron schedule to perform periodic maintenance, with no HTTP endpoint:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFunction
-metadata:
-  name: nightly-cleanup
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanFunction.nightly-cleanup
-spec:
-  functionName: nightly-cleanup
-  region: nyc3
-  runtime: python_311
-  sourceDirectory: "/functions/cleanup"
-  entrypoint: "main"
-  memoryMb: 1024
-  timeoutMs: 300000
-  cronSchedule: "0 2 * * *"
-  isWeb: false
-  githubSource:
-    repo: "my-org/ops-functions"
-    branch: "main"
-    deployOnPush: false
-  secretEnvironmentVariables:
-    DATABASE_URL: "postgresql://admin:secret@db:5432/app"
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `function_id` | Unique identifier of the deployed function | API operations, monitoring dashboards |
+| `https_endpoint` | Public HTTPS URL for invoking the function | Webhook targets, API gateway routing, application integration |
 
-### Go Webhook Processor with High Memory
+## Common Patterns
 
-A Go function that processes incoming webhooks with maximum memory allocation:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanFunction
-metadata:
-  name: webhook-processor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanFunction.webhook-processor
-spec:
-  functionName: webhook-processor
-  region: sfo3
-  runtime: go_121
-  sourceDirectory: "/functions/webhook"
-  entrypoint: "main"
-  memoryMb: 2048
-  timeoutMs: 30000
-  isWeb: true
-  githubSource:
-    repo: "my-org/event-handlers"
-    branch: "main"
-    deployOnPush: true
-  environmentVariables:
-    WEBHOOK_PATH: "/api/v1/webhook"
-    MAX_PAYLOAD_SIZE: "10485760"
-  secretEnvironmentVariables:
-    WEBHOOK_SECRET: "whsec_abc123"
-    REDIS_URL: "rediss://default:secret@cache:6379"
-```
+**Web API function** -- a Node.js 20 HTTP endpoint deployed from GitHub with auto-deploy, 256 MB memory, and a 3-second timeout. Suitable for API handlers, webhooks, and lightweight HTTP services. Start from the **Web API** preset.
 
-## Stack Outputs
+**Scheduled background job** -- a Python 3.11 function triggered hourly by cron, not exposed as an HTTP endpoint, with 512 MB memory and a 60-second timeout. Suitable for ETL pipelines, data synchronization, and periodic report generation. Start from the **Scheduled Job** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Works With
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `function_id` | `string` | Unique identifier of the deployed App Platform application |
-| `https_endpoint` | `string` | Public HTTPS URL for invoking the function (populated when `isWeb` is true) |
-
-## Related Components
-
-- [DigitalOceanVpc](/docs/catalog/digitalocean/vpc) -- provides VPC networking for secure function-to-database connectivity
-- [DigitalOceanDnsRecord](/docs/catalog/digitalocean/dns-record) -- creates custom DNS records to point a domain at the function endpoint
-- [DigitalOceanDnsZone](/docs/catalog/digitalocean/dns-zone) -- manages the DNS zone for custom domain routing
-- [DigitalOceanFirewall](/docs/catalog/digitalocean/firewall) -- controls network access rules for resources the function connects to
+This component operates independently and does not reference other deployment components.

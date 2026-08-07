@@ -31,7 +31,7 @@ The result: you learn one set of tools and one workflow pattern, then apply it t
 
 A deployment component is the atomic unit of Planton -- a self-contained package combining a Protocol Buffer API definition, dual IaC module implementations (Pulumi and Terraform), and auto-generated documentation. Planton ships with 360+ components spanning 17 providers.
 
-Every component follows the same four-file protobuf contract: `api.proto` (resource envelope), `spec.proto` (configuration surface), `stack_input.proto` (IaC input), and `stack_outputs.proto` (IaC output).
+Every component follows the same four-file protobuf contract: `api.proto` (resource envelope), `spec.proto` (configuration surface), `input.proto` (IaC input), and `outputs.proto` (IaC output).
 
 **[Read more: Deployment Components](deployment-components)**
 

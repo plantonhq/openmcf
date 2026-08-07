@@ -8,69 +8,111 @@ componentName: "gcpkmskeyring"
 
 # GCP KMS Key Ring
 
-Creates a Cloud KMS key ring — the permanent, location-anchored container that groups cryptographic keys. IAM granted on the ring flows down to every key inside it, making the ring the blast-radius boundary for customer-managed encryption.
+Deploys a Cloud KMS key ring -- a permanent organizational container for cryptographic keys in a GCP project. Key rings are scoped to a specific location (region, multi-region, or global) and group CryptoKeys by geographic or organizational boundaries. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
 
 ## What Gets Created
 
-- The Cloud KMS API is enabled on the target project (never disabled on destroy)
-- A `google_kms_key_ring` resource in the specified project and location
+When you deploy this Cloud Resource, the IaC module provisions:
 
-The key ring API has no labels surface, so no attribution labels are stamped — identically on both engines.
+- **KMS Key Ring** -- a `kms.KeyRing` in the specified GCP project and location, serving as the container for CryptoKeys created afterward
 
-## Prerequisites
+Key rings are permanent GCP resources -- they cannot be deleted. On destroy, the IaC module removes the resource from state but the key ring persists in GCP.
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** (the Cloud KMS API is enabled automatically)
-- **IAM permissions** — `roles/cloudkms.admin` or `roles/cloudkms.keyRingCreator`
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `key-ring.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the key ring will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Cloud KMS API** (`cloudkms.googleapis.com`) enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP KMS Key Ring**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Regional Key Ring** preset in the [Presets](#presets) tab to pre-populate a key ring co-located with your workload region.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-encryption
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   keyRingName: prod-encryption
   location: us-central1
 ```
 
-Deploy:
-
 ```shell
-planton apply -f key-ring.yaml
+planton apply -f gcp-kms-key-ring.yaml
 ```
 
-With `projectId` omitted, the ring lands in the provider connection's default project.
+This creates a regional key ring in `us-central1`. The key ring is empty -- CryptoKeys are added separately as GcpKmsKey Cloud Resources. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | `StringValueOrRef` | No | GCP project for the ring. Omitted rides the provider default; reference a `GcpProject` to compose. Immutable. |
-| `keyRingName` | `string` | Yes | The permanent GCP name (1-63 chars: letters, digits, hyphens, underscores). Immutable — and never reusable within the project+location, because rings cannot be deleted. |
-| `location` | `string` | Yes | Region (`us-central1`), multi-region (`us`, `europe`, `asia`), or `global`. Immutable. Keys inherit it, and most CMEK integrations require co-location with the protected data. |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the key ring to a GCP project deployed in the same InfraPipeline:
 
-## Permanence
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+```
 
-**Key rings cannot be deleted from GCP.** Destroying this resource removes the ring from IaC state only; the (free, inert) ring remains in the project forever and its name is permanently consumed. Every field is ForceNew — a change abandons the old ring and creates a new one.
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the key ring with the resolved project ID.
 
-## Design Guidance
+## Key Configuration
 
-- **One ring per environment or data domain**, not one per key — ring-level IAM is the unit of access review.
-- **Location follows data**: regional rings for regional CMEK, `us`/`europe`/`asia` for multi-region BigQuery/Spanner, `global` for signing keys consumed everywhere.
+These are the most important decisions when configuring a key ring. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Location** -- Set `location` to a GCP region (`us-central1`), multi-region (`us`, `europe`, `asia`), or `global`. Regional locations co-locate keys with data for lowest latency and strictest data residency. Multi-region locations provide continental availability with geographic boundaries. Global provides universal access with no residency guarantees. Location is immutable after creation.
 
-| Output | Description |
-|--------|-------------|
-| `key_ring_id` | Fully qualified ring path (`projects/{p}/locations/{l}/keyRings/{name}`) — what a `GcpKmsKey`'s `keyRingId` reference consumes |
-| `key_ring_name` | The short name of the ring |
-| `location` | The ring's location, for consumers that take a bare name + location pair |
+**Key ring name** -- `keyRingName` is the permanent GCP resource name (1-63 characters, letters, digits, hyphens, or underscores). Key rings cannot be deleted from GCP, so choose a name that reflects long-term organizational structure (e.g., `prod-encryption`, `compliance-keys`).
 
-## Related Components
+**Project placement** -- Key rings belong to a single GCP project. Use a dedicated security or shared-services project for centralized key management, or place key rings in the same project as the workloads they protect for simpler IAM.
 
-- [GcpKmsKey](../kms-key/) — the cryptographic keys grouped by this ring
-- [GcpProject](../project/) — provides the GCP project by reference
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `key_ring_id` | Fully qualified key ring path (`projects/{p}/locations/{l}/keyRings/{name}`) | GcpKmsKey `keyRingId` field for creating CryptoKeys in this ring |
+| `key_ring_name` | Short name of the key ring | Display, logging, human-readable references |
+| `location` | The location the ring resides in, exactly as GCP resolved it | Consumers that take a bare ring name plus a location compose from `key_ring_name` + this |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Regional key ring** -- Key ring in a specific GCP region, co-locating encryption keys with the workloads they protect. The standard choice for production deployments with data residency requirements. Start from the **Regional Key Ring** preset.
+
+**Global key ring** -- Key ring in the `global` location, accessible from any region. Suitable for shared signing keys or application-level encryption without data residency constraints. Start from the **Global Key Ring** preset.
+
+**Multi-region key ring** -- Key ring in a multi-region location (`us`, `europe`, `asia`), replicated across all regions in the geography. Provides high availability while maintaining continental data residency for GDPR or similar requirements. Start from the **Multi-Region Key Ring** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the key ring is created

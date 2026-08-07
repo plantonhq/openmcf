@@ -6,149 +6,114 @@ order: 100
 componentName: "kuberneteslistenerset"
 ---
 
-# Kubernetes Listener Set
+# Listener Set on Kubernetes
 
-Provision a Kubernetes Gateway API `ListenerSet` -- a namespaced set of
-additional listeners merged into an existing Gateway. ListenerSets are the
-per-team delegation model for shared gateways: a platform team runs one central
-Gateway, and each tenant team attaches its own listeners (ports, hostnames, TLS
-certificates, route-attachment policy) from its own namespace, without touching
-the Gateway itself.
+Creates a namespaced Kubernetes Gateway API `ListenerSet` -- a set of additional listeners **merged into an existing Gateway**. ListenerSets are the per-tenant/per-team delegation model for shared gateways: a platform team runs the Gateway centrally, and application teams attach their own listeners (ports, hostnames, TLS certificates) from their own namespaces -- without editing the Gateway itself. The listener entries carry the same shape as a Gateway's own listeners (port, protocol, optional hostname and TLS, route-attachment policy). This component mirrors the upstream Gateway API `ListenerSet` (standard channel from v1.5, `gateway.networking.k8s.io/v1`) spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
-ListenerSet is a standard-channel resource served as
-`gateway.networking.k8s.io/v1` (standard since Gateway API v1.5). The parent
-Gateway must opt in via `allowed_listeners`; Gateways allow no ListenerSet
-attachment by default.
+> **Attachment is opt-in.** Gateways allow **no** ListenerSet attachment by default: the parent Gateway must explicitly allow it through its `allowed_listeners` configuration, naming which namespaces may attach.
 
 ## What Gets Created
 
-- A namespaced `gateway.networking.k8s.io/v1` `ListenerSet` custom resource.
-- One to 64 listeners (HTTP, HTTPS, TLS, TCP, or UDP) merged into the parent
-  Gateway, each with optional per-listener TLS termination/passthrough and
-  route-attachment policy.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **A namespaced ListenerSet** named after `metadata.name` in `spec.namespace`, attached to the Gateway in `spec.parentRef`, merging the listeners declared in `spec.listeners` into it.
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking.
 
-- Gateway API CRDs v1.5.0+ installed on the cluster
-  (`KubernetesGatewayApiCrds`).
-- A parent `Gateway` (`KubernetesGateway`) whose `allowed_listeners` permits
-  attachment from this namespace.
-- The target namespace (`KubernetesNamespace`).
-- For HTTPS listeners, a TLS Secret (e.g. from `KubernetesCertificate`) in the
-  ListenerSet's own namespace.
+The Gateway controller merges listeners from the Gateway and all attached ListenerSets -- the Gateway's own listeners take precedence, then ListenerSets by creation time, then alphabetical namespace/name order -- and reports per-listener `Accepted` / `Programmed` conditions in the ListenerSet's status, observed with `kubectl`.
 
-## Quick Start
+## Before You Deploy
+
+### Planton Setup
+
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
+
+### Kubernetes Cluster
+
+- **Gateway API CRDs at v1.5.0+ installed** -- deploy the `KubernetesGatewayApiCrds` component first (ListenerSet joined the standard channel in v1.5; the catalog targets v1.6.1).
+- **A parent Gateway that allows attachment** -- `spec.parentRef` should resolve to a `KubernetesGateway` whose `allowed_listeners` policy admits this ListenerSet's namespace.
+- **The target namespace exists** -- `spec.namespace` should resolve to a real `KubernetesNamespace`.
+- **TLS certificate Secrets exist** -- terminating listeners reference `kubernetes.io/tls` Secrets, resolved in the ListenerSet's OWN namespace without a `ReferenceGrant` (not the parent Gateway's).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Listener Set on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable -- the delegation boundary), then **Parent Gateway** (the Gateway these listeners merge into), then **Listeners** (the endpoints to add, with the same editor a Gateway's own listeners use). Start from the **Team HTTPS Listeners** or **TLS Passthrough Listener** preset in the [Presets](#presets) tab for a directly deployable configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesListenerSet
 metadata:
-  name: tenant-listeners
+  name: team-a-listeners
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: tenant-ns
+    value: team-a
   parentRef:
     name:
       value: shared-gateway
-    namespace: gateway-ns
+    namespace: platform-ingress
   listeners:
-    - name: tenant-https
-      hostname: tenant.example.com
+    - name: team-a-https
       port: 443
       protocol: HTTPS
+      hostname: team-a.example.com
       tls:
-        mode: Terminate
         certificateRefs:
           - name:
-              value: tenant-tls
+              value: team-a-tls
 ```
 
-```bash
-planton apply -f listenerset.yaml
+```shell
+planton apply -f listener-set.yaml
 ```
 
-## Configuration Reference
+This merges an HTTPS listener for `team-a.example.com` into `shared-gateway` (in `platform-ingress`), terminating with the `team-a-tls` Secret from the ListenerSet's own `team-a` namespace.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `namespace` | reference | Namespace to create the ListenerSet in. |
-| `parentRef` | object | The Gateway the listeners attach to; `name` is a reference (defaults to `KubernetesGateway`). |
-| `listeners` | list | One to 64 listeners (name, port, protocol). |
+These are the most important decisions when configuring a ListenerSet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**Namespace** -- The `namespace` field is where the ListenerSet lives -- typically the team's own namespace. It is **immutable** and carries the delegation model's weight: the parent Gateway must allow attachment FROM this namespace, and TLS certificate Secrets referenced by the listeners resolve here without a `ReferenceGrant`. Reference an existing `KubernetesNamespace` or type the name directly.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `parentRef.namespace` | string | Parent Gateway's namespace; defaults to the ListenerSet's own. |
-| `listeners[].hostname` | string | Virtual host to match (HTTP/HTTPS/TLS); wildcard prefix allowed. |
-| `listeners[].tls` | object | Per-listener TLS; `certificateRefs[].name` is a reference (defaults to `KubernetesSecret`, typically issued via `KubernetesCertificate`). |
-| `listeners[].allowedRoutes` | object | Which Route kinds/namespaces may attach (defaults to the ListenerSet's own namespace). |
+**Parent Gateway** -- The singular `parentRef` names the Gateway these listeners merge into. Unlike a route's parentRef it has no `sectionName` or `port` -- a ListenerSet always attaches to the Gateway as a whole. The `name` is a foreign key to `KubernetesGateway`: reference a Planton-managed Gateway (the ListenerSet then deploys after it), or pass a literal name for one created outside Planton.
 
-## Examples
+**Listeners** -- 1-64 `listeners`, each a port + protocol endpoint with an optional hostname (HTTP/HTTPS/TLS only), TLS termination for HTTPS/TLS protocols, and a route-attachment policy. Names need only be unique within this ListenerSet; across the merged result, each listener must have a unique port + protocol + hostname combination (the Gateway's own listeners win conflicts). Certificate references are foreign keys to `KubernetesSecret` -- typically a cert-manager `KubernetesCertificate`'s issued Secret via its `secret_name` output.
 
-### Tenant HTTPS listener with label-selected routes
+## Outputs and Dependencies
 
-```yaml
-spec:
-  namespace:
-    value: tenant-ns
-  parentRef:
-    name:
-      value: shared-gateway
-    namespace: gateway-ns
-  listeners:
-    - name: tenant-https
-      hostname: tenant.example.com
-      port: 443
-      protocol: HTTPS
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - name:
-              value: tenant-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              team: tenant
-        kinds:
-          - kind: HTTPRoute
-```
+### What This Component Consumes
 
-### TLS passthrough listener
+This component takes foreign-key references to a `KubernetesNamespace` (via `spec.namespace`), to `KubernetesGateway` (via `spec.parentRef.name`), and to `KubernetesSecret` (listener `certificateRefs`), so an InfraChart deploys those targets before the ListenerSet and the resource graph carries the edges. Literal names cover targets created outside Planton.
 
-```yaml
-spec:
-  namespace:
-    value: tenant-ns
-  parentRef:
-    name:
-      value: shared-gateway
-    namespace: gateway-ns
-  listeners:
-    - name: tenant-tls-passthrough
-      hostname: db.tenant.example.com
-      port: 8443
-      protocol: TLS
-      tls:
-        mode: Passthrough
-```
+### What This Component Provides
 
-## Stack Outputs
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume:
 
-| Output | Description |
-|--------|-------------|
-| `listenerSetName` | Name of the created ListenerSet (target of Route parentRefs with `kind: ListenerSet`). |
-| `namespace` | Namespace the ListenerSet was created in. |
-| `gatewayName` | Name of the parent Gateway the listeners attach to. |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `listener_set_name` | Name of the created ListenerSet (equals `metadata.name`) | Routes name it as a parentRef (with `sectionName` for one listener) and order themselves after it |
+| `namespace` | The resolved namespace the ListenerSet was created in | Same-namespace / ReferenceGrant rules for its references |
+| `gateway_name` | The resolved parent Gateway name | Composition and auditing of the delegation chain |
 
-## Related Components
+## Common Patterns
 
-- [Kubernetes Gateway](kubernetesgateway)
-- [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
-- [Kubernetes Certificate](kubernetescertificate)
-- [Kubernetes HTTP Route](kuberneteshttproute)
-- [Kubernetes Namespace](kubernetesnamespace)
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Team HTTPS listeners** -- A team merges its own HTTPS endpoint (its hostname, its certificate Secret) into the platform's shared Gateway. Start from the **Team HTTPS Listeners** preset.
+
+**TLS passthrough listener** -- Add a TLS listener in Passthrough mode so an in-cluster backend terminates TLS itself (paired with a `KubernetesTlsRoute`). Start from the **TLS Passthrough Listener** preset.
+
+## Works With
+
+- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (v1.5.0+ standard channel carries ListenerSet); deploy first (prerequisite).
+- **KubernetesGateway** -- the parent Gateway (`spec.parentRef`) whose `allowed_listeners` policy must admit this namespace; install first.
+- **KubernetesNamespace** -- the namespace (`spec.namespace`) the ListenerSet runs in.
+- **KubernetesCertificate** -- issues the TLS Secrets terminating listeners reference (via its `secret_name` output).
+- **KubernetesHttpRoute / KubernetesTlsRoute / KubernetesTcpRoute / KubernetesUdpRoute / KubernetesGrpcRoute** -- routes attach to this ListenerSet by naming it as a parentRef (optionally one listener via `sectionName`).

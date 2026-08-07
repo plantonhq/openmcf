@@ -2,49 +2,55 @@
 
 ## Overview
 
-**Forge** is the rule system for bootstrapping **complete, production-ready deployment components** in Planton. It orchestrates 20 atomic rules that create everything from proto definitions to IaC modules to comprehensive documentation.
+**Forge** is the rule system for bootstrapping **complete, production-ready deployment components** in Planton. It orchestrates 19 atomic rules that create everything from proto definitions to IaC modules to documentation and presets.
 
-**Key principle:** Forge creates components that match **95-100% of the ideal state** defined in `architecture/deployment-component.md`.
+**Key principle:** Forge creates components that match **95-100% of the ideal state** defined in `architecture/deployment-component.md`, and whose file layout passes the machine-enforced anatomy gate (`pkg/anatomy`, CI lane `lint.component-anatomy.yaml`).
+
+## Component Anatomy
+
+A component lives at `catalog/{provider}/{kind}/`:
+
+- **Component root (the living component):** `README.md` (GitHub-facing page), `catalog.md` (the catalog page), `logo.svg`, optional `GUIDE.md` (authored operational judgment), `iac/pulumi/` + `iac/tf/` (each with a README.md; optional `iac/import-map.yaml`, optional staged `iac/crds/`), `presets/` (`.yaml` + `.md` sidecar pairs), `e2e/` (manifest.yaml, profile, scenarios), optional `conversions/`.
+- **Version dir `v1alpha1/` (the versioned contract ONLY):** `api.proto`, `spec.proto`, `input.proto`, `outputs.proto`, their `.pb.go` stubs, `BUILD.bazel`, `spec_test.go`, `reference.md`.
+
+The proto FILE names are `input.proto` / `outputs.proto`; the MESSAGE names are `{Kind}StackInput` / `{Kind}StackOutputs` — the message names are the identity every downstream consumer keys on.
 
 ## What Forge Creates
 
 When you run forge, you get a fully-implemented deployment component:
 
-### Proto API Definitions
+### Proto API Definitions (v1alpha1/)
 - ✅ `spec.proto` - Configuration schema with field validations
-- ✅ `stack_input.proto` - Inputs to IaC modules (spec + credentials + context)
-- ✅ `stack_outputs.proto` - Deployment outputs
+- ✅ `input.proto` - Inputs to IaC modules (`{Kind}StackInput`: target + provider config)
+- ✅ `outputs.proto` - Deployment outputs (`{Kind}StackOutputs`)
 - ✅ `api.proto` - KRM wiring (apiVersion, kind, metadata, spec, status)
 - ✅ Generated `.pb.go` stubs for all proto files
 - ✅ `spec_test.go` - Unit tests for ALL validation rules
 - ✅ **Tests execute and pass** - Validates buf.validate rules work correctly
 
-### IaC Modules - Pulumi
-- ✅ Module files: `main.go`, `locals.go`, `outputs.go`, resource-specific files
-- ✅ Entrypoint: `main.go`, `Pulumi.yaml`, `Makefile`
+### IaC Modules - Pulumi (iac/pulumi/)
+- ✅ Module files: `module/main.go`, `module/locals.go`, `module/outputs.go`, resource-specific files
+- ✅ Entrypoint: `main.go` (`package main`) and `Pulumi.yaml` at the `iac/pulumi/` root — nothing else
 - ✅ Documentation: `README.md`
-- ✅ E2E tested and validated
 
-### IaC Modules - Terraform
-- ✅ Module files: `variables.tf`, `provider.tf`, `locals.tf`, `main.tf`, `outputs.tf`
+### IaC Modules - Terraform (iac/tf/)
+- ✅ Module files: `variables.tf` (generated), `provider.tf`, `locals.tf`, `main.tf`, `outputs.tf`
 - ✅ Documentation: `README.md`
-- ✅ E2E tested and validated
-- ✅ Feature parity with Pulumi module
+- ✅ **100% behavioral parity** with the Pulumi module (Parity Mandate)
 
 ### Documentation
-- ✅ `v1/README.md` - User-facing overview (50-200 lines)
-- ✅ `v1/examples.md` - Copy-paste ready examples (multiple use cases)
-- ✅ `v1/docs/README.md` - **Comprehensive research document** (300-1000+ lines)
-  - Deployment landscape analysis
-  - Method comparisons
-  - Best practices
-  - Parity accounting (pinned provider version, compositions, recorded exclusions)
+- ✅ Component-root `README.md` - User-facing overview (the GitHub-facing component page)
+- ✅ Component-root `GUIDE.md` - Authored operational judgment: recipes, design rationale, parity accounting
+- ✅ Generated `reference.md` - Regenerated via `make generate-reference`, embedding the e2e manifest as its Example
 
 ### Supporting Files
-- ✅ `iac/hack/manifest.yaml` - Test manifest
+- ✅ Component-root `e2e/manifest.yaml` - The complete, protovalidate-valid example manifest; the reference page's Example block AND the E2E framework's testability marker and deployed fixture
+- ✅ Component-root `presets/` - 2-3 ready-to-deploy configuration templates with `.md` sidecars
 - ✅ Enum entry in `cloud_resource_kind.proto`
 - ✅ Build validation passed
 - ✅ Test validation passed
+
+Layout conformance is machine-checked: run the anatomy gate (`go test ./pkg/anatomy/...`) instead of auditing file inventories by hand.
 
 ## When to Use Forge
 
@@ -107,54 +113,52 @@ Before running forge, have ready:
 Forge will interview you to gather:
 - Component purpose and use case
 - Key configuration fields (for spec.proto)
-- Expected outputs (for stack_outputs.proto)
+- Expected outputs (for outputs.proto)
 - Provider-specific details (project IDs, regions, etc.)
 - Credential requirements
 - Best practices and gotchas
 
-## The 20-Rule Workflow
+## The 19-Rule Workflow
 
-Forge orchestrates 20 rules in 9 phases. (Rules `011-pulumi-e2e` and
-`014-terraform-e2e` were removed; e2e is handled separately via component e2e
-profiles, not the forge pipeline.)
+Forge orchestrates 19 rules in 9 phases. (E2E execution is handled separately via
+component e2e profiles, not the forge pipeline.)
 
 ### Phase 1: Proto API Definitions
 1. `001-spec-proto` - Generate spec.proto
 2. `002-spec-validate` - Add validations
 3. `003-spec-tests` - Generate tests
-4. `004-stack-outputs` - Generate outputs proto
+4. `004-outputs` - Generate outputs.proto
 5. `005-api` - Generate api.proto
-6. `006-stack-input` - Generate input proto
+6. `006-input` - Generate input.proto
 
 ### Phase 2: Registration
-7. `016-cloud-resource-kind` - Register enum
-8. `017-generate-proto-stubs` - Generate .pb.go files
+7. `014-cloud-resource-kind` - Register enum
+8. `015-generate-proto-stubs` - Generate .pb.go files
 
 ### Phase 3: Documentation
-9. `007-docs` - Generate README and examples
-10. `020-research-docs` - Generate research document
+9. `007-readme` - Generate the component-root README.md
 
 ### Phase 4: Test Infrastructure
-11. `008-hack-manifest` - Generate test manifest
+10. `008-e2e-manifest` - Generate the component-root e2e/manifest.yaml
 
 ### Phase 5: Pulumi Implementation
-12. `009-pulumi-module` - Generate module
-13. `010-pulumi-entrypoint` - Generate entrypoint
-14. `012-pulumi-docs` - Generate docs
+11. `009-pulumi-module` - Generate module
+12. `010-pulumi-entrypoint` - Generate entrypoint (main.go, Pulumi.yaml)
+13. `011-pulumi-readme` - Generate docs
 
 ### Phase 6: Terraform Implementation
-15. `013-terraform-module` - Generate module
-16. `015-terraform-docs` - Generate docs
+14. `012-terraform-module` - Generate module
+15. `013-terraform-readme` - Generate docs
 
 ### Phase 7: Presets
-17. `022-presets` - Generate initial presets (2-3 common configuration templates)
+16. `018-presets` - Generate initial presets (2-3 common configuration templates)
 
 ### Phase 8: Final Validation
-18. `018-build-validation` - Compile all Go code
-19. `019-test-validation` - Run all tests
+17. `016-build-validation` - Compile all Go code (recursive component build + release-equivalent entrypoint build)
+18. `017-test-validation` - Run all tests
 
 ### Phase 9: Guide + Reference Regeneration
-20. `023-guide` - Seed the component's `GUIDE.md` (authored wisdom beside `reference.md`), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
+19. `019-guide` - Seed the component-root `GUIDE.md` (authored wisdom), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
 
 ## Progress Tracking
 
@@ -164,44 +168,45 @@ Forge provides real-time progress updates:
 🔨 Forge: Creating MongodbAtlas
 
 Phase 1: Proto API Definitions
-[1/20] ✅ Generated spec.proto
-[2/20] ✅ Added buf.validate rules
-[3/20] ✅ Generated and ran spec tests
-[4/20] ✅ Generated stack_outputs.proto
-[5/20] ✅ Generated api.proto
-[6/20] ✅ Generated stack_input.proto
+[1/19] ✅ Generated spec.proto
+[2/19] ✅ Added buf.validate rules
+[3/19] ✅ Generated and ran spec tests
+[4/19] ✅ Generated outputs.proto
+[5/19] ✅ Generated api.proto
+[6/19] ✅ Generated input.proto
 
 Phase 2: Registration
-[7/20] ✅ Registered MongodbAtlas = 51 in cloud_resource_kind.proto
-[8/20] ✅ Generated proto stubs (make protos)
+[7/19] ✅ Registered MongodbAtlas = 51 in cloud_resource_kind.proto
+[8/19] ✅ Generated proto stubs (make protos)
 
 Phase 3: Documentation
-[9/20] ✅ Generated v1/README.md and examples.md
-[10/20] ✅ Generated v1/docs/README.md (research document)
+[9/19] ✅ Generated component-root README.md
 
 Phase 4: Test Infrastructure
-[11/20] ✅ Generated iac/hack/manifest.yaml
+[10/19] ✅ Generated e2e/manifest.yaml
 
 Phase 5: Pulumi Implementation
-[12/20] ✅ Generated Pulumi module
-[13/20] ✅ Generated Pulumi entrypoint
-[14/20] ✅ Generated Pulumi docs
-[15/20] ✅ Generated Pulumi overview
+[11/19] ✅ Generated Pulumi module
+[12/19] ✅ Generated Pulumi entrypoint
+[13/19] ✅ Generated Pulumi docs
 
 Phase 6: Terraform Implementation
-[16/20] ✅ Generated Terraform module
-[17/20] ✅ Generated Terraform docs
+[14/19] ✅ Generated Terraform module
+[15/19] ✅ Generated Terraform docs
 
 Phase 7: Presets
-[18/20] ✅ Generated initial presets
+[16/19] ✅ Generated initial presets
 
 Phase 8: Final Validation
-[19/20] ✅ Build validation passed (go build ./catalog/.../v1/...)
-[20/20] ✅ Component tests passed (go test -v ./catalog/.../v1/)
+[17/19] ✅ Build validation passed (go build ./catalog/<provider>/<kind>/...)
+[18/19] ✅ Component tests passed (go test -v ./catalog/<provider>/<kind>/v1alpha1/)
+
+Phase 9: Guide + Reference
+[19/19] ✅ Seeded GUIDE.md and regenerated the reference
 
 🎉 Component creation complete!
 
-📍 Location: catalog/atlas/mongodbatlas/v1alpha1/
+📍 Location: catalog/atlas/mongodbatlas/
 📊 Expected Audit Score: 95-100%
 
 Next steps:
@@ -260,6 +265,8 @@ If score is lower, the audit report shows what's missing, why it matters, and ho
 ```
 Automatically audits and fills any remaining gaps to reach 95%+. Useful if forge had partial failures.
 
+**Always:** the anatomy gate (`go test ./pkg/anatomy/...`) must be green — it machine-checks the component's file layout against the canonical anatomy.
+
 ## Customization After Forge
 
 Forge creates a **production-ready baseline**. Common customizations:
@@ -270,19 +277,19 @@ Forge creates a **production-ready baseline**. Common customizations:
 3. Update tests in `spec_test.go`
 4. Run `make protos` to regenerate stubs
 5. Update Pulumi module to use new fields
-6. Update Terraform `variables.tf` to match
-7. Update examples in `examples.md`
-8. Run `go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/`
+6. Regenerate Terraform `variables.tf` and update the module to match
+7. Update the e2e manifest and presets if the new fields belong in examples
+8. Run `go build ./catalog/<provider>/<kind>/... && go test -v ./catalog/<provider>/<kind>/v1alpha1/`
 
 ### Modify IaC Implementation
 1. Update Pulumi module files (`iac/pulumi/module/*.go`)
 2. Update Terraform module files (`iac/tf/*.tf`)
-3. Test with `@forge-planton-component <Name> --test-only`
+3. Keep both engines at behavioral parity (fix whichever engine is wrong)
 4. Update documentation if behavior changes
 
 ### Enhance Documentation
-1. Add more examples to `examples.md`
-2. Expand research in `docs/README.md`
+1. Expand the component-root `README.md` and `catalog.md`
+2. Capture new operational judgment in `GUIDE.md`
 3. Add troubleshooting to `iac/pulumi/README.md` or `iac/tf/README.md`
 
 ## Comparison to Manual Creation
@@ -300,8 +307,8 @@ Forge creates a **production-ready baseline**. Common customizations:
 ## Reference Documents
 
 - **Ideal State Definition:** `architecture/deployment-component.md`
+- **Anatomy Conformance Gate:** `pkg/anatomy` (CI lane `.github/workflows/lint.component-anatomy.yaml`)
 - **Individual Flow Rules:** `_rules/deployment-component/forge/flow/`
-- **Forge Analysis:** `_rules/deployment-component/forge/FORGE_ANALYSIS.md`
 - **Main Orchestrator:** `_rules/deployment-component/forge/forge-planton-component.mdc`
 
 ## Tips and Best Practices
@@ -323,8 +330,8 @@ Forge creates a **production-ready baseline**. Common customizations:
 ### After Forge
 
 1. **Review everything** - Don't blindly trust generated code
-2. **Test locally** - Deploy with the test manifest
-3. **Enhance docs** - Add your learnings to documentation
+2. **Test locally** - Deploy with the e2e manifest
+3. **Enhance docs** - Add your learnings to the surfaces their readers use (spec comments, GUIDE.md, presets)
 4. **Run audit** - Verify 100% ideal state compliance
 
 ## Troubleshooting
@@ -342,23 +349,9 @@ Forge creates a **production-ready baseline**. Common customizations:
 ### "Build failed after 3 attempts"
 **Check:**
 1. Proto syntax in generated files
-2. Go code compiles: `cd apis/... && go build`
+2. Go code compiles: `go build ./catalog/<provider>/<kind>/...` (from the repo root)
 3. Import paths are correct
 4. Manual fix may be needed
-
-## Success Stories
-
-**Before Forge:**
-- Creating GcpCertManagerCert took 12 hours
-- Documentation was incomplete
-- Tests were basic
-- Terraform module was added 3 months later
-
-**After Forge:**
-- Creating new components takes 20-30 minutes
-- Documentation is comprehensive on day 1
-- All tests pass immediately
-- Both IaC modules created together
 
 ## Next Steps
 
@@ -374,4 +367,3 @@ After reading this README:
 **Questions?** Check the troubleshooting section or run `@audit-planton-component` to see examples of complete components.
 
 **Ready to create?** Run `@forge-planton-component <YourComponentName> --provider <provider>`
-

@@ -9,4 +9,4 @@ order: 10
 
 The following ATLAS resources can be deployed using Planton:
 
-- [MongoDB](/docs/catalog/atlas/mongodb)
+- [MongoDB Database](/docs/catalog/atlas/mongodb-database)

@@ -6,172 +6,122 @@ order: 100
 componentName: "digitaloceandatabasecluster"
 ---
 
-# DigitalOcean Database Cluster
+# Database Cluster on DigitalOcean
 
-Deploys a managed database cluster on DigitalOcean supporting PostgreSQL, MySQL, Redis, and MongoDB engines. The component handles node sizing, version selection, optional VPC placement, and custom storage configuration, exposing connection details as stack outputs.
+Deploys a managed database cluster on DigitalOcean supporting PostgreSQL, MySQL, Redis, and MongoDB engines with configurable node sizing, replication, optional VPC placement, and custom storage. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC dependency wiring.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanDatabaseCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Database Cluster** — a `digitalocean_database_cluster` resource with the specified engine, version, region, node size, and node count
-- **VPC Attachment** — created only when `vpc` is specified, places the cluster in a private network for secure access
-- **Custom Storage** — configured only when `storageGib` is specified, overrides the default storage for the chosen node size
+- **DigitalOcean Database Cluster** -- a managed database cluster in the specified region with the configured engine, version, node size, and node count (1-3 nodes for primary replication)
+- **VPC Network Attachment** -- configured only when `vpc` is provided; places the cluster within a private network for secure internal access
+- **Custom Storage** -- configured only when `storageGib` is provided; overrides the default storage allocation for the chosen node size
+- **DigitalOcean Tags** -- resource metadata tags (organization, environment, resource kind) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **A DigitalOcean VPC** in the target region if using private networking (can reference a DigitalOceanVpc resource via `valueFrom`)
-- **A supported engine version** for the chosen database engine (e.g., `16` for PostgreSQL 16, `8` for MySQL 8)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `database.yaml`:
+### DigitalOcean Account
+
+- **A target region** where managed databases are available. Not all regions support all engines -- check the DigitalOcean documentation.
+- **A VPC network** (recommended for production) in the target region. Provide the VPC UUID directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef.
+- **A valid node size slug** (e.g., `"db-s-2vcpu-4gb"`) -- check available database sizes via `doctl databases options slugs`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Database Cluster on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **PostgreSQL HA** preset in the [Presets](#presets) tab for a production-ready multi-node configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanDatabaseCluster
 metadata:
-  name: my-database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanDatabaseCluster.my-database
+  name: app-db
+  org: acme-corp
+  env: prod
 spec:
-  clusterName: my-database
+  clusterName: app-db
   engine: pg
   engineVersion: "16"
   region: nyc3
-  sizeSlug: db-s-1vcpu-2gb
-  nodeCount: 1
+  sizeSlug: db-s-2vcpu-4gb
+  nodeCount: 3
 ```
-
-Deploy:
 
 ```shell
-planton apply -f database.yaml
+planton apply -f do-database.yaml
 ```
 
-This creates a single-node PostgreSQL 16 cluster in the NYC3 region with the `db-s-1vcpu-2gb` Droplet size.
+This creates a 3-node PostgreSQL 16 cluster in the NYC3 region with no VPC attachment. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `clusterName` | `string` | Name of the database cluster in DigitalOcean. | Required, max 64 characters |
-| `engine` | `enum` | Database engine. Valid values: `pg` (PostgreSQL), `mysql`, `redis`, `mongodb`. | Required |
-| `engineVersion` | `string` | Major version of the database engine (e.g., `16` for PostgreSQL, `8` for MySQL). | Required, pattern: `^[0-9]+(\.[0-9]+)?$` |
-| `region` | `enum` | DigitalOcean region for the cluster. Valid values: `nyc3`, `sfo3`, `fra1`, `sgp1`, `lon1`, `tor1`, `blr1`, `ams3`. | Required |
-| `sizeSlug` | `string` | Droplet size slug for cluster nodes (e.g., `db-s-2vcpu-4gb`). Determines CPU and memory per node. | Required |
-| `nodeCount` | `uint32` | Number of nodes in the cluster. | Required, 1–3 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `vpc` | `StringValueOrRef` | — | VPC UUID for private network placement. Can reference a DigitalOceanVpc resource via `valueFrom`. |
-| `storageGib` | `uint32` | — | Custom storage size in GiB. If not set, uses the default storage for the chosen `sizeSlug`. |
-| `enablePublicConnectivity` | `bool` | `false` | When `true`, enables public network access to the cluster. When `false`, the cluster is accessible only via VPC or DigitalOcean internal network. |
-
-## Examples
-
-### MySQL Cluster in VPC
-
-A single-node MySQL 8 cluster placed in a private network:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the database cluster to a VPC deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDatabaseCluster
-metadata:
-  name: mysql-app-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanDatabaseCluster.mysql-app-db
 spec:
-  clusterName: mysql-app-db
-  engine: mysql
-  engineVersion: "8"
-  region: fra1
-  sizeSlug: db-s-2vcpu-4gb
-  nodeCount: 1
-  vpc:
-    value: "vpc-fra1-uuid"
-```
-
-### HA PostgreSQL with Custom Storage
-
-A three-node PostgreSQL cluster with increased storage for production workloads:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDatabaseCluster
-metadata:
-  name: prod-postgres
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDatabaseCluster.prod-postgres
-spec:
-  clusterName: prod-postgres
-  engine: pg
-  engineVersion: "16"
-  region: nyc3
-  sizeSlug: db-s-4vcpu-8gb
-  nodeCount: 3
-  storageGib: 100
-  vpc:
-    value: "vpc-prod-uuid"
-```
-
-### Redis Cache with VPC Reference
-
-A Redis cluster using a foreign key reference to an Planton-managed VPC:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDatabaseCluster
-metadata:
-  name: cache-redis
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanDatabaseCluster.cache-redis
-spec:
-  clusterName: cache-redis
-  engine: redis
-  engineVersion: "7"
-  region: sgp1
-  sizeSlug: db-s-2vcpu-4gb
-  nodeCount: 2
   vpc:
     valueFrom:
       kind: DigitalOceanVpc
-      name: prod-vpc
-      field: status.outputs.vpc_id
+      name: app-network
+      fieldPath: status.outputs.vpc_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the database cluster within it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_id` | `string` | UUID of the created database cluster |
-| `connection_uri` | `string` | Full connection URI including credentials and database name |
-| `host` | `string` | Hostname or IP address of the database cluster |
-| `port` | `uint32` | Network port the database cluster listens on |
-| `database_user` | `string` | Username for the cluster's default database user |
-| `database_password` | `string` | Password for the cluster's default database user |
+These are the most important decisions when configuring a database cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Engine selection** -- The `engine` field accepts `pg` (PostgreSQL), `mysql`, `redis`, or `mongodb`. Each engine has its own set of supported versions. The `engineVersion` field takes a major version string (e.g., `"16"` for PostgreSQL, `"8"` for MySQL, `"7"` for Redis).
 
-- [DigitalOceanVpc](/docs/catalog/digitalocean/vpc) — provides the VPC for private network placement
-- [DigitalOceanKubernetesCluster](/docs/catalog/digitalocean/kubernetes-cluster) — commonly co-deployed to run applications that consume the database
-- [DigitalOceanFirewall](/docs/catalog/digitalocean/firewall) — controls network access to the database cluster
+**Node count and high availability** -- Set `nodeCount` between 1 and 3. A 3-node cluster provides automatic failover -- when the primary fails, a standby is promoted. Single-node clusters have no redundancy and are suited only for development.
+
+**Node sizing** -- The `sizeSlug` field sets CPU and memory per node (e.g., `"db-s-1vcpu-1gb"` for development, `"db-s-2vcpu-4gb"` for production). Scale up for heavier query workloads or larger datasets.
+
+**VPC placement** -- The `vpc` field places the cluster in a private network so database traffic stays off the public internet. Required for production. When omitted, the cluster uses default networking.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **DigitalOceanVpc** (optional) | `vpc` | `status.outputs.vpc_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_id` | Unique database cluster identifier (UUID) | DigitalOcean API operations, monitoring |
+| `connection_uri` | Full connection URI including credentials and database name | Application database configuration |
+| `host` | Hostname or IP at which the cluster is accessible | Application connection strings |
+| `port` | Network port the cluster listens on | Application connection strings |
+| `database_user` | Default database user name | Application authentication |
+| `database_password` | Default database user password | Application authentication (store as secret) |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production PostgreSQL HA** -- 3-node PostgreSQL 16 cluster with VPC isolation for automatic failover and secure private access. Suitable for mission-critical applications. Start from the **PostgreSQL HA** preset.
+
+**Development PostgreSQL** -- Single-node PostgreSQL 16 on the smallest instance, no VPC. Minimal cost for development, CI/CD test databases, and staging. Start from the **PostgreSQL Dev** preset.
+
+**Redis cache** -- Single-node Redis 7 with VPC placement for low-latency caching, session storage, and pub/sub messaging. Start from the **Redis** preset.
+
+## Works With
+
+- [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the private network for database cluster placement

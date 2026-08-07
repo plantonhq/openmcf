@@ -8,247 +8,137 @@ componentName: "openstackinstance"
 
 # OpenStack Instance
 
-Deploys an OpenStack Compute instance with configurable flavor, image or boot-from-volume source, network attachments via network UUID or pre-provisioned port, and optional placement controls via server groups and availability zones.
+Deploys a Nova compute instance on OpenStack with configurable flavor, image, network attachments, security groups, block device mappings, and placement controls. The instance supports both ephemeral image-based and persistent volume-based boot modes, with ValueFromRef wiring for keypairs, networks, security groups, and server groups in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Instance** — an `openstack_compute_instance_v2` resource with the specified flavor and image (or block device boot source), placed in the configured networks with attached security groups. When `blockDevice` entries are provided, the instance boots from persistent Cinder volumes instead of ephemeral image-based storage. When `serverGroupId` is set, scheduler hints control placement within the server group.
+- **Compute Instance** -- a Nova virtual machine with the specified flavor, image or block device mapping, network attachments, and optional SSH keypair
+- **Block Device Mappings** -- created only when `blockDevice` entries are specified; maps Cinder volumes, Glance images, or snapshots as boot or data disks
+- **Scheduler Hints** -- created only when `serverGroupId` is provided; places the instance according to the server group's affinity or anti-affinity policy
+- **OpenStack Tags** -- user-defined tags applied to the instance for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **At least one network** (a network UUID or a pre-provisioned port UUID) for the instance to attach to
-- **A flavor** (by name or UUID) available in the target OpenStack project
-- **A Glance image** (by name or UUID) if not booting from a block device volume
-- **An SSH keypair** registered in OpenStack if setting `keyPair`
-- **A server group** if using placement constraints via `serverGroupId`
+### OpenStack Account
 
-## Quick Start
+- **Flavor** -- the instance requires a valid flavor (by name or ID). Run `openstack flavor list` to find available options in your deployment.
+- **Image or boot volume** -- provide a Glance image name/ID for ephemeral boot, or configure `blockDevice` for persistent boot-from-volume. At least one boot source is required.
+- **Network** -- at least one network attachment is required. Provide the network UUID directly or reference an OpenStackNetwork Cloud Resource via ValueFromRef.
+- **SSH keypair** (optional) -- if you need key-based SSH access, create or import a keypair. Reference an OpenStackKeypair Cloud Resource via ValueFromRef, or provide the keypair name directly.
+- **Security groups** (optional) -- if omitted, OpenStack applies the default security group. Reference OpenStackSecurityGroup Cloud Resources by name via ValueFromRef for InfraChart wiring.
 
-Create a file `instance.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard VM** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackInstance
 metadata:
-  name: my-instance
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackInstance.my-instance
+  name: app-server
+  org: acme-corp
+  env: prod
 spec:
   flavorName: m1.medium
   imageName: ubuntu-22.04
   networks:
-    - uuid: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
+    - uuid:
+        value: "<network-id>"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f instance.yaml
 ```
 
-This creates a compute instance with the `m1.medium` flavor, booted from the `ubuntu-22.04` Glance image, attached to the specified network.
+This creates an instance with an ephemeral root disk, a single network attachment, and the default security group. No SSH keypair, block device mappings, or placement controls are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `flavorName` | `string` | Human-readable name of the instance flavor (e.g., `m1.medium`). Mutually exclusive with `flavorId`. | Exactly one of `flavorName` or `flavorId` must be set |
-| `flavorId` | `string` | UUID of the instance flavor. Mutually exclusive with `flavorName`. | Exactly one of `flavorName` or `flavorId` must be set |
-| `networks` | `InstanceNetwork[]` | Network attachments for the instance. Each entry connects the instance to a network via UUID or a pre-provisioned port. | Minimum 1 item required |
-| `networks[].uuid` | `StringValueOrRef` | Network UUID to attach to. OpenStack auto-creates a port on this network. Can reference an OpenStackNetwork resource via `valueFrom`. Mutually exclusive with `port`. | Exactly one of `uuid` or `port` per network entry |
-| `networks[].port` | `StringValueOrRef` | UUID of a pre-provisioned port to attach. Use for stable MAC/IP addresses or port-level security groups. Can reference an OpenStackNetworkPort resource via `valueFrom`. Mutually exclusive with `uuid`. | Exactly one of `uuid` or `port` per network entry |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `imageName` | `string` | — | Name of the Glance image to boot from (e.g., `ubuntu-22.04`). Optional when using `blockDevice` with a boot volume. |
-| `imageId` | `string` | — | UUID of the Glance image to boot from. Alternative to `imageName`. Optional when using `blockDevice` with a boot volume. |
-| `keyPair` | `StringValueOrRef` | — | SSH keypair name to inject into the instance. Can reference an OpenStackKeypair resource via `valueFrom`. |
-| `securityGroups` | `StringValueOrRef[]` | default SG | Security group names to apply. Uses names, not UUIDs. Can reference OpenStackSecurityGroup resources via `valueFrom`. If omitted, OpenStack applies the default security group. |
-| `blockDevice` | `BlockDevice[]` | `[]` | Block device mappings for boot-from-volume or additional volumes at launch. |
-| `blockDevice[].sourceType` | `string` | — | Source type: `blank`, `image`, `snapshot`, or `volume`. Required per block device entry. |
-| `blockDevice[].uuid` | `string` | — | UUID of the source image, volume, or snapshot. Required unless `sourceType` is `blank`. |
-| `blockDevice[].destinationType` | `string` | `local` | Where the device is created: `local` (ephemeral) or `volume` (persistent Cinder volume). |
-| `blockDevice[].bootIndex` | `int` | `0` | Boot order: `0` = boot device, `-1` = not bootable, higher values = lower priority. |
-| `blockDevice[].volumeSize` | `int` | — | Size in GB. Required for image-to-volume and blank mappings. |
-| `blockDevice[].deleteOnTermination` | `bool` | `false` | When `true`, the volume is deleted when the instance terminates. |
-| `blockDevice[].volumeType` | `string` | — | Cinder volume type (e.g., `SSD`, `HDD`). Only applies when `destinationType` is `volume`. |
-| `networks[].fixedIpV4` | `string` | — | Specific IPv4 address to request on the network. Only applies when `uuid` is used, not `port`. |
-| `networks[].accessNetwork` | `bool` | `false` | Marks this network as the access network, determining which IP appears in the `access_ip_v4` output. |
-| `userData` | `string` | — | Cloud-init configuration or script for first boot. Base64-encoded before passing to the instance. ForceNew: changing this recreates the instance. |
-| `metadata` | `map<string, string>` | `{}` | Key-value pairs attached to the instance, visible in the OpenStack API. Can be updated without recreating the instance. |
-| `configDrive` | `bool` | — | Enables a config drive containing instance metadata and user data on a local read-only disk. ForceNew: changing this recreates the instance. |
-| `serverGroupId` | `StringValueOrRef` | — | Server group UUID for placement control. Maps to scheduler hints. Can reference an OpenStackServerGroup resource via `valueFrom`. ForceNew. |
-| `availabilityZone` | `string` | — | AZ where the instance launches (e.g., `nova`, `az1`). If omitted, Nova selects one. ForceNew. |
-| `tags` | `string[]` | `[]` | Tags for filtering and organization in the OpenStack API. Must be unique. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this instance. |
-
-## Examples
-
-### Basic Instance with Image Boot
-
-A minimal instance booted from a Glance image on a single network with an SSH keypair:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to other resources deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackInstance
-metadata:
-  name: web-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackInstance.web-server
 spec:
-  flavorName: m1.small
-  imageName: ubuntu-22.04
-  keyPair: my-keypair
-  networks:
-    - uuid: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  securityGroups:
-    - web-sg
-```
-
-### Boot from Volume
-
-An instance with a persistent 50 GB root disk created from a Glance image, recommended for production workloads where the root disk must survive instance rebuilds:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackInstance
-metadata:
-  name: db-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackInstance.db-server
-spec:
-  flavorName: m1.large
-  keyPair: ops-keypair
-  networks:
-    - uuid: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  securityGroups:
-    - db-sg
-  blockDevice:
-    - sourceType: image
-      uuid: 12345678-abcd-efgh-ijkl-123456789abc
-      destinationType: volume
-      bootIndex: 0
-      volumeSize: 50
-      deleteOnTermination: false
-      volumeType: SSD
-```
-
-### Full-Featured Instance with Placement Controls
-
-Production instance with server group placement, cloud-init configuration, metadata, multiple networks, and a specific availability zone:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackInstance
-metadata:
-  name: app-server-01
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackInstance.app-server-01
-spec:
-  flavorName: m1.xlarge
-  imageName: ubuntu-22.04
-  keyPair: prod-keypair
-  availabilityZone: az1
-  configDrive: true
-  serverGroupId: 98765432-dcba-4321-fedc-ba9876543210
-  networks:
-    - uuid: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-      accessNetwork: true
-    - uuid: 7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
-  securityGroups:
-    - app-sg
-    - monitoring-sg
-  userData: |
-    #cloud-config
-    packages:
-      - nginx
-      - prometheus-node-exporter
-    runcmd:
-      - systemctl enable nginx
-      - systemctl start nginx
-  metadata:
-    environment: production
-    team: platform
-  tags:
-    - production
-    - app-tier
-```
-
-### Using Foreign Key References
-
-Reference other Planton-managed resources instead of hardcoding UUIDs:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackInstance
-metadata:
-  name: ref-instance
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackInstance.ref-instance
-spec:
-  flavorName: m1.medium
-  imageName: ubuntu-22.04
   keyPair:
     valueFrom:
       kind: OpenStackKeypair
-      name: my-keypair
-      field: status.outputs.name
+      name: admin-key
+      fieldPath: status.outputs.name
   networks:
     - uuid:
         valueFrom:
           kind: OpenStackNetwork
-          name: my-network
-          field: status.outputs.network_id
+          name: app-network
+          fieldPath: status.outputs.network_id
   securityGroups:
     - valueFrom:
         kind: OpenStackSecurityGroup
-        name: app-sg
-        field: status.outputs.name
+        name: web-sg
+        fieldPath: status.outputs.name
   serverGroupId:
     valueFrom:
       kind: OpenStackServerGroup
-      name: anti-affinity-group
-      field: status.outputs.server_group_id
+      name: app-spread
+      fieldPath: status.outputs.server_group_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the keypair, network, security group, and server group first, then provisions the instance with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | `string` | UUID of the created compute instance |
-| `name` | `string` | Name of the instance, derived from `metadata.name` |
-| `access_ip_v4` | `string` | Best IPv4 address for accessing the instance, prioritizing the access network if one is marked |
-| `access_ip_v6` | `string` | Best IPv6 address for accessing the instance. Empty if the instance has no IPv6 connectivity. |
-| `region` | `string` | OpenStack region where the instance was created |
+These are the most important decisions when configuring an instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Boot mode** -- Choose between image-based (ephemeral) and volume-based (persistent) boot. For production, use `blockDevice` with `sourceType: image` and `destinationType: volume` for a root disk that survives instance deletion. For development, `imageName` with ephemeral boot is simpler and faster to provision.
 
-- [OpenStackNetwork](/docs/catalog/openstack/network) — provides the network for instance attachment
-- [OpenStackNetworkPort](/docs/catalog/openstack/network-port) — provides pre-provisioned ports for stable network identity
-- [OpenStackKeypair](/docs/catalog/openstack/keypair) — manages the SSH keypair injected into the instance
-- [OpenStackSecurityGroup](/docs/catalog/openstack/security-group) — controls inbound and outbound traffic rules
-- [OpenStackServerGroup](/docs/catalog/openstack/server-group) — defines placement policies (affinity/anti-affinity) for instance groups
+**Flavor selection** -- Use `flavorName` for human-readable sizing (e.g., `m1.medium`) or `flavorId` for exact UUID references. Exactly one must be provided. Changing the flavor after creation triggers a resize operation.
+
+**Network mode** -- Each `networks` entry connects the instance via a network UUID (auto-creates a port) or a pre-provisioned port UUID. Use ports for stable MAC/IP addresses or when you need port-level security group assignments. Mark one network as `accessNetwork: true` to control which IP appears in `accessIpV4`.
+
+**User data** -- The `userData` field accepts cloud-init scripts or cloud-config YAML for first-boot automation. Changing user data recreates the instance.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackKeypair** (optional) | `keyPair` | `status.outputs.name` |
+| **OpenStackNetwork** (optional) | `networks[].uuid` | `status.outputs.network_id` |
+| **OpenStackNetworkPort** (optional) | `networks[].port` | `status.outputs.port_id` |
+| **OpenStackSecurityGroup** (optional) | `securityGroups` | `status.outputs.name` |
+| **OpenStackServerGroup** (optional) | `serverGroupId` | `status.outputs.server_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | UUID of the instance in OpenStack | Volume attachments, floating IP associations |
+| `name` | Name of the instance | DNS records, monitoring labels |
+| `access_ip_v4` | Primary IPv4 address for accessing the instance | Load balancer members, DNS A records |
+| `access_ip_v6` | Primary IPv6 address for accessing the instance | DNS AAAA records |
+| `region` | OpenStack region where the instance was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard VM** -- Boots from a Glance image with a specified flavor, keypair, and network attachment. Ephemeral root disk on the hypervisor. Suitable for development instances, stateless workers, and general-purpose VMs. Start from the **Standard VM** preset.
+
+**Boot-from-volume** -- Boots from a Cinder volume created from a Glance image. The root disk persists independently of the instance lifecycle, enabling snapshots, migration, and data preservation. Start from the **Boot-from-Volume** preset.
+
+## Works With
+
+- [**OpenStack Keypair**](/cloud-catalog/openstack-keypair) -- provides the SSH keypair name for key-based instance access
+- [**OpenStack Network**](/cloud-catalog/openstack-network) -- provides the network UUID for instance network attachments
+- [**OpenStack Network Port**](/cloud-catalog/openstack-network-port) -- provides a pre-provisioned port for stable network identity
+- [**OpenStack Security Group**](/cloud-catalog/openstack-security-group) -- provides the security group name for traffic filtering
+- [**OpenStack Server Group**](/cloud-catalog/openstack-server-group) -- provides the server group ID for placement control (affinity/anti-affinity)

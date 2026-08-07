@@ -5,10 +5,10 @@ This module deploys an `AwsAppRunnerService` resource using Terraform via the Pl
 ## CLI
 
 ```bash
-planton tofu init --manifest hack/manifest.yaml
-planton tofu plan --manifest hack/manifest.yaml
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest e2e/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 - Credentials are provided via the CLI stack input, not stored in the manifest `spec`.

@@ -8,270 +8,126 @@ componentName: "awsfsxontapvolume"
 
 # AWS FSx ONTAP Volume
 
-Creates an Amazon FSx for NetApp ONTAP Volume within a Storage Virtual Machine (SVM). Supports data tiering to capacity pool storage, SnapLock WORM compliance for immutable record retention, and FlexGroup distribution across multiple aggregates for high-throughput workloads.
+Deploys a data volume within an FSx for NetApp ONTAP Storage Virtual Machine, with configurable tiering policies, SnapLock WORM compliance, FlexGroup distribution, and storage efficiency features. The volume integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent SVM.
 
 ## What Gets Created
 
-When you deploy an AwsFsxOntapVolume resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **ONTAP Volume** — an `aws_fsx_ontap_volume` resource within the specified SVM, with configurable size, junction path, security style, and snapshot policy
-- **Tiering Policy** (optional) — automatic data movement between primary SSD and capacity pool storage based on access patterns
-- **SnapLock Configuration** (optional) — WORM compliance storage with configurable retention periods, autocommit, and privileged delete controls
-- **Aggregate Configuration** (optional) — FlexGroup volume distribution across multiple file system aggregates for parallel I/O
+- **ONTAP Volume** -- a data container within the specified SVM, mounted at the configured junction path, with the chosen volume style (FlexVol or FlexGroup) and security style
+- **Tiering Policy** -- created only when `tieringPolicy` is provided; controls automatic data movement between primary SSD and capacity pool storage based on access patterns
+- **SnapLock Configuration** -- created only when `snaplockConfiguration` is provided; enables WORM (Write Once Read Many) immutable storage with configurable retention periods, autocommit, and privileged delete settings
+- **Aggregate Configuration** -- created only when `aggregateConfiguration` is provided and `volumeStyle` is FLEXGROUP; distributes the volume across multiple aggregates for parallel throughput
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An AwsFsxOntapStorageVirtualMachine** — the parent SVM that provides protocol endpoints and namespace
-- **An AwsFsxOntapFileSystem** — the grandparent file system with sufficient storage capacity
-- **Sufficient file system capacity** for the requested volume size (ONTAP volumes are thin-provisioned)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `ontap-volume.yaml`:
+### AWS Account
+
+- **An FSx ONTAP Storage Virtual Machine** -- the volume's parent SVM must be provisioned first. Provide the SVM ID directly or reference an AwsFsxOntapStorageVirtualMachine Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS FSx ONTAP Volume**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsFsxOntapVolume
 metadata:
-  name: my-data-volume
-  id: awsfxov-abc123
-  org: my-org
-  env: dev
+  name: app-data
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
   storageVirtualMachineId:
-    value: svm-0123456789abcdef0
+    value: "svm-0123456789abcdef0"
   name: vol_data
   sizeInMegabytes: 102400
   junctionPath: /data
-  securityStyle: UNIX
   storageEfficiencyEnabled: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f ontap-volume.yaml
+planton apply -f fsx-ontap-volume.yaml
 ```
 
-This creates a 100 GB read-write volume mounted at `/data` with UNIX security and storage efficiency enabled.
+This creates a 100 GB FlexVol volume mounted at `/data` with ONTAP storage efficiency (deduplication, compression, compaction) enabled. No tiering, SnapLock, or FlexGroup is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region where the ONTAP volume will be created (e.g., `us-east-1`). | Required; non-empty |
-| `storageVirtualMachineId` | `StringValueOrRef` | Parent SVM ID. ForceNew. | Required |
-| `storageVirtualMachineId.value` | `string` | Direct SVM ID value | — |
-| `storageVirtualMachineId.valueFrom` | `object` | Reference to an AwsFsxOntapStorageVirtualMachine resource | Default field: `status.outputs.svm_id` |
-| `name` | `string` | ONTAP volume name. ForceNew. Alphanumeric and underscores only. | 1-203 characters, `^[a-zA-Z0-9_]+$` |
-
-Exactly one of the two size fields must also be set — see below.
-
-### Size (exactly one)
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `sizeInMegabytes` | `int32` | Volume size in megabytes — the everyday arm. | Minimum 20 |
-| `sizeInBytes` | `int64` | Byte-precise size — the only way past 2 PiB (FlexGroup volumes scale to ~20 PiB). | 20 MiB – 22,517,998,000,000,000 bytes |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `junctionPath` | `string` | (none) | Mount point in SVM namespace (e.g., `/data`). Must start with `/`. Volume is unmounted if omitted. 1-255 characters. |
-| `ontapVolumeType` | `string` | `RW` | `RW` (read-write) or `DP` (data protection for SnapMirror). ForceNew. |
-| `volumeStyle` | `string` | `FLEXVOL` | `FLEXVOL` (single aggregate) or `FLEXGROUP` (distributed). ForceNew. |
-| `securityStyle` | `string` | (inherited) | `UNIX`, `NTFS`, or `MIXED`. Inherits from SVM if omitted. |
-| `snapshotPolicy` | `string` | (default) | ONTAP snapshot policy name (e.g., `default`, `none`). 1-255 characters. |
-| `storageEfficiencyEnabled` | `bool` | (ONTAP default) | Tri-state: `true` enables deduplication/compression/compaction, `false` disables, unset keeps ONTAP's per-volume-type default. |
-| `copyTagsToBackups` | `bool` | `false` | Copy resource tags to automatic backups. |
-| `skipFinalBackup` | `bool` | `false` | Skip the backup taken when the volume is deleted. Delete-time control — apply before deleting. |
-| `finalBackupTags` | `map` | (none) | Tags applied to the final backup taken on deletion. Only meaningful when `skipFinalBackup` is false. |
-| `bypassSnaplockEnterpriseRetention` | `bool` | `false` | Allow deleting SnapLock Enterprise volumes with unexpired WORM files. Delete-time control. |
-| `tieringPolicy` | `object` | (none) | Data tiering configuration. See Tiering Policy below. |
-| `snaplockConfiguration` | `object` | (none) | SnapLock WORM configuration. See SnapLock Configuration below. |
-| `aggregateConfiguration` | `object` | (none) | FlexGroup aggregate distribution. See Aggregate Configuration below. |
-
-### Tiering Policy
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `tieringPolicy.name` | `string` | `NONE`, `SNAPSHOT_ONLY`, `AUTO`, or `ALL`. |
-| `tieringPolicy.coolingPeriod` | `int32` | Days before data is tiered (2-183). Only valid for `AUTO` or `SNAPSHOT_ONLY`. |
-
-### SnapLock Configuration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `snaplockConfiguration.snaplockType` | `string` | (required) | `ENTERPRISE` or `COMPLIANCE`. ForceNew. |
-| `snaplockConfiguration.auditLogVolume` | `bool` | `false` | Designate as the SnapLock audit log volume. |
-| `snaplockConfiguration.privilegedDelete` | `string` | `DISABLED` | `DISABLED`, `ENABLED`, or `PERMANENTLY_DISABLED`. |
-| `snaplockConfiguration.volumeAppendModeEnabled` | `bool` | `false` | Allow appending to WORM files. |
-| `snaplockConfiguration.autocommitPeriod.type` | `string` | — | `NONE`, `MINUTES`, `HOURS`, `DAYS`, `MONTHS`, `YEARS`. |
-| `snaplockConfiguration.autocommitPeriod.value` | `int32` | — | Time units (1-65535). Required when type is not `NONE`. |
-| `snaplockConfiguration.retentionPeriod.defaultRetention` | `object` | — | Applied to files committed without explicit retention. |
-| `snaplockConfiguration.retentionPeriod.minimumRetention` | `object` | — | Floor — no file can have shorter retention. |
-| `snaplockConfiguration.retentionPeriod.maximumRetention` | `object` | — | Ceiling — no file can have longer retention. |
-
-Each retention duration has `type` (`SECONDS`/`MINUTES`/`HOURS`/`DAYS`/`MONTHS`/`YEARS`/`INFINITE`/`UNSPECIFIED`) and `value` (`int32`, 0-65535).
-
-### Aggregate Configuration
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `aggregateConfiguration.aggregates` | `string[]` | Aggregate names (e.g., `aggr1`, `aggr2`). Max 12. ForceNew. |
-| `aggregateConfiguration.constituentsPerAggregate` | `int32` | Constituents per aggregate (1-200). ForceNew. |
-
-## Examples
-
-### NFS Data Volume with Cost-Optimized Tiering
-
-A production volume with AUTO tiering that moves cold data to cheaper capacity pool storage after 31 days:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the volume to an SVM deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxOntapVolume
-metadata:
-  name: prod-nfs-data
-  id: awsfxov-nfs001
-  org: my-org
-  env: prod
 spec:
-  region: us-east-1
-  storageVirtualMachineId:
-    value: svm-0123456789abcdef0
-  name: vol_prod_data
-  sizeInMegabytes: 512000
-  junctionPath: /data
-  securityStyle: UNIX
-  snapshotPolicy: default
-  storageEfficiencyEnabled: true
-  copyTagsToBackups: true
-  tieringPolicy:
-    name: AUTO
-    coolingPeriod: 31
-```
-
-### SnapLock Compliance for Regulatory Records
-
-Immutable storage for SEC 17a-4 compliance with 5-year default retention and 1-day autocommit:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxOntapVolume
-metadata:
-  name: sec-compliance
-  id: awsfxov-worm001
-  org: my-org
-  env: prod
-spec:
-  region: us-east-1
-  storageVirtualMachineId:
-    value: svm-0123456789abcdef0
-  name: vol_sec17a4
-  sizeInMegabytes: 1048576
-  junctionPath: /compliance/records
-  securityStyle: UNIX
-  storageEfficiencyEnabled: true
-  tieringPolicy:
-    name: SNAPSHOT_ONLY
-  snaplockConfiguration:
-    snaplockType: COMPLIANCE
-    autocommitPeriod:
-      type: DAYS
-      value: 1
-    retentionPeriod:
-      defaultRetention:
-        type: YEARS
-        value: 5
-      minimumRetention:
-        type: YEARS
-        value: 1
-      maximumRetention:
-        type: YEARS
-        value: 10
-```
-
-### High-Throughput FlexGroup Volume
-
-A distributed volume across 2 aggregates for data lake workloads requiring parallel I/O:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxOntapVolume
-metadata:
-  name: datalake-flexgroup
-  id: awsfxov-fg001
-  org: my-org
-  env: prod
-spec:
-  region: us-east-1
-  storageVirtualMachineId:
-    value: svm-0123456789abcdef0
-  name: vol_datalake
-  sizeInMegabytes: 1048576
-  junctionPath: /datalake
-  volumeStyle: FLEXGROUP
-  securityStyle: UNIX
-  storageEfficiencyEnabled: true
-  tieringPolicy:
-    name: NONE
-  aggregateConfiguration:
-    aggregates:
-      - aggr1
-      - aggr2
-    constituentsPerAggregate: 8
-```
-
-### Cross-Resource Reference with valueFrom
-
-A volume referencing its parent SVM via `valueFrom` for infra chart dependency wiring:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsFsxOntapVolume
-metadata:
-  name: referenced-volume
-  id: awsfxov-ref001
-  org: my-org
-  env: prod
-spec:
-  region: us-east-1
   storageVirtualMachineId:
     valueFrom:
       kind: AwsFsxOntapStorageVirtualMachine
-      metadata:
-        id: awsfxosvm-prod001
+      name: app-svm
       fieldPath: status.outputs.svm_id
-  name: vol_app_data
-  sizeInMegabytes: 102400
-  junctionPath: /app
-  securityStyle: UNIX
-  storageEfficiencyEnabled: true
-  tieringPolicy:
-    name: AUTO
-    coolingPeriod: 31
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the SVM first, then provisions the volume with the resolved SVM ID.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `volumeId` | `string` | Volume ID (e.g., `fsvol-0123456789abcdef0`). Used in AWS APIs and CloudWatch metrics. |
-| `arn` | `string` | Volume ARN. Used in IAM policies for resource-level permissions. |
-| `uuid` | `string` | ONTAP UUID. Used for SnapMirror replication and ONTAP REST API operations. |
-| `fileSystemId` | `string` | Parent file system ID. Useful for CloudWatch metric dimensions. |
-| `flexcacheEndpointType` | `string` | FlexCache role: `NONE`, `ORIGIN`, or `CACHE`. |
-| `ontapVolumeType` | `string` | Confirmed volume type: `RW` or `DP`. |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring an ONTAP volume. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [AwsFsxOntapStorageVirtualMachine](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxontapstoragevirtualmachine/v1alpha1) — Parent SVM providing protocol endpoints and namespace
-- [AwsFsxOntapFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxontapfilesystem/v1alpha1) — Grandparent file system providing physical infrastructure
-- [AwsFsxLustreFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxlustrefilesystem/v1alpha1) — Alternative: HPC-optimized file system with S3 integration
-- [AwsFsxOpenzfsFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awsfsxopenzfsfilesystem/v1alpha1) — Alternative: General-purpose NFS with OpenZFS snapshots
-- [AwsElasticFileSystem](https://github.com/plantonhq/planton/tree/main/catalog/aws/awselasticfilesystem/v1alpha1) — Alternative: Serverless NFS with automatic scaling
+**Volume size** -- Exactly one of two sizing arms: `sizeInMegabytes` (the everyday arm, minimum 20 MB) or `sizeInBytes` (byte-precise, up to ~20 PiB -- the only arm that reaches past int32 megabytes). ONTAP supports thin provisioning, so logical size can exceed physical capacity. Size grows in place.
+
+**Volume style** -- Defaults to FLEXVOL (single aggregate). Choose FLEXGROUP for high-throughput workloads (data lakes, genomics, media rendering) that benefit from striping across multiple aggregates. FlexGroup requires `aggregateConfiguration`. ForceNew -- cannot change after creation.
+
+**Tiering policy** -- Controls cost optimization by moving infrequently accessed data to capacity pool storage. AUTO tiers data not accessed for the configured cooling period. SNAPSHOT_ONLY tiers only snapshot data. NONE keeps all data on SSD. ALL stores everything on capacity pool for lowest cost.
+
+**SnapLock** -- Enables WORM immutable storage for regulatory compliance. COMPLIANCE mode is irrevocable -- no one can delete files before retention expires. ENTERPRISE mode allows privileged deletion. ForceNew for `snaplockType` -- choosing the wrong mode requires volume recreation.
+
+**Junction path** -- The mount point in the SVM namespace (e.g., `/data`). Without a junction path, the volume exists but is not accessible via NFS/SMB. Must start with `/` and be unique within the SVM.
+
+**Storage efficiency** -- Enable `storageEfficiencyEnabled` for most workloads. ONTAP deduplication, compression, and compaction reduce physical storage consumption. Disable only for pre-compressed or encrypted data where the CPU overhead provides no benefit.
+
+**Final backup tags** -- When `skipFinalBackup` is off, `finalBackupTags` are applied to the backup taken on deletion, so cost-allocation and retention markers survive the volume itself.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsFsxOntapStorageVirtualMachine** | `storageVirtualMachineId` | `status.outputs.svm_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `volume_id` | Volume identifier (e.g., fsvol-0123456789abcdef0) | CloudWatch metrics, AWS API references |
+| `arn` | Amazon Resource Name of the volume | IAM policies for resource-level permissions |
+| `uuid` | ONTAP UUID for SnapMirror and REST API operations | Replication relationships, cross-cluster identification |
+| `file_system_id` | Parent file system ID | Cross-referencing with file system resources |
+| `flexcache_endpoint_type` | FlexCache role (NONE, ORIGIN, or CACHE) | FlexCache topology identification |
+| `ontap_volume_type` | Volume type confirmation (RW or DP) | Operational metadata |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**General purpose volume** -- 100 GB FlexVol with UNIX security style, storage efficiency enabled, and AUTO tiering with a 31-day cooling period. The standard configuration for NFS application data volumes. Start from the **General Purpose** preset.
+
+**Compliance SnapLock volume** -- 500 GB volume with SnapLock COMPLIANCE for immutable record retention (SEC 17a-4, HIPAA, FINRA). 5-year default retention, 1-day autocommit, SNAPSHOT_ONLY tiering. Start from the **Compliance SnapLock** preset.
+
+**High-performance FlexGroup volume** -- 1 TB FlexGroup distributed across 2 aggregates with 8 constituents each for parallel I/O. No tiering -- all data on SSD for consistent latency. Designed for data lakes, genomics, and media workflows. Start from the **High-Performance FlexGroup** preset.
+
+## Works With
+
+- [**AWS FSx ONTAP Storage Virtual Machine**](/cloud-catalog/aws-fsx-ontap-storage-virtual-machine) -- provides the parent SVM that hosts this volume's protocol endpoints and namespace

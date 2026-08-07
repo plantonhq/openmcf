@@ -8,103 +8,59 @@ componentName: "hetznercloudvolume"
 
 # Hetzner Cloud Volume
 
-Provisions a Hetzner Cloud block storage volume with an optional server attachment. Volumes persist independently of any server, making them the standard mechanism for data that must survive server replacement — databases, application state, and uploaded files. Size can be increased online after creation but can never be decreased.
+Deploys a network-attached block storage volume on Hetzner Cloud with optional server attachment and filesystem formatting. Volumes persist independently of servers -- detaching or deleting a server does not affect the volume's data. Size ranges from 10 GB to 10 TB and can be increased after creation but never decreased. Ideal for databases, application state, and any data that must survive server replacement.
 
 ## What Gets Created
 
-- **Block Storage Volume** — an `hcloud_volume` resource with the specified size, location, optional filesystem format (ext4 or xfs), labels computed from resource metadata, and optional delete protection.
-- **Volume Attachment** (when `serverId` is set) — an `hcloud_volume_attachment` resource that attaches the volume to the specified server with optional automount. Created only when the `serverId` field is present. The volume and server must be in the same location.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Volume** -- an `hcloud_volume` resource with the specified size, location, and optional filesystem format
+- **Volume Attachment** (optional) -- an `hcloud_volume_attachment` resource connecting the volume to a server when `serverId` is specified
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **A server in the same location** if attaching the volume via `serverId` — either pre-existing or managed as a `HetznerCloudServer` component
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `volume.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **Location selection** -- choose a location (fsn1, nbg1, hel1, ash, hil, sin). The volume can only be attached to servers in the same location.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudVolume
-metadata:
-  name: my-volume
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudVolume.my-volume
-spec:
-  size: 10
-  location: fsn1
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f volume.yaml
-```
+Open the deployment store, find **Hetzner Cloud Volume**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
 
-This creates a 10 GB raw (unformatted) volume in Falkenstein, unattached to any server.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `size` | `int` | Volume size in GB. Can be increased after creation but never decreased — the Hetzner Cloud API rejects size reductions. | `gte: 10`, `lte: 10240` |
-| `location` | `string` | Hetzner Cloud location where the volume is stored. Known locations: `fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`. The volume can only be attached to servers in the same location. Changing this forces volume replacement (data loss). | `min_len: 1` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `format` | `enum` | unspecified (raw) | Filesystem format applied at creation time. Valid values: `ext4`, `xfs`. When unspecified, the volume is created as a raw block device that must be formatted manually. This is a create-time-only setting — changing it after creation has no effect. |
-| `serverId` | `StringValueOrRef` | unset | Server to attach the volume to. Accepts a literal Hetzner Cloud server ID (as a string) or a reference to a `HetznerCloudServer` resource via `valueFrom`. The server must be in the same location. When set, creates an `hcloud_volume_attachment` resource. |
-| `automount` | `bool` | `false` | Automatically mount the volume on the server after attaching. Only meaningful when `serverId` is set. This is a create-time-only setting. |
-| `deleteProtection` | `bool` | `false` | Prevent accidental deletion of the volume via the Hetzner Cloud API. Must be disabled before the volume can be deleted. |
-
-## Examples
-
-### Unattached Volume with ext4
-
-A formatted volume created without a server attachment. Useful for pre-provisioning storage that will be attached to a server later.
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudVolume
-metadata:
-  name: app-data
-  org: acme-corp
-  env: staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: storage
-    pulumi.planton.dev/stack.name: staging.HetznerCloudVolume.app-data
-spec:
-  size: 50
-  location: fsn1
-  format: ext4
-```
-
-### Volume Attached to a Server
-
-A volume attached to a server with automount enabled. The `serverId` uses a `valueFrom` reference to a `HetznerCloudServer` component, ensuring the server is created before the volume attachment.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudVolume
 metadata:
   name: db-data
   org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: databases
-    pulumi.planton.dev/stack.name: production.HetznerCloudVolume.db-data
+  env: prod
+spec:
+  size: 50
+  location: fsn1
+  format: ext4
+  serverId:
+    value: "12345678"
+  automount: true
+```
+
+```shell
+planton apply -f hetznercloud-volume.yaml
+```
+
+This creates a 50 GB ext4-formatted volume in Falkenstein, attaches it to the specified server, and auto-mounts it. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a server environment, use ValueFromRef to attach the volume to a server:
+
+```yaml
 spec:
   size: 100
   location: fsn1
@@ -112,49 +68,52 @@ spec:
   serverId:
     valueFrom:
       kind: HetznerCloudServer
-      name: db-primary
+      name: db-server
       fieldPath: status.outputs.server_id
   automount: true
 ```
 
-### Production Volume with Protection
+The InfraPipeline resolves the dependency graph, creates the server first, then provisions and attaches the volume.
 
-A large XFS volume for high-throughput workloads with delete protection enabled. XFS is suited for large sequential writes — log aggregation, media storage, and backup repositories.
+## Key Configuration
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudVolume
-metadata:
-  name: media-storage
-  org: acme-corp
-  env: production
-  labels:
-    role: media
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: media-platform
-    pulumi.planton.dev/stack.name: production.HetznerCloudVolume.media-storage
-spec:
-  size: 500
-  location: fsn1
-  format: xfs
-  serverId:
-    valueFrom:
-      kind: HetznerCloudServer
-      name: media-processor
-      fieldPath: status.outputs.server_id
-  automount: true
-  deleteProtection: true
-```
+These are the most important decisions when configuring a volume. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Size** -- The `size` field sets the volume capacity in GB (10-10240). Size can be increased after creation but never decreased -- the Hetzner Cloud API rejects size reductions.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `volume_id` | `string` | Hetzner Cloud numeric ID of the created volume. Available for external reference by scripts or monitoring systems. |
-| `linux_device` | `string` | The Linux device path for the volume on the attached server (e.g., `/dev/disk/by-id/scsi-0HC_Volume_12345678`). Stable across reboots. Empty if the volume is not attached. Suitable for `/etc/fstab` entries. |
+**Location** -- The `location` field determines the physical datacenter. Must match the server's location for attachment. Changing forces replacement (data loss).
 
-## Related Components
+**Format** -- The `format` field selects the initial filesystem (ext4 or xfs). If unset, the volume is created raw and must be formatted manually. This is a create-time-only setting.
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — Compute instance the volume attaches to, referenced via `serverId`
+**Server attachment** -- The `serverId` field optionally attaches the volume to a server. Accepts a literal server ID or a ValueFromRef reference. If omitted, the volume is created unattached.
+
+**Automount** -- The `automount` field automatically mounts the volume on the server after attachment. Only meaningful when `serverId` is set.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **HetznerCloudServer** (optional) | `serverId` | `status.outputs.server_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `volume_id` | Hetzner Cloud numeric ID of the volume | API operations, resource tracking |
+| `linux_device` | Linux device path on the attached server | OS-level mount commands |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Database storage** -- A 50-100 GB ext4 volume attached to a database server with automount enabled. The volume survives server replacement, preserving database files.
+
+**Unattached reservation** -- Create a volume without server attachment for later use. Useful for pre-provisioning storage before the target server exists.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- volumes are attached to servers for persistent block storage

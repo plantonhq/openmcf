@@ -8,155 +8,121 @@ componentName: "azureprivatednszonevirtualnetworklink"
 
 # Azure Private DNS Zone Virtual Network Link
 
-Creates a virtual network link on an Azure Private DNS zone -- the attachment that makes the zone's records resolvable from a virtual network, optionally with automatic VM record registration and a resolution-fallback policy. One link per zone-network pair; hub-and-spoke topologies link one zone to many networks.
+Deploys an Azure Private DNS Zone Virtual Network Link — the attachment that makes a private DNS zone's records resolvable from inside one virtual network. A zone without links answers nobody; each link adds exactly one network to its audience. The link is a first-class resource because it is many-per-zone with its own lifecycle: a hub-and-spoke topology links one zone (say, `privatelink.postgres.database.azure.com`) to the hub and every spoke network, and networks join and leave the topology without touching the zone or each other. **One link resource per zone-network pair.**
 
 ## What Gets Created
 
-When you deploy an AzurePrivateDnsZoneVirtualNetworkLink resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Virtual Network Link** — an `azurerm_private_dns_zone_virtual_network_link` on the referenced zone, binding it to the referenced network
+- **Virtual Network Link** -- the attachment written on the zone, with your registration and resolution-policy dials
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-The link is an ARM child of the zone: the zone's name and resource group are derived from the referenced zone's ARM ID, so they can never contradict it.
+The link is an ARM **child of the zone** — it carries no region and no resource group of its own; both derive from the zone's ARM ID and can never contradict it. Peered networks do NOT inherit a link: each network in a topology needs its own.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A private DNS zone** to link (an `AzurePrivateDnsZone` in composed environments)
-- **A virtual network** to make the zone resolvable from (an `AzureVirtualNetwork` in composed environments)
-- **Write rights**: `Microsoft.Network/privateDnsZones/virtualNetworkLinks/write` on the zone and `Microsoft.Network/virtualNetworks/join/action` on the network (Private DNS Zone Contributor + Network Contributor, or Contributor/Owner)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `zone-link.yaml`:
+### Azure Subscription
+
+- **A Private DNS Zone** to link — reference an AzurePrivateDnsZone Cloud Resource's `zone_id` output, or provide the full ARM ID of an existing zone.
+- **A Virtual Network** to make the zone resolvable from — reference an AzureVirtualNetwork's `virtual_network_id` output, or provide the full ARM ID.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Private DNS Zone Virtual Network Link**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Privatelink Zone Link** preset in the [Presets](#presets) tab for the flagship Private Link attachment.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzurePrivateDnsZoneVirtualNetworkLink
 metadata:
-  name: postgres-zone-hub-link
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZoneVirtualNetworkLink.postgres-zone-hub-link
+  name: pg-privatelink-hub-link
+  org: acme-corp
+  env: prod
 spec:
   name: hub-vnet
   privateDnsZoneId:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com
+    value: "/subscriptions/.../providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com"
   virtualNetworkId:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet
+    value: "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/hub-vnet"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f zone-link.yaml
+planton apply -f link.yaml
 ```
 
-Workloads in `hub-vnet` now resolve the zone's records to their private IPs.
+Workloads in `hub-vnet` can now resolve the zone's records — and only that network; each spoke gets its own link.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | The link's ARM resource name under the parent zone; name it after the network it attaches. | Required, 1-80 chars, unique per zone |
-| `privateDnsZoneId` | `StringValueOrRef` | ARM ID of the parent zone. Defaults to referencing an `AzurePrivateDnsZone`'s `zone_id` output. | Required |
-| `virtualNetworkId` | `StringValueOrRef` | ARM ID of the network the zone becomes resolvable from. Defaults to referencing an `AzureVirtualNetwork`'s `virtual_network_id` output. | Required |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `registrationEnabled` | `bool` | Auto-register A records for VMs in the linked network (created at boot, removed at deallocation). Default `false`. Useful for custom internal zones; keep `false` for privatelink zones (their records are managed by private endpoints). Azure allows only ONE registration-enabled link per network. |
-| `resolutionPolicy` | `enum` | `DEFAULT` (answer strictly from the private zone) or `NX_DOMAIN_REDIRECT` (retry unanswerable names against public DNS). Unset lets Azure apply its per-zone-type default. |
-| `tags` | `map(string)` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Composed: Zone + Network by Reference
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the link to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePrivateDnsZoneVirtualNetworkLink
-metadata:
-  name: postgres-zone-spoke-link
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZoneVirtualNetworkLink.postgres-zone-spoke-link
 spec:
-  name: spoke-payments
   privateDnsZoneId:
     valueFrom:
-      name: postgres-privatelink-zone
+      kind: AzurePrivateDnsZone
+      name: pg-privatelink
+      fieldPath: status.outputs.zone_id
   virtualNetworkId:
     valueFrom:
-      name: payments-network
+      kind: AzureVirtualNetwork
+      name: hub-vnet
+      fieldPath: status.outputs.virtual_network_id
 ```
 
-### Internal Zone with VM Auto-Registration
+The InfraPipeline resolves the dependency graph, deploys the zone and network first, then writes the link on the zone.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePrivateDnsZoneVirtualNetworkLink
-metadata:
-  name: corp-zone-hub-link
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZoneVirtualNetworkLink.corp-zone-hub-link
-spec:
-  name: hub-vnet
-  privateDnsZoneId:
-    valueFrom:
-      name: corp-internal-zone
-  virtualNetworkId:
-    valueFrom:
-      name: hub-network
-  registrationEnabled: true
-```
+## Key Configuration
 
-Every VM in the hub network is now discoverable by hostname in `corp.internal`.
+These are the most important decisions when configuring a Virtual Network Link. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Hub-and-Spoke: One Zone, Many Networks
+**Registration** -- `registrationEnabled` decides whether Azure auto-registers VM records: each VM in the linked network gets an A record at boot, removed when it goes away. Right for custom internal zones ("corp.internal"); **keep it off (the default) for privatelink.\* zones** — their records are managed by private endpoints — and note Azure allows only ONE registration-enabled link per network.
 
-Deploy several link resources referencing the same zone -- one per network. Networks join and leave the resolution audience without touching the zone or each other:
+**Resolution policy** -- what happens when the private zone cannot answer: `DEFAULT` answers strictly from the private zone (unresolvable names fail); `NX_DOMAIN_REDIRECT` retries against public DNS — the fallback pattern for Private Link zones shared across environments where some records exist only publicly. Unset lets Azure choose its per-zone-type default.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePrivateDnsZoneVirtualNetworkLink
-metadata:
-  name: postgres-zone-spoke2-link
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePrivateDnsZoneVirtualNetworkLink.postgres-zone-spoke2-link
-spec:
-  name: spoke-analytics
-  privateDnsZoneId:
-    valueFrom:
-      name: postgres-privatelink-zone
-  virtualNetworkId:
-    valueFrom:
-      name: analytics-network
-```
+**Name** -- unique per zone, up to 80 characters; since each link attaches exactly one network, name it after that network ("hub-vnet", "spoke-payments") so the zone's link list reads as its audience. Renaming replaces the link (a brief resolution gap for the affected network, nothing else).
 
-## Stack Outputs
+## Outputs and Dependencies
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Consumes
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `link_id` | `string` | Full ARM ID of the link (`{zone-id}/virtualNetworkLinks/{name}`) |
-| `link_name` | `string` | The link's name as deployed |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzurePrivateDnsZone** | `privateDnsZoneId` | `status.outputs.zone_id` |
+| **AzureVirtualNetwork** | `virtualNetworkId` | `status.outputs.virtual_network_id` |
 
-## Related Components
+### What This Component Provides
 
-- [AzurePrivateDnsZone](/docs/catalog/azure/private-dns-zone) — the zone this link makes resolvable
-- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — the network gaining resolution
-- [AzurePrivateEndpoint](/docs/catalog/azure/private-endpoint) — registers PaaS records in privatelink zones
+After provisioning, `status.outputs` contains values for operators and automation (the link is a leaf — no downstream kind references it):
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `link_id` | Azure Resource Manager ID of the link (a child path under the zone) | Automation scripts, inventory |
+| `link_name` | Name of the link | Automation scripts, inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Privatelink zone link** -- attach a shared `privatelink.*` zone to a network so its private endpoints resolve; registration off, records owned by the endpoints. Start from the **Privatelink Zone Link** preset.
+
+**Internal zone with auto-registration** -- a custom zone ("corp.internal") where every VM registers its hostname at boot — remember: one registration link per network. Start from the **Internal Zone Autoregistration** preset.
+
+**Public fallback** -- the NX_DOMAIN_REDIRECT policy for shared zones where some records exist only publicly. Start from the **Public Fallback** preset.
+
+## Works With
+
+- [**Azure Private DNS Zone**](/cloud-catalog/azure-private-dns-zone) -- the zone this link is written on, referenced by its `zone_id` output
+- [**Azure Virtual Network**](/cloud-catalog/azure-virtual-network) -- the network that gains resolution, referenced by its `virtual_network_id` output
+- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- writes the privatelink records this link makes resolvable
+- [**Azure Virtual Network Peering**](/cloud-catalog/azure-virtual-network-peering) -- connects networks, but does NOT propagate DNS links — each peered network still needs its own link

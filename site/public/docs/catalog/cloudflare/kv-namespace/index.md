@@ -6,137 +6,87 @@ order: 100
 componentName: "cloudflarekvnamespace"
 ---
 
-# Cloudflare KV Namespace
+# KV Namespace on Cloudflare
 
-Deploys a Workers KV namespace on Cloudflare. Workers KV is a globally distributed, low-latency key-value store designed for read-heavy workloads at the edge. This component creates a single KV namespace that can be bound to Cloudflare Workers for storing configuration, session data, feature flags, or any other data your edge logic needs.
+Deploys a Workers KV namespace on Cloudflare for globally replicated, eventually consistent key-value storage at the edge. KV namespaces are bound to Workers for low-latency reads across Cloudflare's network. Integrates with Planton's Provider Connections for Cloudflare credential management.
 
 ## What Gets Created
 
-When you deploy a CloudflareKvNamespace resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Workers KV Namespace** — a `cloudflare_workers_kv_namespace` resource with the title set to the configured `namespaceName`
+- **Workers KV Namespace** -- a named key-value store in the Cloudflare account, identified by a unique namespace ID that Workers reference as a binding
+- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
-The namespace ID is exported as a stack output so that other components (such as CloudflareWorker) can reference it at deploy time.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Cloudflare credentials** configured via environment variables or Planton provider config
-- **A Cloudflare account** with Workers KV enabled on the plan
-- **Appropriate permissions** — the API token must have `Workers KV Storage:Edit` access
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Workers KV permissions. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-## Quick Start
+### Cloudflare Account
 
-Create a file `kv-namespace.yaml`:
+- **A Cloudflare account** with Workers KV enabled. The KV namespace is created at the account level and can be bound to any Worker in that account.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **KV Namespace on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
+apiVersion: cloudflare.planton.dev/v1
 kind: CloudflareKvNamespace
 metadata:
-  name: my-kv
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CloudflareKvNamespace.my-kv
+  name: session-cache
+  org: acme-corp
+  env: prod
 spec:
-  namespaceName: my-kv-store
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
+  namespaceName: session-cache-prod
+  ttlSeconds: 3600
+  description: "Session cache for production API workers"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f kv-namespace.yaml
+planton apply -f cloudflare-kv-namespace.yaml
 ```
 
-This creates a KV namespace titled `my-kv-store` in your Cloudflare account. Bind it to a Worker using the namespace ID from `status.outputs.namespaceId`.
+This creates a Workers KV namespace with a 1-hour default TTL for keys. The namespace ID is exported in stack outputs for binding to CloudflareWorker resources. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a KV namespace. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespaceName` | `string` | A human-readable name for the KV namespace. Must be unique within the Cloudflare account. | Required, max 64 characters |
-| `accountId` | `string` | The Cloudflare account ID that owns the namespace. | Required, 32 hex characters |
+**Namespace name** -- The `namespaceName` must be unique within the Cloudflare account, up to 64 characters. Choose a name that reflects the purpose and environment (e.g., `app-cache-prod`, `config-store-staging`). The name is visible in the Cloudflare dashboard.
 
-A KV namespace carries only an account and a title; there are no per-namespace
-TTL or description settings (TTL is set per write). Seed entries with
-`CloudflareWorkersKvPair`, or have the Worker write them at runtime.
+**Default TTL** -- Set `ttlSeconds: 0` (default) for keys that never expire. Set a positive value (minimum 60 seconds) to auto-expire keys after the specified duration. Individual key writes can override this default. Use expiring TTLs for cache data and session stores; use non-expiring for configuration and feature flags.
 
-## Examples
+**Description** -- The optional `description` field documents the namespace's purpose. Helpful when managing multiple namespaces across environments and services.
 
-### Basic KV Namespace
+## Outputs and Dependencies
 
-A minimal KV namespace suitable for development or testing:
+### What This Component Consumes
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareKvNamespace
-metadata:
-  name: dev-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CloudflareKvNamespace.dev-cache
-spec:
-  namespaceName: dev-cache
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-```
+This component has no foreign key dependencies.
 
-### Session Store
+### What This Component Provides
 
-A KV namespace intended for session data (TTL is applied per write by the Worker):
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareKvNamespace
-metadata:
-  name: session-store
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CloudflareKvNamespace.session-store
-spec:
-  namespaceName: prod-session-store
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace_id` | The unique identifier of the created KV namespace | CloudflareWorker `kvBindings` for binding KV storage to Worker scripts |
 
-### Feature Flags Namespace
+## Common Patterns
 
-A KV namespace dedicated to feature flag storage, referenced by multiple Workers.
-Seed individual flags with `CloudflareWorkersKvPair`:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareKvNamespace
-metadata:
-  name: feature-flags
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CloudflareKvNamespace.feature-flags
-spec:
-  namespaceName: feature-flags-prod
-  accountId: 0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d
-```
+**Standard namespace** -- A KV namespace with configurable TTL and description. The only pattern needed -- KV namespaces are simple resources whose complexity lives in the Workers that consume them. Start from the **Standard** preset.
 
-## Stack Outputs
+## Works With
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespaceId` | `string` | The unique identifier of the created KV namespace in Cloudflare |
-| `supportsUrlEncoding` | `bool` | Whether keys in this namespace support URL encoding |
-
-## Related Components
-
-- [CloudflareWorkersKvPair](/docs/catalog/cloudflare/workers-kv-pair) — seed individual key-value entries into this namespace as managed, composable resources
-- [CloudflareWorker](/docs/catalog/cloudflare/worker) — Workers consume KV namespaces via bindings; use the `namespaceId` output to wire a KV store to your Worker
-- [CloudflareR2Bucket](/docs/catalog/cloudflare/r2-bucket) — object storage for larger or binary data, complementary to KV for small-value, read-heavy access patterns
-- [CloudflareD1Database](/docs/catalog/cloudflare/d1-database) — relational SQL storage at the edge; use when you need structured queries rather than simple key-value lookups
-- [CloudflareDnsZone](/docs/catalog/cloudflare/dns-zone) — manages DNS zones that front the Workers consuming this KV namespace
+This component operates independently and does not reference other deployment components.

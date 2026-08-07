@@ -3,7 +3,7 @@
 ## Usage
 
 ```bash
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 pulumi up
 ```
 
@@ -17,5 +17,5 @@ make build
 ## Debug
 
 ```bash
-bash debug.sh ../hack/manifest.yaml
+bash debug.sh ../../e2e/manifest.yaml
 ```

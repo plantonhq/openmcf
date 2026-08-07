@@ -35,26 +35,26 @@ If `--name` or `--rank` are omitted, determine them based on analysis of the com
 ### Step 1: Locate Component and Read Context
 
 1. **Determine component path**:
-   - Path: `catalog/<provider>/<component_lowercase>/v1/`
-   - Verify the path exists
+   - Path: `catalog/<provider>/<component_lowercase>/`
+   - Verify the path exists, and note the version directory (e.g., `v1alpha1/`)
 
-2. **Read essential files** (all within the component's `v1/` directory):
-   - `api.proto` -- Extract exact `apiVersion` and `kind` constant values from buf.validate constraints
-   - `spec.proto` -- Understand all fields, types, validations, and default annotations (`recommended_default`, `default`)
-   - `docs/README.md` -- Understand design rationale and common deployment patterns
-   - `iac/hack/manifest.yaml` -- See the minimal test manifest for structural reference
+2. **Read essential files**:
+   - `<version>/api.proto` -- Extract exact `apiVersion` and `kind` constant values from buf.validate constraints
+   - `<version>/spec.proto` -- Understand all fields, types, validations, and default annotations (`recommended_default`, `default`)
+   - `GUIDE.md` (when present), `README.md`, and `catalog.md` at the component root -- Understand design rationale and common deployment patterns
+   - `e2e/manifest.yaml` at the component root (when present) -- See the minimal test manifest for structural reference
 
 3. **Read convention**:
    - `architecture/presets.md` -- Preset authoring guide and convention reference
 
 4. **Check existing presets**:
-   - Read `v1/presets/` directory (if it exists)
+   - Read the component-root `presets/` directory
    - Note which ranks are taken and what patterns are already covered
    - Avoid duplicating existing presets
 
 ### Step 2: Identify the Configuration Pattern
 
-Based on the `spec.proto` fields, `docs/README.md` rationale, and cloud infrastructure expertise:
+Based on the `spec.proto` fields, the component's authored docs (GUIDE.md, README.md, catalog.md), and cloud infrastructure expertise:
 
 1. **Determine the target use case** -- What real-world deployment pattern does this preset represent?
 2. **Select which fields to include** -- All required fields plus optional fields relevant to the use case
@@ -67,10 +67,10 @@ Based on the `spec.proto` fields, `docs/README.md` rationale, and cloud infrastr
 
 ### Step 3: Create the YAML File
 
-Create `v1/presets/{rank}-{name}.yaml` following this structure:
+Create `presets/{rank}-{name}.yaml` at the component root following this structure:
 
 ```yaml
-apiVersion: <provider>.planton.dev/v1
+apiVersion: <provider>.planton.dev/v1alpha1
 kind: <Kind>
 metadata:
   name: my-<descriptive-name>
@@ -88,7 +88,7 @@ spec:
 
 ### Step 4: Create the Companion Markdown
 
-Create `v1/presets/{rank}-{name}.md` with these required sections:
+Create `presets/{rank}-{name}.md` with these required sections. The `.md` sidecar is load-bearing: a preset `.yaml` without it is silently dropped from the site, and the `pkg/anatomy` conformance gate fails CI on the missing pair.
 
 1. **Title** (H1) -- Clear, descriptive title
 2. **Description** -- 2-4 sentences explaining what the preset configures and why

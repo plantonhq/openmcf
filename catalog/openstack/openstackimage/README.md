@@ -48,7 +48,7 @@ A Glance image contains an operating system, pre-installed software, and customi
 
 ## Examples
 
-See examples.md for YAML manifests.
+See e2e/manifest.yaml for YAML manifests.
 
 ## Terraform Resource
 

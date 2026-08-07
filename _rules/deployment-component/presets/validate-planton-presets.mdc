@@ -30,7 +30,7 @@ You are the Planton Preset Validator. Your job is to systematically check every 
 ### Step 1: Enumerate Presets
 
 1. **Determine scope** based on arguments
-2. **Scan** for `v1/presets/` directories within scope
+2. **Scan** for component-root `presets/` directories within scope (`catalog/<provider>/<kind>/presets/`)
 3. **List** all `.yaml` and `.md` files in each `presets/` directory
 
 ### Step 2: Validate Each Preset YAML
@@ -142,6 +142,7 @@ For each `.md` file, check required sections:
 ## Notes
 
 - This rule is read-only -- it does not modify any files
+- Sidecar presence (every `.yaml` paired with its `.md`) is also machine-enforced by the `pkg/anatomy` conformance gate in CI; this rule's added value is content validation (schema correctness, section quality), which the gate does not judge
 - Use `@create-planton-preset` to create presets that pass validation from the start
 - The `apiVersion` and `kind` constants must be read from `api.proto` for each component -- do not hardcode them
 - StringValueOrRef detection requires reading `spec.proto` to identify which fields use the wrapper type

@@ -8,177 +8,136 @@ componentName: "azureaksnodepool"
 
 # Azure AKS Node Pool
 
-Creates an AKS node pool -- a scale set of worker nodes attached to an existing AKS cluster by ARM ID -- at the full `azurerm` v4.80 surface: mode, OS, spot economics, autoscaling, disks, GPU, kubelet and Linux OS tuning, and upgrade rollout control.
+Adds a standalone node pool to an existing Azure Kubernetes Service (AKS) cluster. The pool is deliberately separate from the cluster Cloud Resource so application capacity can scale, price (Spot), upgrade, and taint independently of the control plane and its built-in system pool. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent cluster (and optional subnets / public IP prefixes).
 
 ## What Gets Created
 
-When you deploy an AzureAksNodePool resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Node Pool** — an `azurerm_kubernetes_cluster_node_pool` attached to the referenced cluster
+- **AKS Agent Pool** -- a `containerservice.AgentPool` attached to the referenced cluster, with the VM size, fixed count or autoscaling bounds, OS family/image, and pool role (System / User) you choose
+- **Pricing posture** -- on-demand (default) or Spot with eviction policy and max price; Spot pools arrive pre-tainted and skip surge upgrades
+- **Placement** -- availability zones, optional node/pod subnets, instance-level public IPs, and dedicated-placement ARM IDs (proximity / host / capacity reservation groups)
+- **Scheduling handles** -- node labels and taints so workloads select (or are repelled from) this pool
+- **Optional tuning** -- surge upgrade settings, temporary rotation name, kubelet/Linux OS/node-network profiles, Windows outbound NAT
+- **Azure Tags** -- pool-level tags on the scale set and its disks, plus Planton-derived resource tags
 
-Node pools are the unit of compute shape: general, memory-optimized, GPU, spot, or Windows pools each live as their own resource with an independent lifecycle. The cluster carries only its mandatory default (system) pool; everything else is one of these.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An existing AKS cluster** (an `AzureAksCluster` in composed environments -- the pool references its `cluster_id` output)
-- **Container service write rights**: `Microsoft.ContainerService/managedClusters/agentPools/write`
-- Windows pools require the cluster to carry a `windowsProfile`
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-## Quick Start
+### Azure Subscription
 
-Create a file `pool.yaml`:
+- **An AKS cluster** -- this pool attaches by ARM ID. Provide it directly or reference an AzureAksCluster Cloud Resource via ValueFromRef (`status.outputs.cluster_id`). The pool inherits the cluster's region and resource group.
+- **Quota** -- the chosen VM size needs available vCPU quota in the cluster's region (Azure Portal → Quotas → Compute).
+- **Windows pools** -- the parent cluster must already carry a Windows profile (admin credentials).
+- **Subnet headroom (optional)** -- when placing the pool in its own subnet on flat Azure CNI, size for nodes plus max-pods IPs.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureAksNodePool
-metadata:
-  name: general-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksNodePool.general-pool
-spec:
-  kubernetesClusterId:
-    valueFrom:
-      name: prod-aks
-  name: general
-  vmSize: Standard_D4s_v5
-  autoScalingEnabled: true
-  minCount: 2
-  maxCount: 10
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f pool.yaml
-```
+Open the deployment store, find **Azure AKS Node Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the eight pool configuration steps. Start from the **On-Demand General Purpose** preset in the [Presets](#presets) tab for a production-ready user pool, or **Spot Cost-Optimized** for fault-tolerant batch capacity.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `kubernetesClusterId` | `StringValueOrRef` | ARM ID of the parent cluster. Defaults to referencing an `AzureAksCluster`'s `cluster_id` output. Changing it replaces the pool. | Required |
-| `name` | `string` | Pool name: 1-12 lowercase letters and numbers, starting with a letter (Windows pools: at most 6 characters). | Required |
-| `vmSize` | `string` | Azure VM size, e.g. `Standard_D4s_v5` (general), `Standard_E8s_v5` (memory), `Standard_NC24ads_A100_v4` (GPU). | Required |
-
-### Sizing and Scheduling
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `mode` | `enum` | `USER` (default: workloads, may park at zero, may be spot/Windows) or `SYSTEM` (cluster-critical pods; Linux, on-demand, at least 1 node). |
-| `nodeCount` | `int` | Fixed count (0-1000) without autoscaling; initial count with it. USER pools may sit at 0 (parked). |
-| `autoScalingEnabled` | `bool` | Cluster autoscaler owns the count between `minCount` and `maxCount`. |
-| `minCount` / `maxCount` | `int` | Autoscaling bounds (0-1000; USER pools may scale to zero). |
-| `maxPods` | `int` | Max pods per node. Unset = Azure's plugin-dependent default. |
-| `nodeLabels` | `map(string)` | Kubernetes labels for scheduling, e.g. `{"workload": "gpu"}`. |
-| `nodeTaints` | `list(string)` | Kubernetes taints, each `key=value:Effect`, e.g. `sku=gpu:NoSchedule`. |
-| `zones` | `list(string)` | Availability zones (`"1"`, `"2"`, `"3"`). Empty = regional placement. |
-
-### Spot Economics
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `priority` | `enum` | `REGULAR` (default) or `SPOT` -- 30-90% discount, evictable, USER pools only. Fixed at creation. |
-| `evictionPolicy` | `enum` | What eviction does to a spot node: `EVICTION_DELETE` (default; billing stops) or `EVICTION_DEALLOCATE` (disks kept, bill while stopped). SPOT only. |
-| `spotMaxPrice` | `double` | Ceiling price per node-hour in USD. Unset = -1: pay up to on-demand, never price-evicted. SPOT only. |
-
-Spot pools automatically carry the `kubernetes.azure.com/scalesetpriority=spot:NoSchedule` taint and do not support upgrade surge settings.
-
-### OS, Disks, and Placement
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `osType` / `osSku` | `enum` | `LINUX` (default) or `WINDOWS`; image SKU (Ubuntu, Azure Linux, Windows 2019/2022, version-pinned variants). |
-| `orchestratorVersion` | `string` | Node Kubernetes version. Unset follows the control plane; may lag up to two minors for canarying. |
-| `osDiskSizeGb` / `osDiskType` / `kubeletDiskType` / `ultraSsdEnabled` | | Disk shape: managed vs ephemeral OS disk, kubelet state placement, Ultra SSD. |
-| `vnetSubnetId` / `podSubnetId` | `StringValueOrRef` | Optional dedicated subnets (reference `AzureSubnet`). Unset inherits the cluster's network. |
-| `fipsEnabled` / `hostEncryptionEnabled` | `bool` | FIPS 140-2 images; host-based encryption. Changing either rotates the pool. |
-| `nodePublicIpEnabled` / `nodePublicIpPrefixId` | | Per-node public IPs, optionally from an `AzurePublicIpPrefix`. |
-| `gpuInstance` / `gpuDriver` | `enum` | MIG partitioning profile; NVIDIA driver install control. |
-| `proximityPlacementGroupId` / `hostGroupId` / `capacityReservationGroupId` | `string` | Placement: co-location, dedicated hosts, reserved capacity. |
-| `scaleDownMode` / `snapshotId` / `workloadRuntime` / `temporaryNameForRotation` | | Scale-down disposition, snapshot source, OCI/Kata/WASM runtime, rotation stand-in name. |
-
-### Tuning Blocks
-
-| Field | Description |
-|-------|-------------|
-| `upgradeSettings` | Rollout control: `maxSurge` XOR `maxUnavailable`, drain timeout, node soak, undrainable-node behavior. Not valid on spot pools. |
-| `kubeletConfig` | CPU manager/CFS quota, image GC thresholds, topology manager, unsafe sysctls allowlist, container log caps, pod PID limit. |
-| `linuxOsConfig` | Transparent hugepages, swap file, and the full sysctl surface. Linux pools only. |
-| `nodeNetworkProfile` | Allowed host ports, application security groups, node public IP tags. |
-| `windowsProfile` | `outboundNatEnabled` (Windows pools only; fixed at creation). |
-| `tags` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Spot Pool for Fault-Tolerant Workloads
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureAksNodePool
 metadata:
-  name: spot-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksNodePool.spot-pool
+  name: prod-apps-pool
+  org: acme-corp
+  env: prod
 spec:
   kubernetesClusterId:
-    valueFrom:
-      name: prod-aks
-  name: spot
+    value: "/subscriptions/.../managedClusters/prod-aks"
+  name: apps
   vmSize: Standard_D4s_v5
-  priority: SPOT
-  evictionPolicy: EVICTION_DELETE
+  mode: USER
+  osType: LINUX
   autoScalingEnabled: true
   minCount: 0
-  maxCount: 20
+  maxCount: 10
+  zones: ["1", "2", "3"]
 ```
 
-### GPU Pool Reserved by Taint
+```shell
+planton apply -f azure-aks-node-pool.yaml
+```
+
+This creates a zone-spread, autoscaled User pool that can scale to zero when idle. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the pool to the cluster deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureAksNodePool
-metadata:
-  name: gpu-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureAksNodePool.gpu-pool
 spec:
   kubernetesClusterId:
     valueFrom:
-      name: prod-aks
-  name: gpu
-  vmSize: Standard_NC4as_T4_v3
-  nodeCount: 1
-  gpuDriver: INSTALL
-  nodeLabels:
-    workload: gpu
-  nodeTaints:
-    - "sku=gpu:NoSchedule"
+      kind: AzureAksCluster
+      name: production-aks
+      fieldPath: status.outputs.cluster_id
+  name: apps
+  vmSize: Standard_D8s_v5
+  mode: USER
+  autoScalingEnabled: true
+  minCount: 2
+  maxCount: 20
+  zones: ["1", "2", "3"]
+  vnetSubnetId:
+    valueFrom:
+      kind: AzureSubnet
+      name: aks-apps
+      fieldPath: status.outputs.subnet_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the cluster (and subnet) first, then provisions the pool with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `node_pool_id` | `string` | Full ARM ID of the agent pool |
-| `node_pool_name` | `string` | The pool's name (surfaces in the `kubernetes.azure.com/agentpool` node label) |
-| `node_image_version` | `string` | Node OS image version actually rolled out -- audit patch currency across pools |
+These are the most important decisions when configuring an AKS node pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Cluster attachment** -- `kubernetesClusterId` is the only way in. The pool has no `region` or `resourceGroup` of its own; it inherits both from the cluster. Name, OS family, and the cluster FK are create-time facts — changing any replaces the pool.
 
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) — the parent cluster (carries only the mandatory default pool)
-- [AzureSubnet](/docs/catalog/azure/subnet) — optional dedicated subnet for this pool's nodes
-- [AzurePublicIpPrefix](/docs/catalog/azure/public-ip-prefix) — allowlistable CIDR for node public IPs
+**Role and OS** -- `mode: USER` is the normal choice for application capacity. `mode: SYSTEM` pools must be Linux and on-demand (ARM rejects Windows or Spot system pools). `osSku` options follow `osType` so a Windows image cannot be expressed on a Linux pool.
+
+**Scale** -- exactly one scale mode applies: `nodeCount` (fixed, including 0 to park the pool) or `autoScalingEnabled` with `minCount`/`maxCount`. User pools may scale to zero; that is the modern cost posture for idle capacity.
+
+**Economics** -- leave `priority` unset for on-demand. `priority: SPOT` enables eviction policy and max price (`-1` pays up to on-demand). Spot pools skip surge upgrades and arrive with Azure's Spot taint — workloads need the matching toleration.
+
+**Scheduling** -- `nodeLabels` and `nodeTaints` (`key=value:Effect`) dedicate the pool. Prefer one clear purpose label over many overlapping selectors.
+
+**Rotation** -- set `temporaryNameForRotation` so ForceNew pool property changes (VM size, zones, OS disk type) rotate in place instead of recreating the pool.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureAksCluster** | `kubernetesClusterId` | `status.outputs.cluster_id` |
+| **AzureSubnet** | `vnetSubnetId`, `podSubnetId` | `status.outputs.subnet_id` |
+| **AzurePublicIpPrefix** | `nodePublicIpPrefixId` | `status.outputs.public_ip_prefix_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `node_pool_id` | Azure Resource Manager ID of the agent pool | Diagnostics, RBAC scoping, external references |
+| `node_pool_name` | Name of the pool (matches `spec.name`) | kubectl / scripting (`agentpool` label) |
+| `node_image_version` | The node image version currently running | Upgrade auditing |
+
+## Presets
+
+Ready-to-deploy configurations for common patterns. See the [Presets](#presets) tab for the full list, or start from:
+
+- **On-Demand General Purpose** -- User pool, D4s_v5, autoscaled 2–10 across three zones
+- **Spot Cost-Optimized** -- Spot priority for fault-tolerant batch / CI capacity
+- **GPU or Windows** -- GPU-tainted or Windows Server pool shapes

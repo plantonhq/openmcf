@@ -25,7 +25,7 @@ pulumi destroy --stack dev --yes
 go build ./...
 
 # Test with manifest
-export STACK_INPUT=$(cat iac/hack/manifest.yaml | yq -o json)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | yq -o json)
 pulumi preview --stack dev
 ```
 

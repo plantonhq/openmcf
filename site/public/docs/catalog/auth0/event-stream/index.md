@@ -8,37 +8,46 @@ componentName: "auth0eventstream"
 
 # Auth0 Event Stream
 
-Deploys an Auth0 Event Stream that delivers real-time Auth0 events to an external destination. Supports AWS EventBridge for serverless event processing and HTTPS webhooks for custom endpoint delivery, with configurable event type subscriptions.
+Deploys an Auth0 Event Stream that delivers real-time Auth0 events to an external destination. Supports AWS EventBridge for serverless event processing and HTTPS webhooks for custom endpoint delivery, with configurable event type subscriptions. Integrates with Planton's Auth0 Provider Connection for credential management.
 
 ## What Gets Created
 
-When you deploy an Auth0EventStream resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Auth0 Event Stream** — an `auth0_event_stream` resource configured with the specified destination type, event subscriptions, and destination-specific settings (EventBridge or webhook)
+- **Auth0 Event Stream** -- a stream resource configured with the specified destination type, event subscriptions, and destination-specific settings
 
-For EventBridge destinations, Auth0 creates a partner event source in the target AWS account that must be associated with an EventBridge event bus to begin receiving events.
+For EventBridge destinations, Auth0 creates a partner event source in the target AWS account that must be associated with an EventBridge event bus to begin receiving events. For webhook destinations, Auth0 delivers event payloads as HTTP POST requests to the configured HTTPS endpoint with the specified authorization credentials.
 
-## Prerequisites
+## Before You Deploy
 
-- **Auth0 credentials** configured via environment variables (`AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`) or Planton provider config
-- **An Auth0 tenant** with Event Streams enabled
-- **An AWS account** (if using EventBridge) with permissions to accept partner event sources
-- **A publicly accessible HTTPS endpoint** (if using webhooks) that can respond to POST requests within 10 seconds
+### Planton Setup
 
-## Quick Start
+- **Auth0 Provider Connection** -- an active connection in the Connect module with Auth0 domain, client ID, and client secret. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credential authentication.
 
-Create a file `auth0-event-stream.yaml`:
+### Auth0 Account
+
+- **An Auth0 tenant** with Event Streams enabled.
+- **An AWS account** with permissions to accept partner event sources, if using the EventBridge destination type. You will need the 12-digit AWS account ID and target region.
+- **A publicly accessible HTTPS endpoint** if using the webhook destination type. The endpoint must respond to POST requests within 10 seconds and support either Basic or Bearer token authentication.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Auth0 Event Stream**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and spec fields.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1alpha1
+apiVersion: auth0.planton.dev/v1
 kind: Auth0EventStream
 metadata:
   name: login-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.Auth0EventStream.login-events
+  org: acme-corp
+  env: prod
 spec:
   destinationType: webhook
   subscriptions:
@@ -51,155 +60,51 @@ spec:
       token: "your-secret-token"
 ```
 
-Deploy:
-
 ```shell
 planton apply -f auth0-event-stream.yaml
 ```
 
-This creates an event stream that delivers authentication success and failure events to the specified webhook endpoint using bearer token authorization.
+This creates an event stream that delivers authentication success and failure events to the specified webhook endpoint using bearer token authorization. No EventBridge configuration is included. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an Auth0 Event Stream. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `destinationType` | `string` | Destination where events are delivered. Determines which configuration block is required. | Must be one of: `eventbridge`, `webhook` |
-| `subscriptions` | `string[]` | Event types this stream subscribes to. Only matching events are delivered. | At least one entry required |
+**Destination type** -- The `destinationType` field determines where events are delivered. Use `eventbridge` for AWS-native event processing with Lambda, Step Functions, or SIEM integrations. Use `webhook` for custom HTTPS endpoints. EventBridge configurations cannot be updated after creation -- any change forces resource recreation.
 
-### Optional Fields
+**Event subscriptions** -- The `subscriptions` array specifies which event types the stream delivers. Common types include `authentication.success`, `authentication.failure`, `user.created`, `user.updated`, and `api.authorization.success`. At least one subscription is required. Subscribe only to the events you need to reduce noise in downstream systems.
 
-#### EventBridge Configuration (`eventbridgeConfiguration`)
+**Webhook authorization** -- The `webhookConfiguration.webhookAuthorization.method` field sets how Auth0 authenticates with your endpoint. Use `bearer` with a securely generated token for most integrations, or `basic` with username and password for systems that require HTTP Basic authentication. Generate tokens with `openssl rand -base64 32`.
 
-Required when `destinationType` is `eventbridge`. EventBridge configurations cannot be updated after creation; any change forces resource recreation.
+**EventBridge region** -- The `eventbridgeConfiguration.awsRegion` field determines which AWS region receives the partner event source. Choose the region where your event processing infrastructure runs to minimize latency. The `awsAccountId` must be a valid 12-digit AWS account number.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `eventbridgeConfiguration.awsAccountId` | `string` | 12-digit AWS account ID where events are delivered. Auth0 creates a partner event source in this account. | Must match `^[0-9]{12}$` |
-| `eventbridgeConfiguration.awsRegion` | `string` | AWS region for the EventBridge event bus. | Non-empty string |
+**Immutability constraints** -- EventBridge configurations are immutable after creation. Any change to `awsAccountId` or `awsRegion` forces the event stream to be destroyed and recreated, which generates a new partner event source name. Webhook configurations can be updated in place, including the endpoint URL and authorization settings.
 
-#### Webhook Configuration (`webhookConfiguration`)
+## Outputs and Dependencies
 
-Required when `destinationType` is `webhook`. Webhook configurations can be updated after creation.
+### What This Component Consumes
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `webhookConfiguration.webhookEndpoint` | `string` | HTTPS URL that receives event payloads via POST. Must be publicly accessible. | Must match `^https://.+` |
-| `webhookConfiguration.webhookAuthorization.method` | `string` | Authorization method for the webhook endpoint. | Must be one of: `basic`, `bearer` |
-| `webhookConfiguration.webhookAuthorization.username` | `string` | Username for Basic authentication. Required when `method` is `basic`. | Required if `method` is `basic` |
-| `webhookConfiguration.webhookAuthorization.password` | `string` | Password for Basic authentication. Stored securely, never returned by the API. Required when `method` is `basic`. | Required if `method` is `basic` |
-| `webhookConfiguration.webhookAuthorization.token` | `string` | Bearer token for token-based authentication. Stored securely, never returned by the API. Required when `method` is `bearer`. | Required if `method` is `bearer` |
+This component has no foreign key dependencies.
 
-## Examples
+### What This Component Provides
 
-### EventBridge — Security Monitoring
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-Stream authentication events to AWS EventBridge for processing by Lambda functions or a SIEM integration:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `id` | Unique Auth0 event stream identifier | Auth0 API operations |
+| `name` | Event stream name derived from metadata | Monitoring dashboards |
+| `status` | Current stream status (`active`, `suspended`, `disabled`) | Health checks, alerting |
+| `destination_type` | Configured destination (`eventbridge` or `webhook`) | Downstream routing logic |
+| `created_at` | ISO 8601 creation timestamp | Audit logs, lifecycle tracking |
+| `updated_at` | ISO 8601 last-updated timestamp | Change tracking |
+| `subscriptions` | List of subscribed event types | Downstream event filtering |
+| `aws_partner_event_source` | AWS partner event source name (EventBridge only) | EventBridge event bus association |
 
-```yaml
-apiVersion: auth0.planton.dev/v1alpha1
-kind: Auth0EventStream
-metadata:
-  name: security-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.Auth0EventStream.security-events
-spec:
-  destinationType: eventbridge
-  subscriptions:
-    - authentication.success
-    - authentication.failure
-    - user.created
-    - user.updated
-  eventbridgeConfiguration:
-    awsAccountId: "123456789012"
-    awsRegion: us-east-1
-```
+## Common Patterns
 
-After deployment, associate the partner event source (available in `status.outputs.awsPartnerEventSource`) with an EventBridge event bus in the target AWS account, then create rules to route events to downstream targets.
+No presets are available yet. Configure directly using the fields documented in the [API Explorer](#api-explorer) tab.
 
-### Webhook — Bearer Token Authorization
+## Works With
 
-Deliver user lifecycle events to an HTTPS endpoint, authenticated with a bearer token:
-
-```yaml
-apiVersion: auth0.planton.dev/v1alpha1
-kind: Auth0EventStream
-metadata:
-  name: user-lifecycle
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.Auth0EventStream.user-lifecycle
-spec:
-  destinationType: webhook
-  subscriptions:
-    - user.created
-    - user.updated
-    - user.deleted
-  webhookConfiguration:
-    webhookEndpoint: "https://api.example.com/webhooks/auth0/users"
-    webhookAuthorization:
-      method: bearer
-      token: "dGhpcyBpcyBhIHNlY3VyZSB0b2tlbg=="
-```
-
-Generate a secure token with:
-
-```shell
-openssl rand -base64 32
-```
-
-### Webhook — Basic Authentication
-
-Deliver API authorization events to an internal endpoint using HTTP Basic authentication:
-
-```yaml
-apiVersion: auth0.planton.dev/v1alpha1
-kind: Auth0EventStream
-metadata:
-  name: api-audit
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.Auth0EventStream.api-audit
-spec:
-  destinationType: webhook
-  subscriptions:
-    - api.authorization.success
-    - api.authorization.failure
-    - management.client.created
-    - management.connection.updated
-  webhookConfiguration:
-    webhookEndpoint: "https://audit.internal.example.com/auth0"
-    webhookAuthorization:
-      method: basic
-      username: auth0-webhook
-      password: "s3cureP@ssword!"
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Unique Auth0 identifier for the event stream. Format: `est_XXXXXXXXXXXXXXXX` |
-| `name` | `string` | Name of the event stream, derived from `metadata.name` |
-| `status` | `string` | Current status of the stream: `active`, `suspended`, or `disabled` |
-| `destinationType` | `string` | Destination type: `eventbridge` or `webhook` |
-| `createdAt` | `string` | ISO 8601 timestamp when the stream was created |
-| `updatedAt` | `string` | ISO 8601 timestamp when the stream was last updated |
-| `subscriptions` | `string[]` | Event types this stream is subscribed to |
-| `awsPartnerEventSource` | `string` | AWS partner event source name. Only populated for EventBridge destinations. Format: `aws.partner/auth0.com/<tenant-id>/<stream-name>` |
-
-## Related Components
-
-- [Auth0Client](/docs/catalog/auth0/client) — applications that generate the authentication and user events consumed by this stream
-- [Auth0ResourceServer](/docs/catalog/auth0/resource-server) — APIs whose authorization events can be streamed via `api.authorization.*` subscriptions
-- [Auth0Connection](/docs/catalog/auth0/connection) — authentication connections whose events can be monitored through this stream
+This component operates independently and does not reference other deployment components.

@@ -6,7 +6,7 @@ This Pulumi module creates a namespaced Istio `Telemetry` resource on a target c
 > `apiextensions.CustomResource` rather than the typed crd2pulumi SDK. crd2pulumi cannot
 > faithfully type the `tracing[].customTags` map (nested object-valued `oneOf`), so the
 > `spec` is built as a map from the strongly-typed proto getters instead. See
-> `../../docs/README.md` section 5 for the full rationale.
+> `../../GUIDE.md` section 5 for the full rationale.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ make build
 ### With the Planton CLI
 
 ```bash
-planton pulumi up --manifest ../hack/manifest.yaml
+planton pulumi up --manifest ../../e2e/manifest.yaml
 ```
 
 ### Direct Pulumi usage
@@ -40,7 +40,7 @@ The entrypoint loads the `KubernetesTelemetryStackInput` from the `STACK_INPUT_Y
 environment variable (path to a manifest) or `STACK_INPUT_YAML` (inline YAML content):
 
 ```bash
-export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
+export STACK_INPUT_YAML_FILE=../../e2e/manifest.yaml
 pulumi up
 ```
 

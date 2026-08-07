@@ -86,10 +86,10 @@ Bootstrap complete, production-ready deployment components from scratch.
 
 ### What It Creates
 
-✅ **Proto API Definitions** - All 4 proto files with validations and tests
+✅ **Proto API Definitions** - All 4 contract protos (`api.proto`, `spec.proto`, `input.proto`, `outputs.proto`) with validations and tests
 ✅ **IaC Modules** - Both Pulumi and Terraform with feature parity
-✅ **Documentation** - User-facing, research, and technical docs
-✅ **Supporting Files** - Test manifests, build configs
+✅ **Documentation** - `README.md`, `catalog.md`, module READMEs
+✅ **Supporting Files** - Presets, e2e test manifests, build configs
 ✅ **Registry Entry** - Registered in cloud_resource_kind.proto
 ✅ **Validation** - Build and test validation passed
 
@@ -103,9 +103,9 @@ Bootstrap complete, production-ready deployment components from scratch.
 
 **Examples:**
 ```bash
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component AtlasMongodb --provider atlas
 @forge-planton-component GcpStorageBucket --provider gcp
-@forge-planton-component PostgresKubernetes --provider kubernetes --category workload
+@forge-planton-component KubernetesPostgres --provider kubernetes --category workload
 ```
 
 ### Learn More
@@ -129,16 +129,16 @@ Evaluate components against the ideal state and generate actionable completion r
 
 ### What It Checks
 
-Audits 9 categories:
+File-set presence and absence (folder structure, required files, forbidden residue) is machine-enforced by the `pkg/anatomy` conformance gate (CI lane `lint.component-anatomy.yaml`) -- the audit points there instead of re-checking inventories. The audit's own judgment covers content quality:
+
 1. Cloud Resource Registry
-2. Folder Structure
+2. Anatomy Conformance (gate pointer)
 3. Protobuf API Definitions
 4. IaC Modules - Pulumi
 5. IaC Modules - Terraform
-6. Documentation - Research
-7. Documentation - User-Facing
-8. Supporting Files
-9. Nice to Have Items
+6. Documentation - User-Facing (README.md, catalog.md, GUIDE.md when present)
+7. Presets and E2E Coverage
+8. Nice to Have Items
 
 **Scoring:** Weighted (Critical 40%, Important 40%, Nice-to-Have 20%)
 
@@ -150,7 +150,7 @@ Audits 9 categories:
 
 **Examples:**
 ```bash
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 @audit-planton-component GcpCertManagerCert
 ```
 
@@ -163,7 +163,7 @@ Audits 9 categories:
 - **Prioritized recommendations**
 - **Comparison to complete components**
 
-Reports saved to: `<component>/v1/docs/audit/<timestamp>.md`
+The report is presented in the session -- component directories carry no audit artifacts (the anatomy gate keeps the component file set closed).
 
 ### Learn More
 - **README:** [`audit/README.md`](audit/README.md)
@@ -203,7 +203,7 @@ Improve existing components by filling gaps, adding features, refreshing docs, o
 **Examples:**
 ```bash
 # Fill gaps from audit
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 
 # Propagate proto changes
 @update-planton-component GcpCertManagerCert --scenario proto-changed
@@ -215,7 +215,7 @@ Improve existing components by filling gaps, adding features, refreshing docs, o
 @update-planton-component GcpGkeCluster --scenario update-iac --explain "add multi-region support"
 
 # Fix specific issue
-@update-planton-component PostgresKubernetes --explain "examples use deprecated field names"
+@update-planton-component KubernetesPostgres --explain "presets use deprecated field names"
 ```
 
 ### Safety Features
@@ -261,13 +261,13 @@ One-command workflow that audits a component and automatically fills all gaps to
 **Examples:**
 ```bash
 # Basic usage (target: 95%)
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 
 # Preview without changes
-@complete-planton-component MongodbAtlas --dry-run
+@complete-planton-component AtlasMongodb --dry-run
 
 # Custom target score
-@complete-planton-component PostgresKubernetes --target-score 100
+@complete-planton-component KubernetesPostgres --target-score 100
 
 # Batch processing
 for component in Comp1 Comp2 Comp3; do
@@ -279,11 +279,10 @@ done
 
 Automatically creates missing items:
 - ✅ Terraform module (if missing)
-- ✅ Research documentation (if missing)
-- ✅ User-facing docs (if missing/incomplete)
-- ✅ Examples (if missing/incomplete)
-- ✅ Pulumi overview (if missing)
-- ✅ Supporting files (manifests)
+- ✅ User-facing docs (README.md, catalog.md -- if missing/incomplete)
+- ✅ Presets with .md sidecars (if missing/incomplete)
+- ✅ Module READMEs (if missing)
+- ✅ Supporting files (e2e manifests)
 
 **Note:** Only fills gaps, doesn't modify existing files
 
@@ -349,10 +348,10 @@ Make targeted fixes to components and automatically propagate changes to all rel
 @fix-planton-component AwsRdsInstance --explain "Pulumi hardcodes backup_retention_period instead of using spec field"
 
 # Fix documentation drift
-@fix-planton-component PostgresKubernetes --explain "examples use deprecated 'database_name' field, should be 'db_identifier'"
+@fix-planton-component KubernetesPostgres --explain "presets use deprecated 'database_name' field, should be 'db_identifier'"
 
 # Fix test failures
-@fix-planton-component MongodbAtlas --explain "spec_test.go expects validation on cluster_tier but spec.proto has no validation rule"
+@fix-planton-component AtlasMongodb --explain "spec_test.go expects validation on cluster_tier but spec.proto has no validation rule"
 ```
 
 ### What Gets Updated
@@ -364,16 +363,16 @@ Make targeted fixes to components and automatically propagate changes to all rel
 - spec_test.go (validation tests)
 
 **Documentation (always):**
-- examples.md (match current API)
-- README.md (match current behavior)
-- docs/README.md (if architectural)
+- README.md and catalog.md (match current API and behavior)
+- Presets (match current API)
+- GUIDE.md (if judgment changed)
 - IaC READMEs (if usage changed)
 
 **Validation:**
-- Component tests: `go test ./catalog/.../v1/`
-- Build: `go build ./catalog/<provider>/<component>/v1/...`
-- Full suite: `go test -v ./catalog/<provider>/<component>/v1/`
-- Example validation
+- Component tests: `go test ./catalog/<provider>/<component>/...`
+- Build: `go build ./catalog/<provider>/<component>/...`
+- Full suite: `go test -v ./catalog/<provider>/<component>/...`
+- Preset validation
 - Consistency checks
 
 ### Typical Duration
@@ -450,7 +449,7 @@ New ID prefix (current: k8sms): k8sdpl
 
 ✅ **Enum value** - Registry number unchanged (e.g., 810)
 ✅ **Provider** - Provider field preserved
-✅ **Version** - Remains v1
+✅ **Version** - Version directory unchanged (e.g., v1alpha1)
 ✅ **Flags** - Special flags like `is_service_kind` preserved
 ✅ **Metadata** - All other metadata unchanged
 ✅ **Functionality** - Zero behavioral changes
@@ -459,8 +458,8 @@ New ID prefix (current: k8sms): k8sdpl
 
 Rename isn't complete until all phases pass:
 1. `make protos` - Regenerate proto stubs
-2. `go build ./catalog/<provider>/<component>/v1/...` - Verify compilation
-3. `go test -v ./catalog/<provider>/<component>/v1/` - Validate behavior unchanged
+2. `go build ./catalog/<provider>/<component>/...` - Verify compilation
+3. `go test -v ./catalog/<provider>/<component>/...` - Validate behavior unchanged
 
 **Stops on first failure** for fast feedback.
 
@@ -540,7 +539,7 @@ Completely remove deployment components with safety features to prevent accident
 # Step 3: Confirm (type: DELETE ObsoleteComponent)
 
 # Step 4: Verify
-go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
+go build ./catalog/... && go test ./catalog/...
 ```
 
 **Quick Delete (with caution):**
@@ -625,13 +624,13 @@ go build ./catalog/.../v1/... && go test -v ./catalog/.../v1/
 
 ```bash
 # 1. Edit spec.proto (add new fields)
-vim catalog/gcp/gcpcloudsl/v1alpha1/spec.proto
+vim catalog/gcp/gcpcloudsql/v1alpha1/spec.proto
 
 # 2. Propagate changes
 @update-planton-component GcpCloudSql --scenario proto-changed
 
 # 3. Test changes
-# Deploy with iac/hack/manifest.yaml
+# Deploy with e2e/manifest.yaml
 
 # 4. Verify no regressions
 @audit-planton-component GcpCloudSql
@@ -717,8 +716,8 @@ jobs:
 # Makefile
 .PHONY: audit-all
 audit-all:
-	@for component in $(shell find catalog -name "v1" -type d); do \
-		@audit-planton-component $$(basename $$(dirname $$component)); \
+	@for component in $(shell find catalog -mindepth 2 -maxdepth 2 -type d -not -name "_*" -not -name "aa_*"); do \
+		@audit-planton-component $$(basename $$component); \
 	done
 ```
 
@@ -739,15 +738,14 @@ audit-all:
 - **Delete:** [`delete/README.md`](delete/README.md)
 
 ### Component-Specific Documentation
-- **Research Document:** `<component>/v1/docs/README.md`
-  - **Critical Reference:** Consult this when executing any rule on a component
-  - Contains comprehensive research about the component
-  - Explains design decisions and parity accounting (pinned provider version, compositions, recorded exclusions)
-  - Documents deployment landscape and best practices
-  - Provides context for understanding what the component does and why
+- **Durable Judgment Sources:** `<component>/GUIDE.md` (when present), `<component>/README.md`, `<component>/catalog.md`
+  - **Critical Reference:** Consult these when executing any rule on a component
+  - GUIDE.md carries authored operational judgment: design decisions, parity accounting (pinned provider version, compositions, recorded exclusions), conventions, and trade-offs
+  - README.md and catalog.md carry the user-facing behavior contract
+  - Research documents are never committed -- anything worth keeping lives in these files
   - **Use when:**
     - Updating component (understand current design)
-    - Auditing component (assess research quality)
+    - Auditing component (assess documentation quality)
     - Deleting component (understand impact)
     - Making decisions about component behavior
 
@@ -763,8 +761,8 @@ audit-all:
 1. **Always use forge** - Don't create manually
 2. **Audit immediately** - Verify forge created everything
 3. **Fill any gaps** - Use update if audit shows <95%
-4. **Test locally** - Deploy with hack manifest
-5. **Document decisions** - Update research docs if needed
+4. **Test locally** - Deploy with the e2e manifest
+5. **Document decisions** - Update GUIDE.md if judgment changed
 
 ### For Existing Components
 
@@ -817,7 +815,7 @@ grep "^\s*[A-Z]" shared/cloudresourcekind/cloud_resource_kind.proto
 **Solution:**
 ```bash
 # Check file sizes
-find catalog/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh {} \;
+find catalog/atlas/atlasmongodb -type f -exec ls -lh {} \;
 ```
 
 ### "Update fails with build errors"
@@ -833,10 +831,10 @@ find catalog/atlas/mongodbatlas/v1alpha1 -type f -exec ls -lh {} \;
 make protos
 
 # Check build
-go build ./catalog/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/...
 
 # Check tests
-go test -v ./catalog/<provider>/<component>/v1/
+go test -v ./catalog/<provider>/<component>/...
 ```
 
 ### "Delete warns about references"
@@ -905,15 +903,15 @@ grep -r "ComponentName" docs/
 ### Kubernetes Components
 
 ```bash
-@forge-planton-component PostgresKubernetes --provider kubernetes --category workload
-@forge-planton-component RedisKubernetes --provider kubernetes --category workload
-@forge-planton-component CertManagerKubernetes --provider kubernetes --category addon
+@forge-planton-component KubernetesPostgres --provider kubernetes --category workload
+@forge-planton-component KubernetesValkey --provider kubernetes --category workload
+@forge-planton-component KubernetesCertManager --provider kubernetes --category addon
 ```
 
 ### SaaS Platform Components
 
 ```bash
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component AtlasMongodb --provider atlas
 @forge-planton-component ConfluentKafka --provider confluent
 @forge-planton-component SnowflakeDatabase --provider snowflake
 ```

@@ -59,7 +59,7 @@ The following cannot be changed after creation; changing them requires recreatin
 
 ## Examples
 
-See examples.md for copy-paste ready YAML manifests.
+See e2e/manifest.yaml for copy-paste ready YAML manifests.
 
 ## Further Reading
 

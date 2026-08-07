@@ -52,7 +52,7 @@ spec:
       serverGroupName: tcp-backend
 ```
 
-See examples.md for more configurations.
+See e2e/manifest.yaml for more configurations.
 
 ---
 

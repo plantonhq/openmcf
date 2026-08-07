@@ -8,185 +8,105 @@ componentName: "hetznercloudprimaryip"
 
 # Hetzner Cloud Primary IP
 
-Allocates a persistent public IP address (IPv4 or IPv6 /64) in Hetzner Cloud that survives server deletion. The IP is created at a specific location and can be assigned to servers via `HetznerCloudServer`. An optional reverse DNS record can be configured for mail servers and services requiring identity verification through reverse lookups.
+Allocates a managed public IP address (IPv4 or IPv6) on Hetzner Cloud that persists independently of any server. Primary IPs are created at a specific location and can be assigned to servers at creation time, providing stable public endpoints that survive server deletion and recreation. Includes optional reverse DNS (rDNS) configuration for mail servers and services requiring identity verification via reverse lookups.
 
 ## What Gets Created
 
-- **Primary IP** — an `hcloud_primary_ip` resource allocating either a single IPv4 address or an IPv6 /64 network block at the specified location, with standard labels computed from resource metadata and optional delete protection. `auto_delete` is always `false` and `assignee_type` is always `"server"`.
-- **Reverse DNS record** (when `dnsPtr` is set) — an `hcloud_rdns` resource mapping the allocated IP address back to the specified hostname. Created only when the `dnsPtr` field is non-empty.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Primary IP** -- an `hcloud_primary_ip` resource allocating a public IPv4 address or IPv6 /64 network block at the specified location
+- **Reverse DNS** (optional) -- an `hcloud_rdns` resource mapping the allocated IP to a hostname when `dnsPtr` is specified
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `primary-ip.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **Location selection** -- choose a Hetzner Cloud location (fsn1, nbg1, hel1, ash, hil, sin) where the IP will be allocated. The IP can only be assigned to servers in the same location.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud Primary IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudPrimaryIp
 metadata:
-  name: my-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudPrimaryIp.my-ip
+  name: web-ip
+  org: acme-corp
+  env: prod
 spec:
   type: ipv4
   location: fsn1
+  dnsPtr: "web.example.com"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f primary-ip.yaml
+planton apply -f hetznercloud-primary-ip.yaml
 ```
 
-This allocates a single IPv4 address in Falkenstein. The address is assigned by Hetzner Cloud and returned in `status.outputs.ip_address`.
+This allocates an IPv4 address in Falkenstein with a reverse DNS record pointing to web.example.com. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `type` | `enum` (`ipv4`, `ipv6`) | IP address type. `ipv4` allocates a single address. `ipv6` allocates a /64 network block. Changing this forces replacement. | Required, defined values only |
-| `location` | `string` | Hetzner Cloud location where the IP is allocated. Known locations: `fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`. The Primary IP can only be assigned to servers in the same location. Changing this forces replacement. | `min_len: 1` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `dnsPtr` | `string` | empty | Reverse DNS pointer record for the allocated IP address. When set, an `hcloud_rdns` resource is created mapping the IP back to this hostname. Required for mail servers (SPF/DKIM verification relies on matching forward and reverse DNS). |
-| `deleteProtection` | `bool` | `false` | Prevent accidental deletion of the Primary IP via the Hetzner Cloud API. Must be disabled before the IP can be deleted. |
-
-## Examples
-
-### Minimal IPv4
-
-A single IPv4 address in Falkenstein — the simplest working configuration.
+When deploying as part of a server environment, use ValueFromRef to assign this IP to a server:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPrimaryIp
-metadata:
-  name: dev-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudPrimaryIp.dev-ip
+# In the HetznerCloudServer manifest:
 spec:
-  type: ipv4
-  location: fsn1
+  publicNet:
+    ipv4:
+      valueFrom:
+        kind: HetznerCloudPrimaryIp
+        name: web-ip
+        fieldPath: status.outputs.primary_ip_id
 ```
 
-### Mail Server IP with Reverse DNS
+The InfraPipeline resolves the dependency graph, allocates the IP first, then provisions the server with the stable public address.
 
-An IPv4 address with a reverse DNS pointer for email deliverability. The `dnsPtr` hostname must have a matching forward DNS A record.
+## Key Configuration
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPrimaryIp
-metadata:
-  name: mail-ip
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudPrimaryIp.mail-ip
-spec:
-  type: ipv4
-  location: fsn1
-  dnsPtr: mail.example.com
-  deleteProtection: true
-```
+These are the most important decisions when configuring a Primary IP. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### IPv6 with Delete Protection
+**Type** -- The `type` field selects IPv4 (single address) or IPv6 (/64 network block). Changing this value forces replacement of the resource.
 
-An IPv6 /64 block in Helsinki with delete protection enabled.
+**Location** -- The `location` field determines where the IP is allocated (e.g., fsn1, nbg1, hel1, ash, hil, sin). The IP can only be assigned to servers in the same location. Changing this value forces replacement.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPrimaryIp
-metadata:
-  name: web-ipv6
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudPrimaryIp.web-ipv6
-spec:
-  type: ipv6
-  location: hel1
-  deleteProtection: true
-```
+**Reverse DNS** -- The `dnsPtr` field sets an optional rDNS record mapping the IP to a hostname. Required for mail servers and services that rely on forward/reverse DNS consistency for identity verification.
 
-### Server Composition via valueFrom
+**Delete protection** -- The `deleteProtection` field prevents accidental deletion via the Hetzner Cloud API.
 
-A Primary IP referenced by a HetznerCloudServer using `valueFrom`. The server receives the IP's numeric ID from the Primary IP's stack outputs, establishing a dependency edge in the deployment DAG.
+## Outputs and Dependencies
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudPrimaryIp
-metadata:
-  name: app-ip
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudPrimaryIp.app-ip
-spec:
-  type: ipv4
-  location: fsn1
-  dnsPtr: app.example.com
-  deleteProtection: true
-```
+### What This Component Consumes
 
-The server references this IP:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: app-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.app-01
-spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
-  primaryIpId:
-    valueFrom:
-      kind: HetznerCloudPrimaryIp
-      name: app-ip
-      fieldPath: status.outputs.primary_ip_id
-```
+### What This Component Provides
 
-## Stack Outputs
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `primary_ip_id` | `string` | Hetzner Cloud numeric ID of the created Primary IP. Referenced by HetznerCloudServer via `StringValueOrRef`. |
-| `ip_address` | `string` | The allocated IP address. For IPv4, a single address (e.g., `203.0.113.42`). For IPv6, the first address in the /64 block (e.g., `2001:db8::1`). |
-| `ip_network` | `string` | The allocated IPv6 /64 CIDR (e.g., `2001:db8::/64`). Empty for IPv4 Primary IPs. |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `primary_ip_id` | Hetzner Cloud numeric ID of the Primary IP | HetznerCloudServer public network IP assignment |
+| `ip_address` | Allocated IP address (IPv4) or first address in /64 block (IPv6) | DNS record configuration, application endpoints |
+| `ip_network` | IPv6 network in CIDR notation (empty for IPv4) | IPv6 network planning |
 
-## Related Components
+## Common Patterns
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — Assigns the Primary IP to a server's primary public IP slot via `primaryIpId`
-- [HetznerCloudFloatingIp](/docs/catalog/hetznercloud/floating-ip) — Alternative IP type that can be reassigned between servers in any location (not location-bound like Primary IPs)
-- [HetznerCloudFirewall](/docs/catalog/hetznercloud/firewall) — Controls inbound/outbound traffic for servers using this IP
-- [HetznerCloudNetwork](/docs/catalog/hetznercloud/network) — Private networking commonly deployed alongside public IPs for server connectivity
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Stable web endpoint** -- Allocate an IPv4 Primary IP and assign it to a web server. The IP survives server replacement, keeping DNS records and client connections stable.
+
+**Mail server IP** -- Allocate an IPv4 Primary IP with rDNS configured to match the mail server hostname. Forward and reverse DNS consistency is required for SPF/DKIM verification.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- servers reference this Primary IP for stable public addressing
+- [**Hetzner Cloud DNS Zone**](/cloud-catalog/hetznercloud-dns-zone) -- DNS records can reference the allocated `ip_address` output

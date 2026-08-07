@@ -8,144 +8,128 @@ componentName: "azurefederatedidentitycredential"
 
 # Azure Federated Identity Credential
 
-Creates a federated identity credential -- a keyless OIDC trust rule on a user-assigned managed identity that lets an external workload (a GitHub Actions workflow, a Kubernetes service account, any OIDC-issuing system) exchange its own token for the identity's Azure credentials. No client secret is created, stored, or rotated.
+Deploys a federated identity credential: a keyless trust rule on a user-assigned managed identity that lets an external workload exchange its own OIDC token for Azure credentials — no client secret, nothing to rotate, nothing to leak. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent identity and (for AKS workload identity) the cluster's OIDC issuer.
 
 ## What Gets Created
 
-When you deploy an AzureFederatedIdentityCredential resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Federated Identity Credential** — an `azurerm_federated_identity_credential` on the referenced user-assigned identity, encoding one issuer + subject + audience trust triple
+- **Federated Identity Credential** -- one trust rule written on the parent user-assigned managed identity, visible in the portal's "Federated credentials" tab
 
-Federated credentials carry no Azure tags -- ARM models them as untagged child resources of the identity.
+The trust model is a three-way match. An external workload presents a token; Azure AD accepts the exchange only when the token's `iss` claim matches this credential's issuer, its `sub` claim matches the subject, and its `aud` claim matches the audience -- each byte for byte, no wildcards. An identity carries one credential per external workload that should act as it (Azure allows up to 20 per identity).
 
-## Prerequisites
+A credential conveys no permissions by itself -- it only authenticates the external workload AS the identity. What that identity may do is granted separately through **AzureRoleAssignment** resources.
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A user-assigned managed identity** to write the credential on (an `AzureUserAssignedIdentity` in composed environments)
-- **Write rights on the identity**: `Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/write` (Managed Identity Contributor, Contributor, or Owner)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `federated-credential.yaml`:
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **A user-assigned managed identity** the credential is written on. Reference an AzureUserAssignedIdentity Cloud Resource via ValueFromRef, or pass the identity's full ARM resource ID as a literal.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Federated Identity Credential**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-picks for the well-known issuers and subject-format templates so the byte-for-byte match rules are hard to get wrong. Start from the **GitHub Actions OIDC** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFederatedIdentityCredential
 metadata:
-  name: ci-deployer-trust
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFederatedIdentityCredential.ci-deployer-trust
+  name: github-main-branch
+  org: acme-corp
+  env: prod
 spec:
   name: github-main-branch
   userAssignedIdentity:
-    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ci-deployer
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: ci-deployer
+      fieldPath: status.outputs.identity_id
   issuer:
-    value: https://token.actions.githubusercontent.com
-  subject: repo:my-org/platform:ref:refs/heads/main
+    value: "https://token.actions.githubusercontent.com"
+  subject: "repo:acme/platform:ref:refs/heads/main"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f federated-credential.yaml
+planton apply -f credential.yaml
 ```
 
-This lets the `main`-branch workflows of `my-org/platform` authenticate to Azure as the `ci-deployer` identity -- with no secret anywhere.
+This lets workflows on the `main` branch of `acme/platform` deploy to Azure as the `ci-deployer` identity -- with no stored service-principal secret anywhere. The audience is omitted, so Azure applies `api://AzureADTokenExchange` (what every standard client requests).
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | The credential's name under the parent identity; name it after the workload it trusts. | Required, 3-120 characters |
-| `userAssignedIdentity` | `StringValueOrRef` | ARM ID of the parent identity. Defaults to referencing an `AzureUserAssignedIdentity`'s `identity_id` output. | Required |
-| `issuer` | `StringValueOrRef` | OIDC issuer URL the incoming token's `iss` claim must equal exactly. A literal URL for external providers, or a reference defaulting to an `AzureAksCluster`'s `oidc_issuer_url` output. | Required, full URL |
-| `subject` | `string` | Workload identifier the token's `sub` claim must equal exactly (no wildcards). | Required, non-empty |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `audience` | `string` | The token's required `aud` claim. Defaults to `api://AzureADTokenExchange` -- the value every standard client requests; override only for providers that mint a different audience. |
-
-## Examples
-
-### GitHub Actions: Deploy from a Protected Environment
-
-Trust only jobs running against the `production` environment (with its required reviewers), not every push to a branch:
+The AKS workload-identity composition references the cluster's issuer -- it only exists once the cluster is deployed:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureFederatedIdentityCredential
-metadata:
-  name: prod-deploy-trust
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFederatedIdentityCredential.prod-deploy-trust
-spec:
-  name: github-production-environment
-  userAssignedIdentity:
-    valueFrom:
-      name: prod-deployer-identity
-  issuer:
-    value: https://token.actions.githubusercontent.com
-  subject: repo:my-org/platform:environment:production
-```
-
-### AKS Workload Identity for a Service Account
-
-Let pods running as the `payments-api` service account authenticate as a managed identity. The issuer references the cluster's OIDC issuer URL directly, so the trust always matches the cluster it is deployed beside -- no hand-copied URL:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureFederatedIdentityCredential
-metadata:
-  name: payments-workload-trust
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureFederatedIdentityCredential.payments-workload-trust
 spec:
   name: aks-payments-serviceaccount
   userAssignedIdentity:
     valueFrom:
-      name: payments-identity
+      kind: AzureUserAssignedIdentity
+      name: payments-api
+      fieldPath: status.outputs.identity_id
   issuer:
     valueFrom:
       kind: AzureAksCluster
-      name: platform-cluster
+      name: prod-aks
       fieldPath: status.outputs.oidc_issuer_url
-  subject: system:serviceaccount:payments:payments-api
+  subject: "system:serviceaccount:payments:payments-api"
 ```
 
-For a cluster managed outside the environment, pass the literal URL instead (`issuer: { value: <url> }`; find it with `az aks show --query oidcIssuerProfile.issuerUrl`).
+The InfraPipeline resolves the dependency graph, deploys the identity and cluster first, then provisions the credential with the resolved issuer URL.
 
-### One Identity, Several Trusted Workloads
+## Key Configuration
 
-An identity accumulates one credential per external workload (up to 20). Deploy several AzureFederatedIdentityCredential resources referencing the same identity -- one for `main`-branch CI, one for the release tags, one for a cluster service account -- each an independent, individually removable trust rule.
+These are the most important decisions when configuring a federated identity credential. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**The byte-for-byte match** -- Azure applies no normalization: no trailing-slash forgiveness on the issuer, no wildcards in the subject. The classic failure is a near-miss string; decode a real token's claims when unsure.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Subject specificity** -- The trust is exactly as narrow as the subject string. Prefer the most specific form the issuer offers: a branch-scoped GitHub subject (`repo:{owner}/{repo}:ref:refs/heads/{branch}`) over a repository-wide one, one Kubernetes service account (`system:serviceaccount:{namespace}:{serviceaccount}`) over a namespace. Need to trust several branches or accounts? Add one credential each -- rules stay individually reviewable and removable.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `federated_identity_credential_id` | `string` | Full ARM ID of the credential (`{identity-id}/federatedIdentityCredentials/{name}`) |
-| `name` | `string` | The credential's name as deployed |
-| `user_assigned_identity_id` | `string` | ARM ID of the parent identity |
-| `issuer` | `string` | The trusted issuer as deployed |
-| `subject` | `string` | The trusted subject as deployed |
-| `audience` | `string` | The required audience as deployed |
+**Audience** -- Leave it unset for `api://AzureADTokenExchange`, the audience Azure AD's token-exchange endpoint expects and the value every standard client (azure-sdk, azure/login, the AKS workload-identity webhook) requests. Override only when a provider genuinely mints a different audience.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AzureUserAssignedIdentity](/docs/catalog/azure/user-assigned-identity) — the parent identity the external workload acts as
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) — grants the identity the permissions the external workload needs
-- [AzureRoleDefinition](/docs/catalog/azure/role-definition) — custom roles for grants the built-ins don't express
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureUserAssignedIdentity** | `userAssignedIdentity` | `status.outputs.identity_id` |
+| **AzureAksCluster** (workload identity) | `issuer` | `status.outputs.oidc_issuer_url` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream tooling can consume:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `federated_identity_credential_id` | Full ARM ID of the credential | Automation and auditing |
+| `name` | The credential's ARM resource name | Portal cross-reference |
+| `user_assigned_identity_id` | ARM ID of the parent identity | Wiring the external side to the right identity |
+| `issuer` | The issuer as deployed | CI configuration generators, exchange-failure diagnosis |
+| `subject` | The subject as deployed | CI configuration generators, exchange-failure diagnosis |
+| `audience` | The audience as deployed | Non-standard client configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**CI without secrets** -- One credential per pipeline trust boundary (branch, environment, or tag), all on a `ci-deployer` identity whose role assignments scope to exactly what the pipeline deploys. Start from the **GitHub Actions OIDC** preset.
+
+**AKS workload identity** -- The issuer references the cluster's `oidc_issuer_url` output; the subject names one Kubernetes service account; the pod's service account carries the `azure.workload.identity/client-id` annotation pointing at the identity's client ID. Start from the **AKS Workload Identity** preset.
+
+## Works With
+
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- the parent identity this trust rule is written on
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants the identity the permissions the trusted workload will exercise
+- [**Azure AKS Cluster**](/cloud-catalog/azure-aks-cluster) -- provides the OIDC issuer for the workload-identity composition

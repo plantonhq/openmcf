@@ -8,81 +8,147 @@ componentName: "awslambdaeventsourcemapping"
 
 # AWS Lambda Event Source Mapping
 
-Deploys a Lambda event source mapping -- the managed poller that reads an SQS queue, a Kinesis or DynamoDB stream, a Kafka topic, an Amazon MQ queue, or a DocumentDB change stream and invokes a Lambda function with batched records.
+Creates the managed poller that reads records from an event source — an SQS queue, a Kinesis stream, a DynamoDB stream, an MSK topic, a self-managed Kafka cluster, an Amazon MQ broker, or a DocumentDB change stream — batches them, and invokes a Lambda function. The mapping is its own node in the resource graph, not a setting of the function: a function may have many mappings, a mapping can be repointed to a different function in place, and pausing consumption, tuning batching, and re-driving failures all happen here without touching the function or the source.
 
 ## What Gets Created
 
-When you deploy an AwsLambdaEventSourceMapping resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Event Source Mapping** -- an `aws_lambda_event_source_mapping` wired to the referenced function and event source, with optional batching, filtering, failure handling, and consumption controls
+- **Event Source Mapping** -- the AWS-managed poller (a server-assigned UUID) connecting the source to the function, with the batching, filtering, error-handling, and scaling settings in the spec
 
-The event source itself is create-time immutable; batching, filters, and the target function edit in place.
+Everything else is referenced, never modified: the Lambda function, the queue/stream/cluster being consumed, the KMS key encrypting filter criteria, and the failure destination.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A Lambda function** in the same region (can be an `AwsLambda` resource)
-- **An event source** in the same region (queue, stream, cluster, broker, or change stream)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `sqs-worker.yaml`:
+### AWS Account
+
+- **A Lambda function** -- reference an AwsLambda Cloud Resource or pass a literal function ARN. No invoke permission is needed: the poller invokes through the function's execution role.
+- **The execution role can READ the source** -- the function's execution role needs the source-side permissions (`sqs:ReceiveMessage`/`DeleteMessage`/`GetQueueAttributes` for SQS, the Kinesis/DynamoDB stream read actions, or the MSK/Kafka cluster access) — the mapping never grants them.
+- **The event source** -- the queue, stream, cluster, broker, or DocumentDB cluster to consume. Create-time immutable: a different source is a different mapping.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Lambda Event Source Mapping**, and click **Create**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the source type you pick shapes every later step. Start from the **SQS Worker** or **Kinesis Consumer** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsLambdaEventSourceMapping
 metadata:
-  name: my-worker
+  name: orders-queue-consumer
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   functionArn:
-    value: arn:aws:lambda:us-west-2:123456789012:function:my-function
+    valueFrom:
+      kind: AwsLambda
+      name: orders-worker
+      fieldPath: status.outputs.function_arn
   eventSourceArn:
-    value: arn:aws:sqs:us-west-2:123456789012:my-queue
+    valueFrom:
+      kind: AwsSqsQueue
+      name: orders-queue
+      fieldPath: status.outputs.queue_arn
+  batchSize: 25
+  maximumBatchingWindowSeconds: 5
   functionResponseTypes:
     - ReportBatchItemFailures
 ```
 
-Deploy:
-
 ```shell
-planton apply -f sqs-worker.yaml
+planton apply -f mapping.yaml
 ```
 
-## Configuration Reference
+This wires the queue into the function with partial-batch failure reporting. A Stack Job tracks the provisioning and streams progress in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region for the mapping. | Required; non-empty |
-| `functionArn` | `StringValueOrRef` | Lambda function to invoke. | Required |
-| `eventSourceArn` or `selfManagedKafka` | `StringValueOrRef` / `object` | Exactly one event source. | CEL-enforced |
+The mapping is the edge that completes the serverless story in a multi-resource environment — deploy the queue, the function, and the mapping in one InfraPipeline:
 
-### Common Optional Fields
+```yaml
+spec:
+  functionArn:
+    valueFrom:
+      kind: AwsLambda
+      name: orders-worker
+      fieldPath: status.outputs.function_arn
+  eventSourceArn:
+    valueFrom:
+      kind: AwsKinesisStream
+      name: clickstream
+      fieldPath: status.outputs.stream_arn
+  startingPosition: TRIM_HORIZON
+```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `disabled` | `bool` | `false` | Pause consumption without deleting the mapping. |
-| `batchSize` | `int32` | source default | Records per invocation batch. |
-| `maximumBatchingWindowSeconds` | `int32` | `0` | Batching window in seconds (1–300). |
-| `functionResponseTypes` | `string[]` | — | `ReportBatchItemFailures` for partial-batch retry. |
-| `startingPosition` | `string` | — | Stream/Kafka start position. ForceNew. |
+The InfraPipeline resolves the dependency graph, deploys the function and the source first, then wires them together.
 
-## Stack Outputs
+## Key Configuration
 
-After deployment, the following outputs are available in `status.outputs`:
+These are the most important decisions when configuring an event source mapping. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `uuid` | `string` | Server-assigned mapping UUID |
-| `mapping_arn` | `string` | The mapping ARN |
-| `function_arn` | `string` | Function ARN as resolved by AWS |
-| `state` | `string` | Mapping state at deploy time |
+**The source type shapes everything** -- exactly one of `eventSourceArn` (SQS, Kinesis, DynamoDB Streams, MSK, MQ, DocumentDB) or `selfManagedKafka`. Stream and Kafka sources require `startingPosition` (`TRIM_HORIZON` to process the backlog, `LATEST` for only new records); Kafka sources require `topics`; MQ requires `mqQueue`; SQS takes none of these.
 
-## Related Components
+**Batching is the latency-vs-cost dial** -- the defaults (10 records for SQS, 100 for streams, no batching window) optimize latency. For throughput and cost, raise `batchSize` together with `maximumBatchingWindowSeconds` so the poller can actually fill the larger batches.
 
-- [AwsLambda](/docs/catalog/aws/lambda) -- the function this mapping invokes
-- [AwsSqsQueue](/docs/catalog/aws/sqs-queue) -- common SQS event source
-- [AwsKinesisStream](/docs/catalog/aws/kinesis-data-stream) -- Kinesis stream event source
-- [AwsKmsKey](/docs/catalog/aws/kms-key) -- encrypts filter criteria at rest
+**Report partial failures** -- `functionResponseTypes: [ReportBatchItemFailures]` retries only the failed records of a batch instead of the whole batch — the right setting for almost every SQS and stream consumer (the code must return the `batchItemFailures` shape).
+
+**Filter before you pay** -- `filters` discard non-matching records BEFORE invocation, so function time is never billed for events the code would ignore. Up to 10 EventBridge-style patterns, OR-ed together.
+
+**Stream error handling** -- `bisectBatchOnFunctionError` isolates poison records by splitting failing batches; `maximumRetryAttempts` and `maximumRecordAgeSeconds` (both with `-1` = the never-give-up AWS default) bound retries; `onFailureDestinationArn` receives discarded batches' metadata.
+
+**Pause without deleting** -- `disabled: true` stops consumption while retaining the tracked position; re-enabling resumes where it stopped.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsLambda** | `functionArn` | `status.outputs.function_arn` |
+| **AwsSqsQueue** | `eventSourceArn` (default kind) | `status.outputs.queue_arn` |
+| **AwsKinesisStream** | `eventSourceArn` (explicit kind) | `status.outputs.stream_arn` |
+| **AwsDynamodb** | `eventSourceArn` (explicit kind) | `status.outputs.stream_arn` |
+| **AwsMskCluster** | `eventSourceArn` (explicit kind) | `status.outputs.cluster_arn` |
+| **AwsKmsKey** (optional) | `kmsKeyArn` | `status.outputs.key_arn` |
+| **AwsSqsQueue** (optional) | `onFailureDestinationArn` | `status.outputs.queue_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `uuid` | The server-assigned mapping identifier | CLI operations, AWS API calls |
+| `mapping_arn` | The mapping ARN | IAM policies, audit |
+| `function_arn` | The function the mapping invokes (as resolved by AWS) | Verification, audit |
+| `state` | The mapping state (Enabled, Disabled, ...) | Operational dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**SQS worker** -- the everyday queue consumer: partial-batch failure reporting on, batching tuned for throughput, and optionally a per-mapping concurrency cap (`scalingMaxConcurrency`) to protect a downstream database. Start from the **SQS Worker** preset.
+
+**Kinesis consumer** -- `TRIM_HORIZON` to process the backlog, `parallelizationFactor` to multiply per-shard throughput while preserving per-key ordering, bisect-on-error plus a failure destination for poison records. Start from the **Kinesis Consumer** preset.
+
+**Kafka consumer** -- MSK by reference (or self-managed brokers with source-access credentials from Secrets Manager), topics and an optional pinned consumer group, provisioned pollers when throughput must be predictable.
+
+## Works With
+
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- the function every mapping invokes
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- the most common source, and the usual failure destination
+- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- ordered, replayable stream consumption
+- [**AWS DynamoDB**](/cloud-catalog/aws-dynamodb) -- change-data capture from table streams
+- [**AWS MSK Cluster**](/cloud-catalog/aws-msk-cluster) -- managed Kafka topic consumption
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- customer-managed encryption for filter criteria

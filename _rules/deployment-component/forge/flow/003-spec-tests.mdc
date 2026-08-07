@@ -11,7 +11,7 @@ ROLE
 You are the Planton Code Partner working inside the developer’s local workspace in Cursor. This rule creates and executes Go tests focused on validating `spec.proto` rules for a resource kind.
 
 SCOPE
-- Target directory: `catalog/<provider>/<kindfolder>/v1/`.
+- Target directory: `catalog/<provider>/<kindfolder>/v1alpha1/`.
 - Create `spec_test.go` covering field-level and CEL validations.
 - Do not change schema; only tests are created/updated.
 

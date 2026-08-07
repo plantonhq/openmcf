@@ -1196,13 +1196,45 @@ message KubernetesAirflowLogSearchBackend {
    * connection Secret at apply time). Required when `username` is
    * set. Same-namespace constraint applies.
    */
-  KubernetesAirflowPasswordSecret password_secret = 5;
+  KubernetesAirflowLogBackendPasswordSecret password_secret = 5;
 
   option (buf.validate.message).cel = {
     id: "log_backend.username_needs_password"
     message: "A username without a password_secret cannot authenticate — declare the Secret holding this user's password, or clear username for an unauthenticated dev backend."
     expression: "this.username == '' || has(this.password_secret)"
   };
+}
+
+/**
+ * A reference to the Secret holding the log search backend's
+ * password.
+ */
+message KubernetesAirflowLogBackendPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesOpenSearch
+   * resource's operator-generated admin-credentials Secret (keys
+   * `username`/`password`); that output is EMPTY when a custom
+   * security config replaces the operator bootstrap — point at your
+   * custom credential Secret then. The elasticsearch arm has no
+   * in-catalog kind: set an explicit Secret name for an external
+   * Elasticsearch. Same-namespace constraint (a Kubernetes rule, not
+   * a chart one): the Secret must live in the namespace Airflow
+   * installs into.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesOpenSearch,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.admin_credentials_secret_name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password"
+   * (the KubernetesOpenSearch admin-Secret convention).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
 }
 
 /**

@@ -5,11 +5,11 @@ This module deploys an `AWSLambda` resource using Terraform via the Planton CLI 
 ## CLI
 
 ```bash
-planton tofu init --manifest hack/manifest.yaml
-planton tofu plan --manifest hack/manifest.yaml
-planton tofu apply --manifest hack/manifest.yaml --auto-approve
-planton tofu destroy --manifest hack/manifest.yaml --auto-approve
+planton tofu init --manifest e2e/manifest.yaml
+planton tofu plan --manifest e2e/manifest.yaml
+planton tofu apply --manifest e2e/manifest.yaml --auto-approve
+planton tofu destroy --manifest e2e/manifest.yaml --auto-approve
 ```
 
 - Credentials are provided via the CLI stack input, not stored in the manifest `spec`.
-- Example manifest: see `apis/project/planton/provider/aws/awslambda/v1/iac/hack/manifest.yaml`.
+- Example manifest: see `catalog/aws/awslambda/e2e/manifest.yaml`.

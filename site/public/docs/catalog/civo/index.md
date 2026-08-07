@@ -9,15 +9,15 @@ order: 10
 
 The following CIVO resources can be deployed using Planton:
 
-- [Bucket](/docs/catalog/civo/bucket)
 - [Certificate](/docs/catalog/civo/certificate)
-- [Compute Instance](/docs/catalog/civo/compute-instance)
+- [Compute Instance/VM](/docs/catalog/civo/compute-instancevm)
 - [Database](/docs/catalog/civo/database)
 - [DNS Record](/docs/catalog/civo/dns-record)
 - [DNS Zone](/docs/catalog/civo/dns-zone)
 - [Firewall](/docs/catalog/civo/firewall)
 - [IP Address](/docs/catalog/civo/ip-address)
 - [Kubernetes Cluster](/docs/catalog/civo/kubernetes-cluster)
-- [Kubernetes Node Pool](/docs/catalog/civo/kubernetes-node-pool)
-- [Volume](/docs/catalog/civo/volume)
+- [Kubernetes NodePool](/docs/catalog/civo/kubernetes-nodepool)
+- [Storage Bucket](/docs/catalog/civo/storage-bucket)
+- [Storage Volume](/docs/catalog/civo/storage-volume)
 - [VPC](/docs/catalog/civo/vpc)

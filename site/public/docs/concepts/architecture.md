@@ -40,23 +40,24 @@ flowchart TD
 Every deployment component is a self-contained package at a fixed path. The Protocol Buffer definitions define the contract. The IaC modules implement it.
 
 ```text
-catalog/{provider}/{component}/v1/
+catalog/{provider}/{component}/
 |
-|-- api.proto                 <- Resource envelope
-|   apiVersion, kind,           (apiVersion + kind are const-validated)
-|   metadata, spec, status
-|
-|-- spec.proto                <- Configuration surface
-|   All configurable fields     (types, validation rules, defaults,
-|   for this component           nested messages, enums)
-|
-|-- stack_input.proto         <- IaC input contract
-|   target (full manifest)      (bridges manifest -> IaC module)
-|   + provider_config
-|
-|-- stack_outputs.proto       <- IaC output contract
-|   Deployment results          (endpoints, ARNs, secrets,
-|   returned after apply         connection strings)
+|-- v1alpha1/
+|   |-- api.proto             <- Resource envelope
+|   |   apiVersion, kind,       (apiVersion + kind are const-validated)
+|   |   metadata, spec, status
+|   |
+|   |-- spec.proto            <- Configuration surface
+|   |   All configurable fields (types, validation rules, defaults,
+|   |   for this component       nested messages, enums)
+|   |
+|   |-- input.proto           <- IaC input contract
+|   |   target (full manifest)  (bridges manifest -> IaC module)
+|   |   + provider_config
+|   |
+|   \-- outputs.proto         <- IaC output contract
+|       Deployment results      (endpoints, ARNs, secrets,
+|       returned after apply     connection strings)
 |
 |-- iac/
 |   |-- pulumi/               <- Pulumi implementation (Go)
@@ -69,8 +70,10 @@ catalog/{provider}/{component}/v1/
 |       |-- provider.tf         Cloud provider configuration
 |       \-- outputs.tf          Stack outputs
 |
-\-- docs/
-    \-- README.md             <- Auto-generated documentation
+|-- presets/                  <- Ready-to-deploy manifests
+|-- e2e/                      <- End-to-end test manifests
+|
+\-- catalog.md                <- Public catalog page for the docs site
 ```
 
 **Deep dive**: [Deployment Components](deployment-components)
@@ -86,7 +89,7 @@ flowchart TD
         kindEnum["CloudResourceKind enum\n360+ kinds, 17 providers"]
         metadata["CloudResourceMetadata\nname, org, env, labels"]
         bufValidate["buf-validate\nschema rules"]
-        protos["api.proto / spec.proto\nstack_input.proto / stack_outputs.proto"]
+        protos["api.proto / spec.proto\ninput.proto / outputs.proto"]
     end
 
     subgraph exec ["EXECUTION LAYER (CLI + IaC Engines)"]

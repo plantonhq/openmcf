@@ -201,7 +201,7 @@ Configure your S3 client with:
 
 ## Examples
 
-See examples.md for comprehensive YAML manifest examples.
+See e2e/manifest.yaml for comprehensive YAML manifest examples.
 
 ## Infrastructure as Code
 

@@ -8,61 +8,126 @@ componentName: "azurefrontdoororigin"
 
 # Azure Front Door Origin
 
-Creates one backend inside an AzureFrontDoorOriginGroup: the backend's address, TLS validation posture, priority and weight in the pool, and optional Private Link connectivity (Premium profiles). Each region or deployment slot adds its own origin to a shared group -- the group never changes as backends come and go.
+Deploys a Front Door origin -- one backend inside an origin group, with hostname, ports, priority/weight, certificate name check, and optional Private Link. Private Link requires a PREMIUM profile and certificate name check enabled; Azure rejects the combination at apply otherwise. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent origin group and backend hostnames.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorOrigin resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Origin** -- an `azurerm_cdn_frontdoor_origin` on the referenced origin group, with optional Private Link to the backend
+- **Front Door Origin** -- a named child of an origin group pointing at a backend hostname
+- **Ports and traffic role** -- HTTP/HTTPS ports (defaults 80/443), priority (1–5), weight (1–1000), and enabled switch
+- **Certificate name check** -- whether Front Door validates the origin certificate against the host header (default on; required when Private Link is set)
+- **Private Link** (optional, PREMIUM profile only) -- private connectivity to an App Service, storage, Container Apps environment, or Private Link Service
 
-## Prerequisites
+## The Origin in the Front Door Family
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureFrontDoorOriginGroup** to join (referenced through `originGroupId`)
-- **For Private Link**: a Premium-tier profile, and someone to approve the pending connection on the target resource
+- **AzureFrontDoorOriginGroup** -- the parent pool, referenced by `originGroupId`
+- **AzureFrontDoorRoute** -- may list this origin's `origin_id` for deploy sequencing (Azure never receives the list; it ensures the group is non-empty before the route applies)
+- **Backend hosts** -- App Service, storage, Container Apps, or any hostname via ValueFromRef or a literal
 
-## Quick Start
+## Before You Deploy
 
-Create a file `origin.yaml`:
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Planton Runner** -- required when using Runner-based credential delivery.
+
+### Azure Subscription
+
+- **An Azure Front Door Origin Group** the origin nests under.
+- **A PREMIUM Front Door profile** when using Private Link (Azure enforces this server-side).
+- **A backend hostname** -- App Service default hostname, storage endpoint, or custom host.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Origin**, and click **Deploy**. The wizard walks you through the parent group and name, the backend address (hostname and host header), traffic role (ports, priority, weight), and optional Private Link. Start from the **App Service Origin** preset for the common web-app pairing.
+
+### CLI
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorOrigin
 metadata:
-  name: primary-app
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorOrigin.primary-app
+  name: my-app-origin
+  org: acme-corp
+  env: prod
 spec:
   originGroupId:
     valueFrom:
       kind: AzureFrontDoorOriginGroup
-      name: api-backends
+      name: my-app-backends
       fieldPath: status.outputs.origin_group_id
   originName: primary-app
-  hostName: myapp.azurewebsites.net
+  hostName:
+    valueFrom:
+      kind: AzureLinuxWebApp
+      name: my-web-app
+      fieldPath: status.outputs.default_hostname
 ```
-
-Deploy:
 
 ```shell
-planton apply -f origin.yaml
+planton apply -f front-door-origin.yaml
 ```
 
-The defaults suit App Service and other multi-tenant Azure backends: the Host header falls back to the origin's own hostname (which those services route by), certificate-name checking stays on, and ports stay 80/443. Use `priority` for active/passive failover tiers and `weight` for the traffic split within a tier -- a `weight: 50` origin beside a `weight: 950` one is a ~5% canary.
+This creates a public-HTTPS origin tracking the App Service hostname. Leaving `originHostHeader` unset sends the same hostname -- the correct pairing for multi-tenant Azure backends.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `origin_id` | The ARM id -- what AzureFrontDoorRoute lists in `originIds` to sequence deployment |
-| `origin_name` | The origin's name inside its group |
+```yaml
+spec:
+  originGroupId:
+    valueFrom:
+      kind: AzureFrontDoorOriginGroup
+      name: my-app-backends
+      fieldPath: status.outputs.origin_group_id
+  originName: primary-app
+  hostName:
+    valueFrom:
+      kind: AzureLinuxWebApp
+      name: my-web-app
+      fieldPath: status.outputs.default_hostname
+  priority: 1
+  weight: 500
+```
 
-## Related Resources
+## Key Configuration
 
-- [Azure Front Door Origin Group](/docs/catalog/azure/front-door-origin-group) -- the parent pool
-- [Azure Front Door Route](/docs/catalog/azure/front-door-route) -- forwards traffic to the pool
-- [Azure Front Door Profile](/docs/catalog/azure/front-door-profile) -- the grandparent container (PREMIUM required for Private Link)
+**Hostname** -- required. Reference a Cloud Resource output (App Service `default_hostname`, storage endpoint) or enter a literal FQDN. No default kind: name the target kind explicitly on each reference.
+
+**Certificate name check** -- default on. Private Link requires it true; the wizard blocks the illegal pairing.
+
+**Priority / weight** -- priority 1–5 (lower preferred); weight 1–1000 within a priority band. Defaults 1 / 500.
+
+**Private Link** -- PREMIUM-only. Requires location, an ARM target ID (`/subscriptions/...`), and a target type unless the ID is a Private Link Service. Request message max 140 characters.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureFrontDoorOriginGroup** | `originGroupId` | `status.outputs.origin_group_id` |
+| Backend hostname (any kind) | `hostName` / `originHostHeader` | Kind-specific hostname outputs |
+
+### What This Component Provides
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `origin_id` | ARM resource ID of the origin | AzureFrontDoorRoute.`originIds` (deploy sequencing) |
+| `origin_name` | The origin's name | Operator tooling |
+
+## Presets
+
+| Preset | Rank | Description |
+|--------|------|-------------|
+| App Service Origin | 1 | Public origin tracking an App Service hostname |
+| Weighted Canary | 2 | Secondary origin with lower weight for canary traffic |
+| Private Link Origin | 3 | PREMIUM Private Link to a private backend |
+
+## Related Components
+
+- **AzureFrontDoorOriginGroup** -- the parent pool
+- **AzureFrontDoorRoute** -- sequences after origins exist
+- **AzureLinuxWebApp** / **AzureStorageAccount** -- common hostname sources

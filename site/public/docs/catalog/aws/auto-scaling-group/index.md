@@ -8,46 +8,49 @@ componentName: "awsautoscalinggroup"
 
 # AWS Auto Scaling Group
 
-Deploys an EC2 Auto Scaling group: the fleet manager that launches
-instances from an `AwsLaunchTemplate`, keeps them healthy across subnets,
-registers them into `AwsLbTargetGroup` nodes, and scales them with
-policies, schedules, and forecasts -- with scaling policies, scheduled
-actions, lifecycle hooks, and notifications managed together.
+Deploys an EC2 Auto Scaling group — the fleet manager that keeps a set of instances launched from a launch template at the desired size, replaces unhealthy members, spreads capacity across subnets, and scales on policies and schedules. The group is a pure orchestrator: WHAT launches lives in the referenced AwsLaunchTemplate; this group decides how many, where, and when. Scaling policies, scheduled actions, lifecycle hooks, and notifications are folded into the spec (they are sub-resources of exactly one group), and both IaC modules manage each as its own provider resource so adding or removing one is an in-place update — never a group replacement. The group integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the launch template, subnets, target groups, alarms, SNS topics, and IAM roles.
 
 ## What Gets Created
 
-When you deploy an AwsAutoScalingGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Auto Scaling group** — an `aws_autoscaling_group` /
-  `autoscaling.Group` named from `metadata.name`, with capacity bounds,
-  subnet spread, launch template (or mixed-instances policy), health
-  model, instance refresh, warm pool, and maintenance policy
-- **Scaling policies** — one `aws_autoscaling_policy` per entry in
-  `scalingPolicies` (target tracking, step, simple, or predictive)
-- **Scheduled actions** — one `aws_autoscaling_schedule` per entry in
-  `scheduledActions`
-- **Lifecycle hooks** — one `aws_autoscaling_lifecycle_hook` per entry in
-  `lifecycleHooks` (managed standalone so each stays updatable)
-- **Notifications** — an `aws_autoscaling_notification` wiring lifecycle
-  events to the referenced SNS topic
+- **Auto Scaling Group** -- the fleet with its bounds, subnet spread, health model, and capacity source (single template or mixed-instances policy)
+- **Scaling Policies** -- one per `scalingPolicies` entry (target tracking, step, simple, or predictive); target tracking's underlying CloudWatch alarms are created and managed by AWS
+- **Scheduled Actions** -- one per `scheduledActions` entry: cron-driven or one-shot capacity changes
+- **Lifecycle Hooks** -- one per `lifecycleHooks` entry: pause points at launch and termination
+- **Warm Pool** -- attached only when `warmPool` is configured; pre-initialized instances that cut scale-out latency
+- **Notification Configurations** -- attached only when `notifications` names an SNS topic
 
-Identity tags are applied through the group's native tag mechanism with
-`propagate_at_launch`, so every launched instance carries them.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **Subnets** (`AwsSubnet`) in at least two availability zones for real fault tolerance.
-- **A launch template** (`AwsLaunchTemplate`) carrying an AMI — groups require their template to be fully formed.
-- **Target groups** (`AwsLbTargetGroup`) if the fleet serves load-balanced traffic.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
+
+- **A launch template with an AMI** -- the group requires the template it references to carry an image. Reference an AwsLaunchTemplate Cloud Resource or pass a literal lt- ID.
+- **Subnets in at least two availability zones** -- the fault-tolerance floor; the group rebalances across the zones its subnets cover.
+- **Target groups** (for load-balanced fleets) -- reference AwsLbTargetGroup resources and pair them with the ELB health check type.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Auto Scaling Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Service Behind ALB** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsAutoScalingGroup
 metadata:
-  name: web
+  name: web-fleet
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   subnets:
@@ -63,118 +66,15 @@ spec:
     launchTemplateId:
       valueFrom:
         kind: AwsLaunchTemplate
-        name: web
+        name: web-fleet-base
         fieldPath: status.outputs.launch_template_id
   minSize: 2
   maxSize: 10
-```
-
-```shell
-planton apply -f autoscaling-group.yaml
-```
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region. Must match the subnets, template, and target groups. | Required; non-empty |
-| `subnets` | `string[] \| valueFrom` | Subnets capacity is placed in. Spread across ≥2 AZs. Defaults to referencing `AwsSubnet` `subnet_id` outputs. | Required; ≥1 entry |
-| `launchTemplate` XOR `mixedInstancesPolicy` | `object` | What to launch: a single template reference, or an On-Demand/Spot blend with per-type overrides. | Exactly one must be set |
-| `maxSize` | `int` | Capacity ceiling. | ≥ `minSize` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `minSize` | `int` | `0` | Capacity floor. 0 allows scale-to-zero. |
-| `desiredCapacity` | `int` | starts at `minSize` | Actively maintained capacity. Leave unset and let policies own the number. |
-| `desiredCapacityType` | `string` | `units` | What min/max/desired count: `units`, `vcpu`, or `memory-mib`. |
-| `capacityRebalance` | `bool` | `false` | Proactively replace at-risk Spot instances. Recommended for Spot fleets. |
-| `defaultCooldownSeconds` | `int` | `300` | Cooldown between simple-scaling activities. |
-| `defaultInstanceWarmupSeconds` | `int` | — | Warmup used by target tracking, refresh, and rebalancing. |
-| `healthCheckType` | `string` | `EC2` | `EC2` (status checks) or `ELB` (also trust target-group health — pair with `targetGroups`). |
-| `healthCheckGracePeriodSeconds` | `int` | `300` | Boot-and-warm time before health checks can mark unhealthy. |
-| `targetGroups` | `string[] \| valueFrom` | `[]` | Target groups the fleet serves; instances register on launch and drain on termination. |
-| `terminationPolicies` | `string[]` | `Default` | Scale-in victim ordering: `OldestInstance`, `OldestLaunchTemplate`, `AllocationStrategy`, a Lambda ARN, etc. |
-| `maxInstanceLifetimeSeconds` | `int` | disabled | Replace every instance after 1 day–1 year: continuous fleet hygiene. |
-| `protectFromScaleIn` | `bool` | `false` | New instances start protected from scale-in. |
-| `placementGroup` | `string` | — | Placement group name (literal — no placement-group kind yet). |
-| `serviceLinkedRoleArn` | `string` | account default | Custom service-linked role ARN (literal — AWS-owned roles). |
-| `enabledMetrics` | `string[]` | `[]` | Free group-level CloudWatch metrics (`GroupInServiceInstances`, ...). |
-| `suspendedProcesses` | `string[]` | `[]` | Freeze processes (`Launch`, `Terminate`, `AZRebalance`, ...) for maintenance. |
-| `instanceRefresh` | `object` | — | Rolling replacement on template change: health bounds, surge, checkpoints, alarm watch, auto-rollback. |
-| `warmPool` | `object` | — | Pre-initialized capacity: `Stopped`/`Running`/`Hibernated`, sizes, reuse on scale-in. |
-| `instanceMaintenancePolicy` | `object` | — | Group-wide min/max-healthy bounds for every replacement operation. |
-| `capacityDistributionStrategy` | `string` | `balanced-best-effort` | Zone balance behavior: `balanced-only` or `balanced-best-effort`. |
-| `forceDelete` | `bool` | `false` | Delete without draining (wedged-group escape hatch). |
-| `waitForCapacityTimeout` | `string` | `10m` | How long the IaC engine waits for capacity; `"0"` skips. |
-| `scalingPolicies` | `object[]` | `[]` | Target tracking / step / simple / predictive policies (discriminated by `policyType`). |
-| `scheduledActions` | `object[]` | `[]` | Cron or one-shot capacity changes with time zones. |
-| `lifecycleHooks` | `object[]` | `[]` | Launch/terminate pause points with SNS/SQS delivery and IAM role references. |
-| `notifications` | `object` | — | SNS topic reference + lifecycle event types. |
-
-## Examples
-
-### Spot-majority mixed fleet with an On-Demand base
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAutoScalingGroup
-metadata:
-  name: workers
-spec:
-  region: us-west-2
-  subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  mixedInstancesPolicy:
-    launchTemplate:
-      launchTemplateId:
-        valueFrom:
-          kind: AwsLaunchTemplate
-          name: workers
-          fieldPath: status.outputs.launch_template_id
-    overrides:
-      - instanceType: m6i.large
-      - instanceType: m5.large
-      - instanceType: m5a.large
-    instancesDistribution:
-      onDemandBaseCapacity: 2
-      onDemandPercentageAboveBaseCapacity: 0
-      spotAllocationStrategy: price-capacity-optimized
-  minSize: 2
-  maxSize: 20
-  capacityRebalance: true
-```
-
-### Web service behind a target group with target tracking and rolling refresh
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAutoScalingGroup
-metadata:
-  name: api
-spec:
-  region: us-west-2
-  subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  launchTemplate:
-    launchTemplateId:
-      valueFrom:
-        kind: AwsLaunchTemplate
-        name: api
-        fieldPath: status.outputs.launch_template_id
-  minSize: 2
-  maxSize: 12
   healthCheckType: ELB
-  healthCheckGracePeriodSeconds: 120
   targetGroups:
     - valueFrom:
         kind: AwsLbTargetGroup
-        name: api
+        name: web-tg
         fieldPath: status.outputs.target_group_arn
   instanceRefresh:
     strategy: Rolling
@@ -190,54 +90,69 @@ spec:
         predefinedMetricType: ASGAverageCPUUtilization
 ```
 
-### Business-hours schedule with a warm pool
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsAutoScalingGroup
-metadata:
-  name: batch-workers
-spec:
-  region: us-west-2
-  subnets:
-    - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-    - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  launchTemplate:
-    launchTemplateId:
-      valueFrom:
-        kind: AwsLaunchTemplate
-        name: batch-workers
-        fieldPath: status.outputs.launch_template_id
-  minSize: 0
-  maxSize: 20
-  scheduledActions:
-    - name: business-hours-up
-      recurrence: "0 8 * * MON-FRI"
-      timeZone: America/New_York
-      minSize: 4
-    - name: overnight-down
-      recurrence: "0 20 * * *"
-      timeZone: America/New_York
-      minSize: 0
-      desiredCapacity: 0
-  warmPool:
-    poolState: Stopped
-    minSize: 2
-    reuseOnScaleIn: true
+```shell
+planton apply -f auto-scaling-group.yaml
 ```
 
-## Stack Outputs
+This runs the full production loop: a two-instance floor across two zones, ELB health checks replacing wedged processes, a CPU thermostat at 60%, and rolling surge rollouts (110%/100%) with auto-rollback whenever the launch template publishes a new version. A Stack Job tracks the provisioning in real time.
 
-| Output | Description |
-| --- | --- |
-| `autoscaling_group_name` | Group name — the `AutoScalingGroupName` CloudWatch dimension and the handle ECS capacity providers take |
-| `autoscaling_group_arn` | Group ARN, for IAM policies and EventBridge rules scoped to this group |
+### InfraChart
 
-## Related Components
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the group to resources deployed in the same InfraPipeline — the template, subnets, and target groups above are exactly that. The InfraPipeline resolves the dependency graph, deploys the VPC, subnets, template, and load-balancing tier first, then provisions the fleet against their outputs.
 
-- [AwsLaunchTemplate](/docs/catalog/aws/launch-template) — the blueprint this group launches from
-- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — where the fleet's traffic comes from
-- [AwsSubnet](/docs/catalog/aws/subnet) — the zones capacity spreads across
-- [AwsCloudwatchAlarm](/docs/catalog/aws/cloudwatch-alarm) — alarms watched during instance refresh; triggers for step policies
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — lifecycle-hook and notification delivery
-- [AwsIamRole](/docs/catalog/aws/iam-role) — the role lifecycle hooks publish with
+## Key Configuration
+
+These are the most important decisions when configuring an auto-scaling group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Single template XOR mixed instances** -- Exactly one capacity source: `launchTemplate` for the common one-type fleet, or `mixedInstancesPolicy` blending instance types and purchase options — an On-Demand base for guaranteed capacity, a Spot majority above it, drawn from several pools so no single interruption hurts. An explicit `onDemandPercentageAboveBaseCapacity: 0` means all-Spot above the base.
+
+**Bounds, not a headcount** -- `minSize` is the availability floor, `maxSize` the cost ceiling. Leave `desiredCapacity` unset (0): the fleet starts at the minimum and scaling policies govern — a pinned count is re-asserted on every apply and fights the autoscaler.
+
+**ELB health checks whenever target groups exist** -- EC2 status checks only see a dead machine; the target group's health check sees a dead process. Registering `targetGroups` without `healthCheckType: ELB` is the classic silent failure — AWS accepts it, and a wedged process serves errors forever.
+
+**Instance refresh is the rollout mechanism** -- With `instanceRefresh.strategy: Rolling`, a launch-template version change rolls the fleet in health-bounded waves. `minHealthyPercentage: 100` + `maxHealthyPercentage: 110` gives launch-before-terminate (the fleet never dips); `autoRollback: true` plus watched alarms makes failed rollouts undo themselves; checkpoint percentages stage a canary.
+
+**Spot safety nets** -- `capacityRebalance: true` replaces at-risk Spot instances before the two-minute notice; the `AllocationStrategy` termination policy keeps scale-in on the fleet's preferred pools.
+
+**Graceful drain** -- `protectFromScaleIn` plus a terminating lifecycle hook lets the workload finish its jobs, release protection, and complete the hook — nothing is lost on scale-in. The modern hook needs no SNS target: EventBridge rules watch lifecycle events.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnets[]` | `status.outputs.subnet_id` |
+| **AwsLaunchTemplate** | `launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| **AwsLaunchTemplate** (mixed base / per-override) | `mixedInstancesPolicy.launchTemplate.launchTemplateId`, `mixedInstancesPolicy.overrides[].launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| **AwsLbTargetGroup** | `targetGroups[]` | `status.outputs.target_group_arn` |
+| **AwsCloudwatchAlarm** (refresh watch) | `instanceRefresh.preferences.alarms[]` | `status.outputs.alarm_name` |
+| **AwsSnsTopic** (hooks + notifications) | `lifecycleHooks[].notificationTargetArn`, `notifications.topic` | `status.outputs.topic_arn` |
+| **AwsIamRole** (hook publish role) | `lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `autoscaling_group_name` | The group name (metadata.name) | CloudWatch dimensions (AutoScalingGroupName), ECS capacity providers, AWS CLI operations |
+| `autoscaling_group_arn` | Amazon Resource Name of the group | IAM policies and EventBridge rules scoped to this group |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web service behind an ALB** -- Two-zone fleet, ELB health checks, a CPU thermostat, and surge rollouts. Start from the **Web Service Behind ALB** preset.
+
+**Spot mixed fleet** -- An On-Demand base of two with an all-Spot majority across four instance pools, capacity rebalance on. Start from the **Spot Mixed Fleet** preset.
+
+**Scheduled scale** -- Business-hours scale-up and overnight scale-to-zero on cron, with a stopped warm pool for fast mornings. Start from the **Scheduled Scale** preset.
+
+## Works With
+
+- [**AWS Launch Template**](/cloud-catalog/aws-launch-template) -- the blueprint every instance launches from; publishing a version rolls this fleet via instance refresh
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- the zones capacity spreads across
+- [**AWS LB Target Group**](/cloud-catalog/aws-lb-target-group) -- the traffic contract; pair with ELB health checks
+- [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- fleet lifecycle notifications and lifecycle-hook delivery
+- [**AWS CloudWatch Alarm**](/cloud-catalog/aws-cloudwatch-alarm) -- step-scaling triggers and instance-refresh watch alarms

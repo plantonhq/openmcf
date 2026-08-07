@@ -6,278 +6,137 @@ order: 100
 componentName: "ocivaultsecret"
 ---
 
-# OCI Vault Secret
+# Vault Secret on OCI
 
-Deploys an Oracle Cloud Infrastructure Vault secret — a named piece of sensitive data (credential, certificate, API key) stored in a KMS vault and encrypted by a master encryption key. Supports explicit base64 content, OCI-managed auto-generation (bytes, passphrase, SSH key), lifecycle rules for expiry and reuse, and scheduled rotation against Autonomous Database or OCI Functions targets.
+Deploys an Oracle Cloud Infrastructure Vault Secret -- a named piece of sensitive data (credential, certificate, API key) stored in an OCI KMS Vault and encrypted by a master encryption key. Supports two mutually exclusive content modes: explicit content (user-provided base64 data) and auto-generation (OCI generates a passphrase, SSH key, or random bytes using a template). Lifecycle management includes secret expiry rules, content reuse policies, and scheduled rotation against Autonomous Database or OCI Functions targets. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments, vaults, and encryption keys.
 
 ## What Gets Created
 
-When you deploy an OciVaultSecret resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Vault Secret** — a `vault.Secret` resource in the specified compartment, vault, and encryption key. The secret is created with either explicit content or auto-generated content, and includes optional lifecycle rules and rotation configuration. Content updates create new secret versions automatically.
+- **Vault Secret** -- a `vault.Secret` in the specified compartment, within the target vault, encrypted by the specified KMS key. The secret holds either user-provided content or auto-generated content depending on the configuration mode.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the secret
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the secret will be created — either a literal value or a reference to an OciCompartment resource
-- **A vault OCID** — the OciKmsVault resource that will contain this secret, either as a literal value or via `valueFrom`
-- **A KMS key OCID** — a symmetric encryption key within the vault for encrypting the secret, either as a literal value or via `valueFrom` referencing an OciKmsKey resource
-- **An Autonomous Database OCID** (for ADB rotation only) — if configuring scheduled rotation against an Autonomous Database
-- **A Functions function OCID** (for function rotation only) — if configuring scheduled rotation via a custom OCI Functions function
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `secret.yaml`:
+### OCI Tenancy
+
+- A compartment to place the secret in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A KMS vault to contain the secret. Provide the vault OCID directly or reference an OciKmsVault Cloud Resource via ValueFromRef. Immutable after creation.
+- A symmetric KMS encryption key within the vault. Provide the key OCID directly or reference an OciKmsKey Cloud Resource via ValueFromRef. Immutable after creation.
+- For explicit content: base64-encoded secret data.
+- For auto-generation: a generation template name and, for passphrases, a desired length.
+- For rotation: an Autonomous Database OCID or Functions function OCID as the rotation target.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Vault Secret on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Explicit Credential** preset in the [Presets](#presets) tab to pre-populate a secret with user-provided content and a 90-day expiry rule.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciVaultSecret
 metadata:
-  name: my-secret
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciVaultSecret.my-secret
+  name: app-credential
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
-  secretName: "my-app-secret"
+  secretName: app-db-password
   vaultId:
     value: "ocid1.vault.oc1..example"
   keyId:
     value: "ocid1.key.oc1..example"
   secretContent:
-    content: "c2VjcmV0LXZhbHVl"
+    content: "cGFzc3dvcmQxMjM="
+    stage: CURRENT
 ```
-
-Deploy:
 
 ```shell
-planton apply -f secret.yaml
+planton apply -f vault-secret.yaml
 ```
 
-This creates a secret with explicit base64-encoded content, encrypted by the specified KMS key. The secret OCID and current version number are exported as stack outputs.
+This creates a vault secret with explicit base64-encoded content. No expiry rules, reuse policies, or rotation are configured. The `secretName` is immutable after creation.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the secret will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `secretName` | `string` | Name of the secret. Must be unique within the vault. Immutable after creation. | Min length 1 |
-| `vaultId` | `StringValueOrRef` | OCID of the vault that will contain this secret. Immutable after creation. Can reference an OciKmsVault resource via `valueFrom` using `status.outputs.vaultId`. | Required |
-| `keyId` | `StringValueOrRef` | OCID of the master encryption key. Must be a symmetric key in the specified vault. Immutable after creation. Can reference an OciKmsKey resource via `valueFrom` using `status.outputs.keyId`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Brief description of the secret. |
-| `secretContent` | `SecretContent` | — | Explicit secret content (base64-encoded). Mutually exclusive with auto-generation. Updating creates a new secret version. |
-| `enableAutoGeneration` | `bool` | `false` | Enable OCI-managed secret content generation. Mutually exclusive with `secretContent`. |
-| `secretGenerationContext` | `SecretGenerationContext` | — | Configuration for auto-generation. Required when `enableAutoGeneration` is `true`; must not be set otherwise. |
-| `secretRules` | `SecretRule[]` | — | Lifecycle rules for expiry and content reuse. See below. |
-| `rotationConfig` | `RotationConfig` | — | Scheduled rotation configuration against a target system. See below. |
-| `secretMetadata` | `map<string, string>` | — | Additional metadata key-value pairs for administrative context (e.g., rotation notes). |
-
-### SecretContent
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `content` | `string` | Base64-encoded secret data. |
-| `name` | `string` | Optional version name. Must be unique across versions. |
-| `stage` | `string` | Rotation state. Values: `""` or `"CURRENT"` (default), `"PENDING"`. |
-
-### SecretGenerationContext
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `generationType` | `enum` | Type of content to generate. Values: `bytes`, `passphrase`, `ssh_key`. |
-| `generationTemplate` | `string` | Name of the generation template (provider-defined, varies by `generationType`). |
-| `passphraseLength` | `int32` | Length of the passphrase to generate. Required when `generationType` is `passphrase`. Must be > 0. |
-| `secretTemplate` | `string` | Optional template structure with placeholders for generated values. |
-
-### SecretRule
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `ruleType` | `enum` | Rule type. Values: `secret_expiry_rule`, `secret_reuse_rule`. |
-| `isSecretContentRetrievalBlockedOnExpiry` | `bool` | Block retrieval after version expires. Applies to `secret_expiry_rule`. |
-| `secretVersionExpiryInterval` | `string` | Duration after which each version expires (ISO 8601, e.g., `"P30D"`). Range: 1-90 days. Applies to `secret_expiry_rule`. |
-| `timeOfAbsoluteExpiry` | `string` | Absolute expiry timestamp (RFC 3339). Range: 1-365 days from creation. Applies to `secret_expiry_rule`. |
-| `isEnforcedOnDeletedSecretVersions` | `bool` | Enforce the reuse rule even on deleted versions. Applies to `secret_reuse_rule`. |
-
-### RotationConfig
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `isScheduledRotationEnabled` | `bool` | Enable scheduled automatic rotation. |
-| `rotationInterval` | `string` | Rotation interval (ISO 8601, e.g., `"P30D"`). Range: 1-360 days. Required when scheduled rotation is enabled. |
-| `targetSystemDetails` | `TargetSystemDetails` | Target system that will be updated during rotation. Required. |
-
-### TargetSystemDetails
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `targetSystemType` | `enum` | Type of target system. Values: `adb` (Autonomous Database), `function` (OCI Functions). |
-| `adbId` | `StringValueOrRef` | OCID of the Autonomous Database. Required when `targetSystemType` is `adb`. Can reference an OciAutonomousDatabase resource via `valueFrom`. |
-| `functionId` | `StringValueOrRef` | OCID of the OCI Functions function invoked during rotation. Required when `targetSystemType` is `function`. |
-
-## Examples
-
-### Explicit Content
-
-A secret with base64-encoded content — suitable for storing a database password or API key:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the secret to a compartment, vault, and encryption key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciVaultSecret
-metadata:
-  name: db-password
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciVaultSecret.db-password
 spec:
   compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  secretName: "prod-db-password"
-  vaultId:
-    value: "ocid1.vault.oc1..example"
-  keyId:
-    value: "ocid1.key.oc1..example"
-  description: "Production database admin password"
-  secretContent:
-    content: "c2VjcmV0LXZhbHVl"
-```
-
-### Auto-Generated Passphrase with Expiry
-
-A passphrase auto-generated by OCI with a 30-day expiry rule:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciVaultSecret
-metadata:
-  name: app-passphrase
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciVaultSecret.app-passphrase
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  secretName: "app-passphrase"
+    valueFrom:
+      kind: OciCompartment
+      name: security-compartment
+      fieldPath: status.outputs.compartmentId
   vaultId:
     valueFrom:
       kind: OciKmsVault
-      name: prod-vault
+      name: platform-vault
       fieldPath: status.outputs.vaultId
   keyId:
     valueFrom:
       kind: OciKmsKey
-      name: prod-key
+      name: secrets-key
       fieldPath: status.outputs.keyId
-  enableAutoGeneration: true
-  secretGenerationContext:
-    generationType: passphrase
-    generationTemplate: "SECRET_TEMPLATE_DBAAS"
-    passphraseLength: 32
-  secretRules:
-    - ruleType: secret_expiry_rule
-      secretVersionExpiryInterval: "P30D"
-      isSecretContentRetrievalBlockedOnExpiry: true
 ```
 
-### Scheduled Rotation Against Autonomous Database
+The InfraPipeline resolves the dependency graph, deploys the compartment, vault, and key first, then provisions the secret with the resolved values.
 
-A database credential that automatically rotates every 30 days against an Autonomous Database:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciVaultSecret
-metadata:
-  name: adb-credential
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciVaultSecret.adb-credential
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  secretName: "adb-admin-credential"
-  vaultId:
-    value: "ocid1.vault.oc1..example"
-  keyId:
-    value: "ocid1.key.oc1..example"
-  enableAutoGeneration: true
-  secretGenerationContext:
-    generationType: passphrase
-    generationTemplate: "SECRET_TEMPLATE_DBAAS"
-    passphraseLength: 24
-  rotationConfig:
-    isScheduledRotationEnabled: true
-    rotationInterval: "P30D"
-    targetSystemDetails:
-      targetSystemType: adb
-      adbId:
-        valueFrom:
-          kind: OciAutonomousDatabase
-          name: prod-adb
-          fieldPath: status.outputs.autonomousDatabaseId
-```
+These are the most important decisions when configuring a vault secret. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Auto-Generated SSH Key with Reuse Rule
+**Content mode** -- Two mutually exclusive modes. Set `secretContent` with base64-encoded data for explicit content. Alternatively, set `enableAutoGeneration: true` with a `secretGenerationContext` for OCI-generated content (passphrase, SSH key, or random bytes). CEL validation rules enforce mutual exclusivity -- setting both produces a validation error.
 
-An auto-generated SSH key pair with a reuse rule preventing content reuse even on deleted versions:
+**Auto-generation** -- When `enableAutoGeneration` is `true`, set `secretGenerationContext.generationType` to `passphrase`, `ssh_key`, or `bytes`. For passphrases, `passphraseLength` is required. The `generationTemplate` names a provider-defined template (e.g., `SECRET_TPL_DBAAS_DEFAULT` for database credentials). An optional `secretTemplate` provides a structural template for the generated value.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciVaultSecret
-metadata:
-  name: ssh-key
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciVaultSecret.ssh-key
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  secretName: "bastion-ssh-key"
-  vaultId:
-    value: "ocid1.vault.oc1..example"
-  keyId:
-    value: "ocid1.key.oc1..example"
-  enableAutoGeneration: true
-  secretGenerationContext:
-    generationType: ssh_key
-    generationTemplate: "2048"
-  secretRules:
-    - ruleType: secret_reuse_rule
-      isEnforcedOnDeletedSecretVersions: true
-  secretMetadata:
-    purpose: "bastion-access"
-    team: "platform"
-```
+**Secret rules** -- Add entries to `secretRules` for lifecycle policies. `secret_expiry_rule` controls version expiry via `secretVersionExpiryInterval` (ISO 8601, e.g., `P90D`) and optionally blocks content retrieval after expiry. `secret_reuse_rule` prevents reuse of previous content values, optionally enforced on deleted versions.
 
-## Stack Outputs
+**Rotation** -- Set `rotationConfig` for scheduled rotation against a target system. `targetSystemDetails.targetSystemType` is `adb` (Autonomous Database) or `function` (OCI Functions). When `isScheduledRotationEnabled` is `true`, `rotationInterval` (ISO 8601, e.g., `P30D`) controls the rotation frequency. The target system's credentials are updated automatically during rotation.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Immutable fields** -- `secretName`, `vaultId`, and `keyId` are all ForceNew -- changing any of them destroys and recreates the secret. Choose these values carefully at creation time.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `secret_id` | `string` | OCID of the Vault Secret |
-| `current_version_number` | `string` | Version number of the currently active secret version |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [OciKmsVault](/docs/catalog/oci/kms-vault) — provides the vault referenced by `vaultId` via `valueFrom`
-- [OciKmsKey](/docs/catalog/oci/kms-key) — provides the encryption key referenced by `keyId` via `valueFrom`
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciAutonomousDatabase](/docs/catalog/oci/autonomous-database) — rotation target referenced by `adbId` via `valueFrom`
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciKmsVault** | `vaultId` | `status.outputs.vaultId` |
+| **OciKmsKey** | `keyId` | `status.outputs.keyId` |
+| **OciAutonomousDatabase** (optional, rotation) | `rotationConfig.targetSystemDetails.adbId` | `status.outputs.autonomousDatabaseId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `secret_id` | OCID of the vault secret | Application configuration, IAM policy scoping, rotation target references |
+| `current_version_number` | Version number of the currently active secret version | Version tracking, rotation monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Explicit credential** -- A secret with user-provided base64 content, a 90-day version expiry rule that blocks retrieval after expiry. The standard pattern for manually managed credentials (API keys, third-party tokens). Start from the **Explicit Credential** preset.
+
+**Auto-generated passphrase** -- A secret with OCI-generated passphrase content, scheduled 30-day rotation against an Autonomous Database, and a reuse rule preventing content recycling. Designed for database credentials with fully automated lifecycle management. Start from the **Auto-Generated Passphrase** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this secret
+- [**KMS Vault on OCI**](/cloud-catalog/oci-kms-vault) -- provides the vault that contains this secret
+- [**KMS Key on OCI**](/cloud-catalog/oci-kms-key) -- provides the master encryption key that protects this secret
+- [**Autonomous Database on OCI**](/cloud-catalog/oci-autonomous-database) -- provides the rotation target for database credential secrets

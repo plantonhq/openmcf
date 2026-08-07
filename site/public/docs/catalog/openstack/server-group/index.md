@@ -8,167 +8,84 @@ componentName: "openstackservergroup"
 
 # OpenStack Server Group
 
-Deploys an OpenStack Compute server group, which defines a placement policy that controls whether compute instances are co-located on the same hypervisor or spread across different hypervisors. Server groups are referenced by instances via scheduler hints to enforce affinity or anti-affinity constraints.
+Deploys a Nova server group on OpenStack that controls compute instance placement across hypervisors. Server groups enforce affinity or anti-affinity scheduling policies -- placing instances on the same hypervisor for low-latency communication, or spreading them across different hypervisors for fault isolation. Instances reference the server group via scheduler hints when they are launched.
 
 ## What Gets Created
 
-When you deploy an OpenStackServerGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Server Group** — an `openstack_compute_servergroup_v2` resource with the specified placement policy (affinity, anti-affinity, soft-affinity, or soft-anti-affinity)
+- **Compute Server Group** -- a Nova server group with the specified placement policy (affinity, anti-affinity, soft-affinity, or soft-anti-affinity) that the scheduler enforces when instances reference this group
+- **OpenStack Tags** -- resource metadata applied automatically for tracking
 
-All fields on a server group are immutable. Changing any field recreates the server group, which orphans existing member instances from the old group.
+## Before You Deploy
 
-## Prerequisites
+### OpenStack Account
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **Nova Compute API 2.15+** if using `soft-affinity` or `soft-anti-affinity` policies
-- **Sufficient hypervisor hosts** when using hard `anti-affinity` (one host required per instance in the group)
+- **Nova Compute API 2.15+** (optional) -- required only when using `soft-affinity` or `soft-anti-affinity` policies. Standard `affinity` and `anti-affinity` policies work with all API versions.
+- **Sufficient hypervisor capacity** -- anti-affinity groups require at least as many hypervisors as group members. If insufficient hypervisors are available, instance launches fail with a scheduling error.
 
-## Quick Start
+## Deploy
 
-Create a file `server-group.yaml`:
+### Console
+
+Open the deployment store, find **OpenStack Server Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Anti-Affinity** preset in the [Presets](#presets) tab for production fault isolation.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackServerGroup
 metadata:
-  name: my-server-group
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.regional-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
-    planton.dev/stack.jobId: staging.OpenstackServerGroup.worker-soft-spread
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.app-cache-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackServerGroup.db-anti-affinity
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackservergroup/iac/pulumi/module
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenstackServerGroup.my-server-group
+  name: db-spread
+  org: acme-corp
+  env: prod
 spec:
   policy: anti-affinity
 ```
-
-Deploy:
 
 ```shell
 planton apply -f server-group.yaml
 ```
 
-This creates a server group named `my-server-group` with an anti-affinity policy, ensuring that instances referencing this group are placed on different hypervisors.
+This creates a server group with an anti-affinity policy. Instances that reference this group via scheduler hints are placed on different hypervisors. No region override is configured.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a server group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `policy` | `string` | Placement policy for instances in this server group. Valid values: `affinity`, `anti-affinity`, `soft-affinity`, `soft-anti-affinity`. Changing this recreates the server group. |
+**Placement policy** -- The `policy` field determines how Nova schedules member instances. Use `anti-affinity` for production workloads where a hypervisor failure should affect at most one instance (HA databases, load-balanced tiers). Use `affinity` for tightly coupled workloads that benefit from low-latency inter-instance communication (HPC, batch processing).
 
-### Optional Fields
+**Soft vs. hard constraints** -- `soft-affinity` and `soft-anti-affinity` are best-effort versions that do not fail instance launches when the constraint cannot be satisfied. Use soft policies when availability is more important than strict placement guarantees. Requires Nova API 2.15+.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `region` | `string` | provider default | Overrides the region from the provider config for this server group. |
+**Immutability** -- All fields are immutable. Changing the policy recreates the server group, which orphans existing member instances from the old group. Instances are not automatically migrated to the new group.
 
-### Policy Reference
+## Outputs and Dependencies
 
-| Policy | Behavior | API Requirement |
-|--------|----------|-----------------|
-| `affinity` | All instances on the same hypervisor (hard constraint) | Any Nova version |
-| `anti-affinity` | All instances on different hypervisors (hard constraint) | Any Nova version |
-| `soft-affinity` | Prefer same hypervisor, no failure if unavailable | Nova API 2.15+ |
-| `soft-anti-affinity` | Prefer different hypervisors, no failure if unavailable | Nova API 2.15+ |
+### What This Component Consumes
 
-## Examples
+This component has no foreign key dependencies.
 
-### Anti-Affinity for Database Replicas
+### What This Component Provides
 
-Spread database replicas across different hypervisors for high availability. If a hypervisor fails, at most one replica is affected:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackServerGroup
-metadata:
-  name: db-anti-affinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.db-anti-affinity
-spec:
-  policy: anti-affinity
-```
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `server_group_id` | UUID of the server group in OpenStack | OpenStackInstance `serverGroupId` scheduler hints |
+| `name` | Server group name | Labels, audit trails |
+| `members` | List of instance UUIDs in the group | Monitoring, capacity tracking (empty at creation, populated as instances join) |
+| `region` | OpenStack region of the server group | Region-aware downstream resources |
 
-### Affinity for Tightly Coupled Services
+## Common Patterns
 
-Co-locate application and cache instances on the same hypervisor to minimize network latency between them:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackServerGroup
-metadata:
-  name: app-cache-affinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.app-cache-affinity
-spec:
-  policy: affinity
-```
+**Anti-affinity for fault isolation** -- Spreads instances across different hypervisors so a single hardware failure affects at most one group member. Use for HA database replicas, load-balanced application tiers, and any workload requiring hardware-level fault domains. Start from the **Anti-Affinity** preset.
 
-### Soft Anti-Affinity for Large Clusters
+**Affinity for low latency** -- Places all instances on the same hypervisor to minimize network latency between them. Use for tightly coupled applications, HPC workloads, and batch processing pipelines where data locality reduces transfer time. Start from the **Affinity** preset.
 
-Use a soft policy when the cluster may not have enough distinct hypervisors to satisfy a hard anti-affinity constraint. Instances are spread on a best-effort basis without scheduling failures:
+## Works With
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackServerGroup
-metadata:
-  name: worker-soft-spread
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenstackServerGroup.worker-soft-spread
-spec:
-  policy: soft-anti-affinity
-```
-
-### Server Group in a Specific Region
-
-Override the provider region for a server group that must be created in a particular OpenStack region:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackServerGroup
-metadata:
-  name: regional-anti-affinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenstackServerGroup.regional-anti-affinity
-spec:
-  policy: anti-affinity
-  region: RegionTwo
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `server_group_id` | `string` | UUID of the created server group. Used as a foreign key by OpenStackInstance via scheduler hints. |
-| `name` | `string` | Name of the server group, derived from `metadata.name`. |
-| `members` | `string[]` | List of instance UUIDs that belong to this server group. Empty at creation; populated as instances are launched with scheduler hints referencing this group. |
-| `region` | `string` | OpenStack region where the server group was created. |
-
-## Related Components
-
-- [OpenStackInstance](/docs/catalog/openstack/instance) — references the server group via scheduler hints to enforce the placement policy
-- [OpenStackNetwork](/docs/catalog/openstack/network) — provides networking for instances placed by the server group
-- [OpenStackSecurityGroup](/docs/catalog/openstack/security-group) — controls traffic to instances within the server group
+This component operates independently and does not reference other deployment components.

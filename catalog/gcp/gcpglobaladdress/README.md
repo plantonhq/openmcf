@@ -116,7 +116,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 
 ## Examples
 
-For comprehensive examples, see `examples.md`, including:
+For comprehensive examples, see `e2e/manifest.yaml`, including:
 
 - Minimal external static IP
 - External IPv6 address

@@ -43,7 +43,7 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Audit shows <100% completion
 
 ```bash
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 ```
 
 **Process:**
@@ -53,7 +53,7 @@ Update handles six distinct scenarios, each with its own workflow:
 4. Validates results
 
 **Example:** Audit shows missing Terraform module (70% complete)
-- Runs rules 013-015 to create Terraform module
+- Runs rules 012-013 to create Terraform module
 - Validates Terraform works
 - Result: 95% complete
 
@@ -67,18 +67,18 @@ Update handles six distinct scenarios, each with its own workflow:
 
 **Process:**
 1. Regenerates proto stubs: `make protos` (.pb.go files)
-2. Validates component tests: `go test ./catalog/<provider>/<component>/v1/`
+2. Validates component tests: `go test ./catalog/<provider>/<component>/...`
 3. Updates Terraform variables.tf to match spec.proto
-4. Updates examples.md to use new fields
-5. Runs build validation: `go build ./catalog/.../v1/...`
-6. Runs full test validation: `go test -v ./catalog/.../v1/`
+4. Updates presets and the e2e manifest to use new fields
+5. Runs build validation: `go build ./catalog/...`
+6. Runs full test validation: `go test -v ./catalog/...`
 
 **Example:** Added `enable_ssl` field to spec.proto
 - Runs `make protos` to regenerate stubs with new field
 - Runs component tests to validate buf.validate rules
 - Adds `enable_ssl` variable to Terraform
 - Updates examples to show SSL usage
-- Runs `go build ./catalog/.../v1/...` and `go test -v ./catalog/.../v1/` for full validation
+- Runs `go build ./catalog/...` and `go test -v ./catalog/...` for full validation
 - Result: Everything consistent with new schema
 
 ### 3. Refresh Documentation
@@ -86,12 +86,12 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Documentation is outdated or incomplete
 
 ```bash
-@update-planton-component PostgresKubernetes --scenario refresh-docs
+@update-planton-component KubernetesPostgres --scenario refresh-docs
 ```
 
 **Process:**
-1. Regenerates research document (v1/docs/README.md)
-2. Updates user-facing docs (v1/README.md)
+1. Refreshes the component guide (GUIDE.md)
+2. Updates user-facing docs (README.md (component root))
 3. Refreshes examples with current patterns
 4. Updates IaC documentation
 
@@ -113,17 +113,17 @@ Update handles six distinct scenarios, each with its own workflow:
 1. Analyzes current implementation
 2. Updates Pulumi module based on explanation
 3. Updates Terraform module for feature parity
-4. Runs build validation: `go build ./catalog/.../v1/...`
+4. Runs build validation: `go build ./catalog/...`
 5. Updates tests
 6. Runs E2E tests
-7. Runs full test validation: `go test -v ./catalog/.../v1/`
+7. Runs full test validation: `go test -v ./catalog/...`
 
 **Example:** Adding multi-region support
 - Modifies Pulumi to create regional resources
-- Runs `go build ./catalog/.../v1/...` to validate compilation
+- Runs `go build ./catalog/...` to validate compilation
 - Mirrors changes in Terraform
 - Updates tests for multi-region scenarios
-- Runs `go test -v ./catalog/.../v1/` for full validation
+- Runs `go test -v ./catalog/...` for full validation
 - Result: Both IaC modules support multi-region
 
 ### 5. Fix Specific Issue
@@ -131,7 +131,7 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Targeted fix needed
 
 ```bash
-@update-planton-component GcpCertManagerCert --explain "examples.md uses deprecated field names"
+@update-planton-component GcpCertManagerCert --explain "presets use deprecated field names"
 ```
 
 **Process:**
@@ -141,7 +141,7 @@ Update handles six distinct scenarios, each with its own workflow:
 4. Validates fixes
 
 **Example:** Examples reference old field names
-- Scans examples.md for deprecated fields
+- Scans presets and the e2e manifest for deprecated fields
 - Updates to current field names
 - Validates examples against schema
 - Result: Examples work correctly
@@ -151,7 +151,7 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Not sure which scenario applies
 
 ```bash
-@update-planton-component MongodbAtlas
+@update-planton-component AtlasMongodb
 ```
 
 **Process:**
@@ -172,15 +172,15 @@ Update handles six distinct scenarios, each with its own workflow:
 
 ```bash
 # 1. Check current state
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 65% complete (missing Terraform, docs)
 
 # 2. Fill gaps
-@update-planton-component MongodbAtlas --scenario fill-gaps
-# Runs rules 013-015, 020, validation
+@update-planton-component AtlasMongodb --scenario fill-gaps
+# Runs rules 012-013, 019, validation
 
 # 3. Verify improvement
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 98% complete
 ```
 
@@ -194,7 +194,7 @@ Update handles six distinct scenarios, each with its own workflow:
 @update-planton-component GcpCloudSql --scenario proto-changed
 
 # 3. Test changes
-# Deploy with hack manifest to verify
+# Deploy with e2e manifest to verify
 ```
 
 ### Workflow 3: Provider Update → Refresh Docs
@@ -207,7 +207,7 @@ Update handles six distinct scenarios, each with its own workflow:
 @update-planton-component AwsRdsInstance --scenario refresh-docs
 
 # 3. Review generated docs
-# Check v1/docs/README.md reflects current best practices
+# Check GUIDE.md reflects current best practices
 ```
 
 ### Workflow 4: Feature Request → Update IaC
@@ -220,7 +220,7 @@ Update handles six distinct scenarios, each with its own workflow:
 # Check both Pulumi and Terraform modules
 
 # 3. Test deployment
-# Use hack manifest with custom VPC config
+# Use e2e manifest with custom VPC config
 ```
 
 ## Flags and Options
@@ -233,7 +233,7 @@ Update handles six distinct scenarios, each with its own workflow:
 | `--explain` | Describe what to update | `--explain "add SSL support"` |
 | `--dry-run` | Preview changes | `--dry-run` |
 | `--backup` | Create backup first | `--backup` |
-| `--resume-from` | Resume from rule number | `--resume-from 013` |
+| `--resume-from` | Resume from rule number | `--resume-from 012` |
 
 ### Scenario Values
 
@@ -247,13 +247,13 @@ Update handles six distinct scenarios, each with its own workflow:
 
 ```bash
 # Preview gap-filling
-@update-planton-component MongodbAtlas --scenario fill-gaps --dry-run
+@update-planton-component AtlasMongodb --scenario fill-gaps --dry-run
 
 # Update IaC with backup
 @update-planton-component GcpCertManagerCert --scenario update-iac --explain "add DNS validation" --backup
 
 # Auto-determine with explanation
-@update-planton-component PostgresKubernetes --explain "examples need updating to show volume configuration"
+@update-planton-component KubernetesPostgres --explain "examples need updating to show volume configuration"
 ```
 
 ## Safety Features
@@ -263,23 +263,23 @@ Update handles six distinct scenarios, each with its own workflow:
 Preview changes before applying:
 
 ```bash
-@update-planton-component MongodbAtlas --scenario fill-gaps --dry-run
+@update-planton-component AtlasMongodb --scenario fill-gaps --dry-run
 ```
 
 **Output:**
 ```
-📋 Update Plan for MongodbAtlas
+📋 Update Plan for AtlasMongodb
 
 Current State: 65% complete
 Missing Items:
   ❌ iac/tf/ (Terraform module)
-  ❌ v1/docs/README.md (research docs)
-  ⚠️  examples.md (incomplete)
+  ❌ GUIDE.md (component guide)
+  ⚠️  presets/ (incomplete)
 
 Planned Actions:
-  1. Run rules 013-015 → Create Terraform module
-  2. Run rule 020 → Generate research docs
-  3. Enhance examples.md → Add 2 more examples
+  1. Run rules 012-013 → Create Terraform module
+  2. Run rule 019 → Write GUIDE.md
+  3. Enhance presets/ → Add 2 more presets
 
 Estimated Duration: 10-15 minutes
 Estimated Files Modified: 15
@@ -306,7 +306,7 @@ catalog/gcp/gcpcertmanagercert/v1alpha1/.backup-2025-11-13-143022/
 
 **Restore if needed:**
 ```bash
-cp -r .backup-2025-11-13-143022/* .
+cp -r /tmp/planton-backups/<component>-backup-2025-11-13-143022/* catalog/<provider>/<component>/
 ```
 
 ### 3. Validation Checkpoints
@@ -316,10 +316,10 @@ Update validates after major changes with specific commands:
 | Checkpoint | Command | Validates | Fails If |
 |------------|---------|-----------|----------|
 | After proto changes | `make protos` | Proto compiles, stubs generated | Import errors, syntax errors |
-| Component tests | `go test ./catalog/.../v1/` | buf.validate rules work | Any spec_test.go failure |
-| After Go/Pulumi changes | `go build ./catalog/.../v1/...` | Complete build succeeds | Compilation errors |
+| Component tests | `go test ./catalog/...` | buf.validate rules work | Any spec_test.go failure |
+| After Go/Pulumi changes | `go build ./catalog/...` | Complete build succeeds | Compilation errors |
 | After doc updates | Validation | Examples work | Invalid YAML, wrong fields |
-| Final validation | `go test -v ./catalog/.../v1/` | Full test suite passes | Any test failure |
+| Final validation | `go test -v ./catalog/...` | Full test suite passes | Any test failure |
 
 **Build and Test Execution:**
 Update always runs these commands in sequence:
@@ -328,13 +328,13 @@ Update always runs these commands in sequence:
 make protos
 
 # 2. Always: Validate component tests (validates buf.validate rules)
-go test ./catalog/<provider>/<component>/v1/
+go test ./catalog/<provider>/<component>/...
 
 # 3. If Go/Pulumi code changed: Verify complete build
-go build ./catalog/.../v1/...
+go build ./catalog/...
 
 # 4. Always: Verify all tests pass
-go test -v ./catalog/.../v1/
+go test -v ./catalog/...
 ```
 This ensures spec_test.go correctly validates all validation rules in spec.proto and the complete build succeeds.
 
@@ -371,7 +371,7 @@ Choice: _
 Update provides detailed progress:
 
 ```
-🔄 Updating MongodbAtlas
+🔄 Updating AtlasMongodb
 
 Scenario: fill-gaps
 Current: 65% → Target: 95%+
@@ -381,16 +381,16 @@ Phase 1: Create Terraform Module
 [2/7] ✅ Generated provider.tf
 [3/7] ✅ Generated locals.tf
 [4/7] ✅ Generated main.tf (creates cluster + database)
-[5/7] ✅ Generated outputs.tf (maps to stack_outputs.proto)
+[5/7] ✅ Generated outputs.tf (maps to outputs.proto)
 [6/7] ✅ Generated README.md
 [7/7] ✅ Passed terraform validate
 
 Phase 2: Generate Documentation
-[8/8] ✅ Generated v1/docs/README.md (research document, 850 lines)
+[8/8] ✅ Wrote GUIDE.md (component guide)
 
 Phase 3: Validation
-[10/10] ✅ Build passed (go build ./catalog/.../v1/...)
-[11/11] ✅ Tests passed (go test -v ./catalog/.../v1/)
+[10/10] ✅ Build passed (go build ./catalog/...)
+[11/11] ✅ Tests passed (go test -v ./catalog/...)
 
 ✅ Update complete!
 
@@ -404,8 +404,8 @@ Summary:
 
 Next Steps:
   1. Review generated files
-  2. Run: @audit-planton-component MongodbAtlas
-  3. Test with: iac/hack/manifest.yaml
+  2. Run: @audit-planton-component AtlasMongodb
+  3. Test with: e2e/manifest.yaml
   4. Commit changes
 ```
 
@@ -415,19 +415,19 @@ Next Steps:
 
 **Error: Component not found**
 ```
-❌ MongodbAtlas not found in cloud_resource_kind.proto
+❌ AtlasMongodb not found in cloud_resource_kind.proto
 
 Did you mean:
   - MongodbKubernetes
-  - MongodbAtlas (check spelling)
+  - AtlasMongodb (check spelling)
 
 Or create new:
-  @forge-planton-component MongodbAtlas --provider atlas
+  @forge-planton-component AtlasMongodb --provider atlas
 ```
 
 **Error: Nothing to update**
 ```
-✅ MongodbAtlas is already 100% complete
+✅ AtlasMongodb is already 100% complete
 
 Audit shows all items present:
   ✅ Proto files
@@ -449,7 +449,7 @@ Fix:
   1. Check spec.proto syntax
   2. Ensure all message types are defined
   3. Run: make protos
-  4. Resume: @update-planton-component MongodbAtlas --resume-from 017
+  4. Resume: @update-planton-component AtlasMongodb --resume-from <rule-number>
 ```
 
 ### Recovery
@@ -459,7 +459,7 @@ If update fails:
 2. Suggestion for fix provided
 3. Resume from failure point:
    ```bash
-   @update-planton-component MongodbAtlas --resume-from <rule-number>
+   @update-planton-component AtlasMongodb --resume-from <rule-number>
    ```
 
 ## Integration Examples
@@ -522,7 +522,7 @@ If update fails:
 
 1. ✅ **Review diffs** - Check what changed
 2. ✅ **Run audit** - Verify improvements
-3. ✅ **Test locally** - Deploy with hack manifest
+3. ✅ **Test locally** - Deploy with e2e manifest
 4. ✅ **Commit meaningfully** - Good commit message
 
 ## Tips
@@ -550,7 +550,7 @@ If update fails:
 **Good:**
 ```
 --explain "add support for custom VPC with private IP ranges"
---explain "examples.md uses deprecated 'database_name' field, should use 'db_identifier'"
+--explain "presets use deprecated 'database_name' field, should use 'db_identifier'"
 --explain "Pulumi module doesn't set tags on resources, add standard tags"
 ```
 
@@ -588,13 +588,13 @@ If you've customized generated code:
 cd catalog/<provider>/<component>/v1
 make protos    # Regenerate stubs
 go build       # Check Go errors
-go test -v ./catalog/.../v1/      # Run tests
+go test -v ./catalog/...      # Run tests
 ```
 
 ### Examples Don't Work After Update
 
 **Fix:**
-1. Check examples.md uses current field names
+1. Check presets and the e2e manifest use current field names
 2. Validate examples against schema:
    ```bash
    planton validate --manifest examples.yaml

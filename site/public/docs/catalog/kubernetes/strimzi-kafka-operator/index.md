@@ -6,126 +6,125 @@ order: 100
 componentName: "kubernetesstrimzikafkaoperator"
 ---
 
-# Kubernetes Strimzi Kafka Operator
+# Strimzi Kafka Operator
 
-Installs the Strimzi cluster operator — the CNCF project that runs
-Apache Kafka on Kubernetes — from the official `strimzi-kafka-operator`
-Helm chart, with a typed spec over the chart's meaningful configuration
-surface. The operator reconciles `Kafka` and `KafkaNodePool` custom
-resources into KRaft-mode Kafka clusters (Kafka's built-in Raft
-metadata quorum — ZooKeeper was removed from Strimzi in 0.46), and its
-per-cluster entity operators reconcile `KafkaTopic` / `KafkaUser`
-resources into real topics and authenticated users. This component
-installs the ENGINE; the Kafka clusters themselves are declared with
-KubernetesKafka resources — one per cluster.
+Installs the Strimzi cluster operator — the CNCF project that runs Apache Kafka on Kubernetes — from the official `strimzi-kafka-operator` Helm chart. The operator is the ENGINE: it reconciles `Kafka` custom resources (declared with Kubernetes Kafka) into KRaft-mode Kafka clusters, and its per-cluster entity operators reconcile `KafkaTopic` / `KafkaUser` resources into real topics and authenticated users. This component installs and configures the operator itself; Kafka clusters, topics, and users are declared as their own first-class Cloud Resources. Credentials are delivered through a Kubernetes Provider Connection.
 
 ## What Gets Created
 
-- **Namespace** (optional) — the installation namespace, created and
-  owned when `create_namespace` is set
-- **Helm Release** (named `metadata.name`) — the operator Deployment,
-  its RBAC, and the Strimzi CRDs (Kafka, KafkaNodePool, KafkaTopic,
-  KafkaUser, and the rest of the family). The CRDs ship in the chart's
-  Helm-native `crds/` directory: installed on first install, never
-  upgraded or deleted by Helm — uninstalling the release NEVER
-  cascade-deletes the Kafka clusters. The same posture means a
-  `chart_version` upgrade runs new operator code against the EXISTING
-  CRDs — apply the new release's CRDs yourself when an upgrade's
-  release notes call for it.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Watch Scope
+- **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Strimzi Helm Release** — the official `strimzi-kafka-operator` chart from https://strimzi.io/charts/ at the pinned `chartVersion`
+- **Cluster Operator Deployment** — the Strimzi cluster operator pod(s); extra replicas are leader-elected warm standbys for the operator itself, not added reconciliation throughput
+- **Strimzi CRDs** — Kafka, KafkaNodePool, KafkaTopic, KafkaUser, and the rest, shipped in the chart's Helm-native `crds/` directory: installed on first install, never upgraded or deleted by Helm (uninstalling the release never cascade-deletes Kafka clusters)
+- **RBAC** — the ClusterRoles, ServiceAccounts, and bindings the operator needs (`createGlobalResources` governs the cluster-scoped set), plus per-namespace RoleBindings for a fenced watch list
 
-By default the operator watches ITS OWN namespace only (the chart
-default — Kafka clusters live beside their operator). Two knobs widen
-it, mutually exclusive:
+## Before You Deploy
 
-- **`watch.any_namespace: true`** — one operator manages Kafka
-  clusters in every namespace (cluster-wide RBAC)
-- **`watch.namespaces: [...]`** — an explicitly fenced set of
-  namespaces (the installation namespace is always watched in
-  addition)
+### Planton Setup
 
-A KubernetesKafka cluster declared in a namespace the operator does
-not watch is silently never reconciled — install the operator in the
-cluster's namespace, or widen the watch.
+- **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-## Prerequisites
+### Kubernetes Cluster
 
-- A cluster not already running a Strimzi operator with overlapping
-  watch scope — the CRDs and the chart's ClusterRoles are
-  cluster-scoped singletons (a second fenced install needs
-  `create_global_resources: false`)
-- Nothing else: Kafka clusters, topics, and users are concerns of the
-  KubernetesKafka / KubernetesKafkaTopic / KubernetesKafkaUser
-  resources composed on top
+- **Cluster-admin permissions** — installing the CRDs and ClusterRoles requires them.
+- **Watched namespaces must already exist** — with a `watch.namespaces` fence, the chart templates RoleBindings into each listed namespace and the install fails with `namespaces ... not found` otherwise. Create them first (e.g. as Kubernetes Namespace resources the install depends on).
+- **A storage class** for persistent volumes — needed by the Kafka clusters this operator will manage (KRaft node pools with persistent storage), not by the operator pod itself.
 
-## Quick Start
+## Deploy
+
+### Console
+
+Open the deployment store, find **Strimzi Kafka Operator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **default** preset in the [Presets](#presets) tab for the standard posture.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
-  name: strimzi-operator
+  name: strimzi
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: kafka
-  create_namespace: true
+    value: "kafka"
+  createNamespace: true
+  chartVersion: "1.1.0"
 ```
 
-The operator becomes Available and starts reconciling; KubernetesKafka
-resources declared in the `kafka` namespace turn into running KRaft
-clusters.
+```shell
+planton apply -f strimzi-operator.yaml
+```
 
-## Configuration Surface
+This installs the operator watching its OWN namespace only (the chart default) — Kafka clusters declared in the `kafka` namespace are reconciled; clusters elsewhere are invisible to it. The operator creates no Kafka clusters by itself: declare them with Kubernetes Kafka resources.
 
-- **`chart_version`** — the chart pin (default `1.1.0`; chart and
-  operator versions move together). Versions must exist as SERVED
-  charts in the repository index (https://strimzi.io/charts/) — the
-  Chart.yaml inside the Strimzi source tree is a build-time
-  placeholder. Remember the CRD posture: upgrades never upgrade CRDs
-- **`replicas`** — operator pods (default 1); extras are
-  leader-elected warm standbys for the OPERATOR itself, not
-  reconciliation throughput
-- **`watch`** — the scope block above
-- **`full_reconciliation_interval_ms`** — the periodic full-repair
-  pass over every watched resource (default 120000 — 2 minutes)
-- **`operation_timeout_ms`** — timeout for internal operations like
-  rolling a pod (default 300000 — 5 minutes); raise on slow storage
-  where broker restarts legitimately exceed it
-- **`log_level`** — ERROR / WARN / INFO (default) / DEBUG / TRACE
-- **`feature_gates`** — Strimzi gates in the operator's own syntax
-  (`+Gate,-OtherGate`); an unknown gate fails operator startup
-- **`kubernetes_service_dns_domain`** — set only on clusters with a
-  non-default DNS domain; a mismatch produces TLS certificates whose
-  SANs don't match the advertised service DNS names
-- **`leader_election_enabled`** — meaningful only with `replicas`
-  above 1
-- **`generate_network_policy` / `generate_pod_disruption_budget`** —
-  the operand policy toggles (both default true)
-- **`create_global_resources`** — set false only for a SECOND operator
-  install; the fixed-name ClusterRoles belong to the first release
-- **`resources`, `node_selector`, `tolerations`,
-  `image_pull_secrets`, `image`** — operator pod placement, sizing,
-  and the image source override — `image` steers EVERY Strimzi image
-  (operator and all operands: Kafka, entity operators, Cruise Control,
-  exporter), the air-gap path
-- **`helm_values`** — escape hatch: extra chart values merged LAST
-  (Helm `-f` semantics) for the surface beyond the typed fields —
-  never the primary interface, never for secrets
+### InfraChart
 
-## Stack Outputs
+When deploying as part of a multi-resource environment, wire the operator to a namespace managed by another Cloud Resource:
 
-| Output | Description |
-|---|---|
-| `namespace` | Namespace the operator runs in |
-| `release_name` | Helm release name of the operator (equals `metadata.name`) |
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: kafka-home
+      fieldPath: spec.name
+  createNamespace: false
+```
 
-## Next Steps
+The InfraPipeline deploys the namespace first, then provisions the operator into it.
 
-Declare Kafka clusters as KubernetesKafka resources — one per cluster,
-in a namespace the operator watches; the operator reconciles them into
-brokers, controllers, listeners, and certificates, and its per-cluster
-entity operators serve KubernetesKafkaTopic / KubernetesKafkaUser
-declarations. Pin `chart_version` deliberately and upgrade the operator
-on the platform's schedule — removing this component never deletes the
-CRDs or the Kafka clusters behind them.
+## Key Configuration
+
+These are the most important decisions when configuring the operator. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Watch scope — the defining choice.** By default the operator watches ITS OWN namespace only: Kafka clusters live beside their operator, and a `Kafka` resource declared anywhere else is silently never reconciled. Set `watch.anyNamespace` for one platform-owned operator managing clusters everywhere, or `watch.namespaces` for an explicit team fence (the installation namespace is always watched in addition). The two are mutually exclusive — a cluster-wide operator already watches everything.
+
+**CRD lifecycle on upgrades.** The chart ships its CRDs in the Helm-native `crds/` directory — installed on first install, never touched again by Helm. A `chartVersion` upgrade therefore runs new operator code against the EXISTING CRDs; when a Strimzi release's notes call for it (minor upgrades regularly add CRD fields), apply the new CRDs yourself.
+
+**Second operator in the same cluster.** The chart's fixed-name ClusterRoles are owned by the first release. A second install (watching a disjoint namespace set) must set `createGlobalResources: false` or Helm fails trying to create them again.
+
+**Image sourcing for air-gapped clusters.** The `image` block overrides the registry/organization for the operator AND every operand image it deploys (Kafka, entity operators, Cruise Control, exporter). Empty = `quay.io/strimzi` at the chart version.
+
+**Everything else** — reconciliation cadence (`fullReconciliationIntervalMs`), operation timeout (raise on slow storage where broker restarts legitimately exceed 5 minutes), log level, feature gates (the operator's own `+Gate,-Gate` syntax; an unknown gate fails startup), NetworkPolicy/PodDisruptionBudget generation, and the `helmValues` escape hatch (merged last, Helm `-f` semantics) for the chart surface beyond the typed fields.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Namespace the operator runs in | Placing Kafka clusters beside their operator (the default watch posture) |
+| `release_name` | Helm release name of the operator | Identifying the installation in day-2 tooling |
+
+The operator has no per-cluster surface of its own — Kafka clusters compose against the CRDs it installs, so the outputs identify the installation rather than any workload.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard install** — the pinned chart in its own-namespace posture; Kafka clusters live beside the operator. Start from the **default** preset.
+
+**Platform-team operator** — one operator in a dedicated control-plane namespace managing Kafka clusters in every namespace. Start from the **cluster-wide** preset.
+
+**Fenced teams** — one operator reconciling only an explicit list of team namespaces. Start from the **fenced-teams** preset (the listed namespaces must already exist).
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace for the operator deployment
+- [**Kubernetes Kafka**](/cloud-catalog/kubernetes-kafka) — the Kafka clusters this operator reconciles
+- [**Kubernetes Kafka Topic**](/cloud-catalog/kubernetes-kafka-topic) — topics reconciled by each cluster's entity operator
+- [**Kubernetes Kafka User**](/cloud-catalog/kubernetes-kafka-user) — authenticated users reconciled by each cluster's entity operator

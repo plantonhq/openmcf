@@ -6,183 +6,111 @@ order: 100
 componentName: "ociidentitypolicy"
 ---
 
-# OCI Identity Policy
+# Identity Policy on OCI
 
-Deploys an Oracle Cloud Infrastructure IAM policy for granting access to compartment resources. Policies are OCI's authorization mechanism — each policy contains one or more human-readable statements written in OCI's policy language (e.g., `Allow group Admins to manage all-resources in compartment Production`). Policies are attached to a compartment and grant permissions within that compartment and all of its children.
+Deploys an Oracle Cloud Infrastructure IAM policy for granting access to compartment resources. Each policy contains one or more human-readable statements written in OCI's policy language and is attached to a compartment, granting permissions within that compartment and all of its children. Tenancy-level policies can be created by attaching the policy to the tenancy root compartment. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments.
 
 ## What Gets Created
 
-When you deploy an OciIdentityPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Identity Policy** — an `oci_identity_policy` resource in the specified compartment with the provided name, description, and policy statements. Standard Planton freeform tags are applied automatically. The policy name defaults to `metadata.name` if not explicitly set in the spec.
+- **Identity Policy** -- an `oci_identity_policy` in the specified compartment with name, description, and one or more policy statements. The policy name defaults to `metadata.name` if not explicitly set in the spec.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the policy
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID or tenancy OCID** where the policy will be created — the tenancy OCID for tenancy-level policies, or a compartment OCID for compartment-scoped policies (literal value or via `valueFrom` referencing an OciCompartment resource)
-- **Knowledge of OCI policy syntax** — statements follow the format `Allow <subject> to <verb> <resource-type> in <location> [where <conditions>]`. See [OCI Policy Reference](https://docs.oracle.com/iaas/Content/Identity/Reference/policyreference.htm)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `policy.yaml`:
+### OCI Tenancy
+
+- A compartment OCID or tenancy OCID where the policy will be created. Tenancy-level policies grant access across all compartments. Compartment-scoped policies grant access within that compartment and its children. Provide the OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- Knowledge of OCI's policy language syntax: `Allow <subject> to <verb> <resource-type> in <location> [where <conditions>]`. Subjects can be groups (`group GroupName`) or dynamic groups (`dynamic-group DynGroupName`).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Identity Policy on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Compartment Admin** preset in the [Presets](#presets) tab to pre-populate a policy granting a group full administrative access.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciIdentityPolicy
 metadata:
-  name: my-admin-policy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciIdentityPolicy.my-admin-policy
+  name: platform-admin-policy
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
-  description: "Grants admin access to the project compartment"
+  description: "Grants administrative access to the platform compartment"
   statements:
-    - "Allow group ProjectAdmins to manage all-resources in compartment my-project"
+    - "Allow group PlatformAdmins to manage all-resources in compartment platform"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f policy.yaml
 ```
 
-This creates an IAM policy named `my-admin-policy` attached to the specified compartment. The single statement grants the `ProjectAdmins` group full administrative access to all resources within the `my-project` compartment and its children. The policy OCID is exported as a stack output for reference.
+This creates an IAM policy named `platform-admin-policy` attached to the specified compartment with a single statement granting full administrative access. The `versionDate` field is not set, so the policy evaluates using current service behavior.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where this policy will be created. For tenancy-level policies, use the tenancy OCID. For compartment-scoped policies, use the target compartment's OCID. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `description` | `string` | Description of the policy's purpose. Required by the OCI API. Updatable after creation. | Minimum 1 character |
-| `statements` | `string[]` | Policy statements written in OCI's policy language. Each statement follows the syntax: `Allow <subject> to <verb> <resource-type> in <location> [where <conditions>]`. | Minimum 1 statement |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | `metadata.name` | Name assigned to the policy. Must be unique across all policies in the tenancy. Cannot be changed after creation. Falls back to `metadata.name` if not provided. |
-| `versionDate` | `string` | _(empty)_ | Version date for policy evaluation in `YYYY-MM-DD` format. When set, the policy is evaluated according to the behavior of OCI services on that date, providing stable policy interpretation. When empty, the policy uses current service behavior at evaluation time. |
-
-## Examples
-
-### Compartment Admin Policy
-
-A policy granting a group full administrative access to all resources within a compartment — the most common OCI policy pattern:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the policy to a compartment deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciIdentityPolicy
-metadata:
-  name: compartment-admin-policy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciIdentityPolicy.compartment-admin-policy
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  description: "Grants administrative access to the production compartment"
-  statements:
-    - "Allow group PlatformAdmins to manage all-resources in compartment production"
-```
-
-### Dynamic Group Service Access
-
-A policy granting a dynamic group access to specific OCI services — the standard workload identity pattern for compute instances and OKE pods that need to call OCI APIs without stored credentials:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciIdentityPolicy
-metadata:
-  name: workload-service-access
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciIdentityPolicy.workload-service-access
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  description: "Grants compute workloads access to Vault secrets, KMS keys, and Object Storage"
-  statements:
-    - "Allow dynamic-group compute-workers to read secret-family in compartment production"
-    - "Allow dynamic-group compute-workers to use keys in compartment production"
-    - "Allow dynamic-group compute-workers to manage object-family in compartment production"
-```
-
-### Tenancy-Wide Auditor
-
-A tenancy-level policy granting read-only visibility across all compartments for compliance and security auditing:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciIdentityPolicy
-metadata:
-  name: auditor-policy
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciIdentityPolicy.auditor-policy
-spec:
-  compartmentId:
-    value: "ocid1.tenancy.oc1..example"
-  description: "Grants read-only visibility across the tenancy for security auditing"
-  statements:
-    - "Allow group SecurityAuditors to inspect all-resources in tenancy"
-    - "Allow group SecurityAuditors to read audit-events in tenancy"
-```
-
-### Full-Featured with Foreign Key References
-
-A policy using `valueFrom` to reference an Planton-managed compartment, with a version date for stable policy evaluation and custom metadata labels:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciIdentityPolicy
-metadata:
-  name: network-admin-policy
-  labels:
-    team: platform
-    cost-center: infrastructure
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: platform-infra
-    pulumi.planton.dev/stack.name: prod.OciIdentityPolicy.network-admin-policy
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: networking
+      name: platform-compartment
       fieldPath: status.outputs.compartmentId
-  name: "platform-network-admin-policy"
-  description: "Grants the networking team full control over virtual network resources"
-  statements:
-    - "Allow group NetworkAdmins to manage virtual-network-family in compartment networking"
-    - "Allow group NetworkAdmins to manage load-balancers in compartment networking"
-    - "Allow group NetworkAdmins to use network-security-groups in compartment networking"
-  versionDate: "2026-01-01"
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the policy with the resolved compartment OCID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `policy_id` | `string` | OCID of the created policy. |
+These are the most important decisions when configuring an identity policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Policy statements** -- Provide at least one statement in `statements`. Each statement follows OCI's policy language: `Allow <subject> to <verb> <resource-type> in <location>`. Use `manage all-resources` for administrative access, `inspect all-resources` for read-only auditing, or target specific resource families (`virtual-network-family`, `secret-family`, `object-family`) for least-privilege grants.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`; policies are scoped to the compartment they are attached to
-- [OciDynamicGroup](/docs/catalog/oci/dynamic-group) — creates dynamic groups that can be referenced as subjects in policy statements (`Allow dynamic-group ...`)
-- [OciVcn](/docs/catalog/oci/vcn) — policies using `virtual-network-family` govern access to VCN resources within a compartment
-- [OciSubnet](/docs/catalog/oci/subnet) — policies govern access to subnets and related networking resources within compartments
+**Policy scope** -- Attach the policy to the compartment it governs. Policies grant access within their compartment and all children. For tenancy-wide policies (e.g., auditor access across all compartments), set `compartmentId` to the tenancy OCID and use `in tenancy` in statements instead of `in compartment <name>`.
+
+**Policy name immutability** -- The `name` field (or `metadata.name` fallback) cannot be changed after creation. Choose a descriptive, stable name. Renaming requires destroying and recreating the policy.
+
+**Version date** -- Set `versionDate` (YYYY-MM-DD format) to pin policy evaluation to OCI service behavior on that date. This prevents future OCI service changes from altering how statements are interpreted. Omit for policies that should follow current behavior.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_id` | OCID of the created policy | Policy auditing and management |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Compartment admin** -- A policy granting a group full administrative access to all resources within a compartment. The most common starting point for team-level access. Start from the **Compartment Admin** preset.
+
+**Dynamic group service access** -- A policy granting a dynamic group access to specific OCI services for workload identity. Used with OciDynamicGroup to enable credential-less authentication for compute instances and OKE pods. Start from the **Service Access** preset.
+
+**Read-only auditor** -- A tenancy-level policy granting a group inspect-level visibility across all compartments for compliance and security auditing. Start from the **Read-Only Auditor** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this policy and determines which resources it governs

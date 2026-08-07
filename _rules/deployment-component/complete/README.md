@@ -18,17 +18,17 @@ While audit and update are powerful when used separately, most of the time you w
 
 ```bash
 # 1. Check status
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Output: 65% complete, missing Terraform, docs, examples
 
 # 2. Read report, decide what to do
 
 # 3. Fill gaps
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 # Wait 15-20 minutes
 
 # 4. Verify
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Output: 98% complete
 
 # Time: 20+ minutes + manual steps
@@ -37,7 +37,7 @@ While audit and update are powerful when used separately, most of the time you w
 ### Complete Workflow (1 Command)
 
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 
 # Automatically:
 # - Audits (65% complete)
@@ -100,14 +100,14 @@ Based on audit results, complete will create:
 **Critical Items (if missing):**
 - Terraform module (variables.tf, main.tf, outputs.tf, etc.)
 - Pulumi module files (if somehow missing)
-- Proto files (api, spec, stack_input, stack_outputs)
+- Proto files (api.proto, spec.proto, input.proto, outputs.proto)
 - Generated stubs (.pb.go files)
 - Unit tests (spec_test.go)
 
 **Important Items (if missing):**
-- Research documentation (v1/docs/README.md)
-- User-facing docs (v1/README.md)
-- Examples (v1/examples.md with multiple use cases)
+- Component guide (GUIDE.md at the component root)
+- User-facing docs (README.md and catalog.md at the component root)
+- Presets (presets/ with .md sidecars, multiple use cases)
 - IaC documentation (Pulumi/Terraform READMEs)
 
 **Nice-to-Have Items (if missing and target=100%):**
@@ -142,7 +142,7 @@ Complete is specifically for **filling gaps**, not other updates:
 ### With Dry-Run
 
 ```bash
-@complete-planton-component MongodbAtlas --dry-run
+@complete-planton-component AtlasMongodb --dry-run
 ```
 
 **Shows:**
@@ -155,7 +155,7 @@ Complete is specifically for **filling gaps**, not other updates:
 ### With Custom Target
 
 ```bash
-@complete-planton-component PostgresKubernetes --target-score 90
+@complete-planton-component KubernetesPostgres --target-score 90
 ```
 
 **Behavior:**
@@ -179,21 +179,21 @@ Complete is specifically for **filling gaps**, not other updates:
 **Scenario:** Legacy component at 60% completion
 
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 ```
 
 **Output:**
 ```
-🎯 Complete: MongodbAtlas
+🎯 Complete: AtlasMongodb
 
 Step 1/3: Initial Audit
   Current: 65%
-  Missing: Terraform, research docs, overview
+  Missing: Terraform, component guide
   
 Step 2/3: Filling Gaps (18 minutes)
   ✅ Created Terraform module (7 files)
-  ✅ Generated research docs (850 lines)
-  ✅ Generated Pulumi overview
+  ✅ Wrote GUIDE.md (component guide)
+  ✅ Generated Pulumi module README
   ✅ Enhanced examples (+3 examples)
   
 Step 3/3: Final Verification
@@ -248,8 +248,8 @@ Current State:
   
 Gaps Identified (14 items):
   ❌ Missing Terraform module
-  ❌ Missing research docs
-  ❌ Missing Pulumi overview
+  ❌ Missing component guide
+  ❌ Missing Pulumi module README
   ❌ Missing examples
   ❌ Incomplete proto definitions
   ... (9 more)
@@ -297,7 +297,7 @@ Duration: 12 minutes (extra time for polish items)
 
 ```bash
 # Complete all SaaS platform components
-for component in MongodbAtlas ConfluentKafka SnowflakeDatabase; do
+for component in AtlasMongodb ConfluentKafka SnowflakeDatabase; do
   echo "=== Completing $component ==="
   @complete-planton-component $component
   echo ""
@@ -306,7 +306,7 @@ done
 
 **Output:**
 ```
-=== Completing MongodbAtlas ===
+=== Completing AtlasMongodb ===
 ✅ 65% → 98% (+33%) in 18 min
 
 === Completing ConfluentKafka ===
@@ -338,7 +338,7 @@ Overall: [███░░░░░░░] 35% complete
 Initial: 65%
   ↓ +4.44% (Terraform created)
 Current: 69.44%
-  ↓ +13.34% (Research docs created)
+  ↓ +13.34% (GUIDE.md written)
 Current: 82.78%
   ↓ +5% (Overview created)
 Current: 87.78%
@@ -440,7 +440,7 @@ gh pr create --title "Improve component quality" --body "..."
 
 - [ ] Review before/after audit reports
 - [ ] Check generated files quality
-- [ ] Test deployment (use hack manifest)
+- [ ] Test deployment (use the e2e manifest)
 - [ ] Commit with meaningful message
 - [ ] Share improvement metrics
 
@@ -650,7 +650,7 @@ Difference:
 #!/bin/bash
 # complete-all-saas.sh
 
-COMPONENTS=(MongodbAtlas ConfluentKafka SnowflakeDatabase)
+COMPONENTS=(AtlasMongodb ConfluentKafka SnowflakeDatabase)
 
 for component in "${COMPONENTS[@]}"; do
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -675,11 +675,11 @@ echo "Batch completion finished!"
 
 ```bash
 # Complete and capture metrics
-BEFORE=$(@audit-planton-component MongodbAtlas --score-only)
+BEFORE=$(@audit-planton-component AtlasMongodb --score-only)
 
-@complete-planton-component MongodbAtlas
+@complete-planton-component AtlasMongodb
 
-AFTER=$(@audit-planton-component MongodbAtlas --score-only)
+AFTER=$(@audit-planton-component AtlasMongodb --score-only)
 
 echo "Improvement: $BEFORE% → $AFTER% (+$(($AFTER - $BEFORE))%)"
 ```
@@ -717,7 +717,7 @@ echo "Improvement: $BEFORE% → $AFTER% (+$(($AFTER - $BEFORE))%)"
 **Action:**
 ```bash
 # Check build errors
-go build ./catalog/<provider>/<component>/v1/...
+go build ./catalog/<provider>/<component>/...
 
 # Fix manually
 # Re-run complete (it's idempotent)
@@ -744,9 +744,9 @@ After complete finishes:
 ✅ All critical gaps filled
 ✅ spec_test.go exists with validation tests
 ✅ Component tests execute successfully
-✅ All tests pass (`go test ./catalog/.../v1/`)
-✅ Build validation passed (`go build ./catalog/<provider>/<component>/v1/...`)
-✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/v1/`)
+✅ All tests pass (`go test ./catalog/<provider>/<component>/...`)
+✅ Build validation passed (`go build ./catalog/<provider>/<component>/...`)
+✅ Full test suite passed (`go test -v ./catalog/<provider>/<component>/...`)
 ✅ Two audit reports (before/after)
 ✅ Summary shows improvement
 ✅ Ready to commit

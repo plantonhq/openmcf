@@ -81,7 +81,7 @@ spec:
       fieldPath: status.outputs.scheduling_policy_arn
 ```
 
-See docs/README.md for the fairness math and operational guidance.
+See GUIDE.md for the fairness math and operational guidance.
 
 ---
 

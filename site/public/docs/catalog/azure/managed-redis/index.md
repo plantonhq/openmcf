@@ -8,96 +8,148 @@ componentName: "azuremanagedredis"
 
 # Azure Managed Redis
 
-Azure's current-generation Redis service, built on Redis Enterprise.
-Managed Redis is the successor to the retiring classic Azure Cache for
-Redis and the target for new deployments: keyless by default (Entra
-tokens instead of access keys), with Redis modules, active multi-primary
-geo-replication, and customer-managed-key encryption.
+Deploys an Azure Managed Redis instance -- Azure's current-generation Redis service, built on Redis Enterprise. Azure is retiring classic Azure Cache for Redis; Managed Redis is the target for new Redis deployments and the home of the capabilities the classic service never had: Redis modules (search, JSON, probabilistic filters, time series), active multi-primary geo-replication, customer-managed-key encryption, and a keyless-by-default authentication posture. The component models the cluster and its default database in one spec: the SKU family/size ladder, high availability, engine behavior, modules, persistence, geo-group membership, managed identity, CMK, and network access. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureManagedRedis resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Managed Redis cluster** -- an `azurerm_managed_redis` instance:
-  compute, load balancer, and TLS endpoint at the chosen SKU, plus its
-  default database (the Redis process) with your authentication,
-  clustering, eviction, module, and persistence configuration
+- **Managed Redis Cluster** -- a Microsoft.Cache/redisEnterprise instance in the specified region and resource group, sized by the chosen SKU (family + memory in one value), with high availability (a replica and the 99.999% zone-redundant SLA) unless explicitly disabled
+- **Default Database** -- the Redis process itself, mapped 1-to-1 with the cluster: authentication posture, clustering policy, eviction policy, client protocol, modules, optional persistence, and optional geo-replication-group membership
+- **Customer-Managed-Key Encryption** -- created only when `customerManagedKey` is configured; wraps the data-encryption key with your Key Vault key via a user-assigned identity
+- **Managed Identity Attachment** -- created only when `identity` is configured; attaches system-assigned and/or user-assigned identities (required for CMK)
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton
-  provider config
-- **An AzureResourceGroup** to deploy into
-- For customer-managed keys: an **AzureKeyVaultKey** and an
-  **AzureUserAssignedIdentity** with wrap/unwrap access to it
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `cache.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the instance will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **Region availability** -- Managed Redis is newer than classic Redis and not yet in every region; check Azure's product-availability table for the current footprint.
+- **For customer-managed keys** (optional): an AzureKeyVaultKey in a purge-protected vault and an AzureUserAssignedIdentity granted wrap/unwrap on the key before deployment.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Managed Redis**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Keyless Balanced** preset in the [Presets](#presets) tab to pre-populate the production default posture.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureManagedRedis
 metadata:
   name: app-cache
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureManagedRedis.app-cache
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    valueFrom:
-      kind: AzureResourceGroup
-      name: app-rg
-      fieldPath: status.outputs.resource_group_name
-  clusterName: app-cache
+    value: "acme-prod-rg"
+  clusterName: acme-app-cache
   skuName: BALANCED_B1
   defaultDatabase:
     accessKeysAuthenticationEnabled: false
-    evictionPolicy: ALL_KEYS_LRU
 ```
-
-Deploy:
 
 ```shell
-planton pulumi up --manifest cache.yaml
+planton apply -f managed-redis.yaml
 ```
 
-Grant each consuming identity data-plane access with an
-AzureManagedRedisAccessPolicyAssignment -- with keys off (the default),
-grants are how clients connect at all.
+This creates a 1 GB Balanced instance with high availability (Azure's default), TLS-only access on port 10000, OSS clustering, volatile-lru eviction, and NO access keys -- the keyless posture where clients authenticate with Entra tokens under access-policy-assignment grants.
 
-## Spec Highlights
+### InfraChart
 
-- `sku_name` -- tier family and memory size in one value: BALANCED
-  (general purpose), COMPUTE_OPTIMIZED (max ops/sec), MEMORY_OPTIMIZED
-  (large datasets), FLASH_OPTIMIZED (RAM + NVMe tiering); many changes
-  apply in place
-- `high_availability_enabled` -- a replica and the zone-redundant SLA
-  (default true)
-- `default_database.modules` -- RediSearch, RedisJSON, RedisBloom,
-  RedisTimeSeries (RediSearch requires EnterpriseCluster clustering and
-  NoEviction)
-- `default_database.geo_replication_group_name` -- join an active
-  (multi-primary) geo-replication group; link members with
-  AzureManagedRedisGeoReplication
-- `customer_managed_key` -- BYO encryption key from Key Vault
-- Persistence -- AOF (every write) or RDB (periodic snapshots),
-  mutually exclusive, not available on geo-replicated databases
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a resource group -- and, for CMK, to a Key Vault key and identity -- deployed in the same InfraPipeline:
 
-## Stack Outputs
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: production-rg
+      fieldPath: status.outputs.resource_group_name
+  customerManagedKey:
+    keyVaultKeyId:
+      valueFrom:
+        kind: AzureKeyVaultKey
+        name: redis-cmk
+        fieldPath: status.outputs.key_id
+    userAssignedIdentityId:
+      valueFrom:
+        kind: AzureUserAssignedIdentity
+        name: redis-identity
+        fieldPath: status.outputs.identity_id
+```
 
-| Output | Description |
-| --- | --- |
-| `managed_redis_id` | The cluster's ARM ID -- what geo-replication and grants reference |
-| `managed_redis_name` | The instance name |
-| `region` | The Azure region |
-| `resource_group_name` | The resource group |
-| `hostname` | `{name}.{region}.redis.azure.net` -- all a keyless client needs, with the port |
-| `database_id` | The default database's ARM ID (the data-plane scope) |
-| `port` | The database port (10000) |
-| `primary_access_key` | SECRET; empty under the keyless default |
-| `secondary_access_key` | SECRET; empty under the keyless default |
-| `identity_principal_id` | The system-assigned identity's principal, when enabled |
+The InfraPipeline resolves the dependency graph, deploys the resource group, key, and identity first, then provisions the instance with the resolved values.
+
+## Key Configuration
+
+These are the most important decisions when configuring a Managed Redis instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**SKU family and size** -- `skuName` packs both into one value: BALANCED (B0-B1000) general-purpose, COMPUTE_OPTIMIZED (X3-X700) for high ops/sec on smaller datasets, MEMORY_OPTIMIZED (M10-M2000) for large datasets, FLASH_OPTIMIZED (A250-A4500) for very large datasets tiered onto NVMe flash. The number is the instance's memory in GB (B0 = 0.5 GB). Azure validates size changes against the live instance -- scalable changes apply in place; rejected ones replace the instance. Geo-replication requires BALANCED_B3 or larger.
+
+**Keyless authentication** -- the reverse of classic Redis: `defaultDatabase.accessKeysAuthenticationEnabled` defaults FALSE. Clients authenticate with Microsoft Entra tokens under AzureManagedRedisAccessPolicyAssignment grants -- object ID as the username, a short-lived token as the password, no secret to leak or rotate. Enable keys only for clients that genuinely cannot use Entra tokens; the key outputs populate only while keys are on.
+
+**Clustering policy** -- `defaultDatabase.clusteringPolicy` unset deploys OSS_CLUSTER (best throughput, cluster-aware clients required). ENTERPRISE_CLUSTER proxies all shards behind one endpoint so any client works -- and is required by the RediSearch module. Changing the policy later RECREATES the database (data lost), so decide at creation.
+
+**Modules** -- up to 4 from `RediSearch`, `RedisJSON`, `RedisBloom`, `RedisTimeSeries`, each at most once. RediSearch requires ENTERPRISE_CLUSTER and NO_EVICTION. The module set is fixed for the database's lifetime -- changing it recreates the database.
+
+**Persistence XOR geo-replication** -- AOF (`persistenceAppendOnlyFileBackupFrequency: 1s`) logs every write; RDB (`persistenceRedisDatabaseBackupFrequency: 1h|6h|12h`) snapshots periodically; set at most one. A database joining a geo-replication group (`geoReplicationGroupName`) can use neither -- the group's cross-region replicas are its durability story -- and supports only the RediSearch/RedisJSON modules.
+
+**Network isolation** -- Managed Redis has NO VNet injection and NO IP firewall; Private Link is the only isolation mechanism. Disable `publicNetworkAccessEnabled` and attach an AzurePrivateEndpoint for private-only access.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureKeyVaultKey** (optional, CMK) | `customerManagedKey.keyVaultKeyId` | `status.outputs.key_id` |
+| **AzureUserAssignedIdentity** (optional) | `customerManagedKey.userAssignedIdentityId`, `identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `managed_redis_id` | Azure Resource Manager ID of the cluster | AzureManagedRedisAccessPolicyAssignment, AzureManagedRedisGeoReplication, AzurePrivateEndpoint |
+| `managed_redis_name` | The instance's name (the DNS label) | Sibling resources addressing the cluster within its group |
+| `region` | The instance's region | Multi-region composition |
+| `resource_group_name` | The instance's resource group | Sibling resource placement |
+| `hostname` | `{clusterName}.{region}.redis.azure.net` | Keyless (Entra) clients need only this and the port |
+| `database_id` | The default database's ARM ID | The scope Entra grants and geo-links operate on |
+| `port` | The TCP port (10000 -- never classic Redis's 6379/6380) | Every client's connection config |
+| `primary_access_key` | Primary key (SECRET; empty in the keyless default) | Redis client password, only when keys are enabled |
+| `secondary_access_key` | Secondary key (SECRET; empty in the keyless default) | Zero-downtime key rotation |
+| `identity_principal_id` | The system-assigned identity's principal ID | Role assignments |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Keyless production cache** -- A Balanced instance with high availability and no access keys; every client rides an Entra grant. Start from the **Keyless Balanced** preset.
+
+**Search + JSON document store** -- RediSearch + RedisJSON on a Memory Optimized instance with Enterprise clustering and noeviction -- a queryable document store with Redis latency. Start from the **Search + JSON Enterprise** preset.
+
+**Geo-replicated group member** -- One member of an active multi-primary group: BALANCED_B3+, a shared group name, no persistence. Deploy one per region, then link them with AzureManagedRedisGeoReplication. Start from the **Geo-Replicated** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the instance is created
+- [**Azure Managed Redis Access Policy Assignment**](/cloud-catalog/azure-managed-redis-access-policy-assignment) -- grants an Entra identity data-plane access (how clients connect in the keyless default)
+- [**Azure Managed Redis Geo Replication**](/cloud-catalog/azure-managed-redis-geo-replication) -- links instances declaring the same group name into an active multi-primary group
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed key that wraps the data-encryption key
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- the wrap/unwrap identity for CMK, and the principal granted data-plane access
+- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- private connectivity with the public endpoint disabled

@@ -8,124 +8,38 @@ componentName: "hetznercloudfirewall"
 
 # Hetzner Cloud Firewall
 
-Creates a firewall in Hetzner Cloud with inline rules that control inbound and outbound network traffic for servers. The firewall enforces deny-by-default inbound (all packets not matching a rule are dropped) and allow-by-default outbound. Rules support TCP, UDP, ICMP, ESP, and GRE protocols with IPv4 and IPv6 CIDR blocks.
+Deploys a stateful firewall with inline rules that control inbound and outbound network traffic for Hetzner Cloud servers. Firewalls are deny-by-default for inbound traffic -- when applied to a server, all inbound packets not matching a rule are dropped, while outbound traffic is allowed unless explicitly restricted. Supports TCP, UDP, ICMP, ESP, and GRE protocols with CIDR-based source and destination filtering. Hetzner Cloud allows up to 50 rules per firewall.
 
 ## What Gets Created
 
-- **Firewall** — an `hcloud_firewall` resource containing inline rules, a name derived from `metadata.name`, and standard labels computed from resource metadata. Rules define allowed traffic by direction, protocol, port (for TCP/UDP), and source or destination CIDR blocks.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Firewall** -- a single `hcloud_firewall` resource with inline rules defining allowed traffic directions, protocols, ports, and CIDR blocks
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `firewall.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **Network planning** -- decide which ports and protocols to allow for inbound traffic, and which CIDR blocks should be permitted as sources.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudFirewall
-metadata:
-  name: ssh-only
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudFirewall.ssh-only
-spec:
-  rules:
-    - direction: in
-      protocol: tcp
-      port: "22"
-      sourceIps:
-        - "0.0.0.0/0"
-        - "::/0"
-      description: "allow SSH from anywhere"
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f firewall.yaml
-```
+Open the deployment store, find **Hetzner Cloud Firewall**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including rule definitions.
 
-This creates a firewall that allows inbound SSH from any IP and blocks all other inbound traffic when applied to a server.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-The `spec` itself is required, but `rules` is optional — an empty rules list creates a valid firewall that blocks all inbound traffic.
-
-When rules are provided, each rule requires:
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `rules[].direction` | `enum` (`in`, `out`) | Traffic direction this rule applies to | Required, must be a defined enum value |
-| `rules[].protocol` | `enum` (`icmp`, `tcp`, `udp`, `esp`, `gre`) | IP protocol this rule matches | Required, must be a defined enum value |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `rules` | `repeated Rule` | empty (block all inbound) | Firewall rules defining allowed traffic. Up to 50 rules per firewall. |
-| `rules[].port` | `string` | — | Port (`"80"`), range (`"80-443"`), or `"any"`. Required when protocol is `tcp` or `udp`. Must not be set for `icmp`, `esp`, or `gre`. |
-| `rules[].sourceIps` | `repeated string` | — | CIDR blocks for inbound traffic sources. Required when direction is `in`. Use `["0.0.0.0/0", "::/0"]` for all traffic. |
-| `rules[].destinationIps` | `repeated string` | — | CIDR blocks for outbound traffic destinations. Required when direction is `out`. Use `["0.0.0.0/0", "::/0"]` for all traffic. |
-| `rules[].description` | `string` | — | Human-readable description of the rule's purpose. |
-
-### Cross-Field Validation (CEL Rules)
-
-| Constraint | Message |
-|-----------|---------|
-| `port` required for TCP/UDP | "port is required when protocol is tcp or udp" |
-| `sourceIps` required for inbound | "source_ips is required when direction is in" |
-| `destinationIps` required for outbound | "destination_ips is required when direction is out" |
-
-## Examples
-
-### Minimal SSH-Only Firewall
-
-A single inbound rule allowing SSH from anywhere.
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudFirewall
 metadata:
-  name: ssh-only
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudFirewall.ssh-only
-spec:
-  rules:
-    - direction: in
-      protocol: tcp
-      port: "22"
-      sourceIps:
-        - "0.0.0.0/0"
-        - "::/0"
-```
-
-### Web Server Firewall
-
-SSH, HTTP, HTTPS, and ICMP for a public-facing web server.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudFirewall
-metadata:
-  name: web-server
+  name: web-firewall
   org: acme-corp
-  env: production
-  labels:
-    role: web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudFirewall.web-server
+  env: prod
 spec:
   rules:
     - direction: in
@@ -134,113 +48,36 @@ spec:
       sourceIps:
         - "0.0.0.0/0"
         - "::/0"
-      description: "allow SSH"
+      description: "Allow SSH from anywhere"
     - direction: in
       protocol: tcp
       port: "80"
       sourceIps:
         - "0.0.0.0/0"
         - "::/0"
-      description: "allow HTTP"
+      description: "Allow HTTP"
     - direction: in
       protocol: tcp
       port: "443"
       sourceIps:
         - "0.0.0.0/0"
         - "::/0"
-      description: "allow HTTPS"
-    - direction: in
-      protocol: icmp
-      sourceIps:
-        - "0.0.0.0/0"
-        - "::/0"
-      description: "allow ping"
+      description: "Allow HTTPS"
 ```
 
-### Database with Restricted Access
-
-PostgreSQL access restricted to a private subnet, SSH from bastion only.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudFirewall
-metadata:
-  name: db-restricted
-  org: acme-corp
-  env: production
-  labels:
-    role: database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudFirewall.db-restricted
-spec:
-  rules:
-    - direction: in
-      protocol: tcp
-      port: "5432"
-      sourceIps:
-        - "10.0.1.0/24"
-      description: "PostgreSQL from app subnet"
-    - direction: in
-      protocol: tcp
-      port: "22"
-      sourceIps:
-        - "10.0.0.0/24"
-      description: "SSH from bastion subnet"
+```shell
+planton apply -f hetznercloud-firewall.yaml
 ```
 
-### Server Composition via valueFrom
+This creates a firewall allowing SSH, HTTP, and HTTPS inbound traffic from all sources. A Stack Job tracks the provisioning in real time. Reference the firewall in HetznerCloudServer manifests via `firewall_ids`.
 
-A firewall referenced by a HetznerCloudServer using `valueFrom`. The server receives the firewall's numeric ID from the firewall's stack outputs, establishing a dependency edge in the deployment DAG.
+### InfraChart
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudFirewall
-metadata:
-  name: web-firewall
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudFirewall.web-firewall
-spec:
-  rules:
-    - direction: in
-      protocol: tcp
-      port: "22"
-      sourceIps:
-        - "0.0.0.0/0"
-        - "::/0"
-    - direction: in
-      protocol: tcp
-      port: "443"
-      sourceIps:
-        - "0.0.0.0/0"
-        - "::/0"
-```
-
-The server references this firewall:
+When deploying as part of a server environment, use ValueFromRef to wire the firewall to servers:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: web-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.web-01
+# In the HetznerCloudServer manifest:
 spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
   firewallIds:
     - valueFrom:
         kind: HetznerCloudFirewall
@@ -248,14 +85,40 @@ spec:
         fieldPath: status.outputs.firewall_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, creates the firewall first, then provisions servers with the firewall applied.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `firewall_id` | `string` | Hetzner Cloud numeric ID of the created firewall. Referenced by HetznerCloudServer via `firewallIds`. |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a firewall. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — References firewall IDs to apply traffic rules at server creation
-- [HetznerCloudSshKey](/docs/catalog/hetznercloud/ssh-key) — Commonly deployed alongside firewalls as a foundation for server provisioning
-- [HetznerCloudNetwork](/docs/catalog/hetznercloud/network) — Private networking for restricting firewall source CIDRs to internal subnets
+**Rules** -- The `rules` field is a repeated list of firewall rules. Each rule specifies a `direction` (in or out), `protocol` (tcp, udp, icmp, esp, gre), optional `port` (required for TCP/UDP -- accepts single port, range, or "any"), and CIDR blocks for `sourceIps` (inbound) or `destinationIps` (outbound). An empty rules list creates a firewall that blocks all inbound and allows all outbound traffic.
+
+**Direction** -- Inbound rules (`in`) require `sourceIps`. Outbound rules (`out`) require `destinationIps`. Use `["0.0.0.0/0", "::/0"]` to match all IPv4 and IPv6 traffic.
+
+**Port** -- Required for TCP and UDP protocols. Accepts a single port (`"80"`), a range (`"80-443"`), or `"any"` for all ports. Must not be set for ICMP, ESP, or GRE.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `firewall_id` | Hetzner Cloud numeric ID of the firewall | HetznerCloudServer `firewallIds` field |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web server firewall** -- Allow SSH (22), HTTP (80), and HTTPS (443) inbound from all sources. The standard starting point for web-facing servers.
+
+**Database firewall** -- Allow inbound connections only from private network CIDR blocks on database ports (e.g., 5432 for PostgreSQL, 3306 for MySQL). Restrict SSH to a bastion IP range.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- servers reference this firewall via `firewallIds` to apply traffic rules

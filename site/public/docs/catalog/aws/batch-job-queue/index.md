@@ -8,34 +8,48 @@ componentName: "awsbatchjobqueue"
 
 # AWS Batch Job Queue
 
-Deploys an AWS Batch job queue — the submission target that routes jobs onto up to three compute environments in preference order. The ordered mapping is what expresses Spot-first-with-On-Demand-overflow and zero-downtime compute replacement.
+Deploys an AWS Batch job queue: the place jobs are submitted to, and the routing layer that decides WHICH compute environment runs them. A queue maps onto up to three [AWS Batch Compute Environments](/cloud-catalog/aws-batch-compute-environment) in preference order — which is what makes the canonical Batch cost pattern (Spot first, On-Demand overflow) one row away. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsBatchJobQueue resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Job Queue** — an `aws_batch_job_queue` with the configured priority, state, compute-environment mapping, optional fair-share scheduling policy attachment, and optional stuck-job time-limit actions
+- **Batch Job Queue** -- with the configured priority, accept/drain state, and the ordered compute-environment mapping
+- **Fair-share attachment** -- when `schedulingPolicy` references an [AWS Batch Scheduling Policy](/cloud-catalog/aws-batch-scheduling-policy), jobs are ordered by share identifier instead of first-in-first-out
+- **Stuck-job fuses** -- optional `jobStateTimeLimitActions` that automatically CANCEL jobs stuck at the head of the queue in RUNNABLE past a threshold
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+Jobs themselves are submitted against the queue at runtime (SubmitJob) using an [AWS Batch Job Definition](/cloud-catalog/aws-batch-job-definition); the queue holds them until a mapped environment has capacity.
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **At least one VALID compute environment** — use `AwsBatchComputeEnvironment` to provision
-- **Optionally a scheduling policy** for fair-share ordering — use `AwsBatchSchedulingPolicy`
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `job-queue.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **At least one Batch compute environment** in the same region, in the VALID state. Reference an AwsBatchComputeEnvironment Cloud Resource or provide a literal ARN.
+- **A scheduling policy** (optional) for fair-share ordering. Reference an AwsBatchSchedulingPolicy Cloud Resource or provide a literal ARN — and note that once attached, a policy can be replaced but never removed.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Batch Job Queue**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the queue dials, and the environment mapping. Start from the **Single Environment** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsBatchJobQueue
 metadata:
-  name: etl-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsBatchJobQueue.etl-queue
+  name: batch-queue
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   priority: 10
@@ -44,57 +58,93 @@ spec:
       computeEnvironment:
         valueFrom:
           kind: AwsBatchComputeEnvironment
-          name: etl-fargate
+          name: data-processing
           fieldPath: status.outputs.compute_environment_arn
+  jobStateTimeLimitActions:
+    - action: CANCEL
+      maxTimeSeconds: 3600
+      reason: MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT
+      state: RUNNABLE
 ```
-
-Deploy:
 
 ```shell
-planton apply -f job-queue.yaml
+planton apply -f batch-job-queue.yaml
 ```
 
-Jobs submitted to `etl-queue` (SubmitJob or an EventBridge Batch target) now run on the referenced compute environment.
+This creates a queue mapped onto one compute environment with a stuck-job fuse: jobs whose resource requirements the environment can never satisfy are cancelled after an hour. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+The Spot-first overflow pattern wires two environments in preference order:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region; must match the compute environments'. | Required; non-empty |
-| `computeEnvironmentOrder` | list(object) | Preference-ordered compute environment mapping. | 1-3 entries |
-| `computeEnvironmentOrder[].order` | int32 | Preference position; lowest tried first. | >= 1 |
-| `computeEnvironmentOrder[].computeEnvironment` | StringValueOrRef → AwsBatchComputeEnvironment | The environment's ARN. | Required |
+```yaml
+spec:
+  computeEnvironmentOrder:
+    - order: 1
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: spot-env
+          fieldPath: status.outputs.compute_environment_arn
+    - order: 2
+      computeEnvironment:
+        valueFrom:
+          kind: AwsBatchComputeEnvironment
+          name: on-demand-env
+          fieldPath: status.outputs.compute_environment_arn
+  schedulingPolicy:
+    valueFrom:
+      kind: AwsBatchSchedulingPolicy
+      name: team-fair-share
+      fieldPath: status.outputs.scheduling_policy_arn
+```
 
-### Optional Fields
+The InfraPipeline resolves the dependency graph, deploys both environments and the policy first, then provisions the queue with the resolved ARNs.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `priority` | int32 | 0 | Scheduling preference vs other queues sharing an environment; higher wins. |
-| `state` | string | `ENABLED` | `DISABLED` rejects new submissions while running jobs finish (the drain switch). |
-| `schedulingPolicy` | StringValueOrRef → AwsBatchSchedulingPolicy | — | Fair-share ordering within the queue. Once set it can be replaced but never removed. |
-| `jobStateTimeLimitActions` | list(object) | — | Auto-`CANCEL` jobs stuck in `RUNNABLE` past a threshold (600-86400s). `reason` selects WHICH stuck-job cause the action covers: `CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY`, `MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE`, or `MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT`. |
+## Key Configuration
 
-All associated environments must be one family: EC2-based (`EC2`/`SPOT`) or Fargate-based (`FARGATE`/`FARGATE_SPOT`), never mixed.
+These are the most important decisions when configuring a job queue. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Environment mapping** -- up to three environments in preference order; the scheduler tries the LOWEST order first and overflows upward when capacity runs out. All mapped environments must be one compute family: EC2-based (EC2/SPOT) or Fargate-based (FARGATE/FARGATE_SPOT), never mixed.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `job_queue_arn` | string | The submission handle and EventBridge Batch target ARN. |
-| `job_queue_name` | string | The queue's name (from `metadata.name`). |
+**Priority** -- BETWEEN queues sharing a compute environment, not between jobs: when two queues compete for the same capacity, the higher value schedules first. Ordering within one queue comes from submission order or the fair-share policy.
 
-## Presets
+**Fair-share policy** -- attach an AwsBatchSchedulingPolicy to order jobs by share identifier. The one asymmetric decision on this kind: a live queue can REPLACE its policy but never REMOVE it — returning to first-in-first-out requires recreating the queue.
 
-| Name | Description |
-|------|-------------|
-| [01-single-environment](../presets/01-single-environment.yaml) | One queue on one environment with stuck-job protection |
-| [02-spot-overflow](../presets/02-spot-overflow.yaml) | Spot-first with On-Demand overflow — the canonical cost pattern |
+**Stuck-job fuses** -- one entry per stuck-cause (`reason` is a matcher against AWS's own three causes, not free text): insufficient capacity, exceeds-environment-maximum, or unsatisfiable resource requirements. `action` and `state` are fixed by AWS at CANCEL/RUNNABLE.
 
-## Related Components
+**Drain switch** -- set `state: DISABLED` to reject new submissions while queued jobs finish — the safe first step of maintenance or decommissioning.
 
-- [AwsBatchComputeEnvironment](/docs/catalog/aws/batch-compute-environment) — the capacity this queue routes onto
-- [AwsBatchJobDefinition](/docs/catalog/aws/batch-job-definition) — the container blueprint submitted to this queue
-- [AwsBatchSchedulingPolicy](/docs/catalog/aws/batch-scheduling-policy) — fair-share ordering within the queue
-- [AwsEventBridgeRule](/docs/catalog/aws/event-bridge-rule) — schedules or event-triggers job submissions to this queue
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsBatchComputeEnvironment** (1-3) | `computeEnvironmentOrder[].computeEnvironment` | `status.outputs.compute_environment_arn` |
+| **AwsBatchSchedulingPolicy** (optional) | `schedulingPolicy` | `status.outputs.scheduling_policy_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `job_queue_arn` | Job queue ARN | SubmitJob calls, EventBridge Batch targets, IAM policies |
+| `job_queue_name` | Job queue name | CLI commands, monitoring dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single environment** -- the standard starting point: one queue on one environment with a stuck-job fuse. Start from the **Single Environment** preset.
+
+**Spot overflow** -- Spot environment at order 1, On-Demand at order 2: up to 90% savings when Spot capacity exists, reliable capacity when it does not. Start from the **Spot Overflow** preset.
+
+**Two-tier priority** -- an urgent queue (priority 100) and a backfill queue (priority 1) on the same environment: urgent jobs always claim capacity first.
+
+## Works With
+
+- [**AWS Batch Compute Environment**](/cloud-catalog/aws-batch-compute-environment) -- the capacity this queue dispatches onto, in preference order
+- [**AWS Batch Job Definition**](/cloud-catalog/aws-batch-job-definition) -- the container blueprint jobs are submitted from at runtime
+- [**AWS Batch Scheduling Policy**](/cloud-catalog/aws-batch-scheduling-policy) -- fair-share ordering within this queue (replaceable, never removable)

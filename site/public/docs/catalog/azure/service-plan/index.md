@@ -8,225 +8,122 @@ componentName: "azureserviceplan"
 
 # Azure Service Plan
 
-Deploys an Azure App Service Plan that defines the compute tier, VM size, instance count, and pricing for hosting Azure Web Apps, Function Apps, and Logic Apps Standard workflows. The plan supports Linux, Windows, and Windows Container operating systems, zone-redundant deployments, premium auto-scaling, per-site scaling, elastic worker limits for serverless workloads, and App Service Environment placement for single-tenant compute.
+Deploys an Azure App Service Plan -- the compute tier that hosts Azure Web Apps, Function Apps, and Logic Apps. The plan determines the region, OS type, VM size, instance count, pricing tier, and scaling behavior. A single plan can host multiple apps sharing the same compute resources. The resource group dependency is wired through ValueFromRef for InfraChart composition.
 
 ## What Gets Created
 
-When you deploy an AzureServicePlan resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **App Service Plan** -- an `azurerm_service_plan` / `appservice.ServicePlan` resource in the specified region and resource group, configured with the chosen SKU tier, OS type, instance count, and optional zone balancing
-- **Azure Tags** -- platform metadata tags merged with your own `tags` (your tags win on key collision) for tracking, cost allocation, and governance
+- **Azure App Service Plan** -- a compute resource in the specified region and resource group, configured with the selected SKU tier, OS type, worker count, and scaling settings
+- **Zone-Balanced Instances** -- created only when `zoneBalancingEnabled` is `true`; distributes workers across availability zones for higher resilience (requires Premium, Elastic Premium, or Isolated v2 SKUs)
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the plan for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the plan will be created (can reference an AzureResourceGroup resource)
-- **SKU selection** -- determine the appropriate tier before deployment: `CONSUMPTION_Y1` for pay-per-execution Function Apps, `ELASTIC_PREMIUM_EP1`-`EP3` for pre-warmed Functions, `BASIC_B1`-`B3` for dev/test web apps, `PREMIUM_P1V3`-`P3V3` for production workloads
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `serviceplan.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the Service Plan will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Service Plan**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Linux Standard Plan** preset for a production-ready S1 configuration in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureServicePlan
 metadata:
-  name: my-plan
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureServicePlan.my-plan
+  name: app-plan
+  org: acme-corp
+  env: prod
 spec:
-  region: eastus
+  region: "eastus"
   resourceGroup:
-    value: my-rg
-  servicePlanName: my-plan
-  skuName: BASIC_B1
+    value: "acme-prod-rg"
+  servicePlanName: "acme-prod-plan"
+  osType: LINUX
+  skuName: STANDARD_S1
 ```
-
-Deploy:
 
 ```shell
-planton apply -f serviceplan.yaml
+planton apply -f service-plan.yaml
 ```
 
-This creates a Linux Basic B1 App Service Plan with a single worker instance in the `eastus` region.
+This creates a Linux Standard S1 plan with a single worker instance. Zone balancing, per-site scaling, and elastic worker limits are not configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the plan (e.g., `eastus`, `westeurope`). **ForceNew**: changing this destroys and recreates the plan. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. **ForceNew**: changing this destroys and recreates the plan. | Required |
-| `servicePlanName` | `string` | Name of the Service Plan. Unique within the resource group. **ForceNew**: changing this destroys and recreates the plan. | Required, 1-60 characters, pattern `^[0-9a-zA-Z-_]{1,60}$` |
-| `skuName` | `enum` | SKU determining pricing tier and compute capacity -- NOT ForceNew, plans re-tier in place. See SKU reference below. | Required, closed vocabulary |
-
-**SKU reference** -- values by category (deployed in Azure's exact spelling):
-
-- **Free/Shared**: `FREE_F1`, `SHARED_D1` (Windows only)
-- **Basic**: `BASIC_B1`-`B3` (manual scale to 3 instances)
-- **Standard**: `STANDARD_S1`-`S3` (autoscale to 10, staging slots)
-- **Premium**: `PREMIUM_P1V2`-`P3V2`, `PREMIUM_P0V3`-`P3V3`, `PREMIUM_P0V4`-`P3V4`, and memory-optimized `PREMIUM_P1MV3`-`P5MV3` / `PREMIUM_P1MV4`-`P5MV4` (30 instances, zone redundancy, auto-scale)
-- **Consumption**: `CONSUMPTION_Y1` (Function Apps pay-per-execution)
-- **Elastic Premium**: `ELASTIC_PREMIUM_EP1`-`EP3` (Function Apps pre-warmed)
-- **Flex Consumption**: `FLEX_CONSUMPTION_FC1` (the newest serverless Functions tier)
-- **Isolated**: `ISOLATED_I1`-`I3` (ASEv2), `ISOLATED_I1V2`-`I6V2` and memory-optimized `ISOLATED_I1MV2`-`I5MV2` (ASEv3; require `appServiceEnvironmentId`)
-- **Workflow**: `WORKFLOW_WS1`-`WS3` (Logic Apps Standard)
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `osType` | `enum` | `LINUX` | Operating system type: `LINUX`, `WINDOWS`, or `WINDOWS_CONTAINER`. All apps within a plan share the OS type. Shared-tier SKUs are Windows-only. **ForceNew**: changing this destroys and recreates the plan. |
-| `appServiceEnvironmentId` | `string` | - | ARM ID of the App Service Environment v3 to place the plan in (single-tenant compute). Only Isolated SKUs may set this. |
-| `workerCount` | `int` | _(SKU default, typically 1)_ | Number of VM instances allocated to the plan. Maximum varies by SKU: Basic=3, Standard=10, Premium=30, Isolated=100. Serverless tiers (Y1/FC1/EP*) manage this automatically. When `zoneBalancingEnabled` is `true`, use a multiple of the zone count (typically 3) and never fewer than 2. |
-| `premiumPlanAutoScaleEnabled` | `bool` | `false` | Automatic HTTP-load scaling for Premium plans, up to `maximumElasticWorkerCount`. Premium SKUs only. |
-| `maximumElasticWorkerCount` | `int` | _(platform default, typically 20)_ | Scale-out ceiling for Elastic Premium and Workflow plans (and Premium plans with auto-scale enabled). The primary cost-control lever for serverless workloads. Range: 0-100. |
-| `zoneBalancingEnabled` | `bool` | `false` | Distribute instances across availability zones. Supported on Premium, Elastic Premium, Consumption, Flex Consumption, Isolated, and Workflow SKUs -- not Free/Shared/Basic/Standard. |
-| `perSiteScalingEnabled` | `bool` | `false` | Allow individual apps within the plan to scale independently of the plan's instance count. |
-| `tags` | `map` | - | Free-form Azure resource tags, merged over the platform's metadata-derived tags (your tags win on key collision). |
-
-## Examples
-
-### Development Function App Plan
-
-A Consumption plan for pay-per-execution Azure Functions in development:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Service Plan to a resource group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureServicePlan
-metadata:
-  name: dev-functions
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureServicePlan.dev-functions
 spec:
-  region: eastus
-  resourceGroup:
-    value: dev-rg
-  servicePlanName: dev-functions
-  skuName: CONSUMPTION_Y1
-```
-
-### Production Web App Plan with Zone Redundancy
-
-A Premium v3 plan with zone balancing and multiple workers for production web applications:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureServicePlan
-metadata:
-  name: prod-web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureServicePlan.prod-web
-spec:
-  region: westeurope
-  resourceGroup:
-    value: prod-rg
-  servicePlanName: prod-web
-  skuName: PREMIUM_P1V3
-  workerCount: 3
-  zoneBalancingEnabled: true
-```
-
-### Premium Plan with Automatic HTTP Scaling
-
-A Premium v3 plan that scales itself on HTTP load, capped at 10 instances:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureServicePlan
-metadata:
-  name: autoscale-web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureServicePlan.autoscale-web
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  servicePlanName: autoscale-web
-  skuName: PREMIUM_P1V3
-  premiumPlanAutoScaleEnabled: true
-  maximumElasticWorkerCount: 10
-```
-
-### Elastic Premium with Worker Limits
-
-An Elastic Premium plan for serverless Function Apps with a capped elastic worker count to control scaling costs:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureServicePlan
-metadata:
-  name: events-plan
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureServicePlan.events-plan
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  servicePlanName: events-plan
-  skuName: ELASTIC_PREMIUM_EP1
-  maximumElasticWorkerCount: 50
-```
-
-### Using Foreign Key References
-
-Reference a Planton-managed resource group instead of hardcoding the name:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureServicePlan
-metadata:
-  name: ref-plan
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureServicePlan.ref-plan
-spec:
-  region: eastus
   resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
-      name: my-rg
+      name: production-rg
       fieldPath: status.outputs.resource_group_name
-  servicePlanName: ref-plan
-  skuName: PREMIUM_P1V3
-  workerCount: 3
-  zoneBalancingEnabled: true
-  perSiteScalingEnabled: true
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the Service Plan with the resolved value.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `service_plan_id` | `string` | Azure Resource Manager ID of the Service Plan. Referenced by AzureFunctionApp and AzureLinuxWebApp via `servicePlanId`. |
-| `service_plan_name` | `string` | Name of the Service Plan |
-| `os_type` | `string` | Configured operating system type in Azure's spelling (`Linux`, `Windows`, `WindowsContainer`) |
-| `sku_name` | `string` | Configured SKU name in Azure's spelling (e.g., `P1v3`, `EP1`, `Y1`) |
-| `kind` | `string` | Azure's computed plan classification (e.g., `linux`, `elastic`, `functionapp`) |
-| `reserved` | `bool` | Whether the plan runs Linux workers |
+These are the most important decisions when configuring a Service Plan. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**SKU tier** (`skuName`) -- One enum value picks both the tier's capabilities and the VM size. Free (`FREE_F1`) and Shared (`SHARED_D1`, `SHARED`) are dev/test only. Basic (`BASIC_B1`-`BASIC_B3`) is dedicated compute with manual scaling. Standard (`STANDARD_S1`-`STANDARD_S3`) adds auto-scaling, staging slots, and backups. Premium v3/v4 (`PREMIUM_P0V3`-`PREMIUM_P5MV4`) is the price-performance sweet spot with zone redundancy and premium plan auto-scale. Consumption (`CONSUMPTION_Y1`), Elastic Premium (`ELASTIC_PREMIUM_EP1`-`EP3`), and Flex Consumption (`FLEX_CONSUMPTION_FC1`) are the serverless Functions tiers. Isolated (`ISOLATED_I1`-`ISOLATED_I5MV2`) runs single-tenant inside an App Service Environment. Workflow (`WORKFLOW_WS1`-`WS3`) hosts Logic Apps Standard. The SKU is NOT fixed -- plans re-tier in place.
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) -- provides the resource group for plan placement
-- [AzureFunctionApp](/docs/catalog/azure/function-app) -- serverless Function Apps hosted on this plan
-- [AzureLinuxWebApp](/docs/catalog/azure/linux-web-app) -- Linux web applications hosted on this plan
+**OS type** (`osType`) -- `LINUX`, `WINDOWS`, or `WINDOWS_CONTAINER`; leaving it unset deploys Linux. Immutable after creation, and all apps within a plan share it. The Shared-tier SKUs are Windows-only.
+
+**Worker count and zone balancing** -- Set `workerCount` to control the number of VM instances (leave it unset for Consumption, Flex, and Elastic Premium -- Azure manages those automatically). For zone redundancy, enable `zoneBalancingEnabled` with `workerCount` at a multiple of 3 and never below 2 -- enabling it later on a plan below 2 workers forces a destroy-and-recreate. Zone balancing needs Premium or higher tiers; Free, Shared, Basic, and Standard do not support it.
+
+**Per-site scaling** (`perSiteScalingEnabled`) -- When enabled, individual apps within the plan can scale to fewer instances than the plan runs.
+
+**Premium plan auto-scale** (`premiumPlanAutoScaleEnabled`) -- Premium SKUs only: Azure adds and removes instances based on HTTP load without a separate autoscale rule resource, up to the elastic worker cap.
+
+**Elastic worker limit** (`maximumElasticWorkerCount`) -- The upper bound on event-driven scale-out: applies natively on Elastic Premium (default 20, max 100) and Workflow SKUs, and on Premium SKUs when premium plan auto-scale is enabled. The primary cost-control lever for serverless workloads.
+
+**App Service Environment** (`appServiceEnvironmentId`) -- The ASEv3 ARM ID for single-tenant, network-isolated hosting. Required by (and only legal with) the Isolated SKUs.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `service_plan_id` | Azure Resource Manager ID of the Service Plan | AzureLinuxWebApp and AzureFunctionApp `servicePlanId` field |
+| `service_plan_name` | Name of the Service Plan | Informational -- debugging and audit trails |
+| `os_type` | Deployed OS type (linux/windows as reported by Azure) | Informational -- downstream visibility |
+| `sku_name` | Deployed SKU name (e.g., P1v3, EP1, Y1) | Informational -- cost tracking and capacity planning |
+| `kind` | The ARM `kind` of the plan (e.g., linux, functionapp) | Informational -- audit trails |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Linux Standard plan** -- S1 tier with a single Linux worker. Provides auto-scaling up to 10 instances, staging slots, daily backups, and a 99.95% SLA. The entry-level production configuration for web apps and APIs. Start from the **Linux Standard Plan** preset.
+
+**Linux Premium with zone redundancy** -- P1v3 tier with 3 Linux workers distributed across availability zones. Faster processors, SSD storage, and auto-scaling up to 30 instances. The standard configuration for high-availability production workloads. Start from the **Linux Premium Plan with Zone Redundancy** preset.
+
+**Consumption (serverless)** -- Y1 tier that scales to zero and bills per execution. The cheapest option for event-driven Azure Functions with sporadic traffic. No worker count or scaling configuration needed. Start from the **Consumption (Serverless) Service Plan** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the Service Plan is created

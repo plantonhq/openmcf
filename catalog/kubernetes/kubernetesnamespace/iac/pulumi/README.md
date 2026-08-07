@@ -22,13 +22,13 @@ This Pulumi module provides automated deployment and management of Kubernetes na
 cd catalog/kubernetes/kubernetesnamespace/iac/pulumi
 
 # Preview changes
-make preview manifest=../hack/manifest.yaml
+make preview manifest=../../e2e/manifest.yaml
 
 # Deploy
-make up manifest=../hack/manifest.yaml
+make up manifest=../../e2e/manifest.yaml
 
 # Destroy
-make down manifest=../hack/manifest.yaml
+make down manifest=../../e2e/manifest.yaml
 ```
 
 ### Using Planton CLI
@@ -159,7 +159,7 @@ kubectl describe networkpolicy -n <namespace>
 
 ## Examples
 
-See ../../examples.md for complete examples including:
+See ../../e2e/manifest.yaml for complete examples including:
 - Basic namespace creation
 - Production namespace with network isolation
 - Service mesh integration

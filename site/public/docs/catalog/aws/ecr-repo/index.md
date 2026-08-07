@@ -8,197 +8,132 @@ componentName: "awsecrrepo"
 
 # AWS ECR Repo
 
-Deploys an AWS Elastic Container Registry repository at the full repository surface: tag mutability (including exclusion-filtered modes that freeze release tags while `latest` stays movable), AES256/KMS/dual-layer encryption, push-time vulnerability scanning, structured lifecycle rules, and a folded repository policy for cross-account or service access.
+Deploys an Elastic Container Registry repository — the private Docker/OCI image registry that container workloads (ECS, EKS, Lambda container images, App Runner) pull from. The spec covers the full repository surface: tag mutability including the exclusion-filter modes (freeze releases while `latest` floats), encryption at rest (AES-256, KMS, or dual-layer KMS_DSSE), push-time vulnerability scanning, structured lifecycle rules for storage cost control, and a folded repository policy for cross-account or cross-service pull access.
 
 ## What Gets Created
 
-When you deploy an AwsEcrRepo resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **ECR Repository** — the repository with the specified name (a slash-namespaced registry path), tag mutability mode plus wildcard exclusion filters, image scanning configuration, encryption configuration (create-time), force-delete behavior, and Planton resource tags
-- **Lifecycle Policy** (optional) — the repository's image-expiration rules, built from the structured `lifecycleRules` list (evaluated by ascending priority; an image is expired by the first rule that selects it)
-- **Repository Policy** (optional) — the repository's resource-based access policy, from the `repositoryPolicy` document
+- **ECR Repository** -- a Docker image registry with the specified name, tag mutability setting (and exclusion filters), encryption configuration, and scan-on-push behavior
+- **Lifecycle Policy** -- created only when `lifecycleRules` are configured; each rule selects images by tag state (untagged, tagged by prefix or pattern, or every image) and expires them by keep-last-N count or age in days
+- **Repository Policy** -- created only when `repositoryPolicy` is configured; the resource-based IAM policy for cross-account pulls and service access (e.g. Lambda container images)
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A KMS key** if using `KMS` or `KMS_DSSE` encryption (optional; the default `AES256` encryption requires no additional setup)
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `ecr-repo.yaml`:
+### AWS Account
+
+- **A KMS key** (optional) -- required only when using KMS encryption (`encryptionType: KMS`). Provide the key ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef. If omitted, ECR uses AWS-managed AES-256 encryption at no additional cost.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS ECR Repo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Immutable** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEcrRepo
 metadata:
-  name: my-service
+  name: api-service
+  org: acme-corp
+  env: prod
 spec:
   region: us-east-1
-  repositoryName: my-org/my-service
+  repositoryName: "acme-corp/api-service"
+  imageTagMutability: IMMUTABLE
+  scanOnPush: true
+  forceDelete: false
+  lifecycleRules:
+    - rulePriority: 10
+      description: Expire untagged images after 7 days
+      tagStatus: untagged
+      countType: sinceImagePushed
+      countNumber: 7
+    - rulePriority: 20
+      description: Keep the newest 100 images
+      tagStatus: any
+      countType: imageCountMoreThan
+      countNumber: 100
 ```
-
-Deploy:
 
 ```shell
 planton apply -f ecr-repo.yaml
 ```
 
-This creates an ECR repository with mutable tags, AES256 encryption, and scan-on-push enabled (the defaults).
+This creates an ECR repository with immutable tags, scan-on-push enabled, AWS-default AES-256 encryption, and lifecycle rules that expire untagged images after 7 days and retain the 100 most recent images. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the ECR repository will be created. | Valid AWS region |
-| `repositoryName` | `string` | Name of the ECR repository — a slash-namespaced registry path unique within the account and region, e.g., `team-blue/my-microservice`. Create-time immutable. | 2–256 characters; lowercase letters, numbers, `._-` separators, `/` namespaces |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `imageTagMutability` | `string` | `"MUTABLE"` | Tag overwrite behavior: `MUTABLE`, `IMMUTABLE`, `IMMUTABLE_WITH_EXCLUSION` (immutable except tags matching the filters), or `MUTABLE_WITH_EXCLUSION` (mutable except tags matching the filters). |
-| `imageTagMutabilityExclusionFilters` | `list(string)` | — | Wildcard tag patterns (max 5, up to two `*` each) that invert the base mutability. Required with, and only valid with, the `*_WITH_EXCLUSION` modes. |
-| `encryptionType` | `string` | `"AES256"` | Encryption at rest: `AES256` (AWS-managed), `KMS` (customer-managed key), or `KMS_DSSE` (dual-layer). Create-time immutable — changing it replaces the repository. |
-| `kmsKeyId` | `string \| ref` | — | KMS key ARN/ID (or AwsKmsKey reference) for `KMS`/`KMS_DSSE`. Omit to use the AWS-managed `aws/ecr` key. Not valid with `AES256`. |
-| `scanOnPush` | `bool` | `true` | Automatic vulnerability scanning when images are pushed. |
-| `forceDelete` | `bool` | `false` | When `true`, deleting the repository removes all contained images. When `false`, deletion fails if images exist. |
-| `lifecycleRules` | `list(object)` | — | Structured image-expiration rules (see below). If omitted, no lifecycle policy is created. |
-| `repositoryPolicy` | `object` | — | Resource-based IAM policy document (cross-account pulls, service principals such as Lambda). |
-
-### Lifecycle Rule Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `rulePriority` | `int32` | Evaluation order (unique; lower first). A `tagStatus: any` rule must carry the highest priority. |
-| `description` | `string` | Human-readable note stored in the policy. |
-| `tagStatus` | `string` | Which images the rule selects: `tagged`, `untagged`, or `any`. At most one `untagged` and one `any` rule per policy. |
-| `tagPrefixes` | `list(string)` | Tag prefixes selecting tagged images. Exactly one of `tagPrefixes`/`tagPatterns` with `tagged`. |
-| `tagPatterns` | `list(string)` | Wildcard tag patterns (up to four `*` each) selecting tagged images. |
-| `countType` | `string` | `imageCountMoreThan` (keep last N) or `sinceImagePushed` (expire by age in days). |
-| `countNumber` | `int32` | The image count or the number of days, per `countType`. |
-
-## Examples
-
-### Production: frozen release tags, movable `latest`
+When using KMS encryption, use ValueFromRef to wire the repository to a KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcrRepo
-metadata:
-  name: prod-api
 spec:
-  region: us-east-1
-  repositoryName: my-org/api-server
-  imageTagMutability: IMMUTABLE_WITH_EXCLUSION
-  imageTagMutabilityExclusionFilters:
-    - latest
-```
-
-### KMS Encryption
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcrRepo
-metadata:
-  name: compliant-repo
-spec:
-  region: us-east-1
-  repositoryName: my-org/compliant-service
-  imageTagMutability: IMMUTABLE
   encryptionType: KMS
   kmsKeyId:
-    value: arn:aws:kms:us-east-1:123456789012:key/abcd-1234-efgh-5678
+    valueFrom:
+      kind: AwsKmsKey
+      name: ecr-encryption-key
+      fieldPath: status.outputs.key_arn
 ```
 
-### Lifecycle Rules for Cost Control
+The InfraPipeline resolves the dependency graph, deploys the KMS key first, then provisions the ECR repository with KMS encryption using the resolved key ARN.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcrRepo
-metadata:
-  name: ci-images
-spec:
-  region: us-east-1
-  repositoryName: my-org/ci-runner
-  lifecycleRules:
-    - rulePriority: 1
-      description: Expire untagged images after 7 days
-      tagStatus: untagged
-      countType: sinceImagePushed
-      countNumber: 7
-    - rulePriority: 2
-      description: Keep only the last 10 PR preview images
-      tagStatus: tagged
-      tagPrefixes:
-        - pr-
-      countType: imageCountMoreThan
-      countNumber: 10
-    - rulePriority: 3
-      description: Keep at most 50 images overall
-      tagStatus: any
-      countType: imageCountMoreThan
-      countNumber: 50
-```
+## Key Configuration
 
-### Cross-Service Pull Access
+These are the most important decisions when configuring an ECR repository. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcrRepo
-metadata:
-  name: lambda-images
-spec:
-  region: us-east-1
-  repositoryName: my-org/lambda-functions
-  repositoryPolicy:
-    Version: "2012-10-17"
-    Statement:
-      - Sid: AllowLambdaPull
-        Effect: Allow
-        Principal:
-          Service: lambda.amazonaws.com
-        Action:
-          - ecr:BatchGetImage
-          - ecr:GetDownloadUrlForLayer
-```
+**Image tag mutability** -- Set `imageTagMutability: IMMUTABLE` for production registries to guarantee that a tag like `v1.2.3` always refers to the same image. The exclusion modes give you both worlds: `IMMUTABLE_WITH_EXCLUSION` freezes everything except tags matching `imageTagMutabilityExclusionFilters` (float `latest`, freeze releases); `MUTABLE_WITH_EXCLUSION` inverts it. Unset keeps the AWS default (mutable).
 
-### Development Repository with Force Delete
+**Encryption type** -- Unset keeps the AWS default (`AES256`, no cost). Set `encryptionType: KMS` with a `kmsKeyId` when you need CloudTrail audit logging of key usage or customer-controlled rotation; `KMS_DSSE` adds a second independent envelope layer for DoD CC SRG-class requirements. Encryption is a create-time choice — changing it replaces the repository, and images are not migrated.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcrRepo
-metadata:
-  name: dev-scratch
-spec:
-  region: us-west-2
-  repositoryName: my-org/scratch
-  forceDelete: true
-  lifecycleRules:
-    - rulePriority: 1
-      tagStatus: untagged
-      countType: sinceImagePushed
-      countNumber: 1
-    - rulePriority: 2
-      tagStatus: any
-      countType: imageCountMoreThan
-      countNumber: 10
-```
+**Lifecycle rules** -- Structured `lifecycleRules[]` evaluated daily by ascending priority; an image is expired by the FIRST rule that selects it. The starter pair: expire untagged images by age, and keep the newest N per release prefix. At most one `tagStatus: any` rule, and it must carry the highest priority.
 
-## Stack Outputs
+**Repository policy** -- A standard IAM policy document for access beyond this account: cross-account pulls (grant `ecr:BatchGetImage` / `ecr:GetDownloadUrlForLayer`) and AWS services such as Lambda pulling container images. Leave unset for same-account access.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Scan on push** -- The AWS default is on. Automatic vulnerability scanning via Amazon Inspector runs each time an image is pushed. Keep enabled in all environments for shift-left security.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `repository_name` | `string` | The repository name, matching `spec.repositoryName` |
-| `repository_url` | `string` | The repository URL for docker push/pull (e.g., `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-repo`) |
-| `repository_arn` | `string` | The repository ARN (e.g., `arn:aws:ecr:us-east-1:123456789012:repository/my-repo`) |
-| `registry_id` | `string` | The registry ID (AWS account ID) associated with the repository |
+**Force delete** -- Defaults to `false`, preventing repository deletion while it contains images. Set to `true` only for ephemeral or CI/CD test registries.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed KMS key for repository encryption
-- [AwsIamRole](/docs/catalog/aws/iam-role) — grants push/pull permissions to CI/CD pipelines or services
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — Kubernetes cluster that pulls images from ECR repositories
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `repository_name` | ECR repository name | CodeBuild environment variables, CodePipeline ECR source configuration |
+| `repository_url` | Full ECR repository URL | Docker push/pull commands, Kubernetes image references, Lambda container image URI |
+| `repository_arn` | Repository Amazon Resource Name | IAM policies granting push/pull access |
+| `registry_id` | AWS account ID hosting the registry | Docker login authentication, cross-account access configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production immutable registry** -- Immutable tags, scan-on-push, 7-day untagged expiration, 100-image retention. Ensures tag integrity for production deployments and provides rollback capability across recent releases. Start from the **Production Immutable** preset.
+
+**Development registry** -- Mutable tags, scan-on-push, 3-day untagged expiration, 20-image retention. Allows rapid iteration with tag overwriting and aggressive cleanup to minimize storage costs. Start from the **Development** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for KMS encryption of stored images
+- [**AWS ECS Task Definition**](/cloud-catalog/aws-ecs-task-definition) -- container images reference the repository URL textually (`<repository_url>:<tag>`)
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- container-image functions pull from ECR (grant `lambda.amazonaws.com` in the repository policy)
+- [**AWS App Runner Service**](/cloud-catalog/aws-app-runner-service) -- ECR-sourced services deploy images pushed here

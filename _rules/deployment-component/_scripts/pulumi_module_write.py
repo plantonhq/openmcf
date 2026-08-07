@@ -59,7 +59,6 @@ def module_base_paths(repo_root: str, provider: str, kind_folder: str) -> Tuple[
         "catalog",
         provider,
         kind_folder,
-        "v1alpha1",
         "iac",
         "pulumi",
         "module",

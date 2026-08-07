@@ -47,7 +47,7 @@ The Terraform module reaches the same anchoring outcome with a per-document `ove
 
 ## Usage
 
-Wrap your raw YAML in a KubernetesManifest resource (see `../hack/manifest.yaml` for a full-surface example) and deploy through the CLI:
+Wrap your raw YAML in a KubernetesManifest resource (see `../../e2e/manifest.yaml` for a full-surface example) and deploy through the CLI:
 
 ```bash
 planton apply -f manifest.yaml

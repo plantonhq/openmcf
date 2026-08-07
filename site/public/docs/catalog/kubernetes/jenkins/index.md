@@ -6,193 +6,129 @@ order: 100
 componentName: "kubernetesjenkins"
 ---
 
-# Kubernetes Jenkins
+# Jenkins on Kubernetes
 
-Deploys Jenkins on Kubernetes using the official Jenkins Helm chart. Provisions admin credentials automatically, supports resource tuning via container limits/requests, allows arbitrary Helm value overrides, and optionally exposes Jenkins externally through Istio Gateway API ingress with TLS termination and HTTP-to-HTTPS redirect.
+Deploys a Jenkins automation server on any Kubernetes cluster using the official Jenkins Helm chart. Supports configurable resource allocation, auto-generated admin credentials stored in a Kubernetes Secret, Helm value overrides for plugin and agent configuration, and external access via LoadBalancer ingress. Runs on your existing Kubernetes infrastructure using a Kubernetes Provider Connection for credential delivery.
 
 ## What Gets Created
 
-When you deploy a KubernetesJenkins resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kubernetes Namespace** — created if `createNamespace` is `true`
-- **Admin Credentials Secret** — a Kubernetes Secret containing a randomly generated 12-character admin password (includes uppercase, lowercase, numeric, and special characters)
-- **Jenkins Helm Release** — the official `jenkins` chart (v5.1.5) from `https://charts.jenkins.io`, which creates:
-  - A Jenkins controller pod running image tag `2.454-jdk17`
-  - Kubernetes Service for cluster-internal access on port 8080
-  - Persistent storage and configuration managed by the chart
-- **Ingress Resources** (when `ingress.enabled` is `true`):
-  - cert-manager Certificate for TLS, issued by a ClusterIssuer matching the ingress domain
-  - Gateway API Gateway with HTTPS (port 443) and HTTP (port 80) listeners
-  - HTTPRoute for HTTPS traffic forwarding to the Jenkins service
-  - HTTPRoute for HTTP-to-HTTPS 301 redirect
+- **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **Admin Password Secret** -- a Kubernetes Secret containing a generated admin password for the Jenkins controller
+- **Jenkins Helm Release** -- installs the official Jenkins Helm chart with configured CPU/memory resources, admin credentials from the generated secret, and a ClusterIP service for the Jenkins web UI
+- **Kubernetes Service** -- a ClusterIP service for cluster-internal access to the Jenkins controller on port 8080
+- **LoadBalancer Service** -- created only when `ingress.enabled` is `true`; exposes Jenkins on a public IP with external-dns annotations for automatic DNS record creation
+- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **A Kubernetes cluster** with kubectl configured for access
-- **Istio ingress gateway** installed (only if using ingress)
-- **cert-manager** with a ClusterIssuer matching your ingress domain (only if using ingress)
-- **Gateway API CRDs** installed in the cluster (only if using ingress)
+### Planton Setup
 
-## Quick Start
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-Create a file `jenkins.yaml`:
+### Kubernetes Cluster
+
+- **A storage class** available for persistent volumes. Jenkins uses persistent storage for job history, plugin data, and configuration. The cluster must support dynamic PV provisioning.
+- **external-dns** running in the cluster (only required when using ingress with a hostname for automatic DNS record creation).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Jenkins on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Jenkins** preset in the [Presets](#presets) tab to pre-populate a working configuration with ingress enabled.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesJenkins
 metadata:
-  name: my-jenkins
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesJenkins.my-jenkins
+  name: build-jenkins
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: jenkins-dev
+    value: "jenkins"
   createNamespace: true
+  containerResources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  ingress:
+    enabled: true
+    hostname: "jenkins.example.com"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f jenkins.yaml
 ```
 
-This creates a Jenkins instance with default resources (1 CPU / 1Gi memory limit, 50m CPU / 100Mi memory request) in the `jenkins-dev` namespace. An admin user is created automatically with a generated password stored in a Kubernetes Secret.
+This creates a Jenkins controller with ingress at `jenkins.example.com`, auto-generated admin credentials, and production-grade resource limits. The admin password is stored in a Kubernetes Secret available in the outputs. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `StringValueOrRef` | Kubernetes namespace for the Jenkins deployment. Use `value` for a direct string or `valueFrom` to reference a KubernetesNamespace resource. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | Create the namespace if it does not exist. |
-| `containerResources.limits.cpu` | `string` | `"1000m"` | CPU limit for the Jenkins controller container. |
-| `containerResources.limits.memory` | `string` | `"1Gi"` | Memory limit for the Jenkins controller container. |
-| `containerResources.requests.cpu` | `string` | `"50m"` | CPU request for the Jenkins controller container. |
-| `containerResources.requests.memory` | `string` | `"100Mi"` | Memory request for the Jenkins controller container. |
-| `helmValues` | `map<string, string>` | `{}` | Additional Helm chart values for customization. See the [Jenkins Helm chart values](https://github.com/jenkinsci/helm-charts/blob/main/charts/jenkins/values.yaml) for available options. |
-| `ingress.enabled` | `bool` | `false` | Enable external access via Istio Gateway API ingress with TLS. |
-| `ingress.hostname` | `string` | -- | Full hostname for external access (e.g., `jenkins.example.com`). Required when `ingress.enabled` is `true`. |
-
-## Examples
-
-### Jenkins with Custom Resources
-
-Increase CPU and memory allocations for a busier Jenkins instance:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Jenkins deployment to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesJenkins
-metadata:
-  name: ci-jenkins
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesJenkins.ci-jenkins
 spec:
   namespace:
-    value: ci-tools
-  createNamespace: true
-  containerResources:
-    limits:
-      cpu: "2000m"
-      memory: "4Gi"
-    requests:
-      cpu: "500m"
-      memory: "1Gi"
+    valueFrom:
+      kind: KubernetesNamespace
+      name: cicd-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-### Jenkins with Helm Value Overrides
+The InfraPipeline deploys the namespace first, then provisions Jenkins into it.
 
-Use `helmValues` to configure plugins, JVM options, or any chart setting:
+## Key Configuration
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesJenkins
-metadata:
-  name: custom-jenkins
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesJenkins.custom-jenkins
-spec:
-  namespace:
-    value: jenkins-staging
-  createNamespace: true
-  containerResources:
-    limits:
-      cpu: "2000m"
-      memory: "4Gi"
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-  helmValues:
-    controller.javaOpts: "-Xms512m -Xmx2g"
-    controller.numExecutors: "4"
-    controller.installPlugins: "git:latest,pipeline-stage-view:latest,blueocean:latest"
-```
+These are the most important decisions when configuring Jenkins on Kubernetes. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Full-Featured with Ingress
+**Resource allocation** -- Jenkins is memory-intensive, especially with many plugins and concurrent builds. The default limits of `2000m` CPU and `4Gi` memory accommodate typical CI workloads. Increase for instances running many concurrent pipelines or heavy compilation jobs.
 
-External access over HTTPS with automatic TLS and HTTP redirect:
+**External access** -- Set `ingress.enabled: true` with a `hostname` (e.g., `"jenkins.example.com"`) to expose the Jenkins web UI externally. When ingress is disabled, access is limited to within the cluster or via the `port_forward_command` in the outputs.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesJenkins
-metadata:
-  name: prod-jenkins
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesJenkins.prod-jenkins
-spec:
-  namespace:
-    value: production
-  createNamespace: true
-  containerResources:
-    limits:
-      cpu: "4000m"
-      memory: "8Gi"
-    requests:
-      cpu: "1000m"
-      memory: "2Gi"
-  helmValues:
-    controller.javaOpts: "-Xms1g -Xmx4g"
-    controller.numExecutors: "8"
-    persistence.size: "50Gi"
-  ingress:
-    enabled: true
-    hostname: jenkins.example.com
-```
+**Helm value overrides** -- The `helmValues` map passes additional key-value pairs directly to the Jenkins Helm chart for configuration not covered by the spec, such as JCasC (Jenkins Configuration as Code) settings, plugin installation, agent pod templates, or RBAC configuration. Refer to the Jenkins Helm chart documentation for available options.
 
-## Stack Outputs
+**Admin credentials** -- The IaC module generates a random admin password and stores it in a Kubernetes Secret. Retrieve the password from the `password_secret` output after provisioning. The admin username is available in the `username` output.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Outputs and Dependencies
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where Jenkins was created |
-| `service` | `string` | Name of the Kubernetes service for Jenkins |
-| `port_forward_command` | `string` | Ready-to-run `kubectl port-forward` command for local access on port 8080 |
-| `kube_endpoint` | `string` | Cluster-internal endpoint (e.g., `my-jenkins.jenkins-dev.svc.cluster.local`) |
-| `external_hostname` | `string` | External hostname when ingress is enabled (e.g., `jenkins.example.com`) |
-| `internal_hostname` | `string` | Internal hostname for private ingress (e.g., `internal-jenkins.example.com`) |
-| `username` | `string` | Jenkins admin username (default: `admin`) |
-| `password_secret` | `KubernetesSecretKey` | Reference to the Kubernetes Secret containing the admin password (`name` = secret name, `key` = `jenkins-admin-password`) |
+### What This Component Consumes
 
-## Related Components
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — pre-create a namespace to reference via `valueFrom`
-- [KubernetesPostgres](/docs/catalog/kubernetes/postgres) — deploy PostgreSQL for Jenkins pipeline data or external storage
-- [KubernetesValkey](/docs/catalog/kubernetes/valkey) — deploy Valkey (Redis-compatible) for caching in CI/CD pipelines
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | Kubernetes namespace where Jenkins is running | Application deployment manifests |
+| `service` | Kubernetes service name for Jenkins | Reverse proxy or service mesh configuration |
+| `port_forward_command` | Ready-to-run `kubectl port-forward` command | Local development access when ingress is disabled |
+| `kube_endpoint` | Cluster-internal FQDN for the Jenkins web UI | Webhook configuration for internal services |
+| `external_hostname` | Public hostname (when ingress is enabled) | Webhook configuration for Git providers |
+| `internal_hostname` | Private hostname for cluster-internal routing | Internal service-to-service communication |
+| `username` | Jenkins admin username | Initial login |
+| `password_secret` | Kubernetes Secret reference for the admin password | Login via `secretKeyRef` or CLI retrieval |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard CI/CD server** -- Jenkins controller with ingress enabled, production-grade resources (`100m`/`256Mi` requests, `2000m`/`4Gi` limits), and a dedicated `jenkins` namespace. Pipeline agents are dynamically provisioned as Kubernetes pods. Start from the **Standard Jenkins** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for Jenkins deployment

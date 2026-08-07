@@ -18,7 +18,7 @@ This Pulumi module deploys kubernetes-cert-manager to a Kubernetes cluster with 
 export KUBERNETES_CERT_MANAGER_MODULE=/path/to/apis/.../kubernetescertmanager/v1/iac/pulumi
 
 # Deploy
-planton pulumi up --manifest hack/manifest.yaml --module-dir ${KUBERNETES_CERT_MANAGER_MODULE}
+planton pulumi up --manifest e2e/manifest.yaml --module-dir ${KUBERNETES_CERT_MANAGER_MODULE}
 ```
 
 ### What Gets Deployed

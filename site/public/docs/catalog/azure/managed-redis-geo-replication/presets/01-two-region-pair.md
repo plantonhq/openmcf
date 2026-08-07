@@ -5,7 +5,7 @@ type: "preset"
 rank: "01"
 presetSlug: "01-two-region-pair"
 componentSlug: "managed-redis-geo-replication"
-componentTitle: "Managed Redis Geo-Replication"
+componentTitle: "Managed Redis Geo Replication"
 provider: "azure"
 icon: "package"
 order: 1

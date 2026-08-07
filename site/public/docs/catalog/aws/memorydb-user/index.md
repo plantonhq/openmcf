@@ -8,56 +8,68 @@ componentName: "awsmemorydbuser"
 
 # AWS MemoryDB User
 
-Creates one MemoryDB ACL identity — a user name (`metadata.name`), a Redis
-ACL access string, and an authentication mode — that composes into ACLs
-(AwsMemorydbAcl) and reaches clusters without ever modifying the cluster
-when access changes.
+Deploys a MemoryDB user — one identity in MemoryDB's Access Control List (ACL) authentication system. MemoryDB has exactly one authentication model: every cluster attaches an ACL, and an ACL is a set of users. If an application should reach a MemoryDB cluster with credentials, a user is how that identity exists. Each user carries a Redis ACL access string scoping which commands and keys it may touch, so per-application least-privilege access is the natural shape: one user per application, grouped into ACLs ([AwsMemorydbAcl](/cloud-catalog/aws-memorydb-acl)), with the ACL attached to the cluster. The user integrates with Planton's Provider Connections for AWS credential management and keeps password material in managed secrets — never in the manifest.
 
 ## What Gets Created
 
-When you deploy an AwsMemorydbUser resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **MemoryDB user** — an `aws_memorydb_user` / `memorydb.User` with the
-  chosen access string and authentication mode; the AWS user name is
-  `metadata.name` (create-time immutable, max 40 characters)
+- **MemoryDB User** -- one ACL identity whose user name is the resource name (create-time immutable, unique per region, max 40 characters)
+- **ACL Access String** -- the Redis `ACL SETUSER` rule list scoping keys and command categories; tightening it later applies in place
+- **Authentication Mode** -- exactly one mechanism: password (1–2 secrets, enabling zero-downtime rotation) or IAM-signed tokens
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-The user never modifies resources it merely references: ACLs carry their
-own membership lists, and clusters reference ACLs — credential rotation is
-an in-place update on the user.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless
-  SSO/OIDC).
-- **For IAM auth** — TLS enabled on the target cluster, and the connecting
-  principal granted `memorydb:Connect` on both the user ARN and the cluster
-  ARN.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Managed secrets for passwords** -- when using password authentication, create the password as an org secret first; the spec carries a `$secret/<slug>` reference and the runner resolves it just-in-time at deploy. Each password's value must be 16–128 characters.
 
-## Quick Start
+### AWS Account
+
+- **A name within AWS's cap** -- the resource name IS the user name; AWS rejects names longer than 40 characters at create time.
+- **For IAM authentication** -- the attached cluster must run transit encryption (TLS — MemoryDB's default), and the client's IAM principal needs `memorydb:Connect` on both the user ARN and the cluster ARN.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS MemoryDB User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Password Auth** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsMemorydbUser
 metadata:
   name: orders-service
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   accessString: "on ~orders:* +@read +@write"
   authenticationMode:
     type: password
     passwords:
-      - use-a-16-plus-character-secret
+      - $secret/orders-db-password
 ```
 
-Grant the user cluster access by adding it to an ACL:
+```shell
+planton apply -f memorydb-user.yaml
+```
+
+This creates a password-authenticated user scoped to the `orders:` key prefix with read/write command categories. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, users deploy first, then the ACL that collects them, then the cluster that attaches the ACL. The user itself has no upstream references — downstream ACLs reference its `user_name` output:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsMemorydbAcl
-metadata:
-  name: payments-env-acl
+# In the AwsMemorydbAcl manifest:
 spec:
-  region: us-west-2
   userNames:
     - valueFrom:
         kind: AwsMemorydbUser
@@ -65,31 +77,41 @@ spec:
         fieldPath: status.outputs.user_name
 ```
 
-## Authentication Modes
+## Key Configuration
 
-| Mode | Credential | Best for |
-|------|-----------|----------|
-| `password` | 1–2 passwords, 16–128 chars each | Standard application access; two passwords rotate with zero downtime |
-| `iam` | Short-lived IAM-signed tokens | Zero long-lived secrets; requires TLS on the cluster |
+These are the most important decisions when configuring a MemoryDB user. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Access Strings
+**One name, one identity** -- unlike ElastiCache (where a user has a separate id and a reusable AUTH name), MemoryDB has a single flat user name that IS the identity: the resource name. Clients present it in the AUTH command, ACLs reference it in membership, it must be unique in the region, and it is create-time immutable — renaming means replacement.
 
-The same syntax as Redis ACL SETUSER:
+**The access string** -- the same syntax as the Redis `ACL SETUSER` rule list: the on/off switch enables or disables the user, key patterns (`~orders:*`) grant matching keys, and command categories (`+@read`, `-@dangerous`) grant or subtract command groups. Updates apply in place on new connections. Scope production applications to their key prefix; reserve `~* +@all` for admin identities.
 
-| Shape | Meaning |
-|-------|---------|
-| `on ~* +@all` | Full access (an admin user) |
-| `on ~app1:* +@read +@write` | Read/write scoped to one key prefix |
-| `on ~* +@read -@dangerous` | Read-only, no admin commands |
-| `off ~* +@all` | A disabled user (kept for later re-enable) |
+**Authentication** -- exactly one mechanism, and every user authenticates: MemoryDB has no credential-less user type (unauthenticated access exists only through the built-in `open-access` ACL, never through a user). `password` works everywhere (1–2 secret references; two enable rotation: add the new password, roll clients, remove the old). `iam` replaces long-lived secrets with short-lived tokens signed by the workload's AWS identity — it requires a TLS-enabled cluster. The whole authentication mode edits in place.
 
-Access strings update in place — tightening permissions takes effect on new
-connections without recreating the user.
+## Outputs and Dependencies
 
-## Stack Outputs
+### What This Component Consumes
 
-| Output | Description |
-|--------|-------------|
-| `user_name` | The AUTH identity ACLs reference (same as `metadata.name`) |
-| `user_arn` | The user's ARN, for IAM `memorydb:Connect` policies |
-| `minimum_engine_version` | The minimum engine version the user's configuration requires |
+This component has no upstream Cloud Resource dependencies — it is a leaf the access-control graph builds on.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `user_name` | The identity clients present in AUTH | AwsMemorydbAcl membership (`userNames`) |
+| `user_arn` | Amazon Resource Name of the user | IAM policies — `memorydb:Connect` for IAM-authenticated clients |
+| `minimum_engine_version` | The engine floor this user's ACL feature set requires | Verifying the attaching cluster's engine version |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Password-authenticated application user** -- one user per service, scoped to its own key prefix, authenticating with a managed-secret password. Start from the **Password Auth** preset.
+
+**IAM-authenticated user** -- workloads on ECS/EKS/Lambda with an IAM role skip password rotation entirely: short-lived signed tokens, no secret material anywhere. Start from the **IAM Auth** preset.
+
+## Works With
+
+- [**AWS MemoryDB ACL**](/cloud-catalog/aws-memorydb-acl) -- collects users into the attachment unit clusters consume (references `user_name`)
+- [**AWS MemoryDB Cluster**](/cloud-catalog/aws-memorydb-cluster) -- the durable database the user ultimately authenticates against, via its attached ACL

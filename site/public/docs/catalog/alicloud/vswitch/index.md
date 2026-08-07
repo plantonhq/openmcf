@@ -12,191 +12,122 @@ Deploys an Alibaba Cloud VSwitch (subnet) within an existing VPC, bound to a sin
 
 ## What Gets Created
 
-When you deploy an AliCloudVswitch resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **VSwitch** — an `alicloud_vswitch` resource (Pulumi: `vpc.Switch`) with the specified VPC, Availability Zone, CIDR block, name, and optional IPv6 configuration
-- **Tags** — system metadata tags (`resource`, `resource_name`, `resource_kind`, `organization`, `environment`) merged with user-defined `spec.tags`, with user values taking precedence on key conflict
+- **VSwitch** -- an `alicloud_vswitch` resource with the specified VPC, Availability Zone, CIDR block, name, and optional IPv6 configuration
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables (`ALICLOUD_ACCESS_KEY`, `ALICLOUD_SECRET_KEY`) or Planton provider config
-- **An existing VPC** — the VSwitch's `vpcId` must reference a valid Alibaba Cloud VPC; can be a literal ID or a `valueFrom` reference to an AliCloudVpc component
-- **CIDR block planning** — the VSwitch CIDR must be a subset of the parent VPC's CIDR block, with a mask length of 16-29, and must not overlap with other VSwitches in the same VPC
-- **Planton CLI** installed with either Pulumi or Terraform (OpenTofu) backend
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery.
 
-Create a file `vswitch.yaml`:
+### Alibaba Cloud Account
+
+- **An existing VPC** -- the VSwitch's `vpcId` must reference a valid AliCloudVpc. Create one first or reference an existing VPC via ValueFromRef.
+- **CIDR block planning** -- the VSwitch CIDR must be a subset of the parent VPC's CIDR block with a mask length of 16-29. Cannot overlap with other VSwitches in the same VPC.
+- **Availability Zone selection** -- each VSwitch is permanently bound to one zone (e.g., cn-hangzhou-a). Resources deployed into this VSwitch run in that zone.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud VSwitch**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including VPC, zone, and CIDR block.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudVswitch
 metadata:
-  name: my-vswitch
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudVswitch.my-vswitch
+  name: app-vswitch-a
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  vpcId: vpc-bp1234567890abcdef
+  vpcId:
+    value: vpc-bp1234567890
   zoneId: cn-hangzhou-a
   cidrBlock: "10.0.0.0/24"
-  vswitchName: my-vswitch
+  vswitchName: app-tier-zone-a
+  description: Application tier VSwitch in zone A
 ```
-
-Deploy:
 
 ```shell
-planton apply -f vswitch.yaml
+planton apply -f alicloud-vswitch.yaml
 ```
 
-This creates a VSwitch with a `/24` CIDR block in the `cn-hangzhou-a` Availability Zone within the specified VPC.
+This creates a /24 VSwitch in cn-hangzhou-a within the specified VPC. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region where the VSwitch will be created (e.g., `cn-hangzhou`, `cn-shanghai`, `us-west-1`). Must match the parent VPC's region. | Required; non-empty |
-| `vpcId` | `StringValueOrRef` | VPC ID that this VSwitch belongs to. The VSwitch's CIDR block must fall within the VPC's CIDR range. Can reference an AliCloudVpc resource via `valueFrom`. | Required; default kind: `AliCloudVpc`, field: `status.outputs.vpc_id` |
-| `zoneId` | `string` | Availability Zone for the VSwitch (e.g., `cn-hangzhou-a`, `cn-hangzhou-b`). The VSwitch is permanently bound to this zone. | Required; non-empty |
-| `cidrBlock` | `string` | IPv4 CIDR block for the VSwitch. Must be a subnet of the parent VPC's CIDR block with a mask length of 16-29. Cannot be changed after creation. | Required; non-empty |
-| `vswitchName` | `string` | VSwitch name. Cannot start with `http://` or `https://`. | Required; 1-128 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the VSwitch. Cannot start with `http://` or `https://`. |
-| `enableIpv6` | `bool` | `false` | When `true`, allocates an IPv6 CIDR block to this VSwitch. The parent VPC must have IPv6 enabled (`enableIpv6: true` on the AliCloudVpc). |
-| `ipv6CidrBlockMask` | `int32` | `0` | Selects a `/64` IPv6 segment from the parent VPC's `/56` IPv6 allocation. Only meaningful when `enableIpv6` is `true` on both the VPC and this VSwitch. | 
-| `tags` | `map<string, string>` | `{}` | User-defined key-value tags applied to the VSwitch. Merged with system tags; user values take precedence on key conflict. |
-
-## Examples
-
-### Development Single-Zone VSwitch
-
-A minimal VSwitch for non-production workloads with a standard `/24` CIDR block.
+When deploying as part of a network stack, use ValueFromRef to wire the VPC dependency:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVswitch
-metadata:
-  name: dev-vswitch
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudVswitch.dev-vswitch
-spec:
-  region: cn-hangzhou
-  vpcId: vpc-abc123def456
-  zoneId: cn-hangzhou-a
-  cidrBlock: "192.168.0.0/24"
-  vswitchName: dev-vswitch
-```
-
-### Production VSwitch with Tags
-
-A production VSwitch with a large address space for Kubernetes node pools, organizational metadata, and cost-tracking tags.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVswitch
-metadata:
-  name: prod-app-vswitch
-  org: my-org
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AliCloudVswitch.prod-app-vswitch
-spec:
-  region: cn-shanghai
-  vpcId: vpc-prod-001
-  zoneId: cn-shanghai-b
-  cidrBlock: "10.1.0.0/20"
-  vswitchName: prod-app-tier-b
-  description: Application tier VSwitch in zone B for Kubernetes workers
-  tags:
-    team: platform
-    costCenter: engineering
-    tier: application
-```
-
-### VSwitch with Foreign Key Reference
-
-References an AliCloudVpc component instead of hardcoding the VPC ID, establishing a declarative dependency between the VSwitch and its parent VPC.
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVswitch
-metadata:
-  name: db-vswitch
-  env: staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AliCloudVswitch.db-vswitch
 spec:
   region: cn-hangzhou
   vpcId:
     valueFrom:
-      name: my-vpc
-  zoneId: cn-hangzhou-c
-  cidrBlock: "10.2.0.0/24"
-  vswitchName: staging-db-vswitch
-  description: Database tier VSwitch for RDS and Redis instances
+      kind: AliCloudVpc
+      name: platform-vpc
+      fieldPath: status.outputs.vpc_id
+  zoneId: cn-hangzhou-a
+  cidrBlock: "10.0.0.0/24"
+  vswitchName: app-tier-zone-a
 ```
 
-### IPv6-Enabled Dual-Stack VSwitch
+The InfraPipeline resolves the dependency graph and provisions the VPC before this VSwitch.
 
-A VSwitch with IPv6 support. The parent VPC must have IPv6 enabled for the IPv6 CIDR allocation to succeed.
+## Key Configuration
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudVswitch
-metadata:
-  name: ipv6-vswitch
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AliCloudVswitch.ipv6-vswitch
-spec:
-  region: us-west-1
-  vpcId: vpc-ipv6-enabled
-  zoneId: us-west-1a
-  cidrBlock: "172.16.0.0/24"
-  vswitchName: ipv6-app-vswitch
-  description: Dual-stack VSwitch for IPv6 workloads
-  enableIpv6: true
-  ipv6CidrBlockMask: 42
-  tags:
-    networkType: dual-stack
-```
+These are the most important decisions when configuring a VSwitch. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**VPC binding** -- The `vpcId` field links this VSwitch to its parent VPC. Use a ValueFromRef to establish a declarative dependency. Changing this after creation forces replacement.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Availability Zone** -- The `zoneId` field determines where resources in this VSwitch physically run. Choose based on latency requirements and HA strategy. Changing this forces replacement.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `vswitch_id` | `string` | The VSwitch ID assigned by Alibaba Cloud. Referenced by downstream components (AliCloudNatGateway, AliCloudEcsInstance, AliCloudAckManagedCluster, AliCloudRdsInstance, etc.) via `StringValueOrRef`. |
-| `vswitch_name` | `string` | The VSwitch name as created. |
-| `cidr_block` | `string` | The IPv4 CIDR block of the VSwitch. Useful for security group rules and CIDR planning. |
-| `zone_id` | `string` | The Availability Zone in which the VSwitch resides. |
-| `ipv6_cidr_block` | `string` | The IPv6 CIDR block allocated to the VSwitch. Only populated when IPv6 is enabled on both the parent VPC and this VSwitch. |
+**CIDR block** -- The `cidrBlock` field carves out an address range from the parent VPC. A /24 gives 256 addresses, a /20 gives 4,096. This is immutable after creation.
 
-## Related Components
+**IPv6** -- The `enableIpv6` field allocates a /64 IPv6 segment to this VSwitch. The parent VPC must have IPv6 enabled first.
 
-- [AliCloudVpc](/docs/catalog/alicloud/vpc) — the parent VPC that this VSwitch belongs to
-- [AliCloudSecurityGroup](/docs/catalog/alicloud/security-group) — controls network traffic for resources deployed in this VSwitch
-- [AliCloudNatGateway](/docs/catalog/alicloud/nat-gateway) — provides outbound internet access for resources in private VSwitches
-- [AliCloudEcsInstance](/docs/catalog/alicloud/ecsinstance) — launches compute instances in this VSwitch
-- [AliCloudAckManagedCluster](/docs/catalog/alicloud/alicloudackmanagedcluster) — deploys managed Kubernetes clusters using this VSwitch for node placement
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `vpcId` | `status.outputs.vpc_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `vswitch_id` | VSwitch ID assigned by Alibaba Cloud | AliCloudNatGateway, AliCloudEcsInstance, AliCloudKubernetesCluster, AliCloudRdsInstance |
+| `vswitch_name` | VSwitch name as created | Display and tagging |
+| `cidr_block` | IPv4 CIDR block of the VSwitch | Security group rules, CIDR planning |
+| `zone_id` | Availability Zone of the VSwitch | Zone-aware resource placement |
+| `ipv6_cidr_block` | IPv6 CIDR block (when IPv6 is enabled) | IPv6 resource configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development single-zone** -- A /24 VSwitch in one zone for non-production workloads. Start from the **Dev Single Zone** preset.
+
+**Production application tier** -- A /20 VSwitch with a large address space for Kubernetes node pools or ECS auto-scaling groups. Start from the **Prod App Tier** preset.
+
+**IPv6 dual-stack** -- A VSwitch with IPv6 enabled for workloads requiring native IPv6. The parent VPC must have IPv6 enabled. Start from the **IPv6 Enabled** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- the parent VPC this VSwitch belongs to
+- [**AliCloud Security Group**](/cloud-catalog/ali-cloud-security-group) -- controls traffic for resources in this VSwitch
+- [**AliCloud NAT Gateway**](/cloud-catalog/ali-cloud-nat-gateway) -- provides outbound internet access for private VSwitches
+- [**AliCloud ECS Instance**](/cloud-catalog/ali-cloud-ecs-instance) -- compute instances launched in this VSwitch
+- [**AliCloud Kubernetes Cluster**](/cloud-catalog/ali-cloud-kubernetes-cluster) -- managed Kubernetes clusters using this VSwitch for node placement
+- [**AliCloud RDS Instance**](/cloud-catalog/ali-cloud-rds-instance) -- database instances placed in this VSwitch

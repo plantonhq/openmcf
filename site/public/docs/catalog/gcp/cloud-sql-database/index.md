@@ -8,77 +8,83 @@ componentName: "gcpcloudsqldatabase"
 
 # GCP Cloud SQL Database
 
-Creates a logical database inside a Cloud SQL instance. Databases are first-class composable nodes: one per application on a shared instance, each with its own lifecycle — create and drop them freely without touching the instance.
+Creates a database inside an existing Google Cloud SQL instance. Databases are composable satellites of the instance — one instance hosts many databases, each owned by its own application, each created, reviewed, and deleted as a first-class Cloud Resource. Pairs naturally with GCP Cloud SQL User for per-application credentials.
 
 ## What Gets Created
 
-When you deploy a GcpCloudSqlDatabase resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cloud SQL database** — a `google_sql_database` inside the referenced instance
+- **Cloud SQL Database** -- a `google_sql_database` on the referenced instance, with the specified name and (optionally) an engine-specific character set and collation
 
-## Prerequisites
+## Before You Deploy
 
-- **An existing Cloud SQL instance** — a [GcpCloudSql](/docs/catalog/gcp/cloud-sql) resource (or a literal instance name)
-- **GCP credentials** with Cloud SQL admin permissions on the project
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+
+### GCP Project
+
+- **A Cloud SQL instance** -- the [GcpCloudSql](/cloud-catalog/gcp-cloud-sql) instance that hosts the database. Reference it via ValueFromRef so the pipeline deploys the instance first.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud SQL Database**, and click **Create**. The wizard walks two decisions: which instance hosts the database, then the database's name and collation. The [Presets](#presets) tab offers **PostgreSQL App Database** and **MySQL utf8mb4 Database** starting points.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSqlDatabase
 metadata:
-  name: orders-database
+  name: orders
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   instance:
     valueFrom:
       kind: GcpCloudSql
-      name: my-postgres
+      name: orders-db-prod
       fieldPath: status.outputs.instance_name
   databaseName: orders
+  charset: UTF8
+  collation: en_US.UTF8
 ```
 
 ```shell
 planton apply -f database.yaml
 ```
 
-## Configuration Reference
+## Key Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `instance` | `StringValueOrRef` | — (required) | The hosting instance (ref → GcpCloudSql). Immutable. |
-| `databaseName` | `string` | — (required) | Database name inside the instance. Immutable. |
-| `projectId` | `StringValueOrRef` | provider default | Project that owns the instance. |
-| `charset` | `string` | engine default | MySQL: `utf8mb4` recommended. PostgreSQL: `UTF8` only. |
-| `collation` | `string` | engine default | Engine-specific collation name. |
+**Instance** -- Immutable. A database never moves between instances; relocating data is an export/import. Reference the GcpCloudSql resource rather than typing the name.
 
-## Examples
+**Database name** -- Immutable, max 128 characters. It is what applications put in their connection strings — name by the owning application.
 
-### MySQL Database with Modern UTF-8
+**Charset and collation** -- Engine-interpreted: MySQL accepts any supported pair (`utf8mb4` + `utf8mb4_0900_ai_ci` is the modern default); PostgreSQL wants `UTF8` with an OS locale collation (`en_US.UTF8`); SQL Server ignores charset and uses its own collation names. Empty keeps the engine default.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudSqlDatabase
-metadata:
-  name: app-database
-spec:
-  instance:
-    valueFrom:
-      kind: GcpCloudSql
-      name: my-mysql
-      fieldPath: status.outputs.instance_name
-  databaseName: app
-  charset: utf8mb4
-  collation: utf8mb4_0900_ai_ci
-```
+## Outputs and Dependencies
 
-## Stack Outputs
+### What This Component Consumes
 
-| Output | Description |
-|--------|-------------|
-| `database_name` | Name of the database inside the instance |
-| `self_link` | GCP resource self link |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpCloudSql** | `instance` | `status.outputs.instance_name` |
 
-## Related Components
+### What This Component Provides
 
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — the instance this database lives on
-- [GcpCloudSqlUser](/docs/catalog/gcp/cloud-sql-user) — pair each database with its application user
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `database_name` | The created database's name | Application connection strings, service configuration |
+| `self_link` | GCP resource self link | Audit log filters |
+
+## Works With
+
+- [**GCP Cloud SQL**](/cloud-catalog/gcp-cloud-sql) -- the instance that hosts this database
+- [**GCP Cloud SQL User**](/cloud-catalog/gcp-cloud-sql-user) -- per-application credentials for connecting to this database

@@ -6,206 +6,120 @@ order: 100
 componentName: "digitaloceankubernetescluster"
 ---
 
-# DigitalOcean Kubernetes Cluster
+# Kubernetes Cluster on DigitalOcean
 
-Deploys a managed Kubernetes cluster on DigitalOcean with a configurable default node pool, optional high-availability control plane, automatic patch upgrades, and control plane firewall restrictions. The component supports VPC placement, container registry integration, and surge upgrades out of the box.
+Deploys a managed Kubernetes cluster (DOKS) on DigitalOcean with configurable node sizing, optional high availability, automatic patch upgrades, control plane firewall restrictions, container registry integration, and VPC networking. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC dependency wiring.
 
 ## What Gets Created
 
-When you deploy a DigitalOceanKubernetesCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kubernetes Cluster** — a `digitalocean_kubernetes_cluster` resource with the specified Kubernetes version, region, and VPC, including a default node pool with the configured Droplet size and node count
-- **Default Node Pool** — embedded in the cluster resource, supports fixed sizing or auto-scaling between configurable min/max node counts
-- **Maintenance Policy** — created only when `maintenanceWindow` is specified, sets the preferred time window for cluster updates
-- **Control Plane Firewall** — created only when `controlPlaneFirewallAllowedIps` is specified, restricts API server access to the listed CIDR ranges
+- **DigitalOcean Kubernetes Cluster** -- a managed DOKS cluster in the specified region and VPC, using the configured Kubernetes version, with optional HA control plane, auto-upgrade, and surge upgrade settings
+- **Default Node Pool** -- worker nodes with the configured instance size, node count, and optional autoscaling between `minNodes` and `maxNodes`
+- **Control Plane Firewall** -- created only when `controlPlaneFirewallAllowedIps` are provided; restricts API server access to the specified CIDR blocks
+- **Maintenance Policy** -- created only when `maintenanceWindow` is provided; schedules cluster updates during the specified window
+- **Container Registry Integration** -- configured only when `registryIntegration` is enabled; provisions imagePullSecrets for DigitalOcean Container Registry
+- **DigitalOcean Tags** -- user-supplied tags applied to the cluster for resource organization
 
-## Prerequisites
+## Before You Deploy
 
-- **DigitalOcean credentials** configured via environment variables or Planton provider config
-- **A DigitalOcean VPC** in the target region (can reference a DigitalOceanVpc resource via `valueFrom`)
-- **A supported Kubernetes version** available in the chosen region (e.g., `1.31.1-do.5`)
+### Planton Setup
 
-## Quick Start
+- **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `doks.yaml`:
+### DigitalOcean Account
+
+- **A VPC network** in the target region. Provide the VPC name directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef.
+- **A supported Kubernetes version** -- check available versions via the DigitalOcean CLI (`doctl kubernetes options versions`) or the DOKS documentation. Specify the version string (e.g., `"1.31"`).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Kubernetes Cluster on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab for a resilient multi-node configuration with autoscaling.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
+apiVersion: digitalocean.planton.dev/v1
 kind: DigitalOceanKubernetesCluster
 metadata:
-  name: my-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.DigitalOceanKubernetesCluster.my-cluster
+  name: app-cluster
+  org: acme-corp
+  env: prod
 spec:
-  clusterName: my-cluster
-  region: nyc3
-  kubernetesVersion: "1.31.1-do.5"
+  clusterName: app-cluster
+  region: nyc1
+  kubernetesVersion: "1.31"
   vpc:
-    value: "vpc-uuid-here"
+    value: "app-network"
   defaultNodePool:
     size: s-4vcpu-8gb
     nodeCount: 3
 ```
-
-Deploy:
 
 ```shell
-planton apply -f doks.yaml
+planton apply -f do-k8s-cluster.yaml
 ```
 
-This creates a three-node Kubernetes cluster in the NYC3 region with `s-4vcpu-8gb` Droplets and surge upgrades enabled by default.
+This creates a 3-node Kubernetes cluster in the NYC1 region. No HA, auto-upgrade, autoscaling, or API server firewall is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `clusterName` | `string` | Name of the Kubernetes cluster in DigitalOcean. Must be unique per account. | Required |
-| `region` | `enum` | DigitalOcean region for the cluster. Valid values: `nyc3`, `sfo3`, `fra1`, `sgp1`, `lon1`, `tor1`, `blr1`, `ams3`. | Required |
-| `kubernetesVersion` | `string` | Kubernetes version to deploy (e.g., `1.31.1-do.5`). Must be a version supported by DigitalOcean. | Required |
-| `vpc` | `StringValueOrRef` | VPC UUID where the cluster resides. Can reference a DigitalOceanVpc resource via `valueFrom`. | Required |
-| `defaultNodePool.size` | `string` | Droplet size slug for nodes (e.g., `s-4vcpu-8gb`). Determines CPU and memory per node. | Required |
-| `defaultNodePool.nodeCount` | `uint32` | Number of nodes in the default pool. Acts as initial desired count when auto-scaling is enabled. | Required, must be > 0 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `highlyAvailable` | `bool` | `false` | Enables a high-availability control plane with multiple masters. Incurs additional cost. |
-| `autoUpgrade` | `bool` | `false` | Automatically upgrades the cluster to new Kubernetes patch releases when available. |
-| `disableSurgeUpgrade` | `bool` | `false` | When `true`, disables surge upgrades. By default, upgrades temporarily provision extra nodes to minimize downtime. |
-| `maintenanceWindow` | `string` | — | Preferred maintenance window for cluster updates. Format: `day=HH:MM` or `any=HH:MM` (e.g., `sunday=02:00`). |
-| `registryIntegration` | `bool` | `false` | Enables DigitalOcean Container Registry (DOCR) integration, automatically creating imagePullSecrets for private images. |
-| `controlPlaneFirewallAllowedIps` | `string[]` | `[]` | CIDR ranges allowed to access the Kubernetes API server. If empty, the API server is publicly accessible. |
-| `tags` | `string[]` | `[]` | Tags to apply to the cluster for organization within DigitalOcean. |
-| `defaultNodePool.autoScale` | `bool` | `false` | Enables auto-scaling for the default node pool. |
-| `defaultNodePool.minNodes` | `uint32` | `0` | Minimum node count when auto-scaling is enabled. Required if `defaultNodePool.autoScale` is `true`. |
-| `defaultNodePool.maxNodes` | `uint32` | `0` | Maximum node count when auto-scaling is enabled. Required if `defaultNodePool.autoScale` is `true`. |
-
-## Examples
-
-### HA Cluster with Auto-Upgrade
-
-A production cluster with a highly available control plane and automatic patch upgrades:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the cluster to a VPC deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanKubernetesCluster
-metadata:
-  name: prod-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanKubernetesCluster.prod-cluster
 spec:
-  clusterName: prod-cluster
-  region: fra1
-  kubernetesVersion: "1.31.1-do.5"
-  vpc:
-    value: "vpc-prod-uuid"
-  highlyAvailable: true
-  autoUpgrade: true
-  maintenanceWindow: "sunday=03:00"
-  defaultNodePool:
-    size: s-4vcpu-8gb
-    nodeCount: 3
-```
-
-### Auto-Scaling Node Pool with API Firewall
-
-A cluster with auto-scaling nodes and restricted API server access for security:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanKubernetesCluster
-metadata:
-  name: secure-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanKubernetesCluster.secure-cluster
-spec:
-  clusterName: secure-cluster
-  region: sfo3
-  kubernetesVersion: "1.31.1-do.5"
-  vpc:
-    value: "vpc-secure-uuid"
-  highlyAvailable: true
-  controlPlaneFirewallAllowedIps:
-    - "203.0.113.0/24"
-    - "198.51.100.5/32"
-  tags:
-    - production
-    - team-platform
-  defaultNodePool:
-    size: s-8vcpu-16gb
-    nodeCount: 3
-    autoScale: true
-    minNodes: 2
-    maxNodes: 10
-```
-
-### Full-Featured Cluster with Registry and VPC Reference
-
-Production configuration using a VPC foreign key reference, DOCR integration, and all optional features:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanKubernetesCluster
-metadata:
-  name: full-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.DigitalOceanKubernetesCluster.full-cluster
-spec:
-  clusterName: full-cluster
-  region: ams3
-  kubernetesVersion: "1.31.1-do.5"
   vpc:
     valueFrom:
       kind: DigitalOceanVpc
-      name: prod-vpc
-      field: status.outputs.vpc_id
-  highlyAvailable: true
-  autoUpgrade: true
-  disableSurgeUpgrade: false
-  maintenanceWindow: "saturday=04:00"
-  registryIntegration: true
-  controlPlaneFirewallAllowedIps:
-    - "10.0.0.0/8"
-  tags:
-    - production
-    - managed
-  defaultNodePool:
-    size: s-8vcpu-16gb
-    nodeCount: 5
-    autoScale: true
-    minNodes: 3
-    maxNodes: 15
+      name: app-network
+      fieldPath: metadata.name
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the Kubernetes cluster on it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_id` | `string` | UUID of the created Kubernetes cluster |
-| `kubeconfig` | `string` | Base64-encoded kubeconfig for accessing the cluster |
-| `api_server_endpoint` | `string` | Endpoint URL of the Kubernetes API server |
+These are the most important decisions when configuring a DOKS cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**High availability** -- Set `highlyAvailable: true` to provision multiple control plane replicas for fault tolerance. Without HA, a single control plane failure takes the cluster offline. HA increases cost but is required for production SLAs.
 
-- [DigitalOceanVpc](/docs/catalog/digitalocean/vpc) — provides the VPC for cluster placement
-- [DigitalOceanKubernetesNodePool](/docs/catalog/digitalocean/kubernetes-node-pool) — adds additional node pools to the cluster
-- [DigitalOceanContainerRegistry](/docs/catalog/digitalocean/container-registry) — hosts private container images for registry integration
-- [DigitalOceanLoadBalancer](/docs/catalog/digitalocean/load-balancer) — provisions load balancers for exposing cluster services
-- [DigitalOceanFirewall](/docs/catalog/digitalocean/firewall) — controls network access to cluster nodes
+**Node pool sizing and autoscaling** -- The `defaultNodePool.size` field sets the instance type (e.g., `"s-2vcpu-4gb"` for development, `"s-4vcpu-8gb"` for production). Enable `autoScale` with `minNodes` and `maxNodes` to let DOKS adjust node count based on pod scheduling pressure.
+
+**Automatic upgrades** -- Set `autoUpgrade: true` to let DigitalOcean apply Kubernetes patch updates during the maintenance window. Combine with `maintenanceWindow` (e.g., `"sunday=03:00"`) to control when upgrades occur.
+
+**API server firewall** -- Populate `controlPlaneFirewallAllowedIps` with CIDR blocks to restrict who can reach the Kubernetes API server. When empty, the API server is publicly accessible. Restrict to VPN or office CIDRs for production.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **DigitalOceanVpc** | `vpc` | `metadata.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_id` | Unique cluster identifier (UUID) on DigitalOcean | DigitalOcean API operations, monitoring dashboards |
+| `kubeconfig` | Base64-encoded kubeconfig for cluster access | Kubernetes Provider Connections, CI/CD pipeline configuration |
+| `api_server_endpoint` | Kubernetes API server endpoint URL | kubectl configuration, application health checks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production HA cluster** -- HA control plane, autoscaling node pool (2-5 nodes), automatic patch upgrades with a Sunday maintenance window, container registry integration, and API server firewall restrictions. Start from the **Production HA** preset.
+
+**Development cluster** -- Non-HA control plane, 2 fixed-size nodes with smaller instances, no auto-upgrade or API firewall. Minimal cost for dev/test and feature branch clusters. Start from the **Development** preset.
+
+## Works With
+
+- [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the VPC network for cluster placement

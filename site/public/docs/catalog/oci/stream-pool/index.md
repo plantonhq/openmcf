@@ -6,171 +6,79 @@ order: 100
 componentName: "ocistreampool"
 ---
 
-# OCI Stream Pool
+# Stream Pool on OCI
 
-Deploys an Oracle Cloud Infrastructure Streaming stream pool with bundled streams. The stream pool provides a Kafka-compatible managed event-streaming endpoint with configurable Kafka settings, optional KMS encryption, and optional private networking. Streams are declared inline and inherit the pool's configuration.
+Deploys an Oracle Cloud Infrastructure Stream Pool -- the organizational container for OCI Streaming, a Kafka-compatible managed event-streaming service. The pool groups streams under shared Kafka compatibility settings, optional KMS encryption, and optional private networking. Streams are bundled as sub-resources within the pool and inherit the pool's encryption and endpoint configuration. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments, encryption keys, subnets, and security groups.
 
 ## What Gets Created
 
-When you deploy an OciStreamPool resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Stream Pool** — a `streaming.StreamPool` resource in the specified compartment with configurable Kafka compatibility settings (auto-create topics, log retention, default partitions), optional KMS encryption, and optional private endpoint.
-- **Streams** — one `streaming.Stream` per entry in the `streams` list. Each stream is created within the pool with a specified partition count and optional retention period. Streams depend on the pool for creation ordering.
+- **Stream Pool** -- the organizational container in the specified compartment with Kafka compatibility settings, optional KMS encryption, and optional private endpoint networking
+- **Streams** -- one stream per entry in `streams`, each with a configurable partition count and retention period. Streams are created inside the pool and inherit its encryption and endpoint configuration.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the pool and all streams
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the stream pool will be created — either a literal value or a reference to an OciCompartment resource
-- **A subnet OCID** (for private pools only) — the subnet where the private endpoint will be placed
-- **A KMS key OCID** (optional) — if using customer-managed encryption
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `stream-pool.yaml`:
+### OCI Tenancy
+
+- A compartment to place the stream pool in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- For customer-managed encryption: an OCI KMS key. When omitted, Oracle-managed encryption is used.
+- For private networking: a subnet and optionally network security groups. When omitted, the pool is accessible via public endpoints.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Stream Pool on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public Kafka Compatible** preset in the [Presets](#presets) tab to pre-populate a pool with Kafka auto-topic creation, two streams, and 48-hour retention.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciStreamPool
 metadata:
-  name: my-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciStreamPool.my-pool
+  name: app-events
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
-  streams:
-    - name: "events"
-      partitions: 1
-```
-
-Deploy:
-
-```shell
-planton apply -f stream-pool.yaml
-```
-
-This creates a stream pool with Oracle-managed encryption and one stream with a single partition and 24-hour default retention. The pool OCID, endpoint FQDN, and Kafka bootstrap servers are exported as stack outputs.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the stream pool will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `kafkaSettings` | `KafkaSettings` | — | Kafka compatibility layer settings. All sub-fields are optional and updatable. |
-| `kmsKeyId` | `StringValueOrRef` | — | OCID of a KMS master encryption key. When unset, Oracle-managed encryption is used. Updatable. Can reference an OciKmsKey resource via `valueFrom`. |
-| `privateEndpointSettings` | `PrivateEndpointSettings` | — | Private networking configuration. All sub-fields are ForceNew (changes force pool recreation). |
-| `streams` | `Stream[]` | — | Streams within the pool. Each stream is a sub-resource. |
-
-### KafkaSettings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `autoCreateTopicsEnable` | `bool` | — | Auto-create topics when a Kafka producer publishes to a non-existent topic. |
-| `logRetentionHours` | `int32` | `24` | Default hours to retain log data (24-168). |
-| `numPartitions` | `int32` | — | Default partition count for auto-created topics. |
-
-### PrivateEndpointSettings
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `subnetId` | `StringValueOrRef` | OCID of the subnet for the private endpoint. Required. Can reference an OciSubnet resource via `valueFrom`. |
-| `nsgIds` | `StringValueOrRef[]` | NSGs for the private endpoint. Can reference OciSecurityGroup resources via `valueFrom`. |
-| `privateEndpointIp` | `string` | Specific IP within the subnet CIDR. When omitted, OCI auto-assigns. |
-
-### Stream
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | — | Stream name. Used as the Kafka topic name. ForceNew. |
-| `partitions` | `int32` | — | Number of partitions. ForceNew. >= 1. |
-| `retentionInHours` | `int32` | `24` | Retention period in hours (24-168). ForceNew. |
-
-## Examples
-
-### Minimal Public Pool with One Stream
-
-A stream pool with a single stream for development:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciStreamPool
-metadata:
-  name: dev-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciStreamPool.dev-pool
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  streams:
-    - name: "events"
-      partitions: 1
-```
-
-### Multi-Stream Pool with Kafka Settings
-
-A pool with Kafka auto-topic creation enabled, 48-hour retention, and multiple streams:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciStreamPool
-metadata:
-  name: event-hub
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciStreamPool.event-hub
-spec:
-  compartmentId:
-    valueFrom:
-      kind: OciCompartment
-      name: prod-compartment
-      fieldPath: status.outputs.compartmentId
   kafkaSettings:
     autoCreateTopicsEnable: true
     logRetentionHours: 48
     numPartitions: 3
   streams:
-    - name: "orders"
+    - name: events
       partitions: 5
-      retentionInHours: 168
-    - name: "notifications"
+      retentionInHours: 48
+    - name: commands
       partitions: 3
-    - name: "audit-events"
-      partitions: 3
-      retentionInHours: 168
+      retentionInHours: 24
 ```
 
-### Private Pool with KMS Encryption
+```shell
+planton apply -f stream-pool.yaml
+```
 
-A pool accessible only from a private subnet, with customer-managed encryption:
+This creates a publicly accessible stream pool with Kafka auto-topic creation enabled, two streams (`events` with 5 partitions and `commands` with 3 partitions), and Oracle-managed encryption. No private endpoint or KMS encryption is configured.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pool to a compartment, encryption key, and private networking deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciStreamPool
-metadata:
-  name: secure-pool
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciStreamPool.secure-pool
 spec:
   compartmentId:
-    value: "ocid1.compartment.oc1..example"
+    valueFrom:
+      kind: OciCompartment
+      name: streaming
+      fieldPath: status.outputs.compartmentId
   kmsKeyId:
     valueFrom:
       kind: OciKmsKey
@@ -180,32 +88,61 @@ spec:
     subnetId:
       valueFrom:
         kind: OciSubnet
-        name: private-subnet
+        name: streaming-subnet
         fieldPath: status.outputs.subnetId
     nsgIds:
       - valueFrom:
           kind: OciSecurityGroup
           name: streaming-nsg
           fieldPath: status.outputs.networkSecurityGroupId
-  streams:
-    - name: "sensitive-data"
-      partitions: 5
-      retentionInHours: 168
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the compartment, KMS key, subnet, and security group first, then provisions the stream pool with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `stream_pool_id` | `string` | OCID of the stream pool |
-| `endpoint_fqdn` | `string` | FQDN for accessing streams. For private pools, resolves only within the associated subnet. |
-| `kafka_bootstrap_servers` | `string` | Kafka-compatible bootstrap server string for producing and consuming messages |
+These are the most important decisions when configuring a stream pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Kafka compatibility** -- Configure `kafkaSettings` to control the Kafka compatibility layer. Set `autoCreateTopicsEnable` to `true` for development (auto-creates topics on first publish) or `false` for production (prevents accidental topic creation). Set `logRetentionHours` (24-168) and `numPartitions` for auto-created topic defaults.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciKmsKey](/docs/catalog/oci/kms-key) — provides the encryption key referenced by `kmsKeyId` via `valueFrom`
-- [OciSubnet](/docs/catalog/oci/subnet) — provides the subnet for private endpoints via `valueFrom`
-- [OciSecurityGroup](/docs/catalog/oci/network-security-group) — provides NSGs for private endpoints via `valueFrom`
+**Private endpoint** -- Provide `privateEndpointSettings` with a `subnetId` to make the pool accessible only from within the specified subnet. Add `nsgIds` to restrict traffic further. The entire private endpoint block is immutable after creation -- changing any field forces pool recreation.
+
+**Stream design** -- Define streams in the `streams` list. Each stream requires a `name` and `partitions` count (minimum 1). Set `retentionInHours` between 24 and 168 (defaults to 24). Stream name, partition count, and retention are all immutable after creation.
+
+**Encryption** -- Set `kmsKeyId` to use a customer-managed KMS key for encrypting all stream data. When omitted, Oracle-managed encryption is used. Unlike private endpoint settings, the encryption key can be changed after creation.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
+| **OciKmsKey** (optional) | `kmsKeyId` | `status.outputs.keyId` |
+| **OciSubnet** (optional) | `privateEndpointSettings.subnetId` | `status.outputs.subnetId` |
+| **OciSecurityGroup** (optional) | `privateEndpointSettings.nsgIds` | `status.outputs.networkSecurityGroupId` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `stream_pool_id` | OCID of the stream pool | IAM policy scoping, monitoring alarms, resource management |
+| `endpoint_fqdn` | FQDN for accessing streams in the pool (resolves only within subnet for private pools) | Application SDK configuration, DNS records |
+| `kafka_bootstrap_servers` | Kafka-compatible bootstrap server string | Kafka producer and consumer client configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Public Kafka compatible** -- A publicly accessible pool with Kafka auto-topic creation, multiple streams, and 48-hour retention. Suitable for development and non-sensitive workloads where Kafka clients connect over the public endpoint. Start from the **Public Kafka Compatible** preset.
+
+**Private encrypted** -- A production pool with KMS encryption, private endpoint networking, NSG restrictions, auto-topic creation disabled, maximum 7-day retention, and a dead-letter stream. Designed for regulated workloads requiring network isolation and customer-managed encryption. Start from the **Private Encrypted** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this stream pool
+- [**KMS Key on OCI**](/cloud-catalog/oci-kms-key) -- provides the customer-managed encryption key for stream data
+- [**Subnet on OCI**](/cloud-catalog/oci-subnet) -- provides the subnet for private endpoint access
+- [**Network Security Group on OCI**](/cloud-catalog/oci-security-group) -- provides network security rules for the private endpoint

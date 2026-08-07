@@ -8,192 +8,112 @@ componentName: "openstackloadbalancermonitor"
 
 # OpenStack Load Balancer Monitor
 
-Deploys an Octavia health monitor that periodically probes pool members to determine their health status. Unhealthy members are automatically removed from the pool's traffic rotation until they recover. Monitors support HTTP, HTTPS, PING, TCP, TLS-HELLO, and UDP-CONNECT check types.
+Deploys an Octavia health monitor on OpenStack that periodically checks the health of pool members and removes unhealthy members from rotation until they recover. The monitor supports HTTP, HTTPS, TCP, PING, TLS-HELLO, and UDP-CONNECT check types with configurable intervals, timeouts, and retry thresholds. ValueFromRef wiring connects the monitor to an OpenStackLoadBalancerPool Cloud Resource in InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackLoadBalancerMonitor resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Octavia Health Monitor** — a `loadbalancer.Monitor` resource attached to the specified pool. The monitor sends periodic probes to each pool member at the configured interval. After the required number of consecutive failures, a member is removed from rotation. After the required number of consecutive successes, it is restored. HTTP and HTTPS monitors validate response codes against configurable expectations; PING, TCP, TLS-HELLO, and UDP-CONNECT monitors check connectivity only.
+- **Octavia Health Monitor** -- a monitor resource attached to the specified pool, periodically probing each member according to the configured check type, interval, and retry thresholds
+- **HTTP Check Configuration** -- created only when type is `HTTP` or `HTTPS`; configures the URL path, HTTP method, and expected response codes for application-level health validation
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An Octavia pool** to attach the monitor to (each pool supports at most one monitor)
+### OpenStack Account
 
-## Quick Start
+- **Pool** -- an Octavia pool must exist to attach the monitor to. Provide the pool ID directly or reference an OpenStackLoadBalancerPool Cloud Resource via ValueFromRef.
+- **Health endpoint** (for HTTP/HTTPS monitors) -- backend members should expose a health check endpoint (e.g., `/healthz`) that returns an expected HTTP status code when healthy.
 
-Create a file `monitor.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Load Balancer Monitor**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTP Health Check Monitor** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackLoadBalancerMonitor
 metadata:
   name: http-health
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackLoadBalancerMonitor.http-health
+  org: acme-corp
+  env: prod
 spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
+  poolId:
+    value: "<pool-id>"
   type: HTTP
-  delay: 5
-  timeout: 3
+  delay: 10
+  timeout: 5
   maxRetries: 3
   urlPath: /healthz
+  httpMethod: GET
   expectedCodes: "200"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f monitor.yaml
 ```
 
-This creates an HTTP health monitor that checks `/healthz` on each pool member every 5 seconds, expects a 200 response within 3 seconds, and requires 3 consecutive successes to mark a member healthy.
+This creates an HTTP health monitor that sends a GET request to `/healthz` every 10 seconds, expects a 200 response within 5 seconds, and requires 3 consecutive successes to mark a member healthy.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `poolId` | `StringValueOrRef` | UUID of the Octavia pool to monitor. Can reference an OpenStackLoadBalancerPool resource via `valueFrom`. ForceNew: changing this recreates the monitor. | Required |
-| `type` | `string` | The type of health check to perform: `HTTP`, `HTTPS`, `PING`, `TCP`, `TLS-HELLO`, or `UDP-CONNECT`. ForceNew: changing this recreates the monitor. | Must be one of the listed values |
-| `delay` | `int32` | Interval in seconds between consecutive health checks sent to each member. | Required |
-| `timeout` | `int32` | Maximum time in seconds to wait for a health check response. If a member does not respond within this time, the check is considered failed. | Required |
-| `maxRetries` | `int32` | Number of consecutive successful health checks required before a member is considered healthy and returned to rotation. | Required; must be between 1 and 10 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `maxRetriesDown` | `int32` | same as `maxRetries` | Number of consecutive failed health checks required before a member is considered unhealthy and removed from rotation. Must be between 1 and 10. |
-| `urlPath` | `string` | — | URL path to request for HTTP/HTTPS health checks (e.g., `/healthz`). Only valid when `type` is `HTTP` or `HTTPS`. |
-| `httpMethod` | `string` | — | HTTP method for HTTP/HTTPS health checks: `GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`, `CONNECT`, or `TRACE`. Only valid when `type` is `HTTP` or `HTTPS`. |
-| `expectedCodes` | `string` | — | Expected HTTP response codes for a healthy member. Supports single codes (`"200"`), ranges (`"200-299"`), and comma-separated lists (`"200,202"`). Only valid when `type` is `HTTP` or `HTTPS`. |
-| `adminStateUp` | `bool` | `true` | Administrative state of the monitor. When `false`, the monitor stops checking members without being deleted. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this monitor. |
-
-## Examples
-
-### HTTP Health Monitor
-
-An HTTP monitor that checks a health endpoint on each pool member, suitable for web application pools:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the monitor to a pool deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMonitor
-metadata:
-  name: web-http-health
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackLoadBalancerMonitor.web-http-health
-spec:
-  poolId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  type: HTTP
-  delay: 10
-  timeout: 5
-  maxRetries: 3
-  urlPath: /healthz
-  httpMethod: GET
-  expectedCodes: "200"
-```
-
-### TCP Health Monitor
-
-A TCP monitor for non-HTTP services. The monitor attempts a TCP connection to each member and marks it healthy if the connection succeeds:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMonitor
-metadata:
-  name: db-tcp-check
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancerMonitor.db-tcp-check
-spec:
-  poolId: 7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
-  type: TCP
-  delay: 5
-  timeout: 3
-  maxRetries: 3
-```
-
-### HTTP Monitor with Asymmetric Thresholds
-
-An HTTP monitor with different thresholds for failure detection and recovery. Members are removed after 2 consecutive failures (fast detection) but require 5 consecutive successes to return to rotation (cautious recovery):
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMonitor
-metadata:
-  name: api-health
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancerMonitor.api-health
-spec:
-  poolId: 12345678-abcd-efgh-ijkl-123456789abc
-  type: HTTPS
-  delay: 10
-  timeout: 5
-  maxRetries: 5
-  maxRetriesDown: 2
-  urlPath: /api/health
-  httpMethod: GET
-  expectedCodes: "200-299"
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed pool instead of hardcoding UUIDs:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackLoadBalancerMonitor
-metadata:
-  name: ref-monitor
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackLoadBalancerMonitor.ref-monitor
 spec:
   poolId:
     valueFrom:
       kind: OpenStackLoadBalancerPool
       name: web-pool
-      field: status.outputs.pool_id
-  type: HTTP
-  delay: 5
-  timeout: 3
-  maxRetries: 3
-  urlPath: /healthz
-  expectedCodes: "200"
+      fieldPath: status.outputs.pool_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the pool first, then provisions the monitor with the resolved pool ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `monitor_id` | `string` | UUID of the created health monitor |
-| `name` | `string` | Name of the monitor, derived from `metadata.name` |
-| `type` | `string` | Health check type (HTTP, HTTPS, PING, TCP, TLS-HELLO, or UDP-CONNECT) |
-| `pool_id` | `string` | UUID of the monitored pool |
-| `region` | `string` | OpenStack region where the monitor was created |
+These are the most important decisions when configuring a health monitor. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Check type** -- Choose `HTTP` or `HTTPS` for application-level health validation with URL path and response code checking. Choose `TCP` for port-reachability checks on non-HTTP services. Choose `PING` for ICMP-based liveness checks. Changing the type requires recreating the monitor.
 
-- [OpenStackLoadBalancer](/docs/catalog/openstack/load-balancer) — provides the top-level VIP that receives client traffic
-- [OpenStackLoadBalancerListener](/docs/catalog/openstack/load-balancer-listener) — binds a protocol and port on the load balancer to a pool
-- [OpenStackLoadBalancerPool](/docs/catalog/openstack/load-balancer-pool) — the pool whose members this monitor checks
-- [OpenStackLoadBalancerMember](/docs/catalog/openstack/load-balancer-member) — the backend servers being health-checked by this monitor
+**Timing parameters** -- `delay` controls the interval between checks, `timeout` sets the maximum wait for a response. Set `timeout` lower than `delay` to avoid overlapping checks. Typical production values: 10-second delay, 5-second timeout.
+
+**Retry thresholds** -- `maxRetries` controls how many consecutive successes are needed to mark a member healthy. `maxRetriesDown` controls failures needed to mark unhealthy (defaults to `maxRetries` when unset). Lower values detect failures faster but increase false positives.
+
+**HTTP configuration** -- For HTTP/HTTPS monitors, set `urlPath` to your application's health endpoint, `httpMethod` to the request method (typically GET), and `expectedCodes` to the acceptable response codes (e.g., `"200"` or `"200-299"`).
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackLoadBalancerPool** | `poolId` | `status.outputs.pool_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `monitor_id` | UUID of the health monitor | Resource identification, API operations |
+| `name` | Name of the monitor | Monitoring labels |
+| `type` | Health check type | Diagnostics, configuration auditing |
+| `pool_id` | ID of the monitored pool | Cross-referencing pool relationships |
+| `region` | OpenStack region where the monitor was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**HTTP Health Check** -- Sends GET requests to `/healthz` every 10 seconds with a 5-second timeout. Validates application health by checking HTTP response codes. Best for web services and REST APIs. Start from the **HTTP Health Check Monitor** preset.
+
+**TCP Health Check** -- Attempts a TCP connection every 10 seconds with a 5-second timeout. Validates port reachability without application-level protocol checks. Best for databases, message queues, and non-HTTP services. Start from the **TCP Health Check Monitor** preset.
+
+## Works With
+
+- [**OpenStack Load Balancer Pool**](/cloud-catalog/openstack-load-balancer-pool) -- provides the pool ID that this monitor checks members for

@@ -170,7 +170,7 @@ For comprehensive examples including:
 - Custom domain setup
 - Database integration
 
-See examples.md
+See e2e/manifest.yaml
 
 ## Infrastructure as Code
 

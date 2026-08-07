@@ -8,143 +8,127 @@ componentName: "gcpspannerbackupschedule"
 
 # GCP Spanner Backup Schedule
 
-Deploys a cron-driven backup schedule on a Cloud Spanner database, with full or incremental backup chains, retention up to 366 days, and optional customer-managed encryption for the backup copies.
+Creates backups of a Cloud Spanner database on a cron cadence and retains each backup for a configurable window. Backup schedules are first-class, many-per-database resources — a production database commonly carries a daily incremental schedule and a weekly full schedule side by side. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, Spanner instances, Spanner databases, and KMS keys.
 
 ## What Gets Created
 
-When you deploy a GcpSpannerBackupSchedule resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Backup Schedule** — a `google_spanner_backup_schedule` on the specified database with the chosen cadence and retention; the Spanner API is enabled automatically
-- **Backup Kind** — a full-backup or incremental-backup specification (immutable per schedule)
-- **Backup Encryption** — when `encryptionConfig` is provided, an explicit encryption posture for the backups (otherwise they inherit the database's)
+- **Spanner Backup Schedule** -- a schedule on the target database that creates backups at the configured cron cadence (evaluated in UTC) and retains each backup for `retentionDuration`
+- **Full or Incremental Backups** -- `backupType` selects the backup shape. `FULL` (the default when unset): every backup is a complete, self-contained copy. `INCREMENTAL`: backups form chains storing only changes since the previous one — cheaper storage at identical restore semantics, requiring an ENTERPRISE or ENTERPRISE_PLUS instance
+- **Backup Encryption** -- created only when `encryptionConfig` is set. Omitted entirely, backups inherit the database's own posture (a CMEK database gets CMEK backups). `CUSTOMER_MANAGED_ENCRYPTION` takes exactly one key shape: `kmsKeyName` (regional instance configurations) or `kmsKeyNames` (one key per region of a multi-region configuration)
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **An existing Spanner instance and database** (deploy via GcpSpannerInstance and GcpSpannerDatabase first)
-- **ENTERPRISE or ENTERPRISE_PLUS edition** on the instance when using `backupType: INCREMENTAL`
-- **A KMS key** with the Spanner service agent granted `roles/cloudkms.cryptoKeyEncrypterDecrypter` when using CUSTOMER_MANAGED_ENCRYPTION
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `backup-schedule.yaml`:
+### GCP Project
+
+- **An existing Spanner instance and database** to attach the schedule to. Reference GcpSpannerInstance and GcpSpannerDatabase Cloud Resources via ValueFromRef, or provide the names directly.
+- **ENTERPRISE edition or above** on the instance when using `INCREMENTAL` backups.
+- **Cloud KMS key(s)** (if using CMEK) -- each key must live in the location its region requires, and the Spanner service account needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on every key.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Spanner Backup Schedule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Daily Full Backups** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpSpannerBackupSchedule
 metadata:
-  name: orders-daily-backups
+  name: daily-full-backups
+  org: acme-corp
+  env: prod
 spec:
   instance:
-    valueFrom:
-      kind: GcpSpannerInstance
-      name: prod-spanner
-      fieldPath: status.outputs.instance_name
+    value: "app-spanner-prod"
   database:
-    valueFrom:
-      kind: GcpSpannerDatabase
-      name: orders-db
-      fieldPath: status.outputs.database_name
+    value: "app-db"
   cron: "0 2 * * *"
-  retentionDuration: 2678400s
+  retentionDuration: "2678400s"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f backup-schedule.yaml
+planton apply -f spanner-backup-schedule.yaml
 ```
 
-This backs the database up daily at 02:00 UTC, keeping each full backup for 31 days, in the provider's default project.
+This creates a schedule taking a full backup daily at 02:00 UTC, keeping each backup for 31 days, with backups inheriting the database's encryption posture.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `instance` | `StringValueOrRef` | Spanner instance hosting the database. References a GcpSpannerInstance's `instance_name` output. Immutable. | Required |
-| `database` | `StringValueOrRef` | Database to back up. References a GcpSpannerDatabase's `database_name` output. Immutable. | Required |
-| `cron` | `string` | Crontab cadence, evaluated in UTC. Allowed frequencies: 12-hour, daily, weekly, monthly. Mutable. | Required |
-| `retentionDuration` | `string` | Per-backup retention as a seconds duration (`86400s`); up to 366 days (`31622400s`). Mutable. | Required, pattern `^[0-9]+(\.[0-9]{1,9})?s$` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default | GCP project owning the instance. Can reference a GcpProject. |
-| `scheduleName` | `string` | `metadata.name` | Schedule name within the database. Immutable. Pattern `^[a-z][-a-z0-9]*[a-z0-9]$`, up to 63 chars. |
-| `backupType` | `string` | `FULL` | `FULL` or `INCREMENTAL` (incremental requires ENTERPRISE+ edition). Immutable. |
-| `encryptionConfig.encryptionType` | `string` | `USE_DATABASE_ENCRYPTION` | `USE_DATABASE_ENCRYPTION`, `GOOGLE_DEFAULT_ENCRYPTION`, or `CUSTOMER_MANAGED_ENCRYPTION`. Mutable. |
-| `encryptionConfig.kmsKeyName` | `StringValueOrRef` | — | Regional backup CMEK key (references a GcpKmsKey `key_id`). CMEK only; exactly one key shape. |
-| `encryptionConfig.kmsKeyNames[]` | `list<StringValueOrRef>` | — | Multi-region backup CMEK: one key per region of the instance configuration. CMEK only. |
-
-## Examples
-
-### Incremental Backups on an Enterprise Instance
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the schedule to the instance and database deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerBackupSchedule
-metadata:
-  name: orders-incremental-backups
 spec:
   instance:
     valueFrom:
       kind: GcpSpannerInstance
-      name: prod-spanner
+      name: app-spanner
       fieldPath: status.outputs.instance_name
   database:
     valueFrom:
       kind: GcpSpannerDatabase
-      name: orders-db
+      name: app-db
       fieldPath: status.outputs.database_name
-  cron: "0 2/12 * * *"
-  retentionDuration: 1209600s
-  backupType: INCREMENTAL
+  cron: "0 2 * * *"
+  retentionDuration: "2678400s"
 ```
 
-### CMEK-Encrypted Weekly Archive
+The InfraPipeline resolves the dependency graph, deploys the instance and database first, then attaches the schedule.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpSpannerBackupSchedule
-metadata:
-  name: orders-weekly-archive
-spec:
-  instance:
-    valueFrom:
-      kind: GcpSpannerInstance
-      name: prod-spanner
-      fieldPath: status.outputs.instance_name
-  database:
-    valueFrom:
-      kind: GcpSpannerDatabase
-      name: orders-db
-      fieldPath: status.outputs.database_name
-  cron: "0 4 * * 0"
-  retentionDuration: 31622400s
-  encryptionConfig:
-    encryptionType: CUSTOMER_MANAGED_ENCRYPTION
-    kmsKeyName:
-      valueFrom:
-        kind: GcpKmsKey
-        name: spanner-backup-cmek
-        fieldPath: status.outputs.key_id
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a backup schedule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Cadence** -- `cron` is a standard crontab expression evaluated in UTC. Spanner accepts a bounded set of frequencies: every 12 hours (`0 2/12 * * *`), daily (`0 2 * * *`), weekly (`0 2 * * 0`), or monthly (`0 2 8 * *`). Mutable — cadence changes apply in place.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `schedule_id` | `string` | Fully qualified schedule ID (`projects/{project}/instances/{instance}/databases/{database}/backupSchedules/{name}`) |
-| `schedule_name` | `string` | Short schedule name within the database |
+**Retention** -- `retentionDuration` is a seconds duration string ending in `s` (e.g. `"86400s"` = 1 day, `"2678400s"` = 31 days), with a 366-day ceiling (`"31622400s"`). Mutable — but changes apply only to backups created AFTER the change; existing backups keep their original expiry.
 
-## Related Components
+**Backup type** -- `backupType` is immutable and defaults to `FULL` when unset. `INCREMENTAL` chains cut storage costs significantly on large, frequently-backed-up databases, and require an ENTERPRISE-edition instance.
 
-- [GcpSpannerInstance](/docs/catalog/gcp/spanner-instance) — the instance whose `default_backup_schedule_type` and `force_destroy` interact with schedules and their backups
-- [GcpSpannerDatabase](/docs/catalog/gcp/spanner-database) — the database this schedule protects
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — customer-managed encryption keys for backup CMEK
-- [GcpProject](/docs/catalog/gcp/project) — the project the instance lives in
+**Ownership and survival** -- the schedule is owned by its database: deleting the database deletes the schedule. The backups themselves survive until their retention expires — and they are what makes destroying the instance fail unless `GcpSpannerInstance.force_destroy` is set.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpSpannerInstance** | `instance` | `status.outputs.instance_name` |
+| **GcpSpannerDatabase** | `database` | `status.outputs.database_name` |
+| **GcpKmsKey** (optional) | `encryptionConfig.kmsKeyName` / `encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream consumers and operators can use:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `schedule_id` | Fully qualified schedule ID (`projects/{p}/instances/{i}/databases/{d}/backupSchedules/{s}`) | Direct Spanner Admin API calls, listing the backups the schedule created |
+| `schedule_name` | Short schedule name within the database | Display, operational runbooks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Daily full backups** -- a full backup every day at 02:00 UTC, kept 31 days. The simplest production posture. Start from the **Daily Full Backups** preset.
+
+**Incremental enterprise** -- backups every 12 hours forming incremental chains, kept 14 days. Cheap, frequent restore points for large databases on ENTERPRISE instances. Start from the **Incremental Enterprise** preset.
+
+**Weekly long retention** -- a full backup every Sunday, kept 366 days (the maximum), encrypted with a customer-managed key. The compliance-archive posture. Start from the **Weekly Long Retention** preset.
+
+## Works With
+
+- [**GCP Spanner Instance**](/cloud-catalog/gcp-spanner-instance) -- hosts the database and gates incremental backups by edition
+- [**GCP Spanner Database**](/cloud-catalog/gcp-spanner-database) -- the database this schedule protects
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides customer-managed keys for backup-level CMEK encryption

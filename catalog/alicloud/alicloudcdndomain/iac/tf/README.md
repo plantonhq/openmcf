@@ -15,7 +15,7 @@ Terraform module.
 
 ```shell
 planton tofu plan \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir .
 ```
 
@@ -23,7 +23,7 @@ planton tofu plan \
 
 ```shell
 planton tofu apply \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir .
 ```
 
@@ -33,7 +33,7 @@ Detect drift between the Terraform state and the actual Alibaba Cloud resources:
 
 ```shell
 planton tofu plan \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir . \
   --refresh-only
 ```
@@ -44,7 +44,7 @@ Remove all resources managed by this module:
 
 ```shell
 planton tofu destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --module-dir .
 ```
 

@@ -8,165 +8,157 @@ componentName: "awsecsservice"
 
 # AWS ECS Service
 
-Runs an ECS service: the scheduler that keeps a desired number of copies
-of a referenced `AwsEcsTaskDefinition` running in a referenced
-`AwsEcsCluster`, replaces unhealthy tasks, rolls deployments behind
-circuit breakers, alarms, and native blue/green, and registers task IPs
-into referenced `AwsLbTargetGroup` nodes.
+Runs a task definition as a long-lived service: the ECS scheduler keeps the desired number of task copies running in a cluster, replaces unhealthy ones, rolls deployments, and wires tasks into load balancers and service discovery. The service composes onto its neighbors instead of bundling them — the task definition (WHAT runs) is a referenced AwsEcsTaskDefinition, the cluster (WHERE it runs) is a referenced AwsEcsCluster, and traffic arrives through referenced AwsLbTargetGroup nodes that AwsLbListener / AwsLbListenerRule nodes route into. Because the task-definition reference resolves to a revision-carrying ARN, registering a new revision (a new image tag) rolls the service on its next deployment — the deploy pipeline is the resource graph itself.
 
 ## What Gets Created
 
-When you deploy an AwsEcsService resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **ECS service** — an `aws_ecs_service` / `ecs.Service` scheduling the
-  referenced task-definition revision with your capacity, networking,
-  load-balancer, deployment, and Service Connect configuration
-- **Autoscaling** (when configured) — an Application Auto Scaling target
-  plus one target-tracking policy per metric (CPU, memory,
-  requests-per-target), each with AWS-managed alarms
+- **ECS Service** -- the scheduler keeping the desired count of tasks running, with its networking, load-balancer registrations, deployment guards, and discovery wiring
+- **Application Auto Scaling resources** -- the scalable target and target-tracking policies (with their AWS-managed CloudWatch alarms) when autoscaling is configured
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the service
 
-The cluster, task definition, subnets, security groups, and target
-groups are referenced resources -- the service never creates or mutates
-them.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **An ECS cluster** (`AwsEcsCluster`) and a **task definition** (`AwsEcsTaskDefinition`).
-- **Subnets** (`AwsSubnet`) for awsvpc task networking — private subnets for production.
-- **A target group** (`AwsLbTargetGroup`) already associated with a listener, when the service fronts traffic.
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **ECS Cluster** -- an AwsEcsCluster referenced by its `cluster_arn` output.
+- **Task Definition** -- an AwsEcsTaskDefinition referenced by its `task_definition_arn` output (the recommended wiring — each new revision rolls the service).
+- **Networking** -- AwsSubnet and AwsSecurityGroup resources for the task ENIs, referenced by their outputs.
+- **Target Groups** (request-serving services) -- AwsLbTargetGroup resources (target type `ip`), each already associated with an AwsLbListener / AwsLbListenerRule.
 
-## Quick Start
+### AWS Account
+
+- **ECS permissions** -- the credentials used by the Provider Connection must have `ecs:CreateService`, `ecs:UpdateService`, `ecs:DeleteService`, and `ecs:DescribeServices`, plus `iam:PassRole` on the task definition's roles and `application-autoscaling:*` for autoscaling.
+- **Listener association** -- AWS requires each referenced target group to already be associated with a load-balancer listener at service creation; deploy the listener (rules) first.
+- **Egress for private tasks** -- tasks in private subnets reach ECR and AWS APIs through a NAT gateway or VPC endpoints.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS ECS Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from a preset in the [Presets](#presets) tab for a working baseline.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsEcsService
 metadata:
   name: api
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   clusterArn:
-    valueFrom: { kind: AwsEcsCluster, name: prod, fieldPath: status.outputs.cluster_arn }
+    valueFrom:
+      kind: AwsEcsCluster
+      name: platform
+      fieldPath: status.outputs.cluster_arn
   taskDefinition:
-    valueFrom: { kind: AwsEcsTaskDefinition, name: api, fieldPath: status.outputs.task_definition_arn }
+    valueFrom:
+      kind: AwsEcsTaskDefinition
+      name: api
+      fieldPath: status.outputs.task_definition_arn
+  desiredCount: 2
+  launchType: FARGATE
   network:
     subnets:
-      - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-      - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-subnet-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-subnet-b
+          fieldPath: status.outputs.subnet_id
+    securityGroups:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: api-tasks
+          fieldPath: status.outputs.security_group_id
+  loadBalancers:
+    - targetGroupArn:
+        valueFrom:
+          kind: AwsLbTargetGroup
+          name: api
+          fieldPath: status.outputs.target_group_arn
+      containerName: api
+      containerPort: 8080
+  deploymentCircuitBreaker:
+    enable: true
+    rollback: true
 ```
 
 ```shell
-planton apply -f service.yaml
+planton apply -f ecs-service.yaml
 ```
 
-## Configuration Reference
+This keeps two copies of the `api` task running behind the target group, guarded by the circuit breaker. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region; must match the cluster's and task definition's. | Required; non-empty |
-| `clusterArn` | `string \| valueFrom` | The cluster the service runs in. | Required |
-| `taskDefinition` | `string \| valueFrom` | The task-definition revision to run; referencing the output makes new revisions roll the service. | Required |
+These are the most important decisions when configuring an ECS service. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**The composition rolls deploys** -- reference the task definition by its ARN output and every new revision (a new image tag) rolls the service on its next deployment. A literal `family:revision` pins one exact revision instead.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `desiredCount` | `int32` | `1` | Task copies to run; explicit `0` deploys the wiring with nothing running. The autoscaler owns the live count once configured. |
-| `launchType` | `string` | `FARGATE` | `FARGATE`, `EC2`, or `EXTERNAL`. Mutually exclusive with `capacityProviderStrategy`. |
-| `capacityProviderStrategy` | `object[]` | `[]` | Base/weight blend across `FARGATE`, `FARGATE_SPOT`, or EC2 capacity providers. |
-| `network` | `object` | — | Subnets, security groups, and public-IP assignment for task ENIs (required for awsvpc task definitions). |
-| `loadBalancers` | `object[]` | `[]` | Target-group registrations: which container/port registers into which `AwsLbTargetGroup`; `advancedConfiguration` adds the blue/green pair. |
-| `healthCheckGracePeriodSeconds` | `int32` | `60` | Startup window during which LB health-check failures are ignored. |
-| `deploymentMaximumPercent` / `deploymentMinimumHealthyPercent` | `int32` | `200` / `100` | Rolling-deployment capacity bounds. |
-| `deploymentCircuitBreaker` | `object` | — | Stop failing rollouts; optionally roll back. |
-| `alarms` | `object` | — | CloudWatch alarms (by reference) that fail/roll back an in-flight deployment. |
-| `deploymentConfiguration` | `object` | ROLLING | `BLUE_GREEN` strategy with bake time, canary/linear shifting, and Lambda lifecycle hooks. |
-| `deploymentController` | `string` | `ECS` | `ECS`, `CODE_DEPLOY`, or `EXTERNAL`. |
-| `serviceConnect` | `object` | — | Service Connect mesh: namespace, exposed ports, timeouts, TLS, proxy logs. |
-| `serviceRegistries` | `object` | — | Legacy Cloud Map DNS registration. |
-| `volumeConfiguration` | `object` | — | A managed EBS volume per task, configured at deployment time. |
-| `orderedPlacementStrategy` / `placementConstraints` | `object[]` | `[]` | EC2 task placement (spread, binpack, memberOf). |
-| `availabilityZoneRebalancing` | `string` | AWS decides | `ENABLED` / `DISABLED` automatic AZ redistribution. |
-| `propagateTags` / `enableEcsManagedTags` | — | — | Tag propagation to tasks for cost allocation. |
-| `enableExecuteCommand` | `bool` | `false` | ECS Exec shells into running containers via SSM. |
-| `autoscaling` | `object` | — | Target tracking on `cpu`, `memory`, and/or `requestsPerTarget` between `minTasks`/`maxTasks`. |
+**Capacity is a spectrum** -- name a `launchType` (FARGATE is the default posture) OR blend providers with `capacityProviderStrategy` (e.g. FARGATE base 1/weight 1 + FARGATE_SPOT weight 4 keeps one guaranteed on-demand task and runs ~80% of scaled capacity on Spot). The two are mutually exclusive.
 
-## Examples
+**Deployments are guarded in layers** -- the circuit breaker (enable + rollback) stops a rollout whose tasks keep failing; alarm gating fails a deployment when a referenced CloudWatch alarm fires; the BLUE_GREEN strategy adds an alternate target group, canary/linear traffic shifting, bake time, and Lambda lifecycle hooks for the most sensitive services.
 
-### Cost-optimized Spot blend
+**Load-balancer wiring only registers IPs** -- the target group, listener, and rules are their own first-class resources; each `loadBalancers` entry tells ECS which container/port registers into which target group. Workers and queue consumers leave it empty.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcsService
-metadata:
-  name: worker
-spec:
-  region: us-west-2
-  clusterArn:
-    valueFrom: { kind: AwsEcsCluster, name: prod, fieldPath: status.outputs.cluster_arn }
-  taskDefinition:
-    valueFrom: { kind: AwsEcsTaskDefinition, name: worker, fieldPath: status.outputs.task_definition_arn }
-  desiredCount: 4
-  capacityProviderStrategy:
-    - capacityProvider: FARGATE
-      base: 1
-      weight: 1
-    - capacityProvider: FARGATE_SPOT
-      weight: 4
-  network:
-    subnets:
-      - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-      - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-```
+**Service Connect over legacy registries** -- Service Connect gives sidecar-free service-to-service discovery ("call http://orders") with telemetry, retries, and optional Private-CA TLS. Keep legacy Cloud Map `serviceRegistries` only where consumers already resolve its DNS name.
 
-### Request-count autoscaling behind an ALB
+**Autoscaling scales the count** -- target-tracking on CPU, memory, and/or requests-per-target (the AwsAlb / AwsLbTargetGroup `arn_suffix` outputs scope the request metric). The desired count only seeds the initial size once autoscaling owns the service.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsEcsService
-metadata:
-  name: api
-spec:
-  region: us-west-2
-  clusterArn:
-    valueFrom: { kind: AwsEcsCluster, name: prod, fieldPath: status.outputs.cluster_arn }
-  taskDefinition:
-    valueFrom: { kind: AwsEcsTaskDefinition, name: api, fieldPath: status.outputs.task_definition_arn }
-  network:
-    subnets:
-      - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
-      - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  loadBalancers:
-    - targetGroupArn:
-        valueFrom: { kind: AwsLbTargetGroup, name: api, fieldPath: status.outputs.target_group_arn }
-      containerName: app
-      containerPort: 8080
-  autoscaling:
-    minTasks: 2
-    maxTasks: 20
-    requestsPerTarget:
-      targetRequestsPerTarget: 1000
-      loadBalancerArnSuffix:
-        valueFrom: { kind: AwsAlb, name: main, fieldPath: status.outputs.arn_suffix }
-      targetGroupArnSuffix:
-        valueFrom: { kind: AwsLbTargetGroup, name: api, fieldPath: status.outputs.arn_suffix }
-```
+## Outputs and Dependencies
 
-## Stack Outputs
+### What This Component Consumes
 
-| Output | Description |
-| --- | --- |
-| `service_arn` | The service's ARN — encodes both the cluster and service names |
-| `service_name` | The service's name, the ECS API's join key with the cluster |
-| `cluster_arn` | The cluster ARN, republished for downstream joins |
-| `task_definition_arn` | The task-definition revision this deployment runs |
+| Field | References | Via |
+|-------|-----------|-----|
+| `clusterArn` | AwsEcsCluster | `status.outputs.cluster_arn` |
+| `taskDefinition` | AwsEcsTaskDefinition | `status.outputs.task_definition_arn` |
+| `network.subnets[]` | AwsSubnet | `status.outputs.subnet_id` |
+| `network.securityGroups[]` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `loadBalancers[].targetGroupArn` | AwsLbTargetGroup | `status.outputs.target_group_arn` |
+| `loadBalancers[].advancedConfiguration.*ListenerRule` | AwsLbListenerRule | `status.outputs.rule_arn` |
+| `alarms.alarmNames[]` | AwsCloudwatchAlarm | `status.outputs.alarm_name` |
+| `serviceConnect.services[].tls.kmsKey` | AwsKmsKey | `status.outputs.key_arn` |
+| `volumeConfiguration.managedEbsVolume.roleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `autoscaling.requestsPerTarget.loadBalancerArnSuffix` | AwsAlb | `status.outputs.arn_suffix` |
+| `autoscaling.requestsPerTarget.targetGroupArnSuffix` | AwsLbTargetGroup | `status.outputs.arn_suffix` |
 
-## Related Components
+### What This Component Provides
 
-- [AwsEcsTaskDefinition](/docs/catalog/aws/ecs-task-definition) — the container blueprint the service runs
-- [AwsEcsCluster](/docs/catalog/aws/ecs-cluster) — where the service schedules tasks
-- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — where tasks register for traffic
-- [AwsLbListenerRule](/docs/catalog/aws/lb-listener-rule) — routes traffic into the target group; the blue/green swap point
-- [AwsCloudwatchAlarm](/docs/catalog/aws/cloudwatch-alarm) — deployment-gating alarms
+After provisioning, `status.outputs` contains:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `service_arn` | Amazon Resource Name of the service | Auditing, event rules, and support tooling |
+| `service_name` | The service's name | Cross-referencing with `aws ecs describe-services` |
+| `cluster_arn` | The cluster the service runs in | Deployment verification |
+| `task_definition_arn` | The task-definition revision the service deployed | Recording exactly which revision is live |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web service behind an ALB** -- Fargate tasks in private subnets registering into a target group the listener routes to, circuit breaker on. The bread-and-butter shape.
+
+**Background worker** -- no load-balancer wiring at all; the service just keeps N copies of a queue consumer running, scaled by CPU.
+
+**Cost-blended fleet** -- a FARGATE base with FARGATE_SPOT weight for scale-out capacity — the on-demand floor covers interruptions.
+
+## Works With
+
+- **AwsEcsTaskDefinition** -- WHAT runs, referenced by `taskDefinition`; new revisions roll the service.
+- **AwsEcsCluster** -- WHERE it runs, referenced by `clusterArn`.
+- **AwsLbTargetGroup / AwsLbListener / AwsLbListenerRule** -- the routing graph that delivers traffic; the service registers task IPs into the target group.
+- **AwsSubnet / AwsSecurityGroup** -- the task ENIs' placement and firewall.
+- **AwsCloudwatchAlarm** -- gates deployments via `alarms.alarmNames`.
+- **AwsAlb** -- its `arn_suffix` output scopes request-based autoscaling.

@@ -11,11 +11,11 @@ The module enables the Cloud KMS API with `disable_on_destroy=false` so a fresh 
 ## Usage with Planton CLI
 
 ```shell
-planton pulumi up --manifest ../hack/manifest.yaml --module-dir .
-planton pulumi destroy --manifest ../hack/manifest.yaml --module-dir .
+planton pulumi up --manifest ../../e2e/manifest.yaml --module-dir .
+planton pulumi destroy --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
-Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../hack/manifest.yaml`.
+Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../../e2e/manifest.yaml`.
 
 ## Direct Pulumi Usage
 

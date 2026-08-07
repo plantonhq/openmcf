@@ -8,203 +8,98 @@ componentName: "awsgluecatalogdatabase"
 
 # AWS Glue Catalog Database
 
-Deploys an AWS Glue Data Catalog database — a metadata namespace that organizes table definitions for data stored in S3, Redshift, RDS, and other data stores. The database is the namespace that Amazon Athena, Glue Crawlers, Glue ETL jobs, and Redshift Spectrum use to discover and query data via `database.table` naming.
+Deploys a metadata container in the AWS Glue Data Catalog that organizes table definitions for data stored in S3, Redshift, RDS, and other data stores. The database serves as the namespace layer for Amazon Athena, AWS Glue ETL jobs, Glue Crawlers, Redshift Spectrum, and Amazon EMR queries. It integrates with Planton's Provider Connections for AWS credential management.
 
 ## What Gets Created
 
-When you deploy an AwsGlueCatalogDatabase resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Glue Catalog Database** — an `aws_glue_catalog_database` resource registered in the AWS Glue Data Catalog with the specified name, description, default storage location, catalog metadata parameters, and default Lake Formation create-table grants
-- **Resource Link** — created instead when `targetDatabase` is set: a local pointer to a database shared from another account or region via AWS RAM / Lake Formation
-- **Federated Database** — created instead when `federatedDatabase` is set: a projection of an external source (e.g. a Redshift datashare) into the catalog
+- **Glue Catalog Database** -- a metadata namespace in the AWS Glue Data Catalog, in one of three shapes: a regular database (with optional description, default S3 location, free-form catalog `parameters`, and Lake Formation `createTableDefaultPermissions`), a resource link (`targetDatabase`) pointing at a database shared from another account or region, or a federated database (`federatedDatabase`) projecting an external source such as a Redshift datashare into the catalog
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An S3 bucket** if setting `locationUri` for default table storage (the bucket must exist before deploying)
-- **An AWS RAM / Lake Formation share** only for `targetDatabase` resource links
-- **A Redshift datashare and federation connection** only for `federatedDatabase`
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `glue-catalog-database.yaml`:
+### AWS Account
+
+- **An S3 bucket** (optional) for the default table storage location. When `locationUri` is set, tables created in this database without an explicit location inherit this S3 path as their base directory. Format: `s3://bucket-name/optional-prefix/`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Glue Catalog Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Data Catalog** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: analytics
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsGlueCatalogDatabase.analytics
-spec:
-  region: us-east-1
-  description: "Analytics data catalog for ad-hoc queries and BI dashboards"
-```
-
-Deploy:
-
-```shell
-planton apply -f glue-catalog-database.yaml
-```
-
-This creates a Glue Data Catalog database named `analytics` that Athena workgroups, Glue crawlers, and ETL jobs can use as a namespace for table definitions.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `region` | `string` | AWS region where the Glue Catalog Database will be created (e.g., `us-east-1`) |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | `""` | Human-readable description of the database (max 2048 characters, enforced by AWS API) |
-| `catalogId` | `string` | account ID | Data Catalog to create the database in; set only for cross-account catalogs |
-| `locationUri` | `string` | `""` | Default S3 URI for tables created in this database (e.g., `s3://bucket/prefix/`). Tables without an explicit location inherit this path |
-| `parameters` | `map` | — | Catalog metadata properties read by engines and governance tooling (not AWS resource tags) |
-| `createTableDefaultPermissions` | `list` | AWS default | Default Lake Formation grants on new tables: entries of `permissions` (`ALL`, `SELECT`, `ALTER`, `DROP`, `DELETE`, `INSERT`, `CREATE_DATABASE`, `CREATE_TABLE`, `DATA_LOCATION_ACCESS`) + `principal`. An empty-permissions entry disables the default `IAM_ALLOWED_PRINCIPALS` grant |
-| `targetDatabase` | `object` | — | Resource link: `catalogId` (sharing account), `databaseName`, optional `region` for cross-region links |
-| `federatedDatabase` | `object` | — | Federation: `identifier` (e.g. datashare ARN), `connectionName` (e.g. `aws:redshift`) |
-
-A database is exactly one shape — regular, resource link, or federated; `targetDatabase` and `federatedDatabase` cannot be combined (enforced at manifest validation).
-
-### ForceNew Fields
-
-- **Database name** (from `metadata.name`) — Cannot be changed after creation. 1-255 characters; AWS rejects uppercase characters.
-- **`catalogId`** and **`targetDatabase`** — fixed at creation; changing them replaces the database.
-
-## Examples
-
-### Minimal Data Catalog
-
-An empty database for quick experimentation. Tables are added later via Glue Crawlers or DDL statements.
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlueCatalogDatabase
-metadata:
-  name: experiments
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: data
-    pulumi.planton.dev/stack.name: dev.AwsGlueCatalogDatabase.experiments
-spec:
-  region: us-east-1
-```
-
-### Descriptive Analytics Database
-
-A database with a description documenting its purpose and contents.
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlueCatalogDatabase
-metadata:
-  name: sales_analytics
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: analytics
-    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.sales_analytics
-spec:
-  region: us-east-1
-  description: >-
-    Sales pipeline data lake — raw ingestion tables, curated transformations,
-    and aggregated datasets for BI dashboards and ML feature stores.
-```
-
-### Production S3 Data Lake
-
-A production database with a default S3 storage location so all tables inherit a consistent base path. Recommended for organized data lakes.
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlueCatalogDatabase
-metadata:
-  name: prod_warehouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: data-platform
-    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.prod_warehouse
-spec:
-  region: us-east-1
-  description: >-
-    Production data warehouse — curated datasets from ETL pipelines.
-    Tables populated by Glue crawlers on a daily schedule. Accessed by
-    Athena workgroups for ad-hoc analytics and Redshift Spectrum for BI.
-  locationUri: "s3://acme-prod-data-lake/warehouse/"
-```
-
-### Lake Formation-Governed Database
-
-A database that stops granting the default `IAM_ALLOWED_PRINCIPALS` ALL
-permission on new tables — the hardening step when moving to Lake
-Formation-managed access — and grants a scoped default to the data-lake
-admin role instead.
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlueCatalogDatabase
-metadata:
-  name: governed_lake
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: data-platform
-    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.governed_lake
-spec:
-  region: us-east-1
-  locationUri: "s3://acme-governed-lake/tables/"
-  createTableDefaultPermissions:
-    - permissions:
-        - SELECT
-        - ALTER
-        - DROP
-      principal: "arn:aws:iam::123456789012:role/data-lake-admin"
-```
-
-### Cross-Account Shared Database Link
-
-A resource link to a database another account shared via AWS RAM /
-Lake Formation. Queries against the link resolve to the target database's
-tables, subject to the share's permissions.
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsGlueCatalogDatabase
-metadata:
-  name: shared_sales_link
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: analytics
-    pulumi.planton.dev/stack.name: prod.AwsGlueCatalogDatabase.shared_sales_link
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
-  targetDatabase:
-    catalogId: "123456789012"
-    databaseName: sales_curated
+  description: "Sales analytics data lake — raw and curated tables"
 ```
 
-## Stack Outputs
+```shell
+planton apply -f glue-database.yaml
+```
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `database_name` | `string` | Name of the Glue Data Catalog database, used in Athena queries (`FROM database.table`), Glue crawler configs, and ETL job scripts |
-| `database_arn` | `string` | ARN of the database, used for IAM policies and Lake Formation permissions |
-| `catalog_id` | `string` | ID of the Glue Data Catalog (AWS Account ID), used by downstream resources needing catalog context |
+This creates a Glue Catalog Database named `analytics` with a description. No default S3 location is configured, so each table must specify its own storage location explicitly. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Related Components
+## Key Configuration
 
-- [AWS Athena Workgroup](/docs/catalog/aws/athena-workgroup) — Queries data described by tables in this database
-- [AWS S3 Bucket](/docs/catalog/aws/s3-bucket) — Storage layer for data referenced by Glue tables
-- [AWS KMS Key](/docs/catalog/aws/kms-key) — Encryption for data at rest in S3
-- [AWS Redshift Cluster](/docs/catalog/aws/redshift-cluster) — Redshift Spectrum queries the Glue catalog for external tables
+These are the most important decisions when configuring a Glue Catalog Database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Database name** -- Derived from `metadata.name`. Must be 1-255 characters, lowercase letters, numbers, and underscores only. The name is immutable after creation (ForceNew). Choose a name that reflects the logical data domain (e.g., `sales_raw`, `clickstream_events`).
+
+**Default storage location** -- Set `locationUri` to an S3 URI (e.g., `s3://my-datalake/sales/`) to provide a default base path for tables created in this database. Recommended for organized data lakes where all tables in a database share a common S3 prefix. When omitted, each table must specify its own location.
+
+**Description** -- A human-readable description (up to 2048 characters) helps teams understand the purpose and contents of the catalog namespace. Visible in the AWS Glue console, Athena, and API responses.
+
+**Database shape** -- A database is exactly one of three shapes. A regular database is the common case. A resource link (`targetDatabase` with the owning account's catalog ID and database name) makes a database shared via AWS RAM / Lake Formation queryable locally; it carries no storage or schema of its own. A federated database (`federatedDatabase` with a source identifier and Glue connection, e.g. a Redshift datashare over `aws:redshift`) projects an external source into the catalog without copying data. The shape's coordinates are fixed at creation.
+
+**Catalog parameters** -- Free-form key-value properties (`parameters`) attached to the database entry and read by engines and governance tooling: classification hints, team ownership labels, engine-specific switches. These are catalog metadata, not AWS resource tags.
+
+**Lake Formation default grants** -- `createTableDefaultPermissions` sets the permissions tables created in this database start with. When omitted, AWS grants ALL to the virtual group `IAM_ALLOWED_PRINCIPALS` (the IAM-compatibility mode). A single entry with an empty permission list and no principal disables that default -- the recommended hardening step when migrating to Lake Formation permissions.
+
+**Cross-account catalog** -- `catalogId` creates the database inside another account's Data Catalog (requires a matching catalog resource policy there). Fixed at creation; changing it replaces the database.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `database_name` | Glue Data Catalog database name | Athena queries (`FROM database.table`), Glue crawler targets, ETL job scripts |
+| `database_arn` | Amazon Resource Name of the database | IAM policies, Lake Formation permissions |
+| `catalog_id` | AWS Glue Data Catalog ID (AWS Account ID) | Glue crawler configuration, cross-account catalog references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic data catalog** -- A minimal database with just a description. Tables are created by Glue Crawlers, Athena CTAS statements, or Glue ETL jobs, each specifying its own S3 location. Start from the **Basic Data Catalog** preset.
+
+**S3 data lake** -- A database with a default `locationUri` pointing to a shared S3 prefix, classification `parameters`, and Lake Formation default grants. New tables inherit this base path, keeping the data lake organized under a consistent directory structure. Start from the **S3 Data Lake** preset.
+
+**Shared database link** -- A resource link to a database another account shared via AWS RAM / Lake Formation, making its tables queryable from Athena, Redshift Spectrum, and EMR in this account. Start from the **Shared Database Link** preset.
+
+## Works With
+
+This component operates independently and does not reference other deployment components.

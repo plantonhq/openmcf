@@ -32,8 +32,8 @@ tf/
 tofu init -backend=false && tofu validate
 ```
 
-The full offline proof runs through the CLI against `iac/hack/manifest.yaml`:
+The full offline proof runs through the CLI against `../../e2e/manifest.yaml`:
 
 ```bash
-planton tofu plan --manifest ../hack/manifest.yaml --module-dir .
+planton tofu plan --manifest ../../e2e/manifest.yaml --module-dir .
 ```

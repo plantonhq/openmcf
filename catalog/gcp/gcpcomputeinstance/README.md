@@ -104,7 +104,7 @@ This creates a Spot Debian 12 VM on the default network with an ephemeral extern
 | `machine_type` | Machine type |
 | `cpu_platform` | CPU platform the instance landed on |
 
-See the [presets](presets/) for remixable starting points and docs/README.md for the deep dive.
+See the [presets](presets/) for remixable starting points and GUIDE.md for the deep dive.
 
 ---
 

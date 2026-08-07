@@ -12,7 +12,7 @@ Preview:
 
 ```shell
 planton pulumi preview \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -21,7 +21,7 @@ Update (apply):
 
 ```shell
 planton pulumi update \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
@@ -31,7 +31,7 @@ Refresh:
 
 ```shell
 planton pulumi refresh \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir .
 ```
@@ -40,7 +40,7 @@ Destroy:
 
 ```shell
 planton pulumi destroy \
-  --manifest ../hack/manifest.yaml \
+  --manifest ../../e2e/manifest.yaml \
   --stack organization/<project>/<stack> \
   --module-dir . \
   --yes
@@ -48,7 +48,7 @@ planton pulumi destroy \
 
 ## Examples
 
-See `./examples.md` for sample manifests.
+See `./../../e2e/manifest.yaml` for sample manifests.
 
 ## Debugging
 

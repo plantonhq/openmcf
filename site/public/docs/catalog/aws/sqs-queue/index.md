@@ -8,184 +8,131 @@ componentName: "awssqsqueue"
 
 # AWS SQS Queue
 
-Deploys an AWS SQS queue — Standard or FIFO — with optional server-side encryption, dead letter queue routing, IAM access policies, and delivery tuning. The module automatically appends the `.fifo` suffix to the queue name when `fifoQueue` is true and the metadata name does not already include it.
+Deploys an SQS queue (Standard or FIFO) with configurable delivery settings, dead letter queue routing, encryption (SQS-managed SSE or customer-managed KMS), and IAM access policies. The queue integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys and other SQS queues.
 
 ## What Gets Created
 
-When you deploy an AwsSqsQueue resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **SQS Queue** — a Standard or FIFO `aws_sqs_queue` resource with the specified delivery settings, encryption configuration, and access policy
-- **Redrive Policy** — configured on the queue only when `deadLetterConfig` is provided, routes messages to a dead letter queue after the specified number of receive attempts
-- **AWS Tags** — resource, organization, environment, resource kind, and resource ID tags applied to the queue
+- **SQS Queue** -- a Standard or FIFO queue named from your manifest's `metadata.name`, with configurable visibility timeout, message retention, delay, and long polling settings
+- **FIFO Configuration** -- created only when `fifoQueue` is `true`; enables content-based deduplication, per-message-group deduplication scope, and high-throughput mode. FIFO queue names automatically receive the `.fifo` suffix
+- **Dead Letter Queue Redrive Policy** -- configured only when `deadLetterConfig` is provided; routes messages that exceed `maxReceiveCount` receive attempts to a target DLQ
+- **Redrive Allow Policy** -- attached only when `redriveAllowPolicy` is provided; restricts which source queues may use this queue as their dead letter queue (`allowAll`, `denyAll`, or `byQueue` with an explicit list of up to 10 source queue ARNs)
+- **Server-Side Encryption** -- SSE-SQS when `sqsManagedSseEnabled` is `true`, or SSE-KMS when `kmsKeyId` is provided (mutually exclusive)
+- **IAM Access Policy** -- attached only when `policy` is provided; controls which AWS principals can send, receive, or manage messages
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **A dead letter queue** (another AwsSqsQueue) if using dead letter queue routing — both queues must be the same type (both Standard or both FIFO) and reside in the same account and region
-- **A KMS key** if using customer-managed encryption instead of SQS-managed SSE
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-Create a file `queue.yaml`:
+### AWS Account
+
+- **A KMS key** (optional) -- required only when using KMS encryption instead of SQS-managed SSE. Provide the key ID or ARN directly, or reference an AwsKmsKey Cloud Resource via ValueFromRef.
+- **A dead letter queue** (optional) -- must exist in the same AWS account and region, and be the same type (Standard or FIFO) as the source queue. Provide the ARN directly or reference another AwsSqsQueue Cloud Resource.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS SQS Queue**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Queue** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsSqsQueue
 metadata:
-  name: my-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsSqsQueue.my-queue
+  name: order-events
+  org: acme-corp
+  env: prod
 spec:
-  region: us-east-1
+  region: us-west-2
   sqsManagedSseEnabled: true
+  receiveWaitTimeSeconds: 20
+  visibilityTimeoutSeconds: 30
 ```
-
-Deploy:
 
 ```shell
-planton apply -f queue.yaml
+planton apply -f sqs-queue.yaml
 ```
 
-This creates a Standard SQS queue with SQS-managed encryption and all other settings at AWS defaults.
+This creates a Standard queue with SQS-managed encryption, long polling enabled (20s wait), and a 30-second visibility timeout. No dead letter queue or FIFO settings are configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the SQS queue will be created. | Required |
-
-All other configuration is optional with AWS defaults.
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `fifoQueue` | `bool` | `false` | Create a FIFO queue with exactly-once processing and strict ordering. Cannot be changed after creation. FIFO queue names must end with `.fifo`; the module appends this suffix automatically. |
-| `visibilityTimeoutSeconds` | `int32` | AWS: 30 | Time in seconds a received message is hidden from subsequent receive requests (0–43200). |
-| `messageRetentionSeconds` | `int32` | AWS: 345600 | Duration in seconds SQS retains a message before deleting it (60–1209600). Leave at 0 for AWS default of 4 days. |
-| `maxMessageSizeBytes` | `int32` | AWS: 262144 | Maximum message body size in bytes (1024–1048576). Leave at 0 for AWS default of 256 KB. |
-| `delaySeconds` | `int32` | AWS: 0 | Delay in seconds before newly sent messages become visible (0–900). |
-| `receiveWaitTimeSeconds` | `int32` | AWS: 0 | Long polling wait time in seconds for the ReceiveMessage API (0–20). Values greater than 0 enable long polling. |
-| `contentBasedDeduplication` | `bool` | `false` | Use SHA-256 hash of the message body as the deduplication ID. Only valid when `fifoQueue` is `true`. |
-| `deduplicationScope` | `string` | — | Deduplication scope: `"messageGroup"` or `"queue"`. Only valid when `fifoQueue` is `true`. |
-| `fifoThroughputLimit` | `string` | — | Throughput limit: `"perMessageGroupId"` (high throughput mode) or `"perQueue"`. Only valid when `fifoQueue` is `true`. |
-| `deadLetterConfig.targetArn` | `StringValueOrRef` | — | ARN of the dead letter queue. Can reference AwsSqsQueue via `valueFrom`. Required when `deadLetterConfig` is set. Both queues must be the same type. |
-| `deadLetterConfig.maxReceiveCount` | `int32` | — | Number of receive attempts before routing to the DLQ (1–1000). Required when `deadLetterConfig` is set. |
-| `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key ID or ARN for server-side encryption. Can reference AwsKmsKey via `valueFrom`. Mutually exclusive with `sqsManagedSseEnabled`. |
-| `kmsDataKeyReusePeriodSeconds` | `int32` | AWS: 300 | Duration in seconds SQS reuses a data key before calling KMS again (60–86400). Only relevant when `kmsKeyId` is set. |
-| `sqsManagedSseEnabled` | `bool` | `false` | Enable SQS-managed server-side encryption (SSE-SQS). Mutually exclusive with `kmsKeyId`. |
-| `policy` | `Struct` | — | IAM access policy document controlling which principals can perform actions on this queue. Expressed as a JSON structure in YAML. |
-| `redriveAllowPolicy.redrivePermission` | `string` | AWS: `allowAll` | Which SOURCE queues may use this queue as their DLQ: `"allowAll"`, `"denyAll"`, or `"byQueue"`. |
-| `redriveAllowPolicy.sourceQueueArns` | `StringValueOrRef[]` | — | With `"byQueue"`, the 1–10 source queues permitted to redrive into this queue. Can reference AwsSqsQueue via `valueFrom`. Must be empty for the other modes. |
-
-## Examples
-
-### FIFO Queue with Dead Letter Queue
-
-A FIFO queue for payment processing with content-based deduplication and a dead letter queue for failed messages:
+When using KMS encryption or dead letter queues, use ValueFromRef to wire dependencies deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSqsQueue
-metadata:
-  name: payment-events
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSqsQueue.payment-events
 spec:
-  region: us-east-1
-  fifoQueue: true
-  contentBasedDeduplication: true
-  sqsManagedSseEnabled: true
-  visibilityTimeoutSeconds: 120
+  kmsKeyId:
+    valueFrom:
+      kind: AwsKmsKey
+      name: messaging-key
+      fieldPath: status.outputs.key_arn
   deadLetterConfig:
     targetArn:
       valueFrom:
         kind: AwsSqsQueue
-        name: payment-events-dlq
+        name: order-events-dlq
         fieldPath: status.outputs.queue_arn
     maxReceiveCount: 3
 ```
 
-### Long-Polling Standard Queue with Extended Retention
+The InfraPipeline resolves the dependency graph, deploys the KMS key and DLQ first, then provisions the queue with the resolved values.
 
-A Standard queue configured for long polling to reduce empty responses, with a 7-day retention period:
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSqsQueue
-metadata:
-  name: task-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsSqsQueue.task-queue
-spec:
-  region: us-east-1
-  sqsManagedSseEnabled: true
-  receiveWaitTimeSeconds: 20
-  visibilityTimeoutSeconds: 60
-  messageRetentionSeconds: 604800
-```
+These are the most important decisions when configuring an SQS queue. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### KMS-Encrypted Queue with Cross-Account Access Policy
+**Standard vs. FIFO** -- Standard queues offer maximum throughput with best-effort ordering and at-least-once delivery. FIFO queues guarantee exactly-once processing and strict message ordering within each message group, at the cost of lower throughput. Set `fifoQueue: true` for FIFO. This cannot be changed after creation.
 
-A queue encrypted with a customer-managed KMS key and an IAM policy granting an SNS topic permission to publish messages:
+**Encryption method** -- Choose `sqsManagedSseEnabled: true` for zero-cost SQS-managed encryption, or provide `kmsKeyId` for customer-managed KMS encryption with CloudTrail audit trails and key rotation control. The two are mutually exclusive.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSqsQueue
-metadata:
-  name: notifications-queue
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSqsQueue.notifications-queue
-spec:
-  region: us-east-1
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: sqs-encryption-key
-      fieldPath: status.outputs.key_arn
-  kmsDataKeyReusePeriodSeconds: 600
-  visibilityTimeoutSeconds: 300
-  messageRetentionSeconds: 1209600
-  policy:
-    Version: "2012-10-17"
-    Statement:
-      - Effect: Allow
-        Principal:
-          Service: sns.amazonaws.com
-        Action: sqs:SendMessage
-        Resource: "*"
-        Condition:
-          ArnEquals:
-            aws:SourceArn: arn:aws:sns:us-east-1:123456789012:order-events
-```
+**Dead letter queue** -- Configure `deadLetterConfig` with a `targetArn` and `maxReceiveCount` to route poison messages to a separate queue for investigation. Both queues must be the same type (Standard or FIFO) and in the same account and region.
 
-## Stack Outputs
+**Shared DLQ protection** -- When this queue serves as a dead letter queue for other queues, set `redriveAllowPolicy` with `redrivePermission: byQueue` and list the permitted `sourceQueueArns` (1-10 entries, each a literal ARN or a ValueFromRef to another AwsSqsQueue). Leaving the policy unset keeps AWS's default: any queue in the account may dead-letter here.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Access policy** -- Provide `policy` (a standard IAM policy document) to let SNS topics publish to the queue, receive S3 or EventBridge notifications, or grant cross-account consumers access. Leave it unset to keep the queue private to the owning account.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `queue_url` | `string` | SQS queue URL — primary identifier for API calls (SendMessage, ReceiveMessage, DeleteMessage) |
-| `queue_arn` | `string` | Queue ARN — used in IAM policies, cross-service permissions, and dead letter queue target references |
-| `queue_name` | `string` | Queue name (includes `.fifo` suffix for FIFO queues) |
+**Long polling** -- Set `receiveWaitTimeSeconds` to 1-20 to reduce empty responses and lower costs. The default (0) uses short polling, which returns immediately even when no messages are available.
 
-## Related Components
+**FIFO high throughput** -- For FIFO queues processing independent message groups, set `fifoThroughputLimit: perMessageGroupId` and `deduplicationScope: messageGroup` to unlock higher per-queue throughput.
 
-- [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed encryption key for SSE-KMS
-- [AwsLambda](/docs/catalog/aws/lambda) — event source mapping from SQS to Lambda for serverless processing
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — fan-out messages to multiple SQS queues via SNS subscriptions
-- [AwsIamRole](/docs/catalog/aws/iam-role) — provides roles for services that need to interact with this queue
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+| **AwsSqsQueue** (optional) | `deadLetterConfig.targetArn` | `status.outputs.queue_arn` |
+| **AwsSqsQueue** (optional) | `redriveAllowPolicy.sourceQueueArns` | `status.outputs.queue_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `queue_url` | SQS queue URL | Application SDK calls (SendMessage, ReceiveMessage) |
+| `queue_arn` | Amazon Resource Name | IAM policies, SNS subscription endpoints, dead letter queue targets |
+| `queue_name` | Queue name (includes `.fifo` suffix for FIFO queues) | Application configuration, CloudWatch alarm dimensions |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard queue with long polling** -- SQS-managed encryption, 20-second long polling, and 30-second visibility timeout. The baseline configuration for most workloads. Start from the **Standard Queue** preset.
+
+**FIFO queue with deduplication** -- Content-based deduplication, per-message-group scope, high-throughput mode, and a dead letter queue for poison messages. Suitable for order processing and financial transaction pipelines. Start from the **FIFO With Deduplication** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for KMS-based message encryption
+- [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- provides a dead letter queue target for failed message routing

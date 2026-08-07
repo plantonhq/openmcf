@@ -6,226 +6,119 @@ order: 100
 componentName: "ociloggroup"
 ---
 
-# OCI Log Group
+# Log Group on OCI
 
-Deploys an Oracle Cloud Infrastructure Log Group with bundled logs. The log group is the organizational container for OCI Logging service logs. Logs can be either service logs (auto-collected from OCI services like Object Storage, API Gateway, Functions) or custom logs (ingested via the Logging Ingestion API).
+Deploys an Oracle Cloud Infrastructure Log Group with bundled individual logs -- the organizational container for the OCI Logging service. A log group holds service logs (auto-collected from OCI services like VCN flow logs, Object Storage, and API Gateway) and custom logs (ingested via the Logging Ingestion API). Logs are bundled as sub-resources because they cannot exist outside a log group. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to compartments.
 
 ## What Gets Created
 
-When you deploy an OciLogGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Log Group** — a `logging.LogGroup` resource in the specified compartment with an optional description.
-- **Logs** — one `logging.Log` per entry in the `logs` list. Each log is created within the group with a specified type (custom or service), optional enable flag, optional retention duration, and optional service log source configuration. Logs depend on the group for creation ordering.
+- **Log Group** -- a `logging.LogGroup` in the specified compartment with display name and description
+- **Logs** -- one `logging.Log` per entry in the `logs` list. Each log is either a service log (with source configuration) or a custom log (accepting entries via the Ingestion API). Logs depend on the log group and are created after it.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the log group and each log
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the log group will be created — either a literal value or a reference to an OciCompartment resource
-- **Source resource OCIDs** (for service logs) — the OCID of the OCI resource emitting logs (e.g., a VCN for flow logs, a bucket for Object Storage logs)
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `log-group.yaml`:
+### OCI Tenancy
+
+- A compartment to place the log group in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- For service logs: the OCID of the source resource (e.g., a VCN subnet for flow logs, a bucket for Object Storage logs, an API gateway deployment). Provide directly or reference via ValueFromRef.
+- Knowledge of the target service's log namespace and category (e.g., `flowlogs`/`all`, `objectstorage`/`write`, `apigateway`/`access`).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Log Group on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **VCN Flow Logs** preset in the [Presets](#presets) tab to pre-populate a log group with a service log collecting VCN network traffic data.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciLogGroup
 metadata:
-  name: my-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciLogGroup.my-logs
+  name: network-logs
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
+  description: VCN flow logs for network traffic auditing
   logs:
-    - displayName: "app-log"
-      logType: custom
+    - displayName: vcn-flow-log
+      logType: service
+      isEnabled: true
+      retentionDuration: 90
+      configuration:
+        service: flowlogs
+        resource:
+          value: "ocid1.subnet.oc1..example"
+        category: all
 ```
-
-Deploy:
 
 ```shell
 planton apply -f log-group.yaml
 ```
 
-This creates a log group with one custom log that accepts entries via the Logging Ingestion API. The log group OCID is exported as a stack output.
+This creates a log group with a single service log collecting all VCN flow log categories from the specified subnet, retained for 90 days. Custom logs and additional service logs can be added to the `logs` list.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the log group will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | — | Description for the log group. |
-| `logs` | `Log[]` | — | Logs within this group. Each log is identified by its `displayName`, which must be unique within the group. |
-
-### Log
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `displayName` | `string` | — | Display name for the log. Used as the IaC resource key. Must be unique within the group. Required. |
-| `logType` | `enum` | — | Type of log: `custom` (entries pushed via Ingestion API) or `service` (auto-collected from OCI services). Required. |
-| `isEnabled` | `bool` | `true` | Whether the log is enabled. |
-| `retentionDuration` | `int32` | `30` | Retention period in days. Must be a 30-day increment: 30, 60, 90, 120, 150, or 180. |
-| `configuration` | `ServiceLogConfiguration` | — | Source configuration for service logs. Required when `logType` is `service`; ignored for custom logs. |
-
-### ServiceLogConfiguration
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `service` | `string` | OCI service generating the log. Examples: `"objectstorage"`, `"flowlogs"`, `"apigateway"`, `"loadbalancer"`, `"functionsInvoke"`. Required. |
-| `resource` | `StringValueOrRef` | OCID of the resource emitting logs (e.g., a VCN, bucket, API gateway). Can reference any Planton component via `valueFrom`. Required. |
-| `category` | `string` | Log category within the service. Examples: `"write"`, `"read"`, `"all"` (Object Storage); `"access"` (API Gateway); `"invoke"` (Functions). Required. |
-| `parameters` | `map<string, string>` | Additional parameters for the log source. Pass-through to OCI. |
-| `compartmentId` | `StringValueOrRef` | Optional compartment override for source resource lookup. When omitted, the log group's compartment is used. Can reference an OciCompartment via `valueFrom`. |
-
-## Examples
-
-### Custom Log for Application Ingestion
-
-A log group with a single custom log for application-level log ingestion:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the log group to a compartment deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciLogGroup
-metadata:
-  name: app-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciLogGroup.app-logs
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  logs:
-    - displayName: "application"
-      logType: custom
-      retentionDuration: 60
-```
-
-### VCN Flow Logs
-
-A log group collecting VCN flow logs from a subnet:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciLogGroup
-metadata:
-  name: network-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciLogGroup.network-logs
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-compartment
+      name: observability
       fieldPath: status.outputs.compartmentId
-  description: "VCN flow logs for network traffic analysis"
-  logs:
-    - displayName: "vcn-flow-log"
-      logType: service
-      retentionDuration: 90
-      configuration:
-        service: "flowlogs"
-        resource:
-          valueFrom:
-            kind: OciSubnet
-            name: private-subnet
-            fieldPath: status.outputs.subnetId
-        category: "all"
 ```
 
-### Mixed Service and Custom Logs
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the log group with the resolved compartment OCID.
 
-A log group with both Object Storage write logs and a custom application log:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciLogGroup
-metadata:
-  name: platform-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciLogGroup.platform-logs
-spec:
-  compartmentId:
-    valueFrom:
-      kind: OciCompartment
-      name: prod-compartment
-      fieldPath: status.outputs.compartmentId
-  description: "Platform observability logs"
-  logs:
-    - displayName: "bucket-writes"
-      logType: service
-      retentionDuration: 180
-      configuration:
-        service: "objectstorage"
-        resource:
-          valueFrom:
-            kind: OciObjectStorageBucket
-            name: data-bucket
-            fieldPath: status.outputs.bucketId
-        category: "write"
-    - displayName: "app-audit"
-      logType: custom
-      retentionDuration: 180
+These are the most important decisions when configuring a log group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```
+**Log type** -- Each log entry must set `logType` to `service` or `custom`. Service logs auto-collect from OCI services and require a `configuration` block specifying the source service, resource OCID, and category. Custom logs accept entries pushed via the Logging Ingestion API and do not require configuration. The `logType` is a ForceNew field -- changing it forces log recreation.
 
-### API Gateway Access Logs
+**Service log configuration** -- For service logs, `configuration.service` identifies the OCI service (e.g., `flowlogs`, `objectstorage`, `apigateway`, `loadbalancer`, `functionsInvoke`), `configuration.resource` provides the source resource OCID, and `configuration.category` selects the log category. The entire configuration block is ForceNew.
 
-A log group collecting access logs from an API Gateway deployment:
+**Retention duration** -- Set `retentionDuration` in 30-day increments between 30 and 180 days. When omitted, OCI defaults to 30 days. Longer retention increases storage costs but is required for compliance (e.g., 90 days for SOC 2, 180 days for extended audit trails). Retention is updatable without recreation.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciLogGroup
-metadata:
-  name: api-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciLogGroup.api-logs
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  logs:
-    - displayName: "gateway-access"
-      logType: service
-      configuration:
-        service: "apigateway"
-        resource:
-          value: "ocid1.apigateway.oc1..example"
-        category: "access"
-```
+**Display name uniqueness** -- Each log's `displayName` must be unique within the log group. The display name is used as the resource key in IaC modules. Choose descriptive names that identify the log source (e.g., `vcn-flow-log`, `api-gateway-access`, `app-custom-log`).
 
-## Stack Outputs
+## Outputs and Dependencies
 
-After deployment, the following outputs are available in `status.outputs`:
+### What This Component Consumes
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `log_group_id` | `string` | OCID of the log group |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
 
-## Related Components
+### What This Component Provides
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciVcn](/docs/catalog/oci/vcn) — VCNs and subnets are common sources for flow logs
-- [OciObjectStorageBucket](/docs/catalog/oci/object-storage-bucket) — buckets are common sources for Object Storage service logs
-- [OciApiGateway](/docs/catalog/oci/api-gateway) — API gateways emit access and execution logs
-- [OciFunctionsApplication](/docs/catalog/oci/functions-application) — functions emit invocation logs
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `log_group_id` | OCID of the log group | Log analytics, monitoring dashboards, IAM policy scoping |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**VCN flow logs** -- A log group with a service log collecting all VCN flow log categories from a subnet, retained for 90 days. The standard configuration for network traffic auditing and troubleshooting. Start from the **VCN Flow Logs** preset.
+
+**Custom application logs** -- A log group with a custom log for application-level entries pushed via the Logging Ingestion API. Retained for 30 days. Used for application observability without infrastructure-level log collection. Start from the **Custom Application Logs** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this log group

@@ -6,182 +6,119 @@ order: 100
 componentName: "kuberneteshelmrelease"
 ---
 
-# Kubernetes Helm Release
+# Helm Release
 
-Installs an upstream Helm chart as a real Helm release through a single declarative manifest — hooks run, release history is recorded, and `helm list` sees the release exactly as if the Helm CLI had installed it.
-
-**Check the catalog first.** If a first-class component exists for what you're deploying, use it: typed components validate their configuration before deploy and export composable outputs, while a generic chart install trusts you to get the chart's values right. KubernetesHelmRelease is the catalog's sole intentional passthrough, for charts no component covers — not the recommended path where one exists.
+Installs an upstream Helm chart as a REAL Helm release — the catalog's sole intentional passthrough. Both engines perform an actual `helm install`: hooks run, the release secret is written, and `helm list` shows the release exactly as if installed by the Helm CLI. Reach for this only when the catalog has no first-class component for the chart you need: typed components validate their configuration before deploy, export composable outputs, and teach their trade-offs field by field — a generic chart install does none of that.
 
 ## What Gets Created
 
-When you deploy a KubernetesHelmRelease resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Helm Release** — a real release installed from the chart (HTTP(S) repository or OCI registry) at the pinned version, with your merged values. Everything the chart creates belongs to Helm; the module never reaches into the chart's own resources
-- **Namespace** (optional) — when `create_namespace` is true, the target namespace is created with standard Planton governance labels and deleted with the resource
+- **Helm Release** -- the chart fetched from `repo` (an HTTPS repository index or an `oci://` registry pull), installed at the PINNED `version` into `namespace`, named `release_name` when set (otherwise `metadata.name`)
+- **Everything the chart renders** -- workloads, Services, ConfigMaps, and (unless `skip_crds`) the CRDs shipped in the chart's `crds/` directory; Helm installs chart CRDs only when absent and never upgrades or deletes them
+- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true, and deleted with the resource
 
-The chart's values surface is the configuration contract: values pass through to the chart unvalidated, and a typo'd value surfaces when the chart renders or its resources misbehave — not at apply.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A reachable chart source** — the HTTPS repository or OCI registry must be accessible from where the deploy runs; private sources need the credential fields
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- For a **private chart source**: an organization secret holding the repository password or registry token — `repository_password` stores a `$secret/<name>` reference, resolved just-in-time at deploy.
 
-## Quick Start
+### Cluster
 
-Create a file `helm-release.yaml` — podinfo 6.9.2 from its HTTPS repository:
+- The chart repository or OCI registry must be reachable from the execution environment.
+- If `create_namespace` is false, the target namespace must already exist.
+- Any operators or CRDs the CHART's resources depend on (but the chart does not itself ship) must be in place first.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Helm Release**, and click **Deploy**. The creation wizard walks you through placement, the pinned chart coordinates (with OCI-vs-HTTPS teaching), private-source access, the values file, the three `--set` override layers (with reference-only pickers for sensitive values), install behavior (atomic vs skip-await), CRDs and dependencies, upgrade behavior (reuse vs reset, rollback history), and the advanced escape dials. Start from a preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHelmRelease
 metadata:
   name: podinfo
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesHelmRelease.podinfo
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: podinfo
-  create_namespace: true
+    value: apps
+  createNamespace: true
   repo: https://stefanprodan.github.io/podinfo
   chart: podinfo
   version: 6.9.2
-  values_yaml: |
+  valuesYaml: |
     replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+  setString:
+    image.tag: "6.9.2"
+  atomic: true
 ```
-
-Deploy:
 
 ```shell
 planton apply -f helm-release.yaml
 ```
 
-The release is a real Helm release — `helm list -n podinfo`, `helm status podinfo -n podinfo`, and `helm rollback` all work on it.
+## Key Configuration
 
-## The Values Model
+These are the most important decisions when configuring a Helm release. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-Four layers, merged in this order on both engines (later wins), exactly as Helm defines them:
+**The version is pinned on purpose** -- an unpinned "latest" install is not reproducible, and reproducibility is the point of declaring the release here. Editing the version on a deployed release IS the `helm upgrade`.
 
-| Layer | Helm equivalent | Semantics |
-|-------|-----------------|-----------|
-| `values_yaml` | values file (`-f`) | A full YAML document: nested maps, lists, numbers, booleans. Applied first. No secrets here |
-| `set` | `--set` | Dotted-path overrides with Helm's coercion: `"true"` → boolean, digits → number, `"null"` deletes the key |
-| `set_string` | `--set-string` | Same paths, values stay literal strings — use for version-like tags (`"1.30"` would otherwise become the number 1.3) |
-| `set_sensitive` | `--set-string`, secret | Literal strings, highest precedence, kept out of rendered plans and state where each engine supports it |
+**The values model is Helm's own** -- `values_yaml` is the values file (applied first), and `set`, `set_string`, `set_sensitive` are the `--set` layers applied on top, in that order. Both engines merge the layers with identical precedence and hand Helm ONE final values map — the same manifest installs byte-identical releases on either engine.
 
-Both engines hand Helm one final merged map — the same manifest installs byte-identical releases on either engine.
+**The coercion boundary** -- `set` values get Helm's coercion ("true"/"false" become booleans, digits become numbers, null removes the key); a version-like value that must STAY a string ("1.30") belongs in `set_string`.
 
-## Configuration Reference
+**Secrets never enter the spec** -- `set_sensitive` values and `repository_password` are `$secret/<name>` references to organization secrets, resolved at deploy time and kept out of rendered plans and state where each engine supports it.
 
-### Required Fields
+**Atomic vs skip-await** -- atomic rolls a failed install/upgrade back whole (it must WAIT for readiness to know whether to roll back), skip-await returns as soon as Helm records the release; the spec rejects the pair. `wait_for_jobs` extends the readiness wait to chart Jobs and is ignored while the wait is skipped.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.namespace` | `StringValueOrRef` | Namespace to install into — a literal (`namespace: {value: my-ns}`) or a reference to a KubernetesNamespace resource. | required |
-| `spec.repo` | `string` | Chart repository: an HTTP(S) Helm repository URL or an `oci://` registry reference. For OCI, the chart is pulled as `<repo>/<chart>:<version>`. | must match `^(https?\|oci)://` |
-| `spec.chart` | `string` | Chart name within the repository (e.g. `podinfo`, `cert-manager`). | required |
-| `spec.version` | `string` | Exact chart version (e.g. `6.9.2`). Required — unpinned installs are not reproducible. | required |
+**Upgrades are declarative by default** -- the values declared here are the whole story on every upgrade. `reuse_values` merges over the previous release's values instead, `reset_values` starts from chart defaults — mutually exclusive. `max_history` bounds rollback history (0 keeps everything).
 
-### Optional Fields
+**Adoption is engine-asymmetric** -- `take_ownership` (adopt matching resources an earlier tool created) is honored by the Terraform provisioner only; the Pulumi engine's pinned SDK rejects the flag loudly rather than silently ignoring it.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.create_namespace` | `bool` | `false` | Create the namespace (with Planton governance labels) before installing; delete it with the resource. When false, the namespace must exist. |
-| `spec.release_name` | `string` | `metadata.name` | Overrides the Helm release name. Lowercase alphanumerics and hyphens, at most 53 characters (Helm's limit). |
-| `spec.values_yaml` | `string` | `""` | Chart values as a YAML document (see values model). |
-| `spec.set` / `spec.set_string` / `spec.set_sensitive` | `map<string, string>` | `{}` | The three override layers (see values model). |
-| `spec.repository_username` / `spec.repository_password` | `string` | `""` | Credentials for a private repository (HTTP basic auth) or OCI registry login. Must be set together — the spec rejects one without the other. Password is sensitive. |
-| `spec.atomic` | `bool` | `false` | A failed install/upgrade rolls everything back — never a half-deployed release. Cannot be combined with `skip_await`. |
-| `spec.cleanup_on_fail` | `bool` | `false` | A failed upgrade deletes the resources it newly created (lighter than `atomic`). |
-| `spec.skip_await` | `bool` | `false` | Return once Helm records the release, without waiting for readiness. Default is to wait. |
-| `spec.wait_for_jobs` | `bool` | `false` | When awaiting, also wait for chart-created Jobs to complete. |
-| `spec.timeout_seconds` | `int32` | `300` | Maximum seconds per Kubernetes operation (and for readiness when awaiting). |
-| `spec.skip_crds` | `bool` | `false` | Do not install CRDs from the chart's `crds/` directory. |
-| `spec.dependency_update` | `bool` | `false` | Run `helm dependency update` before installing. Most published charts bundle dependencies and don't need this. |
-| `spec.max_history` | `int32` | `10` | Release revisions kept for rollback (0 = unlimited). |
-| `spec.replace` | `bool` | `false` | Re-use a release name left behind by a failed/uninstalled release. Helm marks this unsafe in production. |
-| `spec.force_update` | `bool` | `false` | Force delete-and-recreate when a field can't be patched in place. Disruptive. |
-| `spec.reuse_values` / `spec.reset_values` | `bool` | `false` | Upgrade-time values handling: keep the last release's values vs. reset to chart defaults. Mutually exclusive. |
-| `spec.disable_webhooks` | `bool` | `false` | Chart hooks (pre/post install, upgrade, delete) do not run. |
-| `spec.disable_openapi_validation` | `bool` | `false` | Skip validating rendered manifests against the cluster's schema. |
-| `spec.take_ownership` | `bool` | `false` | Adopt existing resources into the release (Helm `--take-ownership`) — the migration knob. **Terraform provisioner only for now**; the Pulumi engine rejects it loudly rather than silently ignoring it. |
-| `spec.description` | `string` | `""` | Free-form note stored with the release (visible in `helm status`). |
+## Outputs and Dependencies
 
-## Examples
+### What This Component Consumes
 
-### OCI Registry Chart
+| Field | References | Purpose |
+|-------|-----------|---------|
+| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the release installs into |
 
-The same chart pulled from an OCI registry — only the `repo` scheme changes:
+### What This Component Provides
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesHelmRelease
-metadata:
-  name: podinfo-oci
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesHelmRelease.podinfo-oci
-spec:
-  namespace:
-    value: podinfo
-  create_namespace: true
-  repo: oci://ghcr.io/stefanprodan/charts
-  chart: podinfo
-  version: 6.9.2
-  set:
-    replicaCount: "2"
-  set_string:
-    image.tag: "6.9.2"
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-Note the split: `replicaCount` rides `set` (coerced to a number, which the chart expects), while `image.tag` rides `set_string` (stays a literal string — a tag like `"1.30"` under `set` would become the number 1.3).
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | The namespace the release is installed in | Debugging and composition |
+| `release_name` | The Helm release name (as shown by `helm list`) — `spec.release_name` when set, otherwise `metadata.name` | Addressing the release's derived objects |
+| `version` | The installed chart version | Auditing which chart bytes run |
+| `app_version` | The chart's appVersion — the upstream application version the chart packages | Auditing which software version runs |
+| `status` | The release status as Helm records it (e.g. `deployed`) | Health checks and composition gates |
+| `revision` | The release revision (1 on first install, incremented by each upgrade or rollback) | Change tracking |
 
-### Private Repository With Secret Values
+## Common Patterns
 
-Credentials for the chart pull, a secret chart value kept out of plans and state, and production lifecycle knobs:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesHelmRelease
-metadata:
-  name: private-chart
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesHelmRelease.private-chart
-spec:
-  namespace:
-    value: private-chart
-  create_namespace: true
-  repo: https://charts.example.com
-  chart: my-app
-  version: 1.4.2
-  repository_username: ci-bot
-  repository_password: <your-repository-password>
-  set_sensitive:
-    auth.apiKey: <your-api-key>
-  atomic: true
-  cleanup_on_fail: true
-```
+**Public HTTPS chart** -- a pinned chart from a public repository with a values document — the everyday shape.
 
-## Stack Outputs
+**OCI registry chart** -- an `oci://` reference pulled like a container image, with targeted `set`/`set_string` overrides.
 
-After deployment, the following outputs are available in `status.outputs` — what `helm list` and `helm status` would show, exported identically by both engines:
+**Private repository with secrets** -- repository credentials and sensitive chart values, all as organization-secret references; atomic install for rollback safety.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | The namespace the release is installed in |
-| `releaseName` | `string` | The Helm release name (`helm list` NAME column) |
-| `version` | `string` | The installed chart version |
-| `appVersion` | `string` | The chart's appVersion — the upstream application version the chart packages |
-| `status` | `string` | The release status as Helm records it (e.g. `deployed`) |
-| `revision` | `int32` | The release revision number (1 on install, incremented by upgrades/rollbacks) |
+## Works With
 
-## Related Components
-
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — manage the target namespace as its own resource and reference it from `spec.namespace` instead of using `create_namespace`
-- [KubernetesManifest](/docs/catalog/kubernetes/manifest) — the passthrough for raw manifests, when what you have is YAML rather than a chart
+- **Kubernetes Namespace** -- the placement target; reference one by name or compose it as a first-class resource.
+- **First-class chart components** -- when the catalog grows a typed component for a chart you run through this kind (cert-manager, ingress-nginx, Istio, and the rest already exist), prefer it: validation, outputs, and field-level teaching come with it.

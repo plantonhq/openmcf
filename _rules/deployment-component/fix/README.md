@@ -25,9 +25,9 @@ Components need targeted fixes:
 ```
 1. Fix Source Code (Proto, Pulumi, Terraform)
         ↓
-2. Update Documentation (README, docs/README.md)
+2. Update Documentation (README, GUIDE.md)
         ↓
-3. Update Examples (examples.md)
+3. Update Presets (presets/*.yaml + .md sidecars)
         ↓
 4. Update Tests (spec_test.go)
         ↓
@@ -105,19 +105,19 @@ variables.tf:
 
 **If mismatch:** Updates variables.tf to match proto
 
-#### 2. Proto ↔ Examples
+#### 2. Proto ↔ Presets
 
-**Check:** All examples use current field names and meet validation rules
+**Check:** All presets (and the e2e manifest) use current field names and meet validation rules
 
 ```
-examples.md:
+presets/01-standard.yaml:
   diskSizeGb: 100  # ✓ Matches spec.proto field name
   
 Not:
   disk_size: 100   # ❌ Wrong field name
 ```
 
-**If mismatch:** Updates examples to use correct fields
+**If mismatch:** Updates presets to use correct fields
 
 #### 3. Pulumi ↔ Terraform
 
@@ -190,7 +190,7 @@ spec.proto:
 
 --explain "Pulumi module hardcodes backup_retention_period to 7 days instead of using spec field"
 
---explain "examples.md uses deprecated 'database_name' field, should use 'db_identifier' from current spec"
+--explain "presets use deprecated 'database_name' field, should use 'db_identifier' from current spec"
 
 --explain "spec_test.go expects required validation on 'region' field but spec.proto doesn't have that validation"
 ```
@@ -219,8 +219,8 @@ Reading source code:
   ✓ Pulumi module (field usage)
   ✓ Terraform module (field usage)
   ✓ spec_test.go (current tests)
-  ✓ examples.md (current examples)
-  ✓ v1/docs/README.md (design context)
+  ✓ presets/*.yaml (current presets)
+  ✓ GUIDE.md (design context)
 
 Current Behavior:
   - Pattern: ^[a-z0-9-]+\.[a-z]{2,}$
@@ -269,7 +269,7 @@ Component tests: ✅ PASS (18/18)
 ```
 📝 Updating Documentation to Match Source
 
-[1/5] ✅ examples.md
+[1/5] ✅ presets/
   - Added: Wildcard Domain Example
   - Added: Multi-Domain Wildcard Example
   - Validated: All examples pass schema validation
@@ -279,7 +279,7 @@ Component tests: ✅ PASS (18/18)
   - Added: Wildcard support to Key Features
   - Updated: Example usage shows wildcard
 
-[3/5] ✅ docs/README.md (research)
+[3/5] ✅ GUIDE.md (authored judgment)
   - Updated: Comparison table (wildcard support)
   - Updated: Best Practices (wildcard patterns)
   - Updated: Planton Approach section
@@ -322,7 +322,7 @@ Check 4: Validations ↔ Tests
 Check 5: Docs ↔ Implementation
   ✅ README describes actual behavior
   ✅ Examples demonstrate actual API
-  ✅ Research docs explain actual approach
+  ✅ GUIDE.md explains actual approach
 
 All consistency checks passed!
 ```
@@ -337,11 +337,11 @@ Component Tests:
   ✅ PASS (18/18 tests, +2 new tests)
 
 Build Validation:
-  go build ./catalog/.../v1/...
+  go build ./catalog/...
   ✅ Success (all packages compiled)
 
 Full Test Suite:
-  go test -v ./catalog/.../v1/
+  go test -v ./catalog/...
   ✅ PASS (156/156 tests)
 
 All validation passed!
@@ -364,9 +364,9 @@ SOURCE CODE:
   ℹ️  Terraform module (verified, no changes needed)
 
 DOCUMENTATION:
-  📝 examples.md (2 new examples added)
+  📝 presets/ (2 new presets added)
   📝 README.md (features updated, example updated)
-  📝 docs/README.md (comparison updated, best practices updated)
+  📝 GUIDE.md (comparison updated, best practices updated)
   📝 iac/pulumi/README.md (example added)
   📝 iac/tf/README.md (example added)
 
@@ -388,7 +388,7 @@ Duration: 8 minutes
 
 Next Steps:
   1. Review changes (git diff)
-  2. Test manually (deploy with hack manifest)
+  2. Test manually (deploy with the e2e manifest)
   3. Commit:
      git add -A
      git commit -m "fix(gcp-cert): allow wildcard domains in validation"
@@ -417,7 +417,7 @@ Next Steps:
 
 **Fix:**
 ```bash
-@fix-planton-component MongodbAtlas --explain "spec.proto missing 'region' field which is essential for cluster deployment"
+@fix-planton-component AtlasMongodb --explain "spec.proto missing 'region' field which is essential for cluster deployment"
 ```
 
 **Actions:**
@@ -444,7 +444,7 @@ Next Steps:
 - Verify Terraform already uses spec field
 - Add test validating different retention values
 - Add example showing custom retention
-- Update overview (document backup behavior)
+- Update the Pulumi module README (document backup behavior)
 
 ### Scenario: Documentation Drift
 
@@ -452,12 +452,12 @@ Next Steps:
 
 **Fix:**
 ```bash
-@fix-planton-component PostgresKubernetes --explain "examples use 'database_name' but spec.proto uses 'db_identifier'"
+@fix-planton-component KubernetesPostgres --explain "examples use 'database_name' but spec.proto uses 'db_identifier'"
 ```
 
 **Actions:**
 - **Read spec.proto** (confirm db_identifier is correct)
-- Update examples.md (database_name → db_identifier everywhere)
+- Update presets (database_name → db_identifier everywhere)
 - Update README (fix any references)
 - Validate examples (ensure they work)
 - **No code changes** (code is already correct)
@@ -529,7 +529,7 @@ Fix automatically adds to variables.tf:
 **What:** After any change, ensures examples work
 
 **How:**
-- Extracts YAML from examples.md
+- Validates every preset YAML in presets/
 - Validates each against current spec.proto
 - Updates examples if validation fails
 - Adds examples if new fields added
@@ -629,7 +629,7 @@ Fix updates README:
 3. Documentation Propagation (3 min)
    - Add wildcard examples (2 new)
    - Update README (add wildcard to features)
-   - Update docs/README.md (update comparison)
+   - Update GUIDE.md (update comparison)
    - Update IaC READMEs (add examples)
 
 4. Consistency Validation (1 min)
@@ -684,7 +684,7 @@ Total: 8 minutes
 ### Example 3: Fix Documentation Only
 
 ```bash
-@fix-planton-component PostgresKubernetes --explain "examples.md uses deprecated 'database_name', should be 'db_identifier'"
+@fix-planton-component KubernetesPostgres --explain "presets use deprecated 'database_name', should be 'db_identifier'"
 ```
 
 **What happens:**
@@ -698,7 +698,7 @@ Total: 8 minutes
    - No changes needed (code is already correct)
 
 3. Documentation Update
-   - Update examples.md: database_name → db_identifier
+   - Update presets: database_name → db_identifier
    - Update README: Fix any references
    - Validate examples: ✓ All pass
 
@@ -712,7 +712,7 @@ Total: 8 minutes
 ### Example 4: Fix Test Logic
 
 ```bash
-@fix-planton-component MongodbAtlas --explain "test expects error for empty cluster_tier but proto has no validation rule"
+@fix-planton-component AtlasMongodb --explain "test expects error for empty cluster_tier but proto has no validation rule"
 ```
 
 **What happens:**
@@ -777,13 +777,13 @@ After fix:
 
 ```bash
 # After fix completes
-cd catalog/<provider>/<component>/v1/iac/hack/
+cd catalog/<provider>/<component>/iac/
 
-# Test with Pulumi
-cd pulumi && make local && pulumi up
+# Test with Pulumi (deploys the component's e2e manifest)
+cd pulumi && planton pulumi preview --manifest ../../e2e/manifest.yaml --stack organization/<project>/<stack> --module-dir .
 
 # Test with Terraform
-cd ../tf && terraform init && terraform plan
+cd ../tf && terraform init -backend=false && terraform validate
 ```
 
 ## Troubleshooting

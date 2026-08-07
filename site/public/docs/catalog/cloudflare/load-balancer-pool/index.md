@@ -6,49 +6,128 @@ order: 100
 componentName: "cloudflareloadbalancerpool"
 ---
 
-# Cloudflare Load Balancer Pool
+# Load Balancer Pool on Cloudflare
 
-Group origin servers into a reusable, health-checked pool that load balancers
-steer traffic to.
+Deploys a reusable Cloudflare Load Balancing origin pool. A pool groups origin servers, health-checks them via a referenced monitor, and is selected by one or more zone-scoped load balancers as default, fallback, or geo-routed pools. Pools are account-scoped, reusable, and have an independent lifecycle, and integrate with Planton's Provider Connections and ValueFromRef wiring for cross-resource dependency resolution.
 
 ## What Gets Created
 
-- A `cloudflare_load_balancer_pool` (account-scoped) with its origins, optional
-  monitor reference, check regions, load-shedding, origin steering, and
-  notification filters.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Load Balancer Pool** -- a pool containing the declared origins (with per-origin weight, port, host-header, and enabled state), linked to a health monitor, with optional check-region restriction, load shedding, origin steering, and notification filters
+- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
-- A Cloudflare account ID.
-- The **Load Balancing add-on** enabled on the account (paid add-on) — otherwise the
-  Load Balancing API returns `403`.
-- An API token with **Account → Load Balancing: Monitors and Pools → Edit** (pools are
-  account-scoped).
-- Optionally, a `CloudflareLoadBalancerMonitor` to health-check the origins. When a
-  monitor is attached, origin addresses must be **globally routable** (Cloudflare
-  rejects reserved / non-routable IPs), and `checkRegions` is **capped by plan tier**.
+## Before You Deploy
 
-## Configuration Reference
+### Planton Setup
 
-**Required**
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Load Balancing edit access. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-- `accountId`, `name`, `origins[]` (each with `name` + `address`).
+### Cloudflare Account
 
-**Optional**
+- **Load Balancing add-on** -- Cloudflare Load Balancing is a paid feature and must be enabled on your account before deploying.
+- **A health monitor** -- create a CloudflareLoadBalancerMonitor first (or reference an existing monitor ID) so the pool's origins are actively health-checked.
+- **Reachable origins** -- each origin address (IP or unproxied hostname) must be reachable for health checks and traffic. Internal addresses require a virtual-network ID.
 
-- `origins[]`: `weight`, `enabled`, `port`, `hostHeader`, `virtualNetworkId`,
-  `flattenCname`.
-- `monitor`, `checkRegions`, `enabled`, `minimumOrigins`, `latitude`, `longitude`,
-  `loadShedding`, `originSteering`, `notificationFilter`.
+## Deploy
 
-## Stack Outputs
+### Console
 
-| Output | Description |
-|---|---|
-| `pool_id` | The pool ID |
-| `pool_name` | The pool name |
+Open the deployment store, find **Load Balancer Pool on Cloudflare**, and click **Deploy**. The creation wizard walks you through account and name, the origins builder, the monitor reference and check regions, and optional advanced tuning. Start from the **Web pool** preset in the [Presets](#presets) tab.
 
-## Related Components
+### CLI
 
-- CloudflareLoadBalancerMonitor
-- CloudflareLoadBalancer
+Create a manifest and apply it:
+
+```yaml
+apiVersion: cloudflare.planton.dev/v1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: web-pool
+  org: acme-corp
+  env: prod
+spec:
+  accountId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+  name: web-pool
+  origins:
+    - name: origin-1
+      address:
+        value: 203.0.113.10
+      weight: 1
+    - name: origin-2
+      address:
+        value: 203.0.113.11
+      weight: 1
+  monitor:
+    valueFrom:
+      kind: CloudflareLoadBalancerMonitor
+      name: web-https
+      fieldPath: status.outputs.monitor_id
+  minimumOrigins: 1
+```
+
+```shell
+planton apply -f cloudflare-load-balancer-pool.yaml
+```
+
+This creates a two-origin pool health-checked by a referenced monitor. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+Deploy the monitor and pool together and wire the pool to the monitor with ValueFromRef:
+
+```yaml
+spec:
+  monitor:
+    valueFrom:
+      kind: CloudflareLoadBalancerMonitor
+      name: web-https
+      fieldPath: status.outputs.monitor_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the monitor first, then provisions the pool with the resolved monitor ID. A load balancer then references this pool's `status.outputs.pool_id`.
+
+## Key Configuration
+
+These are the most important decisions when configuring a pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Origins** -- The servers behind the pool. Each origin's `address` can be a literal IP/unproxied hostname or a `valueFrom` reference to another resource's output, so the pool tracks backends as they are recreated. `weight` (0.0-1.0) drives weighted steering; `port` and `hostHeader` tune the connection.
+
+**Monitor** -- The `monitor` foreign key references a CloudflareLoadBalancerMonitor. Without a monitor, every origin is treated as permanently healthy and traffic keeps flowing to failed origins -- always attach one in production.
+
+**Minimum origins** -- The pool fails over when fewer than `minimumOrigins` origins are healthy (default 1). Raise it to fail a pool over before it is fully drained rather than overloading a lone survivor.
+
+**Check regions** -- Restrict which Cloudflare regions run the health checks. Leave empty to check from every data center, or pin to regions near your origins to reflect real client geography and reduce probe traffic.
+
+**Advanced tuning** -- Optional: proximity coordinates (for geo/proximity steering), load shedding (drain a pool gracefully), origin steering policy (random, hash, least-connections, least-outstanding-requests), and health-notification filters.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareLoadBalancerMonitor** | `monitor` | `status.outputs.monitor_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `pool_id` | The Cloudflare-assigned identifier of the pool | Referenced by a CloudflareLoadBalancer's `default_pools`, `fallback_pool`, or geo-pool maps |
+| `pool_name` | The pool name (echoed for convenience) | Verification, dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web pool with two origins** -- Two interchangeable web origins health-checked by an HTTPS monitor, ready to attach to a load balancer's default pools. Use for standard balanced backends. Start from the **Web pool** preset.
+
+**Geo-located pool** -- A regional pool tagged with latitude/longitude and a least-connections origin policy, for proximity or geo steering across regional backends. Start from the **Geo-located pool** preset.
+
+## Works With
+
+- [**Load Balancer Monitor on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-monitor) -- health-checks this pool's origins
+- [**Load Balancer on Cloudflare**](/cloud-catalog/cloudflare-load-balancer) -- references this pool as a default, fallback, or geo-routed pool

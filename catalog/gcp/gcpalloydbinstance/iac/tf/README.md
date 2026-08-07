@@ -5,12 +5,12 @@ Terraform implementation of Planton `GcpAlloydbInstance` with feature parity to 
 ## Usage with Planton CLI
 
 ```shell
-planton tofu init --manifest ../hack/manifest.yaml
-planton tofu plan --manifest ../hack/manifest.yaml
-planton tofu apply --manifest ../hack/manifest.yaml --auto-approve
+planton tofu init --manifest ../../e2e/manifest.yaml
+planton tofu plan --manifest ../../e2e/manifest.yaml
+planton tofu apply --manifest ../../e2e/manifest.yaml --auto-approve
 ```
 
-Manifest: `../hack/manifest.yaml`.
+Manifest: `../../e2e/manifest.yaml`.
 
 ## Outputs
 

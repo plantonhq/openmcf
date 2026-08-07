@@ -8,29 +8,51 @@ componentName: "gcpcomputedisk"
 
 # GCP Compute Disk
 
-Creates a zonal Google Compute Engine persistent disk — the durable block device behind stateful VMs — with source control (empty, image, snapshot, or clone of another disk), the full pd and hyperdisk type families with in-place IOPS/throughput tuning, customer-managed encryption, and a snapshot-before-destroy recovery net.
+Deploys a zonal Compute Engine persistent disk — the durable block device behind stateful VMs: database volumes, shared read-only datasets, bootable golden images, and any data that must outlive the instance it is attached to. Supports the full pd and hyperdisk type families with in-place performance tuning, customer-managed encryption, a snapshot-before-destroy recovery net, and ValueFromRef wiring to GCP projects, KMS keys, and other disks.
 
 ## What Gets Created
 
-- The Compute Engine API is enabled on the project (never disabled on destroy)
-- A `google_compute_disk` carrying your labels merged beneath Planton's attribution labels (`planton-ai_resource`, `planton-ai_name`, `planton-ai_kind`, plus org/env/id when set)
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Compute Engine Persistent Disk** -- a zonal block device in the specified project and zone, created empty (the common data-volume case) or initialized from exactly one source: an image (bootable), a snapshot (restore), or an existing GcpComputeDisk (clone)
+- **Performance Configuration** -- the disk type (pd-standard, pd-balanced, pd-ssd, pd-extreme, or hyperdisk-*), with provisioned IOPS/throughput dials on the types that support tuning
+- **Encryption** -- Google-managed by default; customer-managed (CMEK) when a GcpKmsKey is referenced, with optional confidential-compute mode on hyperdisk SKUs
+- **Destroy-Snapshot Net** -- created only when `createSnapshotBeforeDestroy` is enabled; a timestamped final snapshot taken immediately before the disk is destroyed
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **IAM permissions** — `roles/compute.storageAdmin` on the target project
-- For CMEK: a `GcpKmsKey` the Compute Engine service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `disk.yaml`:
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A GCP project** where the disk will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **IAM permissions** -- `roles/compute.storageAdmin` on the target project.
+- **For CMEK** -- the Compute Engine service agent (`service-<project-number>@compute-system.iam.gserviceaccount.com`) must hold `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the referenced GcpKmsKey.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Compute Disk**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Data Volume** preset in the [Presets](#presets) tab for the bread-and-butter empty data disk.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpComputeDisk
 metadata:
-  name: app-data
+  name: postgres-data
+  org: acme-corp
+  env: prod
 spec:
+  projectId:
+    value: "acme-prod-12345"
   zone: us-central1-a
   type: pd-balanced
   sizeGb: 100
@@ -38,56 +60,81 @@ spec:
     team: platform
 ```
 
-Deploy:
-
 ```shell
 planton apply -f disk.yaml
 ```
 
-This creates an empty 100 GB pd-balanced data disk whose data survives any VM it is later attached to — attach it via a `GcpComputeInstance`'s `attachedDisks[].source`.
+This creates an empty 100 GB pd-balanced disk ready to attach to a VM in `us-central1-a`.
 
-## Configuration Reference
+### InfraChart
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | StringValueOrRef | No | Owning project; empty uses the provider default. Immutable |
-| `diskName` | string | No | Disk name; falls back to `metadata.name`. Immutable |
-| `zone` | string | Yes | Zone, e.g. `us-central1-a`. Immutable |
-| `description` | string | No | Human-readable description |
-| `type` | string | No | `pd-standard` / `pd-balanced` / `pd-ssd` / `pd-extreme` / `hyperdisk-*`. Immutable |
-| `sizeGb` | int | Empty disks | Size in GB; grows in place, never shrinks |
-| `image` | string | No | Source image (family or self link) — bootable disk. Create-time only |
-| `sourceSnapshot` | string | No | Snapshot to restore from. Create-time only |
-| `sourceDisk` | StringValueOrRef | No | Existing `GcpComputeDisk` to clone. Create-time only |
-| `kmsKey` | StringValueOrRef | No | CMEK key (reference a `GcpKmsKey`). Immutable |
-| `provisionedIops` | int | pd-extreme, hyperdisk-extreme | IOPS; in-place tunable on hyperdisk (every 4h at most) |
-| `provisionedThroughput` | int | No | MB/s on hyperdisk types; in-place tunable (every 4h at most) |
-| `accessMode` | string | No | `READ_WRITE_SINGLE` (default), `READ_WRITE_MANY`, `READ_ONLY_MANY` |
-| `architecture` | string | No | `X86_64` or `ARM64`. Immutable |
-| `enableConfidentialCompute` | bool | No | Confidential-compute disk (hyperdisk SKUs; requires `kmsKey`) |
-| `physicalBlockSizeBytes` | int | No | 4096 (default) or 16384 |
-| `createSnapshotBeforeDestroy` | bool | No | Final snapshot at destroy — last-resort recovery net |
-| `snapshotBeforeDestroyPrefix` | string | No | Name prefix for that final snapshot |
-| `storagePool` | string | No | Hyperdisk storage pool |
-| `labels` | map | No | User labels (merged beneath platform labels) |
-| `resourceManagerTags` | map | No | `tagKeys/{id}` → `tagValues/{id}` (create-time only) |
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the disk to a project and CMEK key deployed in the same InfraPipeline — and wire the VM to the disk:
 
-At most one source (`image` / `sourceSnapshot` / `sourceDisk`); none creates an empty disk, which then requires `sizeGb`.
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+  kmsKey:
+    valueFrom:
+      kind: GcpKmsKey
+      name: disk-encryption-key
+      fieldPath: status.outputs.key_id
+```
 
-## Stack Outputs
+The consuming GcpComputeInstance then references this disk from `attachedDisks[].source` (or `bootDisk.sourceDisk`) via `status.outputs.self_link`.
 
-| Output | Description |
-|--------|-------------|
-| `name` | Name of the disk in GCP |
-| `disk_id` | Server-assigned unique numeric identifier |
-| `self_link` | Self-link URL — what instance attachments consume |
-| `zone` | Zone (plain zone name) |
-| `size_gb` | Provisioned size in GB |
-| `type` | Disk type (plain type name) |
+## Key Configuration
 
-## Related Resources
+These are the most important decisions when configuring a persistent disk. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- **GcpComputeInstance** — attach this disk via `attachedDisks[].source` or boot from it via `bootDisk.sourceDisk` (both reference the `self_link` output)
-- **GcpComputeDisk** — clone this disk into another via `sourceDisk` (self-reference by kind)
-- **GcpKmsKey** — CMEK protection via `kmsKey`
-- **GcpProject** — the owning project via `projectId`
+**Zone** -- A disk attaches only to instances in the SAME zone; put it where its VM lives. Immutable — cross-zone moves go through a snapshot round-trip.
+
+**Source and size** -- At most one source: empty (declare `sizeGb`), `image` (makes the disk bootable), `sourceSnapshot` (restore), or `sourceDisk` (clone another GcpComputeDisk). Size only GROWS — in place, with a filesystem grow from the guest; shrinking is impossible.
+
+**Type and performance** -- The pd-* family scales performance with size; the hyperdisk-* family decouples them with `provisionedIops`/`provisionedThroughput` dials that update IN PLACE (at most every 4 hours). pd-extreme and hyperdisk-extreme REQUIRE provisioned IOPS.
+
+**Access mode** -- `READ_ONLY_MANY` shares one dataset across many VMs; `READ_WRITE_MANY` needs a multi-writer-capable type (hyperdisk-ml).
+
+**Encryption and recovery** -- Reference a GcpKmsKey for CMEK (your revocation lever; immutable), and arm `createSnapshotBeforeDestroy` on precious volumes so even a mistaken destroy leaves a timestamped snapshot.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpComputeDisk** (optional) | `sourceDisk` (clone) | `status.outputs.self_link` |
+| **GcpKmsKey** (optional) | `kmsKey` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `self_link` | Self-link URL of the disk | GcpComputeInstance `bootDisk.sourceDisk` / `attachedDisks[].source` |
+| `name` | Name of the disk in GCP | Monitoring, snapshot schedules |
+| `disk_id` | Server-assigned unique numeric identifier | API references, audit logs |
+| `zone` | Zone the disk lives in | Placement checks for consuming VMs |
+| `size_gb` | Provisioned size in GB | Capacity planning |
+| `type` | Disk type (e.g. pd-balanced) | Cost reporting |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Data Volume** -- An empty 100 GB pd-balanced disk — the bread-and-butter data volume for any stateful VM. Start from the **Data Volume** preset.
+
+**Encrypted Database Volume** -- A 500 GB pd-ssd volume with CMEK encryption and the snapshot-before-destroy net armed — the posture for volumes that hold real customer data. Start from the **Encrypted Database Volume** preset.
+
+**Hyperdisk High IOPS** -- A 1 TB hyperdisk-balanced with 6,000 provisioned IOPS and 290 MB/s throughput, tunable in place as the workload grows. Start from the **Hyperdisk High IOPS** preset.
+
+## Works With
+
+- [**GCP Compute Instance**](/cloud-catalog/gcp-compute-instance) -- attaches this disk as a boot or data volume by self link
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the disk is created
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the customer-managed encryption key

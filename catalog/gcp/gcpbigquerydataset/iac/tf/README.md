@@ -48,5 +48,5 @@ outputs.tf     -- Outputs matching GcpBigQueryDatasetStackOutputs
 
 ```shell
 tofu init
-planton tofu plan --manifest ../hack/manifest.yaml
+planton tofu plan --manifest ../../e2e/manifest.yaml
 ```

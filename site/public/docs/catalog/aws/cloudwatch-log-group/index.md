@@ -8,33 +8,45 @@ componentName: "awscloudwatchloggroup"
 
 # AWS CloudWatch Log Group
 
-Deploys an AWS CloudWatch Logs log group with configurable retention policy, optional KMS encryption, log group class selection, deletion protection, and the group-scoped satellites: metric filters (log events → CloudWatch metrics), subscription filters (real-time delivery to Kinesis, Firehose, or Lambda), a data protection policy (PII audit + masking), and a field index policy (faster Logs Insights queries). The log group serves as a centralized destination for application logs, service logs, and operational data, and is referenced by many other AWS components including Step Functions, API Gateway, and OpenSearch.
+Deploys a CloudWatch Logs log group with configurable retention, optional customer-managed KMS encryption, log group class selection, and deletion protection. Log groups are the centralized destination for application logs, service logs, and operational data across AWS services. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS encryption keys.
 
 ## What Gets Created
 
-- **CloudWatch Log Group** — a container for log streams with the specified retention, encryption, class, and deletion-protection settings
-- **Metric filters** (optional) — one per named filter, publishing metrics extracted from matching log events
-- **Subscription filters** (optional, max 2) — real-time delivery of matching events to a Kinesis stream, Firehose delivery stream, or Lambda function
-- **Data protection policy** (optional) — audits and masks sensitive data (PII) in log events at ingestion
-- **Field index policy** (optional) — indexes selected log fields to accelerate and cheapen Logs Insights queries
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **CloudWatch Log Group** -- a log group container for log streams, configured with the specified retention period, log group class, and optional KMS encryption
+- **Retention Policy** -- created only when `retentionInDays` is set to a non-zero value; automatically deletes log events after the specified number of days
+- **KMS Encryption Configuration** -- configured only when `kmsKeyId` is provided; encrypts log data at rest with a customer-managed key instead of the default SSE-CWL encryption
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-- An AWS account with credentials configured in the stack input
-- An AwsKmsKey resource if enabling customer-managed encryption
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **A KMS key** (optional) -- required only when using customer-managed encryption. The key must be in the same region as the log group, and its policy must grant `logs.amazonaws.com` the required permissions. Provide the ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS CloudWatch Log Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard 30-Day Retention** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchLogGroup.app-logs
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   retentionInDays: 30
@@ -44,73 +56,14 @@ spec:
 planton apply -f log-group.yaml
 ```
 
-This creates a STANDARD class log group with 30-day retention using default AWS encryption.
+This creates a STANDARD class log group with 30-day retention and default AWS encryption. No KMS encryption or deletion protection is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-No fields are strictly required. An empty spec creates a STANDARD class log group with indefinite retention and default encryption.
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `retentionInDays` | int | 0 (never expire) | Days to retain log events. Must be one of: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653. Recommended default: 30. |
-| `kmsKeyId` | StringValueOrRef | — | KMS key ARN for encrypting log data at rest. Can reference an AwsKmsKey resource via `valueFrom`. The key policy must allow `logs.<region>.amazonaws.com`. |
-| `logGroupClass` | string | STANDARD | Log group class. Valid values: `STANDARD`, `INFREQUENT_ACCESS`, `DELIVERY`. ForceNew — changing requires replacing the log group. |
-| `deletionProtectionEnabled` | bool | false | When true, every delete (including IaC destroy) fails until the flag is cleared. |
-| `metricFilters[]` | list | — | Metric filters publishing CloudWatch metrics from matching log events. Each has a unique `name`, a `pattern` (empty = all events), and a `transformation` (metric name, namespace, value, optional default value / dimensions / unit). |
-| `subscriptionFilters[]` | list | — | Real-time subscriptions delivering matching events to a destination ARN (Kinesis stream, Firehose, or Lambda), with an IAM `roleArn` for Kinesis/Firehose delivery, `distribution` mode, and optional `@aws.account`/`@aws.region` enrichment. Maximum 2 per group. |
-| `dataProtectionPolicy` | object | — | CloudWatch Logs data protection policy document (audit + deidentify statements over data identifiers). |
-| `fieldIndexPolicy` | object | — | Field index policy document, e.g. `{"Fields": ["requestId"]}` (up to 20 fields). |
-
-**Validation rules:**
-- `retentionInDays` must be one of the AWS-allowed discrete values listed above
-- `logGroupClass` must be `STANDARD`, `INFREQUENT_ACCESS`, or `DELIVERY` when set
-- `retentionInDays` must not be set when `logGroupClass` is `DELIVERY` (AWS manages retention for Delivery log groups)
-- Metric filter and subscription filter names must be unique within the group; at most 2 subscription filters
-- Metric/subscription filters are rejected on `INFREQUENT_ACCESS` groups (AWS does not support them there)
-- A metric transformation cannot combine `defaultValue` with `dimensions`, and supports at most 3 dimensions
-
-## Examples
-
-### Standard 30-Day Retention
-
-A general-purpose log group for application logging:
+When using customer-managed encryption, use ValueFromRef to wire the log group to a KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchLogGroup
-metadata:
-  name: app-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchLogGroup.app-logs
 spec:
-  region: us-west-2
-  retentionInDays: 30
-```
-
-### Encrypted Production Log Group
-
-A log group with 90-day retention and KMS encryption for compliance workloads:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchLogGroup
-metadata:
-  name: prod-app-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchLogGroup.prod-app-logs
-spec:
-  region: us-west-2
-  retentionInDays: 90
   kmsKeyId:
     valueFrom:
       kind: AwsKmsKey
@@ -118,72 +71,61 @@ spec:
       fieldPath: status.outputs.key_arn
 ```
 
-### Error-Count Metric Filter (Log-Derived Alerting)
+The InfraPipeline resolves the dependency graph, deploys the KMS key first, then provisions the log group with customer-managed encryption using the resolved key ARN.
 
-A log group whose metric filter counts `ERROR` events, ready to alarm on with an AWS CloudWatch Alarm:
+## Key Configuration
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchLogGroup
-metadata:
-  name: app-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchLogGroup.app-logs
-spec:
-  region: us-west-2
-  retentionInDays: 30
-  metricFilters:
-    - name: error-count
-      pattern: "ERROR"
-      transformation:
-        metricName: ErrorCount
-        metricNamespace: MyApp/Errors
-        metricValue: "1"
-        defaultValue: 0
-```
+These are the most important decisions when configuring a CloudWatch log group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Infrequent Access for High-Volume Logs
+**Retention period** -- Set `retentionInDays` to control how long log events are kept. A value of 0 (the default) retains logs indefinitely, which accumulates storage costs over time. Common values: 30 days for dev/staging, 90 days for production, 365 days for compliance. AWS only accepts specific values (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653).
 
-A cost-optimized log group for VPC flow logs or CDN access logs:
+**Log group class** -- STANDARD (default) provides the full feature set including metric filters, subscription filters, and Contributor Insights. INFREQUENT_ACCESS offers ~50% cheaper storage but does not support metric filters or subscription filters -- best for high-volume logs queried rarely (VPC flow logs, CDN access logs). DELIVERY is purpose-built for AWS service log delivery at the lowest cost.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchLogGroup
-metadata:
-  name: vpc-flow-logs
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: networking
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchLogGroup.vpc-flow-logs
-spec:
-  region: us-west-2
-  retentionInDays: 365
-  logGroupClass: INFREQUENT_ACCESS
-  kmsKeyId:
-    valueFrom:
-      kind: AwsKmsKey
-      name: infra-key
-      fieldPath: status.outputs.key_arn
-```
+**KMS encryption** -- By default, CloudWatch Logs uses SSE-CWL encryption. Provide `kmsKeyId` with a customer-managed KMS key ARN when you need key rotation control, cross-account access via key policy, or CloudTrail audit trails of log data access. Required for most compliance frameworks.
 
-## Stack Outputs
+**Deletion protection** -- Set `deletionProtectionEnabled: true` to prevent accidental deletion of production log groups. Any destroy operation fails until the flag is set to false.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `log_group_arn` | string | The ARN of the CloudWatch Log Group. Used by downstream resources (Step Functions, API Gateway, OpenSearch) via `valueFrom`. |
-| `log_group_name` | string | The name of the CloudWatch Log Group. Used by services that reference log groups by name (ElastiCache, ECS). |
+**Metric filters** -- Turn log patterns into CloudWatch metrics without any processing code: each entry in `metricFilters` pairs a filter pattern with a metric transformation (name, namespace, value -- "1" counts occurrences, "$field" publishes an extracted value, up to 3 dimensions, an optional default for non-matches). The cheapest path from a log line to an alarm.
 
-## Related Components
+**Subscription filters** -- Stream matching log events in real time to a Kinesis data stream, Firehose delivery stream, or Lambda function (up to 2 per log group). Kinesis and Firehose destinations need a `roleArn` CloudWatch Logs assumes to write; cross-account destinations are referenced by literal ARN. `emitSystemFields` can stamp `@aws.account` / `@aws.region` onto forwarded events for centralized multi-account processing.
 
-- [AWS CloudWatch Alarm](/docs/catalog/aws/cloudwatch-alarm) — Alarms on metrics published by this group's metric filters
-- [AWS KMS Key](/docs/catalog/aws/kms-key) — Customer-managed encryption key for log data
-- [AWS Kinesis Stream](/docs/catalog/aws/kinesis-data-stream) — Real-time subscription filter destination
-- [AWS IAM Role](/docs/catalog/aws/iam-role) — Delivery role for Kinesis/Firehose subscription filters
-- [AWS Step Function](/docs/catalog/aws/step-functions) — Uses log group ARN for execution logging
-- [AWS HTTP API Gateway](/docs/catalog/aws/http-api-gateway) — Uses log group ARN for access logging
-- [AWS OpenSearch Domain](/docs/catalog/aws/opensearch-domain) — Uses log group ARN for slow logs, app logs, and audit logs
-- [AWS Route53 Zone](/docs/catalog/aws/route53-zone) — Uses log group ARN for public-zone query logging
+**Data policies** -- `dataProtectionPolicy` scans ingested events for sensitive data (AWS-managed identifiers for emails, credentials, cards) and masks it for everyone without the `logs:Unmask` permission. `fieldIndexPolicy` names up to 20 frequently-queried JSON fields that Logs Insights indexes for faster, cheaper queries.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
+| **AwsKinesisStream** (optional) | `subscriptionFilters[*].destinationArn` | `status.outputs.stream_arn` |
+| **AwsKinesisFirehose** (optional) | `subscriptionFilters[*].destinationArn` | `status.outputs.delivery_stream_arn` |
+| **AwsLambda** (optional) | `subscriptionFilters[*].destinationArn` | `status.outputs.function_arn` |
+| **AwsIamRole** (optional) | `subscriptionFilters[*].roleArn` | `status.outputs.role_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `log_group_arn` | Amazon Resource Name of the log group | Step Functions logging destination, API Gateway access logs, OpenSearch log publishing |
+| `log_group_name` | Name of the log group | ECS awslogs driver, ElastiCache log delivery, Lambda log group references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard 30-day retention** -- STANDARD class with 30-day retention and default encryption. The general-purpose configuration for application logs in dev, staging, and most production workloads. Start from the **Standard 30-Day Retention** preset.
+
+**Encrypted 90-day retention** -- STANDARD class with 90-day retention and customer-managed KMS encryption. Suitable for production workloads subject to SOC2, HIPAA, or PCI-DSS requirements. Start from the **Encrypted 90-Day Retention** preset.
+
+**Infrequent access long retention** -- INFREQUENT_ACCESS class with 365-day retention and KMS encryption. ~50% cheaper storage for high-volume logs queried rarely, such as VPC flow logs and CDN access logs. Start from the **Infrequent Access Long Retention** preset.
+
+## Works With
+
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encrypting log data at rest
+- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- real-time subscription filter destination for custom consumers
+- [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose) -- buffered subscription filter destination for delivery to S3, OpenSearch, and more
+- [**AWS Lambda**](/cloud-catalog/aws-lambda) -- per-batch subscription filter processing with your own code
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the delivery role CloudWatch Logs assumes for Kinesis and Firehose destinations

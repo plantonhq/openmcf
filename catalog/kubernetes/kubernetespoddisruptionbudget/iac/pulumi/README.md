@@ -53,13 +53,13 @@ The Terraform kubernetes provider's PDB resource cannot express `spec.unhealthyP
 
 ```bash
 # Preview changes
-make preview manifest=../../hack/manifest.yaml
+make preview manifest=../../e2e/manifest.yaml
 
 # Deploy
-make up manifest=../../hack/manifest.yaml
+make up manifest=../../e2e/manifest.yaml
 
 # Destroy
-make down manifest=../../hack/manifest.yaml
+make down manifest=../../e2e/manifest.yaml
 ```
 
 ## Debug

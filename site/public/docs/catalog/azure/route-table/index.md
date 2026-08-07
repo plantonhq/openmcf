@@ -8,176 +8,132 @@ componentName: "azureroutetable"
 
 # Azure Route Table
 
-Creates an Azure route table -- a reusable set of user-defined routes (UDRs) that overrides Azure's default system routing for every subnet attached to it. The building block for forced tunneling, firewall egress, network virtual appliances, and black-hole routing.
+Deploys an Azure Route Table — a reusable set of user-defined routes (UDRs) that overrides Azure's default system routing for every subnet attached to it. The building block of forced tunneling, firewall egress, network-virtual-appliance steering, and black-hole guardrails. The attachment is inverted by Azure's own model: a **subnet declares which table it uses** (an AzureSubnet's `routeTableId` references this table's `route_table_id` output), so one table serves many subnets and editing its routes re-routes all of them at once.
 
 ## What Gets Created
 
-When you deploy an AzureRouteTable resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Route Table** — an `azurerm_route_table` with its user-defined routes managed inline (a route has no life of its own in Azure)
+- **Route Table** -- the named table with BGP route propagation set per your dial (Azure defaults to enabled)
+- **User-Defined Routes** -- each route managed inline as part of the table (a route has no life of its own in Azure); the table is the authoritative route list, so a deploy removes routes added out-of-band
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-The subnet-side attachment is deliberately not part of this resource: a subnet declares which route table it uses (matching Azure's model), so one table serves many subnets without listing them.
+The subnet-side attachment is NOT created here — which subnets adopt this table lives on each referenced AzureSubnet.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the table in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/routeTables/write` (Network Contributor, Contributor, or Owner)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `route-table.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the table will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **For virtual-appliance routes**: the appliance's private IP — reference an AzureFirewall's `private_ip_address` output (the hub-spoke seam), or pass the literal IP of a non-firewall NVA.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Route Table**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Firewall Egress** preset in the [Presets](#presets) tab for the flagship 0.0.0.0/0-via-firewall shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureRouteTable
 metadata:
   name: egress-via-firewall
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRouteTable.egress-via-firewall
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
+    value: "rg-network-hub"
   name: egress-via-firewall
   routes:
     - name: default-via-firewall
-      addressPrefix: "0.0.0.0/0"
+      addressPrefix: 0.0.0.0/0
       nextHopType: VIRTUAL_APPLIANCE
-      # References the hub AzureFirewall's private_ip_address output; a
-      # literal IP (value: "10.0.1.4") works for appliances managed
-      # outside Planton.
       nextHopInIpAddress:
-        valueFrom:
-          name: hub-firewall
+        value: "10.0.1.4"
   bgpRoutePropagationEnabled: false
 ```
-
-Deploy:
 
 ```shell
 planton apply -f route-table.yaml
 ```
 
-Every subnet that attaches this table now sends its internet-bound traffic to the hub firewall's private IP.
+This sends every attached subnet's internet-bound traffic through the firewall at 10.0.1.4, with BGP propagation disabled so learned on-premises routes cannot bypass it.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region; must match the networks whose subnets attach the table. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Table name, unique within the resource group. | Required, 1-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `routes` | `list(object)` | The user-defined routes. Each: `name`, `addressPrefix` (CIDR or Azure service tag), `nextHopType` (`VIRTUAL_NETWORK_GATEWAY` / `VNET_LOCAL` / `INTERNET` / `VIRTUAL_APPLIANCE` / `NONE`), and `nextHopInIpAddress` (required exactly when the hop is `VIRTUAL_APPLIANCE`; a literal IP or a reference defaulting to an AzureFirewall's `private_ip_address` output). Empty is valid -- attach first, add routes later. |
-| `bgpRoutePropagationEnabled` | `bool` | Whether routes learned from on-premises via BGP propagate into attached subnets. Azure defaults to `true`; disable for forced-tunneling designs. |
-| `tags` | `map(string)` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Forced Tunneling to On-Premises
-
-Send everything through the VPN/ExpressRoute gateway and stop learned routes from bypassing it:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the table to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRouteTable
-metadata:
-  name: forced-tunnel
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRouteTable.forced-tunnel
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: forced-tunnel
-  routes:
-    - name: default-on-premises
-      addressPrefix: "0.0.0.0/0"
-      nextHopType: VIRTUAL_NETWORK_GATEWAY
-  bgpRoutePropagationEnabled: false
-```
-
-### Black-Hole Unwanted Prefixes
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRouteTable
-metadata:
-  name: deny-lateral
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRouteTable.deny-lateral
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: deny-lateral
-  routes:
-    - name: blackhole-data-tier
-      addressPrefix: "10.0.20.0/24"
-      nextHopType: NONE
-```
-
-### Service Tag Routing
-
-Route a whole Azure service's prefix set directly to the internet while everything else goes through the firewall:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureRouteTable
-metadata:
-  name: firewall-with-backup-bypass
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureRouteTable.firewall-with-backup-bypass
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: firewall-with-backup-bypass
+      kind: AzureResourceGroup
+      name: network-hub
+      fieldPath: status.outputs.resource_group_name
   routes:
     - name: default-via-firewall
-      addressPrefix: "0.0.0.0/0"
+      addressPrefix: 0.0.0.0/0
       nextHopType: VIRTUAL_APPLIANCE
       nextHopInIpAddress:
         valueFrom:
+          kind: AzureFirewall
           name: hub-firewall
-    - name: backup-direct
-      addressPrefix: "AzureBackup"
-      nextHopType: INTERNET
+          fieldPath: status.outputs.private_ip_address
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the resource group and firewall first, then provisions the table with the firewall's real address — and the subnets that adopt it reference this table's `route_table_id`.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `route_table_id` | `string` | Full ARM ID of the table -- the join key subnets use to attach it |
-| `route_table_name` | `string` | The table's name as deployed |
+These are the most important decisions when configuring a Route Table. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Routes** -- each route steers traffic bound for its `addressPrefix` (a CIDR block, or an Azure service tag like `"ApiManagement"`) to its `nextHopType`: `VIRTUAL_APPLIANCE` (with `nextHopInIpAddress` — required exactly there, rejected everywhere else), `VIRTUAL_NETWORK_GATEWAY` (on-premises over VPN/ExpressRoute), `INTERNET`, `VNET_LOCAL`, or `NONE` (black hole). The most specific prefix wins; among equals a user-defined route beats a system route. An **empty routes list is valid and common** — attach the empty table first, add routes as the topology grows.
 
-- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — the network whose subnets attach this table
-- [AzureSubnet](/docs/catalog/azure/subnet) — declares which route table it uses (the attach side)
-- [AzureNetworkSecurityGroup](/docs/catalog/azure/network-security-group) — traffic filtering, complementary to routing
+**BGP propagation** -- `bgpRoutePropagationEnabled` governs whether routes learned from on-premises via BGP reach attached subnets. Azure defaults to true; **disable it on forced-tunnel and firewall-egress tables** so a learned route cannot silently bypass your appliance. Leave it unset to record no opinion (Azure's default applies).
+
+**Name** -- the routing policy's identity ("egress-via-firewall"), unique within the resource group. Renaming replaces the table, detaching it from every subnet until the replacement re-attaches.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureFirewall** (optional, per appliance route) | `routes[].nextHopInIpAddress` | `status.outputs.private_ip_address` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `route_table_id` | Azure Resource Manager ID of the table | AzureSubnet `routeTableId` — the attachment seam |
+| `route_table_name` | Name of the table | Automation scripts, inventory |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Firewall egress** -- 0.0.0.0/0 forwarded to the hub firewall's private IP by reference, propagation disabled — the hub-and-spoke standard. Start from the **Firewall Egress** preset.
+
+**Forced tunnel** -- 0.0.0.0/0 to the virtual network gateway, sending all egress on-premises for compliance regimes that require inspection there. Start from the **Forced Tunnel** preset.
+
+**Black-hole guardrails** -- drop-routes for prefixes a workload must never reach — a routing-layer guardrail that survives NSG mistakes. Start from the **Blackhole Guardrails** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the table is created
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- adopts this table by referencing its `route_table_id` output (the attachment lives on the subnet, one table serving many)
+- [**Azure Firewall**](/cloud-catalog/azure-firewall) -- the classic virtual-appliance next hop, referenced by its `private_ip_address` output
+- [**Azure NAT Gateway**](/cloud-catalog/azure-nat-gateway) -- the complementary egress path: NAT for outbound internet, this table for steering and inspection

@@ -6,151 +6,89 @@ order: 100
 componentName: "civovpc"
 ---
 
-# Civo VPC
+# VPC on Civo
 
-Deploys an isolated private network (VPC) on Civo Cloud within a specified region. The network can use a custom IPv4 CIDR range or let Civo auto-allocate one, and it exposes connection details that other components such as databases and Kubernetes clusters can reference.
+Deploys an isolated private network (VPC) on Civo Cloud with configurable CIDR allocation and regional placement. Civo VPCs provide network isolation for compute instances, managed databases, and Kubernetes clusters running in the same region. Integrates with Planton's Provider Connections for Civo credential management.
 
 ## What Gets Created
 
-When you deploy a CivoVpc resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Civo Network** -- a `civo_network` resource in the target region with the specified label and optional CIDR block
-- **Resource Labels** -- standard Planton labels applied to track the resource name, kind, organization, and environment
+- **Civo Network** -- a private network in the specified Civo region with the configured label and optional CIDR block. When no CIDR is specified, Civo auto-allocates an available range.
+- **Civo Tags** -- metadata tags applied to the network for organizational tracking
 
-## Prerequisites
+## Before You Deploy
 
-- **Civo credentials** configured via environment variables or Planton provider config (the `civoCredentialId` field in the spec must reference a valid credential)
-- **A target Civo region** -- the region must exist and be available on the Civo account (e.g., `lon1`, `fra1`, `nyc1`)
+### Planton Setup
 
-## Quick Start
+- **Civo Provider Connection** -- an active connection in the Connect module with a Civo API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `civo-vpc.yaml`:
+### Civo Account
+
+- **A Civo account** with API access enabled in the target region. No additional prerequisites are required -- VPCs are foundational resources with no upstream dependencies.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **VPC on Civo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
+apiVersion: civo.planton.dev/v1
 kind: CivoVpc
 metadata:
-  name: my-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoVpc.my-network
+  name: app-network
+  org: acme-corp
+  env: prod
 spec:
-  civoCredentialId: my-civo-cred
-  networkName: my-network
+  networkName: app-network
   region: lon1
+  ipRangeCidr: "10.0.0.0/24"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f civo-vpc.yaml
 ```
 
-This creates a private network named `my-network` in the London region with an auto-allocated CIDR block.
+This creates a private network in Civo's London region with a /24 CIDR block providing 254 usable addresses. No default-for-region flag is set. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a Civo VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `civoCredentialId` | `string` | ID of the Civo credential used to authenticate with the Civo API. | Required |
-| `networkName` | `string` | DNS-friendly label for the network. Used as the `label` on the Civo network resource. | Required |
-| `region` | `string` | Civo region where the network is created (e.g., `lon1`, `fra1`, `nyc1`, `phx1`). | Required |
+**CIDR range** -- The `ipRangeCidr` field sets the IPv4 address block for the network (maximum /24 on Civo). Omit it to let Civo auto-allocate an available range. Specify an explicit CIDR when you need predictable addressing for firewall rules or peering configurations.
 
-### Optional Fields
+**Region** -- The `region` field accepts a Civo region code (e.g., `lon1` for London, `nyc1` for New York, `fra1` for Frankfurt). All resources attached to this VPC must be in the same region.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ipRangeCidr` | `string` | auto-allocated | IPv4 CIDR range for the network (max `/24`). When omitted, Civo allocates an available range automatically. |
-| `isDefaultForRegion` | `bool` | `false` | Whether the network should be the default for the region. Only one default network is allowed per region. Note: not currently supported by the Pulumi Civo provider; a warning is logged and the flag is skipped during provisioning. Use the Civo CLI (`civo network default <network-id>`) to set a network as default after creation. |
-| `description` | `string` | `""` | Human-readable description for the network (max 100 characters). Recorded in Planton metadata only; the Civo network provider does not expose a description field. |
+**Default network** -- Set `isDefaultForRegion` to `true` to make this the default network for the region. Only one network per region can be the default. New instances without an explicit network assignment use the default.
 
-## Examples
+## Outputs and Dependencies
 
-### Basic Network with Auto-Allocated CIDR
+### What This Component Consumes
 
-A minimal private network with Civo handling address allocation:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoVpc
-metadata:
-  name: dev-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoVpc.dev-network
-spec:
-  civoCredentialId: my-civo-cred
-  networkName: dev-network
-  region: fra1
-```
+### What This Component Provides
 
-### Custom CIDR Range
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A network with an explicit address range for predictable IP planning:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `network_id` | Unique identifier of the network on Civo | CivoKubernetesCluster, CivoComputeInstance, CivoDatabase, CivoFirewall network references |
+| `cidr_block` | IPv4 CIDR block of the created network | Firewall rule CIDR configuration, network planning |
+| `created_at_rfc3339` | Network creation timestamp in RFC 3339 format | Audit logs, lifecycle tracking |
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoVpc
-metadata:
-  name: staging-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.CivoVpc.staging-network
-spec:
-  civoCredentialId: my-civo-cred
-  networkName: staging-network
-  region: nyc1
-  ipRangeCidr: 10.0.0.0/24
-  description: Staging environment private network
-```
+## Common Patterns
 
-### Production Network with All Options
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-A fully specified network intended for production workloads:
+**Standard VPC** -- a private network with an explicit /24 CIDR range for workload isolation. Suitable for most projects where instances, databases, and Kubernetes clusters need private connectivity. Start from the **Standard** preset.
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoVpc
-metadata:
-  name: prod-network
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infra
-    pulumi.planton.dev/stack.name: prod.CivoVpc.prod-network
-spec:
-  civoCredentialId: prod-civo-cred
-  networkName: prod-network
-  region: lon1
-  ipRangeCidr: 10.10.0.0/24
-  isDefaultForRegion: true
-  description: Production private network for lon1
-```
+## Works With
 
-Note: `isDefaultForRegion` is accepted in the manifest but is not applied during provisioning due to a limitation in the Pulumi Civo provider. After deployment, run `civo network default <network-id>` to set the network as default.
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `networkId` | `string` | Unique identifier (UUID) of the created Civo network |
-| `cidrBlock` | `string` | IPv4 CIDR block assigned to the network (either the specified `ipRangeCidr` or the auto-allocated range) |
-
-Note: The `createdAtRfc3339` field is defined in the output schema but is not currently populated by the Pulumi Civo provider.
-
-## Related Components
-
-- [CivoFirewall](/docs/catalog/civo/firewall) -- defines firewall rules for controlling network traffic
-- [CivoKubernetesCluster](/docs/catalog/civo/kubernetes-cluster) -- deploys a Kubernetes cluster that can be attached to this network
-- [CivoDatabase](/docs/catalog/civo/database) -- provisions a managed database instance connected to this network
-- [CivoComputeInstance](/docs/catalog/civo/compute-instance) -- launches compute instances within this network
+This component operates independently and does not reference other deployment components.

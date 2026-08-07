@@ -85,7 +85,7 @@ spec:
               fieldPath: status.outputs.ip_set_arn
 ```
 
-See docs/README.md for composition patterns and [AwsWafWebAcl](../awswafwebacl/README.md) for the rule tree.
+See GUIDE.md for composition patterns and [AwsWafWebAcl](../awswafwebacl/README.md) for the rule tree.
 
 ---
 

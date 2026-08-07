@@ -8,85 +8,115 @@ componentName: "awsbatchschedulingpolicy"
 
 # AWS Batch Scheduling Policy
 
-Deploys an AWS Batch fair-share scheduling policy — reusable fairness rules that divide a job queue's compute capacity across share identifiers (teams, workload classes) instead of first-in-first-out. One policy can govern many queues.
+Deploys an AWS Batch fair-share scheduling policy: the rules that divide a job queue's compute capacity across share identifiers instead of processing jobs strictly first-in-first-out. Without one, a single team's burst of ten thousand jobs starves every other submitter on the queue. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AwsBatchSchedulingPolicy resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Scheduling Policy** — an `aws_batch_scheduling_policy` with the configured fair-share dials (compute reservation, share decay, weighted share distributions)
+- **Batch Scheduling Policy** -- a fair-share policy with the configured compute reservation, share decay window, and per-share weight distributions
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-## Prerequisites
+One policy is a standalone, shareable object: many [AWS Batch Job Queues](/cloud-catalog/aws-batch-job-queue) can reference the same policy, so an organization's fairness rules are defined once and reused. Every dial updates in place on a live policy.
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **Appropriate IAM permissions** for `batch:*SchedulingPolicy*` operations
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `fair-share.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+No pre-existing AWS resources are required — the policy is self-contained. It takes effect only when an AWS Batch Job Queue in the same region references it AND jobs are submitted with a share identifier.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS Batch Scheduling Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the fairness dials, and the share-weight builder. Start from the **Team Fair Share** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsBatchSchedulingPolicy
 metadata:
   name: team-fair-share
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsBatchSchedulingPolicy.team-fair-share
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
+  computeReservation: 50
   shareDecaySeconds: 3600
   shareDistributions:
-    - shareIdentifier: teamData
+    - shareIdentifier: ml-training
       weightFactor: 0.5
-    - shareIdentifier: teamMl
-      weightFactor: 1.0
+    - shareIdentifier: analytics*
+      weightFactor: 1
 ```
-
-Deploy:
 
 ```shell
-planton apply -f fair-share.yaml
+planton apply -f batch-scheduling-policy.yaml
 ```
 
-Attach the policy to an `AwsBatchJobQueue` via its `schedulingPolicy` field; jobs then submit with a `shareIdentifier` to participate.
+This creates a policy that reserves headroom for quiet teams, remembers one hour of usage history, and gives ML training twice the capacity of the analytics share family. A Stack Job tracks the provisioning and streams progress in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+When deploying as part of a multi-resource environment, the policy typically deploys before the job queue that references it:
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region; attachable only to same-region queues. | Required; non-empty |
+```yaml
+# On the AwsBatchJobQueue:
+spec:
+  schedulingPolicy:
+    valueFrom:
+      kind: AwsBatchSchedulingPolicy
+      name: team-fair-share
+      fieldPath: status.outputs.scheduling_policy_arn
+```
 
-### Optional Fields
+The InfraPipeline resolves the dependency graph, deploys the policy first, then provisions the queue with the resolved ARN.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `computeReservation` | int32 | — | 0-99: % of capacity held back for shares not currently running (`(r/100)^N` scaling). |
-| `shareDecaySeconds` | int32 | — | 0-604800: sliding window of past usage counted against each share. |
-| `shareDistributions` | list(object), max 500 | — | Weight per share identifier. |
-| `shareDistributions[].shareIdentifier` | string | — | Identifier jobs carry at submission; end with `*` for a prefix match. |
-| `shareDistributions[].weightFactor` | double | 1.0 (AWS) | 0.0001-999.9999. LOWER weight = MORE capacity (0.5 gets twice a 1.0 share). |
+## Key Configuration
 
-Every dial updates in place on a live policy.
+These are the most important decisions when configuring a scheduling policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Share weights** -- the counter-intuitive core rule: LOWER weight means MORE capacity. A share with `weightFactor: 0.5` receives twice the capacity of a weight-1.0 share. Shares absent from the list weigh 1.0. End an identifier with `*` to treat a prefix family (e.g. `analytics*`) as one share. AWS allows up to 500 entries.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `scheduling_policy_arn` | string | What job queues reference through `schedulingPolicy`. |
-| `scheduling_policy_name` | string | The policy's name (from `metadata.name`). |
+**Compute reservation** -- the percentage (0-99) of queue capacity held back for shares with NO currently-running jobs, so a quiet team's first job does not wait behind a busy team's backlog. The effective slice is `(reservation/100)^N` for N active shares — the headroom self-adjusts as more shares wake up.
 
-## Presets
+**Share decay** -- the sliding window (up to 7 days) over which past usage counts against a share's fair allocation. Longer windows make fairness account for history ("you had the cluster all morning"); 0 considers only currently-running jobs.
 
-| Name | Description |
-|------|-------------|
-| [01-team-fair-share](../presets/01-team-fair-share.yaml) | Weighted team shares with decay and new-submitter headroom |
+**Submission is the other half** -- weights only apply to jobs submitted WITH a share identifier (SubmitJob's `shareIdentifier`). Bake the identifier into your submission tooling — a job without one fails on a fair-share queue.
 
-## Related Components
+## Outputs and Dependencies
 
-- [AwsBatchJobQueue](/docs/catalog/aws/batch-job-queue) — attaches this policy for fair-share ordering (replaceable, never removable)
-- [AwsBatchComputeEnvironment](/docs/catalog/aws/batch-compute-environment) — the capacity the shares divide
+### What This Component Consumes
+
+Nothing — the policy is self-contained.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `scheduling_policy_arn` | Scheduling policy ARN | AwsBatchJobQueue `schedulingPolicy` field |
+| `scheduling_policy_name` | Scheduling policy name | CLI commands, monitoring dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Team fair share** -- one policy with a 50% compute reservation and per-team weights, referenced by every shared queue in the organization. Start from the **Team Fair Share** preset.
+
+**Workload-class priority** -- weight interactive/urgent shares low (more capacity) and backfill shares high, on a single queue — cheaper than running separate queues per class when the compute profile is identical.
+
+## Works With
+
+- [**AWS Batch Job Queue**](/cloud-catalog/aws-batch-job-queue) -- references this policy to order jobs by share instead of first-in-first-out; note AWS's quirk that a queue's policy can be replaced but never removed
+- [**AWS Batch Compute Environment**](/cloud-catalog/aws-batch-compute-environment) -- provides the capacity the policy divides
+- [**AWS Batch Job Definition**](/cloud-catalog/aws-batch-job-definition) -- its `schedulingPriority` orders jobs WITHIN a share on fair-share queues

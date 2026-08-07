@@ -8,159 +8,85 @@ componentName: "azureresourcegroup"
 
 # Azure Resource Group
 
-Deploys an Azure Resource Group in a specified region. Resource groups are the foundational organizational unit in Azure -- every other Azure resource must belong to one. This component creates the resource group and applies metadata tags for tracking and governance.
+Deploys an Azure Resource Group -- the foundational organizational container for all Azure resources. Every Azure resource must belong to a resource group, making this the typical first step in any Azure environment setup. The resource group provides lifecycle management, RBAC boundaries, and cost tracking for all contained resources.
 
 ## What Gets Created
 
-When you deploy an AzureResourceGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Resource Group** — a `core.ResourceGroup` resource in the specified Azure region, serving as the container for all downstream Azure resources
-- **Azure Tags** — metadata tags applied to the resource group including resource name, resource kind, organization, and environment for governance and cost tracking
+- **Azure Resource Group** -- a named container in the specified Azure region that holds and organizes related Azure resources for unified lifecycle management, access control, and cost allocation. Planton-derived resource tags (organization, environment, resource kind, resource ID) are applied by the IaC module; the spec itself carries only name and region
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure subscription** where the resource group will be created
-- **A unique name** for the resource group within the target subscription
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `resourcegroup.yaml`:
+### Azure Subscription
+
+- **An active Azure subscription** where the resource group will be created. No other prerequisites are required -- resource groups are top-level containers.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Resource Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureResourceGroup
 metadata:
-  name: my-rg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureResourceGroup.my-rg
+  name: platform-rg
+  org: acme-corp
+  env: prod
 spec:
-  name: my-rg
-  region: eastus
+  name: "acme-prod-rg"
+  region: "eastus"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f resourcegroup.yaml
+planton apply -f resource-group.yaml
 ```
 
-This creates a resource group named `my-rg` in the `eastus` region with standard metadata tags.
+This creates a resource group named `acme-prod-rg` in the `eastus` region. Resources within the group can be deployed to different regions -- the resource group region only determines where its metadata is stored.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring a resource group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | Name of the resource group. Must be unique within the Azure subscription. Allowed characters: alphanumeric, underscores, hyphens, periods, and parentheses. Cannot end with a period. | Required, 1–90 characters |
-| `region` | `string` | Azure region where the resource group will be created (e.g., `eastus`, `westus2`, `westeurope`). Resources within the group can be in different regions, but the group's region determines where its metadata is stored. | Required, minimum length 1 |
+**Name** -- Must be unique within the Azure subscription. Use a descriptive naming convention like `{project}-{env}-rg` to make resource groups identifiable in the portal and CLI. Maximum 90 characters, supports alphanumeric, underscores, hyphens, periods, and parentheses.
 
-### Optional Fields
+**Region** -- Determines where the resource group metadata is stored. Resources inside the group can be in different regions. Choose a region close to your primary deployment target for consistency, though this has no performance impact on contained resources.
 
-This component has no optional fields. Resource groups are intentionally minimal containers -- they require only a name and a region.
+**Lifecycle implications** -- Deleting a resource group deletes all resources within it. Use separate resource groups for resources with different lifecycles (e.g., shared networking in one group, application workloads in another).
 
-## Examples
+## Outputs and Dependencies
 
-### Single Development Resource Group
+### What This Component Consumes
 
-A resource group for a development environment in the US East region:
+This component has no foreign key dependencies.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureResourceGroup
-metadata:
-  name: dev-rg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureResourceGroup.dev-rg
-spec:
-  name: dev-rg
-  region: eastus
-```
+### What This Component Provides
 
-### Production Resource Group in Europe
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-A resource group for production workloads with metadata indicating the production environment:
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `resource_group_id` | Azure Resource Manager ID of the resource group | Azure Policy assignments, diagnostic settings |
+| `resource_group_name` | Name of the resource group | Nearly all Azure Cloud Resources reference this via `resourceGroup` field |
+| `region` | Azure region where the resource group was created | Informational -- downstream resources specify their own region |
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureResourceGroup
-metadata:
-  name: prod-eu-rg
-  env: prod
-  org: acme-corp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: acme-infra
-    pulumi.planton.dev/stack.name: prod.AzureResourceGroup.prod-eu-rg
-spec:
-  name: prod-eu-rg
-  region: westeurope
-```
+## Common Patterns
 
-### Multi-Region Resource Groups for DR
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-Multiple resource groups across regions, forming the basis of a disaster recovery topology. Each group hosts a replica of the application stack in its respective region.
+**Standard resource group** -- Creates a named resource group in a specified region as the foundation for all subsequent Azure deployments. Virtually every Azure InfraChart begins with one or more resource groups. Start from the **Standard** preset.
 
-Primary region:
+## Works With
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureResourceGroup
-metadata:
-  name: app-primary-rg
-  env: prod
-  org: acme-corp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: acme-infra
-    pulumi.planton.dev/stack.name: prod.AzureResourceGroup.app-primary-rg
-spec:
-  name: app-primary-rg
-  region: eastus
-```
-
-Secondary region:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureResourceGroup
-metadata:
-  name: app-secondary-rg
-  env: prod
-  org: acme-corp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: acme-infra
-    pulumi.planton.dev/stack.name: prod.AzureResourceGroup.app-secondary-rg
-spec:
-  name: app-secondary-rg
-  region: westus2
-```
-
-## Stack Outputs
-
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `resource_group_id` | `string` | Azure Resource Manager ID of the resource group (format: `/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}`) |
-| `resource_group_name` | `string` | Name of the resource group. This is the primary output referenced by downstream Azure resources via `StringValueOrRef` with `field: status.outputs.resource_group_name`. |
-| `region` | `string` | Azure region where the resource group was created |
-
-## Related Components
-
-- [AzureKeyVault](/docs/catalog/azure/key-vault) — stores secrets, keys, and certificates within this resource group
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) — deploys a Kubernetes cluster into this resource group
-- [AzureVirtualNetwork](/docs/catalog/azure/virtual-network) — creates a Virtual Network within this resource group
-- [AzureStorageAccount](/docs/catalog/azure/storage-account) — provisions blob, file, table, and queue storage in this resource group
-- [AzurePostgresqlFlexibleServer](/docs/catalog/azure/postgresql-flexible-server) — deploys a PostgreSQL Flexible Server in this resource group
+This component operates independently and does not reference other deployment components.

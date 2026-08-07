@@ -407,8 +407,8 @@ pulumi up --parallel 10  # Limit to 10 concurrent operations
 
 - **Pulumi DigitalOcean Provider**: https://www.pulumi.com/registry/packages/digitalocean/
 - **DigitalOcean DNS API**: https://docs.digitalocean.com/reference/api/api-reference/#tag/Domains
-- **Planton Docs**: ../../docs/README.md
-- **Examples**: ../../examples.md
+- **Planton Docs**: ../../GUIDE.md
+- **Examples**: ../../e2e/manifest.yaml
 
 ## Contributing
 

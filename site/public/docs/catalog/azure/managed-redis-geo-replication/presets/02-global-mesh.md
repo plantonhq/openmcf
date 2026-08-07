@@ -5,7 +5,7 @@ type: "preset"
 rank: "02"
 presetSlug: "02-global-mesh"
 componentSlug: "managed-redis-geo-replication"
-componentTitle: "Managed Redis Geo-Replication"
+componentTitle: "Managed Redis Geo Replication"
 provider: "azure"
 icon: "package"
 order: 2

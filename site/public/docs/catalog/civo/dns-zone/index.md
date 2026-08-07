@@ -6,195 +6,103 @@ order: 100
 componentName: "civodnszone"
 ---
 
-# Civo DNS Zone
+# DNS Zone on Civo
 
-Provisions a DNS zone (domain) on Civo Cloud with declarative DNS record management. The component creates the zone and any associated records in a single manifest, supporting A, AAAA, CNAME, MX, TXT, and other standard record types with configurable TTLs and cross-resource value references.
+Creates a DNS zone (domain) on Civo's managed DNS service with optional inline DNS records for A, AAAA, CNAME, MX, and TXT record types. The zone and its records are provisioned as a single unit, and Civo assigns nameservers that must be configured at your domain registrar. Integrates with Planton's Provider Connections for Civo credential management.
 
 ## What Gets Created
 
-When you deploy a CivoDnsZone resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Civo DNS Domain** — a `civo_dns_domain_name` resource representing the DNS zone for the specified domain
-- **DNS Records** — one `civo_dns_domain_record` resource per value per record entry in the `records` list, linked to the created zone
-- **Nameserver Delegation Info** — the authoritative nameservers (`ns0.civo.com`, `ns1.civo.com`, `ns2.civo.com`) exported as stack outputs so you can configure delegation at your registrar
+- **Civo DNS Domain** -- a managed DNS zone for the specified domain name, assigned Civo nameservers (ns0.civo.com, ns1.civo.com, ns2.civo.com)
+- **Civo DNS Domain Records** -- created only when `records` entries are specified in the spec; each record is provisioned with the configured type, name, value(s), and TTL
 
-## Prerequisites
+## Before You Deploy
 
-- **Civo credentials** configured via environment variables or Planton provider config
-- **A registered domain name** whose nameservers you can point to the Civo nameservers returned in stack outputs
+### Planton Setup
 
-## Quick Start
+- **Civo Provider Connection** -- an active connection in the Connect module with a Civo API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `civo-dns-zone.yaml`:
+### Civo Account
+
+- **A registered domain name** -- you must own the domain and have access to its registrar to update nameserver records to point to Civo's nameservers after zone creation.
+- **Target IP addresses or hostnames** for any inline DNS records -- these can be literal values or ValueFromRef references to other Cloud Resources (e.g., a CivoComputeInstance or CivoIpAddress).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Zone on Civo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Simple Website** preset in the [Presets](#presets) tab for a domain with apex A record and www CNAME.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
+apiVersion: civo.planton.dev/v1
 kind: CivoDnsZone
 metadata:
-  name: my-dns-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoDnsZone.my-dns-zone
+  name: app-domain
+  org: acme-corp
+  env: prod
 spec:
   domainName: example.com
   records:
     - name: "@"
       type: A
       values:
-        - value: "93.184.216.34"
-      ttlSeconds: 3600
-```
-
-Deploy:
-
-```shell
-planton apply -f civo-dns-zone.yaml
-```
-
-This creates a DNS zone for `example.com` on Civo with a single A record pointing the apex domain to an IP address. After deployment, update your domain registrar to use the Civo nameservers returned in the stack outputs.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `domainName` | `string` | The fully-qualified domain name for the DNS zone (e.g., `"example.com"`). | Required. Must match the pattern `^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$`. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `records` | `CivoDnsZoneRecord[]` | `[]` | A list of DNS records to create within the zone. Each record specifies a type, name, one or more values, and a TTL. |
-
-#### CivoDnsZoneRecord
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `string` | — | The host/name for the DNS record, relative to the zone. Use `"@"` for apex (root) records. Required. |
-| `type` | `DnsRecordType` | — | The DNS record type. Supported values: `A`, `AAAA`, `ALIAS`, `CNAME`, `MX`, `NS`, `PTR`, `SOA`, `SRV`, `TXT`, `CAA`. Required. |
-| `values` | `StringValueOrRef[]` | — | One or more values for the record. Each entry is either a literal `value` string or a `valueFrom` reference to another resource's output. At least one value is required. |
-| `ttlSeconds` | `uint32` | `3600` | Time-to-live in seconds. Determines how long resolvers cache the record. |
-
-#### StringValueOrRef
-
-Each entry in `values` is one of:
-
-- **Literal** — `{ value: "93.184.216.34" }` provides the value directly
-- **Reference** — `{ valueFrom: { kind: "...", name: "...", fieldPath: "..." } }` resolves the value from another Planton resource's stack outputs at deploy time
-
-## Examples
-
-### Zone with Multiple Record Types
-
-A zone for `example.com` with A, CNAME, and MX records:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoDnsZone
-metadata:
-  name: example-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoDnsZone.example-zone
-spec:
-  domainName: example.com
-  records:
-    - name: "@"
-      type: A
-      values:
-        - value: "93.184.216.34"
+        - value: "192.0.2.1"
       ttlSeconds: 3600
     - name: www
       type: CNAME
       values:
         - value: "example.com"
       ttlSeconds: 3600
-    - name: "@"
-      type: MX
-      values:
-        - value: "10 mail.example.com"
-        - value: "20 mail2.example.com"
-      ttlSeconds: 3600
 ```
 
-### Zone with TXT Records for Email Verification
-
-A minimal zone that sets up SPF and a domain verification TXT record:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoDnsZone
-metadata:
-  name: verified-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoDnsZone.verified-zone
-spec:
-  domainName: verified.io
-  records:
-    - name: "@"
-      type: TXT
-      values:
-        - value: "v=spf1 include:_spf.google.com ~all"
-      ttlSeconds: 3600
-    - name: "_dmarc"
-      type: TXT
-      values:
-        - value: "v=DMARC1; p=reject; rua=mailto:dmarc@verified.io"
-      ttlSeconds: 3600
+```shell
+planton apply -f civo-dns-zone.yaml
 ```
 
-### Using Foreign Key References for Record Values
+This creates a DNS zone for `example.com` with an apex A record and a www CNAME pointing to the apex. After provisioning, update your domain registrar's nameservers to point to the Civo nameservers returned in the outputs. A Stack Job tracks the provisioning in real time.
 
-Point a CNAME record at the IP address output from an Planton-managed CivoComputeInstance instead of hardcoding it:
+## Key Configuration
 
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoDnsZone
-metadata:
-  name: ref-zone
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoDnsZone.ref-zone
-spec:
-  domainName: myapp.dev
-  records:
-    - name: "@"
-      type: A
-      values:
-        - valueFrom:
-            kind: CivoComputeInstance
-            name: my-web-server
-            fieldPath: status.outputs.public_ip
-      ttlSeconds: 300
-    - name: www
-      type: CNAME
-      values:
-        - value: "myapp.dev"
-      ttlSeconds: 3600
-```
+These are the most important decisions when configuring a Civo DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Domain name** -- The `domainName` field must be a valid fully-qualified domain name (e.g., `"example.com"`). This becomes the zone apex. Subdomains are managed as records within the zone.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Inline records** -- The `records` list defines DNS records created alongside the zone. Each record requires a `name` (use `"@"` for the apex), `type` (A, AAAA, CNAME, MX, TXT), and at least one entry in `values`. Records can use ValueFromRef to reference outputs from other Cloud Resources, such as IP addresses from a CivoIpAddress.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zoneName` | `string` | The domain name of the DNS zone managed on Civo |
-| `zoneId` | `string` | The unique identifier (UUID) of the DNS zone, assigned by Civo |
-| `nameServers` | `string[]` | The authoritative nameserver addresses for the zone (e.g., `ns0.civo.com`, `ns1.civo.com`, `ns2.civo.com`). Set these at your domain registrar to delegate DNS to Civo. |
+**TTL** -- Each record's `ttlSeconds` controls resolver caching duration. Defaults to 3600 seconds (1 hour) when not specified. Use shorter TTLs during DNS migrations and longer TTLs for stable records to reduce query volume.
 
-## Related Components
+**Nameserver delegation** -- After creating the zone, Civo assigns nameservers (ns0.civo.com, ns1.civo.com, ns2.civo.com). Update your domain registrar's NS records to point to these nameservers. DNS propagation typically completes within 24--48 hours.
 
-- [CivoComputeInstance](/docs/catalog/civo/compute-instance) — compute instances whose public IPs can be referenced as DNS record values
-- [CivoKubernetesCluster](/docs/catalog/civo/kubernetes-cluster) — Kubernetes clusters whose ingress IPs can be mapped to DNS records
-- [CivoFirewall](/docs/catalog/civo/firewall) — firewalls that protect the instances behind the DNS zone
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zone_name` | Domain name of the DNS zone | Application configuration, certificate requests |
+| `zone_id` | Unique identifier of the DNS zone on Civo | CivoDnsRecord zone references, API operations |
+| `name_servers` | Nameserver addresses assigned to the zone | Domain registrar NS record configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Simple website** -- an apex A record pointing to a server IP and a www CNAME aliasing to the apex. Covers the standard website configuration where both `example.com` and `www.example.com` resolve to the same server. Start from the **Simple Website** preset.
+
+**Website with email** -- extends the simple website pattern with an MX record for mail routing and a TXT record for SPF email authentication. Covers the majority of small business and SaaS domain configurations. Start from the **With Email** preset.
+
+## Works With
+
+This component operates independently and does not reference other deployment components.

@@ -177,7 +177,7 @@ For comprehensive examples including:
 - Production configurations with tags
 - Multi-region strategies
 
-See examples.md
+See e2e/manifest.yaml
 
 ## Infrastructure as Code
 

@@ -5,7 +5,7 @@ type: "preset"
 rank: "02"
 presetSlug: "02-managed-cloud"
 componentSlug: "kube-prometheus-stack"
-componentTitle: "Kube Prometheus Stack"
+componentTitle: "kube-prometheus-stack"
 provider: "kubernetes"
 icon: "package"
 order: 2

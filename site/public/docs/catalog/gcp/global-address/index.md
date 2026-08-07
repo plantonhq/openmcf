@@ -8,182 +8,122 @@ componentName: "gcpglobaladdress"
 
 # GCP Global Address
 
-Reserves a static IP address at global scope — either a public IPv4/IPv6 address for HTTP(S) load balancers and Cloud CDN, or a private CIDR range inside a VPC for managed-service peering (Cloud SQL, Redis, AlloyDB, Filestore) and Private Service Connect endpoints. The component automatically enables the Compute Engine API on the target project.
+Reserves a static IP address or CIDR range at global scope in Google Cloud. External addresses provide stable public IPs for HTTP(S) load balancers, Cloud CDN, and global forwarding rules. Internal addresses reserve private IP ranges for VPC peering (used by Cloud SQL, Memorystore, AlloyDB, Filestore) or Private Service Connect endpoints. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPCs.
 
 ## What Gets Created
 
-When you deploy a GcpGlobalAddress resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Engine API enablement** — a `google_project_service` resource that activates `compute.googleapis.com` on the target project
-- **Global Address** — a `google_compute_global_address` resource with the specified name, address type, purpose, and network configuration
+- **Global Address** -- a `compute.GlobalAddress` resource in the specified GCP project, configured as either an external public IP or an internal private IP range depending on the `addressType` setting
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GCP project** — referenced via `projectId`
-- **An existing VPC network** — required only for INTERNAL addresses, referenced via `network`
-- **IAM permissions** — `roles/compute.networkAdmin` or equivalent on the target project
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `global-address.yaml`:
+### GCP Project
+
+- **A GCP project** where the address reservation will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A VPC network** (if reserving an internal address) for the IP range allocation. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Global Address**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **External Static IP** preset in the [Presets](#presets) tab to pre-populate a public IP reservation.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpGlobalAddress
 metadata:
-  name: prod-lb-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGlobalAddress.prod-lb-ip
+  name: lb-ip
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project-123
+    value: "acme-prod-12345"
   addressName: prod-lb-ip
+  addressType: EXTERNAL
+  ipVersion: IPV4
 ```
-
-Deploy:
 
 ```shell
 planton apply -f global-address.yaml
 ```
 
-This reserves a public IPv4 address that you can reference in global forwarding rules, HTTP(S) load balancers, or DNS A records.
+This reserves a public IPv4 address at global scope. GCP automatically assigns an available IP. No VPC network or prefix length is needed for external addresses.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the address is created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `addressName` | `string` | Name of the global address resource in GCP. | 1-63 chars, lowercase letters/numbers/hyphens, must start with a letter and end with a letter or number |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `address` | `string` | — | Specific IP to reserve. Omit to let GCP assign one automatically. For VPC_PEERING, this is the start of the CIDR range. |
-| `addressType` | `string` | `EXTERNAL` | `EXTERNAL` for a public IP or `INTERNAL` for a private IP range within a VPC. |
-| `ipVersion` | `string` | `IPV4` | IP version: `IPV4` or `IPV6`. |
-| `network` | `StringValueOrRef` | — | VPC network name or self-link. Required when `addressType` is `INTERNAL`. Can reference a GcpVpcNetwork resource. |
-| `prefixLength` | `int32` | — | CIDR prefix length (8-29). Required when `purpose` is `VPC_PEERING`. A `/20` reserves 4,096 IPs. |
-| `purpose` | `string` | — | Purpose of an INTERNAL address: `VPC_PEERING` (managed-service private networking) or `PRIVATE_SERVICE_CONNECT` (PSC endpoint). Leave empty for EXTERNAL addresses. |
-| `description` | `string` | — | Human-readable description of the address reservation. |
-
-## Examples
-
-### External Static IP for Load Balancer
-
-The simplest use case — reserve a public IPv4 address:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the global address to infrastructure deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGlobalAddress
-metadata:
-  name: web-lb-ip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGlobalAddress.web-lb-ip
-spec:
-  projectId:
-    value: my-prod-project-123
-  addressName: web-lb-ip
-  description: Static IP for production HTTPS load balancer
-```
-
-### Internal VPC Peering Range for Managed Services
-
-Reserve a `/20` private CIDR block for Cloud SQL, Redis, AlloyDB, and Filestore private networking:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGlobalAddress
-metadata:
-  name: managed-services-range
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGlobalAddress.managed-services-range
-spec:
-  projectId:
-    value: my-prod-project-123
-  addressName: managed-services-range
-  addressType: INTERNAL
-  purpose: VPC_PEERING
-  prefixLength: 20
-  network:
-    value: prod-vpc
-  description: /20 range for VPC peering with Google managed services
-```
-
-### Private Service Connect Endpoint
-
-Reserve an internal IP for private connectivity to Google APIs or third-party services:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGlobalAddress
-metadata:
-  name: psc-google-apis
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGlobalAddress.psc-google-apis
-spec:
-  projectId:
-    value: my-prod-project-123
-  addressName: psc-google-apis
-  addressType: INTERNAL
-  purpose: PRIVATE_SERVICE_CONNECT
-  network:
-    value: prod-vpc
-  description: PSC endpoint for private Google API access
-```
-
-### Cross-Resource Reference (Using GcpProject Output)
-
-Reference a project ID from a GcpProject resource instead of hardcoding:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGlobalAddress
-metadata:
-  name: lb-ip-with-ref
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGlobalAddress.lb-ip-with-ref
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  addressName: lb-ip
+      name: production-project
+      fieldPath: status.outputs.project_id
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: production-vpc
+      fieldPath: status.outputs.network_self_link
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and VPC first, then provisions the global address with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `address` | `string` | The reserved IP address. For EXTERNAL, this is a public IP (e.g., `34.120.1.2`). For INTERNAL VPC_PEERING, this is the first IP in the reserved range. |
-| `self_link` | `string` | Full self-link URL of the global address (e.g., `projects/my-project/global/addresses/prod-lb-ip`). Used to reference this address in forwarding rules. |
-| `creation_timestamp` | `string` | RFC 3339 timestamp of when the address was created. |
+These are the most important decisions when configuring a global address. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Address type** -- Set `addressType` to `EXTERNAL` (default) for a public IP, or `INTERNAL` for a private IP range within a VPC. External addresses are used with load balancers and CDN; internal addresses are used for VPC peering and Private Service Connect.
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project and enables the Compute Engine API
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network for internal address reservations and can enable Private Services Access
-- [GcpGlobalForwardingRule](/docs/catalog/gcp/global-forwarding-rule) — binds this external global address as the frontend VIP of a global load balancer
-- [GcpCloudSql](/docs/catalog/gcp/cloud-sql) — uses a VPC_PEERING range for private IP connectivity to database instances
-- [GcpCertManagerCert](/docs/catalog/gcp/certificate-manager-certificate) — provisions managed SSL certificates that attach to the same load balancer using this IP
+**Purpose** -- Required when `addressType` is `INTERNAL`. Set to `VPC_PEERING` to reserve a CIDR range for managed services (Cloud SQL, Memorystore, AlloyDB, Filestore private networking). Set to `PRIVATE_SERVICE_CONNECT` for PSC endpoints. Leave empty for external addresses.
+
+**Prefix length** -- Required when `purpose` is `VPC_PEERING`. Determines the size of the reserved CIDR range (e.g., `20` for a /20 with 4,096 IPs). Use `/20` for typical multi-service environments, `/16` for large-scale deployments, or `/24` when IP space is constrained.
+
+**IP version** -- Defaults to `IPV4`. Set to `IPV6` when the target load balancer or forwarding rule requires an IPv6 address. Only applicable for external addresses.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** (optional) | `network` | `status.outputs.network_self_link` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `address` | Reserved IP address or start of reserved CIDR range | DNS A records, load balancer frontend IP, peering connection range |
+| `self_link` | Self-link URL of the global address resource | Forwarding rules, load balancer configurations |
+| `name` | Name of the global address resource in GCP | GcpServiceNetworkingConnection `reservedPeeringRanges` — the private-services-access composition key |
+| `creation_timestamp` | Creation timestamp in RFC3339 format | Audit, lifecycle tracking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**External static IP** -- Reserves a global public IPv4 address for HTTP(S) load balancers, Cloud CDN, or global forwarding rules. GCP assigns an available IP automatically, providing a stable address that persists across resource recreation. Start from the **External Static IP** preset.
+
+**Internal VPC peering range** -- Reserves a /20 private CIDR range for VPC peering with managed services. Required for Cloud SQL, Memorystore, AlloyDB, and Filestore private networking via Private Services Access. Start from the **Internal VPC Peering Range** preset.
+
+**Private Service Connect endpoint** -- Reserves a single internal IP for a Private Service Connect endpoint, enabling private connectivity to Google APIs or third-party services without traffic leaving the VPC. Start from the **Private Service Connect** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the address reservation is created
+- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for internal address IP allocation

@@ -8,88 +8,122 @@ componentName: "azuremssqlfailovergroup"
 
 # Azure MSSQL Failover Group
 
-Creates an Azure SQL Failover Group — a disaster-recovery grouping that replicates databases from a primary logical server to partner servers in other regions, behind a single listener endpoint that follows the primary through a failover. Applications connect to the listener, not a server, so a failover needs no connection-string change.
+Deploys a cross-region failover group pairing an Azure SQL logical server (the primary) with one or more partner servers. The group replicates the databases it lists and exposes two LISTENER endpoints — a read-write listener that always points at the current primary and a read-only listener pointed at the secondary — so applications survive a regional failover with no connection-string change. That indirection is the group's whole value.
 
 ## What Gets Created
 
-When you deploy an AzureMssqlFailoverGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Failover Group** — an `azurerm_mssql_failover_group` on the primary server, replicating the listed databases to the partner servers with the configured failover policy
+- **SQL Failover Group** -- created ON the primary server, spanning the partner server(s), with the group name becoming the listener DNS prefix (`{name}.database.windows.net`)
+- **Database Replication** -- a maintained replica of every listed database on every partner server
+- **Failover Policy** -- automatic (Azure promotes the partner after the grace window) or manual (an operator decides), plus the read-only listener's failover behavior
+- **Azure Tags** -- resource metadata tags applied to the group
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A primary logical server** (an `AzureMssqlServer`) with the databases to protect
-- **One or more partner servers** in different regions (each an `AzureMssqlServer`)
-- **SQL write rights**: `Microsoft.Sql/servers/failoverGroups/write`
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription.
+- **Two AzureMssqlServers** -- the primary and the partner, usually in different regions (Azure's paired-region guidance applies). Both referenced through their `server_id` outputs.
+- **AzureMssqlDatabases** (optional at creation) -- the databases that replicate, referenced through their `database_id` outputs. An empty group is legal; membership edits in place.
+
+### Azure Subscription
+
+- **Keep both servers' postures in sync** -- the partner is a full logical server with its own authentication and firewall; a failed-over application hits ITS door.
+- **Data-loss planning** -- automatic failover loses whatever replication lag exists when the grace window (≥ 60 minutes) expires; manual failover keeps that acceptance with your operators.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure MSSQL Failover Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — with a live topology diagram resolving the primary and partner as you pick them. Start from the **automatic-failover** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureMssqlFailoverGroup
 metadata:
-  name: prod-sql-fog
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureMssqlFailoverGroup.prod-sql-fog
+  name: appdb-dr
+  org: acme-corp
+  env: prod
 spec:
-  name: prod-sql-fog
+  name: appdb-dr
   serverId:
     valueFrom:
-      name: prod-sql-primary
+      kind: AzureMssqlServer
+      name: app-sql
+      fieldPath: status.outputs.server_id
   partnerServers:
     - serverId:
         valueFrom:
-          name: prod-sql-dr
+          kind: AzureMssqlServer
+          name: app-sql-dr
+          fieldPath: status.outputs.server_id
   databaseIds:
     - valueFrom:
-        name: orders-db
+        kind: AzureMssqlDatabase
+        name: app-database
+        fieldPath: status.outputs.database_id
   readWriteEndpointFailoverPolicy:
     mode: AUTOMATIC
     graceMinutes: 60
 ```
 
-Deploy:
-
 ```shell
-planton apply -f failover-group.yaml
+planton apply -f mssql-failover-group.yaml
 ```
 
-After deployment, point applications at `status.outputs.read_write_listener_endpoint`.
+This creates an automatic-failover group replicating one database to the partner, with listeners at `appdb-dr.database.windows.net` (read-write) and `appdb-dr.secondary.database.windows.net` (read-only). A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
+The group references both servers and every listed database — the InfraPipeline deploys the servers first, then the databases, then the group, in one resolved graph.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | `string` | Group name; globally unique (the listener DNS label). Fixed at creation. |
-| `serverId` | `StringValueOrRef` | The primary logical server. Defaults to an `AzureMssqlServer` reference. Fixed at creation. |
-| `partnerServers` | `object[]` | Partner servers (each `{ serverId }`), one or more, each in a different region. |
-| `readWriteEndpointFailoverPolicy` | `object` | `mode` (`AUTOMATIC` / `MANUAL`) and `graceMinutes` (≥ 60 for AUTOMATIC, omitted for MANUAL). |
+## Key Configuration
 
-### Optional Fields
+These are the most important decisions when configuring a failover group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `databaseIds` | `StringValueOrRef[]` | `[]` | Databases on the primary to replicate. Default `AzureMssqlDatabase` references. |
-| `readonlyEndpointFailoverPolicyEnabled` | `bool` | `false` | Fail over the read-only listener too (disabled when unset). |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins). |
+**The name is the listener** -- `name` becomes the DNS prefix applications connect to. Point every connection string at the listener, never a server directly. Fixed at creation.
 
-## Stack Outputs
+**Failover mode** -- `readWriteEndpointFailoverPolicy.mode`: AUTOMATIC requires `graceMinutes` ≥ 60 (the data-loss dial — Azure waits it out before promoting, and whatever replication lag exists is lost); MANUAL forbids the grace window and keeps the decision with your operators.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `failover_group_id` | `string` | Full ARM ID of the group |
-| `failover_group_name` | `string` | The group's name (listener DNS label) |
-| `read_write_listener_endpoint` | `string` | `{name}.database.windows.net` |
-| `read_only_listener_endpoint` | `string` | `{name}.secondary.database.windows.net` |
+**Read-only listener failover** -- `readonlyEndpointFailoverPolicyEnabled` decides whether read-intent traffic follows a failover (sharing the surviving server) or goes dark until failback (Azure's default).
 
-## Related Components
+**Membership** -- `databaseIds` lists exactly what replicates; nothing joins implicitly. Replicas bill at the partner's rates, and pooled databases need a matching pool on the partner.
 
-- [AzureMssqlServer](/docs/catalog/azure/mssql-server) — the primary and partner logical servers
-- [AzureMssqlDatabase](/docs/catalog/azure/mssql-database) — the databases the group replicates
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource groups for the servers
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureMssqlServer** | `serverId` (primary) | `status.outputs.server_id` |
+| **AzureMssqlServer** | `partnerServers[].serverId` | `status.outputs.server_id` |
+| **AzureMssqlDatabase** | `databaseIds` | `status.outputs.database_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `read_write_listener_endpoint` | The listener that follows the primary | Application connection strings |
+| `read_only_listener_endpoint` | The listener pointed at the secondary | Reporting/read-intent connection strings |
+| `failover_group_id` | Azure resource ID of the group | Diagnostics, automation |
+| `failover_group_name` | Name of the group | Monitoring, dashboards |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Automatic failover** -- The hands-off DR posture: Azure promotes the partner after the grace window. Start from the **automatic-failover** preset.
+
+**Manual failover** -- Tier-1 estates with a runbook: a human confirms the region is really gone before accepting the lag loss. Start from the **manual-failover** preset.
+
+## Works With
+
+- [**Azure MSSQL Server**](/cloud-catalog/azure-mssql-server) -- the primary and every partner
+- [**Azure MSSQL Database**](/cloud-catalog/azure-mssql-database) -- the databases that replicate through the group

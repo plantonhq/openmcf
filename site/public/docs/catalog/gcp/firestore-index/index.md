@@ -8,31 +8,47 @@ componentName: "gcpfirestoreindex"
 
 # GCP Firestore Index
 
-Creates a composite index on a Cloud Firestore database — the prerequisite for multi-field queries that filter or order on more than one field.
+Declares a composite index on a Cloud Firestore database — the prerequisite for any query that filters or orders on multiple fields (Firestore rejects such queries outright until a matching index exists). Declaring indexes as infrastructure makes a deployment's query capabilities reviewable and reproducible instead of click-created from error-message links. Supports single-collection and collection-group scopes, Datastore Mode API surfaces, density tuning, and vector fields for nearest-neighbor (embedding similarity) queries.
 
 ## What Gets Created
 
-A Firestore composite index with the declared field roles (sort order, array-contains, or vector search). The Firestore API is enabled automatically.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Firestore Composite Index** -- an index on the specified collection (or collection group) with the declared fields in order; Firestore builds it in the background and appends `__name__` automatically
+- **Vector Index** -- created when a field carries `vectorConfig`; enables `find_nearest` queries against embeddings of the declared dimension (flat index type)
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **An existing Firestore database** — referenced via `database` (a `GcpFirestoreDatabase` resource or literal name; empty falls back to `(default)`)
-- **IAM permissions** — Firestore index admin (e.g. `roles/datastore.indexAdmin`)
+Single-field indexes are built by Firestore automatically and never need this resource. Every index property is immutable at the API — changing the definition replaces the index with a background rebuild, and the old index keeps serving queries until the new one is ready (create-before-destroy).
 
-## Quick Start
+## Before You Deploy
+
+### Planton Setup
+
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### GCP Project
+
+- **A Firestore database** in the target project. Leave `database` empty to target the project's `"(default)"` database, or reference a `GcpFirestoreDatabase` Cloud Resource via ValueFromRef.
+- **Firestore API** (`firestore.googleapis.com`) enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Firestore Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Composite Filter Sort** preset in the [Presets](#presets) tab for the classic equality-filter-plus-sort query shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpFirestoreIndex
 metadata:
-  name: orders-by-customer-date
+  name: orders-by-customer
+  org: acme-corp
+  env: prod
 spec:
-  database:
-    valueFrom:
-      kind: GcpFirestoreDatabase
-      name: prod-firestore
-      fieldPath: status.outputs.database_name
   collection: orders
   fields:
     - fieldPath: customerId
@@ -42,29 +58,67 @@ spec:
 ```
 
 ```shell
-planton apply -f index.yaml
+planton apply -f firestore-index.yaml
 ```
 
-## Configuration Reference
+This creates a composite index on the default database's `orders` collection serving `WHERE customerId == X ORDER BY createdAt DESC` queries. A Stack Job tracks the provisioning in real time.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `collection` | `string` | — (required) | Collection ID. Immutable. |
-| `fields` | `object[]` | — (required) | Indexed fields with order, arrayConfig, or vectorConfig. |
-| `database` | `StringValueOrRef` | `(default)` | Database name. Immutable. |
-| `queryScope` | `string` | `COLLECTION` | Query scope. Immutable. |
-| `apiScope` | `string` | `ANY_API` | API surface. Immutable. |
-| `density` | `string` | GCP default | Index density. Immutable. |
-| `projectId` | `StringValueOrRef` | provider default | Project owning the database. |
+### InfraChart
 
-## Stack Outputs
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the index to a Firestore database deployed in the same InfraPipeline:
 
-| Output | Description |
-|--------|-------------|
-| `index_id` | Fully qualified index resource name |
-| `collection` | Collection (group) the index applies to |
+```yaml
+spec:
+  database:
+    valueFrom:
+      kind: GcpFirestoreDatabase
+      name: orders-database
+      fieldPath: status.outputs.database_name
+  collection: orders
+```
 
-## Related Components
+The InfraPipeline resolves the dependency graph, deploys the database first, then declares its indexes.
 
-- [GcpFirestoreDatabase](/docs/catalog/gcp/firestore-database) — the parent database
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project
+## Key Configuration
+
+These are the most important decisions when configuring a Firestore index. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Fields and order** -- Declare the fields in QUERY order: equality filters first, then the inequality or sort field, then array/vector fields. Each field plays exactly one role — `order` (`ASCENDING`/`DESCENDING`), `arrayConfig` (`CONTAINS` for array-contains queries), or `vectorConfig` (nearest-neighbor). Sort direction matters: an index on `(customerId ASC, createdAt DESC)` does not serve the reverse ordering.
+
+**Query scope** -- `COLLECTION` (the default) serves queries against a single collection at one path. `COLLECTION_GROUP` serves fan-out queries across every collection with this ID anywhere in the database — those need their own indexes.
+
+**Vector fields** -- A field with `vectorConfig.dimension` enables Firestore's `find_nearest` embedding queries. The dimension must match the embedding model's output size exactly (768 for text-embedding-004, 1536 for OpenAI ada-002), and the vector field must be the LAST field of the index.
+
+**Density** -- Leave empty for GCP's default (`SPARSE_ALL`). `DENSE` also indexes documents missing the indexed fields — required for some Datastore Mode query shapes, at higher storage and write cost.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpFirestoreDatabase** (optional) | `database` | `status.outputs.database_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `index_id` | Full index resource name (`projects/{project}/databases/{database}/collectionGroups/{collection}/indexes/{id}`) | Audit, correlation |
+| `collection` | The collection (group) ID the index serves | Application configuration |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Composite Filter Sort** -- The classic multi-field index: equality filter on one field, sort on another (`WHERE customerId == X ORDER BY createdAt DESC`). The most common index shape for list views. Start from the **Composite Filter Sort** preset.
+
+**Vector Neighbors** -- A filter field plus a vector field last, enabling filtered nearest-neighbor queries over embeddings — the Firestore-native RAG/semantic-search building block. Start from the **Vector Neighbors** preset.
+
+## Works With
+
+- [**GCP Firestore Database**](/cloud-catalog/gcp-firestore-database) -- provides the database the index attaches to
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project when it differs from the connection default
+- [**GCP Firestore Backup Schedule**](/cloud-catalog/gcp-firestore-backup-schedule) -- the same database's protection layer, declared side by side

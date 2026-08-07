@@ -90,7 +90,7 @@ Use the provided `debug.sh` script for local testing:
 ```
 
 This script:
-- Loads the example manifest from `../../hack/manifest.yaml`
+- Loads the example manifest from `../../e2e/manifest.yaml`
 - Initializes a local Pulumi stack
 - Runs `pulumi up` with the test configuration
 - Displays outputs

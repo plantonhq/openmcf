@@ -6,183 +6,118 @@ order: 100
 componentName: "civokubernetescluster"
 ---
 
-# Civo Kubernetes Cluster
+# Kubernetes Cluster on Civo
 
-Deploys a managed K3s-based Kubernetes cluster on Civo Cloud with configurable node pools, optional high-availability control plane, and automatic patch upgrades. The cluster is attached to an existing Civo network and exposes a kubeconfig for immediate access.
+Deploys a managed Kubernetes cluster (K3s) on Civo Cloud with configurable node sizing, optional high availability, automatic version upgrades, and VPC networking. Civo clusters provision in under 90 seconds, making them well-suited for development, CI/CD, and lightweight production workloads. Integrates with Planton's Provider Connections for Civo credential management and ValueFromRef for VPC network dependency wiring.
 
 ## What Gets Created
 
-When you deploy a CivoKubernetesCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kubernetes Cluster (K3s)** — a `civo_kubernetes_cluster` resource in the specified region, attached to the given network, running the requested Kubernetes version
-- **Default Node Pool** — a node pool with the configured instance size and node count, created as part of the cluster
+- **Civo Kubernetes Cluster** -- a managed K3s-based cluster in the specified Civo region, placed on the referenced VPC network with the configured Kubernetes version and node pool
+- **Default Node Pool** -- worker nodes with the configured instance size and count from `defaultNodePool`
+- **Kubeconfig** -- generated automatically and stored in stack outputs for downstream access
 
-## Prerequisites
+## Before You Deploy
 
-- **Civo credentials** configured via environment variables or Planton provider config
-- **An existing Civo network** in the target region (can be created with CivoVpc)
-- **A supported Kubernetes version** string (e.g., `1.28.2`) — check Civo's available versions for your region
+### Planton Setup
 
-## Quick Start
+- **Civo Provider Connection** -- an active connection in the Connect module with a Civo API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-Create a file `civo-k8s.yaml`:
+### Civo Account
+
+- **A Civo VPC network** in the target region. Provide the network ID directly or reference a CivoVpc Cloud Resource via ValueFromRef.
+- **A supported Kubernetes version** -- check available versions via the Civo CLI (`civo kubernetes versions`) or Civo dashboard. Specify the full version string (e.g., `"1.29.2"`).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Kubernetes Cluster on Civo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab for a resilient multi-node configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
+apiVersion: civo.planton.dev/v1
 kind: CivoKubernetesCluster
 metadata:
-  name: my-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoKubernetesCluster.my-cluster
+  name: app-cluster
+  org: acme-corp
+  env: prod
 spec:
-  clusterName: my-cluster
-  region: nyc1
-  kubernetesVersion: "1.28.2"
+  clusterName: app-cluster
+  region: lon1
+  kubernetesVersion: "1.29.2"
   network:
-    value: network-uuid-here
+    value: "abc12345-6789-def0-1234-567890abcdef"
   defaultNodePool:
     size: g4s.kube.medium
-    nodeCount: 2
-```
-
-Deploy:
-
-```shell
-planton apply -f civo-k8s.yaml
-```
-
-This creates a two-node K3s cluster in New York running Kubernetes 1.28.2 on `g4s.kube.medium` instances.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `clusterName` | `string` | Name of the Kubernetes cluster. Must be unique per account. Alphanumeric and hyphens recommended. | Required |
-| `region` | `enum` | Civo region where the cluster is created. Valid values: `lon1`, `lon2`, `fra1`, `nyc1`, `phx1`, `mum1`. | Required |
-| `kubernetesVersion` | `string` | Kubernetes version for the cluster (e.g., `1.28.2`). Must be a Civo-supported version. | Required |
-| `network` | `StringValueOrRef` | Network ID where the cluster resides. Must be an existing network in the same region. Can reference a CivoVpc resource via `valueFrom`. | Required |
-| `defaultNodePool.size` | `string` | Instance size for each node in the default pool (e.g., `g4s.kube.medium`). Defines CPU and memory allocation. | Required |
-| `defaultNodePool.nodeCount` | `uint32` | Number of nodes in the default pool. | Required, must be > 0 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `highlyAvailable` | `bool` | `false` | When `true`, creates the cluster with multiple control-plane nodes for increased availability. |
-| `autoUpgrade` | `bool` | `false` | When `true`, the cluster automatically upgrades to new Kubernetes patch releases as they become available. |
-| `disableSurgeUpgrade` | `bool` | `false` | When `true`, disables surge upgrades. By default, upgrades may temporarily provision extra nodes to minimize downtime. |
-| `tags` | `string[]` | `[]` | Tags to apply to the cluster for organizational purposes within Civo. |
-
-## Examples
-
-### Minimal Development Cluster
-
-A single-node cluster for development and testing:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoKubernetesCluster
-metadata:
-  name: dev-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.CivoKubernetesCluster.dev-cluster
-spec:
-  clusterName: dev-cluster
-  region: fra1
-  kubernetesVersion: "1.28.2"
-  network:
-    value: network-uuid-here
-  defaultNodePool:
-    size: g4s.kube.small
-    nodeCount: 1
-```
-
-### Production Cluster with HA and Auto-Upgrade
-
-A multi-node cluster with high availability and automatic patch upgrades:
-
-```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoKubernetesCluster
-metadata:
-  name: prod-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoKubernetesCluster.prod-cluster
-spec:
-  clusterName: prod-cluster
-  region: nyc1
-  kubernetesVersion: "1.28.2"
-  network:
-    value: network-uuid-here
-  highlyAvailable: true
-  autoUpgrade: true
-  tags:
-    - environment:production
-    - team:platform
-  defaultNodePool:
-    size: g4s.kube.large
     nodeCount: 3
 ```
 
-### Using Foreign Key References
+```shell
+planton apply -f civo-cluster.yaml
+```
 
-Reference an Planton-managed CivoVpc instead of hardcoding the network ID:
+This creates a 3-node Kubernetes cluster on Civo's London region with medium-sized nodes. No HA or auto-upgrade is enabled. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the cluster to a VPC network deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoKubernetesCluster
-metadata:
-  name: ref-cluster
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.CivoKubernetesCluster.ref-cluster
 spec:
-  clusterName: ref-cluster
-  region: lon1
-  kubernetesVersion: "1.28.2"
   network:
     valueFrom:
       kind: CivoVpc
-      name: my-network
-      field: status.outputs.network_id
-  highlyAvailable: true
-  autoUpgrade: true
-  disableSurgeUpgrade: false
-  tags:
-    - environment:production
-    - managed-by:planton
-  defaultNodePool:
-    size: g4s.kube.xlarge
-    nodeCount: 5
+      name: app-network
+      fieldPath: status.outputs.network_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the Kubernetes cluster on it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_id` | `string` | Unique identifier of the created Kubernetes cluster |
-| `kubeconfig_b64` | `string` | Base64-encoded kubeconfig for accessing the cluster |
-| `api_server_endpoint` | `string` | Endpoint URL of the Kubernetes API server |
-| `created_at_rfc3339` | `string` | Timestamp when the cluster was created, in RFC 3339 format |
+These are the most important decisions when configuring a Civo Kubernetes cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Node pool sizing** -- The `defaultNodePool.size` field sets the instance type for worker nodes (e.g., `"g4s.kube.small"` for development, `"g4s.kube.medium"` for production). `defaultNodePool.nodeCount` sets how many nodes to provision -- use at least 3 for production workloads to allow pod scheduling across nodes during rolling updates and node failures.
 
-- [CivoVpc](/docs/catalog/civo/vpc) — provides the network for cluster placement
-- [CivoKubernetesNodePool](/docs/catalog/civo/kubernetes-node-pool) — adds additional node pools to the cluster
-- [CivoFirewall](/docs/catalog/civo/firewall) — controls network access to the cluster
-- [CivoVolume](/docs/catalog/civo/volume) — provides persistent block storage for cluster workloads
+**High availability** -- Set `highlyAvailable: true` to provision multiple control plane nodes for fault tolerance. Without HA, a single control plane node failure takes the cluster offline. HA increases the cluster's base cost but is required for production SLAs.
+
+**Automatic upgrades** -- Set `autoUpgrade: true` to let Civo apply Kubernetes patch updates automatically. Recommended for production to reduce operational overhead. Disable for environments where you need manual control over the exact Kubernetes version.
+
+**Region** -- The `region` field accepts a Civo region code (e.g., `lon1` for London, `nyc1` for New York, `fra1` for Frankfurt). Choose the region closest to your users or application workloads.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CivoVpc** | `network` | `status.outputs.network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_id` | Unique cluster identifier on Civo | Civo API operations, monitoring dashboards |
+| `kubeconfig_b64` | Base64-encoded kubeconfig for cluster access | Kubernetes Provider Connections, CI/CD pipeline configuration |
+| `api_server_endpoint` | Kubernetes API server endpoint URL | kubectl configuration, application health checks |
+| `created_at_rfc3339` | Cluster creation timestamp in RFC 3339 format | Audit logs, lifecycle tracking |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production HA cluster** -- 3 medium-sized nodes with high availability enabled and automatic Kubernetes patch upgrades. Provides resilience against node failures and zero-downtime upgrades for production workloads. Start from the **Production HA** preset.
+
+**Development cluster** -- Single small node, no HA, no auto-upgrade. Minimal cost for development, CI/CD test clusters, and proof-of-concept deployments. Civo's fast provisioning (under 90 seconds) makes create/destroy cycles practical. Start from the **Development** preset.
+
+## Works With
+
+- [**Civo VPC**](/cloud-catalog/civo-vpc) -- provides the VPC network for cluster networking

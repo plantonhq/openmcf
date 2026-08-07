@@ -76,7 +76,7 @@ spec:
 
 The association's identity is the (file system, path, bucket) triple — changing `file_system_id`, `file_system_path`, or `data_repository_path` replaces the association. The sync policies and chunk size update in place.
 
-See docs/README.md for architecture details.
+See GUIDE.md for architecture details.
 
 ---
 

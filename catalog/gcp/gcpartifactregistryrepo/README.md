@@ -74,7 +74,7 @@ This creates a private Docker repository at `us-central1-docker.pkg.dev/{project
 | `registry_uri` | The push/pull endpoint, e.g. `us-central1-docker.pkg.dev/{project}/{repo}` |
 | `location` | Repository location |
 
-See the [presets](presets/) for remixable starting points and docs/README.md for the deep dive.
+See the [presets](presets/) for remixable starting points and GUIDE.md for the deep dive.
 
 ---
 

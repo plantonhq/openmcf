@@ -8,272 +8,135 @@ componentName: "alicloudrocketmqinstance"
 
 # AliCloud RocketMQ Instance
 
-Deploys an Alibaba Cloud RocketMQ 5.x managed message broker with bundled topics and consumer groups. Supports edition-based throughput tiers (standard, professional, ultimate), deployment architectures (single node, cluster HA, serverless), and optional public internet access.
+Deploys an Alibaba Cloud RocketMQ 5.x instance with bundled topics and consumer groups. The component provisions the instance, its topics, and its consumer groups as a single atomic unit. RocketMQ 5.x provides VPC-integrated instances with configurable edition tiers, billing modes, internet access, message tracing, encryption at rest, and four message types (Normal, FIFO, Delay, Transaction). The component integrates with Planton's Provider Connections for AliCloud credential management and supports ValueFromRef wiring to VPCs and VSwitches.
 
 ## What Gets Created
 
-When you deploy an AliCloudRocketmqInstance resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **RocketMQ 5.x Instance** — a managed message broker placed in the specified VPC with configurable edition, billing, and optional internet access
-- **Topics** — one `alicloud_rocketmq_topic` per entry in `spec.topics[]`, each with a message type (NORMAL, FIFO, DELAY, or TRANSACTION) and optional throughput limits
-- **Consumer Groups** — one `alicloud_rocketmq_consumer_group` per entry in `spec.consumerGroups[]`, each with delivery ordering, retry policy, and optional dead-letter topic routing
+- **RocketMQ Instance** -- an `alicloud_rocketmq_instance` with the selected edition series, deployment architecture, VPC networking, billing mode, and optional internet access, throughput specification, and encryption
+- **Topics** -- one `alicloud_rocketmq_topic` per entry in `topics`, each with a configured message type (NORMAL, FIFO, DELAY, or TRANSACTION)
+- **Consumer Groups** -- one `alicloud_rocketmq_consumer_group` per entry in `consumerGroups`, each with delivery ordering, retry policy, and optional dead-letter topic configuration
+- **AliCloud Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user-provided `tags`
 
-## Prerequisites
+## Before You Deploy
 
-- **Alibaba Cloud credentials** configured via environment variables or Planton provider config
-- **A VPC** where the instance will be deployed (referenced via `vpcId`)
-- **A VSwitch** (optional but recommended) for placement in a specific availability zone
-- **A security group** (optional) to control network-level access to the instance's VPC endpoint
+### Planton Setup
 
-## Quick Start
+- **AliCloud Provider Connection** -- an active connection in the Connect module with credentials for the target Alibaba Cloud account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `rocketmq.yaml`:
+### Alibaba Cloud Account
+
+- A VPC for the instance's network endpoint. RocketMQ 5.x instances require VPC placement. Provide the VPC ID directly or reference an AliCloudVpc Cloud Resource via ValueFromRef.
+- A VSwitch (optional but recommended) to control the instance's availability zone placement within the VPC. For serverless instances, at least two VSwitches across availability zones are recommended.
+- A KMS key ID (optional) if enabling encryption at rest via `productInfo.storageEncryption`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AliCloud RocketMQ Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab to pre-populate a professional-tier cluster with HA, message tracing, and sample topics.
+
+### CLI
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
+apiVersion: alicloud.planton.dev/v1
 kind: AliCloudRocketmqInstance
 metadata:
-  name: my-mq
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudRocketmqInstance.my-mq
+  name: app-messaging
+  org: acme-corp
+  env: prod
 spec:
   region: cn-hangzhou
-  seriesCode: standard
-  subSeriesCode: single_node
+  seriesCode: professional
+  subSeriesCode: cluster_ha
   vpcId:
-    value: vpc-xxx
+    value: "vpc-abc123"
+  topics:
+    - topicName: order-events
+      messageType: NORMAL
+    - topicName: payment-events
+      messageType: FIFO
+  consumerGroups:
+    - consumerGroupId: order-processor
+      deliveryOrderType: Concurrently
+    - consumerGroupId: payment-processor
+      deliveryOrderType: Orderly
 ```
-
-Deploy:
 
 ```shell
 planton apply -f rocketmq.yaml
 ```
 
-This creates a standard-edition single-node RocketMQ instance in the specified VPC with pay-as-you-go billing and no internet access.
+This creates a professional-tier HA RocketMQ instance with two topics and two consumer groups. Billing defaults to PayAsYouGo. Internet access is disabled, so the instance is only accessible within the VPC.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Alibaba Cloud region (e.g., `cn-hangzhou`, `us-west-1`). | Required; non-empty |
-| `seriesCode` | `string` | Edition series: `standard`, `professional`, `ultimate`. Determines feature set and throughput ceiling. ForceNew. | Required; must be one of the three values |
-| `subSeriesCode` | `string` | Deployment architecture: `cluster_ha`, `single_node`, `serverless`. ForceNew. | Required; must be one of the three values |
-| `vpcId` | `StringValueOrRef` | VPC where the instance is deployed. ForceNew. Can reference an `AliCloudVpc` resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `instanceName` | `string` | `metadata.name` | Human-readable instance name (2-64 characters). |
-| `remark` | `string` | — | Instance description. |
-| `paymentType` | `string` | `PayAsYouGo` | Billing method: `PayAsYouGo` or `Subscription`. |
-| `period` | `int` | — | Subscription period length. Only for Subscription billing. |
-| `periodUnit` | `string` | — | Subscription period unit: `Month` or `Year`. |
-| `autoRenew` | `bool` | — | Enable auto-renewal for Subscription instances. |
-| `autoRenewPeriod` | `int` | — | Auto-renewal period: 1, 2, 3, 6, or 12. |
-| `vswitchId` | `StringValueOrRef` | — | VSwitch for VPC endpoint placement. ForceNew. Can reference an `AliCloudVswitch` resource via `valueFrom`. |
-| `securityGroupId` | `string` | — | Security group for VPC endpoint access control. ForceNew. |
-| `internetInfo.enabled` | `bool` | `false` | Enable public internet endpoint. ForceNew. |
-| `internetInfo.flowOutType` | `string` | `payByTraffic` | Internet billing: `payByBandwidth` or `payByTraffic`. ForceNew. |
-| `internetInfo.flowOutBandwidth` | `int` | — | Bandwidth in Mb/s (1-1000). Only for `payByBandwidth`. |
-| `msgProcessSpec` | `string` | — | Throughput tier (e.g., `rmq.s1.micro`, `rmq.p2.4xlarge`, `rmq.u2.4xlarge`). Valid values depend on `seriesCode`. |
-| `productInfo.messageRetentionTime` | `int` | — | Message retention in hours. Longer retention increases storage costs. |
-| `productInfo.sendReceiveRatio` | `double` | — | Send/receive capacity ratio (0.2-0.5). |
-| `productInfo.autoScaling` | `bool` | — | Enable throughput auto-scaling. |
-| `productInfo.traceOn` | `bool` | — | Enable message trace for debugging and monitoring. |
-| `productInfo.storageEncryption` | `bool` | — | Enable encryption at rest. ForceNew. |
-| `productInfo.storageSecretKey` | `string` | — | KMS key for encryption at rest. Only when `storageEncryption` is true. ForceNew. |
-| `ipWhitelists` | `string[]` | — | IP addresses or CIDR blocks allowed to access the instance. |
-| `resourceGroupId` | `string` | — | Alibaba Cloud resource group ID. |
-| `tags` | `map(string)` | — | Tags to apply to the instance. |
-| `topics` | `list` | `[]` | Topics to create within the instance. See topic fields below. |
-| `consumerGroups` | `list` | `[]` | Consumer groups to create within the instance. See consumer group fields below. |
-
-### Topic Fields (`topics[]`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `topicName` | `string` | (required) | Topic name, unique within the instance. ForceNew. |
-| `messageType` | `string` | `NORMAL` | Message type: `NORMAL`, `FIFO`, `DELAY`, `TRANSACTION`. ForceNew. |
-| `remark` | `string` | — | Topic description. |
-| `maxSendTps` | `int` | — | Maximum send transactions per second. |
-
-### Consumer Group Fields (`consumerGroups[]`)
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `consumerGroupId` | `string` | (required) | Consumer group ID, unique within the instance. ForceNew. |
-| `deliveryOrderType` | `string` | — | Message delivery ordering: `Concurrently` (parallel) or `Orderly` (per message group). |
-| `remark` | `string` | — | Consumer group description. |
-| `maxReceiveTps` | `int` | — | Maximum receive transactions per second. |
-| `consumeRetryPolicy.retryPolicy` | `string` | `DefaultRetryPolicy` | Retry strategy: `DefaultRetryPolicy` (exponential backoff) or `FixedRetryPolicy` (fixed interval). |
-| `consumeRetryPolicy.maxRetryTimes` | `int` | `16` | Maximum retry attempts (0-1000). |
-| `consumeRetryPolicy.deadLetterTargetTopic` | `string` | — | Topic for messages that exhaust all retries. |
-
-## Examples
-
-### Development Single-Node Instance
-
-A minimal standard-edition instance for development and testing:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a VPC and VSwitch deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRocketmqInstance
-metadata:
-  name: dev-mq
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AliCloudRocketmqInstance.dev-mq
 spec:
-  region: cn-hangzhou
-  seriesCode: standard
-  subSeriesCode: single_node
-  vpcId:
-    value: vpc-abc123
-```
-
-### Production HA with Topics and Consumer Groups
-
-A professional-edition cluster with FIFO and normal topics, consumer groups with custom retry policies, and VSwitch placement:
-
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRocketmqInstance
-metadata:
-  name: prod-mq
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: messaging
-    pulumi.planton.dev/stack.name: prod.AliCloudRocketmqInstance.prod-mq
-spec:
-  region: cn-shanghai
-  seriesCode: professional
-  subSeriesCode: cluster_ha
   vpcId:
     valueFrom:
-      name: prod-vpc
+      kind: AliCloudVpc
+      name: messaging-vpc
+      fieldPath: status.outputs.vpc_id
   vswitchId:
     valueFrom:
-      name: prod-vswitch-a
-  msgProcessSpec: rmq.p2.4xlarge
-  productInfo:
-    messageRetentionTime: 168
-    traceOn: true
-  ipWhitelists:
-    - "10.0.0.0/8"
-  tags:
-    team: platform
-  topics:
-    - topicName: order-events
-      messageType: NORMAL
-      remark: Order lifecycle events
-    - topicName: payment-events
-      messageType: FIFO
-      remark: Payment processing requiring strict ordering
-    - topicName: delay-notifications
-      messageType: DELAY
-      remark: Delayed notification delivery
-  consumerGroups:
-    - consumerGroupId: GID_order_processor
-      remark: Processes order lifecycle events
-    - consumerGroupId: GID_payment_processor
-      deliveryOrderType: Orderly
-      consumeRetryPolicy:
-        retryPolicy: FixedRetryPolicy
-        maxRetryTimes: 5
-        deadLetterTargetTopic: payment-dead-letter
-    - consumerGroupId: GID_notification_sender
+      kind: AliCloudVswitch
+      name: messaging-vswitch
+      fieldPath: status.outputs.vswitch_id
 ```
 
-### Enterprise with Subscription, Encryption, and Internet Access
+The InfraPipeline resolves the dependency graph, deploys the VPC and VSwitch first, then provisions the RocketMQ instance with the resolved values.
 
-A mission-critical ultimate-edition instance with subscription billing, public internet access, encryption at rest, and auto-scaling:
+## Key Configuration
 
-```yaml
-apiVersion: alicloud.planton.dev/v1alpha1
-kind: AliCloudRocketmqInstance
-metadata:
-  name: enterprise-mq
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: fintech-corp
-    pulumi.planton.dev/project: messaging
-    pulumi.planton.dev/stack.name: prod.AliCloudRocketmqInstance.enterprise-mq
-spec:
-  region: cn-hangzhou
-  seriesCode: ultimate
-  subSeriesCode: cluster_ha
-  vpcId:
-    valueFrom:
-      name: enterprise-vpc
-  vswitchId:
-    valueFrom:
-      name: enterprise-vswitch-a
-  securityGroupId: sg-mq-access
-  paymentType: Subscription
-  period: 12
-  periodUnit: Month
-  autoRenew: true
-  autoRenewPeriod: 3
-  msgProcessSpec: rmq.u2.4xlarge
-  productInfo:
-    messageRetentionTime: 336
-    autoScaling: true
-    traceOn: true
-    storageEncryption: true
-    storageSecretKey: kms-key-abc123
-  internetInfo:
-    enabled: true
-    flowOutType: payByTraffic
-  ipWhitelists:
-    - "172.16.0.0/12"
-    - "203.0.113.0/24"
-  resourceGroupId: rg-production
-  tags:
-    compliance: soc2
-    data-class: confidential
-  topics:
-    - topicName: transaction-events
-      messageType: TRANSACTION
-      remark: Two-phase commit transaction messages
-    - topicName: audit-events
-      messageType: NORMAL
-      remark: Audit trail events
-  consumerGroups:
-    - consumerGroupId: GID_transaction_processor
-      deliveryOrderType: Orderly
-      consumeRetryPolicy:
-        retryPolicy: FixedRetryPolicy
-        maxRetryTimes: 10
-        deadLetterTargetTopic: transaction-dead-letter
-    - consumerGroupId: GID_audit_collector
+These are the most important decisions when configuring a RocketMQ instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```
+**Edition and architecture** -- Set `seriesCode` to `standard` (dev/test), `professional` (production), or `ultimate` (mission-critical) and `subSeriesCode` to `cluster_ha` (multi-node HA), `single_node` (development), or `serverless` (auto-scaling). Both fields are immutable after creation -- edition changes require instance replacement.
 
-## Stack Outputs
+**Message types** -- Each topic's `messageType` is immutable after creation: `NORMAL` (no ordering guarantee), `FIFO` (strict ordering per message group), `DELAY` (scheduled delivery), `TRANSACTION` (two-phase commit). Match the topic type to the consumer group's `deliveryOrderType` -- `Orderly` for FIFO topics, `Concurrently` for NORMAL topics.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Billing and subscription** -- Set `paymentType` to `PayAsYouGo` (default, post-paid) or `Subscription` (prepaid with `period` and `periodUnit`). Subscription offers cost savings for stable workloads. Enable `autoRenew` to prevent accidental service interruption on expiry.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | `string` | RocketMQ instance ID assigned by Alibaba Cloud |
-| `tcp_endpoint` | `string` | VPC-internal TCP endpoint for producing and consuming messages |
-| `internet_endpoint` | `string` | Public internet TCP endpoint (empty when internet access is disabled) |
-| `topic_ids` | `map(string)` | Map of topic names to their Alibaba Cloud resource IDs |
-| `consumer_group_ids` | `map(string)` | Map of consumer group IDs to their Alibaba Cloud resource IDs |
+**Internet access** -- Configure `internetInfo.enabled: true` to expose a public endpoint alongside the VPC endpoint. Set `flowOutType` to `payByBandwidth` (fixed, set `flowOutBandwidth` in Mb/s) or `payByTraffic` (usage-based, default). Internet configuration is immutable after creation.
 
-## Related Components
+**Retry and dead-letter** -- Each consumer group's `consumeRetryPolicy` controls failure handling. `DefaultRetryPolicy` uses exponential backoff (recommended). `FixedRetryPolicy` uses a constant interval. Set `maxRetryTimes` (0-1000) and `deadLetterTargetTopic` to route exhausted messages for manual investigation.
 
-- [AliCloudVpc](/docs/catalog/alicloud/vpc) — provides the VPC for instance network placement
-- [AliCloudVswitch](/docs/catalog/alicloud/vswitch) — provides the VSwitch for availability zone placement
-- [AliCloudSecurityGroup](/docs/catalog/alicloud/security-group) — controls network-level access to the instance endpoint
-- [AliCloudKmsKey](/docs/catalog/alicloud/kms-key) — provides the encryption key for storage encryption at rest
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AliCloudVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AliCloudVswitch** (optional) | `vswitchId` | `status.outputs.vswitch_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | The RocketMQ instance ID assigned by Alibaba Cloud | Monitoring dashboards, ACL configuration |
+| `tcp_endpoint` | TCP endpoint for VPC-internal access | Producer and consumer client configuration within the VPC |
+| `internet_endpoint` | TCP endpoint for public internet access (empty when disabled) | External producer/consumer access, cross-region replication |
+| `topic_ids` | Map of topic names to their resource IDs | Topic management, monitoring per-topic metrics |
+| `consumer_group_ids` | Map of consumer group IDs to their resource IDs | Consumer group management, per-group monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development single node** -- A standard-tier single-node instance for development and testing. Minimal configuration with only a VPC reference. Start from the **Development Single Node** preset.
+
+**Production HA** -- A professional-tier cluster with HA, message tracing, 7-day message retention, IP whitelists, and sample NORMAL and FIFO topics with matching consumer groups. Start from the **Production HA** preset.
+
+**Enterprise encrypted** -- An ultimate-tier cluster with Subscription billing, 14-day message retention, auto-scaling, encryption at rest via KMS, internet access, and TRANSACTION and DELAY topics with dead-letter routing. Start from the **Enterprise Encrypted** preset.
+
+## Works With
+
+- [**AliCloud VPC**](/cloud-catalog/ali-cloud-vpc) -- provides the VPC for the instance's network endpoint
+- [**AliCloud VSwitch**](/cloud-catalog/ali-cloud-vswitch) -- provides availability zone placement within the VPC

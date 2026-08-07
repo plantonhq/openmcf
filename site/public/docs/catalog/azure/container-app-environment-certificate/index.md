@@ -8,65 +8,130 @@ componentName: "azurecontainerappenvironmentcertificate"
 
 # Azure Container App Environment Certificate
 
-Stores a bring-your-own TLS certificate on a Container App Environment -- uploaded as a PFX or pulled from Azure Key Vault -- for binding to app custom domains.
+Stores a bring-your-own TLS certificate on a Container App Environment -- the certificate store of the Container Apps family. Certificates live on the ENVIRONMENT and are shared by every app in it: upload or reference the certificate once, then bind it to any app's hostname through an Azure Container App Custom Domain. This kind is for certificates you bring -- EV/OV chains, org-mandated CAs, wildcard certificates; for free, domain-validated certificates Azure provisions and renews end to end, use the managed-certificate kind instead. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureContainerAppEnvironmentCertificate resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Environment certificate** -- an `azurerm_container_app_environment_certificate` on the referenced environment, sourced from an inline PFX bundle or a Key Vault secret reference
+- **Environment Certificate** -- on the referenced Container App Environment, sourced exactly one way: a Key Vault reference the environment keeps current across renewals, or an inline PFX upload whose rotation is manual
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureContainerAppEnvironment** to store the certificate on
-- For the Key Vault path: an **AzureKeyVaultCertificate** and read access to the vault's secrets for the environment's managed identity (Key Vault Secrets User under RBAC)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `certificate.yaml`:
+### Azure Subscription
+
+- **An AzureContainerAppEnvironment** to store the certificate on. Reference its `environment_id` output via ValueFromRef.
+- **For the Key Vault source**: an AzureKeyVaultCertificate whose `versionless_secret_id` output this certificate references, plus two contracts Azure checks at deploy time -- the reading identity (the environment's system-assigned identity by default) must be ON the environment's identity block, and it must hold read access to the vault's secrets (Key Vault Secrets User under RBAC).
+- **For the inline PFX source**: the base64-encoded PKCS#12 bundle and its password stored as managed secrets -- both fields are secret-bearing and hold `$secret/<slug>` references, never pasted material.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Container App Environment Certificate**, and click **Deploy**. The creation wizard walks you through the certificate identity (environment + the name every domain binding references), the source (a two-card Key-Vault-or-inline-PFX choice, with versionless-reference teaching and live prerequisite callouts), and tags. Start from the **Key Vault Certificate** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureContainerAppEnvironmentCertificate
 metadata:
-  name: app-tls-cert
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureContainerAppEnvironmentCertificate.app-tls-cert
+  name: app-example-com-cert
+  org: acme-corp
+  env: prod
 spec:
   certificateName: app.example.com
   containerAppEnvironmentId:
     valueFrom:
       kind: AzureContainerAppEnvironment
-      name: my-env
+      name: apps-env
       fieldPath: status.outputs.environment_id
-  certificateBlobBase64: $secret/app-cert-pfx
-  certificatePassword: $secret/app-cert-password
+  certificateKeyVault:
+    keyVaultSecretId:
+      valueFrom:
+        kind: AzureKeyVaultCertificate
+        name: app-cert
+        fieldPath: status.outputs.versionless_secret_id
 ```
-
-Deploy:
 
 ```shell
 planton apply -f certificate.yaml
 ```
 
-The blob and password are secret-bearing fields -- reference managed secrets rather than pasting values. Bind the certificate to an app's hostname with [Azure Container App Custom Domain](/docs/catalog/azure/container-app-custom-domain), referencing this resource's `certificate_id` output with `certificateBindingType: SNI_ENABLED`.
+Only `tags` update in place. Every other change replaces the certificate -- but the ARM ID rides the NAME, so replacing the certificate CONTENT under the same name keeps the ID, and every domain binding referencing it re-binds to the new material. That is the designed rotation workflow; renaming or moving environments mints a different ID and strands the bindings.
 
-Everything except `tags` is ForceNew -- rotating an inline certificate replaces the resource and briefly re-binds the domains using it. The Key Vault source avoids that treadmill: a versionless secret reference follows renewals automatically.
+### InfraChart
 
-## Key Outputs
+When deploying as part of a multi-resource environment, use ValueFromRef to wire domain bindings onto the certificate deployed in the same InfraPipeline:
 
-| Output | Purpose |
-|--------|---------|
-| `certificate_id` | What custom-domain bindings reference |
-| `subject_name` / `issuer` / `thumbprint` | Identity of the installed certificate |
-| `issue_date` / `expiration_date` | Expiry monitoring (alarm on this for inline PFX certificates) |
+```yaml
+spec:
+  containerAppEnvironmentCertificateId:
+    valueFrom:
+      kind: AzureContainerAppEnvironmentCertificate
+      name: app-example-com-cert
+      fieldPath: status.outputs.certificate_id
+  certificateBindingType: SNI_ENABLED
+```
 
-## Related Resources
+The InfraPipeline resolves the dependency graph, deploys the environment and certificate first, then provisions the domain bindings that serve it.
 
-- [Azure Container App Custom Domain](/docs/catalog/azure/container-app-custom-domain) -- binds the certificate to an app hostname
-- [Azure Container App Environment Managed Certificate](/docs/catalog/azure/container-app-environment-managed-certificate) -- the free, Azure-renewed alternative
-- [Azure Key Vault Certificate](/docs/catalog/azure/key-vault-certificate) -- the Key Vault source this kind can track
+## Key Configuration
+
+These are the most important decisions when configuring a certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Source** -- exactly one per certificate. The Key Vault reference (`certificateKeyVault`) is the recommended path: the environment reads the certificate's SECRET face from the vault and, with a VERSIONLESS reference, follows every renewal automatically. The inline PFX (`certificateBlobBase64` + `certificatePassword`, both secret-bearing) is the fallback for material outside a vault -- its rotation is manual, and Azure never returns the blob on reads, so the spec is the only record of what was uploaded.
+
+**Certificate name** -- a segment of the ARM ID every domain binding references. Commonly the hostname (`app.example.com`) or a hyphenated wildcard form (`wildcard-example-com`). Rotation preserves it; renaming strands bindings.
+
+**Vault read identity** -- which managed identity reads the vault secret. Unset deploys `System` (the environment's system-assigned identity, Azure's own default); reference an AzureUserAssignedIdentity's `identity_id` output to read with a shared fleet identity. Either way the identity must be on the environment and hold Key Vault Secrets User on the vault.
+
+**PFX password** -- optional by design: passwordless PFX bundles are legal, and both IaC engines send the (empty) password argument Azure expects alongside the blob.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureContainerAppEnvironment** | `containerAppEnvironmentId` | `status.outputs.environment_id` |
+| **AzureKeyVaultCertificate** | `certificateKeyVault.keyVaultSecretId` (Key Vault source) | `status.outputs.versionless_secret_id` |
+| **AzureUserAssignedIdentity** | `certificateKeyVault.identity` (optional) | `status.outputs.identity_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `certificate_id` | Azure Resource Manager ID of the certificate | The domain-binding seam: AzureContainerAppCustomDomain references it in `containerAppEnvironmentCertificateId` |
+| `subject_name` | The certificate's subject as read back from the material | Confirming the right certificate landed |
+| `issuer` | The issuing CA | Compliance checks |
+| `issue_date` | When the certificate was issued (RFC 3339) | Audit trails |
+| `expiration_date` | When the certificate expires (RFC 3339) | The value to alarm on for inline-PFX certificates, whose rotation is manual |
+| `thumbprint` | The SHA-1 fingerprint | Identifying the installed certificate in Azure and operational tooling |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Vault-backed rotation** -- an AzureKeyVaultCertificate renews in the vault; this certificate's versionless reference follows it automatically, and every bound domain serves the current version with no manual step. Start from the **Key Vault Certificate** preset.
+
+**Wildcard for the whole environment** -- one `wildcard-example-com` certificate stored once, referenced by any number of domain bindings (`app.example.com`, `api.example.com`) across the environment's apps.
+
+**Org-mandated CA** -- an EV/OV chain exported as PFX, stored as managed secrets, uploaded inline. Put the `expiration_date` output on a calendar -- nothing else will notice it approaching. Start from the **Inline PFX Certificate** preset.
+
+## Works With
+
+- [**Azure Container App Environment**](/cloud-catalog/azure-container-app-environment) -- where the certificate is stored
+- [**Azure Container App Custom Domain**](/cloud-catalog/azure-container-app-custom-domain) -- binds the certificate to an app's hostname
+- [**Azure Key Vault Certificate**](/cloud-catalog/azure-key-vault-certificate) -- the vault-managed source whose renewals propagate
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- an optional shared identity for the vault read
+- [**Azure Container App Environment Managed Certificate**](/cloud-catalog/azure-container-app-environment-managed-certificate) -- the free, Azure-renewed alternative for single hostnames

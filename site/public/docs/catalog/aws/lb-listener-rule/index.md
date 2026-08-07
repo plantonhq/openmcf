@@ -8,44 +8,55 @@ componentName: "awslblistenerrule"
 
 # AWS LB Listener Rule
 
-Deploys an ALB listener rule: a condition-action pair evaluated in priority
-order before the listener's default action. Rules are how one Application
-Load Balancer serves many services -- each service brings its own rule
-("host `api.example.com` forwards to my target group") and removes it when
-it goes away, while the shared listener stays untouched.
+Deploys an ALB listener rule — a condition-action pair that routes matching requests, evaluated in priority order before the listener's default action. The rule is the unit of per-service routing: a shared HTTPS listener stays untouched while each service deploys its own rule ("host api.example.com forwards to the api group", "path /admin/* requires OIDC login first") and removes it when the service goes away. Rules are an ALB concept — NLB listeners route purely by port and protocol.
 
 ## What Gets Created
 
-When you deploy an AwsLbListenerRule resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Listener rule** — an `aws_lb_listener_rule` / `lb.ListenerRule` on the
-  referenced listener, with the specified priority, condition blocks, action
-  chain, and optional host/URL rewrite transforms
+- **Listener Rule** -- on the referenced listener, with its priority, condition blocks, action chain, and optional host/URL transforms
 
-Rules apply to Application Load Balancers only — NLB listeners route purely
-by port/protocol and take no rules.
+The listener, target groups, and any Cognito user pools are separate components referenced by ARN.
 
-## Prerequisites
+## Before You Deploy
 
-- **AWS credentials** configured via the Planton provider config (keyless SSO/OIDC).
-- **An ALB listener** (`AwsLbListener` with `HTTP` or `HTTPS` protocol) to attach to.
-- **A target group** (`AwsLbTargetGroup`) for forward actions.
+### Planton Setup
 
-## Quick Start
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Listener** -- an AwsLbListener referenced by its `listener_arn` output.
+- **Target Groups** -- AwsLbTargetGroup resources for the forward actions, referenced by their `target_group_arn` outputs.
+
+### AWS Account
+
+- **ELB permissions** -- the credentials used by the Provider Connection must have `elasticloadbalancing:CreateRule`, `ModifyRule`, `SetRulePriorities`, and `DeleteRule`.
+- **Priority uniqueness** -- explicit priorities must be unique per listener; plan a spacing convention (100, 200, 300) for rules that shadow each other.
+- **HTTPS for auth actions** -- the authentication actions (Cognito, OIDC, JWT) require the parent listener to be HTTPS.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS LB Listener Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Path Based Routing** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsLbListenerRule
 metadata:
   name: api-route
+  org: acme-corp
+  env: prod
 spec:
-  region: us-west-2
+  region: us-east-1
   listenerArn:
     valueFrom:
       kind: AwsLbListener
-      name: https
+      name: https-listener
       fieldPath: status.outputs.listener_arn
-  priority: 10
+  priority: 100
   conditions:
     - pathPattern:
         values:
@@ -57,7 +68,7 @@ spec:
           - arn:
               valueFrom:
                 kind: AwsLbTargetGroup
-                name: api
+                name: api-servers
                 fieldPath: status.outputs.target_group_arn
 ```
 
@@ -65,150 +76,56 @@ spec:
 planton apply -f rule.yaml
 ```
 
-## Configuration Reference
+This routes every /api/* request on the shared HTTPS listener to the api-servers group at priority 100. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+## Key Configuration
 
-| Field | Type | Description | Validation |
-| --- | --- | --- | --- |
-| `region` | `string` | AWS region; must match the listener's region. | Required; non-empty |
-| `listenerArn` | `string \| valueFrom` | The listener this rule attaches to. References `AwsLbListener.listener_arn` by default. Immutable. | Required |
-| `conditions` | `object[]` | What a request must match. Blocks AND together; values within one block OR together. Exactly one criterion per block. | Required; 1–5 items |
-| `actions` | `object[]` | Action chain for matching requests. Auth actions run first; the chain ends in exactly one of `forward`, `redirect`, or `fixed-response`. | Required; min 1 item |
+These are the most important decisions when configuring a rule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Optional Fields
+**The listener attachment is a one-way door** -- moving a rule replaces it. Priority, conditions, actions, and transforms all update in place.
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `priority` | `int` | next free slot | Evaluation order, 1–50000, unique per listener, lower first. Set explicitly when rules shadow each other. |
-| `conditions[].hostHeader` | `object` | — | Host header match: wildcard `values` and/or `regexValues` (regex requires the load balancer attribute). |
-| `conditions[].pathPattern` | `object` | — | Path match (query string excluded): wildcard `values` and/or `regexValues`. |
-| `conditions[].httpHeader` | `object` | — | Arbitrary header match: `httpHeaderName` plus `values`/`regexValues`. |
-| `conditions[].httpRequestMethod` | `object` | — | Method match (`values`), case-sensitive and exact. |
-| `conditions[].queryString` | `object` | — | Query-string `pairs` (key optional, value required; wildcards allowed). |
-| `conditions[].sourceIp` | `object` | — | Client CIDR match. Uses the connecting address, not `X-Forwarded-For`. |
-| `actions[].type` | `string` | — | `forward`, `redirect`, `fixed-response`, `authenticate-cognito`, `authenticate-oidc`, or `jwt-validation`. Exactly one matching config block must be set. |
-| `actions[].forward.targetGroups` | `object[]` | — | 1–5 weighted destinations; `arn` references `AwsLbTargetGroup.target_group_arn` by default, `weight` 0–999 (default 1). |
-| `actions[].forward.stickiness` | `object` | disabled | Pins clients to the group that served their first request in a weighted forward. |
-| `actions[].redirect` | `object` | — | `statusCode` (`HTTP_301`/`HTTP_302`) plus optional protocol/port/host/path/query overrides; untouched parts pass through. |
-| `actions[].fixedResponse` | `object` | — | `contentType`, `statusCode` (2xx/4xx/5xx, default `503`), `messageBody` (max 1024 chars). |
-| `actions[].authenticateCognito` | `object` | — | `userPoolArn` (references `AwsCognitoUserPool`), `userPoolClientId`, `userPoolDomain`, scope/session options. HTTPS listeners only. |
-| `actions[].authenticateOidc` | `object` | — | Issuer, endpoints, `clientId`, `clientSecret` (handled as a secret end to end), scope/session options. HTTPS listeners only. |
-| `actions[].jwtValidation` | `object` | — | `issuer`, `jwksEndpoint`, up to 10 additional required claims. HTTPS listeners only. |
-| `transforms` | `object[]` | `[]` | Request rewrites before the action runs: at most one `host-header-rewrite` and one `url-rewrite`, each a regex find-and-replace with capture groups. |
+**Priority is the evaluation order** -- 1–50000, unique per listener, lower first, first match wins. Priority 0 lets AWS append after the current highest — safe for non-overlapping routes, but rules that shadow each other (/api/* alongside /*) need explicit priorities.
 
-## Examples
+**Conditions AND across blocks, OR within** -- 1–5 blocks per rule, each matching exactly one thing (host, path, header, method, query string, or source IP); a request must satisfy all blocks, and the values inside one block are alternatives. Wildcards (* and ?) cover most needs; regex patterns require enabling regex matching on the load balancer.
 
-### OIDC gate on the admin path
+**Actions mirror the listener's model** -- authentication actions (Cognito, OIDC, JWT validation) may front the terminal action, and every chain ends in exactly one forward, redirect, or fixed response. Weighted forwards enable route-scoped canaries. The OIDC client secret is a managed secret reference, resolved just-in-time.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListenerRule
-metadata:
-  name: admin-auth
-spec:
-  region: us-west-2
-  listenerArn:
-    valueFrom:
-      kind: AwsLbListener
-      name: https
-      fieldPath: status.outputs.listener_arn
-  priority: 5
-  conditions:
-    - pathPattern:
-        values:
-          - /admin/*
-  actions:
-    - type: authenticate-oidc
-      authenticateOidc:
-        issuer: https://idp.example.com
-        authorizationEndpoint: https://idp.example.com/authorize
-        tokenEndpoint: https://idp.example.com/oauth/token
-        userInfoEndpoint: https://idp.example.com/userinfo
-        clientId: admin-portal
-        clientSecret: replace-with-client-secret
-    - type: forward
-      forward:
-        targetGroups:
-          - arn:
-              valueFrom:
-                kind: AwsLbTargetGroup
-                name: admin
-                fieldPath: status.outputs.target_group_arn
-```
+**Transforms rewrite before routing** -- an optional host-header rewrite and/or URL rewrite (regex find-and-replace with capture groups), for backends that expect a different shape than clients send — the classic /api/v1/* prefix strip.
 
-### Path stripping with a URL rewrite
+**Source IP matches the connecting address** -- not X-Forwarded-For; behind CloudFront the connecting address is CloudFront's, not the user's.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListenerRule
-metadata:
-  name: svc-mount
-spec:
-  region: us-west-2
-  listenerArn:
-    valueFrom:
-      kind: AwsLbListener
-      name: https
-      fieldPath: status.outputs.listener_arn
-  priority: 30
-  conditions:
-    - pathPattern:
-        values:
-          - /svc/*
-  transforms:
-    - type: url-rewrite
-      urlRewrite:
-        regex: ^/svc/(.*)$
-        replace: /$1
-  actions:
-    - type: forward
-      forward:
-        targetGroups:
-          - arn:
-              valueFrom:
-                kind: AwsLbTargetGroup
-                name: svc
-                fieldPath: status.outputs.target_group_arn
-```
+## Outputs and Dependencies
 
-### Maintenance mode for one host
+### What This Component Consumes
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsLbListenerRule
-metadata:
-  name: maintenance
-spec:
-  region: us-west-2
-  listenerArn:
-    valueFrom:
-      kind: AwsLbListener
-      name: https
-      fieldPath: status.outputs.listener_arn
-  priority: 1
-  conditions:
-    - hostHeader:
-        values:
-          - app.example.com
-  actions:
-    - type: fixed-response
-      fixedResponse:
-        contentType: text/html
-        statusCode: "503"
-        messageBody: <h1>Down for maintenance</h1>
-```
+| Field | References | Via |
+|-------|-----------|-----|
+| `listenerArn` | AwsLbListener | `status.outputs.listener_arn` |
+| `actions[].forward.targetGroups[].arn` | AwsLbTargetGroup | `status.outputs.target_group_arn` |
+| `actions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
 
-## Stack Outputs
+### What This Component Provides
 
-| Output | Description |
-| --- | --- |
-| `rule_arn` | ARN of the rule — the handle audit tooling and imports reference |
-| `priority` | The priority AWS assigned — meaningful when the spec left `priority` unset |
+After provisioning, `status.outputs` contains:
 
-## Related Components
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `rule_arn` | ARN of the rule | Auditing and the AWS CLI |
+| `priority` | The priority AWS actually assigned | Verifying auto-appended rules landed where expected |
 
-- [AwsLbListener](/docs/catalog/aws/lb-listener) — the listener this rule attaches to
-- [AwsLbTargetGroup](/docs/catalog/aws/lb-target-group) — the destination of forward actions
-- [AwsAlb](/docs/catalog/aws/alb) — the Application Load Balancer carrying the listener
-- [AwsCognitoUserPool](/docs/catalog/aws/cognito-user-pool) — the user pool behind `authenticate-cognito` actions
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Path-based routing** -- /api/* to the api group on a shared listener. Start from the **Path Based Routing** preset.
+
+**Host-based routing** -- one rule per service hostname: the microservice front door. Start from the **Host Based Routing** preset.
+
+**Canary rollout** -- a weighted forward (90/10) scoped to one route. Start from the **Canary Weighted** preset.
+
+## Works With
+
+- **AwsLbListener** -- the listener this rule attaches to, referenced by `listenerArn`.
+- **AwsLbTargetGroup** -- the forward destinations, referenced per action.
+- **AwsAlb** -- the load balancer at the top of the chain (rules are an ALB concept).
+- **AwsCognitoUserPool** -- the user pool behind authenticate-cognito actions.

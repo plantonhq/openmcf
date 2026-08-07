@@ -8,235 +8,134 @@ componentName: "gcpcloudschedulerjob"
 
 # GCP Cloud Scheduler Job
 
-Deploys a Google Cloud Scheduler job that executes on a unix-cron schedule, dispatching to an HTTP endpoint, Pub/Sub topic, or App Engine handler with optional authentication and configurable retry behavior.
+Deploys a Cloud Scheduler cron job that dispatches to an HTTP endpoint, Pub/Sub topic, or App Engine handler on a user-defined schedule. The job supports OAuth and OIDC token authentication for secure invocation of Cloud Run and Cloud Functions targets, configurable retry behavior with exponential backoff, and time zone-aware scheduling. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, and Pub/Sub topics.
 
 ## What Gets Created
 
-When you deploy a GcpCloudSchedulerJob resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cloud Scheduler Job** — a `google_cloud_scheduler_job` resource configured with the specified schedule, target, and retry policy
-- **Authentication Token** (optional) — OIDC or OAuth2 token generation for secure HTTP target invocation, using the specified service account
+- **Cloud Scheduler Job** -- a managed cron job in the specified GCP project and region, configured with the chosen schedule (unix-cron format), time zone, target type, and retry policy
+- **HTTP Target Configuration** -- created only when `httpTarget` is specified; configures the URI, HTTP method, request body, headers, and optional OAuth or OIDC token authentication
+- **Pub/Sub Target Configuration** -- created only when `pubsubTarget` is specified; configures the topic name, message data, and message attributes
+- **App Engine HTTP Target Configuration** -- created only when `appEngineHttpTarget` is specified; configures the relative URI, HTTP method, and App Engine routing
+- **Retry Configuration** -- created only when `retryConfig` is specified; configures exponential backoff with retry count, min/max backoff durations, and max doublings
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with the Cloud Scheduler API enabled
-- **A target endpoint** — an HTTP URL, a Pub/Sub topic, or an App Engine handler
-- **A service account** with `iam.serviceAccounts.actAs` permission if using OIDC/OAuth authentication
-- **Cloud Run invoker role** (`roles/run.invoker`) on the service account if targeting Cloud Run
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `scheduler-job.yaml`:
+### GCP Project
+
+- **A GCP project** where the Cloud Scheduler job will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Cloud Scheduler API** enabled in the target project.
+- **GCP service account** (if using authenticated HTTP targets) -- the service account must exist in the same project, and the deploying principal must have `iam.serviceAccounts.actAs` permission on it. Reference via ValueFromRef to a GcpServiceAccount Cloud Resource.
+- **Pub/Sub topic** (if using Pub/Sub target) -- the topic must exist before deploying the scheduler job. Reference via ValueFromRef to a GcpPubSubTopic Cloud Resource.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Cloud Scheduler Job**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic HTTP Job** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpCloudSchedulerJob
 metadata:
-  name: my-cron-job
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpCloudSchedulerJob.my-cron-job
+  name: nightly-cleanup
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project
+    value: "acme-prod-12345"
   location: us-central1
-  schedule: "0 9 * * 1-5"
+  schedule: "0 2 * * *"
+  timeZone: America/New_York
   httpTarget:
-    uri: https://example.com/api/trigger
-    httpMethod: GET
+    uri: https://api.example.com/cleanup
+    httpMethod: POST
 ```
-
-Deploy:
 
 ```shell
 planton apply -f scheduler-job.yaml
 ```
 
-This creates a Cloud Scheduler job that sends an HTTP GET to `https://example.com/api/trigger` every weekday at 9:00 AM UTC.
+This creates a Cloud Scheduler job that sends an HTTP POST to the specified endpoint every day at 2:00 AM Eastern. No authentication, retry configuration, or request body is configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `location` | `string` | GCP region for the job (e.g., `us-central1`) | Required, immutable |
-| `schedule` | `string` | Unix-cron schedule expression (e.g., `"0 9 * * 1"`) | Required |
-| One of: `httpTarget`, `pubsubTarget`, `appEngineHttpTarget` | `object` | Exactly one target type must be specified | CEL: exactly one set |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the job is created. Can reference a GcpProject resource via `valueFrom`. When omitted, the provider's default project is used. |
-| `jobName` | `string` | `metadata.name` | Explicit GCP job name. Immutable after creation. Must start with a letter. |
-| `timeZone` | `string` | `Etc/UTC` | Timezone for schedule interpretation (tz database name). |
-| `description` | `string` | — | Human-readable description. Maximum 500 characters. |
-| `attemptDeadline` | `string` | `180s` | Request timeout as a duration string (e.g., `"600s"`). HTTP: 15s-30min. App Engine: 15s-24h. Ignored for Pub/Sub. |
-| `paused` | `bool` | `false` | If `true`, job is created in paused state (won't execute until resumed). |
-| `retryConfig.retryCount` | `int` | GCP default | Number of retry attempts. Max 5. |
-| `retryConfig.maxRetryDuration` | `string` | GCP default | Maximum retry window (e.g., `"3600s"`). `"0s"` for unlimited. |
-| `retryConfig.minBackoffDuration` | `string` | GCP default | Minimum wait between retries (e.g., `"5s"`). |
-| `retryConfig.maxBackoffDuration` | `string` | GCP default | Maximum wait between retries (e.g., `"3600s"`). |
-| `retryConfig.maxDoublings` | `int` | GCP default | Number of times the retry interval doubles before becoming linear. |
-
-### HTTP Target Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `httpTarget.uri` | `string` | — | Full URI of the HTTP endpoint. **Required** when using HTTP target. |
-| `httpTarget.httpMethod` | `string` | `POST` | HTTP method: `POST`, `GET`, `HEAD`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`. |
-| `httpTarget.body` | `string` | — | Base64-encoded request body. Only for POST, PUT, PATCH methods. |
-| `httpTarget.headers` | `map(string)` | `{}` | HTTP request headers. Cannot set `Content-Length` or `X-Google-*` headers. |
-| `httpTarget.oidcToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account for OIDC token. Mutually exclusive with `oauthToken`. |
-| `httpTarget.oidcToken.audience` | `string` | target URI | OIDC audience. Defaults to the target URI if not set. |
-| `httpTarget.oauthToken.serviceAccountEmail` | `StringValueOrRef` | — | Service account for OAuth2 token. Mutually exclusive with `oidcToken`. |
-| `httpTarget.oauthToken.scope` | `string` | `cloud-platform` | OAuth2 scope for the access token. |
-
-### Pub/Sub Target Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `pubsubTarget.topicName` | `StringValueOrRef` | — | Fully qualified Pub/Sub topic name. **Required** when using Pub/Sub target. |
-| `pubsubTarget.topicName.value` | `string` | — | Direct topic name (e.g., `projects/my-project/topics/my-topic`). |
-| `pubsubTarget.topicName.valueFrom` | `object` | — | Foreign key reference to a GcpPubSubTopic resource. Default kind: `GcpPubSubTopic`. |
-| `pubsubTarget.data` | `string` | — | Base64-encoded message payload. |
-| `pubsubTarget.attributes` | `map(string)` | `{}` | Message attributes (key-value metadata). |
-
-### App Engine Target Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `appEngineHttpTarget.relativeUri` | `string` | — | URI path starting with `/`. **Required** when using App Engine target. Max 2083 chars. |
-| `appEngineHttpTarget.httpMethod` | `string` | `POST` | HTTP method. Same values as HTTP target. |
-| `appEngineHttpTarget.body` | `string` | — | Base64-encoded request body. Only for POST and PUT methods. |
-| `appEngineHttpTarget.headers` | `map(string)` | `{}` | HTTP request headers. |
-| `appEngineHttpTarget.appEngineRouting.service` | `string` | default | App Engine service name. |
-| `appEngineHttpTarget.appEngineRouting.version` | `string` | default | App Engine version. |
-| `appEngineHttpTarget.appEngineRouting.instance` | `string` | — | Specific App Engine instance. |
-
-## Examples
-
-### OIDC-Authenticated Cloud Run Trigger
-
-Securely invoke a Cloud Run service every weekday at 9am Eastern:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the scheduler job to a GCP project, service account, and Pub/Sub topic deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudSchedulerJob
-metadata:
-  name: daily-report
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudSchedulerJob.daily-report
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  schedule: "0 9 * * 1-5"
-  timeZone: America/New_York
-  description: Triggers daily report generation
-  attemptDeadline: "600s"
-  httpTarget:
-    uri: https://report-service-abc123.run.app/generate
-    httpMethod: POST
-    body: eyJhY3Rpb24iOiAiZGFpbHlfcmVwb3J0In0=
-    headers:
-      Content-Type: application/json
-    oidcToken:
-      serviceAccountEmail:
-        value: invoker@my-gcp-project.iam.gserviceaccount.com
-      audience: https://report-service-abc123.run.app
-  retryConfig:
-    retryCount: 3
-    maxRetryDuration: "1800s"
-    minBackoffDuration: "5s"
-    maxBackoffDuration: "600s"
-    maxDoublings: 3
-```
-
-### Pub/Sub Scheduled Publisher
-
-Publish a message to a Pub/Sub topic every 5 minutes:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudSchedulerJob
-metadata:
-  name: pipeline-trigger
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudSchedulerJob.pipeline-trigger
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1
-  schedule: "*/5 * * * *"
-  description: Triggers data pipeline every 5 minutes
-  pubsubTarget:
-    topicName:
-      value: projects/my-gcp-project/topics/pipeline-trigger
-    data: eyJwaXBlbGluZSI6ICJkYWlseS1ldGwifQ==
-    attributes:
-      source: cloud-scheduler
-      pipeline: daily-etl
-  retryConfig:
-    retryCount: 5
-    maxDoublings: 3
-```
-
-### Using Foreign Key References
-
-Wire dependencies from other Planton-managed resources:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpCloudSchedulerJob
-metadata:
-  name: composed-scheduler
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpCloudSchedulerJob.composed-scheduler
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
-      field: status.outputs.project_id
-  location: us-central1
-  schedule: "0 8 * * *"
-  pubsubTarget:
-    topicName:
-      valueFrom:
-        kind: GcpPubSubTopic
-        name: events-topic
-        field: status.outputs.topic_id
-    data: eyJ0cmlnZ2VyIjogInNjaGVkdWxlZCJ9
+      name: production-project
+      fieldPath: status.outputs.project_id
+  httpTarget:
+    uri: https://my-service-url.run.app/process
+    oidcToken:
+      serviceAccountEmail:
+        valueFrom:
+          kind: GcpServiceAccount
+          name: scheduler-invoker
+          fieldPath: status.outputs.email
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and service account first, then provisions the scheduler job with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `job_id` | `string` | Fully qualified job ID in the format `projects/{project}/locations/{location}/jobs/{name}` |
-| `job_name` | `string` | Short job name (matches `jobName` or `metadata.name`) |
-| `state` | `string` | Current job state: `ENABLED`, `PAUSED`, `DISABLED`, or `UPDATE_FAILED` |
+These are the most important decisions when configuring a Cloud Scheduler job. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Schedule and time zone** -- The `schedule` field uses unix-cron format (e.g., `"0 9 * * 1"` for every Monday at 9:00 AM). Set `timeZone` to a tz database name (e.g., `America/New_York`); defaults to `Etc/UTC` if not specified. The `location` field is immutable after creation.
 
-- [GcpPubSubTopic](/docs/catalog/gcp/pubsub-topic) — provides the target topic for Pub/Sub scheduled publishing
-- [GcpCloudTasksQueue](/docs/catalog/gcp/cloud-tasks-queue) — asynchronous task dispatch (complementary to cron-based scheduling)
-- [GcpCloudRun](/docs/catalog/gcp/cloud-run) — common HTTP target for scheduled job invocation
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — provides the identity for OIDC/OAuth authentication
-- [GcpProject](/docs/catalog/gcp/project) — project hosting the scheduler job and target resources
+**Target type** -- Exactly one of `httpTarget`, `pubsubTarget`, or `appEngineHttpTarget` must be specified. HTTP targets are the most common, used for Cloud Run, Cloud Functions, and external webhooks. Pub/Sub targets decouple scheduling from processing.
+
+**Authentication** -- For HTTP targets calling Cloud Run or Cloud Functions, configure `oidcToken` with a service account email. For targets calling Google APIs, use `oauthToken` instead. These are mutually exclusive. Unauthenticated HTTP targets require no token configuration.
+
+**Retry behavior** -- Configure `retryConfig` to control failure handling. Set `retryCount` (max 5), `minBackoffDuration` and `maxBackoffDuration` for exponential backoff timing, and `maxDoublings` to control the transition from exponential to linear backoff.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpServiceAccount** (optional) | `httpTarget.oauthToken.serviceAccountEmail` | `status.outputs.email` |
+| **GcpServiceAccount** (optional) | `httpTarget.oidcToken.serviceAccountEmail` | `status.outputs.email` |
+| **GcpPubSubTopic** (optional) | `pubsubTarget.topicName` | `status.outputs.topic_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `job_id` | Fully qualified job ID (`projects/{project}/locations/{location}/jobs/{name}`) | Monitoring dashboards, audit log filters |
+| `job_name` | Short job name | Reference in application configuration |
+| `state` | Current job state (ENABLED, PAUSED, DISABLED) | Health monitoring, automation triggers |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic HTTP job** -- An unauthenticated HTTP GET on a cron schedule. Suitable for health checks, public webhooks, or simple periodic triggers that do not require authentication. Start from the **Basic HTTP Job** preset.
+
+**Pub/Sub publisher** -- Publishes a message with payload and attributes to a Pub/Sub topic on a schedule. Suitable for event-driven architectures where downstream consumers process messages asynchronously. Start from the **Pub/Sub Publisher** preset.
+
+**Secure Cloud Run trigger** -- An OIDC-authenticated HTTP POST to a Cloud Run service with custom retry configuration and exponential backoff. Suitable for production workloads that require authenticated, reliable invocation of private Cloud Run endpoints. Start from the **Secure Cloud Run Trigger** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the scheduler job is created
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the identity for OAuth or OIDC token generation
+- [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- provides the Pub/Sub topic for message publishing targets

@@ -86,7 +86,7 @@ spec:
     localMountPath: /mnt/data
 ```
 
-See docs/README.md for the underlying concepts and [AwsElasticFileSystem](../awselasticfilesystem/README.md) for the file system itself.
+See GUIDE.md for the underlying concepts and [AwsElasticFileSystem](../awselasticfilesystem/README.md) for the file system itself.
 
 ---
 

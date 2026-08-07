@@ -6,216 +6,108 @@ order: 100
 componentName: "ocidnsrecord"
 ---
 
-# OCI DNS Record
+# DNS Record on OCI
 
-Deploys an OCI DNS Record Set (RRSet) — a set of DNS resource records sharing the same domain and record type within an OCI DNS zone. Updates replace the entire record set atomically, supporting A, AAAA, CNAME, MX, TXT, SRV, CAA, NS, PTR, and other standard DNS record types.
+Deploys an Oracle Cloud Infrastructure DNS record set (RRSet) -- a set of DNS resource records sharing the same domain name and record type within an OCI DNS zone. Updates replace the entire record set atomically. The component integrates with Planton's Provider Connections for OCI credential management and supports ValueFromRef wiring to DNS zones.
 
 ## What Gets Created
 
-When you deploy an OciDnsRecord resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Record Set** — a `dns.Rrset` resource within the target zone. Each record item carries its own rdata and TTL. The set is managed atomically — updates replace all records for the (domain, rtype) tuple.
+- **DNS Record Set** -- a `dns.Rrset` containing one or more DNS records of the specified type (A, AAAA, CNAME, MX, TXT, SRV, CAA, NS, PTR) for the specified domain within the target zone
 
-## Prerequisites
+This component does not create freeform tags -- OCI DNS record sets do not support tagging.
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **An OCI DNS zone** — either a zone OCID or zone name, either a literal value or a reference to an OciDnsZone resource
-- **A DNS view OCID** (for private zones only) — required when referencing a private zone by name
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `dns-record.yaml`:
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
+
+### OCI Tenancy
+
+- An OCI DNS zone (public or private) to place the records in. Provide the zone name or OCID directly, or reference an OciDnsZone Cloud Resource via ValueFromRef.
+- For private DNS zones: the OCID of the private DNS view, provided via `viewId`.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Record on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **A Record** preset in the [Presets](#presets) tab to pre-populate a simple IPv4 address record.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciDnsRecord
 metadata:
   name: app-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDnsRecord.app-a-record
+  org: acme-corp
+  env: prod
 spec:
   zoneNameOrId:
     value: "example.com"
-  domain: "app.example.com"
-  rtype: "A"
+  domain: app.example.com
+  rtype: A
   items:
-    - rdata: "192.0.2.1"
+    - rdata: "203.0.113.10"
       ttl: 300
 ```
-
-Deploy:
 
 ```shell
 planton apply -f dns-record.yaml
 ```
 
-This creates an A record for `app.example.com` pointing to `192.0.2.1` with a 5-minute TTL.
+This creates an A record pointing `app.example.com` to a single IPv4 address with a 5-minute TTL. Add multiple entries to `items` for round-robin DNS.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneNameOrId` | `StringValueOrRef` | OCID or name of the target DNS zone. ForceNew. Can reference an OciDnsZone resource via `valueFrom`. | Required |
-| `domain` | `string` | Fully qualified domain name for the record set (e.g., `app.example.com`). ForceNew. | Min length 1 |
-| `rtype` | `string` | DNS record type (e.g., `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `CAA`, `NS`, `PTR`). ForceNew. | Min length 1 |
-| `items` | `RecordItem[]` | DNS records in this record set. | Min 1 item |
-
-### RecordItem
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `rdata` | `string` | Record data in type-specific presentation format. Examples: `"192.0.2.1"` (A), `"10 mail.example.com."` (MX), `"\"v=spf1 include:example.com ~all\""` (TXT). | Min length 1 |
-| `ttl` | `int32` | Time to live in seconds. Controls how long resolvers cache this record. Values below 30 are not recommended by OCI. | >= 1 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `viewId` | `StringValueOrRef` | — | OCID of the private DNS view. Required when accessing a private zone by name. Not needed when `zoneNameOrId` is an OCID. ForceNew. |
-
-## Examples
-
-### Single A Record
-
-An A record pointing a subdomain to a single IP address:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the record to a DNS zone deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsRecord
-metadata:
-  name: app-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDnsRecord.app-a-record
-spec:
-  zoneNameOrId:
-    value: "example.com"
-  domain: "app.example.com"
-  rtype: "A"
-  items:
-    - rdata: "192.0.2.1"
-      ttl: 300
-```
-
-### Multiple A Records with Zone Reference
-
-Round-robin A records using `valueFrom` to reference an OciDnsZone:
-
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsRecord
-metadata:
-  name: web-a-records
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsRecord.web-a-records
 spec:
   zoneNameOrId:
     valueFrom:
       kind: OciDnsZone
-      name: prod-zone
+      name: main-zone
       fieldPath: status.outputs.zoneId
-  domain: "web.example.com"
-  rtype: "A"
-  items:
-    - rdata: "192.0.2.1"
-      ttl: 300
-    - rdata: "192.0.2.2"
-      ttl: 300
-    - rdata: "192.0.2.3"
-      ttl: 300
 ```
 
-### MX Records for Email
+The InfraPipeline resolves the dependency graph, deploys the DNS zone first, then provisions the record set with the resolved zone identifier.
 
-Mail exchange records with priority values embedded in rdata:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsRecord
-metadata:
-  name: mail-mx-records
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsRecord.mail-mx-records
-spec:
-  zoneNameOrId:
-    value: "example.com"
-  domain: "example.com"
-  rtype: "MX"
-  items:
-    - rdata: "10 mail1.example.com."
-      ttl: 3600
-    - rdata: "20 mail2.example.com."
-      ttl: 3600
-```
+These are the most important decisions when configuring a DNS record. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### CNAME Record
+**Record type** -- Set `rtype` to the DNS record type (A, AAAA, CNAME, MX, TXT, SRV, CAA, NS, PTR). This is a ForceNew field -- changing the record type destroys and recreates the record set. CNAME records cannot coexist with other record types on the same domain.
 
-A CNAME alias pointing a subdomain to another hostname:
+**Domain** -- The `domain` field is the fully qualified domain name (e.g., `app.example.com`). This is a ForceNew field. The domain must be within the scope of the target zone.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsRecord
-metadata:
-  name: api-cname
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsRecord.api-cname
-spec:
-  zoneNameOrId:
-    value: "example.com"
-  domain: "api.example.com"
-  rtype: "CNAME"
-  items:
-    - rdata: "lb.example.com."
-      ttl: 300
-```
+**Record data format** -- Each item's `rdata` uses type-specific presentation format: IPv4 addresses for A records, FQDNs with trailing dot for CNAME and MX records, quoted strings for TXT records. OCI may normalize returned values (IPv6 compression, trailing-dot appended to hostnames, TXT quote stripping) -- the stored value may differ from input.
 
-### TXT Record for SPF
+**Atomic replacement** -- Updates replace the entire record set, not individual records. To add a record to an existing set, include all existing records plus the new one in `items`.
 
-A TXT record for email sender policy:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsRecord
-metadata:
-  name: spf-txt
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsRecord.spf-txt
-spec:
-  zoneNameOrId:
-    value: "example.com"
-  domain: "example.com"
-  rtype: "TXT"
-  items:
-    - rdata: "\"v=spf1 include:_spf.google.com ~all\""
-      ttl: 3600
-```
+### What This Component Consumes
 
-## Stack Outputs
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciDnsZone** | `zoneNameOrId` | `status.outputs.zoneId` |
 
-This component does not produce stack outputs. DNS record sets are identified by their (zone, domain, rtype) tuple, all of which are inputs.
+### What This Component Provides
 
-## Related Components
+This component does not produce stack outputs. The record set is identified by its (zone, domain, rtype) tuple, all of which are input fields.
 
-- [OciDnsZone](/docs/catalog/oci/dns-zone) — provides the zone referenced by `zoneNameOrId` via `valueFrom`
-- [OciApplicationLoadBalancer](/docs/catalog/oci/application-load-balancer) — load balancer IPs are common targets for A/CNAME records
-- [OciNetworkLoadBalancer](/docs/catalog/oci/network-load-balancer) — NLB IPs are common targets for A records
-- [OciPublicIp](/docs/catalog/oci/public-ip) — reserved public IPs used as record targets
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**A record** -- A single IPv4 address record for directing traffic to a compute instance or load balancer. Start from the **A Record** preset.
+
+**CNAME alias** -- A CNAME record aliasing one domain to another (e.g., `www.example.com` to `app.example.com`). Start from the **CNAME Alias** preset.
+
+## Works With
+
+- [**DNS Zone on OCI**](/cloud-catalog/oci-dns-zone) -- provides the DNS zone that contains this record set

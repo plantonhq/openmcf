@@ -8,249 +8,154 @@ componentName: "gcpvertexainotebook"
 
 # GCP Vertex AI Notebook
 
-Deploys a managed Vertex AI Workbench instance (JupyterLab notebook) on a Compute Engine VM with configurable machine type, GPU accelerators, disk encryption, VPC networking, and pre-built or custom container images. Users access notebooks through a secure proxy URL.
+Deploys a Vertex AI Workbench instance -- a managed JupyterLab environment backed by a Compute Engine VM -- with configurable machine types, GPU accelerators, boot and data disk encryption, VPC networking, and pre-built or custom container images. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnets, KMS keys, and service accounts.
 
 ## What Gets Created
 
-When you deploy a GcpVertexAiNotebook resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Workbench Instance** — a `google_workbench_instance` resource configured with the specified machine type, disks, networking, and image
-- **API Enablement** — the Notebooks API (`notebooks.googleapis.com`) and Compute API (`compute.googleapis.com`) are enabled in the target project (never disabled on destroy)
-- **Boot Disk** (optional configuration) — persistent disk for the OS and JupyterLab runtime, with optional CMEK encryption via a KMS key
-- **Data Disk** (optional configuration) — persistent disk for user notebooks and datasets, with optional CMEK encryption
-- **GPU Accelerator** (created only when `acceleratorConfig` is set) — an NVIDIA GPU attached to the VM for ML training workloads
-- **Labels** — your `labels` merged beneath the platform's attribution labels, identically on both provisioning engines
+- **Workbench Instance** -- a managed `workbench.Instance` in the specified GCP project and zone, configured with the chosen machine type, disk layout, and notebook environment (VM image or container image)
+- **Boot Disk** -- configurable disk type (PD_SSD by default), size (150 GB default), and optional CMEK encryption via Cloud KMS
+- **Data Disk** -- a single attached data disk with configurable type (PD_STANDARD by default), size (100 GB default), and optional CMEK encryption
+- **GPU Accelerator** -- created only when `acceleratorConfig` is set; attaches an NVIDIA GPU (T4, V100, A100, L4, or other supported types) for ML training workloads
+- **Network Interface** -- created only when `networkInterface` is set; places the instance in a specific VPC and subnet with configurable NIC type (VIRTIO_NET or GVNIC)
+- **Service Account Binding** -- created only when `serviceAccount` is set; configures the VM identity for accessing GCP resources (BigQuery, GCS, Vertex AI) with `cloud-platform` scope
+- **Shielded VM Configuration** -- created only when `shieldedInstanceConfig` is set; enables Secure Boot, vTPM, and integrity monitoring for enhanced security
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A zone** in a region that supports Workbench instances (most GCP zones)
-- **A VPC network and subnet** if deploying with `disablePublicIp: true` (private networking)
-- **A service account** if specifying a custom VM identity (recommended for production)
-- **A KMS key** if using CMEK encryption for boot or data disks — the key must be in the same region as the instance
-- **GPU quota** in the target zone if using `acceleratorConfig`; a Compute reservation if using `reservationAffinity`
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `notebook.yaml`:
+### GCP Project
+
+- **A GCP project** where the notebook instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **Notebooks API** (`notebooks.googleapis.com`) enabled in the target project.
+- **A VPC network and subnet** (if using private networking) -- the instance can be placed in a specific VPC/subnet with optional public IP disabled. Provide self-links directly or reference GcpVpcNetwork and GcpSubnetwork Cloud Resources via ValueFromRef.
+- **Cloud KMS key** (if using CMEK) -- a key in the same region as the instance for boot and/or data disk encryption.
+- **GPU quota** (if using accelerators) -- sufficient GPU quota in the target zone for the chosen accelerator type.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Vertex AI Notebook**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Notebook** preset in the [Presets](#presets) tab to pre-populate a CPU-only development notebook.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpVertexAiNotebook
 metadata:
-  name: my-notebook
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiNotebook.my-notebook
+  name: data-science-nb
+  org: acme-corp
+  env: dev
 spec:
   projectId:
-    value: my-gcp-project
+    value: "acme-dev-12345"
   location: us-central1-a
   machineType: e2-standard-4
 ```
-
-Deploy:
 
 ```shell
-planton apply -f notebook.yaml
+planton apply -f vertex-ai-notebook.yaml
 ```
 
-This creates a CPU-only Workbench instance with a default deep learning VM image, 150 GB boot disk, and JupyterLab accessible via the proxy URI in the stack outputs.
+This creates a Workbench instance with the default deep learning VM image, 150 GB SSD boot disk, 100 GB data disk, no GPU, and public IP access via the Vertex AI proxy. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `location` | `string` | GCP zone for the instance (e.g., `us-central1-a`). Immutable after creation. | Required. Pattern: `^[a-z]+-[a-z]+[0-9]+-[a-z]$` |
-| `machineType` | `string` | Compute Engine machine type (e.g., `e2-standard-4`, `n1-standard-8`). | Required. Min length: 1 |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectId` | `StringValueOrRef` | provider default project | GCP project where the instance is created. Can reference a GcpProject resource via `valueFrom`. |
-| `instanceName` | `string` | `metadata.name` | Explicit GCP instance name. Immutable. Must be a valid RFC1035 hostname. |
-| `labels` | `map(string)` | `{}` | User labels for cost attribution and ownership; merged beneath platform labels. Mutable. |
-| `instanceOwners` | `list(string)` | `[]` | Owner email(s). Currently GCP supports one owner. Sets Single User access mode. Immutable. |
-| `desiredState` | `string` | `ACTIVE` | Instance state: `ACTIVE` (running) or `STOPPED` (suspended, no compute charges). |
-| `disableProxyAccess` | `bool` | `false` | If `true`, no JupyterLab proxy URL is generated. Immutable. |
-| `metadata` | `map(string)` | `{}` | Custom metadata key-value pairs for the VM. |
-| `bootDisk.diskType` | `string` | `PD_SSD` | Boot disk type: `PD_STANDARD`, `PD_SSD`, `PD_BALANCED`, `PD_EXTREME`. |
-| `bootDisk.diskSizeGb` | `int` | `150` | Boot disk size in GB. Range: 10-64000. |
-| `bootDisk.kmsKey` | `StringValueOrRef` | — | KMS key for CMEK encryption. Can reference GcpKmsKey via `valueFrom`. Immutable. |
-| `dataDisk.diskType` | `string` | `PD_STANDARD` | Data disk type: `PD_STANDARD`, `PD_SSD`, `PD_BALANCED`, `PD_EXTREME`. |
-| `dataDisk.diskSizeGb` | `int` | `100` | Data disk size in GB. Range: 10-64000. |
-| `dataDisk.kmsKey` | `StringValueOrRef` | — | KMS key for CMEK encryption. Can reference GcpKmsKey via `valueFrom`. Immutable. |
-| `acceleratorConfig.type` | `string` | — | GPU type: `NVIDIA_TESLA_T4`, `NVIDIA_L4`, `NVIDIA_TESLA_A100`, `NVIDIA_A100_80GB`, etc. |
-| `acceleratorConfig.coreCount` | `int` | — | Number of GPU cores (typically 1, 2, 4, or 8). |
-| `networkInterface.network` | `StringValueOrRef` | default VPC | VPC network. Can reference GcpVpcNetwork via `valueFrom`. Immutable. |
-| `networkInterface.subnet` | `StringValueOrRef` | — | Subnet. Can reference GcpSubnetwork via `valueFrom`. Immutable. |
-| `networkInterface.nicType` | `string` | `VIRTIO_NET` | NIC type: `VIRTIO_NET` or `GVNIC`. Immutable. |
-| `networkInterface.externalIp` | `StringValueOrRef` | ephemeral IP | Static external IP for the instance. Can reference a GcpAddress via `valueFrom`. Cannot combine with `disablePublicIp`. Immutable. |
-| `disablePublicIp` | `bool` | `false` | If `true`, no external IP. Instance accessible only via proxy or VPN. Immutable. |
-| `enableIpForwarding` | `bool` | `false` | Enable IP forwarding on the VM. Immutable. |
-| `serviceAccount` | `StringValueOrRef` | compute default SA | Service account email for VM identity. Can reference GcpServiceAccount via `valueFrom`. Immutable. |
-| `tags` | `list(string)` | `[]` | Network tags for firewall rule targeting. Immutable. |
-| `vmImage.project` | `string` | — | Image project. GCP's Workbench images live in `cloud-notebooks-managed`. Omit the whole `vmImage` block to use the service default (latest Workbench image). |
-| `vmImage.family` | `string` | — | Image family (GCP's maintained family is `workbench-instances`). Mutually exclusive with `vmImage.name`. Immutable. |
-| `vmImage.name` | `string` | — | Specific image name. Mutually exclusive with `vmImage.family`. Immutable. |
-| `containerImage.repository` | `string` | — | Container image repo (e.g., `gcr.io/project/image`). Required if `containerImage` is set. Mutually exclusive with `vmImage`. |
-| `containerImage.tag` | `string` | `latest` | Container image tag. |
-| `shieldedInstanceConfig.enableSecureBoot` | `bool` | `false` | Enable Secure Boot. |
-| `shieldedInstanceConfig.enableVtpm` | `bool` | `true` (GCP default) | Enable Virtual Trusted Platform Module. |
-| `shieldedInstanceConfig.enableIntegrityMonitoring` | `bool` | `true` (GCP default) | Enable integrity monitoring. |
-| `confidentialInstanceConfig.confidentialInstanceType` | `string` | `SEV` | Confidential Computing technology (AMD SEV). Requires an n2d machine type. Immutable. |
-| `reservationAffinity.consumeReservationType` | `string` | `RESERVATION_ANY` | `RESERVATION_ANY`, `RESERVATION_SPECIFIC`, or `RESERVATION_NONE`. Immutable. |
-| `reservationAffinity.key` | `string` | — | Reservation label key (`compute.googleapis.com/reservation-name` for named reservations). Only with `RESERVATION_SPECIFIC`. |
-| `reservationAffinity.values` | `list(string)` | `[]` | Reservation name(s). Only with `RESERVATION_SPECIFIC`. |
-| `enableManagedEuc` | `bool` | `false` | Managed end-user credentials: JupyterLab acts as the signed-in user's identity. Mutable. |
-| `enableThirdPartyIdentity` | `bool` | `false` | Allow access through a third-party identity provider (workforce identity federation). Mutable. |
-
-## Examples
-
-### Basic CPU Notebook
-
-A minimal notebook for data exploration and light ML work.
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the notebook to a GCP project, VPC, subnet, and service account deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiNotebook
-metadata:
-  name: data-explorer
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpVertexAiNotebook.data-explorer
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1-a
-  machineType: e2-standard-4
-  bootDisk:
-    diskType: PD_SSD
-    diskSizeGb: 200
-```
-
-### GPU Notebook with TensorFlow
-
-A GPU-equipped notebook for training deep learning models.
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiNotebook
-metadata:
-  name: ml-training
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiNotebook.ml-training
-spec:
-  projectId:
-    value: my-gcp-project
-  location: us-central1-a
-  machineType: n1-standard-8
-  acceleratorConfig:
-    type: NVIDIA_TESLA_T4
-    coreCount: 1
-  bootDisk:
-    diskType: PD_SSD
-    diskSizeGb: 200
-  dataDisk:
-    diskType: PD_SSD
-    diskSizeGb: 500
-  vmImage:
-    project: cloud-notebooks-managed
-    family: workbench-instances
-```
-
-### Private Encrypted Notebook with Foreign Key References
-
-A security-hardened notebook inside a VPC with CMEK encryption, using `valueFrom` references for infra chart composition.
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpVertexAiNotebook
-metadata:
-  name: secure-notebook
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpVertexAiNotebook.secure-notebook
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
       name: ml-project
-  location: us-central1-a
-  machineType: e2-standard-4
-  disablePublicIp: true
+      fieldPath: status.outputs.project_id
   networkInterface:
     network:
       valueFrom:
         kind: GcpVpcNetwork
         name: ml-vpc
+        fieldPath: status.outputs.network_self_link
     subnet:
       valueFrom:
         kind: GcpSubnetwork
         name: ml-subnet
+        fieldPath: status.outputs.subnetwork_self_link
   serviceAccount:
     valueFrom:
       kind: GcpServiceAccount
-      name: notebook-sa
-  bootDisk:
-    diskType: PD_SSD
-    diskSizeGb: 200
-    kmsKey:
-      valueFrom:
-        kind: GcpKmsKey
-        name: disk-key
-  dataDisk:
-    diskType: PD_BALANCED
-    diskSizeGb: 500
-    kmsKey:
-      valueFrom:
-        kind: GcpKmsKey
-        name: disk-key
-  shieldedInstanceConfig:
-    enableSecureBoot: true
-    enableVtpm: true
-    enableIntegrityMonitoring: true
-  confidentialInstanceConfig:
-    confidentialInstanceType: SEV
-  enableManagedEuc: true
-  tags:
-    - notebook
-    - no-public-ip
+      name: ml-workbench-sa
+      fieldPath: status.outputs.email
 ```
 
-Note: Confidential Computing (SEV) requires an AMD machine type such as `n2d-standard-4`.
+The InfraPipeline resolves the dependency graph, deploys the project, VPC, subnet, and service account first, then provisions the notebook instance with private networking and custom VM identity.
 
-## Stack Outputs
+## Key Configuration
 
-After deployment, the following outputs are available in `status.outputs`:
+These are the most important decisions when configuring a Vertex AI Notebook. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `instance_id` | `string` | Fully qualified instance ID: `projects/{project}/locations/{location}/instances/{id}` |
-| `instance_name` | `string` | Short instance name (matches `instanceName` or `metadata.name`) |
-| `proxy_uri` | `string` | JupyterLab proxy URL. Empty if `disableProxyAccess` is `true`. |
-| `state` | `string` | Current instance state: `ACTIVE`, `STOPPED`, `INITIALIZING`, `STARTING`, `STOPPING`, etc. |
-| `creator` | `string` | Email address of the entity that created the instance |
-| `create_time` | `string` | RFC3339 timestamp of instance creation |
-| `health_state` | `string` | Instance health: `HEALTHY`, `UNHEALTHY`, `AGENT_NOT_INSTALLED`, `AGENT_NOT_RUNNING` |
-| `update_time` | `string` | RFC3339 timestamp of the most recent instance update |
+**Machine type and GPU** -- Choose `machineType` based on workload requirements. Use `e2-standard-4` for data exploration, `n1-standard-8` with an NVIDIA T4 for ML training, or `a2-highgpu-1g` for large model training. GPU accelerators require compatible N1 or A2 machine types -- check GCP documentation for the compatibility matrix.
 
-## Related Components
+**Notebook environment** -- Choose between `vmImage` (pre-built deep learning VM images with TensorFlow, PyTorch, or JAX) and `containerImage` (custom container with your own libraries). Only one can be set. If neither is specified, GCP uses the default deep learning VM image. VM images are the most common choice.
 
-- [GcpProject](/docs/catalog/gcp/project) — project where the notebook is created
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — VPC network for private notebook deployments
-- [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — subnet for VPC-connected notebooks
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — VM identity for accessing GCP resources
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — encryption key for CMEK-encrypted disks
+**Disk configuration** -- `bootDisk` controls the OS disk (default 150 GB PD_SSD). `dataDisk` stores notebooks and datasets (default 100 GB PD_STANDARD). Both support CMEK encryption via `kmsKey`. Disk settings are immutable after creation -- plan capacity upfront.
+
+**Network access** -- Set `disablePublicIp: true` to restrict the instance to private VPC access only. The notebook remains accessible through the Vertex AI proxy URL or via VPN/Cloud IAP tunnel. Combine with `networkInterface` to place the instance in a specific VPC and subnet. Network settings are immutable after creation.
+
+**Instance state** -- Set `desiredState` to `STOPPED` to suspend the instance and stop compute billing while preserving disks and configuration. Storage charges continue. Set to `ACTIVE` (default) to keep the instance running.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** (optional) | `networkInterface.network` | `status.outputs.network_self_link` |
+| **GcpSubnetwork** (optional) | `networkInterface.subnet` | `status.outputs.subnetwork_self_link` |
+| **GcpAddress** (optional) | `networkInterface.externalIp` | `status.outputs.address` |
+| **GcpKmsKey** (optional) | `bootDisk.kmsKey` | `status.outputs.key_id` |
+| **GcpKmsKey** (optional) | `dataDisk.kmsKey` | `status.outputs.key_id` |
+| **GcpServiceAccount** (optional) | `serviceAccount` | `status.outputs.email` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `instance_id` | Fully qualified instance ID (`projects/{project}/locations/{location}/instances/{id}`) | Monitoring dashboards, IAM bindings |
+| `instance_name` | Short instance name | Inventory tracking, script references |
+| `proxy_uri` | JupyterLab proxy URL (empty if proxy access is disabled) | User access to notebooks |
+| `state` | Current instance state (ACTIVE, STOPPED, etc.) | Monitoring, lifecycle automation |
+| `creator` | Email of the entity that created the instance | Audit logs, cost attribution |
+| `create_time` | RFC3339 timestamp of instance creation | Lifecycle tracking |
+| `health_state` | Guest-agent health (HEALTHY, AGENT_NOT_RUNNING, etc.) | The first check when JupyterLab stops responding on an ACTIVE VM |
+| `update_time` | RFC3339 timestamp of the last instance update | Change tracking, drift investigation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Basic CPU notebook** -- A CPU-only Workbench instance for data exploration and light ML workflows. Uses `e2-standard-4` with default disks and public access via the Vertex AI proxy. Start from the **Basic Notebook** preset.
+
+**GPU ML notebook** -- An NVIDIA GPU-equipped instance for ML model training. Uses a compatible N1 machine type with a Tesla T4 or A100 accelerator and SSD disks for fast data loading. Start from the **GPU ML Notebook** preset.
+
+**Secure private notebook** -- Enterprise-grade configuration with CMEK encryption on both disks, private VPC networking with no public IP, Shielded VM enabled, and a dedicated service account. Start from the **Secure Private Notebook** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the notebook instance is created
+- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for private notebook access
+- [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- provides the subnet for instance placement within the VPC
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides customer-managed encryption keys for boot and data disks
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the VM identity for accessing GCP resources

@@ -8,198 +8,119 @@ componentName: "openstacksecuritygrouprule"
 
 # OpenStack Security Group Rule
 
-Deploys a standalone OpenStack Neutron security group rule with configurable direction, protocol, port range, and remote source filtering. Unlike inline rules defined in OpenStackSecurityGroup `rules[]`, standalone rules support `StringValueOrRef` foreign keys on both `securityGroupId` and `remoteGroupId`, enabling cross-security-group references and explicit DAG wiring in InfraCharts.
+Deploys a standalone Neutron security group rule on OpenStack, adding a single firewall rule to an existing security group. This is the DAG-visible counterpart to inline rules defined in OpenStackSecurityGroup -- use this component when individual rules need to be independently managed or when cross-security-group references need InfraChart wiring via ValueFromRef.
 
 ## What Gets Created
 
-When you deploy an OpenStackSecurityGroupRule resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Security Group Rule** — an `openstack_networking_secgroup_rule_v2` resource attached to the specified security group, with the configured direction, ethertype, protocol, port range, and remote source. All fields are ForceNew: any change to the rule recreates it. The rule appears as its own node in InfraChart DAG visualizations, making cross-security-group dependencies visually explicit.
+- **Neutron Security Group Rule** -- a single firewall rule with configurable direction, ethertype, protocol, port range, and remote source (CIDR or security group reference)
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An existing security group** (UUID or Planton-managed OpenStackSecurityGroup) to attach the rule to
-- **A remote security group** (UUID or Planton-managed OpenStackSecurityGroup) if using `remoteGroupId` instead of `remoteIpPrefix`
+### OpenStack Account
 
-## Quick Start
+- **Security group** -- an existing Neutron security group to add the rule to. Provide the security group ID directly or reference an OpenStackSecurityGroup Cloud Resource via ValueFromRef.
+- **Remote security group** (optional) -- if restricting traffic by membership in another security group (instead of CIDR), have the remote security group ID ready or reference it via ValueFromRef.
+- **Rule uniqueness** -- OpenStack rejects duplicate rules (same direction, protocol, port range, ethertype, and remote source) within the same security group.
 
-Create a file `security-group-rule.yaml`:
+## Deploy
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSecurityGroupRule
-metadata:
-  name: allow-ssh-ingress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackSecurityGroupRule.allow-ssh-ingress
-spec:
-  securityGroupId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  direction: ingress
-  ethertype: IPv4
-  protocol: tcp
-  portRangeMin: 22
-  portRangeMax: 22
-  remoteIpPrefix: "0.0.0.0/0"
-```
+### Console
 
-Deploy:
+Open the deployment store, find **OpenStack Security Group Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Allow SSH** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
-```shell
-planton apply -f security-group-rule.yaml
-```
+### CLI
 
-This creates an ingress rule allowing SSH (TCP port 22) from any IPv4 address on the specified security group.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `securityGroupId` | `StringValueOrRef` | UUID of the security group this rule belongs to. Can reference an OpenStackSecurityGroup resource via `valueFrom`. | Required |
-| `direction` | `string` | Direction of traffic: `ingress` (incoming) or `egress` (outgoing). | Must be `ingress` or `egress` |
-| `ethertype` | `string` | Layer-3 protocol type for the rule. | Must be `IPv4` or `IPv6` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `protocol` | `string` | all protocols | IP protocol for the rule. Common values: `tcp`, `udp`, `icmp`, `icmpv6`. Also accepts any IANA protocol name or number (0-255). If omitted, the rule applies to all protocols. |
-| `portRangeMin` | `int32` | — | Minimum port number (0-65535) for TCP/UDP, or ICMP type (0-255). Must be set together with `portRangeMax`. Requires `protocol` to be set. |
-| `portRangeMax` | `int32` | — | Maximum port number (0-65535) for TCP/UDP, or ICMP code (0-255). Must be set together with `portRangeMin`. Requires `protocol` to be set. |
-| `remoteIpPrefix` | `string` | — | CIDR restricting the rule to traffic from/to a specific IP range. For ingress: source range. For egress: destination range. Example: `0.0.0.0/0`, `10.0.0.0/8`. Mutually exclusive with `remoteGroupId`. |
-| `remoteGroupId` | `StringValueOrRef` | — | Restricts the rule to traffic from/to instances in another security group (or the same group for self-referencing rules). Can reference an OpenStackSecurityGroup resource via `valueFrom`. Mutually exclusive with `remoteIpPrefix`. |
-| `description` | `string` | — | Human-readable description of the rule, visible in Horizon and API responses. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this rule. |
-
-## Examples
-
-### Allow SSH from Any Address
-
-A single ingress rule permitting SSH access from all IPv4 addresses:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackSecurityGroupRule
 metadata:
-  name: allow-ssh
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackSecurityGroupRule.allow-ssh
+  name: allow-https
+  org: acme-corp
+  env: prod
 spec:
-  securityGroupId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  direction: ingress
-  ethertype: IPv4
-  protocol: tcp
-  portRangeMin: 22
-  portRangeMax: 22
-  remoteIpPrefix: "0.0.0.0/0"
-  description: "Allow SSH from any IPv4 address"
-```
-
-### Allow HTTP/HTTPS from a Subnet
-
-An ingress rule opening the standard web ports from a private subnet, demonstrating a port range:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSecurityGroupRule
-metadata:
-  name: allow-https-from-private
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackSecurityGroupRule.allow-https-from-private
-spec:
-  securityGroupId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
+  securityGroupId:
+    value: "<security-group-id>"
   direction: ingress
   ethertype: IPv4
   protocol: tcp
   portRangeMin: 443
   portRangeMax: 443
-  remoteIpPrefix: "10.0.0.0/8"
-  description: "Allow HTTPS from private network"
+  remoteIpPrefix: "0.0.0.0/0"
 ```
 
-### Cross-Security-Group Rule with Foreign Key References
+```shell
+planton apply -f security-group-rule.yaml
+```
 
-A rule that allows all TCP traffic from instances in one security group to instances in another, using `valueFrom` references to Planton-managed security groups. This is the primary use case for standalone rules over inline rules:
+This creates an ingress rule allowing HTTPS traffic from any IPv4 source. No description, remote security group reference, or region override is configured.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the rule to a security group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSecurityGroupRule
-metadata:
-  name: app-to-db-tcp
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackSecurityGroupRule.app-to-db-tcp
 spec:
   securityGroupId:
     valueFrom:
       kind: OpenStackSecurityGroup
-      name: db-sg
-      field: status.outputs.security_group_id
-  direction: ingress
-  ethertype: IPv4
-  protocol: tcp
-  portRangeMin: 5432
-  portRangeMax: 5432
+      name: web-sg
+      fieldPath: status.outputs.security_group_id
   remoteGroupId:
     valueFrom:
       kind: OpenStackSecurityGroup
       name: app-sg
-      field: status.outputs.security_group_id
-  description: "Allow PostgreSQL from app tier to database tier"
+      fieldPath: status.outputs.security_group_id
 ```
 
-### Broad Egress Rule for All Protocols
+The InfraPipeline resolves the dependency graph, deploys both security groups first, then provisions the rule with the resolved IDs.
 
-An egress rule allowing all outbound IPv4 traffic from a security group, with no protocol or port restrictions:
+## Key Configuration
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSecurityGroupRule
-metadata:
-  name: allow-all-egress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackSecurityGroupRule.allow-all-egress
-spec:
-  securityGroupId: 4a0e3c5b-2f1d-4e6a-8b9c-0d1e2f3a4b5c
-  direction: egress
-  ethertype: IPv4
-  remoteIpPrefix: "0.0.0.0/0"
-  description: "Allow all outbound IPv4 traffic"
-```
+These are the most important decisions when configuring a security group rule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Direction and ethertype** -- `direction` must be `ingress` or `egress`. `ethertype` must be `IPv4` or `IPv6`. These two fields define the fundamental scope of the rule.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Protocol and port range** -- `protocol` accepts `tcp`, `udp`, `icmp`, `icmpv6`, or any IANA protocol name/number. If omitted, the rule applies to all protocols. Port ranges require a protocol -- for ICMP, `portRangeMin` is the ICMP type and `portRangeMax` is the ICMP code.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `rule_id` | `string` | UUID of the created security group rule |
-| `security_group_id` | `string` | UUID of the security group this rule belongs to |
-| `direction` | `string` | Direction of the rule (`ingress` or `egress`) |
-| `protocol` | `string` | IP protocol of the rule. Empty string if the rule applies to all protocols. |
-| `port_range_min` | `int32` | Lower bound of the port range, or ICMP type |
-| `port_range_max` | `int32` | Upper bound of the port range, or ICMP code |
-| `region` | `string` | OpenStack region where the rule was created |
+**Remote source** -- `remoteIpPrefix` restricts traffic to a CIDR (e.g., `0.0.0.0/0` for all, `10.0.0.0/8` for private ranges). `remoteGroupId` restricts traffic to instances in another security group. The two are mutually exclusive. Security group references are the key advantage of standalone rules over inline rules, enabling InfraChart DAG wiring.
 
-## Related Components
+**Immutability** -- All fields are ForceNew. Changing any field (direction, protocol, port range, remote source) recreates the rule.
 
-- [OpenStackSecurityGroup](/docs/catalog/openstack/security-group) — the security group this rule belongs to; also supports inline rules via `rules[]` for simpler configurations
-- [OpenStackInstance](/docs/catalog/openstack/instance) — compute instances that reference security groups for network access control
-- [OpenStackNetwork](/docs/catalog/openstack/network) — provides the network context where security group rules take effect
-- [OpenStackNetworkPort](/docs/catalog/openstack/network-port) — network ports that can have security groups applied directly
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackSecurityGroup** | `securityGroupId` | `status.outputs.security_group_id` |
+| **OpenStackSecurityGroup** (optional) | `remoteGroupId` | `status.outputs.security_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `rule_id` | UUID of the security group rule | Import, audit, and debugging |
+| `security_group_id` | UUID of the security group this rule belongs to | Audit, topology reference |
+| `direction` | Direction of the rule (ingress or egress) | Monitoring labels, automation |
+| `protocol` | IP protocol of the rule | Monitoring labels, automation |
+| `port_range_min` | Lower bound of the port range (or ICMP type) | Audit, documentation |
+| `port_range_max` | Upper bound of the port range (or ICMP code) | Audit, documentation |
+| `region` | OpenStack region where the rule was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Allow SSH** -- Permits inbound SSH (TCP port 22) from a trusted CIDR. The standard pattern for administrative access to instances. Restrict `remoteIpPrefix` to your VPN or bastion CIDR instead of `0.0.0.0/0`. Start from the **Allow SSH** preset.
+
+**Allow HTTPS** -- Permits inbound HTTPS (TCP port 443) from any IPv4 source. The standard pattern for web-facing services, load balancers, and reverse proxies. Start from the **Allow HTTPS** preset.
+
+## Works With
+
+- [**OpenStack Security Group**](/cloud-catalog/openstack-security-group) -- provides the security group ID that this rule is added to, and optionally the remote security group ID for group-based traffic filtering

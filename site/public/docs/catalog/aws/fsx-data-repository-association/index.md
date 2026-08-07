@@ -8,69 +8,123 @@ componentName: "awsfsxdatarepositoryassociation"
 
 # AWS FSx Data Repository Association
 
-Link a directory on an FSx for Lustre file system to an S3 bucket or prefix, with independent bidirectional sync policies — the modern S3 integration for Lustre and the only one available on PERSISTENT_2 file systems.
+Links a directory on an FSx for Lustre file system to an S3 bucket or prefix with independent bidirectional sync policies -- auto-import keeps the Lustre namespace in sync as objects change in S3, and auto-export writes file-system changes back to the bucket. Associations are the modern S3 integration for Lustre and the only one available on PERSISTENT_2 file systems. Each association has its own lifecycle: create, update, and delete links without ever touching the file system.
 
-## Prerequisites
+## What Gets Created
 
-- **An FSx for Lustre file system** (reference its `file_system_id` output). The file system must not use the legacy in-spec `import_path` link.
-- **An S3 bucket** readable (and writable, for auto-export) by the FSx service.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Quick Start
+- **Data Repository Association** -- the link between one file-system path (e.g., `/datasets/2026`) and one S3 data repository (e.g., `s3://training-data/2026/`). A file system supports up to 8 associations (25 per account)
+- **Automatic Import Policy** -- configured only when `autoImportEvents` is non-empty; NEW/CHANGED/DELETED object events in S3 create, refresh, or remove the corresponding Lustre file metadata
+- **Automatic Export Policy** -- configured only when `autoExportEvents` is non-empty; NEW/CHANGED/DELETED file events on Lustre write back to the bucket
+- **Optional Batch Import** -- when `batchImportMetaDataOnCreate` is enabled, a full metadata import of the existing repository runs at creation so pre-existing objects appear immediately
+
+## Before You Deploy
+
+### Planton Setup
+
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **An FSx for Lustre file system** that does NOT use the legacy in-spec S3 link (`import_path`) -- AWS forbids mixing the two S3-integration generations. Reference an AwsFsxLustreFileSystem Cloud Resource or provide an fs-... id directly. PERSISTENT_2 file systems accept only associations.
+- **An S3 bucket** (or prefix) to link. The bucket may live in another region, but same-region buckets avoid inter-region transfer charges on every sync event.
+- **Non-overlapping paths** -- each directory subtree on the file system can belong to at most one repository.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS FSx Data Repository Association**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Training Data Import** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsFsxDataRepositoryAssociation
 metadata:
   name: training-data-link
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   fileSystemId:
     valueFrom:
       kind: AwsFsxLustreFileSystem
-      name: ml-training-fsx
+      name: training-fs
       fieldPath: status.outputs.file_system_id
   fileSystemPath: /datasets/2026
   dataRepositoryPath: s3://training-data/2026/
-  autoImportEvents: [NEW, CHANGED, DELETED]
+  autoImportEvents:
+    - NEW
+    - CHANGED
+    - DELETED
   batchImportMetaDataOnCreate: true
 ```
 
-Deploy:
-
 ```shell
-planton apply -f data-repository-association.yaml
+planton apply -f dra.yaml
 ```
 
-## Configuration Reference
+This links `/datasets/2026` on the file system to the bucket prefix, imports the existing metadata at creation, and keeps the namespace tracking the bucket as objects are added, changed, or deleted. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The file system's AWS region. | Required; non-empty |
-| `fileSystemId` | `StringValueOrRef` | The Lustre file system to attach to. Default kind: `AwsFsxLustreFileSystem`. ForceNew. | Required |
-| `fileSystemPath` | `string` | Path on the file system (e.g., `/datasets`). Must not overlap other associations. ForceNew. | Begins with `/`, max 4096 chars |
-| `dataRepositoryPath` | `string` | S3 URI with optional prefix. ForceNew. | `s3://` URI, 3–900 chars |
+When deploying as part of a multi-resource environment, the association typically rides beside its file system in the same InfraPipeline -- the `fileSystemId` reference above resolves the dependency graph so the file system deploys first. A second association can wire an output directory back to S3:
 
-### Optional Fields
+```yaml
+spec:
+  fileSystemPath: /output
+  dataRepositoryPath: s3://model-artifacts/
+  autoExportEvents:
+    - NEW
+    - CHANGED
+```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `autoImportEvents` | `string[]` | `[]` | S3 → Lustre sync: `NEW`, `CHANGED`, `DELETED`. Empty means creation-time state only. |
-| `autoExportEvents` | `string[]` | `[]` | Lustre → S3 sync: `NEW`, `CHANGED`, `DELETED`. Empty means manual export tasks only. |
-| `importedFileChunkSize` | `int32` | `1024` | Stripe size in MiB for imported files (1–512000). |
-| `batchImportMetaDataOnCreate` | `bool` | `false` | Import the existing S3 metadata at creation. |
-| `deleteDataInFilesystem` | `bool` | `false` | Delete the linked files from the file system when the association is deleted. |
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a data repository association. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Description |
-|--------|-------------|
-| `association_id` | AWS-assigned association ID (`dra-...`), the join key for FSx data repository tasks. |
-| `association_arn` | ARN for IAM resource-level permissions. |
-| `file_system_id` | The attached file system's ID, echoed for composition. |
+**The identity triple** -- `fileSystemId`, `fileSystemPath`, and `dataRepositoryPath` ARE the association: all three are ForceNew, and changing any of them replaces the link (a new dra-... id; the data on both sides is untouched). The file-system path must begin with `/`; the repository is an `s3://` URI with an optional prefix.
 
-## Related Components
+**Sync directions are independent** -- `autoImportEvents` (S3 → Lustre) and `autoExportEvents` (Lustre → S3) each take any subset of NEW/CHANGED/DELETED and update in place. Empty on both sides is a real state: the link reflects the bucket only as of creation (or a batch import), kept current with manual import/export tasks. An input dataset typically imports everything and exports nothing; an output directory does the opposite. Deletion export is a deliberate choice -- with it on, removing a file removes its S3 object.
 
-- [AWS FSx Lustre File System](/docs/catalog/aws/fsx-lustre-file-system) — the file system associations attach to.
-- [AWS S3 Bucket](/docs/catalog/aws/s3-bucket) — the data repository.
+**Batch import at creation** -- without `batchImportMetaDataOnCreate`, only objects that change AFTER creation appear in the namespace; existing datasets stay invisible until a manual import task. Turn it on when linking a bucket that already holds data.
+
+**Delete-time behavior** -- by default, deleting the association only removes the S3 link and the files remain. `deleteDataInFilesystem` inverts that for scratch/cache directories whose contents are pure copies of S3 data.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsFsxLustreFileSystem** | `fileSystemId` | `status.outputs.file_system_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `association_id` | AWS association identifier (dra-...) | Manual data-repository tasks, AWS console/CLI operations |
+| `association_arn` | Amazon Resource Name of the association | IAM policies for resource-level permissions |
+| `file_system_id` | The linked Lustre file system's id, echoed | Downstream composition without re-resolving the Lustre reference |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Training data import** -- link an input path to a dataset prefix with all three import events and a creation-time batch import. Compute jobs get POSIX access to the bucket's contents, kept current automatically. Start from the **Training Data Import** preset.
+
+**Results export** -- link an output path to an artifacts bucket with NEW and CHANGED export events. Job outputs land in S3 without any copy step. Start from the **Results Export** preset.
+
+**Both on one file system** -- the canonical ML topology pairs an import link (`/datasets` ← training data) with an export link (`/output` → artifacts) on the same PERSISTENT_2 file system; jobs mount Lustre once and see both.
+
+## Works With
+
+- [**AWS FSx Lustre File System**](/cloud-catalog/aws-fsx-lustre-file-system) -- the file system the association attaches to; provides `file_system_id`
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- the data repository backing the linked path

@@ -33,5 +33,5 @@ make test
 ## Debug
 
 ```bash
-./debug.sh ../hack/manifest.yaml
+./debug.sh ../../e2e/manifest.yaml
 ```

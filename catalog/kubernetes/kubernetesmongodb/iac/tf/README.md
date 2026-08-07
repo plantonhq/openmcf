@@ -79,7 +79,7 @@ terraform plan -var-file=terraform.tfvars.json
 terraform apply -var-file=terraform.tfvars.json
 ```
 
-The full-surface hack manifest lives in `../hack/manifest.yaml`.
+The full-surface hack manifest lives in `../../e2e/manifest.yaml`.
 
 ## Inputs
 

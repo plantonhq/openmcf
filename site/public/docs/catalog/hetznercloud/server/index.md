@@ -8,305 +8,144 @@ componentName: "hetznercloudserver"
 
 # Hetzner Cloud Server
 
-Provisions a Hetzner Cloud virtual machine running a chosen OS image on a specified server type in a given location. The server is the core compute resource and central hub in the Hetzner Cloud catalog — it references SSH keys, firewalls, placement groups, private networks, and Primary IPs at creation time. An optional reverse DNS record can be configured for the server's auto-assigned public IPv4 address.
+Deploys a cloud server on Hetzner Cloud with configurable server type, OS image, location, SSH keys, firewall rules, placement group assignment, private network attachments, and public networking options. The server is the core compute resource in Hetzner Cloud, supporting both Intel/AMD (shared and dedicated) and ARM64 (Ampere) instance types. References to SSH keys, firewalls, placement groups, networks, and Primary IPs are wired via StringValueOrRef for infra-chart composability.
 
 ## What Gets Created
 
-- **Server** — an `hcloud_server` resource provisioning a virtual machine with the specified hardware profile, OS image, location, SSH keys, firewall rules, placement group, public networking configuration, private network attachments, cloud-init user data, backup settings, and standard labels computed from resource metadata.
-- **Reverse DNS record** (when `dnsPtr` is set) — an `hcloud_rdns` resource mapping the server's auto-assigned public IPv4 address back to the specified hostname. Created only when the `dnsPtr` field is non-empty. Not needed when a Primary IP is attached via `publicNet.ipv4` — manage rDNS on the `HetznerCloudPrimaryIp` component instead.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Server** -- an `hcloud_server` resource running the specified OS image on the chosen server type in the given location, with SSH keys, firewalls, network attachments, and public networking configured
+- **Reverse DNS** (optional) -- an `hcloud_rdns` resource mapping the server's auto-assigned IPv4 address to a hostname when `dnsPtr` is specified
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **SSH keys** if using `sshKeys` for server access — either pre-existing in the Hetzner Cloud project or managed as `HetznerCloudSshKey` components
-- **A network with at least one subnet** if attaching to a private network via `networks`
-- **Primary IPs in the same location** if attaching existing IPs via `publicNet.ipv4` or `publicNet.ipv6`
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `server.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **SSH key** -- at least one HetznerCloudSshKey registered in the same project for server access.
+- **Location selection** -- choose a location (fsn1, nbg1, hel1, ash, hil, sin). Primary IPs and Floating IPs must be in the same location.
+- **Server type selection** -- choose a type based on workload requirements (e.g., cx22 for 2 vCPU/4 GB, cpx11 for AMD, cax11 for ARM64).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Hetzner Cloud Server**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields including server type, image, location, SSH keys, firewalls, and networking.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudServer
 metadata:
-  name: my-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudServer.my-server
+  name: web-1
+  org: acme-corp
+  env: prod
 spec:
   serverType: cx22
   image: ubuntu-24.04
   location: fsn1
+  sshKeys:
+    - value: "my-ssh-key"
+  backups: true
 ```
-
-Deploy:
 
 ```shell
-planton apply -f server.yaml
+planton apply -f hetznercloud-server.yaml
 ```
 
-This provisions a shared x86 server (2 vCPU, 4 GB RAM) running Ubuntu 24.04 in Falkenstein with auto-assigned public IPv4 and IPv6 addresses.
+This creates a cx22 server running Ubuntu 24.04 in Falkenstein with SSH key access and daily backups. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `serverType` | `string` | Server type determining vCPU, RAM, and disk. Examples: `cx22`, `cpx11`, `cax11`, `ccx13`. Changing this triggers an in-place resize (server is stopped temporarily). | `min_len: 1` |
-| `image` | `string` | OS image name or numeric snapshot ID. Examples: `ubuntu-24.04`, `debian-12`, `rocky-9`, `45346857`. Changing this forces server replacement. | `min_len: 1` |
-| `location` | `string` | Hetzner Cloud location for the server. Known locations: `fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`. Primary IPs and Floating IPs assigned to the server must be in the same location. Changing this forces server replacement. | `min_len: 1` |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sshKeys` | `StringValueOrRef[]` | empty | SSH keys to inject at creation. Accepts literal SSH key names or IDs, or references to `HetznerCloudSshKey` resources via `valueFrom`. Changing this forces server replacement. |
-| `userData` | `string` | empty | Cloud-init script (`#!/bin/bash`) or cloud-config YAML (`#cloud-config`) executed on first boot. Maximum 32 KB. Changing this forces server replacement. |
-| `placementGroupId` | `StringValueOrRef` | unset | Placement group for anti-affinity scheduling. Can reference a `HetznerCloudPlacementGroup` resource via `valueFrom`. |
-| `firewallIds` | `StringValueOrRef[]` | empty | Firewalls to apply at creation. Each entry can reference a `HetznerCloudFirewall` resource via `valueFrom`. |
-| `publicNet` | `object` | unset | Public networking configuration. When omitted, the server receives auto-assigned public IPv4 and IPv6 (provider default). |
-| `publicNet.ipv4Enabled` | `bool` | `true` | Enable public IPv4 for the server. Only takes effect when `publicNet` is set. |
-| `publicNet.ipv6Enabled` | `bool` | `true` | Enable public IPv6 for the server. Only takes effect when `publicNet` is set. |
-| `publicNet.ipv4` | `StringValueOrRef` | unset | Existing Primary IP (IPv4) to attach instead of auto-assigning. Can reference a `HetznerCloudPrimaryIp` resource via `valueFrom`. Must be in the same location. |
-| `publicNet.ipv6` | `StringValueOrRef` | unset | Existing Primary IP (IPv6) to attach instead of auto-assigning. Can reference a `HetznerCloudPrimaryIp` resource via `valueFrom`. Must be in the same location. |
-| `networks` | `NetworkAttachment[]` | empty | Private network attachments. Each entry attaches the server to a network. |
-| `networks[].networkId` | `StringValueOrRef` | — | Network to attach to. Required within each network attachment. Can reference a `HetznerCloudNetwork` resource via `valueFrom`. |
-| `networks[].ip` | `string` | auto-assigned | Specific IP address within the network's subnet range. |
-| `networks[].aliasIps` | `string[]` | empty | Additional IP addresses for the server within this network. |
-| `backups` | `bool` | `false` | Enable automatic daily backups (14-day retention, +20% cost). |
-| `keepDisk` | `bool` | `false` | Preserve disk size when changing `serverType`. Prevents irreversible disk upgrades. |
-| `deleteProtection` | `bool` | `false` | Prevent accidental deletion via the Hetzner Cloud API. |
-| `rebuildProtection` | `bool` | `false` | Prevent accidental rebuild (re-image) of the server. |
-| `shutdownBeforeDeletion` | `bool` | `false` | Send ACPI shutdown signal and wait for clean power-off before deletion. |
-| `dnsPtr` | `string` | empty | Reverse DNS pointer record for the server's auto-assigned public IPv4. Creates an `hcloud_rdns` resource when non-empty. Do not use when a Primary IP is attached via `publicNet.ipv4`. |
-
-## Examples
-
-### Minimal Server
-
-A shared x86 server running Ubuntu 24.04 in Falkenstein with auto-assigned public IPs.
+When deploying as part of a server environment, use ValueFromRef to wire SSH keys, firewalls, placement groups, and networks:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: dev-box
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudServer.dev-box
 spec:
   serverType: cx22
   image: ubuntu-24.04
-  location: fsn1
-```
-
-### Server with SSH Key and Cloud-Init
-
-A server with SSH key access and a cloud-init script that installs Nginx on first boot.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: web-01
-  org: acme-corp
-  env: staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: web-platform
-    pulumi.planton.dev/stack.name: staging.HetznerCloudServer.web-01
-spec:
-  serverType: cx22
-  image: ubuntu-24.04
-  location: fsn1
-  sshKeys:
-    - value: "deploy-key"
-  userData: |
-    #!/bin/bash
-    apt-get update && apt-get install -y nginx
-    systemctl enable nginx
-```
-
-### Production Server with Firewall and Private Network
-
-A server composed with other Planton components via `valueFrom` references, with backups and protections enabled.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: app-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.app-01
-spec:
-  serverType: cpx21
-  image: debian-12
   location: fsn1
   sshKeys:
     - valueFrom:
         kind: HetznerCloudSshKey
-        name: prod-key
+        name: deploy-key
         fieldPath: status.outputs.ssh_key_id
   firewallIds:
     - valueFrom:
         kind: HetznerCloudFirewall
         name: web-firewall
         fieldPath: status.outputs.firewall_id
-  networks:
-    - networkId:
-        valueFrom:
-          kind: HetznerCloudNetwork
-          name: main-vpc
-          fieldPath: status.outputs.network_id
-      ip: "10.0.1.10"
-  backups: true
-  deleteProtection: true
-  rebuildProtection: true
-  shutdownBeforeDeletion: true
-```
-
-### HA Server with Placement Group
-
-An anti-affinity server in a spread placement group for high availability. Uses a dedicated server type for guaranteed CPU performance.
-
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: db-primary
-  org: acme-corp
-  env: production
-  labels:
-    role: database
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: databases
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.db-primary
-spec:
-  serverType: ccx13
-  image: ubuntu-24.04
-  location: fsn1
-  sshKeys:
-    - valueFrom:
-        kind: HetznerCloudSshKey
-        name: prod-key
-        fieldPath: status.outputs.ssh_key_id
   placementGroupId:
     valueFrom:
       kind: HetznerCloudPlacementGroup
-      name: db-spread
+      name: ha-group
       fieldPath: status.outputs.placement_group_id
-  firewallIds:
-    - valueFrom:
-        kind: HetznerCloudFirewall
-        name: db-firewall
-        fieldPath: status.outputs.firewall_id
   networks:
     - networkId:
         valueFrom:
           kind: HetznerCloudNetwork
           name: main-vpc
           fieldPath: status.outputs.network_id
-  backups: true
-  keepDisk: true
-  deleteProtection: true
-  rebuildProtection: true
-  shutdownBeforeDeletion: true
 ```
 
-### Full-Featured Server with Primary IP
+The InfraPipeline resolves the dependency graph and provisions foundation resources before the server.
 
-A server with a stable IPv6 Primary IP, private networking, all protections, and reverse DNS for the auto-assigned IPv4.
+## Key Configuration
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudServer
-metadata:
-  name: web-prod-01
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: infrastructure
-    pulumi.planton.dev/stack.name: production.HetznerCloudServer.web-prod-01
-spec:
-  serverType: cpx31
-  image: ubuntu-24.04
-  location: fsn1
-  sshKeys:
-    - valueFrom:
-        kind: HetznerCloudSshKey
-        name: prod-key
-        fieldPath: status.outputs.ssh_key_id
-  placementGroupId:
-    valueFrom:
-      kind: HetznerCloudPlacementGroup
-      name: web-spread
-      fieldPath: status.outputs.placement_group_id
-  firewallIds:
-    - valueFrom:
-        kind: HetznerCloudFirewall
-        name: web-firewall
-        fieldPath: status.outputs.firewall_id
-  publicNet:
-    ipv4Enabled: true
-    ipv6Enabled: true
-    ipv6:
-      valueFrom:
-        kind: HetznerCloudPrimaryIp
-        name: web-ipv6
-        fieldPath: status.outputs.primary_ip_id
-  networks:
-    - networkId:
-        valueFrom:
-          kind: HetznerCloudNetwork
-          name: main-vpc
-          fieldPath: status.outputs.network_id
-      ip: "10.0.1.20"
-      aliasIps:
-        - "10.0.1.21"
-  userData: |
-    #!/bin/bash
-    apt-get update && apt-get install -y nginx certbot python3-certbot-nginx
-    systemctl enable nginx
-  backups: true
-  keepDisk: true
-  deleteProtection: true
-  rebuildProtection: true
-  shutdownBeforeDeletion: true
-  dnsPtr: web-prod-01.example.com
-```
+These are the most important decisions when configuring a server. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Server type** -- The `serverType` field selects the vCPU, RAM, and disk combination. Changing it triggers a server resize (temporary stop). Use `keepDisk: true` to prevent irreversible disk upgrades during downgrades.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `server_id` | `string` | Hetzner Cloud numeric ID of the created server. Referenced by `HetznerCloudVolume`, `HetznerCloudSnapshot`, `HetznerCloudFloatingIp`, and `HetznerCloudLoadBalancer` via `StringValueOrRef`. |
-| `ipv4_address` | `string` | The public IPv4 address assigned to the server. Empty if public IPv4 is disabled via `publicNet.ipv4Enabled = false`. |
-| `ipv6_address` | `string` | The first IPv6 address of the server's assigned /64 network. Empty if public IPv6 is disabled via `publicNet.ipv6Enabled = false`. |
-| `status` | `string` | The current status of the server: `running`, `off`, `rebuilding`, or `migrating`. |
+**Image** -- The `image` field specifies the OS (e.g., "ubuntu-24.04", "debian-12", "rocky-9") or a snapshot ID. Changing this forces server replacement.
 
-## Related Components
+**Location** -- The `location` field determines the datacenter. Primary IPs, Floating IPs, and volumes must be co-located. Changing this forces replacement.
 
-- [HetznerCloudSshKey](/docs/catalog/hetznercloud/ssh-key) — SSH keys for server access, referenced via `sshKeys`
-- [HetznerCloudPlacementGroup](/docs/catalog/hetznercloud/placement-group) — Anti-affinity scheduling, referenced via `placementGroupId`
-- [HetznerCloudFirewall](/docs/catalog/hetznercloud/firewall) — Network security rules, referenced via `firewallIds`
-- [HetznerCloudNetwork](/docs/catalog/hetznercloud/network) — Private networking, referenced via `networks[].networkId`
-- [HetznerCloudPrimaryIp](/docs/catalog/hetznercloud/primary-ip) — Stable public IPs, referenced via `publicNet.ipv4` / `publicNet.ipv6`
-- [HetznerCloudFloatingIp](/docs/catalog/hetznercloud/floating-ip) — Reassignable IPs that can be assigned to this server
-- [HetznerCloudVolume](/docs/catalog/hetznercloud/volume) — Block storage that can be attached to this server
-- [HetznerCloudSnapshot](/docs/catalog/hetznercloud/snapshot) — Server image snapshots taken from this server
+**SSH keys** -- The `sshKeys` field injects SSH keys at creation time. Accepts literal key names/IDs or ValueFromRef references to HetznerCloudSshKey outputs. Changing after creation forces replacement.
+
+**Public networking** -- The `publicNet` block controls IPv4/IPv6 enablement and allows attaching existing Primary IPs instead of auto-assigned addresses. Omitting it uses default auto-assigned public IPs.
+
+**Private networks** -- The `networks` field attaches the server to private networks for internal communication.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **HetznerCloudSshKey** | `sshKeys` | `status.outputs.ssh_key_id` |
+| **HetznerCloudPlacementGroup** | `placementGroupId` | `status.outputs.placement_group_id` |
+| **HetznerCloudFirewall** | `firewallIds` | `status.outputs.firewall_id` |
+| **HetznerCloudNetwork** | `networks[].networkId` | `status.outputs.network_id` |
+| **HetznerCloudPrimaryIp** | `publicNet.ipv4`, `publicNet.ipv6` | `status.outputs.primary_ip_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `server_id` | Hetzner Cloud numeric ID of the server | HetznerCloudVolume, HetznerCloudSnapshot, HetznerCloudFloatingIp, HetznerCloudLoadBalancer targets |
+| `ipv4_address` | Public IPv4 address (empty if disabled) | DNS record configuration, application endpoints |
+| `ipv6_address` | Public IPv6 address (empty if disabled) | DNS record configuration |
+| `status` | Server status (running, off, etc.) | Monitoring |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web server** -- A cx22 or cx32 server with Ubuntu, SSH key, web firewall (ports 22/80/443), and optional private networking. The most common starting point.
+
+**Private backend** -- A server with public networking disabled, attached to a private network, accessible only via a bastion host or load balancer.
+
+## Works With
+
+- [**Hetzner Cloud SSH Key**](/cloud-catalog/hetznercloud-ssh-key) -- provides SSH keys for server access
+- [**Hetzner Cloud Placement Group**](/cloud-catalog/hetznercloud-placement-group) -- anti-affinity for HA deployments
+- [**Hetzner Cloud Firewall**](/cloud-catalog/hetznercloud-firewall) -- network security rules
+- [**Hetzner Cloud Network**](/cloud-catalog/hetznercloud-network) -- private networking
+- [**Hetzner Cloud Primary IP**](/cloud-catalog/hetznercloud-primary-ip) -- stable public IP addresses
+- [**Hetzner Cloud Volume**](/cloud-catalog/hetznercloud-volume) -- block storage attachment
+- [**Hetzner Cloud Snapshot**](/cloud-catalog/hetznercloud-snapshot) -- disk image capture
+- [**Hetzner Cloud Load Balancer**](/cloud-catalog/hetznercloud-load-balancer) -- traffic distribution target

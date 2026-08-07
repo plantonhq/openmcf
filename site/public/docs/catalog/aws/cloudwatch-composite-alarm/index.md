@@ -8,108 +8,122 @@ componentName: "awscloudwatchcompositealarm"
 
 # AWS CloudWatch Composite Alarm
 
-Deploys an AWS CloudWatch composite alarm — a boolean combination of other alarms' states that pages once for shared-cause outages, expresses alerting dependencies, and gates actions behind maintenance suppression. The composite has no metrics of its own: it re-evaluates its rule whenever any referenced alarm changes state.
+Deploys a CloudWatch composite alarm — a boolean rule over the states of OTHER alarms (metric alarms from [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm), or other composites) that acts only when the combined expression is true. It has no metrics, periods, or thresholds of its own; it re-evaluates whenever any referenced alarm changes state. Composites are the standard way to suppress alert storms (one page for a shared-cause outage instead of one per symptom), express dependencies (page the team that can actually act), and gate paging on maintenance windows via the actions suppressor.
 
 ## What Gets Created
 
-- **CloudWatch Composite Alarm** — an `aws_cloudwatch_composite_alarm` with the specified rule expression, actions, and optional actions suppressor
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **CloudWatch Composite Alarm** -- the rule expression, evaluated against the referenced alarms' states in the same account and region
+- **State-Transition Actions** -- up to 5 actions each for ALARM, OK, and INSUFFICIENT_DATA transitions (SNS topics and SSM OpsItems; Auto Scaling and EC2 actions are metric-alarm-only)
+- **Actions Suppressor Binding** -- optional: a designated alarm whose ALARM state withholds this composite's actions, with wait/extension windows
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-- **Existing alarms** in the same account and region — the rule references them by name (compose from each `AwsCloudwatchAlarm`'s exported `alarm_name` output)
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An SNS topic** if configuring actions
-- **IAM permissions** — `cloudwatch:PutCompositeAlarm`, `cloudwatch:DeleteAlarms`, `cloudwatch:DescribeAlarms`, `cloudwatch:TagResource`
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-Create a file `composite.yaml`:
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Constituent alarms** -- the [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) resources the rule references, deployed first so their `alarm_name` outputs exist. The notification path usually starts with an [AwsSnsTopic](/cloud-catalog/aws-sns-topic).
+
+### AWS Account
+
+- **Same account and region** -- the rule addresses alarms by bare name; every referenced alarm must live in the composite's own account and region.
+- **Alarm names are the contract** -- renaming a constituent alarm breaks the rule silently (it evaluates INSUFFICIENT_DATA); reference alarm names through resource outputs to keep wiring rename-proof.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS CloudWatch Composite Alarm**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Shared-Cause Outage** preset in the [Presets](#presets) tab to pre-populate the storm-suppression shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
-  name: shared-cause
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchCompositeAlarm.shared-cause
+  name: orders-shared-cause
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
-  alarmRule: 'ALARM("cpu-high") AND ALARM("error-rate-high")'
+  alarmRule: ALARM("orders-db-cpu-high") AND ALARM("orders-api-error-rate-high")
+  alarmDescription: Orders stack shared-cause outage — page platform on-call.
   alarmActions:
-    - value: arn:aws:sns:us-west-2:123456789012:ops-critical
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: oncall-pager
+        fieldPath: status.outputs.topic_arn
+  okActions:
+    - valueFrom:
+        kind: AwsSnsTopic
+        name: oncall-pager
+        fieldPath: status.outputs.topic_arn
 ```
-
-Deploy:
 
 ```shell
-planton apply -f composite.yaml
+planton apply -f composite-alarm.yaml
 ```
 
-This pages the critical channel once when BOTH constituent alarms are in ALARM.
+This pages once when the database drags the API down — instead of once per symptom. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | AWS region (must match the referenced alarms). | Required |
-| `alarmRule` | `string` | Boolean expression over other alarms' states: `ALARM("name")` / `OK("name")` / `INSUFFICIENT_DATA("name")` with `AND`/`OR`/`NOT`, parentheses, and the `TRUE`/`FALSE` constants. | Required; max 10240 chars |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `alarmDescription` | `string` | — | What this composite represents and what to do when it fires. Max 1024 chars. |
-| `actionsEnabled` | `bool` | `true` (AWS default) | Whether actions execute on state transitions. ForceNew — changing it replaces the alarm. |
-| `alarmActions` | `StringValueOrRef[]` | `[]` | Actions on ALARM (SNS topics, SSM OpsItems). Max 5. |
-| `okActions` | `StringValueOrRef[]` | `[]` | Actions on OK. Max 5. |
-| `insufficientDataActions` | `StringValueOrRef[]` | `[]` | Actions on INSUFFICIENT_DATA. Max 5. |
-| `actionsSuppressor` | `object` | — | Suppresses actions while a designated alarm is in ALARM: `alarm` (by name — reference an alarm's `alarm_name` output), `waitPeriod` and `extensionPeriod` in seconds. |
-
-## Examples
-
-### Maintenance-Suppressed Paging
+When deploying as part of a multi-resource environment, the metric alarms and SNS topic deploy first, then the composite that references them:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchCompositeAlarm
-metadata:
-  name: prod-api-paging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme
-    pulumi.planton.dev/project: platform
-    pulumi.planton.dev/stack.name: prod.AwsCloudwatchCompositeAlarm.prod-api-paging
+# A maintenance-suppressed composite:
 spec:
-  region: us-west-2
-  alarmRule: 'ALARM("api-5xx") OR ALARM("api-latency")'
-  alarmActions:
-    - value: arn:aws:sns:us-west-2:123456789012:ops-critical
+  alarmRule: ALARM("orders-db-cpu-high") AND ALARM("orders-api-error-rate-high")
   actionsSuppressor:
     alarm:
       valueFrom:
         kind: AwsCloudwatchAlarm
-        name: maintenance-flag
+        name: orders-maintenance-flag
         fieldPath: status.outputs.alarm_name
     waitPeriod: 60
     extensionPeriod: 120
 ```
 
-While the `maintenance-flag` alarm is in ALARM (raised by the deploy pipeline), this composite still evaluates and records transitions — it just withholds the page.
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a composite alarm. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `alarm_arn` | `string` | ARN of the composite alarm. |
-| `alarm_name` | `string` | Name of the composite alarm — the join key parent composites use in their own rule expressions. |
+**The rule is the resource** -- `ALARM("name")`, `OK("name")`, and `INSUFFICIENT_DATA("name")` state functions combined with AND / OR / NOT and parentheses (max 10,240 characters). `ALARM(a) AND ALARM(b)` suppresses storms; `ALARM(svc) AND OK(upstream)` expresses dependencies; the constants TRUE/FALSE let you exercise wiring before the real rule lands.
 
-## Related Components
+**The actions switch is create-time-only** -- unlike metric alarms, changing `actions_enabled` on a composite replaces the alarm (same name, new ARN). Leave it unset to keep AWS's default (on) without recording an opinion; for planned quiet windows use the suppressor instead.
 
-- [AwsCloudwatchAlarm](/docs/catalog/aws/cloudwatch-alarm) — the constituent alarms this composite combines
-- [AwsSnsTopic](/docs/catalog/aws/sns-topic) — the most common action target for notifications
-- [AwsCloudwatchLogGroup](/docs/catalog/aws/cloudwatch-log-group) — source of log-derived metrics that feed constituent alarms
+**The suppressor is the maintenance mechanism** -- while the designated alarm is in ALARM, this composite's actions are withheld; transitions still record. The wait period bounds how long the composite waits for the suppressor to fire after its own transition; the extension period keeps suppression up while things settle after the window closes.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+References [AwsSnsTopic](/cloud-catalog/aws-sns-topic) resources (`topic_arn`) for its action lists and an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (`alarm_name`) as its actions suppressor. The rule expression composes alarm names — typically from `alarm_name` outputs.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `alarm_name` | The composite's name (unique per account and region) | Parent composites' rule expressions; another composite's suppressor; a Route 53 health check's CloudWatch arm |
+| `alarm_arn` | Amazon Resource Name of the composite alarm | IAM policies; EventBridge alarm-state-change patterns |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Shared-cause outage** -- one composite over the database and API alarms; one page instead of five. Start from the **Shared-Cause Outage** preset.
+
+**Maintenance-suppressed paging** -- the same composite with an actions suppressor bound to a maintenance-flag alarm the deploy pipeline flips. Start from the **Maintenance-Suppressed** preset.
+
+## Works With
+
+- [**AWS CloudWatch Alarm**](/cloud-catalog/aws-cloudwatch-alarm) -- the constituent alarms the rule composes, and the suppressor flag
+- [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- where ALARM / OK / INSUFFICIENT_DATA notifications go
+- [**AWS Route53 Health Check**](/cloud-catalog/aws-route53-health-check) -- a CLOUDWATCH_METRIC health check can mirror an alarm's state into DNS failover
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- where the metrics feeding the constituent alarms often originate

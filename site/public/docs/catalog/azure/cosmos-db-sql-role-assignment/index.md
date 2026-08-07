@@ -8,75 +8,101 @@ componentName: "azurecosmosdbsqlroleassignment"
 
 # Azure Cosmos DB SQL Role Assignment
 
-Creates a Cosmos DB SQL (NoSQL) API role assignment inside an AzureCosmosdbAccount -- the grant binding a Cosmos data-plane role to a Microsoft Entra principal at an account, database, or container scope. This is how workload identities get data access; with the account's key authentication disabled, these grants are the only way clients connect.
+Grants a Cosmos DB data-plane role to a Microsoft Entra principal at a scope inside one SQL (NoSQL) API account. Cosmos DB carries its own RBAC system, separate from ARM RBAC — this assignment is how an Entra identity (a workload's managed identity, a CI principal, an operator) gets data access. With the account's local (key) authentication disabled, grants like this are the ONLY way clients connect: the fully keyless posture.
+
+Every grant has three coordinates: WHAT (`roleDefinitionId` — a built-in role by well-known ID, or a custom AzureCosmosdbSqlRoleDefinition by reference), WHO (`principalId` — the Entra OBJECT ID), and WHERE (`scope` — the account, one database, or one container; permissions inherit downward).
 
 ## What Gets Created
 
-When you deploy an AzureCosmosdbSqlRoleAssignment resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cosmos DB SQL Role Assignment** -- an `azurerm_cosmosdb_sql_role_assignment` on the referenced account, binding the role definition to the principal at the declared scope
+- **Cosmos DB SQL Role Assignment** -- a GUID-identified grant record binding the role to the principal at the scope
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureCosmosdbAccount** (referenced through `cosmosdbAccountId`); must be a GLOBAL_DOCUMENT_DB (SQL API) account
-- **A principal** to grant to -- typically an AzureUserAssignedIdentity's `principal_id` output
-- **A role** to bind -- a built-in's well-known ID, or an AzureCosmosdbSqlRoleDefinition's output
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `grant.yaml`:
+### Azure Subscription
+
+- **A Cosmos DB account** speaking the SQL (NoSQL) API.
+- **The principal's OBJECT ID** — for a Planton-managed identity, reference the AzureUserAssignedIdentity's `principal_id` output; for users, groups, or external service principals, the object ID from Entra. The object ID is NOT the application (client) ID — an assignment authored with a client ID deploys successfully and grants nothing.
+- **For custom roles**: an AzureCosmosdbSqlRoleDefinition whose assignable scopes cover the grant's scope.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Cosmos DB SQL Role Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **workload-data-contributor** preset in the [Presets](#presets) tab for the common workload grant.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureCosmosdbSqlRoleAssignment
 metadata:
-  name: app-data-access
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureCosmosdbSqlRoleAssignment.app-data-access
+  name: orders-api-data-contributor
+  org: acme-corp
+  env: prod
 spec:
   cosmosdbAccountId:
     valueFrom:
       kind: AzureCosmosdbAccount
-      name: my-app-cosmos
+      name: orders-db
       fieldPath: status.outputs.cosmosdb_account_id
-  # The built-in Data Contributor, by its well-known ID composed on
-  # the account's ARM ID.
   roleDefinitionId:
-    value: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DocumentDB/databaseAccounts/my-cosmos/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002
+    value: /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.DocumentDB/databaseAccounts/<account>/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002
   principalId:
     valueFrom:
       kind: AzureUserAssignedIdentity
-      name: my-app-identity
+      name: orders-api-identity
       fieldPath: status.outputs.principal_id
   scope:
     valueFrom:
       kind: AzureCosmosdbAccount
-      name: my-app-cosmos
+      name: orders-db
       fieldPath: status.outputs.cosmosdb_account_id
 ```
 
-Deploy:
-
 ```shell
-planton apply -f grant.yaml
+planton apply -f cosmosdb-sql-role-assignment.yaml
 ```
 
-The principal must be the Entra OBJECT ID -- a client (application) ID is accepted by ARM but grants nothing, because no directory object carries it. Scope the grant as narrowly as the workload allows: `{account-id}/dbs/{db}` for one database, `.../colls/{container}` for one container.
+This grants the built-in Data Contributor account-wide to the workload's managed identity. A Stack Job tracks the provisioning in real time.
 
-## Key Outputs
+### InfraChart
 
-| Output | Purpose |
-|--------|---------|
-| `role_assignment_id` | The fully-scoped ARM id of the grant record |
-| `role_assignment_guid` | The assignment's GUID resource name (pinned or generated) |
-| `cosmosdb_account_name` | The account/grant pair, without a second reference |
+When deploying as part of a multi-resource environment, the account, the identity, a custom role, and this grant compose in one InfraPipeline: the pipeline resolves `cosmosdb_account_id`, `principal_id`, and `role_definition_id` into the grant in dependency order.
 
-## Related Resources
+## Key Configuration
 
-- [Azure Cosmos DB Account](/docs/catalog/azure/cosmos-db-account) -- the parent account
-- [Azure Cosmos DB SQL Role Definition](/docs/catalog/azure/cosmos-db-sql-role-definition) -- custom roles this grant can bind
-- [Azure User Assigned Identity](/docs/catalog/azure/user-assigned-identity) -- the workload identity most grants target
+**Role** -- Built-in roles (Data Reader `…0001`, Data Contributor `…0002`) exist in every account and are addressed by their well-known GUID composed on the account's ARM ID as a literal. Custom roles reference an AzureCosmosdbSqlRoleDefinition's output with zero translation. Rebinding the role is the grant's ONE in-place update.
+
+**Scope** -- The account (the default reference), one database (`{account-id}/dbs/{db}`), or one container (`{account-id}/dbs/{db}/colls/{container}`). Sub-account scopes are literals composed on the account ID. Prefer the narrowest scope that satisfies the use case; the scope must sit at or below one of the role definition's assignable scopes.
+
+**Principal** -- The Entra OBJECT ID. Referencing a managed identity's `principal_id` output makes the object-ID-vs-client-ID mistake unrepresentable.
+
+**Immutability** -- Account, principal, scope, and the pinned GUID all replace the assignment; only the role binding updates in place — each grant record stays an auditable fact.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| AzureCosmosdbAccount | `cosmosdbAccountId` | `status.outputs.cosmosdb_account_id` |
+| AzureCosmosdbSqlRoleDefinition | `roleDefinitionId` | `status.outputs.role_definition_id` |
+| AzureUserAssignedIdentity | `principalId` | `status.outputs.principal_id` |
+| AzureCosmosdbAccount | `scope` | `status.outputs.cosmosdb_account_id` |
+
+### What This Component Produces
+
+| Output | Description | Consumed By |
+|--------|-------------|-------------|
+| `role_assignment_id` | The fully-scoped ARM ID of the grant record | Audit tooling |
+| `role_assignment_guid` | The assignment's GUID resource name | Automation that cites the grant |
+| `cosmosdb_account_name` | The parent account's name | Automation that needs the account/grant pair |

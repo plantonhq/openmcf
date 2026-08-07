@@ -8,93 +8,62 @@ componentName: "azurekeyvaultkey"
 
 # Azure Key Vault Key
 
-Creates a cryptographic key inside an Azure Key Vault -- the customer-managed-key (CMK) building block. The private part never leaves the vault; Storage accounts, disk encryption sets, container registries, and databases encrypt their data with a data-encryption key that this key wraps.
+Deploys a cryptographic key inside an Azure Key Vault -- the customer-managed-key (CMK) building block of an Azure platform. The private part never leaves the vault (or its HSM on the Premium tier); consumers call the vault to encrypt/decrypt, wrap/unwrap, or sign/verify. This is how "bring your own key" works across Azure: storage accounts, disk encryption sets, container registries, and database services all encrypt their data with a data-encryption key that THIS key wraps -- revoking or rotating it revokes access to everything downstream. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
-When you deploy an AzureKeyVaultKey resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Key Vault key** — an `azurerm_key_vault_key` (data-plane object) with your chosen algorithm family, capability list, and optional automatic-rotation policy
+- **Key Vault Key** -- in the referenced vault, with the chosen algorithm family (RSA or EC, optionally HSM-backed on a Premium vault) and strength (modulus size or curve)
+- **Capability boundary** -- the permitted-operations list (`keyOpts`): Azure rejects any cryptographic operation not listed
+- **Rotation policy** -- when the `rotationPolicy` block is configured: per-version expiry with Event Grid near-expiry notification, and automatic rotation triggers
+- **Lifetime instants** -- optional not-before and expiration timestamps on the key
 
-## Prerequisites
+## The Key in the Vault Family
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A Key Vault** to create the key in (an `AzureKeyVault` in composed environments); the `_HSM` key types need the vault's `PREMIUM` SKU
-- **Data-plane key permissions on the vault** for the deploying credential: the "Key Vault Administrator" or "Key Vault Crypto Officer" RBAC role (or key permissions in a legacy access policy). Subscription Owner alone is NOT enough -- keys are data-plane objects.
+The key composes with the rest of the security family:
 
-## Quick Start
+- **AzureKeyVault** -- the parent security boundary, referenced by `keyVaultId`; its authorization mode, network posture, and purge protection govern this key wholesale
+- **AzureDiskEncryptionSet** -- bridges this key to server-side disk encryption for VMs and managed disks
+- **CMK consumers** -- storage accounts, Cosmos DB, container registries, flexible servers, and Service Bus namespaces reference this key's `versionless_id` output so rotation follows automatically
 
-Create a file `key-vault-key.yaml`:
+## Before You Deploy
+
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **An Azure Key Vault** for the key to live in. Reference an AzureKeyVault Cloud Resource via ValueFromRef, or provide the vault ARM ID directly. HSM key types (RSA_HSM/EC_HSM) require the vault on the PREMIUM SKU.
+- **Data-plane key permissions** for the deploying credential -- the "Key Vault Administrator" or "Key Vault Crypto Officer" RBAC role, or key permissions in a legacy access policy.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Key Vault Key**, and click **Deploy**. The creation wizard walks you through placement (the vault and the key's name), the algorithm family and strength, the permitted operations with persona quick-picks, and the rotation policy. Start from the **RSA CMK** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureKeyVaultKey
 metadata:
   name: storage-cmk
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzureKeyVaultKey.storage-cmk
+  org: acme-corp
+  env: prod
 spec:
   name: storage-cmk
   keyVaultId:
     valueFrom:
+      kind: AzureKeyVault
       name: platform-vault
+      fieldPath: status.outputs.key_vault_id
   keyType: RSA
-  keySize: 2048
-  keyOpts:
-    - WRAP_KEY
-    - UNWRAP_KEY
-```
-
-Deploy:
-
-```shell
-planton apply -f key-vault-key.yaml
-```
-
-After deployment, read `status.outputs.versionless_id` -- the reference CMK consumers should use so rotation propagates automatically.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `name` | `string` | The key's name within the vault. | Required, 1-127 letters/digits/hyphens; fixed at creation |
-| `keyVaultId` | `StringValueOrRef` | The vault, by ARM ID. Defaults to referencing an `AzureKeyVault`'s `key_vault_id` output. | Required; fixed at creation |
-| `keyType` | `enum` | `RSA`, `RSA_HSM`, `EC`, or `EC_HSM`. RSA is the universal CMK choice; EC keys sign/verify. `_HSM` variants require the vault's PREMIUM SKU. | Required; fixed at creation |
-| `keyOpts` | `enum[]` | The operations the key may perform: `DECRYPT`, `ENCRYPT`, `SIGN`, `UNWRAP_KEY`, `VERIFY`, `WRAP_KEY`. CMK needs WRAP_KEY + UNWRAP_KEY. | Required, at least one |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `keySize` | `int32` | -- | RSA modulus bits: `2048`, `3072`, or `4096`. Required for RSA keys, forbidden for EC. Fixed at creation. |
-| `curve` | `enum` | `P_256` | EC curve: `P_256`, `P_256K`, `P_384`, `P_521`. EC keys only. Fixed at creation. |
-| `notBeforeDate` | `string` | -- | RFC 3339 UTC instant before which the key must not be used. |
-| `expirationDate` | `string` | -- | RFC 3339 UTC expiry. Prefer a rotation policy for keys that encrypt live data -- an expired CMK takes its dependents down with it. |
-| `rotationPolicy` | `object` | -- | `expireAfter` + `notifyBeforeExpiry` (ISO 8601 durations, set together) and/or an `automatic` block with `timeAfterCreation` or `timeBeforeExpiry`. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). |
-
-## Examples
-
-### Auto-Rotating CMK
-
-Rotate every ~11 months with 2-year per-version expiry and 30-day notice:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureKeyVaultKey
-metadata:
-  name: registry-cmk
-spec:
-  name: registry-cmk
-  keyVaultId:
-    valueFrom:
-      name: prod-cmk-vault
-  keyType: RSA_HSM
   keySize: 2048
   keyOpts:
     - WRAP_KEY
@@ -103,60 +72,81 @@ spec:
     expireAfter: P2Y
     notifyBeforeExpiry: P30D
     automatic:
-      timeAfterCreation: P335D
+      timeAfterCreation: P83D
 ```
 
-### EC Signing Key
+```shell
+planton apply -f key-vault-key.yaml
+```
+
+This creates a rotating RSA 2048 CMK -- the shape every Azure CMK integration accepts, rotating roughly quarterly with versionless consumers following automatically.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, ValueFromRef wires the key to a vault deployed in the same InfraPipeline; downstream CMK consumers then reference this key's outputs:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureKeyVaultKey
-metadata:
-  name: jwt-signing
 spec:
-  name: jwt-signing
-  keyVaultId:
+  keyVaultKeyId:
     valueFrom:
-      name: platform-vault
-  keyType: EC
-  curve: P_384
-  keyOpts:
-    - SIGN
-    - VERIFY
+      kind: AzureKeyVaultKey
+      name: storage-cmk
+      fieldPath: status.outputs.versionless_id
 ```
 
-### Wire to a CMK Consumer
+The InfraPipeline resolves the dependency graph -- vault first, then the key, then everything the key encrypts.
 
-Container-registry encryption follows rotation through the versionless reference:
+## Key Configuration
 
-```yaml
-spec:
-  encryption:
-    identityClientId: <identity-client-id>
-    keyVaultKeyId:
-      valueFrom:
-        name: registry-cmk
-```
+These are the most important decisions when configuring a Key Vault key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Algorithm family** -- fixed at creation. RSA is the general-purpose choice every Azure CMK integration accepts (2048/3072/4096-bit modulus, 2048 the baseline); EC keys (P-256 default, P-256K/P-384/P-521 available) sign and verify but do NOT encrypt, so an EC key can never serve as a CMK. The _HSM variants keep the private key inside FIPS 140-2 Level 3 hardware and require the vault's PREMIUM SKU.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Permitted operations** -- the key's capability boundary, enforced per call. CMK/envelope encryption needs `WRAP_KEY` + `UNWRAP_KEY`; direct encryption needs `ENCRYPT` + `DECRYPT`; signing needs `SIGN` + `VERIFY`. Grant only what the key's consumers actually perform; the list edits in place.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `key_id` | `string` | Versioned data-plane ID -- pins consumers to this version |
-| `versionless_id` | `string` | Versionless data-plane ID -- the CMK reference; rotation propagates automatically |
-| `key_name` | `string` | The key's name within the vault |
-| `version` | `string` | The current version identifier |
-| `resource_id` | `string` | Versioned ARM resource ID (control-plane identity) |
-| `resource_versionless_id` | `string` | Versionless ARM resource ID |
-| `public_key_pem` | `string` | The public half in PEM form |
-| `public_key_openssh` | `string` | The public half in OpenSSH form |
+**Rotation policy** -- each rotation mints a new key VERSION; consumers referencing `versionless_id` follow with zero intervention. The policy pairs per-version expiry with a notification lead (both or neither) and fires on an age trigger (`timeAfterCreation`) or an expiry countdown (`timeBeforeExpiry`, which requires the expiry). Durations are ISO 8601 date durations (P90D, P2Y).
 
-## Related Components
+**Expiry** -- a hard cutoff: expired keys refuse all operations, so an expired CMK takes its dependents down with it. Prefer the rotation policy for keys encrypting live data; once set, expiry cannot be fully unset on the underlying key.
 
-- [AzureKeyVault](/docs/catalog/azure/key-vault) — the vault the key lives in (Premium SKU for HSM types)
-- [AzureKeyVaultCertificate](/docs/catalog/azure/key-vault-certificate) — the TLS sibling
-- [AzureContainerRegistry](/docs/catalog/azure/container-registry) — CMK consumer via `encryption.keyVaultKeyId`
-- [AzureAksCluster](/docs/catalog/azure/aks-cluster) — KMS etcd encryption via `keyManagementService.keyVaultKeyId` (pins versions)
-- [AzureRoleAssignment](/docs/catalog/azure/role-assignment) — grants the deployer/consumers data-plane key permissions
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureKeyVault** | `keyVaultId` | `status.outputs.key_vault_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `versionless_id` | Versionless data-plane ID (`https://{vault}.vault.azure.net/keys/{name}`) | THE CMK reference -- storage accounts, disk encryption sets, Cosmos DB, container registries, flexible servers, and Service Bus follow rotation through it |
+| `key_id` | Versioned data-plane ID of the current version | Compliance regimes that pin a frozen version (MSSQL TDE, managed Redis) |
+| `key_name` | The key's name in the vault | Operator tooling |
+| `version` | The current version identifier | Audit trails |
+| `resource_id` | Versioned ARM resource ID | ARM-level references |
+| `resource_versionless_id` | Versionless ARM resource ID | ARM-level references that follow rotation |
+| `public_key_pem` | The public key, PEM-encoded | Signature verification outside Azure |
+| `public_key_openssh` | The public key, OpenSSH-encoded | SSH-style tooling |
+
+The key outputs no secret material -- the private part never leaves the vault.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**RSA CMK** -- RSA 2048 with wrap/unwrap, the shape every CMK-consuming service accepts. Start from the **RSA CMK** preset.
+
+**HSM auto-rotating** -- RSA-HSM with a full rotation policy, for compliance regimes mandating hardware protection. Start from the **HSM Auto-Rotating** preset.
+
+**EC signing** -- an elliptic-curve key with sign/verify, for JWTs and code signing. Start from the **EC Signing** preset.
+
+## Works With
+
+- [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- the parent vault whose governance this key inherits
+- [**Azure Disk Encryption Set**](/cloud-catalog/azure-disk-encryption-set) -- bridges this key to server-side disk encryption
+- [**Azure Storage Account**](/cloud-catalog/azure-storage-account) -- encrypts under this key via its customer-managed-key block
+- [**Azure Service Bus Namespace**](/cloud-catalog/azure-service-bus-namespace) -- Premium namespaces encrypt messaging data under this key
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants consumers crypto access on the vault

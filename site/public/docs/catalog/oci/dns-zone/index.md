@@ -6,215 +6,110 @@ order: 100
 componentName: "ocidnszone"
 ---
 
-# OCI DNS Zone
+# DNS Zone on OCI
 
-Deploys an Oracle Cloud Infrastructure DNS zone — a managed authoritative DNS zone supporting public (GLOBAL) and private resolution scopes, PRIMARY and SECONDARY zone types, zone transfers via external masters and downstreams, and DNSSEC signing.
+Deploys a managed authoritative DNS zone on Oracle Cloud Infrastructure supporting public (global) and private (VCN-scoped) resolution, primary and secondary zone types, zone transfers via external masters and downstreams, and DNSSEC signing. Integrates with Planton's Provider Connections for OCI credential management and ValueFromRef for wiring to compartments.
 
 ## What Gets Created
 
-When you deploy an OciDnsZone resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS Zone** — a `dns.Zone` resource in the specified compartment. The zone name is derived from `metadata.name`. Supports GLOBAL (public) and PRIVATE scopes, PRIMARY and SECONDARY types, optional DNSSEC signing, and optional zone transfer configuration with external DNS servers.
+- **DNS Zone** -- a managed authoritative zone in the specified compartment. The zone name is derived from `metadata.name`. Supports global (publicly resolvable) and private (VCN-only) scopes, primary and secondary zone types, optional DNSSEC signing, and optional zone transfer configuration with external DNS servers.
+- **Freeform Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the zone for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **OCI credentials** configured via environment variables or Planton provider config (API Key, Instance Principal, Security Token, Resource Principal, or OKE Workload Identity)
-- **A compartment OCID** where the zone will be created — either a literal value or a reference to an OciCompartment resource
-- **A DNS view OCID** (for private zones only) — required when scope is `private`
-- **External master DNS server addresses** (for secondary zones only) — servers from which the zone will replicate
-- **TSIG key OCIDs** (optional) — for authenticating zone transfers
+### Planton Setup
 
-## Quick Start
+- **OCI Provider Connection** -- an active connection in the Connect module with credentials for the target OCI tenancy. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials.
 
-Create a file `dns-zone.yaml`:
+### OCI Tenancy
+
+- A compartment to place the DNS zone in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
+- A DNS view OCID -- required only for private-scoped zones. OCI DNS views are not modeled as Planton deployment components; provide the OCID as a literal value or via ValueFromRef from an external source.
+- External master DNS server addresses -- required only for secondary zones that replicate from on-premises or third-party DNS servers.
+- TSIG key OCIDs (optional) -- for authenticating zone transfers between this zone and external DNS servers.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **DNS Zone on OCI**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public Primary** preset in the [Presets](#presets) tab to pre-populate a standard public DNS zone.
+
+### CLI
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
+apiVersion: oci.planton.dev/v1
 kind: OciDnsZone
 metadata:
   name: example.com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OciDnsZone.example-com
+  org: acme-corp
+  env: prod
 spec:
   compartmentId:
     value: "ocid1.compartment.oc1..example"
   zoneType: primary
 ```
-
-Deploy:
 
 ```shell
 planton apply -f dns-zone.yaml
 ```
 
-This creates a public PRIMARY DNS zone for `example.com`. The zone OCID and OCI-assigned nameservers are exported as stack outputs. Configure these nameservers as NS records at your domain registrar.
+This creates a public primary DNS zone for `example.com`. No DNSSEC signing or zone transfers are configured. OCI assigns authoritative nameservers that you configure as NS records at your domain registrar.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `compartmentId` | `StringValueOrRef` | OCID of the compartment where the zone will be created. Can reference an OciCompartment resource via `valueFrom`. | Required |
-| `zoneType` | `enum` | Whether the zone is `primary` (authoritative source) or `secondary` (replicates from external masters). ForceNew. | Must be explicitly set |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `scope` | `enum` | `global` | Resolution scope. `global` for publicly resolvable zones, `private` for VCN-only resolution. ForceNew. |
-| `viewId` | `StringValueOrRef` | — | OCID of the private DNS view. Required when scope is `private`. ForceNew. |
-| `isDnssecEnabled` | `bool` | OCI default (disabled) | Enable DNSSEC signing. When true, OCI generates KSK and ZSK key pairs and signs zone records. Only meaningful for GLOBAL zones. |
-| `externalMasters` | `ExternalServer[]` | — | External master DNS servers for SECONDARY zones. Required when `zoneType` is `secondary`. |
-| `externalDownstreams` | `ExternalServer[]` | — | External downstream DNS servers that receive zone transfers from PRIMARY zones. Only supported for PRIMARY zones with GLOBAL scope. |
-
-### ExternalServer
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `address` | `string` | — | IPv4 or IPv6 address of the external DNS server. Required. |
-| `port` | `int32` | `53` | Port number. |
-| `tsigKeyId` | `string` | — | OCID of the TSIG key for authenticating zone transfers. |
-
-### Validation Constraints
-
-- `zoneType` must be explicitly set (`primary` or `secondary`)
-- PRIVATE zones require `viewId`
-- SECONDARY zones cannot have `private` scope (OCI limitation)
-- SECONDARY zones require at least one `externalMasters` entry
-
-## Examples
-
-### Public Primary Zone
-
-A standard public DNS zone:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the DNS zone to a compartment deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: example.com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsZone.example-com
 spec:
   compartmentId:
     valueFrom:
       kind: OciCompartment
-      name: prod-compartment
+      name: networking
       fieldPath: status.outputs.compartmentId
-  zoneType: primary
 ```
 
-### Public Primary Zone with DNSSEC
+The InfraPipeline resolves the dependency graph, deploys the compartment first, then provisions the DNS zone with the resolved compartment OCID.
 
-A DNSSEC-signed public zone for enhanced security:
+## Key Configuration
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: secure.example.com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsZone.secure-example-com
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  zoneType: primary
-  isDnssecEnabled: true
-```
+These are the most important decisions when configuring a DNS zone. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Private Zone for VCN Resolution
+**Zone type** -- Set `zoneType` to `primary` for zones where OCI is the authoritative source of truth (you manage records via OciDnsRecord). Set to `secondary` for zones that replicate from external master DNS servers. Secondary zones require at least one `externalMasters` entry. Zone type is immutable after creation.
 
-A private DNS zone resolvable only within VCNs via a DNS view:
+**Resolution scope** -- Defaults to global (publicly resolvable). Set `scope` to `scope_private` for zones resolvable only within VCNs via a DNS view. Private zones require `viewId`. OCI does not support private secondary zones. Scope is immutable after creation.
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: internal.example.local
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsZone.internal-example-local
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  zoneType: primary
-  scope: scope_private
-  viewId:
-    value: "ocid1.dnsview.oc1..example"
-```
+**DNSSEC** -- Set `isDnssecEnabled: true` to enable DNSSEC signing. OCI generates KSK and ZSK key pairs and signs zone records automatically. Only meaningful for global-scoped zones. Can be toggled after creation.
 
-### Secondary Zone Replicating from External Masters
+**Zone transfers** -- Configure `externalDownstreams` on primary zones to push zone transfers to external DNS servers (hybrid DNS). Configure `externalMasters` on secondary zones to pull from on-premises or third-party DNS. Use `tsigKeyId` on external server entries for TSIG-authenticated transfers.
 
-A secondary zone that replicates from on-premises DNS servers with TSIG authentication:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: corp.example.com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsZone.corp-example-com
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  zoneType: secondary
-  externalMasters:
-    - address: "198.51.100.1"
-      tsigKeyId: "ocid1.tsigkey.oc1..example"
-    - address: "198.51.100.2"
-      tsigKeyId: "ocid1.tsigkey.oc1..example"
-```
+### What This Component Consumes
 
-### Primary Zone with External Downstreams
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OciCompartment** | `compartmentId` | `status.outputs.compartmentId` |
 
-A primary zone that pushes zone transfers to external DNS servers:
+### What This Component Provides
 
-```yaml
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: distributed.example.com
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OciDnsZone.distributed-example-com
-spec:
-  compartmentId:
-    value: "ocid1.compartment.oc1..example"
-  zoneType: primary
-  externalDownstreams:
-    - address: "203.0.113.1"
-    - address: "203.0.113.2"
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-## Stack Outputs
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `zoneId` | OCID of the DNS zone | OciDnsRecord zone reference, IAM policy scoping |
+| `nameservers` | Comma-separated list of OCI-assigned authoritative nameserver hostnames | NS record configuration at domain registrar |
 
-After deployment, the following outputs are available in `status.outputs`:
+## Common Patterns
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_id` | `string` | OCID of the DNS zone |
-| `nameservers` | `string` | Comma-separated list of OCI-assigned authoritative nameserver hostnames. Configure these as NS records at your domain registrar. |
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Related Components
+**Public primary zone** -- A standard globally resolvable DNS zone where OCI is the authoritative source. The most common pattern for hosting domain DNS on OCI. Start from the **Public Primary** preset.
 
-- [OciCompartment](/docs/catalog/oci/compartment) — provides the compartment referenced by `compartmentId` via `valueFrom`
-- [OciDnsRecord](/docs/catalog/oci/dns-record) — manages record sets within this zone
-- [OciApplicationLoadBalancer](/docs/catalog/oci/application-load-balancer) — load balancer IPs are common DNS targets
-- [OciVcn](/docs/catalog/oci/vcn) — VCNs with private DNS views for private zone resolution
+**Private VCN zone** -- A private DNS zone resolvable only within VCNs via a DNS view. Used for internal service discovery and split-horizon DNS where internal names should not be resolvable from the public internet. Start from the **Private VCN** preset.
+
+## Works With
+
+- [**Compartment on OCI**](/cloud-catalog/oci-compartment) -- provides the compartment that scopes this DNS zone

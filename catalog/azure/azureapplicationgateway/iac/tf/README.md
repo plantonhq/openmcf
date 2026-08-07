@@ -39,4 +39,4 @@ redirects, WAF policy attachment at all three levels, Private Link,
 buffering, and the map outputs. Three azurerm 4.80 backend-settings
 fields (`sni_name`, `sni_validation_enabled`,
 `certificate_chain_validation_enabled`) are deliberately unmodeled -- the
-pulumi SDK cannot express them yet (recorded in `docs/README.md`).
+pulumi SDK cannot express them yet (recorded in `../../GUIDE.md`).

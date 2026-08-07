@@ -8,140 +8,98 @@ componentName: "hetznercloudsnapshot"
 
 # Hetzner Cloud Snapshot
 
-Creates a point-in-time disk image from a Hetzner Cloud server, stored as a Hetzner Cloud Image. The snapshot captures the full disk state of the source server and can be used as a boot source when creating new servers — enabling golden image workflows, pre-upgrade rollback points, and server cloning.
+Captures a point-in-time disk image from a Hetzner Cloud server. Snapshots are stored as Hetzner Cloud Images and can be used to create new servers from the captured state. They persist independently of the source server -- deleting the server does not remove existing snapshots. Useful for golden image creation, pre-upgrade baselines, and server cloning.
 
 ## What Gets Created
 
-- **Server Snapshot** — an `hcloud_snapshot` resource that captures the source server's disk as a Hetzner Cloud Image (type `snapshot`). The snapshot persists independently of the source server, with labels computed from resource metadata.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Snapshot** -- a single `hcloud_snapshot` resource that captures the disk state of the referenced server as a Hetzner Cloud Image
 
-- **Hetzner Cloud API token** configured via environment variable (`HCLOUD_TOKEN`) or Planton provider config
-- **An existing server** to snapshot — either a pre-existing server referenced by its numeric ID, or a `HetznerCloudServer` component referenced via `valueFrom`
+## Before You Deploy
 
-## Quick Start
+### Hetzner Cloud Account
 
-Create a file `snapshot.yaml`:
+- **A Hetzner Cloud account** with an active project and API token.
+- **An existing server** -- provide the server ID directly or reference a HetznerCloudServer resource via ValueFromRef.
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSnapshot
-metadata:
-  name: my-snapshot
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.HetznerCloudSnapshot.my-snapshot
-spec:
-  serverId:
-    value: "12345678"
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f snapshot.yaml
-```
+Open the deployment store, find **Hetzner Cloud Snapshot**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
 
-This creates a snapshot of server `12345678`. The snapshot's image ID is available in the stack outputs as `snapshot_id`.
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `serverId` | `StringValueOrRef` | Server to create the snapshot from. Accepts a literal Hetzner Cloud server ID (as a string) or a reference to a `HetznerCloudServer` resource via `valueFrom`. Changing this value forces replacement of the snapshot (the existing snapshot is destroyed and a new one is created from the new server). | required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | `string` | empty | Human-readable description of the snapshot. Useful for identifying the purpose (e.g., "pre-upgrade baseline", "golden image v2.1"). Can be updated after creation without replacing the snapshot. |
-
-## Examples
-
-### Snapshot with Description
-
-A snapshot with a description for identification. The description appears in the Hetzner Cloud console and API listings.
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
+apiVersion: hetzner-cloud.planton.dev/v1
 kind: HetznerCloudSnapshot
 metadata:
   name: pre-upgrade-baseline
   org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: maintenance
-    pulumi.planton.dev/stack.name: production.HetznerCloudSnapshot.pre-upgrade-baseline
+  env: prod
 spec:
   serverId:
     value: "12345678"
-  description: "pre-upgrade baseline before v3.2 rollout"
+  description: "Baseline before v2.0 upgrade"
 ```
 
-### Snapshot Referencing a Server Component
+```shell
+planton apply -f hetznercloud-snapshot.yaml
+```
 
-Using `valueFrom` to reference a `HetznerCloudServer` component's output. The snapshot waits for the server to be created before attempting to capture its disk.
+This captures the disk state of the specified server. A Stack Job tracks the provisioning in real time. The resulting snapshot ID can be used as the `image` field in a new HetznerCloudServer manifest.
+
+### InfraChart
+
+When deploying as part of a backup workflow, use ValueFromRef to reference the source server:
 
 ```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSnapshot
-metadata:
-  name: app-server-snapshot
-  org: acme-corp
-  env: staging
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: app-platform
-    pulumi.planton.dev/stack.name: staging.HetznerCloudSnapshot.app-server-snapshot
 spec:
   serverId:
     valueFrom:
       kind: HetznerCloudServer
       name: app-server
       fieldPath: status.outputs.server_id
-  description: "staging app server baseline"
+  description: "Automated pre-deployment snapshot"
 ```
 
-### Golden Image for Fleet Deployment
+The InfraPipeline resolves the dependency graph and creates the server before capturing the snapshot.
 
-Snapshot a configured template server, then use the snapshot's image ID to create identical worker servers. This is faster and more consistent than running configuration management on every new server.
+## Key Configuration
 
-```yaml
-apiVersion: hetzner-cloud.planton.dev/v1alpha1
-kind: HetznerCloudSnapshot
-metadata:
-  name: golden-image-v1
-  org: acme-corp
-  env: production
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: acme-corp
-    pulumi.planton.dev/project: fleet-management
-    pulumi.planton.dev/stack.name: production.HetznerCloudSnapshot.golden-image-v1
-spec:
-  serverId:
-    valueFrom:
-      kind: HetznerCloudServer
-      name: golden-template
-      fieldPath: status.outputs.server_id
-  description: "golden image v1 - ubuntu 24.04 with nginx and app v3.2"
-```
+These are the most important decisions when configuring a snapshot. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-After deployment, the `snapshot_id` output provides the image ID to pass as the `image` field when creating new `HetznerCloudServer` instances.
+**Server ID** -- The `serverId` field references the server to snapshot. Accepts a literal server ID or a ValueFromRef reference to a HetznerCloudServer output. Changing this value forces replacement of the snapshot.
 
-## Stack Outputs
+**Description** -- The `description` field provides a human-readable label for identifying the snapshot's purpose. Can be updated after creation without replacing the snapshot.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `snapshot_id` | `string` | The Hetzner Cloud image ID of the created snapshot. Usable as the `image` parameter when creating new servers from this snapshot. |
+## Outputs and Dependencies
 
-## Related Components
+### What This Component Consumes
 
-- [HetznerCloudServer](/docs/catalog/hetznercloud/server) — The source server to snapshot (referenced via `serverId`) and the consumer of snapshot images (via the `image` field)
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **HetznerCloudServer** | `serverId` | `status.outputs.server_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `snapshot_id` | Hetzner Cloud image ID of the snapshot | HetznerCloudServer `image` field for booting from this snapshot |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Pre-upgrade baseline** -- Capture a snapshot before a major upgrade so the server can be restored to a known good state if the upgrade fails.
+
+**Golden image** -- Create a snapshot of a fully configured server to use as a template for cloning new servers with identical configuration.
+
+## Works With
+
+- [**Hetzner Cloud Server**](/cloud-catalog/hetznercloud-server) -- the source server for the snapshot, and the consumer of snapshot IDs via the `image` field

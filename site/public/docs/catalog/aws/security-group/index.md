@@ -8,293 +8,135 @@ componentName: "awssecuritygroup"
 
 # AWS Security Group
 
-Deploys an AWS EC2 Security Group in a specified VPC with configurable ingress and egress rules supporting IPv4 CIDRs, IPv6 CIDRs, managed prefix lists, source/destination security group references, and self-referencing rules.
+Deploys an EC2 Security Group within a specified VPC with configurable ingress and egress rules supporting IPv4/IPv6 CIDRs, cross-group references, and self-referencing. The security group integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPC and other security group resources.
 
 ## What Gets Created
 
-When you deploy an AwsSecurityGroup resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Security Group** — an `ec2.SecurityGroup` resource in the specified VPC with the given name, description, ingress rules, and egress rules
-- **Ingress Rules** — inbound traffic rules mapped from the `ingress` field, each specifying protocol, port range, CIDR blocks, managed prefix lists, security group references, and self-reference settings
-- **Egress Rules** — outbound traffic rules mapped from the `egress` field, each specifying protocol, port range, CIDR blocks, managed prefix lists, destination security group references, and self-reference settings
+- **Security Group** -- an EC2 security group in the specified VPC with a description and name matching your manifest's `metadata.name`
+- **Ingress Rules** -- one rule per entry in the `ingress` array, supporting protocol, port ranges, IPv4/IPv6 CIDRs, source security group references, and self-referencing
+- **Egress Rules** -- one rule per entry in the `egress` array, supporting protocol, port ranges, IPv4/IPv6 CIDRs, destination security group references, and self-referencing
+- **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the security group
 
-Rules are managed inline on the group: the manifest is the complete statement of what the group permits, and rules added outside of it are removed on the next apply.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **AWS credentials** configured via environment variables or Planton provider config
-- **An existing VPC** where the Security Group will be created (can be managed by an AwsVpc resource)
-- **Knowledge of required ports and protocols** for your workload
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
 
-## Quick Start
+### AWS Account
 
-Create a file `sg.yaml`:
+- **A VPC** -- the security group must belong to exactly one VPC. Provide the VPC ID directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Source/destination security groups** (optional) -- if rules reference other security groups, those groups must exist in the same VPC. Provide their IDs directly or reference other AwsSecurityGroup Cloud Resources via ValueFromRef.
 
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSecurityGroup
-metadata:
-  name: my-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsSecurityGroup.my-sg
-spec:
-  region: us-west-2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  description: Allow HTTP traffic
-```
+## Deploy
 
-Deploy:
+### Console
 
-```shell
-planton apply -f sg.yaml
-```
+Open the deployment store, find **AWS Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier** preset in the [Presets](#presets) tab to pre-populate a common configuration.
 
-This creates a Security Group in the specified VPC with no ingress rules (all inbound traffic denied) and no egress rules (all outbound traffic denied — add an explicit all-traffic egress rule to allow outbound connectivity).
+### CLI
 
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | The AWS region where the resource will be created. | Required |
-| `vpcId` | `StringValueOrRef` | ID of the VPC where the Security Group is created. Can reference an AwsVpc resource via `valueFrom`. | Required |
-| `vpcId.value` | `string` | Direct VPC ID value (e.g., `vpc-12345abcde`) | — |
-| `vpcId.valueFrom` | `object` | Foreign key reference to an AwsVpc resource | Default kind: `AwsVpc`, default field: `status.outputs.vpc_id` |
-| `description` | `string` | Short explanation of the Security Group's purpose. Cannot be modified after creation without replacement. | Required; max 255 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ingress` | `SecurityGroupRule[]` | `[]` | Inbound traffic rules. If empty, all inbound traffic is denied. |
-| `egress` | `SecurityGroupRule[]` | `[]` | Outbound traffic rules. If empty, all outbound traffic is denied (the allow-all rule AWS adds to new groups is revoked so the manifest fully owns the rule set). |
-| `revokeRulesOnDelete` | `bool` | `false` | Forcibly revoke this group's rules — and rules in other groups that reference it — before delete. Enable for groups referenced cross-group so teardown never fails with a `DependencyViolation`. |
-
-Each `SecurityGroupRule` contains:
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `protocol` | `string` | — | Protocol for the rule: `"tcp"`, `"udp"`, `"icmp"`, `"icmpv6"`, an IANA protocol number, or `"-1"` (all protocols). **Required.** |
-| `fromPort` | `int32` | `0` | Starting port in the range (`-1`–`65535`). For single-port rules, set equal to `toPort`. For ICMP, this is the ICMP *type* (`-1` = all types). Must be `0` with protocol `-1`. |
-| `toPort` | `int32` | `0` | Ending port in the range (`-1`–`65535`). For single-port rules, set equal to `fromPort`. For ICMP, this is the ICMP *code* (`-1` = all codes). Must be `0` with protocol `-1`. |
-| `ipv4Cidrs` | `string[]` | `[]` | IPv4 CIDR blocks allowed (ingress) or targeted (egress). Example: `"0.0.0.0/0"`. |
-| `ipv6Cidrs` | `string[]` | `[]` | IPv6 CIDR blocks allowed or targeted. Example: `"::/0"`. |
-| `prefixListIds` | `string[]` | `[]` | Managed prefix list IDs allowed (ingress) or targeted (egress). Example: `"pl-63a5400a"`. Targets a named CIDR set — an AWS service like S3, or a customer-maintained range — by stable ID. |
-| `sourceSecurityGroupIds` | `string[]` | `[]` | Security Group IDs that can send traffic (for ingress rules). |
-| `destinationSecurityGroupIds` | `string[]` | `[]` | Security Group IDs that receive traffic (for egress rules). |
-| `selfReference` | `bool` | `false` | When `true`, allows traffic from/to instances associated with the same Security Group. |
-| `description` | `string` | `""` | Optional description for this specific rule. Max 255 characters. |
-
-## Examples
-
-### Allow HTTP and HTTPS Inbound
-
-A Security Group that allows inbound HTTP (80) and HTTPS (443) from anywhere, with unrestricted outbound:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1alpha1
+apiVersion: aws.planton.dev/v1
 kind: AwsSecurityGroup
 metadata:
-  name: web-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsSecurityGroup.web-sg
-spec:
-  region: us-west-2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  description: Web tier - HTTP and HTTPS
-  ingress:
-    - protocol: tcp
-      fromPort: 80
-      toPort: 80
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow HTTP from anywhere
-    - protocol: tcp
-      fromPort: 443
-      toPort: 443
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow HTTPS from anywhere
-  egress:
-    - protocol: "-1"
-      fromPort: 0
-      toPort: 0
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow all outbound traffic
-```
-
-### SSH Access from a Corporate Network
-
-A Security Group that restricts SSH access to a specific CIDR range:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSecurityGroup
-metadata:
-  name: bastion-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSecurityGroup.bastion-sg
-spec:
-  region: us-west-2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  description: Bastion host - SSH from corporate network
-  ingress:
-    - protocol: tcp
-      fromPort: 22
-      toPort: 22
-      ipv4Cidrs:
-        - "203.0.113.0/24"
-      description: SSH from corporate CIDR
-  egress:
-    - protocol: "-1"
-      fromPort: 0
-      toPort: 0
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow all outbound
-```
-
-### Internal Microservice with Self-Referencing
-
-A Security Group for internal services that allows traffic on a custom port from other instances in the same group:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSecurityGroup
-metadata:
-  name: internal-svc-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSecurityGroup.internal-svc-sg
-spec:
-  region: us-west-2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  description: Internal service mesh communication
-  ingress:
-    - protocol: tcp
-      fromPort: 8080
-      toPort: 8080
-      selfReference: true
-      description: Allow port 8080 from same security group
-    - protocol: tcp
-      fromPort: 8443
-      toPort: 8443
-      selfReference: true
-      description: Allow port 8443 from same security group
-  egress:
-    - protocol: "-1"
-      fromPort: 0
-      toPort: 0
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow all outbound
-```
-
-### Database Tier with Source Security Group
-
-A Security Group for a database that only accepts traffic from a specific application Security Group:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSecurityGroup
-metadata:
-  name: db-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSecurityGroup.db-sg
-spec:
-  region: us-west-2
-  vpcId: vpc-0a1b2c3d4e5f00001
-  description: Database tier - PostgreSQL from app tier only
-  ingress:
-    - protocol: tcp
-      fromPort: 5432
-      toPort: 5432
-      sourceSecurityGroupIds:
-        - sg-0a1b2c3d4e5f00099
-      description: PostgreSQL from app security group
-  egress:
-    - protocol: "-1"
-      fromPort: 0
-      toPort: 0
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow all outbound
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed VPC instead of hardcoding the VPC ID:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsSecurityGroup
-metadata:
-  name: ref-sg
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AwsSecurityGroup.ref-sg
+  name: web-tier-sg
+  org: acme-corp
+  env: prod
 spec:
   region: us-west-2
   vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: my-vpc
-      fieldPath: status.outputs.vpc_id
-  description: ALB security group in managed VPC
+    value: "vpc-0a1b2c3d4e5f00001"
+  description: "Allow HTTP/HTTPS from the internet"
   ingress:
-    - protocol: tcp
-      fromPort: 80
-      toPort: 80
-      ipv4Cidrs:
-        - "0.0.0.0/0"
-      description: Allow HTTP
     - protocol: tcp
       fromPort: 443
       toPort: 443
       ipv4Cidrs:
         - "0.0.0.0/0"
-      description: Allow HTTPS
+      description: "HTTPS from anywhere"
   egress:
     - protocol: "-1"
       fromPort: 0
       toPort: 0
       ipv4Cidrs:
         - "0.0.0.0/0"
-      description: Allow all outbound
+      description: "All outbound traffic"
 ```
 
-## Stack Outputs
+```shell
+planton apply -f security-group.yaml
+```
 
-After deployment, the following outputs are available in `status.outputs`:
+This creates a security group allowing inbound HTTPS from all sources and unrestricted outbound traffic. No source or destination security group references are configured. A Stack Job tracks the provisioning in real time.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `security_group_id` | `string` | The unique ID of the created Security Group (`sg-...`) — the join key other resources reference |
-| `security_group_arn` | `string` | The ARN of the Security Group — the form IAM policy conditions expect |
-| `owner_id` | `string` | The AWS account ID that owns the Security Group — needed for cross-account rule references |
+### InfraChart
 
-## Related Components
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the security group to a VPC deployed in the same InfraPipeline:
 
-- [AwsVpc](/docs/catalog/aws/vpc) — provides the VPC where Security Groups are created
-- [AwsAlb](/docs/catalog/aws/alb) — attaches Security Groups to Application Load Balancers
-- [AwsEksCluster](/docs/catalog/aws/eks-cluster) — uses Security Groups for cluster and node networking
-- [AwsEc2Instance](/docs/catalog/aws/ec2-instance) — assigns Security Groups to EC2 instances
-- [AwsRdsInstance](/docs/catalog/aws/rds-instance) — uses Security Groups to control database access
+```yaml
+spec:
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: production-vpc
+      fieldPath: status.outputs.vpc_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the security group with the resolved VPC ID.
+
+## Key Configuration
+
+These are the most important decisions when configuring a security group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Ingress rules** -- Each entry in `ingress` defines an inbound traffic rule. Combine `protocol`, `fromPort`, and `toPort` with `ipv4Cidrs`/`ipv6Cidrs` for CIDR-based access, `sourceSecurityGroupIds` for group-based access, or `prefixListIds` for managed prefix lists. Use `selfReference: true` for intra-group traffic (e.g., cluster nodes communicating with each other).
+
+**Egress rules** -- If `egress` is empty, ALL outbound traffic is denied: the module revokes the allow-all egress rule AWS adds to every new group, so the manifest is the complete statement of what the group permits. Add an explicit all-traffic egress rule (`protocol: "-1"`, `0.0.0.0/0`) to restore the AWS default behavior.
+
+**Security group references** -- The `sourceSecurityGroupIds` (ingress) and `destinationSecurityGroupIds` (egress) fields accept ValueFromRef references to other AwsSecurityGroup resources. This enables declarative, dependency-tracked security policies across tiers (web -> app -> database) without hardcoding security group IDs.
+
+**Managed prefix lists** -- The per-rule `prefixListIds` field names a set of CIDRs by a stable ID (`pl-...`). AWS-managed lists cover services like S3 and DynamoDB gateway endpoints, so an egress rule can target "the S3 service" instead of hardcoding its CIDRs; customer-managed lists let network teams maintain shared CIDR sets (office ranges, partner networks) that many groups reference without copying.
+
+**Description immutability** -- The `description` field cannot be modified after creation without replacing the security group. Choose a descriptive value upfront, such as the tier name and purpose.
+
+**Deletion posture** -- `revokeRulesOnDelete` is off by default: deleting a group that other groups' rules still reference fails with a DependencyViolation, surfacing the dependency. Enable it for groups referenced cross-group in environments that are torn down whole, so teardown never requires manual rule surgery. Safe to toggle in place.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AwsSecurityGroup** (optional) | `ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
+| **AwsSecurityGroup** (optional) | `egress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `security_group_id` | ID of the created security group | EKS cluster security, RDS instance access, EC2 instance network interfaces |
+| `security_group_arn` | Amazon Resource Name of the group | IAM policies and support tooling |
+| `owner_id` | The AWS account that owns the group | Cross-account rule references (account/group-id pairs) |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Web tier** -- Allows inbound HTTP (80) and HTTPS (443) from the internet with unrestricted outbound. The standard pattern for public-facing load balancers and web servers. Start from the **Web Tier** preset.
+
+**Database tier** -- Restricts inbound access to specific ports (e.g., 5432 for PostgreSQL, 3306 for MySQL) from application-tier security groups only. No public CIDR access. Start from the **Database Tier** preset.
+
+**Bastion host** -- Allows inbound SSH (22) from a restricted set of administrator IP addresses and full outbound access for management tasks. Start from the **Bastion** preset.
+
+## Works With
+
+- [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides the VPC where the security group is created
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides source or destination security group IDs for cross-group rule references

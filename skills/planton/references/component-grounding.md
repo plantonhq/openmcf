@@ -111,23 +111,26 @@ All of these live in the open-source repo `github.com/plantonhq/planton`.
 Read them from a local clone when one exists; otherwise fetch raw files
 directly, e.g.
 `https://raw.githubusercontent.com/plantonhq/planton/main/catalog/aws/awsvpc/v1alpha1/spec.proto`
-(same path shape for every artifact below). No clone and no network? The
-explain report alone is sufficient for correct composition.
+(prefix each path below with
+`https://raw.githubusercontent.com/plantonhq/planton/main/`). No clone and
+no network? The explain report alone is sufficient for correct composition.
 
 1. **Official presets** — worked, valid manifests for common shapes:
-   `catalog/<provider>/<component>/v1/presets/`.
+   `catalog/<provider>/<component>/presets/` (at the component root).
    Read a preset when you need a realistic starting point for a kind you
    have not authored before.
-2. **Catalog pages** — human-oriented docs beside each component:
-   `…/v1/catalog-page.md`. Good for topology context ("this resource usually
-   sits behind a VPC") but the explain report is the field-name authority.
+2. **Catalog pages** — the human-oriented doc at each component's root:
+   `catalog/<provider>/<component>/catalog.md`. Good for topology context
+   ("this resource usually sits behind a VPC") but the explain report is
+   the field-name authority.
 3. **Chart fleet** — production charts that wire many kinds together:
    `charts/<provider>/<chart-name>/` in the same repo.
    Copy wiring patterns from a chart that already solves a similar topology.
 4. **Proto source** — when you need edge cases beyond the rendered report:
-   `…/v1/spec.proto` and `…/v1/stack_outputs.proto` in the same component
-   folder. Same field names and the same comments — the explain report is
-   generated from these files, so the report normally suffices.
+   `catalog/<provider>/<component>/v1alpha1/spec.proto` and
+   `…/v1alpha1/outputs.proto`. Same field names and the same comments — the
+   explain report is generated from these files, so the report normally
+   suffices.
 
 ## Composition doctrine (per-component knowledge)
 

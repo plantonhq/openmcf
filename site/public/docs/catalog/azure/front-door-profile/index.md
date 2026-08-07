@@ -8,62 +8,130 @@ componentName: "azurefrontdoorprofile"
 
 # Azure Front Door Profile
 
-Creates an Azure Front Door (Standard/Premium) profile -- the container for a global CDN deployment on Microsoft's edge network. Endpoints, origin groups, origins, and routes compose against the profile as first-class resources, so one profile anchors many applications' delivery.
+Deploys an Azure Front Door (Standard/Premium) profile -- the top-level container for a global content-delivery and application-acceleration deployment on Microsoft's edge network. The profile owns the SKU tier, the origin response timeout, the managed identity, access-log scrubbing, and tags; the delivery surface (endpoints, origin groups, origins, routes) composes from standalone Cloud Resources that reference it. The profile integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and managed identities.
 
 ## What Gets Created
 
-When you deploy an AzureFrontDoorProfile resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Front Door Profile** -- an `azurerm_cdn_frontdoor_profile` with the chosen SKU tier, origin response timeout, optional managed identity, optional access-log scrubbing, and tags
+- **Front Door Profile** -- a global profile with the specified SKU tier (Standard or Premium) and response timeout configuration; Azure deploys it across all edge locations worldwide (no region)
+- **Managed Identity Assignment** (optional) -- a system-assigned and/or user-assigned Microsoft Entra identity on the profile, used to read customer-managed TLS certificates from Key Vault for custom domains
+- **Access-Log Scrubbing Rules** (optional) -- masking of the selected request parts (query-string arguments, client IP, request URI) in every access-log entry the profile writes
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) merged with user tags and applied to the profile
 
-## Prerequisites
+The delivery surface is deliberately NOT created here. Each piece is its own Cloud Resource referencing this profile, mirroring Azure's own ARM child-resource model:
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An AzureResourceGroup** to create the profile in (referenced through `resourceGroup`)
+- **AzureFrontDoorEndpoint** -- the public entry hostname (`*.azurefd.net`)
+- **AzureFrontDoorOriginGroup** -- a load-balanced backend pool with health probing
+- **AzureFrontDoorOrigin** -- one backend inside an origin group
+- **AzureFrontDoorRoute** -- connects an endpoint to an origin group by URL pattern
 
-## Quick Start
+## Before You Deploy
 
-Create a file `front-door.yaml`:
+### Planton Setup
+
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
+
+### Azure Subscription
+
+- **An Azure Resource Group** where the Front Door profile will be created. Front Door is a global resource (no region), but every ARM resource belongs to a resource group. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **A user-assigned managed identity** (optional) -- only when custom domains will carry bring-your-own Key Vault certificates and the identity should exist (with its Key Vault grants) before the profile does. A system-assigned identity is created with the profile instead.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Front Door Profile**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Delivery** preset for a global CDN anchor, **Premium with Private Origins** for locked-down backends, or **Compliance Log Scrubbing** for privacy-sensitive log handling in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzureFrontDoorProfile
 metadata:
-  name: my-front-door
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzureFrontDoorProfile.my-front-door
+  name: cdn-profile
+  org: acme-corp
+  env: prod
+spec:
+  resourceGroup:
+    value: "acme-prod-rg"
+  profileName: acme-edge
+```
+
+```shell
+planton apply -f front-door-profile.yaml
+```
+
+This creates a Front Door profile on Azure's default tier (STANDARD -- the sku field records no opinion when omitted) with the default 120-second response timeout, no managed identity, and scrubbing disabled. Endpoints, origin groups, origins, and routes are added as their own Cloud Resources referencing the profile's `profile_id` output. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Front Door profile to a resource group deployed in the same InfraPipeline:
+
+```yaml
 spec:
   resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
-      name: my-rg
+      name: production-rg
       fieldPath: status.outputs.resource_group_name
-  profileName: my-front-door
+  profileName: acme-edge
 ```
 
-Deploy:
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the Front Door profile with the resolved value.
 
-```shell
-planton apply -f front-door.yaml
-```
+## Key Configuration
 
-This deploys a Standard-tier profile. Choose `sku: PREMIUM` when origins need Private Link (public access disabled on backends) or when the managed WAF rule sets will be attached -- the tier is fixed at creation and Azure refuses a downgrade. Add an `identity` block when custom domains will carry bring-your-own Key Vault certificates, and `logScrubbingVariables` to mask client IPs, URIs, or query strings out of access logs.
+These are the most important decisions when configuring a Front Door profile. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Key Outputs
+**SKU tier** -- Leaving `sku` unset deploys STANDARD (global load balancing, SSL offloading, edge caching, compression, URL routing at 99.99% SLA). PREMIUM adds Private Link to origins, the managed WAF rule sets (Microsoft_DefaultRuleSet, Bot Manager), and JS challenge/CAPTCHA actions. The tier is fixed at creation -- changing it replaces the profile and every satellite nested under it, and Azure refuses a PREMIUM-to-STANDARD downgrade outright.
 
-| Output | Purpose |
-|--------|---------|
-| `profile_id` | The ARM id -- what AzureFrontDoorEndpoint and AzureFrontDoorOriginGroup reference as their parent |
-| `profile_name` | The ARM namespace every child resource nests under |
-| `resource_guid` | Front Door's own GUID for the profile (traffic-ownership validation, e.g. apex-domain afdverify DNS records) |
-| `identity_principal_id` | The system-assigned identity's principal -- the Key Vault grant target for bring-your-own TLS |
+**Profile name** -- the ARM identity every satellite nests under. Renaming replaces the profile AND everything nested under it, including every endpoint's public hostname. 2-90 characters; letters, digits, and hyphens.
 
-## Related Resources
+**Response timeout** -- `responseTimeoutSeconds` (16-240; Azure's default 120 applies when omitted) controls how long the edge waits for an origin response before returning a 504. Decrease for latency-sensitive APIs that should fail over quickly; increase for slow backends or large file downloads.
 
-- [Azure Front Door Endpoint](/docs/catalog/azure/front-door-endpoint) -- the public entry hostname
-- [Azure Front Door Origin Group](/docs/catalog/azure/front-door-origin-group) -- the load-balanced backend pool
-- [Azure Front Door Origin](/docs/catalog/azure/front-door-origin) -- one backend in a group
-- [Azure Front Door Route](/docs/catalog/azure/front-door-route) -- connects endpoints to origin groups
+**Managed identity** -- assign one when custom domains will carry bring-your-own certificates: Front Door reads the Key Vault certificate (via AzureFrontDoorSecret) with this identity, keylessly. User-assigned identities can be granted Key Vault access before the profile exists; a system-assigned principal surfaces in the outputs for post-deploy grants.
+
+**Log scrubbing** -- `logScrubbingVariables` masks the selected request parts in every access-log entry before it is written (client IP for GDPR postures, query strings for tokens riding URLs, request URIs when paths carry identifiers). Azure scrubs ALL values of each selected part.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureUserAssignedIdentity** | `identity.userAssignedIdentityIds[]` | `status.outputs.identity_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `profile_id` | Azure resource ID of the Front Door profile | The join seam: AzureFrontDoorEndpoint and AzureFrontDoorOriginGroup reference it; security policies and diagnostic settings target it |
+| `profile_name` | Name of the Front Door profile | Cross-reference in the Azure portal, CLI scripts |
+| `resource_guid` | Azure-assigned immutable GUID for the Front Door service | Monitoring, diagnostics |
+| `identity_principal_id` | Object ID of the system-assigned identity (when one exists) | The grant target for Key Vault access (AzureRoleAssignment) so Front Door can read bring-your-own certificates |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard delivery anchor** -- a Standard-tier profile as the small, stable container; endpoints, origin groups, origins, and routes compose against it as their own resources, added and removed without touching the profile. Start from the **Standard Delivery** preset.
+
+**Premium with private origins** -- a Premium-tier profile with a system-assigned managed identity, for locked-down architectures where backends disable public access entirely and Front Door reaches them over Private Link (configured on each AzureFrontDoorOrigin). Start from the **Premium with Private Origins** preset.
+
+**Compliance log scrubbing** -- a Standard profile with access-log scrubbing turned all the way up: client IPs, request URIs, and query-string arguments masked before logs are written. Start from the **Compliance Log Scrubbing** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the Front Door profile is created
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- pre-created, pre-granted identities for reading Key Vault certificates
+- [**Azure Front Door Endpoint**](/cloud-catalog/azure-front-door-endpoint) -- the public entry hostname referencing this profile
+- [**Azure Front Door Origin Group**](/cloud-catalog/azure-front-door-origin-group) -- a load-balanced backend pool referencing this profile
+- [**Azure Front Door Origin**](/cloud-catalog/azure-front-door-origin) -- one backend inside an origin group
+- [**Azure Front Door Route**](/cloud-catalog/azure-front-door-route) -- connects an endpoint to an origin group by URL pattern

@@ -8,196 +8,129 @@ componentName: "gcpfirewallrule"
 
 # GCP Firewall Rule
 
-Deploys a GCP compute firewall rule (`google_compute_firewall`) with an `action` + `rules` abstraction for allow/deny traffic control, supporting INGRESS/EGRESS directions, CIDR-based source/destination filtering, network tags, service account targeting, priority, logging, and a disabled toggle.
+Deploys a Compute Engine firewall rule that controls inbound or outbound traffic to VM instances in a VPC network. Each rule allows or denies traffic matching protocol/port combinations, filtered by source or destination CIDR ranges and scoped by network tags or service accounts. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPCs.
 
 ## What Gets Created
 
-When you deploy a GcpFirewallRule resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Firewall Rule** — a `google_compute_firewall` resource in the specified VPC network with allow or deny blocks generated from the `action` and `rules` fields
+- **Compute Engine Firewall Rule** -- a `compute.Firewall` in the specified project and VPC network, configured with the direction (INGRESS or EGRESS), action (ALLOW or DENY), protocol/port rules, and traffic source or destination filters
+- **Traffic Matching Rules** -- one or more protocol/port blocks mapped to either allow or deny entries based on the `action` field
+- **Logging Configuration** -- created only when `logConfig` is present; enables firewall logging with configurable metadata inclusion (INCLUDE_ALL_METADATA or EXCLUDE_ALL_METADATA)
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **An existing GCP project** — referenced via `projectId`
-- **An existing VPC network** — referenced via `network` (name or self-link)
-- **Compute Engine API enabled** (`compute.googleapis.com`) on the target project
-- **IAM permissions** — `roles/compute.securityAdmin` or `roles/compute.networkAdmin` on the target project
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `firewall.yaml`:
+### GCP Project
+
+- **A GCP project** where the firewall rule will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **A VPC network** to attach the firewall rule to. Provide the network name or self-link directly, or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
+- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP Firewall Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Ingress Allow Web** preset in the [Presets](#presets) tab to pre-populate a standard HTTP/HTTPS ingress rule.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpFirewallRule
 metadata:
   name: allow-web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpFirewallRule.allow-web
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: my-gcp-project-123
+    value: "acme-prod-12345"
   network:
-    value: my-vpc
-  ruleName: allow-http-https
+    value: "main-vpc"
+  ruleName: "allow-http-https"
   direction: INGRESS
   action: ALLOW
   rules:
     - protocol: tcp
-      ports:
-        - "80"
-        - "443"
-  sourceRanges:
-    - "0.0.0.0/0"
-  targetTags:
-    - web-server
+      ports: ["80", "443"]
+  sourceRanges: ["0.0.0.0/0"]
 ```
-
-Deploy:
 
 ```shell
-planton apply -f firewall.yaml
+planton apply -f gcp-firewall-rule.yaml
 ```
 
-This creates an INGRESS firewall rule that allows HTTP and HTTPS traffic from any source to instances tagged `web-server` in the `my-vpc` network.
+This creates an ingress rule allowing HTTP and HTTPS traffic from any source to all instances in the VPC. No target tags are set, so the rule applies network-wide. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project ID where the firewall rule is created. Can reference a GcpProject resource. | Required |
-| `network` | `StringValueOrRef` | VPC network name or self-link URL. Can reference a GcpVpcNetwork resource. | Required |
-| `ruleName` | `string` | Name of the firewall rule in GCP. | 1-63 chars, lowercase letters/numbers/hyphens |
-| `direction` | `string` | Traffic direction: `INGRESS` or `EGRESS`. | Required |
-| `action` | `string` | Action when traffic matches: `ALLOW` or `DENY`. | Required |
-| `rules` | `GcpFirewallProtocolPort[]` | Protocol and port combinations to match. | Min 1 item |
-| `rules[].protocol` | `string` | IP protocol: `tcp`, `udp`, `icmp`, `esp`, `ah`, `sctp`, `ipip`, `all`, or an IANA protocol number. | Required |
-| `rules[].ports` | `string[]` | Ports or port ranges (e.g., `"80"`, `"8000-9000"`). Only applicable for `tcp` or `udp`. Omit for other protocols. | — |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `priority` | `int32` | `1000` | Rule priority (0-65535). Lower = higher priority. |
-| `description` | `string` | `""` | Human-readable description. |
-| `sourceRanges` | `string[]` | — | Source CIDRs for INGRESS rules. |
-| `destinationRanges` | `string[]` | — | Destination CIDRs for EGRESS rules. |
-| `sourceTags` | `string[]` | — | Source instance network tags (INGRESS). Mutually exclusive with service account fields. |
-| `targetTags` | `string[]` | — | Target instance network tags. Mutually exclusive with service account fields. |
-| `sourceServiceAccounts` | `string[]` | — | Source service accounts for INGRESS (max 10). Mutually exclusive with tag fields. |
-| `targetServiceAccounts` | `string[]` | — | Target service accounts (max 10). Mutually exclusive with tag fields. |
-| `disabled` | `bool` | `false` | When `true`, rule exists but is not enforced. |
-| `logConfig.metadata` | `string` | — | Enables logging. Must be `EXCLUDE_ALL_METADATA` or `INCLUDE_ALL_METADATA`. |
-
-## Examples
-
-### Basic INGRESS ALLOW for Web Traffic
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the firewall rule to a GCP project and VPC deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirewallRule
-metadata:
-  name: allow-web
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpFirewallRule.allow-web
 spec:
   projectId:
-    value: my-gcp-project-123
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
   network:
-    value: my-vpc
-  ruleName: allow-http-https
-  direction: INGRESS
-  action: ALLOW
-  rules:
-    - protocol: tcp
-      ports:
-        - "80"
-        - "443"
-  sourceRanges:
-    - "0.0.0.0/0"
-  targetTags:
-    - web-server
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: main-vpc
+      fieldPath: status.outputs.network_self_link
 ```
 
-### INGRESS ALLOW for SSH via IAP
+The InfraPipeline resolves the dependency graph, deploys the project and VPC first, then provisions the firewall rule with the resolved values.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirewallRule
-metadata:
-  name: allow-iap-ssh
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpFirewallRule.allow-iap-ssh
-spec:
-  projectId:
-    value: my-gcp-project-123
-  network:
-    value: my-vpc
-  ruleName: allow-iap-ssh
-  direction: INGRESS
-  action: ALLOW
-  rules:
-    - protocol: tcp
-      ports:
-        - "22"
-  sourceRanges:
-    - "35.235.240.0/20"
-  description: Allow SSH from Google IAP tunnel IP range
-```
+## Key Configuration
 
-### EGRESS DENY All (Restrictive Baseline)
+These are the most important decisions when configuring a firewall rule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpFirewallRule
-metadata:
-  name: deny-all-egress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpFirewallRule.deny-all-egress
-spec:
-  projectId:
-    value: my-prod-project-456
-  network:
-    value: prod-vpc
-  ruleName: deny-all-egress
-  direction: EGRESS
-  action: DENY
-  rules:
-    - protocol: all
-  priority: 65534
-  destinationRanges:
-    - "0.0.0.0/0"
-  description: Deny all outbound traffic by default
-```
+**Direction and action** -- Set `direction` to INGRESS for inbound rules or EGRESS for outbound rules, and `action` to ALLOW or DENY. INGRESS rules require at least one of `sourceRanges`, `sourceTags`, or `sourceServiceAccounts`. EGRESS rules default to matching all destinations if `destinationRanges` is omitted.
 
-## Stack Outputs
+**Priority** -- `priority` defaults to 1000 (range 0-65535, lower is higher priority). At the same priority, DENY rules take precedence over ALLOW. Use priorities below 1000 for emergency overrides and above 1000 for baseline policies. The implied GCP allow-all egress rule sits at 65535.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Target scoping** -- Without `targetTags` or `targetServiceAccounts`, the rule applies to all instances in the VPC. Add network tags to restrict which VMs are affected. Tag-based targeting (`sourceTags`, `targetTags`) and service-account-based targeting (`sourceServiceAccounts`, `targetServiceAccounts`) are mutually exclusive -- you cannot use both in the same rule.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `firewall_self_link` | `string` | Full self-link URI of the firewall rule (e.g., `projects/my-project/global/firewalls/allow-http-https`) |
-| `firewall_name` | `string` | Name of the firewall rule as it exists in GCP |
-| `creation_timestamp` | `string` | RFC 3339 timestamp of when the firewall rule was created |
+**Logging** -- Omit `logConfig` to disable logging (the default). Set `logConfig.metadata` to `INCLUDE_ALL_METADATA` for full audit trails or `EXCLUDE_ALL_METADATA` for reduced log volume. Firewall logs are written to Cloud Logging and can be significant for high-traffic rules.
 
-## Related Components
+## Outputs and Dependencies
 
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — provides the VPC network that firewall rules are attached to
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project and enables the Compute Engine API
-- [GcpSubnetwork](/docs/catalog/gcp/subnetwork) — creates subnets within the VPC
-- [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — deploys GKE clusters that benefit from firewall rules for node traffic control
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** | `network` | `status.outputs.network_self_link` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `firewall_self_link` | Full self-link URI of the firewall rule | Dependency ordering in InfraCharts |
+| `firewall_name` | Name of the firewall rule as it exists in GCP | Audit logs, monitoring dashboards |
+| `creation_timestamp` | RFC3339 timestamp of when the rule was created | Change tracking, compliance documentation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Ingress allow web** -- Allows inbound HTTP (port 80) and HTTPS (port 443) from all IPv4 addresses. The standard rule for internet-facing web servers and load balancer backends. Start from the **Ingress Allow Web** preset.
+
+**Ingress allow SSH via IAP** -- Allows SSH (port 22) exclusively from Google's Identity-Aware Proxy range (`35.235.240.0/20`). Provides authenticated, audited SSH access to VMs without exposing port 22 to the public internet. Scoped to VMs tagged with `allow-ssh`. Start from the **Ingress Allow SSH IAP** preset.
+
+**Egress deny all** -- Denies all outbound traffic at priority 65534, overriding GCP's implied allow-all egress rule. Establishes a deny-by-default egress posture for compliance-driven environments. Add higher-priority allow rules for approved destinations. Start from the **Egress Deny All** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the firewall rule is created
+- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network that the firewall rule is attached to

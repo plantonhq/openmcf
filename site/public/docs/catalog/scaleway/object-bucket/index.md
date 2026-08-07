@@ -8,206 +8,93 @@ componentName: "scalewayobjectbucket"
 
 # Scaleway Object Bucket
 
-Deploys a Scaleway Object Storage bucket with optional versioning, S3 Object Lock, lifecycle rules for automated object management, and CORS configuration for browser-based access. Bucket names are globally unique and derived from `metadata.name`.
+Deploys an S3-compatible Object Storage bucket on Scaleway with optional versioning, lifecycle rules for automated tiering and expiration, CORS policies for browser-based access, and Object Lock for WORM compliance. Buckets are regional resources with globally unique names and serve as the primary storage container for application assets, backups, and archival data.
 
 ## What Gets Created
 
-When you deploy a ScalewayObjectBucket resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Object Storage Bucket** — an `object.Bucket` resource providing an S3-compatible storage container in the specified region, with tags derived from metadata labels
-- **Versioning Configuration** — enabled inline on the bucket when `versioningEnabled` is `true`, retaining all previous versions of objects
-- **Lifecycle Rules** — one or more lifecycle automation rules on the bucket when `lifecycleRules` is non-empty, supporting expiration, storage class transitions, and multipart upload cleanup
-- **CORS Rules** — one or more Cross-Origin Resource Sharing rules on the bucket when `corsRules` is non-empty, allowing browser-based access from specified origins
+- **Object Bucket** -- a `scaleway_object_bucket` in the specified region with the configured versioning, lifecycle, and CORS settings
+- **Versioning Configuration** -- created only when `versioningEnabled` is true; enables S3-compatible object version tracking with delete markers
+- **Lifecycle Rules** -- created only when `lifecycleRules` entries are provided; automates object expiration, storage class transitions (GLACIER, ONEZONE_IA), and incomplete multipart upload cleanup
+- **CORS Rules** -- created only when `corsRules` entries are provided; enables cross-origin browser access to the bucket's S3 endpoint
+- **Scaleway Tags** -- S3-compatible key-value metadata tags applied automatically for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **Scaleway credentials** configured via environment variables or Planton provider config
-- **A globally unique bucket name** — `metadata.name` must be DNS-compatible and unique across all Scaleway Object Storage (similar to AWS S3 naming constraints)
-- **Region selection** — one of `"fr-par"`, `"nl-ams"`, or `"pl-waw"`
+### Scaleway Account
 
-## Quick Start
+- **A Scaleway account** with an active project and API access key pair (Access Key + Secret Key). The IaC module authenticates through the Scaleway provider configuration.
+- **Choose a region** -- buckets are regional resources. Available regions: `fr-par` (Paris), `nl-ams` (Amsterdam), `pl-waw` (Warsaw). Cannot be changed after creation.
+- **Globally unique bucket name** -- the bucket name is derived from `metadata.name` and must be unique across all Scaleway Object Storage. Choose a DNS-compatible name unlikely to collide with other users.
 
-Create a file `object-bucket.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **Scaleway Object Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Bucket** preset in the [Presets](#presets) tab to create a minimal private bucket with no versioning or lifecycle rules.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
+apiVersion: scaleway.planton.dev/v1
 kind: ScalewayObjectBucket
 metadata:
-  name: my-app-assets
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayObjectBucket.my-app-assets
+  name: app-media
+  org: acme-corp
+  env: prod
 spec:
   region: fr-par
 ```
-
-Deploy:
 
 ```shell
-planton apply -f object-bucket.yaml
+planton apply -f scaleway-object-bucket.yaml
 ```
 
-This creates a single Object Storage bucket in Paris with no versioning, no lifecycle rules, and no CORS rules. Objects are accessible via the S3-compatible endpoint at `my-app-assets.s3.fr-par.scw.cloud`.
+This creates a private bucket in the Paris region with no versioning, no lifecycle rules, and no CORS. Objects are retained indefinitely and the bucket cannot be destroyed while it contains data. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+## Key Configuration
 
-### Required Fields
+These are the most important decisions when configuring an object bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Scaleway region where the bucket will be created. Available regions: `"fr-par"`, `"nl-ams"`, `"pl-waw"`. Cannot be changed after creation. | Required |
+**Versioning** -- Set `versioningEnabled` to true to retain all versions of every object. Previous versions survive overwrites and deletions (delete markers are inserted instead of removing objects). Once enabled, versioning can only be suspended, not fully disabled. Combine with lifecycle rules to expire old versions and control storage costs.
 
-### Optional Fields
+**Lifecycle rules** -- The `lifecycleRules` array automates object management. Common patterns include expiring logs after N days (`expirationDays`), transitioning infrequently accessed data to `GLACIER` or `ONEZONE_IA` storage classes after a threshold, and aborting incomplete multipart uploads after 7 days. Rules are evaluated daily and take effect within 24 hours.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `versioningEnabled` | `bool` | `false` | Enables S3-compatible object versioning. Every PUT creates a new version; DELETE inserts a delete marker. Once enabled, versioning can only be suspended, not fully disabled. |
-| `objectLockEnabled` | `bool` | `false` | Enables S3 Object Lock (WORM protection). Can only be set at bucket creation time. Requires `versioningEnabled` to be `true`. |
-| `forceDestroy` | `bool` | `false` | When `true`, all objects (including locked objects and versions) are deleted before the bucket is destroyed. Use `true` for dev/test, `false` for production. |
-| `lifecycleRules` | `object[]` | `[]` | Lifecycle automation rules for object expiration, storage class transitions, and multipart upload cleanup. Rules are evaluated daily. |
-| `lifecycleRules[].id` | `string` | — | Unique identifier for the rule. Required per rule. |
-| `lifecycleRules[].enabled` | `bool` | `false` | Whether the rule is active. Disabled rules are retained but not evaluated. |
-| `lifecycleRules[].prefix` | `string` | `""` | Object key prefix filter. Empty string applies the rule to all objects. |
-| `lifecycleRules[].tags` | `map<string, string>` | `{}` | Tag-based filter. Rule applies only to objects matching all specified tags. |
-| `lifecycleRules[].expirationDays` | `int32` | `0` | Days after creation to delete the object. `0` disables expiration. |
-| `lifecycleRules[].transitions` | `object[]` | `[]` | Storage class transitions. Each entry moves matching objects to a cheaper storage class after a specified number of days. |
-| `lifecycleRules[].transitions[].days` | `int32` | — | Days after creation to transition. Must be a positive integer. Required per transition. |
-| `lifecycleRules[].transitions[].storageClass` | `string` | — | Target storage class: `"GLACIER"` (cold archival) or `"ONEZONE_IA"` (infrequent access, single-zone). Required per transition. |
-| `lifecycleRules[].abortIncompleteMultipartUploadDays` | `int32` | `0` | Days after which incomplete multipart uploads are aborted. `0` disables cleanup. |
-| `corsRules` | `object[]` | `[]` | CORS rules controlling which web origins can make cross-origin requests to the bucket's S3 endpoint. |
-| `corsRules[].allowedMethods` | `string[]` | — | HTTP methods allowed for cross-origin requests (e.g., `"GET"`, `"PUT"`, `"POST"`, `"DELETE"`, `"HEAD"`). Required per rule, at least one. |
-| `corsRules[].allowedOrigins` | `string[]` | — | Origins allowed to make cross-origin requests (e.g., `"https://app.example.com"`, `"*"`). Required per rule, at least one. |
-| `corsRules[].allowedHeaders` | `string[]` | `[]` | Headers browsers may include in cross-origin requests (e.g., `"Content-Type"`, `"Authorization"`). |
-| `corsRules[].exposeHeaders` | `string[]` | `[]` | Response headers browsers are allowed to read (e.g., `"ETag"`, `"x-amz-request-id"`). |
-| `corsRules[].maxAgeSeconds` | `int32` | `0` | Seconds the browser caches the preflight response. `0` uses the browser default. |
+**Object Lock** -- Set `objectLockEnabled` to true at creation time for WORM (Write Once Read Many) compliance. Requires versioning to be enabled. Cannot be added to an existing bucket or removed once set.
 
-## Examples
+**CORS** -- The `corsRules` array controls which web origins can make cross-origin requests to the bucket's S3 endpoint. Required when browser-based JavaScript uploads or reads objects directly. Without CORS rules, browsers block cross-origin requests.
 
-### Minimal Bucket for Development
+**Force destroy** -- Set `forceDestroy` to true for dev/test buckets to allow clean teardown even when objects exist. Keep as false (default) for production to prevent accidental data loss.
 
-A simple bucket in Paris with force-destroy enabled for clean teardown:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayObjectBucket
-metadata:
-  name: dev-scratch-bucket
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.ScalewayObjectBucket.dev-scratch-bucket
-spec:
-  region: fr-par
-  forceDestroy: true
-```
+### What This Component Consumes
 
-### Versioned Bucket with Lifecycle Rules
+This component has no foreign key dependencies.
 
-A media storage bucket with versioning enabled and lifecycle rules that transition old objects to cold storage and expire them after one year:
+### What This Component Provides
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayObjectBucket
-metadata:
-  name: media-archive
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.ScalewayObjectBucket.media-archive
-spec:
-  region: nl-ams
-  versioningEnabled: true
-  lifecycleRules:
-    - id: archive-old-media
-      enabled: true
-      prefix: "uploads/"
-      expirationDays: 365
-      transitions:
-        - days: 30
-          storageClass: ONEZONE_IA
-        - days: 90
-          storageClass: GLACIER
-    - id: cleanup-temp-uploads
-      enabled: true
-      prefix: "tmp/"
-      expirationDays: 7
-      abortIncompleteMultipartUploadDays: 3
-```
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-### Production Bucket with CORS and Object Lock
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bucket_id` | Regional ID of the bucket (`{region}/{bucket-name}`) | Terraform state references, IAM policy targets |
+| `endpoint` | FQDN endpoint (`{name}.s3.{region}.scw.cloud`) | S3 client configuration, CDN origin, application config |
+| `api_endpoint` | S3 API endpoint (`https://s3.{region}.scw.cloud`) | AWS CLI `--endpoint-url`, SDK configuration |
+| `bucket_name` | Name of the bucket in Scaleway Object Storage | S3 client bucket parameter, CI/CD pipeline variables |
+| `region` | Region where the bucket is deployed | Co-location decisions for serverless functions and CDN |
 
-A production bucket hosting user-uploaded content for a web application, with CORS rules for browser uploads, versioning, Object Lock for compliance, and lifecycle cleanup:
+## Common Patterns
 
-```yaml
-apiVersion: scaleway.planton.dev/v1alpha1
-kind: ScalewayObjectBucket
-metadata:
-  name: prod-user-content
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.ScalewayObjectBucket.prod-user-content
-spec:
-  region: fr-par
-  versioningEnabled: true
-  objectLockEnabled: true
-  forceDestroy: false
-  corsRules:
-    - allowedMethods:
-        - GET
-        - PUT
-        - POST
-        - DELETE
-        - HEAD
-      allowedOrigins:
-        - https://app.example.com
-        - https://admin.example.com
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-        - x-amz-content-sha256
-        - x-amz-date
-      exposeHeaders:
-        - ETag
-        - x-amz-request-id
-      maxAgeSeconds: 3600
-    - allowedMethods:
-        - GET
-        - HEAD
-      allowedOrigins:
-        - https://cdn.example.com
-      maxAgeSeconds: 86400
-  lifecycleRules:
-    - id: abort-stale-uploads
-      enabled: true
-      abortIncompleteMultipartUploadDays: 7
-    - id: archive-old-content
-      enabled: true
-      prefix: "archive/"
-      transitions:
-        - days: 60
-          storageClass: GLACIER
-```
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-## Stack Outputs
+**Private bucket** -- A minimal bucket with no versioning, no lifecycle rules, and no CORS. The fastest path to general-purpose file storage for uploads, documents, and application assets. Start from the **Private Bucket** preset.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Versioned bucket with lifecycle** -- A bucket with versioning enabled and a 90-day Glacier transition for cost-optimized archival. Incomplete multipart uploads are cleaned up after 7 days. Standard production configuration for data requiring version history and compliance. Start from the **Versioned Lifecycle** preset.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `bucket_id` | `string` | Unique identifier of the bucket (format: `"{region}/{bucket-name}"`). Referenced by downstream resources. |
-| `endpoint` | `string` | FQDN endpoint URL of the bucket (format: `"{bucket-name}.s3.{region}.scw.cloud"`). Used by S3-compatible clients and CDNs. |
-| `api_endpoint` | `string` | S3 API endpoint URL for the bucket's region (format: `"https://s3.{region}.scw.cloud"`). Used with `--endpoint-url` in AWS CLI and similar tools. |
-| `bucket_name` | `string` | Bucket name as it exists in Scaleway Object Storage. Matches `metadata.name`. |
-| `region` | `string` | Region where the bucket is deployed. |
+## Works With
 
-## Related Components
-
-- [ScalewayKapsuleCluster](/docs/catalog/scaleway/kapsule-cluster) — deploys Kubernetes clusters whose workloads can read from and write to this bucket
-- [ScalewayPrivateNetwork](/docs/catalog/scaleway/private-network) — provides private connectivity for workloads accessing the bucket
-- [ScalewayRdbInstance](/docs/catalog/scaleway/rdb-instance) — deploys managed databases that may store references to objects in this bucket
+This component operates independently and does not reference other deployment components.

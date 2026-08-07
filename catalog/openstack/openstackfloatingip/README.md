@@ -115,7 +115,7 @@ flowchart LR
 - `OpenStackFloatingIpAssociate` -- Standalone association for DAG-visible binding
 - `OpenStackNetwork` -- External network providing the IP pool
 - `OpenStackNetworkPort` -- Port target for association
-- `examples.md` -- Full YAML examples for all configurations
+- `e2e/manifest.yaml` -- Full YAML examples for all configurations
 
 ---
 

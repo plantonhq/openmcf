@@ -134,7 +134,7 @@ npx wrangler d1 migrations create my-app-db create_users_table
 npx wrangler d1 migrations apply my-app-db --remote
 ```
 
-This architectural separation is by design. See docs/README.md for detailed explanation of the "Orchestration Gap."
+This architectural separation is by design. See GUIDE.md for detailed explanation of the "Orchestration Gap."
 
 ## Multi-Environment Pattern
 
@@ -260,11 +260,11 @@ Ensure your Worker code uses the [D1 Sessions API](https://developers.cloudflare
 
 ## Examples
 
-For detailed usage examples, see examples.md.
+For detailed usage examples, see e2e/manifest.yaml.
 
 ## Architecture Details
 
-For in-depth architectural guidance, deployment methods comparison, and production best practices, see docs/README.md.
+For in-depth architectural guidance, deployment methods comparison, and production best practices, see GUIDE.md.
 
 ## Terraform and Pulumi
 

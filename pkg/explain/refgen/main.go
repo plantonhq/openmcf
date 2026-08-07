@@ -37,7 +37,7 @@ func main() {
 	fmt.Printf("generated %d reference file(s)\n", len(summary.Files))
 
 	if len(summary.MissingManifests) > 0 {
-		fmt.Printf("\n%d kind(s) have no iac/hack/manifest.yaml (page rendered without an Example):\n", len(summary.MissingManifests))
+		fmt.Printf("\n%d kind(s) have no e2e/manifest.yaml (page rendered without an Example):\n", len(summary.MissingManifests))
 		for _, kind := range summary.MissingManifests {
 			fmt.Printf("  - %s\n", kind)
 		}

@@ -28,6 +28,6 @@ pulumi up --stack dev
 export PULUMI_CONFIG_PASSPHRASE=""
 pulumi login --local
 pulumi stack init dev
-pulumi config set-all --path < ../../hack/manifest.yaml
+pulumi config set-all --path < ../../e2e/manifest.yaml
 pulumi up
 ```

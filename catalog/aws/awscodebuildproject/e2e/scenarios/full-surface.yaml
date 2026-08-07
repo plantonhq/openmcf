@@ -7,7 +7,7 @@
 # lane is the create/verify/destroy cycle alone.
 #
 # Deliberately not exercised live (proven by spec tests + the offline plan
-# gate against iac/hack/manifest.yaml -- see the profile for reasons):
+# gate against e2e/manifest.yaml -- see the profile for reasons):
 # webhook (needs a real source-provider connection), source auth
 # (CodeConnections handshake), badge/public visibility (repository-source
 # and public-exposure surfaces), VPC/EFS/batch/docker-server arms, and the

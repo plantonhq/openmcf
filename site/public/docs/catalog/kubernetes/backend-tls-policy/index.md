@@ -6,140 +6,80 @@ order: 100
 componentName: "kubernetesbackendtlspolicy"
 ---
 
-# Kubernetes Backend TLS Policy
+# Backend TLS Policy on Kubernetes
 
-Provision a Kubernetes Gateway API `BackendTLSPolicy` -- the standard way to
-tell a Gateway implementation to originate TLS to the backends BEHIND the
-gateway and verify the certificate they present. Routes decide WHERE traffic
-goes; this policy decides HOW the gateway-to-backend hop is secured. Use it
-for end-to-end encryption: TLS terminates at the gateway and is
-re-originated -- verified -- to the backend.
+Encrypts the hop between your gateway and the Services behind it, and verifies
+that the backend really is who it claims to be.
 
-BackendTLSPolicy is a standard-channel resource served as
-`gateway.networking.k8s.io/v1` (Gateway API v1.6.1; the `v1alpha3` version
-is deprecated upstream and no longer served); the default standard-channel
-CRD install includes it.
+A route decides *where* traffic goes. This policy decides *how* the
+gateway-to-backend leg is secured — the leg most setups leave in plaintext
+because the client-facing side already has TLS.
 
-## What Gets Created
+## What it does
 
-- A namespaced `gateway.networking.k8s.io/v1` `BackendTLSPolicy` custom
-  resource.
-- 1-16 target references to same-namespace Services (one is the safest
-  portable shape), each optionally narrowed to a named Service port via
-  `sectionName`.
-- A validation block: the trust anchor (a CA-bundle ConfigMap XOR the
-  system trust store), the SNI/authentication hostname, and optional
-  Subject Alternative Names.
+Attaches directly to one or more Services in its own namespace. When a gateway
+forwards a request to a targeted Service it now:
 
-## Prerequisites
+1. Opens a TLS connection instead of a plaintext one.
+2. Sends the configured hostname as the SNI so the backend can pick a
+   certificate.
+3. Verifies that certificate against your trust anchor — your own CA bundle, or
+   the implementation's system store.
+4. Optionally checks the certificate's Subject Alternative Names, for backends
+   whose identity is a SPIFFE URI rather than a DNS name.
 
-- Gateway API standard-channel CRDs installed (`KubernetesGatewayApiCrds`).
-- A Gateway implementation that honors BackendTLSPolicy (support varies).
-- The backend Service the policy targets, in the same namespace (upstream
-  forbids cross-namespace targetRefs for this policy).
-- For the bring-your-own-CA arm: a same-namespace ConfigMap carrying the
-  PEM CA bundle in a key named `ca.crt`.
+## Before you rely on it
 
-## Quick Start
+**Your gateway controller must implement BackendTLSPolicy.** Support is still
+uneven across implementations. A policy attached to a controller that does not
+implement it is accepted by the API server and then *silently ignored* — the
+gateway keeps sending plaintext, with nothing in the events to say so. Check the
+policy's `Accepted` and `ResolvedRefs` conditions after the first deploy.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesBackendTlsPolicy
-metadata:
-  name: my-backend-tls
-spec:
-  namespace:
-    value: app-ns
-  targetRefs:
-    - group: "" # Services live in the core API group — empty but present
-      kind: Service
-      name:
-        value: my-backend
-  validation:
-    wellKnownCACertificates: System
-    hostname: api.example.com
-```
+**The CRDs must exist first.** BackendTLSPolicy ships with the Gateway API
+standard channel. Install the CRDs (KubernetesGatewayApiCrds) before the policy.
 
-```bash
-planton apply -f backendtlspolicy.yaml
-```
+**Same namespace only.** Upstream forbids cross-namespace targets here, so the
+policy, the Services it secures, and any CA-bundle ConfigMap all live together.
 
-## Configuration Reference
+## Choosing a trust anchor
 
-### Required Fields
+Exactly one of two, never both and never neither:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `namespace` | reference | Namespace to create the policy in (the policy can only target Services there). |
-| `targetRefs` | list | 1-16 same-namespace Service references; `group` present-but-empty for the core group; `name` is a reference (defaults to `KubernetesService`). |
-| `validation` | object | Trust anchor (exactly one of `caCertificateRefs` / `wellKnownCACertificates`), mandatory `hostname` (SNI + certificate identity), optional `subjectAltNames`. |
+| Arm | When | Shape |
+|---|---|---|
+| CA bundle | The backend's certificate is issued by your own CA | One ConfigMap in this namespace with the PEM chain under the key `ca.crt` |
+| System store | The backend serves a publicly-issued certificate | `wellKnownCACertificates: System` |
 
-### Optional Fields
+A cert-manager CA chain composes directly into the first arm: the root
+Certificate's ConfigMap — or a trust-manager Bundle target — is exactly the
+referent this expects.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `targetRefs[].sectionName` | string | Service port name -- narrows the policy to one port; omit to cover all ports. |
-| `validation.subjectAltNames` | list | Up to 5 SANs (`Hostname` or `URI` -- SPIFFE IDs are the common URI case); with SANs set, `hostname` is SNI-only. |
-| `options` | map | Up to 16 implementation-specific TLS options (domain-prefixed keys). |
+## Hostname does double duty
 
-## Examples
+The hostname is sent as the SNI *and*, unless Subject Alternative Names are
+listed, it is the identity the certificate must match. Once you list SANs the
+hostname only selects the certificate; if it should still be accepted as an
+identity, add it as a `Hostname` SAN too. Getting this wrong produces a
+handshake failure that names neither the field nor the policy.
 
-### Internal CA via ConfigMap
+## Works with
 
-```yaml
-spec:
-  namespace:
-    value: app-ns
-  targetRefs:
-    - group: ""
-      kind: Service
-      name:
-        value: my-backend
-  validation:
-    caCertificateRefs:
-      - group: ""
-        kind: ConfigMap
-        name:
-          value: internal-ca-bundle
-    hostname: backend.internal.example.com
-```
+| Kind | Relationship |
+|---|---|
+| KubernetesService | The policy's targets — referenced by name, optionally narrowed to one port |
+| KubernetesConfigMap | Carries the CA bundle when you bring your own trust anchor |
+| KubernetesCertificate | cert-manager issues the backend certificates this policy verifies |
+| KubernetesGatewayApiCrds | Installs the CRD this policy is served by |
+| KubernetesGateway | The gateway whose controller enforces the policy |
 
-### SPIFFE mTLS backend (port-scoped, URI SAN)
-
-```yaml
-spec:
-  namespace:
-    value: app-ns
-  targetRefs:
-    - group: ""
-      kind: Service
-      name:
-        value: my-backend
-      sectionName: https
-  validation:
-    caCertificateRefs:
-      - group: ""
-        kind: ConfigMap
-        name:
-          value: mesh-trust-bundle
-    hostname: backend.internal.example.com
-    subjectAltNames:
-      - type: URI
-        uri: spiffe://cluster.example.com/ns/payments/sa/backend
-```
-
-## Stack Outputs
+## Outputs
 
 | Output | Description |
-|--------|-------------|
-| `policy_name` | Name of the created BackendTLSPolicy (equals `metadata.name`). |
-| `namespace` | Namespace the BackendTLSPolicy was created in. |
+|---|---|
+| `policy_name` | The BackendTLSPolicy object's name in the cluster |
+| `namespace` | The namespace it was created in |
 
-## Related Components
-
-- [Kubernetes Gateway](kubernetesgateway)
-- [Kubernetes HTTP Route](kuberneteshttproute)
-- [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
-- [Kubernetes Service](kubernetesservice)
-- [Kubernetes Config Map](kubernetesconfigmap)
-- [Kubernetes Namespace](kubernetesnamespace)
+Whether the policy actually attached is controller state rather than a stack
+output — it is reconciled asynchronously, so read the `Accepted` and
+`ResolvedRefs` conditions with kubectl rather than expecting them here.

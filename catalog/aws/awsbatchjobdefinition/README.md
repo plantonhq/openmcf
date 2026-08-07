@@ -87,7 +87,7 @@ spec:
     attemptDurationSeconds: 7200
 ```
 
-See docs/README.md for revision semantics and the modeling boundaries.
+See GUIDE.md for revision semantics and the modeling boundaries.
 
 ---
 

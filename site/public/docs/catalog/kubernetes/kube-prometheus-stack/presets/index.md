@@ -1,9 +1,9 @@
 ---
 title: "Presets"
-description: "Ready-to-deploy configuration presets for Kube Prometheus Stack"
+description: "Ready-to-deploy configuration presets for kube-prometheus-stack"
 type: "preset-list"
 componentSlug: "kube-prometheus-stack"
-componentTitle: "Kube Prometheus Stack"
+componentTitle: "kube-prometheus-stack"
 provider: "kubernetes"
 icon: "package"
 order: 200
@@ -22,6 +22,6 @@ presets:
     excerpt: "The full production posture: an HA Prometheus pair (each replica scrapes and stores the complete target set — duplication, not sharding), a quorum-safe three-replica Alertmanager gossip cluster,..."
 ---
 
-# Kube Prometheus Stack Presets
+# kube-prometheus-stack Presets
 
-Ready-to-deploy configuration presets for Kube Prometheus Stack. Each preset is a complete manifest you can copy, customize, and deploy.
+Ready-to-deploy configuration presets for kube-prometheus-stack. Each preset is a complete manifest you can copy, customize, and deploy.

@@ -8,194 +8,124 @@ componentName: "azurepublicipprefix"
 
 # Azure Public IP Prefix
 
-Creates an Azure Public IP Prefix -- a reserved, contiguous range of public IP addresses. Individual public IPs drawn from the prefix share one allowlistable CIDR, and NAT gateways associate whole prefixes for scalable outbound SNAT.
+Deploys an Azure Public IP Prefix — a reserved, CONTIGUOUS range of public IP addresses. Individual public IPs allocated from a prefix are guaranteed to come from the same known range, which is what lets partners and firewalls allowlist a single CIDR instead of chasing individual addresses, and what gives a NAT gateway a predictable, scalable SNAT range. The prefix is essentially immutable: everything except tags is fixed at creation, a replacement is a **different range**, and a prefix cannot be deleted while any of its addresses are in use.
 
 ## What Gets Created
 
-When you deploy an AzurePublicIpPrefix resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Public IP Prefix** — an `azurerm_public_ip_prefix` reserving a contiguous public address range in the specified region and resource group
+- **Public IP Prefix** -- the reserved range, sized by your CIDR length (Azure's default is /28 — 16 addresses), with the SKU, tier, IP version, and zone anchoring you chose
+- **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically and merged with the user tags
 
-Downstream association is deliberately not part of this resource: `AzurePublicIp` allocates individual addresses from the prefix (`publicIpPrefixId`), and `AzureNatGateway` associates whole prefixes for SNAT (`publicIpPrefixIds`).
+The actual CIDR is assigned by Azure at creation and surfaces as the `ip_prefix` output — the value partners allowlist. Azure bills every reserved address from creation, allocated or not.
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **A resource group** to create the prefix in (an `AzureResourceGroup` in composed environments)
-- **Network write rights**: `Microsoft.Network/publicIPPrefixes/write` (Network Contributor, Contributor, or Owner)
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `public-ip-prefix.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the prefix will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **A size plan**: running out later means a SECOND prefix (and a second allowlist entry) — size for the growth you expect. IPv4 spans /21 (2,048 addresses) to /31 (2).
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Public IP Prefix**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **NAT SNAT Range** preset in the [Presets](#presets) tab for the flagship zone-redundant egress range.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzurePublicIpPrefix
 metadata:
-  name: prod-egress-prefix
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIpPrefix.prod-egress-prefix
+  name: prod-egress
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: network-rg
-  name: prod-egress-prefix
+    value: "rg-network-hub"
+  name: prod-egress
   prefixLength: 28
   zones:
     - "1"
     - "2"
     - "3"
+  tags:
+    cost-center: platform-network
 ```
-
-Deploy:
 
 ```shell
-planton apply -f public-ip-prefix.yaml
+planton apply -f prefix.yaml
 ```
 
-After deployment, read `status.outputs.ip_prefix` for the CIDR to give partners and firewalls, and `status.outputs.public_ip_prefix_id` for downstream wiring.
+This reserves 16 contiguous zone-redundant addresses; the assigned CIDR lands in `status.outputs.ip_prefix` — hand that one value to every partner allowlist.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region; must match every resource that consumes the prefix. | Required |
-| `resourceGroup` | `StringValueOrRef` | Resource group name. Defaults to referencing an `AzureResourceGroup`'s name output. | Required |
-| `name` | `string` | Prefix name, unique within the resource group. | Required, 1-80 chars, Azure naming rules |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `prefixLength` | `int32` | `28` | CIDR length of the range to reserve. IPv4 spans /21 (2,048 addresses) to /31 (2). Fixed at creation; you pay for every reserved address. |
-| `ipVersion` | `enum` | `IPV4` | `IPV4` or `IPV6`. Fixed at creation. |
-| `sku` | `enum` | `STANDARD` | `STANDARD` or `STANDARD_V2`. StandardV2 is required for StandardV2 NAT gateways. Fixed at creation. |
-| `skuTier` | `enum` | `REGIONAL` | `REGIONAL` (NAT gateway, most workloads) or `GLOBAL` (cross-region load balancer frontends only; requires `STANDARD` SKU). Fixed at creation. |
-| `zones` | `string[]` | `[]` | Availability zones. `["1", "2", "3"]` for zone-redundant; a single zone pins the range; omit to let Azure choose. Fixed at creation. |
-| `customIpPrefixId` | `string` | `""` | ARM ID of a Custom IP Prefix for BYOIP carve-out. Omit to allocate from Microsoft's pool. Fixed at creation. |
-| `tags` | `map(string)` | `{}` | User tags, merged over Planton-derived tags (user wins on collision). The only field that updates in place. |
-
-## Examples
-
-### NAT Gateway SNAT Range
-
-A zone-redundant /28 (16 addresses, ~1M SNAT ports) for production outbound:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the prefix to its dependencies:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIpPrefix
-metadata:
-  name: nat-snat-prefix
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIpPrefix.nat-snat-prefix
 spec:
-  region: eastus
   resourceGroup:
     valueFrom:
-      name: network-rg
-  name: nat-snat-prefix
-  prefixLength: 28
-  zones:
-    - "1"
-    - "2"
-    - "3"
+      kind: AzureResourceGroup
+      name: network-hub
+      fieldPath: status.outputs.resource_group_name
 ```
 
-Reference it from a NAT gateway:
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then reserves the range — and the NAT gateway and public IPs that consume it reference this prefix's `public_ip_prefix_id`.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureNatGateway
-metadata:
-  name: prod-nat
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: prod-nat
-  publicIpPrefixIds:
-    - valueFrom:
-        name: nat-snat-prefix
-```
+## Key Configuration
 
-### Partner Firewall Allowlist
+These are the most important decisions when configuring a Public IP Prefix. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-A smaller /30 (4 addresses) when partners need a tight, cheap allowlist surface:
+**Prefix length** -- the CIDR length decides how many contiguous addresses Azure reserves: /28 (16, the default), /26 (64), /21 (2,048 — the IPv4 maximum range). Smaller numbers reserve bigger ranges, and every reserved address bills from creation. Fixed at creation — growth means a second prefix.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIpPrefix
-metadata:
-  name: partner-allowlist
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIpPrefix.partner-allowlist
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: partner-allowlist
-  prefixLength: 30
-  zones:
-    - "1"
-    - "2"
-    - "3"
-```
+**SKU and tier** -- unspecified applies Azure's defaults (Standard, Regional) — correct for virtually everything. `STANDARD_V2` exists for StandardV2 NAT gateway association; `GLOBAL` exists solely for cross-region load balancer frontends and **must keep the STANDARD SKU** (ARM rejects StandardV2 with Global — the wizard holds this rule live).
 
-Share `status.outputs.ip_prefix` with the partner once deployed.
+**Zones** -- all three zones make the range zone-redundant (the production default); a single zone pins it; empty leaves the choice to Azure. Fixed at creation.
 
-### Allocate a Public IP From the Prefix
+**Custom IP Prefix (BYOIP)** -- leave empty to allocate from Microsoft's pool (the overwhelmingly common case). Set the ARM ID of an onboarded Custom IP Prefix only when your org brought its own IP space to Azure.
 
-Reserve the range first, then draw individual addresses from it:
+## Outputs and Dependencies
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: lb-frontend-from-prefix
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: network-rg
-  name: lb-frontend-from-prefix
-  publicIpPrefixId:
-    valueFrom:
-      name: partner-allowlist
-  zones:
-    - "1"
-    - "2"
-    - "3"
-```
+### What This Component Consumes
 
-The allocated address comes from the prefix's contiguous range and stays
-allowlistable as part of `ip_prefix`.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
 
-## Stack Outputs
+### What This Component Provides
 
-After deployment, the following outputs are available in `status.outputs`:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `public_ip_prefix_id` | `string` | Full ARM ID of the prefix -- referenced by `AzurePublicIp.publicIpPrefixId` and `AzureNatGateway.publicIpPrefixIds` |
-| `ip_prefix` | `string` | The actual reserved CIDR (e.g. `20.42.0.16/28`) -- known only after creation; the value partners and firewalls allowlist |
-| `public_ip_prefix_name` | `string` | The prefix's name as deployed |
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `public_ip_prefix_id` | Azure Resource Manager ID of the prefix | AzurePublicIp `publicIpPrefixId` (allocate from the range), AzureNatGateway `publicIpPrefixIds` (SNAT association) |
+| `ip_prefix` | The actual reserved CIDR, e.g. "20.42.0.16/28" | Partner and firewall allowlists — the range's whole reason to exist |
+| `public_ip_prefix_name` | Name of the prefix resource | Automation scripts, inventory |
 
-## Related Components
+## Common Patterns
 
-- [AzurePublicIp](/docs/catalog/azure/public-ip) — allocates individual addresses from the prefix via `publicIpPrefixId`
-- [AzureNatGateway](/docs/catalog/azure/nat-gateway) — associates whole prefixes for outbound SNAT via `publicIpPrefixIds`
-- [AzureSubnet](/docs/catalog/azure/subnet) — attaches a NAT gateway that SNATs through the prefix
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for prefix placement
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**NAT SNAT range** -- a zone-redundant /28 associated with a NAT gateway: predictable egress addresses that scale SNAT ports with the fleet. Start from the **NAT SNAT Range** preset.
+
+**Partner allowlist** -- a dedicated range for one integration, so the partner allowlists one CIDR and revoking the integration later touches nothing else. Start from the **Partner Allowlist** preset.
+
+**From-prefix public IP** -- reserve the range here, then allocate individual AzurePublicIp resources from it — each guaranteed to come from the allowlisted CIDR. Start from the **From-Prefix Public IP** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the prefix is created
+- [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- allocates individual addresses from the range by referencing its `public_ip_prefix_id`
+- [**Azure NAT Gateway**](/cloud-catalog/azure-nat-gateway) -- associates the whole prefix for outbound SNAT, the flagship consumption
+- [**Azure Load Balancer**](/cloud-catalog/azure-load-balancer) -- fronts traffic with public IPs drawn from the allowlisted range

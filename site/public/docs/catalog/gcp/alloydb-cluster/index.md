@@ -8,260 +8,154 @@ componentName: "gcpalloydbcluster"
 
 # GCP AlloyDB Cluster
 
-Deploys an AlloyDB cluster with a bundled primary instance, automated and continuous backup policies, optional CMEK encryption at three levels (data, backups, PITR), and private connectivity via Private Service Access or Private Service Connect. The primary instance is bundled because a cluster without one cannot serve queries.
+Deploys an AlloyDB cluster with a bundled primary instance, private networking (Private Service Access VPC peering XOR Private Service Connect), configurable PostgreSQL version, PRIMARY or cross-region SECONDARY topology, automated periodic backups, continuous backup with point-in-time recovery, optional CMEK encryption across cluster data, backups, and continuous backups independently, and a maintenance window. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
 
 ## What Gets Created
 
-When you deploy a GcpAlloydbCluster resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **AlloyDB Cluster** — a `google_alloydb_cluster` resource in the specified region with network configuration, backup policies, encryption, and maintenance settings
-- **Primary Instance** — a `google_alloydb_instance` of type `PRIMARY` attached to the cluster, with configurable machine size, availability type, query insights, and client connection settings
-- **Automated Backup Policy** — created only when `automatedBackupPolicy` is specified, configures periodic snapshot backups with retention and schedule settings
-- **Continuous Backup** — enabled by default with 14-day PITR window, configurable via `continuousBackupConfig`
-- **CMEK Encryption** — created only when `kmsKeyName` fields are specified, encrypts cluster data, backup snapshots, and continuous backup data independently
+- **AlloyDB Cluster** -- a managed cluster in the specified GCP project and region with private networking, optional display name, annotations, and a subscription tier (STANDARD or TRIAL)
+- **Primary Instance** -- a compute instance within the cluster configured with CPU count or explicit machine type, availability type (ZONAL or REGIONAL), database flags, query insights, SSL mode, and optional connector enforcement
+- **Network Configuration** -- exactly one connectivity path: Private Service Access through the specified VPC (with optional allocated IP range for pre-planned CIDR assignments) OR Private Service Connect (`pscConfig.pscEnabled`) for endpoint-based multi-VPC access
+- **Automated Backup Policy** -- created only when `automatedBackupPolicy` is specified; configures periodic snapshot backups with retention, scheduling, and optional CMEK encryption
+- **Continuous Backup** -- when `continuousBackupConfig` is specified, configures WAL streaming for point-in-time recovery with configurable retention window and optional CMEK encryption
+- **CMEK Encryption** -- created only when `kmsKeyName` is set on the cluster, backup policy, or continuous backup config; each can use independent KMS keys
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied at cluster and instance level for tracking and governance
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via service account key or Planton provider config
-- **Private connectivity** — either a VPC with Private Service Access (`network`) or PSC (`pscConfig.pscEnabled: true`); exactly one mode is required
-- **GcpServiceNetworkingConnection** on the target VPC when using Private Service Access
-- **A GCP project** with the AlloyDB API enabled (`alloydb.googleapis.com`; the module enables it automatically)
-- **A Cloud KMS key** if enabling CMEK encryption (must be in the same region as the cluster)
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `alloydb.yaml`:
+### GCP Project
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpAlloydbCluster
-metadata:
-  name: my-alloydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpAlloydbCluster.my-alloydb
-spec:
-  projectId:
-    value: my-gcp-project
-  clusterName: my-alloydb-cluster
-  location: us-central1
-  network:
-    value: projects/my-gcp-project/global/networks/default
-  primaryInstance:
-    instanceId: my-primary
-    cpuCount: 2
-    availabilityType: ZONAL
-```
+- **A GCP project** where the AlloyDB cluster will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
+- **A VPC network** with Private Service Access configured (compose GcpGlobalAddress with VPC_PEERING purpose + GcpServiceNetworkingConnection). Provide the network as the relative resource path `projects/{project}/global/networks/{network}` -- the AlloyDB API rejects full https:// self-link URLs -- or reference a GcpVpcNetwork Cloud Resource via ValueFromRef (resolves to exactly that path). Not needed when using Private Service Connect instead.
+- **AlloyDB API** (`alloydb.googleapis.com`) enabled in the target project.
+- **Cloud KMS keys** (if using CMEK) -- each key must be in the same region as the cluster. The AlloyDB service account must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on each key.
 
-Deploy:
+## Deploy
 
-```shell
-planton apply -f alloydb.yaml
-```
+### Console
 
-This creates an AlloyDB cluster with a 2-CPU primary instance in `us-central1`, connected to the default VPC with GCP-managed encryption and default backup policies.
+Open the deployment store, find **GCP AlloyDB Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Basic** preset in the [Presets](#presets) tab to pre-populate a minimal development configuration.
 
-## Configuration Reference
+### CLI
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `StringValueOrRef` | GCP project where the cluster is created. Can reference a GcpProject resource via `valueFrom`. | Required |
-| `clusterName` | `string` | Name of the AlloyDB cluster. Becomes the GCP resource ID. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
-| `location` | `string` | GCP region (e.g., `us-central1`). Immutable after creation. | Required |
-| `network` | `StringValueOrRef` | VPC network with Private Service Access. Mutually exclusive with `pscConfig`. Can reference GcpVpcNetwork via `valueFrom`. | One of network or PSC |
-| `pscConfig.pscEnabled` | `bool` | Enable Private Service Connect. Mutually exclusive with `network`. | One of network or PSC |
-| `primaryInstance.instanceId` | `string` | Name of the primary instance. Immutable after creation. | Pattern: `^[a-z][a-z0-9-]{0,61}[a-z0-9]$`, 2-63 chars |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `allocatedIpRange` | `string` | — | Named IP range for Private Service Access. Use when IP ranges are pre-planned. |
-| `databaseVersion` | `string` | Latest | PostgreSQL version: `POSTGRES_14`, `POSTGRES_15`, or `POSTGRES_16`. |
-| `displayName` | `string` | — | Human-readable name for the cluster. |
-| `initialUser.password` | `string` | — | Initial superuser password. Min 8 characters. Required when `initialUser` is set. |
-| `initialUser.user` | `string` | `postgres` | Initial superuser name. |
-| `automatedBackupPolicy.enabled` | `bool` | `true` | Enable or disable automated periodic backups. |
-| `automatedBackupPolicy.backupWindow` | `string` | `3600s` | Backup window duration in seconds (e.g., `3600s`). |
-| `automatedBackupPolicy.location` | `string` | Same as cluster | Region where backups are stored. |
-| `automatedBackupPolicy.quantityBasedRetentionCount` | `int` | — | Number of backups to retain. Mutually exclusive with `timeBasedRetentionPeriod`. |
-| `automatedBackupPolicy.timeBasedRetentionPeriod` | `string` | — | Retention duration (e.g., `1209600s` for 14 days). Mutually exclusive with `quantityBasedRetentionCount`. |
-| `automatedBackupPolicy.weeklySchedule.daysOfWeek` | `string[]` | Daily | Days to run backups: `MONDAY` through `SUNDAY`. |
-| `automatedBackupPolicy.weeklySchedule.startHour` | `int` | — | UTC hour (0-23) to start backups. |
-| `automatedBackupPolicy.encryptionKmsKeyName` | `StringValueOrRef` | Google-managed | KMS key for backup encryption. Can reference GcpKmsKey via `valueFrom`. |
-| `continuousBackupConfig.enabled` | `bool` | `true` | Enable continuous backup for PITR. |
-| `continuousBackupConfig.recoveryWindowDays` | `int` | `14` | PITR recovery window in days (1-35). |
-| `continuousBackupConfig.encryptionKmsKeyName` | `StringValueOrRef` | Google-managed | KMS key for continuous backup encryption. |
-| `kmsKeyName` | `StringValueOrRef` | Google-managed | KMS key for cluster data-at-rest encryption. Immutable. Can reference GcpKmsKey via `valueFrom`. |
-| `maintenanceWindow.day` | `string` | GCP-selected | Day of week: `MONDAY` through `SUNDAY`. |
-| `maintenanceWindow.startHour` | `int` | GCP-selected | UTC hour (0-23) for maintenance start. |
-| `clusterType` | `string` | `PRIMARY` | Cluster role: `PRIMARY` or `SECONDARY` (cross-region DR). |
-| `secondaryConfig.primaryClusterName` | `string` | — | Required when `clusterType` is `SECONDARY`. Full name of the primary cluster. |
-| `annotations` | `map<string,string>` | `{}` | Unstructured metadata on the cluster. |
-| `subscriptionType` | `string` | `STANDARD` | Billing tier: `STANDARD` or `TRIAL`. |
-| `skipAwaitMajorVersionUpgrade` | `bool` | `false` | When `true`, database version upgrades return without waiting for completion. |
-| `primaryInstance.cpuCount` | `int` | — | Number of CPUs. Mutually exclusive with `machineType`. |
-| `primaryInstance.machineType` | `string` | — | Machine type (e.g., `n2-highmem-4`). Mutually exclusive with `cpuCount`. |
-| `primaryInstance.availabilityType` | `string` | GCP default | `ZONAL` or `REGIONAL`. REGIONAL provides automatic failover. |
-| `primaryInstance.databaseFlags` | `map<string,string>` | `{}` | PostgreSQL configuration flags. |
-| `primaryInstance.displayName` | `string` | — | Human-readable name for the instance. |
-| `primaryInstance.queryInsightsConfig.queryPlansPerMinute` | `int` | `5` | Plans captured per minute (0-20). |
-| `primaryInstance.queryInsightsConfig.queryStringLength` | `int` | `1024` | Max query string length (256-4500). |
-| `primaryInstance.queryInsightsConfig.recordApplicationTags` | `bool` | `true` | Record application tags in insights. |
-| `primaryInstance.queryInsightsConfig.recordClientAddress` | `bool` | `true` | Record client IP in insights. |
-| `primaryInstance.requireConnectors` | `bool` | `false` | Force AlloyDB Auth Proxy for all connections. |
-| `primaryInstance.sslMode` | `string` | — | `ENCRYPTED_ONLY` or `ALLOW_UNENCRYPTED_AND_ENCRYPTED`. |
-
-## Examples
-
-### Production HA Cluster
-
-A production-ready cluster with REGIONAL availability and an initial user:
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpAlloydbCluster
 metadata:
-  name: prod-alloydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: infra
-    pulumi.planton.dev/stack.name: prod.GcpAlloydbCluster.prod-alloydb
+  name: app-alloydb
+  org: acme-corp
+  env: prod
 spec:
   projectId:
-    value: prod-project
-  clusterName: prod-alloydb-cluster
+    value: "acme-prod-12345"
+  clusterName: app-alloydb-prod
   location: us-central1
   network:
-    value: projects/prod-project/global/networks/prod-vpc
-  databaseVersion: POSTGRES_16
-  initialUser:
-    password: "change-me-immediately"
-    user: dbadmin
+    value: "projects/acme-prod-12345/global/networks/main-vpc"
   primaryInstance:
-    instanceId: prod-primary
+    instanceId: app-alloydb-primary
     cpuCount: 4
     availabilityType: REGIONAL
-    sslMode: ENCRYPTED_ONLY
 ```
 
-### Enterprise CMEK Encryption
+```shell
+planton apply -f alloydb-cluster.yaml
+```
 
-Full CMEK coverage with separate keys for data, backups, and PITR:
+This creates a regional AlloyDB cluster with a 4-CPU primary instance, private networking via the specified VPC, and GCP default backup policies. No initial user is created. (A cluster-level deletion-protection flag is deliberately not modeled -- the released terraform provider has no such attribute for AlloyDB; guard destroys at the plan level.)
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the cluster to a GCP project, VPC, and KMS key deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpAlloydbCluster
-metadata:
-  name: enterprise-alloydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: infra
-    pulumi.planton.dev/stack.name: prod.GcpAlloydbCluster.enterprise-alloydb
 spec:
   projectId:
-    value: enterprise-project
-  clusterName: enterprise-alloydb
-  location: us-east1
+    valueFrom:
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
   network:
     valueFrom:
       kind: GcpVpcNetwork
-      name: enterprise-vpc
-  databaseVersion: POSTGRES_16
+      name: main-vpc
+      fieldPath: status.outputs.network_id
   kmsKeyName:
     valueFrom:
       kind: GcpKmsKey
-      name: alloydb-data-key
-  automatedBackupPolicy:
-    enabled: true
-    timeBasedRetentionPeriod: "2592000s"
-    encryptionKmsKeyName:
-      valueFrom:
-        kind: GcpKmsKey
-        name: alloydb-backup-key
-  continuousBackupConfig:
-    enabled: true
-    recoveryWindowDays: 21
-    encryptionKmsKeyName:
-      valueFrom:
-        kind: GcpKmsKey
-        name: alloydb-pitr-key
-  primaryInstance:
-    instanceId: enterprise-primary
-    cpuCount: 8
-    availabilityType: REGIONAL
-    requireConnectors: true
-    sslMode: ENCRYPTED_ONLY
-    queryInsightsConfig:
-      queryPlansPerMinute: 10
-      queryStringLength: 4096
-      recordApplicationTags: true
-      recordClientAddress: true
+      name: alloydb-cmek-key
+      fieldPath: status.outputs.key_id
 ```
 
-### Custom Backup Policy
+The InfraPipeline resolves the dependency graph, deploys the project, VPC, and KMS key first, then provisions the AlloyDB cluster with private connectivity and CMEK encryption.
 
-Quantity-based retention with a weekly schedule:
+## Key Configuration
 
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpAlloydbCluster
-metadata:
-  name: backup-alloydb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: infra
-    pulumi.planton.dev/stack.name: staging.GcpAlloydbCluster.backup-alloydb
-spec:
-  projectId:
-    value: staging-project
-  clusterName: backup-alloydb
-  location: europe-west1
-  network:
-    value: projects/staging-project/global/networks/staging-vpc
-  automatedBackupPolicy:
-    enabled: true
-    quantityBasedRetentionCount: 10
-    backupWindow: "7200s"
-    weeklySchedule:
-      daysOfWeek:
-        - MONDAY
-        - WEDNESDAY
-        - FRIDAY
-      startHour: 3
-  maintenanceWindow:
-    day: SUNDAY
-    startHour: 4
-  primaryInstance:
-    instanceId: backup-primary
-    cpuCount: 4
-    availabilityType: REGIONAL
-```
+These are the most important decisions when configuring an AlloyDB cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Primary instance sizing** -- Set `primaryInstance.cpuCount` (2, 4, 8, 16, 32, 64, 96, 128) to let GCP choose the machine family automatically, or `primaryInstance.machineType` for explicit control (e.g., `c4a-highmem-4-lssd`). These are mutually exclusive. Start with 4 CPUs for moderate production workloads.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Availability type** -- `primaryInstance.availabilityType` set to `REGIONAL` provides multi-zone deployment with automatic failover (recommended for production). `ZONAL` is a single-zone deployment suitable for development.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_id` | `string` | Fully qualified cluster resource name: `projects/{p}/locations/{l}/clusters/{c}` |
-| `cluster_name` | `string` | Short cluster name (same as `clusterName` input) |
-| `primary_instance_ip` | `string` | Private IP of the primary instance. Connect on port 5432. |
-| `primary_instance_name` | `string` | Fully qualified instance resource name. Used for Auth Proxy connections. |
-| `database_version` | `string` | Computed PostgreSQL version (e.g., `POSTGRES_15`) |
-| `state` | `string` | Cluster state: `READY`, `CREATING`, `MAINTENANCE`, etc. |
+**Backup strategy** -- AlloyDB supports both automated periodic backups (`automatedBackupPolicy`) and continuous backup (`continuousBackupConfig`) independently. Automated backups capture periodic snapshots with configurable retention. Continuous backup streams WAL data for point-in-time recovery within a 1-35 day window (default 14 days). Both can be independently encrypted with CMEK.
 
-## Related Components
+**Connection security** -- Set `primaryInstance.requireConnectors` to `true` to enforce IAM-based authentication via AlloyDB Auth Proxy or Language Connectors, rejecting direct IP connections. Set `primaryInstance.sslMode` to `ENCRYPTED_ONLY` to require TLS for all connections.
 
-- [GcpVpcNetwork](/docs/catalog/gcp/vpc) — VPC network with Private Service Access for cluster connectivity
-- [GcpKmsKey](/docs/catalog/gcp/kms-key) — CMEK encryption keys for data, backups, and continuous backups
-- [GcpKmsKeyRing](/docs/catalog/gcp/kms-key-ring) — Key ring containing KMS keys (must be in the same region as the cluster)
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — Service account for application-level IAM access to AlloyDB
-- [GcpFirewallRule](/docs/catalog/gcp/firewall-rule) — Network-level access control for AlloyDB connectivity
+**PostgreSQL version** -- `databaseVersion` selects the PostgreSQL major version (`POSTGRES_14`, `POSTGRES_15`, `POSTGRES_16`). If omitted, GCP selects the latest stable version. Changing it later runs an in-place major upgrade; `skipAwaitMajorVersionUpgrade` lets very large clusters return early instead of blocking the deploy.
+
+**Topology** -- `clusterType` left blank keeps GCP's PRIMARY default. `SECONDARY` builds a cross-region disaster-recovery replica that names its primary via `secondaryConfig.primaryClusterName` (the primary's `cluster_id` output). Switching a secondary's role to PRIMARY is AlloyDB's promotion lever.
+
+**Connectivity** -- exactly one of `network` (Private Service Access) or `pscConfig.pscEnabled: true` (Private Service Connect). PSC clusters record no network; consumers create PSC endpoints after deployment.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** (PSA arm) | `network` | `status.outputs.network_id` |
+| **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
+| **GcpKmsKey** (optional) | `automatedBackupPolicy.encryptionKmsKeyName` | `status.outputs.key_id` |
+| **GcpKmsKey** (optional) | `continuousBackupConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cluster_id` | Fully qualified cluster resource name (`projects/{p}/locations/{l}/clusters/{c}`) | Read pool instances, backup management, monitoring |
+| `cluster_name` | Short cluster name | Display, logging, human-readable references |
+| `primary_instance_ip` | Private IP address of the primary instance | Application connection strings (port 5432) |
+| `primary_instance_name` | Fully qualified primary instance resource name | AlloyDB Auth Proxy connections, monitoring dashboards |
+| `database_version` | Actual PostgreSQL version running | Application compatibility validation |
+| `state` | Cluster state (`READY`, `CREATING`, `MAINTENANCE`) | Deployment validation, health checks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Development basic** -- 2-CPU ZONAL primary instance with GCP default backups. Minimal cost for development and testing. Start from the **Dev Basic** preset.
+
+**HA production** -- 4-CPU REGIONAL primary instance with automated 7-day backup retention, initial user, and TLS-only connections. Standard production configuration for application databases. Start from the **HA Production** preset.
+
+**Enterprise encrypted** -- 8-CPU REGIONAL primary instance with CMEK on cluster data, automated backups (30-day retention), and continuous backups (21-day PITR window), each with independent KMS keys. Query insights enabled, connector-only access enforced, and a maintenance window configured. Start from the **Enterprise Encrypted** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the AlloyDB cluster is created
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for private connectivity via Private Service Access
+- [**GCP Global Address**](/cloud-catalog/gcp-global-address) -- reserves the VPC_PEERING range Private Service Access carves the cluster's IPs from
+- [**GCP Service Networking Connection**](/cloud-catalog/gcp-service-networking-connection) -- establishes the Private Service Access peering the cluster's network requires
+- [**GCP AlloyDB Instance**](/cloud-catalog/gcp-alloydb-instance) -- adds read pool instances that reference this cluster's `cluster_id`
+- [**GCP AlloyDB User**](/cloud-catalog/gcp-alloydb-user) -- manages per-application database users on this cluster
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides Cloud KMS keys for cluster, backup, and continuous backup CMEK encryption

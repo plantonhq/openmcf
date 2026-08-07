@@ -8,182 +8,108 @@ componentName: "openstacksubnet"
 
 # OpenStack Subnet
 
-Deploys an OpenStack Neutron subnet within a network, providing IP address allocation via a CIDR block with configurable gateway, DHCP, DNS, and allocation pool settings.
+Deploys a Neutron subnet on OpenStack, defining an IP address range within a network with DHCP, DNS, gateway, and allocation pool configuration. The subnet references a parent OpenStackNetwork via a foreign key and supports ValueFromRef wiring for InfraChart deployments.
 
 ## What Gets Created
 
-When you deploy an OpenStackSubnet resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Neutron Subnet** — an `openstack.networking.Subnet` resource with the configured CIDR, IP version, gateway, DHCP settings, DNS nameservers, allocation pools, and tags
+- **Neutron Subnet** -- an IPv4 or IPv6 subnet attached to the specified network, with configurable CIDR, gateway, DHCP settings, DNS nameservers, and allocation pools
+- **OpenStack Tags** -- user-defined tags applied to the subnet for filtering and organization in the OpenStack API and Horizon dashboard
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An existing Neutron network** — every subnet belongs to exactly one network, referenced by `networkId`
+### OpenStack Account
 
-## Quick Start
+- **Parent network** -- the subnet must belong to exactly one network. Provide the network ID directly or reference an OpenStackNetwork Cloud Resource via ValueFromRef.
+- **CIDR planning** -- choose a CIDR block that does not overlap with other subnets on the same network. Common choices are `192.168.x.0/24` for workload subnets and `10.0.x.0/24` for infrastructure subnets.
+- **DNS servers** -- decide which DNS nameservers to push to instances via DHCP. Public resolvers (`8.8.8.8`, `8.8.4.4`) or internal resolvers are typical choices.
 
-Create a file `subnet.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack Subnet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard DHCP** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackSubnet
 metadata:
-  name: my-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackSubnet.my-subnet
+  name: workload-subnet
+  org: acme-corp
+  env: prod
 spec:
   networkId:
-    value: "<network-uuid>"
+    value: "<network-id>"
   cidr: "192.168.1.0/24"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f subnet.yaml
 ```
 
-This creates a Neutron subnet named `my-subnet` on the specified network with a `/24` CIDR, IPv4, DHCP enabled, and an auto-assigned gateway.
+This creates an IPv4 subnet with DHCP enabled and an auto-assigned gateway (first usable IP). No custom DNS nameservers or allocation pools are configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `networkId` | `StringValueOrRef` | ID of the network this subnet belongs to. Can reference an OpenStackNetwork resource via `valueFrom`. | Required |
-| `cidr` | `string` | IP address range in CIDR notation (e.g., `192.168.1.0/24` or `2001:db8::/64`). | Required. Must match CIDR format. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ipVersion` | `int32` | `4` | IP protocol version. Must be `4` (IPv4) or `6` (IPv6). |
-| `gatewayIp` | `string` | auto-assigned | IP address of the subnet gateway. If omitted and `noGateway` is false, OpenStack assigns the first usable IP. Mutually exclusive with `noGateway`. |
-| `noGateway` | `bool` | `false` | Disables the gateway on this subnet. Use for isolated subnets (e.g., storage networks). Mutually exclusive with `gatewayIp`. |
-| `enableDhcp` | `bool` | `true` | Controls whether DHCP is enabled. When enabled, OpenStack's DHCP agent assigns IPs to ports on this subnet. |
-| `dnsNameservers` | `string[]` | `[]` | DNS server IP addresses pushed to instances via DHCP. |
-| `allocationPools` | `AllocationPool[]` | entire CIDR | Sub-ranges of the CIDR from which IPs are allocated. Each pool has a `start` and `end` IP. If omitted, the entire CIDR minus gateway and broadcast addresses is used. |
-| `description` | `string` | — | Human-readable description visible in the OpenStack API and Horizon. |
-| `tags` | `string[]` | `[]` | Tags for filtering and organization in the OpenStack API. Must be unique. |
-| `region` | `string` | provider default | Overrides the region from the provider config for this subnet. |
-
-**AllocationPool object:**
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `start` | `string` | First IP address in the allocation range (e.g., `192.168.1.100`). | Required |
-| `end` | `string` | Last IP address in the allocation range (e.g., `192.168.1.200`). | Required |
-
-## Examples
-
-### Basic Subnet
-
-A subnet with default settings on an existing network, suitable for development environments:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the subnet to a network deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSubnet
-metadata:
-  name: dev-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.OpenStackSubnet.dev-subnet
-spec:
-  networkId:
-    value: "abc12345-def6-7890-abcd-ef1234567890"
-  cidr: "192.168.1.0/24"
-  description: Development subnet
-```
-
-### Subnet with DNS and Custom Gateway
-
-A subnet referencing a managed OpenStackNetwork resource, with custom DNS servers and an explicit gateway:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSubnet
-metadata:
-  name: app-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.OpenStackSubnet.app-subnet
 spec:
   networkId:
     valueFrom:
+      kind: OpenStackNetwork
       name: app-network
-  cidr: "10.0.0.0/16"
-  gatewayIp: "10.0.0.1"
-  dnsNameservers:
-    - "8.8.8.8"
-    - "8.8.4.4"
-  tags:
-    - staging
-    - app-tier
+      fieldPath: status.outputs.network_id
 ```
 
-### Full-Featured Subnet with Allocation Pools
+The InfraPipeline resolves the dependency graph, deploys the network first, then provisions the subnet with the resolved network ID.
 
-A production subnet with allocation pools to reserve IP ranges, DNS servers, tags, and a specific region:
+## Key Configuration
 
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackSubnet
-metadata:
-  name: prod-subnet
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.OpenStackSubnet.prod-subnet
-spec:
-  networkId:
-    valueFrom:
-      name: prod-network
-  cidr: "10.100.0.0/16"
-  ipVersion: 4
-  gatewayIp: "10.100.0.1"
-  enableDhcp: true
-  dnsNameservers:
-    - "10.100.0.10"
-    - "8.8.8.8"
-  allocationPools:
-    - start: "10.100.1.0"
-      end: "10.100.127.255"
-    - start: "10.100.200.0"
-      end: "10.100.254.255"
-  description: Production application subnet with reserved ranges
-  tags:
-    - production
-    - managed
-  region: RegionOne
-```
+These are the most important decisions when configuring a subnet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**CIDR and IP version** -- `cidr` defines the address range (e.g., `192.168.1.0/24` for IPv4, `2001:db8::/64` for IPv6). Set `ipVersion` to `4` (default) or `6`. The CIDR cannot be changed after creation without replacing the subnet.
 
-After deployment, the following outputs are available in `status.outputs`:
+**Gateway** -- By default, OpenStack assigns the first usable IP as the gateway. Set `gatewayIp` to override, or `noGateway: true` for isolated subnets that do not need routing (e.g., storage replication networks). Gateway and no-gateway are mutually exclusive.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `subnet_id` | `string` | UUID of the created Neutron subnet |
-| `name` | `string` | Name of the subnet, derived from `metadata.name` |
-| `cidr` | `string` | CIDR block of the subnet |
-| `gateway_ip` | `string` | Gateway IP address of the subnet (empty if `noGateway` was set) |
-| `network_id` | `string` | ID of the parent network |
-| `region` | `string` | OpenStack region where the subnet was created |
+**DHCP** -- `enableDhcp` defaults to `true`. Disable for subnets where IPs are assigned statically (e.g., via port fixed_ips or instance configuration). When enabled, the Neutron DHCP agent assigns IPs from the allocation pool.
 
-## Related Components
+**Allocation pools** -- `allocationPools` restricts which IPs within the CIDR are assignable via DHCP. Use this to reserve ranges for static assignments, VIPs, or infrastructure addresses (e.g., allocate only `192.168.1.100` to `192.168.1.200`).
 
-- [OpenStackNetwork](/docs/catalog/openstack/network) — the parent network that this subnet belongs to
-- [OpenStackRouterInterface](/docs/catalog/openstack/router-interface) — attaches a subnet to a router for inter-network routing
-- [OpenStackLoadBalancer](/docs/catalog/openstack/load-balancer) — places a load balancer VIP on a subnet
-- [OpenStackLoadBalancerMember](/docs/catalog/openstack/load-balancer-member) — registers backend members on a subnet
-- [OpenStackInstance](/docs/catalog/openstack/instance) — attaches compute instances to networks via subnets
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackNetwork** | `networkId` | `status.outputs.network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `subnet_id` | UUID of the subnet in OpenStack | Router interfaces, load balancer VIP placement, container cluster templates |
+| `name` | Name of the subnet | DNS records, monitoring labels |
+| `cidr` | CIDR block of the subnet | Security group rules, network ACLs |
+| `gateway_ip` | Gateway IP address (empty if no_gateway) | Instance routing configuration |
+| `network_id` | ID of the parent network | Convenience reference for downstream resources |
+| `region` | OpenStack region where the subnet was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard DHCP subnet** -- IPv4 `/24` subnet with DHCP enabled and public DNS servers. The most common configuration for workload connectivity -- instances receive IPs automatically via DHCP. Start from the **Standard DHCP** preset.
+
+**Isolated no-gateway subnet** -- A subnet with no gateway and DHCP disabled. Designed for backend networks (storage replication, database clusters, heartbeat links) where traffic stays within the Layer 2 domain and IPs are statically assigned. Start from the **Isolated No Gateway** preset.
+
+## Works With
+
+- [**OpenStack Network**](/cloud-catalog/openstack-network) -- provides the parent network where the subnet is created

@@ -39,9 +39,9 @@ You can't improve what you don't measure. Audit provides:
 **Gap Identification:**
 ```bash
 # Check existing component
-@audit-planton-component MongodbAtlas  # Shows 65% complete
+@audit-planton-component AtlasMongodb  # Shows 65% complete
 # Report lists missing items
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 ```
 
 **Progress Tracking:**
@@ -72,26 +72,25 @@ Audit evaluates **9 categories** against the ideal state:
 - [ ] Complete metadata (provider, version, id_prefix)
 - [ ] Kubernetes metadata (if applicable)
 
-### 2. Folder Structure (Critical - 4.44%)
+### 2. Anatomy Conformance (Critical - 4.44%)
 
-- [ ] Correct provider hierarchy
-- [ ] Kubernetes category if applicable (addon/workload/config)
-- [ ] Lowercase folder naming
-- [ ] v1/ subfolder exists
+Folder structure and file-set presence/absence are machine-enforced by the `pkg/anatomy`
+conformance gate (CI lane `lint.component-anatomy.yaml`); the audit runs the gate instead
+of re-checking file inventories by hand:
+
+- [ ] `go test ./pkg/anatomy/...` reports no violation for this component
+- [ ] Any `pkg/anatomy/baseline.yaml` entries for this component are reported as burn-down gaps
 
 ### 3. Protobuf API Definitions (Critical - 22.20%)
 
-**Proto Files (13.32%):**
-- [ ] `api.proto` exists (>500 bytes)
-- [ ] `spec.proto` exists (>500 bytes)
-- [ ] `stack_input.proto` exists (>300 bytes)
-- [ ] `stack_outputs.proto` exists (>300 bytes)
+**Proto Files (13.32%):** (presence is gate-owned; judge substance)
+- [ ] `api.proto` is substantial (>500 bytes) with correct apiVersion/kind constants
+- [ ] `spec.proto` is substantial (>500 bytes) with documented, validated fields
+- [ ] `input.proto` carries the `{Kind}StackInput` message (>300 bytes)
+- [ ] `outputs.proto` carries the `{Kind}StackOutputs` message (>300 bytes)
 
 **Generated Stubs (3.33%):**
-- [ ] `api.pb.go` exists
-- [ ] `spec.pb.go` exists
-- [ ] `stack_input.pb.go` exists
-- [ ] `stack_outputs.pb.go` exists
+- [ ] All four `.pb.go` stubs are regenerated and current
 
 **Test File Presence (2.77%):**
 - [ ] `spec_test.go` exists (>500 bytes)
@@ -100,7 +99,7 @@ Audit evaluates **9 categories** against the ideal state:
 
 **Test Execution (2.78%):**
 - [ ] Tests compile without errors
-- [ ] Tests execute when running: `go test ./catalog/.../provider/<provider>/<component>/v1/`
+- [ ] Tests execute when running: `go test ./catalog/<provider>/<component>/...`
 - [ ] All tests pass (no failures)
 - [ ] Tests validate all buf.validate rules are correct
 
@@ -114,9 +113,9 @@ Audit evaluates **9 categories** against the ideal state:
 - [ ] `iac/pulumi/module/outputs.go` exists
 
 **Entrypoint Files:**
-- [ ] `iac/pulumi/main.go` exists
+- [ ] `iac/pulumi/main.go` exists (root `package main`)
 - [ ] `iac/pulumi/Pulumi.yaml` exists
-- [ ] `iac/pulumi/Makefile` exists
+- [ ] NO `iac/pulumi/Makefile` (nothing consumes it; the anatomy gate forbids it)
 
 ### 5. IaC Modules - Terraform (Critical - 4.44%)
 
@@ -126,28 +125,30 @@ Audit evaluates **9 categories** against the ideal state:
 - [ ] `iac/tf/main.tf` exists (>1KB)
 - [ ] `iac/tf/outputs.tf` exists
 
-### 6. Documentation - Research (Important - 13.34%)
+### 6. Documentation - Authored Judgment (Important - 13.34%)
 
-- [ ] `docs/README.md` exists
-- [ ] File is substantial (>10KB for comprehensive)
-- [ ] Contains landscape analysis
-- [ ] Contains best practices
+Research documents are never committed -- durable judgment lives in the component-root
+`GUIDE.md` (optional), backed by `README.md` and `catalog.md`:
+
+- [ ] `GUIDE.md` exists where the component carries non-obvious judgment
+- [ ] States the pinned provider version, parity accounting, and recorded exclusions with reasons
+- [ ] Teaches judgment, not feature lists; every claim grounded in source
 
 ### 7. Documentation - User-Facing (Important - 13.33%)
 
-- [ ] `README.md` exists at v1/ level (>2KB)
-- [ ] `examples.md` exists (>1KB with multiple examples)
+- [ ] `README.md` at the component root is substantial (>2KB)
+- [ ] `catalog.md` at the component root follows the catalog page standard
 
 ### 8. Supporting Files (Important - 13.33%)
 
 **Pulumi:**
-- [ ] `iac/pulumi/README.md` exists
+- [ ] `iac/pulumi/README.md` documents the module usefully
 
 **Terraform:**
-- [ ] `iac/tf/README.md` exists
+- [ ] `iac/tf/README.md` documents the module usefully
 
 **Helpers:**
-- [ ] `iac/hack/manifest.yaml` exists
+- [ ] `e2e/manifest.yaml` exists at the component root
 
 ### 9. Nice to Have (20%)
 
@@ -195,12 +196,12 @@ Where:
 ### Report Header
 
 ```markdown
-# Audit Report: MongodbAtlas
+# Audit Report: AtlasMongodb
 
 **Audit Date:** 2025-11-13 14:30:22
-**Component Kind:** MongodbAtlas
+**Component Kind:** AtlasMongodb
 **Provider:** atlas
-**Component Path:** `catalog/atlas/mongodbatlas/v1alpha1/`
+**Component Path:** `catalog/atlas/atlasmongodb/`
 **Enum Value:** 51
 **ID Prefix:** mdbatl
 ```
@@ -225,11 +226,11 @@ Where:
 | Category | Weight | Score | Status |
 |----------|--------|-------|--------|
 | Cloud Resource Registry | 4.44% | 4.44% | ✅ |
-| Folder Structure | 4.44% | 4.44% | ✅ |
+| Anatomy Conformance | 4.44% | 4.44% | ✅ |
 | Protobuf API Definitions | 17.76% | 17.76% | ✅ |
 | IaC Modules - Pulumi | 13.32% | 13.32% | ✅ |
 | IaC Modules - Terraform | 4.44% | 0.00% | ❌ |
-| Documentation - Research | 13.34% | 0.00% | ❌ |
+| Documentation - Authored Judgment | 13.34% | 0.00% | ❌ |
 | Documentation - User-Facing | 13.33% | 10.00% | ⚠️ |
 | Supporting Files | 13.33% | 10.00% | ⚠️ |
 | Nice to Have | 20.00% | 5.00% | ⚠️ |
@@ -245,13 +246,13 @@ Where:
 Items that are easy to fix and would improve the score:
 
 1. **Generate Terraform Module** - Add 4.44%
-   - Run rules 013-015
+   - Run forge rules 012-013
    - Creates complete Terraform implementation
    - 15-20 minutes
 
-2. **Generate Research Documentation** - Add 13.34%
-   - Run rule 020
-   - Creates comprehensive docs/README.md
+2. **Write Component Guide** - Add 13.34%
+   - Run forge rule 019 (or `_rules/docs/write-planton-component-guide.mdc`)
+   - Creates the component-root GUIDE.md
    - 10-15 minutes
 
 **Total Quick Win Potential: +17.78%**
@@ -266,13 +267,13 @@ Blocking issues that prevent production readiness:
 
 1. **Missing Terraform Module** - 4.44% missing
    - **Why it matters:** Users need choice between Pulumi and Terraform
-   - **What to do:** Run `@update-planton-component MongodbAtlas --scenario fill-gaps`
-   - **Forge rules:** 013-015
+   - **What to do:** Run `@update-planton-component AtlasMongodb --scenario fill-gaps`
+   - **Forge rules:** 012-013
 
-2. **Missing Research Documentation** - 13.34% missing
-   - **Why it matters:** Platform engineers need context for design decisions
-   - **What to do:** Run rule 020 to generate docs/README.md
-   - **Expected outcome:** Comprehensive landscape analysis (300-1000 lines)
+2. **Missing Component Guide** - 13.34% missing
+   - **Why it matters:** Agents and engineers composing architectures need the component's authored judgment
+   - **What to do:** Run forge rule 019 to write the component-root GUIDE.md
+   - **Expected outcome:** Grounded judgment: when to use it, conventions, gotchas, pairings
 ```
 
 ### Detailed Findings (Per Category)
@@ -283,7 +284,7 @@ Blocking issues that prevent production readiness:
 ### 1. Cloud Resource Registry (4.44%)
 
 ✅ **Passed:**
-- Enum entry exists: MongodbAtlas = 51
+- Enum entry exists: AtlasMongodb = 51
 - Enum value in correct range (50-199 for SaaS)
 - Unique id_prefix: "mdbatl"
 - Complete metadata (provider, version, id_prefix)
@@ -292,12 +293,11 @@ Blocking issues that prevent production readiness:
 
 ---
 
-### 2. Folder Structure (4.44%)
+### 2. Anatomy Conformance (4.44%)
 
 ✅ **Passed:**
-- Correct provider hierarchy: catalog/atlas/
-- Lowercase folder naming: mongodbatlas (matches enum)
-- v1/ subfolder exists
+- `go test ./pkg/anatomy/...` reports no violation for catalog/atlas/atlasmongodb/
+- No baseline.yaml entries for this component
 
 **Score:** 4.44% / 4.44% ✅
 
@@ -306,11 +306,11 @@ Blocking issues that prevent production readiness:
 ### 3. Protobuf API Definitions (17.76%)
 
 ✅ **Passed:**
-- api.proto exists (1.2 KB) ✅
-- spec.proto exists (2.5 KB) ✅
-- stack_input.proto exists (800 bytes) ✅
-- stack_outputs.proto exists (600 bytes) ✅
-- All .pb.go stubs exist (4 files) ✅
+- api.proto substantial (1.2 KB) ✅
+- spec.proto substantial (2.5 KB) ✅
+- input.proto carries AtlasMongodbStackInput (800 bytes) ✅
+- outputs.proto carries AtlasMongodbStackOutputs (600 bytes) ✅
+- All .pb.go stubs current (4 files) ✅
 - spec_test.go exists (1.8 KB) ✅
 
 **Score:** 17.76% / 17.76% ✅
@@ -327,7 +327,7 @@ Blocking issues that prevent production readiness:
 - Entrypoint files exist:
   - main.go (450 bytes) ✅
   - Pulumi.yaml (220 bytes) ✅
-  - Makefile (800 bytes) ✅
+  - No Makefile (gate-enforced absence) ✅
 
 **Score:** 13.32% / 13.32% ✅
 
@@ -341,19 +341,18 @@ Blocking issues that prevent production readiness:
 
 **Score:** 0.00% / 4.44% ❌
 
-**Fix:** Run `@update-planton-component MongodbAtlas --scenario fill-gaps`
+**Fix:** Run `@update-planton-component AtlasMongodb --scenario fill-gaps`
 
 ---
 
-### 6. Documentation - Research (13.34%)
+### 6. Documentation - Authored Judgment (13.34%)
 
 ❌ **Failed:**
-- docs/README.md does not exist
-- No research documentation found
+- GUIDE.md does not exist despite non-obvious operational judgment (state-ownership flags)
 
 **Score:** 0.00% / 13.34% ❌
 
-**Fix:** Run rule 020 to generate comprehensive research document
+**Fix:** Run forge rule 019 to write the component-root GUIDE.md
 
 ---
 
@@ -370,29 +369,29 @@ Blocking issues that prevent production readiness:
 1. **Create Terraform Module**
    - **File:** `iac/tf/` (multiple files)
    - **Why:** Critical for feature parity between IaC tools
-   - **How:** `@update-planton-component MongodbAtlas --scenario fill-gaps`
+   - **How:** `@update-planton-component AtlasMongodb --scenario fill-gaps`
    - **Impact:** +4.44% (65% → 69.44%)
 
-2. **Create Research Documentation**
-   - **File:** `v1/docs/README.md`
+2. **Write Component Guide**
+   - **File:** `GUIDE.md` (component root)
    - **Why:** Essential for understanding design decisions
-   - **How:** Run forge rule 020
+   - **How:** Run forge rule 019
    - **Impact:** +13.34% (69.44% → 82.78%)
 
 ### Medium Priority (Do Next)
 
-3. **Expand Examples**
-   - **File:** `examples.md`
-   - **Why:** Only 1 example, need 3-5 for completeness
-   - **How:** Add more use cases to examples.md
+3. **Expand Presets**
+   - **File:** `presets/` (component root)
+   - **Why:** Only 1 preset, distinct use cases warrant 2-3
+   - **How:** `@create-planton-preset` for each missing pattern
    - **Impact:** +3.33% (87.78% → 91.11%)
 
 ### Low Priority (Polish)
 
-5. **Add Terraform README**
+5. **Improve Terraform README**
    - **File:** `iac/tf/README.md`
    - **Why:** Usage documentation for Terraform users
-   - **How:** Generate with rule 015
+   - **How:** Generate with forge rule 013
    - **Impact:** +3.33% (91.11% → 94.44%)
 ```
 
@@ -403,14 +402,13 @@ Blocking issues that prevent production readiness:
 
 **Most Similar Complete Component:** GcpCertManagerCert (98% complete)
 
-**What it has that MongodbAtlas lacks:**
+**What it has that AtlasMongodb lacks:**
 - Complete Terraform module (variables.tf, main.tf, outputs.tf, etc.)
-- Comprehensive research documentation (850 lines)
-- Multiple examples (5 use cases)
-- Pulumi architecture overview
+- A grounded component GUIDE.md
+- Multiple presets (distinct use cases)
 - Complete IaC documentation
 
-**Path to Reference:** `catalog/gcp/gcpcertmanagercert/v1alpha1/`
+**Path to Reference:** `catalog/gcp/gcpcertmanagercert/`
 
 **Recommendation:** Review GcpCertManagerCert as a template for completeness.
 ```
@@ -420,35 +418,29 @@ Blocking issues that prevent production readiness:
 ```markdown
 ## Next Steps
 
-1. Address critical gaps (Terraform + research docs)
+1. Address critical gaps (Terraform + guide)
 2. Run update to fill gaps:
    ```
-   @update-planton-component MongodbAtlas --scenario fill-gaps
+   @update-planton-component AtlasMongodb --scenario fill-gaps
    ```
 3. Re-run audit to verify improvements:
    ```
-   @audit-planton-component MongodbAtlas
+   @audit-planton-component AtlasMongodb
    ```
 4. Expected result: 95-100% complete
 
 **Estimated time to 100%:** 30-45 minutes
 ```
 
-## Report Storage
+## Report Delivery
 
-Audit reports are saved with timestamps:
-
-```
-catalog/atlas/mongodbatlas/v1alpha1/docs/audit/
-├── 2025-11-10-091500.md  # First audit (60%)
-├── 2025-11-11-143000.md  # After adding Terraform (75%)
-└── 2025-11-13-143022.md  # After adding docs (98%)
-```
+The report is delivered in the session -- component directories carry no audit artifacts
+(the `pkg/anatomy` gate keeps the component file set closed). To track progress across
+sessions, keep a ledger in a shared issue or a location outside the catalog.
 
 **Benefits:**
-- **Historical tracking** - See improvement over time
+- **Historical tracking** - Ledger rows show improvement over time
 - **Comparison** - Compare audits to measure progress
-- **Documentation** - Record of component evolution
 - **Quality gates** - Validate before releases
 
 ## Usage Examples
@@ -470,14 +462,14 @@ catalog/atlas/mongodbatlas/v1alpha1/docs/audit/
 
 ```bash
 # Audit existing component
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 65% complete (missing Terraform, docs)
 
 # Fill gaps
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 
 # Verify improvement
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 98% complete
 ```
 
@@ -563,14 +555,14 @@ catalog/atlas/mongodbatlas/v1alpha1/docs/audit/
 
 ```bash
 # 1. Initial audit
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 65%
 
 # 2. Fill gaps
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component AtlasMongodb --scenario fill-gaps
 
 # 3. Verify improvement
-@audit-planton-component MongodbAtlas
+@audit-planton-component AtlasMongodb
 # Result: 98%
 ```
 
@@ -640,9 +632,9 @@ catalog/atlas/mongodbatlas/v1alpha1/docs/audit/
 
 ### Quick Score Improvements
 
-- **Missing Terraform?** +4.44% (run rules 013-015)
-- **Missing research docs?** +13.34% (run rule 020)
-- **Missing examples?** +6.66% (enhance examples.md)
+- **Missing Terraform?** +4.44% (run forge rules 012-013)
+- **Missing guide?** +13.34% (run forge rule 019)
+- **Thin catalog page?** +6.66% (improve catalog.md against the standard)
 
 ## Troubleshooting
 
@@ -676,7 +668,7 @@ Good audit outcomes:
 - ✅ Clear completion percentage
 - ✅ Specific gaps identified
 - ✅ Actionable recommendations
-- ✅ Historical report saved
+- ✅ Progress recorded in the ledger (outside the catalog)
 - ✅ Path to 100% clear
 
 ## Related Commands

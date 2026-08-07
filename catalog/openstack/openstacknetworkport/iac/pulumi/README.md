@@ -27,7 +27,7 @@ make test
 
 ```bash
 # Export the test manifest as base64
-export STACK_INPUT=$(cat ../hack/manifest.yaml | base64)
+export STACK_INPUT=$(cat ../../e2e/manifest.yaml | base64)
 
 # Run Pulumi preview
 pulumi preview --stack test --non-interactive

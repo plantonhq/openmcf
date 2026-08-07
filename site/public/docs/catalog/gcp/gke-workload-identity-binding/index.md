@@ -8,156 +8,119 @@ componentName: "gcpgkeworkloadidentitybinding"
 
 # GCP GKE Workload Identity Binding
 
-Creates an IAM policy binding that allows a Kubernetes ServiceAccount (KSA) in a GKE cluster to impersonate a Google Service Account (GSA) via Workload Identity Federation. This component grants `roles/iam.workloadIdentityUser` on the target GSA so the specified KSA can authenticate as that GSA without managing keys.
+Creates an IAM policy binding that allows a Kubernetes ServiceAccount (KSA) in a GKE cluster to impersonate a Google ServiceAccount (GSA) via Workload Identity Federation. This eliminates the need for exported JSON service account keys, enabling GKE pods to authenticate to GCP APIs using the cluster's Workload Identity pool. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and service accounts.
 
 ## What Gets Created
 
-When you deploy a GcpGkeWorkloadIdentityBinding resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **IAM Member Binding** — a `google_service_account_iam_member` resource that grants the `roles/iam.workloadIdentityUser` role on the target GSA to the Workload Identity member principal (`serviceAccount:<project>.svc.id.goog[<namespace>/<ksa-name>]`)
+- **IAM Member Binding** -- a `serviceaccount.IAMMember` that grants `roles/iam.workloadIdentityUser` on the specified Google ServiceAccount to the Kubernetes ServiceAccount, using the member format `serviceAccount:{projectId}.svc.id.goog[{namespace}/{name}]`
 
-## Prerequisites
+## Before You Deploy
 
-- **GCP credentials** configured via environment variables or Planton provider config
-- **A GCP project** with a GKE cluster that has Workload Identity enabled
-- **A Google Service Account** (GSA) that the Kubernetes workload should impersonate
-- **A Kubernetes ServiceAccount** (KSA) already created (or planned) in the target namespace and cluster
+### Planton Setup
 
-## Quick Start
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `workload-identity-binding.yaml`:
+### GCP Project
+
+- **A GKE cluster with Workload Identity enabled** in the project specified by `projectId`. The cluster must have a Workload Identity pool (`{projectId}.svc.id.goog`) configured.
+- **A Google ServiceAccount** that the KSA will impersonate. The GSA must exist in the project and have the IAM roles needed by the workload (e.g., `roles/cloudsql.client`, `roles/storage.objectViewer`).
+- **A Kubernetes ServiceAccount** in the specified namespace. The KSA must be annotated with `iam.gke.io/gcp-service-account={gsa-email}` for the binding to take effect.
+- **IAM Service Account Credentials API** (`iamcredentials.googleapis.com`) enabled in the target project.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **GCP GKE Workload Identity Binding**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a typical KSA-to-GSA binding.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
+apiVersion: gcp.planton.dev/v1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGkeWorkloadIdentityBinding.cert-manager-binding
+  org: acme-corp
+  env: prod
 spec:
-  projectId: my-gcp-project-123
-  serviceAccountEmail: cert-manager@my-gcp-project-123.iam.gserviceaccount.com
+  projectId:
+    value: "acme-prod-12345"
+  serviceAccountEmail:
+    value: "cert-manager@acme-prod-12345.iam.gserviceaccount.com"
   ksaNamespace: cert-manager
   ksaName: cert-manager
 ```
-
-Deploy:
 
 ```shell
 planton apply -f workload-identity-binding.yaml
 ```
 
-This grants the `cert-manager` Kubernetes ServiceAccount in the `cert-manager` namespace permission to impersonate the `cert-manager` GSA.
+This grants the `cert-manager` Kubernetes ServiceAccount permission to impersonate the specified Google ServiceAccount via Workload Identity. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `projectId` | `string` or `valueFrom` | The GCP project that hosts the GKE cluster (and its Workload Identity pool `<project>.svc.id.goog`). Can be a literal value or a reference to a GcpProject resource. | Required |
-| `serviceAccountEmail` | `string` or `valueFrom` | Email of the Google Service Account to impersonate. Can be a literal value or a reference to a GcpServiceAccount resource. | Required |
-| `ksaNamespace` | `string` | Kubernetes namespace of the ServiceAccount that will assume the GSA identity. | Required |
-| `ksaName` | `string` | Name of the Kubernetes ServiceAccount that will assume the GSA identity. | Required |
-
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `condition` | `object` | IAM Condition restricting when the grant applies: `title` (required, ≤ 100 chars), `expression` (required, CEL), `description` (≤ 256 chars). A condition is part of the grant's identity — the same grant with and without a condition are two independent bindings. |
-
-`ksaNamespace` is validated as an RFC 1123 label and `ksaName` as an RFC 1123 DNS subdomain (Kubernetes naming rules), so a typo'd principal is rejected before deploy.
-
-The Kubernetes half of the handshake — the `iam.gke.io/gcp-service-account: <gsa-email>` annotation on the KSA — belongs to the workload's own deployment; this component owns only the GCP-side grant.
-
-## Examples
-
-### Binding for cert-manager
-
-Allow the cert-manager controller to use a GSA for DNS-01 ACME challenges:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the binding to a GCP project and service account deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: cert-manager-binding
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.GcpGkeWorkloadIdentityBinding.cert-manager-binding
-spec:
-  projectId: my-gcp-project-123
-  serviceAccountEmail: cert-manager@my-gcp-project-123.iam.gserviceaccount.com
-  ksaNamespace: cert-manager
-  ksaName: cert-manager
-```
-
-### Binding for an Application Workload
-
-Grant a backend service running in the `payments` namespace access to a GSA with Cloud SQL and Pub/Sub permissions:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: payments-api-binding
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGkeWorkloadIdentityBinding.payments-api-binding
-spec:
-  projectId: my-gcp-project-123
-  serviceAccountEmail: payments-api@my-gcp-project-123.iam.gserviceaccount.com
-  ksaNamespace: payments
-  ksaName: payments-api
-```
-
-### Using Foreign Key References
-
-Reference Planton-managed resources instead of hardcoding the project ID and service account email:
-
-```yaml
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpGkeWorkloadIdentityBinding
-metadata:
-  name: external-dns-binding
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.GcpGkeWorkloadIdentityBinding.external-dns-binding
 spec:
   projectId:
     valueFrom:
       kind: GcpProject
-      name: my-project
+      name: production-project
       fieldPath: status.outputs.project_id
   serviceAccountEmail:
     valueFrom:
       kind: GcpServiceAccount
-      name: external-dns
+      name: cert-manager-sa
       fieldPath: status.outputs.email
-  ksaNamespace: external-dns
-  ksaName: external-dns
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the project and service account first, then creates the Workload Identity binding with the resolved values.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `member` | `string` | The IAM member string added to the policy, e.g. `serviceAccount:my-project.svc.id.goog[external-dns/external-dns]` |
-| `serviceAccountEmail` | `string` | The bound GSA email (echoed from spec for convenience) |
+These are the most important decisions when configuring a Workload Identity binding. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**KSA namespace and name** -- The `ksaNamespace` and `ksaName` fields must exactly match the Kubernetes ServiceAccount that pods use. The binding is namespace-scoped -- a KSA in namespace `default` cannot use a binding created for namespace `cert-manager`.
 
-- [GcpProject](/docs/catalog/gcp/project) — provides the GCP project that hosts the GKE cluster
-- [GcpServiceAccount](/docs/catalog/gcp/service-account) — creates the Google Service Account referenced by `serviceAccountEmail`
-- [GcpGkeCluster](/docs/catalog/gcp/gke-cluster) — provisions the GKE cluster where Workload Identity is enabled
-- [GcpDnsZone](/docs/catalog/gcp/dns-zone) — commonly paired with Workload Identity bindings for cert-manager or external-dns
+**Google ServiceAccount selection** -- The GSA referenced by `serviceAccountEmail` determines what GCP permissions the KSA inherits. Follow least-privilege principles: create purpose-specific GSAs with only the IAM roles the workload needs, rather than reusing a broadly-permissioned account.
+
+**One binding per pair** -- Each unique KSA-to-GSA pair requires its own binding. If multiple KSAs need to impersonate the same GSA, create separate bindings for each.
+
+**IAM Condition** -- an optional CEL expression scoping WHEN the binding applies (a time-boxed migration window is the everyday case). The condition is part of the grant's identity: the same binding with and without a condition are two independent grants.
+
+**Everything replaces atomically** -- an IAM grant has no update. Changing the project, GSA, KSA coordinates, or condition replaces the grant (a brief moment where the KSA cannot mint tokens); the replacement destroys nothing and is GCP's own designed change workflow.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpServiceAccount** | `serviceAccountEmail` | `status.outputs.email` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `member` | IAM member string (e.g., `serviceAccount:project.svc.id.goog[ns/sa]`) | Audit log queries, IAM policy inspection |
+| `service_account_email` | Bound GSA email (echoed from spec) | KSA annotation value, documentation |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard binding** -- A single KSA-to-GSA binding for common use cases like cert-manager DNS validation, external-dns record management, or application access to Cloud SQL, Cloud Storage, or Pub/Sub. Provide the project, GSA email, and KSA coordinates. Start from the **Standard** preset.
+
+## Works With
+
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project that hosts the GKE Workload Identity pool
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the Google ServiceAccount that the KSA impersonates

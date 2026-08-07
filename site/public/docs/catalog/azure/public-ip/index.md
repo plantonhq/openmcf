@@ -8,250 +8,137 @@ componentName: "azurepublicip"
 
 # Azure Public IP
 
-Deploys an Azure Public IP Address -- a static, internet-routable address -- in a specified region and resource group. The component covers the full azurerm surface: SKU (`STANDARD` / `STANDARD_V2`) and tier (`REGIONAL` / `GLOBAL`) selection, IPv4 or IPv6, availability zones, allocation from a reserved Public IP Prefix, DNS labels with scope-based reuse, reverse DNS, per-IP DDoS protection, Azure IP tags, edge zones, and idle timeout tuning. Public IPs created by this component are referenced by downstream resources such as load balancers, application gateways, and NAT gateways via their resource ID.
+Deploys an Azure Public IP Address -- a static, internet-routable address that load balancers, application gateways, NAT gateways, firewalls, and virtual machines attach for inbound or outbound connectivity. The spec covers the full address contract: SKU and tier, IP version, availability zones, allocation from a reserved Public IP Prefix, the Azure-managed DNS label with its reuse scope, reverse DNS, DDoS protection stance, idle timeout, routing IP tags, and edge-zone placement. The Public IP integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and prefixes.
 
 ## What Gets Created
 
-When you deploy an AzurePublicIp resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Public IP Address** — an `azurerm_public_ip` / `network.PublicIp` resource in the specified region and resource group, always with static allocation (dynamic allocation existed only for the Basic SKU, retired September 2025; every current SKU requires static)
-- **DNS A Record** — when `domainNameLabel` is set, Azure creates an A record at `{label}.{region}.cloudapp.azure.com` pointing to the allocated IP
-- **Azure Tags** — resource metadata tags applied to the Public IP for tracking and governance, merged with any user-supplied `tags`
+- **Public IP Address** -- a static public IP in the specified region and resource group. Allocation is always static (the retired Basic SKU's dynamic allocation is not modeled); the address is assigned at creation and persists for the resource's lifetime. Unspecified SKU, tier, and version deploy Azure's defaults (Standard, Regional, IPv4)
+- **Prefix Allocation** -- when `publicIpPrefixId` is set, the address is drawn from the reserved Public IP Prefix's contiguous, allowlistable range instead of Microsoft's general pool
+- **DNS Configuration** -- when `domainNameLabel` is set, an Azure-managed name at `{label}.{region}.cloudapp.azure.com` (hashed per `domainNameLabelScope` when one is chosen); when `reverseFqdn` is set, the address's reverse-DNS (PTR) name
+- **DDoS Protection Stance** -- inherit the virtual network's plan (default), opt out, or attach dedicated IP-level protection backed by `ddosProtectionPlanId`
+- **Availability Zone Configuration** -- zone-redundant or zonal placement based on the `zones` field; empty leaves the address non-zonal
+- **Azure Tags** -- user tags merged over the Planton-derived resource tags (organization, environment, resource ID); IP tags (routing metadata such as `RoutingPreference`) applied separately when set
 
-## Prerequisites
+## Before You Deploy
 
-- **Azure credentials** configured via environment variables or Planton provider config
-- **An Azure Resource Group** where the Public IP will be created (can reference an AzureResourceGroup resource)
-- **Region selection** — the Public IP must be in the same region as the resource it will be attached to (load balancer, application gateway, NAT gateway, etc.)
-- **An AzurePublicIpPrefix** (optional) — only when allocating the address from a reserved prefix via `publicIpPrefixId`
+### Planton Setup
 
-## Quick Start
+- **Azure Provider Connection** -- an active connection in the Connect module with credentials for the target Azure subscription. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-Create a file `publicip.yaml`:
+### Azure Subscription
+
+- **An Azure Resource Group** where the Public IP will be created. Provide the name directly or reference an AzureResourceGroup Cloud Resource via ValueFromRef.
+- **Region alignment** -- the Public IP must be in the same region as the resource it will be attached to (load balancer, application gateway, NAT gateway, firewall, or VM).
+- **Availability zone support** -- verify the target region supports the desired availability zones if using zone-redundant configuration.
+- **A Public IP Prefix (optional)** -- to allocate from a reserved range, the prefix must live in the same region and carry a matching SKU.
+- **A DDoS protection plan (optional)** -- required in practice when `ddosProtectionMode` is `ENABLED`; referenced by plain ARM ID.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Azure Public IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Static** preset in the [Presets](#presets) tab to pre-populate a zone-redundant configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
+apiVersion: azure.planton.dev/v1
 kind: AzurePublicIp
 metadata:
-  name: my-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePublicIp.my-pip
+  name: lb-public-ip
+  org: acme-corp
+  env: prod
 spec:
   region: eastus
   resourceGroup:
-    value: my-rg
-  name: my-pip
+    value: "acme-prod-rg"
+  name: lb-public-ip
+  zones:
+    - "1"
+    - "2"
+    - "3"
 ```
-
-Deploy:
 
 ```shell
-planton apply -f publicip.yaml
+planton apply -f public-ip.yaml
 ```
 
-This creates a static public IP on Azure's defaults: Standard SKU, Regional tier, IPv4, a 4-minute idle timeout, no zone preference, and no DNS label.
+This creates a zone-redundant public IP with static allocation; the unspecified SKU, tier, and version deploy Azure's defaults (Standard, Regional, IPv4), and the unset idle timeout leaves Azure's 4-minute default. No DNS label is configured. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `region` | `string` | Azure region for the Public IP (e.g., `eastus`, `westeurope`). Must match the region of the resource it will be attached to. | Required, minimum length 1 |
-| `resourceGroup` | `StringValueOrRef` | Azure Resource Group name. Can reference an AzureResourceGroup resource via `valueFrom`. | Required |
-| `name` | `string` | Name of the Public IP resource. Must be unique within the resource group. Allowed characters: alphanumeric, underscores, hyphens, and periods. Must start with a letter or number and end with a letter, number, or underscore. | Required, 1–80 characters |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sku` | `enum` | `STANDARD` | `STANDARD` or `STANDARD_V2` (Azure's next-generation SKU, required to attach the address to a StandardV2 NAT gateway; not valid with the `GLOBAL` tier). Fixed at creation. |
-| `skuTier` | `enum` | `REGIONAL` | `REGIONAL` or `GLOBAL`. `GLOBAL` exists solely for cross-region load balancer frontends and requires the `STANDARD` SKU. Fixed at creation. |
-| `ipVersion` | `enum` | `IPV4` | `IPV4` or `IPV6`. Fixed at creation. |
-| `zones` | `string[]` | `[]` | Availability zones for the Public IP. Valid values: `"1"`, `"2"`, `"3"`. Use `["1", "2", "3"]` for zone-redundant (recommended for production), `["1"]` for zonal, or omit for non-zonal. Zone support depends on the Azure region. Fixed at creation. |
-| `publicIpPrefixId` | `StringValueOrRef` | -- | ARM ID of a Public IP Prefix to allocate the address from instead of Microsoft's general pool. Can reference an AzurePublicIpPrefix resource via `valueFrom`. Fixed at creation. |
-| `domainNameLabel` | `string` | `""` | DNS label that creates an A record at `{label}.{region}.cloudapp.azure.com`. Must start with a lowercase letter, end with a letter or digit, contain only lowercase letters, digits, and hyphens, and be 3–63 characters. Unique within the region unless a `domainNameLabelScope` is set. |
-| `domainNameLabelScope` | `enum` | -- | Scope-based reuse policy for the DNS label: `TENANT_REUSE`, `SUBSCRIPTION_REUSE`, `RESOURCE_GROUP_REUSE`, or `NO_REUSE`. Azure hashes the label with the chosen scope (a defense against dangling-DNS subdomain takeover). Requires `domainNameLabel`. |
-| `reverseFqdn` | `string` | `""` | A fully qualified domain name that resolves to this address, recorded as its reverse-DNS (PTR) name. The forward record must exist before setting this. |
-| `idleTimeoutInMinutes` | `int` | `4` | Idle timeout in minutes for TCP connections. Higher values suit long-lived connections (WebSocket, gRPC streaming, database connections). Range: 4–30. |
-| `ipTags` | `map<string,string>` | `{}` | Azure IP tags — routing metadata attached to the address itself (e.g. `RoutingPreference: Internet`), not governance tags. Only specific tag/value pairs are permitted by Azure. Fixed at creation. |
-| `ddosProtectionMode` | `enum` | inherit | `ENABLED` (dedicated IP-level protection; pair with `ddosProtectionPlanId`) or `DISABLED` (opt out even when the network is protected). Unset inherits from the virtual network's DDoS plan, if any. |
-| `ddosProtectionPlanId` | `string` | `""` | ARM ID of the DDoS protection plan backing IP-level protection. Only valid when `ddosProtectionMode` is `ENABLED`. |
-| `edgeZone` | `string` | `""` | Deploy the address into an Azure Edge Zone (e.g. `losangeles`) instead of the main region. Fixed at creation. |
-| `tags` | `map<string,string>` | `{}` | Free-form tags merged over the Planton-derived resource tags; a user tag with the same key wins. |
-
-## Examples
-
-### Basic Public IP
-
-A minimal Public IP for development or testing:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Public IP to a resource group deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: dev-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AzurePublicIp.dev-pip
 spec:
-  region: eastus
   resourceGroup:
-    value: dev-rg
-  name: dev-pip
-```
-
-### Public IP with DNS Label
-
-A Public IP with a DNS label for a stable domain name, hashed with a tenant-scoped reuse policy so the label survives safely across environments:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: api-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.AzurePublicIp.api-pip
-spec:
-  region: westeurope
-  resourceGroup:
-    value: staging-rg
-  name: api-pip
-  domainNameLabel: my-api-staging
-  domainNameLabelScope: TENANT_REUSE
-```
-
-After deployment, the Public IP is reachable at a stable FQDN under `westeurope.cloudapp.azure.com`.
-
-### Zone-Redundant Production Public IP
-
-A production Public IP spread across all three availability zones with an extended idle timeout for long-lived connections:
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: prod-lb-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIp.prod-lb-pip
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: prod-lb-pip
-  domainNameLabel: prod-api
-  zones:
-    - "1"
-    - "2"
-    - "3"
-  idleTimeoutInMinutes: 15
-```
-
-### StandardV2 Address from a Reserved Prefix
-
-A next-generation SKU address drawn from an AzurePublicIpPrefix, for attachment to a StandardV2 NAT gateway (partners allowlist the whole prefix range once):
-
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: nat-egress-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIp.nat-egress-pip
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: nat-egress-pip
-  sku: STANDARD_V2
+    valueFrom:
+      kind: AzureResourceGroup
+      name: production-rg
+      fieldPath: status.outputs.resource_group_name
   publicIpPrefixId:
     valueFrom:
-      name: prod-snat-prefix
+      kind: AzurePublicIpPrefix
+      name: prod-egress
+      fieldPath: status.outputs.public_ip_prefix_id
 ```
 
-### DDoS-Protected IPv6 Frontend
+The InfraPipeline resolves the dependency graph, deploys the resource group (and prefix) first, then provisions the Public IP with the resolved values.
 
-An IPv6 address with dedicated IP-level DDoS protection:
+## Key Configuration
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: v6-frontend-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIp.v6-frontend-pip
-spec:
-  region: eastus
-  resourceGroup:
-    value: prod-rg
-  name: v6-frontend-pip
-  ipVersion: IPV6
-  zones:
-    - "1"
-    - "2"
-    - "3"
-  ddosProtectionMode: ENABLED
-  ddosProtectionPlanId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/governance-rg/providers/Microsoft.Network/ddosProtectionPlans/org-ddos-plan
-```
+These are the most important decisions when configuring a Public IP. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-### Using Foreign Key References
+**SKU and tier** -- Unspecified deploys Azure's defaults (Standard SKU, Regional tier) -- correct for virtually everything. `STANDARD_V2` exists for StandardV2 NAT gateway attachment; `GLOBAL` tier exists solely for cross-region load balancer frontends and requires the STANDARD SKU (the spec enforces the pairing). All fixed at creation.
 
-Reference a Planton-managed resource group instead of hardcoding the name:
+**Availability zones** -- Set `zones` to `["1", "2", "3"]` for zone-redundant placement that survives single-zone failures (recommended for production). Use a single zone for zonal placement pinned to one AZ. Empty leaves the address non-zonal (NOT zone-redundant). Fixed at creation.
 
-```yaml
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzurePublicIp
-metadata:
-  name: ref-pip
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.AzurePublicIp.ref-pip
-spec:
-  region: eastus
-  resourceGroup:
-    valueFrom:
-      name: my-rg
-  name: ref-pip
-  zones:
-    - "1"
-    - "2"
-    - "3"
-```
+**Prefix allocation** -- Set `publicIpPrefixId` to draw the address from a reserved Public IP Prefix: every address comes from one contiguous CIDR partners allowlist once. Fixed at creation.
 
-## Stack Outputs
+**DNS label and reuse scope** -- Set `domainNameLabel` to mint a stable Azure-managed name at `{label}.{region}.cloudapp.azure.com`. The classic label must be unique within the region; set `domainNameLabelScope` to hash the label (the dangling-DNS subdomain-takeover defense -- the scope requires a label and is fixed once chosen). `reverseFqdn` records the address's PTR name for outbound-email deliverability; create the forward record first.
 
-After deployment, the following outputs are available in `status.outputs`:
+**DDoS protection** -- Unspecified inherits the virtual network's protection plan. `ENABLED` attaches dedicated IP-level protection (pair it with `ddosProtectionPlanId` -- the spec enforces the pairing); `DISABLED` deliberately opts the address out. Updatable in place.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `public_ip_id` | `string` | Azure Resource Manager ID of the Public IP. This is the primary output referenced by downstream resources (AzureApplicationGateway, AzureLoadBalancer, AzureNatGateway) via `valueFrom`. |
-| `ip_address` | `string` | The allocated address itself. Static for the resource's lifetime — the value that lands in DNS records and partner allowlists. |
-| `fqdn` | `string` | The Azure-managed FQDN (`{label}.{region}.cloudapp.azure.com`). Only populated when `domainNameLabel` is set; empty otherwise. |
-| `public_ip_name` | `string` | Name of the Public IP resource. |
+**Idle timeout** -- `idleTimeoutInMinutes` controls how long Azure keeps idle TCP connections open (4-30). Unset leaves Azure's 4-minute default. Increase to 15-30 minutes for long-lived connections (WebSocket, gRPC streaming, database connections). Updatable in place.
 
-## Related Components
+**IP tags and edge zone** -- `ipTags` attach routing metadata to the address itself (e.g. `RoutingPreference: Internet` for hot-potato transit; only Azure-permitted pairs deploy). `edgeZone` places the address in a metro-local Azure Edge Zone instead of the main region -- leave unset for the standard region. Both fixed at creation.
 
-- [AzureResourceGroup](/docs/catalog/azure/resource-group) — provides the resource group for Public IP placement
-- [AzurePublicIpPrefix](/docs/catalog/azure/public-ip-prefix) — provides the reserved range Public IPs can be allocated from
-- [AzureLoadBalancer](/docs/catalog/azure/load-balancer) — attaches a Public IP as a frontend IP configuration
-- [AzureApplicationGateway](/docs/catalog/azure/application-gateway) — attaches a Public IP for HTTP/HTTPS ingress
-- [AzureNatGateway](/docs/catalog/azure/nat-gateway) — attaches a Public IP for outbound NAT
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzurePublicIpPrefix** | `publicIpPrefixId` | `status.outputs.public_ip_prefix_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `public_ip_id` | Azure resource ID of the Public IP | Application Gateway frontend, Load Balancer frontend, NAT Gateway association, firewall IP configuration |
+| `ip_address` | The allocated static IP address | DNS configuration, firewall allowlisting, external service registration |
+| `fqdn` | Fully qualified domain name (empty if no `domainNameLabel` set) | Application endpoint URLs, health check targets |
+| `public_ip_name` | Name of the Public IP resource | Network diagnostics, audit logging references |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard zone-redundant IP** -- A zone-redundant public IP spanning all three availability zones with Azure's default SKU, tier, and idle timeout. Suitable for production load balancers, application gateways, and NAT gateways that need high availability. Start from the **Standard Static** preset.
+
+**DNS-labeled endpoint** -- A public IP with an Azure-managed hostname for services that need a stable DNS name before a custom domain exists. Start from the **DNS Labeled Endpoint** preset.
+
+**Allowlisted from a prefix** -- An address drawn from a reserved Public IP Prefix so partners allowlist one CIDR, forever. Start from the **Allowlisted From Prefix** preset.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the Public IP is created
+- [**Azure Public IP Prefix**](/cloud-catalog/azure-public-ip-prefix) -- the reserved, allowlistable range the address can be drawn from

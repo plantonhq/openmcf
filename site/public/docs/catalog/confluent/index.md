@@ -9,4 +9,4 @@ order: 10
 
 The following CONFLUENT resources can be deployed using Planton:
 
-- [Kafka](/docs/catalog/confluent/kafka)
+- [Kafka on Confluent Cloud](/docs/catalog/confluent/kafka-on-confluent-cloud)

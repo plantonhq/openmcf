@@ -8,180 +8,109 @@ componentName: "openstackdnsrecord"
 
 # OpenStack DNS Record
 
-Deploys a standalone DNS recordset in an OpenStack Designate zone with a configurable name, type, values, and TTL. Use this component when individual DNS records need to be independently managed or wired as explicit dependencies in InfraCharts; for managing all records within a single component, use the inline records feature of OpenStackDnsZone instead.
+Deploys a standalone Designate DNS recordset on OpenStack, mapping a fully qualified domain name to one or more values within an existing DNS zone. The record references an OpenStackDnsZone via ValueFromRef, making it a DAG-visible, independently managed alternative to inline records defined directly in the zone spec.
 
 ## What Gets Created
 
-When you deploy an OpenStackDnsRecord resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DNS RecordSet** — an `openstack_dns_recordset_v2` resource in the specified Designate zone. The recordset contains one fully qualified domain name, one record type, and one or more values. Multiple values in the same recordset produce a round-robin record set.
+- **Designate DNS Recordset** -- a single recordset (one name + one type + one or more values) in the specified DNS zone, supporting A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA, SOA, SPF, SSHFP, and NAPTR record types
+- **Round-Robin Values** -- created only when multiple values are provided; Designate returns all values to resolvers for client-side load distribution
 
-## Prerequisites
+## Before You Deploy
 
-- **OpenStack credentials** configured via environment variables or Planton provider config
-- **An existing Designate DNS zone** — provide the zone UUID directly or reference an OpenStackDnsZone resource via `valueFrom`
-- **Designate DNS service enabled** in the target OpenStack project
+### OpenStack Account
 
-## Quick Start
+- **DNS zone** -- an existing Designate zone where the record will be created. Provide the zone ID directly or reference an OpenStackDnsZone Cloud Resource via ValueFromRef.
+- **Designate service** -- the Designate DNS service must be enabled in your OpenStack deployment. Run `openstack zone list` to verify availability.
+- **FQDN format** -- record names must be fully qualified with a trailing dot (e.g., `app.example.com.`). Designate rejects names without the trailing dot.
 
-Create a file `dns-record.yaml`:
+## Deploy
+
+### Console
+
+Open the deployment store, find **OpenStack DNS Record**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **A Record** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
+apiVersion: openstack.planton.dev/v1
 kind: OpenStackDnsRecord
 metadata:
-  name: my-a-record
-  annotations:
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.api-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.mail-mx
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
-    planton.dev/stack.jobId: prod.OpenstackDnsRecord.docs-cname
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackDnsRecord.web-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
-    planton.dev/stack.jobId: dev.OpenstackDnsRecord.my-a-record
-    planton.dev/stack.module.source: github.com/plantonhq/planton//catalog/openstack/openstackdnsrecord/iac/pulumi/module
-    planton.dev/provisioner: pulumi
+  name: app-a-record
+  org: acme-corp
+  env: prod
 spec:
-  zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-  recordName: "www.example.com."
+  zoneId:
+    value: "<zone-id>"
+  recordName: "app.example.com."
   type: A
   values:
-    - "192.0.2.1"
+    - "203.0.113.42"
 ```
-
-Deploy:
 
 ```shell
 planton apply -f dns-record.yaml
 ```
 
-This creates an A record for `www.example.com.` pointing to `192.0.2.1` in the specified Designate zone.
+This creates an A record pointing `app.example.com.` to a single IPv4 address with the zone's default TTL. No custom TTL or description is configured.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneId` | `StringValueOrRef` | The ID (UUID) of the Designate zone where this record will be created. Can reference an OpenStackDnsZone resource via `valueFrom`. ForceNew: changing this recreates the record. | Required |
-| `recordName` | `string` | Fully qualified domain name for this record. Must end with a trailing dot (e.g., `www.example.com.`). ForceNew: changing this recreates the record. | Must be a valid DNS name ending with `.` |
-| `type` | `RecordType` | DNS record type. Supported values: `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `SRV`, `NS`, `PTR`, `CAA`, `SOA`, `SPF`, `SSHFP`, `NAPTR`. ForceNew: changing this recreates the record. | Must be a defined enum value; cannot be unspecified |
-| `values` | `string[]` | DNS record values. Format depends on record type (see examples below). Multiple values create a round-robin record set. | Minimum 1 item |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ttl` | `int32` | zone default | Time To Live in seconds. Determines how long resolvers cache this record. If omitted, the zone's default TTL is used. |
-| `description` | `string` | — | Human-readable description of the DNS record. |
-| `region` | `string` | provider default | Override the region from the provider config for this record. ForceNew: changing this recreates the record. |
-
-## Examples
-
-### A Record with Custom TTL
-
-A single IPv4 address record with a 5-minute TTL:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the record to a zone deployed in the same InfraPipeline:
 
 ```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsRecord
-metadata:
-  name: web-a-record
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-  recordName: "web.example.com."
-  type: A
-  values:
-    - "192.0.2.10"
-    - "192.0.2.11"
-  ttl: 300
-  description: "Round-robin A records for the web tier"
-```
-
-### CNAME Record
-
-An alias record pointing a subdomain to another hostname:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsRecord
-metadata:
-  name: docs-cname
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-  recordName: "docs.example.com."
-  type: CNAME
-  values:
-    - "lb.example.com."
-  ttl: 3600
-```
-
-### MX Records for Mail Delivery
-
-Mail exchange records with priority values for primary and backup mail servers:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsRecord
-metadata:
-  name: mail-mx
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  zoneId: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-  recordName: "example.com."
-  type: MX
-  values:
-    - "10 mail1.example.com."
-    - "20 mail2.example.com."
-  ttl: 3600
-  description: "Primary and backup mail servers"
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed DNS zone instead of hardcoding the zone UUID:
-
-```yaml
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackDnsRecord
-metadata:
-  name: api-record
-  annotations:
-    planton.dev/provisioner: pulumi
 spec:
   zoneId:
     valueFrom:
       kind: OpenStackDnsZone
-      name: my-zone
-      field: status.outputs.zone_id
-  recordName: "api.example.com."
-  type: A
-  values:
-    - "10.0.1.100"
-  ttl: 60
-  description: "API endpoint for the example.com zone"
+      name: example-zone
+      fieldPath: status.outputs.zone_id
 ```
 
-## Stack Outputs
+The InfraPipeline resolves the dependency graph, deploys the DNS zone first, then provisions the record with the resolved zone ID.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `recordset_id` | `string` | UUID of the created DNS recordset |
-| `fqdn` | `string` | Fully qualified domain name of the created DNS record (e.g., `www.example.com.`) |
-| `record_type` | `string` | DNS record type that was created (e.g., `A`, `CNAME`, `MX`) |
-| `values` | `string[]` | List of DNS record values that were set |
-| `zone_id` | `string` | ID of the Designate zone containing this record |
-| `region` | `string` | OpenStack region where the record was created |
+These are the most important decisions when configuring a DNS record. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Record type** -- Determines the kind of DNS mapping. A and AAAA records map to IP addresses, CNAME records alias to another hostname, MX records direct mail delivery, and TXT records store arbitrary text (SPF, DKIM, verification tokens). The type is immutable after creation.
 
-- [OpenStackDnsZone](/docs/catalog/openstack/dns-zone) — provides the Designate zone where records are created; also supports inline records for simpler setups
+**TTL** -- Controls how long resolvers cache this record. If omitted, the zone's default TTL applies. Use lower values (60-300 seconds) for records that change frequently (blue-green deployments, failover) and higher values (3600+ seconds) for stable records.
+
+**Multiple values** -- Providing multiple entries in the `values` field creates a round-robin recordset. For A records, this distributes traffic across multiple IP addresses at the DNS level.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **OpenStackDnsZone** | `zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `recordset_id` | UUID of the DNS recordset | Import, audit, and debugging |
+| `fqdn` | Fully qualified domain name of the record | Downstream service endpoint references |
+| `record_type` | DNS record type that was created | Monitoring labels, automation |
+| `values` | List of DNS record values | Verification, downstream configuration |
+| `zone_id` | ID of the zone containing this record | Zone-aware downstream resources |
+| `region` | OpenStack region where the record was created | Region-aware downstream resources |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**A record** -- Maps a hostname to one or more IPv4 addresses with a 5-minute TTL. The standard pattern for pointing hostnames at instance floating IPs or load balancer VIPs. Start from the **A Record** preset.
+
+**CNAME record** -- Aliases one hostname to another. Use for vanity names, service aliases, or pointing to external service endpoints. Both the record name and target value must be FQDNs with trailing dots. Start from the **CNAME Record** preset.
+
+## Works With
+
+- [**OpenStack DNS Zone**](/cloud-catalog/openstack-dns-zone) -- provides the zone ID where the DNS record is created

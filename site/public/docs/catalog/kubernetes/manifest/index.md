@@ -8,208 +8,116 @@ componentName: "kubernetesmanifest"
 
 # Kubernetes Manifest
 
-**Check the catalog before using this component: a first-class component always wins.** Typed components validate configuration before deploy, export composable outputs, and document their trade-offs — raw YAML does none of that. KubernetesManifest is the escape hatch for resources no component covers: a vendor's install manifest, a CRD bundle, an exotic custom resource.
-
-What it does: applies raw Kubernetes YAML — single or multi-document, core kinds or custom resources, even a CRD and its custom resources together — to a target cluster **exactly as written** (no injected labels, no rewritten fields), wrapped in Planton's declarative apply/update/destroy lifecycle. Both IaC engines handle CRD-before-custom-resource ordering in one pass and await readiness by default.
+Deploys raw Kubernetes YAML manifests to any Kubernetes cluster, acting as a generic escape hatch for resources that do not have a dedicated deployment component. Supports single-document and multi-document manifests (separated by `---`), including Deployments, Services, ConfigMaps, CRDs, Custom Resources, and any other valid Kubernetes resource types. Integrates with Planton's Provider Connections, ValueFromRef, and Stack Job tracking.
 
 ## What Gets Created
 
-When you deploy a KubernetesManifest resource, Planton provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Namespace** — the anchor namespace, created only when `create_namespace` is `true` (with standard Planton governance labels on the namespace object; your manifest's documents are never labeled)
-- **Every document in `manifest_yaml`** — applied server-side, exactly as written
+- **Kubernetes Namespace** -- created (with the standard governance labels) only when `createNamespace` is `true`, and deleted with the resource; otherwise deploys into an existing namespace
+- **Kubernetes Resources from Manifest** -- all resources defined in the `manifestYaml` field are applied to the cluster exactly as written. Multi-document YAML (resources separated by `---`) is supported with automatic CRD ordering: a CRD and its custom resources can ship in the same manifest. The manifest content itself is never mutated -- no injected labels, no rewritten fields.
 
-**Namespace anchoring** (identical on both engines): documents that declare their own `metadata.namespace` keep it; namespaced documents that declare none land in `spec.namespace`; cluster-scoped documents (CRDs, ClusterRoles, ...) are applied as-is — the anchor never distorts them.
+## Before You Deploy
 
-## Prerequisites
+### Planton Setup
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **The anchor namespace** must already exist, or set `create_namespace` to `true`
-- **Valid Kubernetes YAML** — content is applied as-is; the API server is what validates your kinds
+- **Kubernetes Provider Connection** -- an active connection in the Connect module with kubeconfig credentials for the target Kubernetes cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline kubeconfig authentication.
 
-## Quick Start
+### Kubernetes Cluster
 
-Create a file `manifest.yaml` — a ConfigMap and Secret anchored in one namespace:
+- **Appropriate RBAC permissions** for the resource types in your manifest. Cluster-scoped resources (CRDs, ClusterRoles) require cluster-admin access. Namespace-scoped resources require permissions in the target namespace.
+- **CRDs pre-installed** if your manifest references custom resources. The manifest component does not handle CRD installation ordering across separate Cloud Resources.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Kubernetes Manifest**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Resource** preset in the [Presets](#presets) tab to deploy a ConfigMap as a starting point, then replace the YAML with your actual manifest.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
+apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesManifest
 metadata:
   name: app-config
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesManifest.app-config
+  org: acme-corp
+  env: prod
 spec:
   namespace:
-    value: my-app
-  create_namespace: true
-  manifest_yaml: |
+    value: "my-app"
+  createNamespace: false
+  manifestYaml: |
     apiVersion: v1
     kind: ConfigMap
     metadata:
       name: app-settings
     data:
-      LOG_LEVEL: info
-    ---
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: app-credentials
-    type: Opaque
-    stringData:
-      api-key: replace-me
+      config.yaml: |
+        database_pool_size: 10
+        log_level: info
 ```
-
-Deploy:
 
 ```shell
 planton apply -f manifest.yaml
 ```
 
-Neither document declares a namespace, so both land in `my-app`, which is created first and deleted with the resource.
+This deploys a ConfigMap into the `my-app` namespace. The `manifestYaml` field accepts any valid Kubernetes YAML, including multi-document manifests with `---` separators. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `spec.namespace` | `StringValueOrRef` | The anchor namespace: where namespaced documents without an explicit `metadata.namespace` are applied. A literal name (`value: my-ns`) or a reference to a KubernetesNamespace resource. | required, non-empty |
-| `spec.manifest_yaml` | `string` | The raw Kubernetes manifest YAML — a single document or multiple separated by `---`. Every valid Kubernetes resource is accepted, including a CRD and its custom resources in the same manifest. | required, at least one non-blank document |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec.create_namespace` | `bool` | `false` | When `true`, the anchor namespace is created (with standard Planton governance labels) before the manifest applies and deleted with the resource. When `false`, it must already exist. |
-| `spec.skip_await` | `bool` | `false` | When `true`, the deploy returns as soon as the API server accepts every document. When `false`, both engines block until readiness (workload rollouts complete; other kinds pass the engine's readiness checks). Skip for manifests whose readiness depends on something deployed later — e.g. a webhook configuration waiting on its service. |
-
-## Examples
-
-### CRD and Custom Resource in One Manifest
-
-Both engines order the CRD install before the custom resource that uses it — one apply, no two-pass workaround. The CRD is cluster-scoped and untouched by the anchor; the custom resource declares no namespace, so it lands in `crontab-demo`:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the manifest deployment to a namespace managed by another Cloud Resource:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesManifest
-metadata:
-  name: crontab-operator-config
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesManifest.crontab-operator-config
 spec:
   namespace:
-    value: crontab-demo
-  create_namespace: true
-  manifest_yaml: |
-    apiVersion: apiextensions.k8s.io/v1
-    kind: CustomResourceDefinition
-    metadata:
-      name: crontabs.stable.example.com
-    spec:
-      group: stable.example.com
-      scope: Namespaced
-      names:
-        plural: crontabs
-        singular: crontab
-        kind: CronTab
-      versions:
-        - name: v1
-          served: true
-          storage: true
-          schema:
-            openAPIV3Schema:
-              type: object
-              properties:
-                spec:
-                  type: object
-                  properties:
-                    cronSpec:
-                      type: string
-    ---
-    apiVersion: stable.example.com/v1
-    kind: CronTab
-    metadata:
-      name: sample-crontab
-    spec:
-      cronSpec: "*/5 * * * *"
-```
-
-### Vendor Install Manifest
-
-The "paste the vendor's install YAML" pattern: the manifest is applied byte-for-byte as published. `skip_await: true` because install bundles often contain resources (webhook configurations, custom resources awaiting their operator) that are not ready until the whole bundle settles:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesManifest
-metadata:
-  name: vendor-install
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesManifest.vendor-install
-spec:
-  namespace:
-    value: vendor-system
-  create_namespace: true
-  skip_await: true
-  manifest_yaml: |
-    # Paste the vendor's published install.yaml here, exactly as downloaded.
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: replace-with-vendor-manifest
-```
-
-Documents in a vendor bundle that hard-code their namespace keep it; only unanchored namespaced documents land in `vendor-system`.
-
-### Anchoring Into an Existing Namespace by Reference
-
-The anchor can reference a KubernetesNamespace resource instead of naming a literal, so the namespace and the manifest compose in one deployment graph:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesManifest
-metadata:
-  name: team-quotas
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesManifest.team-quotas
-spec:
-  namespace:
-    value_from:
+    valueFrom:
       kind: KubernetesNamespace
-      name: team-a-namespace
-  manifest_yaml: |
-    apiVersion: v1
-    kind: ResourceQuota
-    metadata:
-      name: team-quota
-    spec:
-      hard:
-        requests.cpu: "10"
-        requests.memory: 20Gi
+      name: app-namespace
+      fieldPath: spec.name
+  createNamespace: false
 ```
 
-## Stack Outputs
+The InfraPipeline deploys the namespace first, then applies the manifest resources into it.
 
-After deployment, the following outputs are available in `status.outputs`:
+## Key Configuration
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | The anchor namespace — where namespaced documents without an explicit `metadata.namespace` were applied |
-| `appliedResources` | `list(string)` | One entry per applied document, in manifest order, formatted as `<apiVersion>/<Kind>/<name>` (e.g. `apps/v1/Deployment/app`). Derived from the input YAML, identical on both engines |
+These are the most important decisions when configuring a Kubernetes Manifest deployment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Related Components
+**Manifest YAML content** -- The `manifestYaml` field is the core of this component. Paste any valid Kubernetes YAML, including multi-document manifests separated by `---`. The IaC module handles resource ordering automatically, applying CRDs before custom resources that depend on them.
 
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/helm-release) — when the vendor ships a Helm chart, use it instead of pasting rendered YAML here
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — a governed namespace this component's anchor can reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — the first-class path for workloads; always prefer it over a raw Deployment document
+**Namespace behavior** -- The `namespace` field is an ANCHOR, not a rewrite: namespaced documents that do not declare their own `metadata.namespace` are applied there, documents with an explicit namespace keep it, and cluster-scoped documents (CRDs, ClusterRoles) are never distorted by it. Set `createNamespace: true` to create the anchor namespace if it does not exist.
+
+**Readiness semantics** -- By default the deploy blocks until every applied resource becomes ready: Deployments, DaemonSets, and StatefulSets complete their rollout, and other kinds pass readiness checks. Set `skipAwait: true` to return as soon as the API server accepts every document -- for manifests whose readiness depends on something deployed later (a webhook configuration waiting on its Service) or that intentionally stay not-ready at install time.
+
+**Use case boundaries** -- A first-class catalog component always wins: typed components validate configuration before deploy, export composable outputs, and document their trade-offs field by field -- raw YAML does none of that. Reach for a manifest only when the catalog has no component for what you need to apply (a vendor's install manifest, a CRD bundle, an exotic custom resource).
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `namespace` | The anchor namespace: where namespaced documents without an explicit `metadata.namespace` were applied | Application deployment manifests and service discovery |
+| `applied_resources` | One entry per applied document, in manifest order, formatted as `<apiVersion>/<Kind>/<name>` (e.g. `apps/v1/Deployment/app`) | Auditing what a manifest shipped without re-parsing its YAML |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single resource deployment** -- Deploys a single Kubernetes resource (ConfigMap, ServiceAccount, RBAC rule) into an existing namespace. Replace the example ConfigMap with any Kubernetes resource type. Start from the **Single Resource** preset.
+
+## Works With
+
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the default namespace for manifest resources

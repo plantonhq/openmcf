@@ -174,8 +174,8 @@ Files will be modified in:
 
 Build pipeline will run:
   1. make protos
-  2. go build ./catalog/<provider>/<component>/v1/...
-  3. go test -v ./catalog/<provider>/<component>/v1/
+  2. go build ./catalog/<provider>/<component>/...
+  3. go test -v ./catalog/<provider>/<component>/...
 
 Proceed with rename? (yes/no):
 ```
@@ -192,8 +192,8 @@ If you confirm, the rule will:
 6. **Rename Icon Folder** - Rename `site/public/images/providers/{provider}/{component}/` if exists
 7. **Delete Source** - Remove old component directory
 8. **Build** - Run `make protos`
-9. **Verify** - Run `go build ./catalog/<provider>/<component>/v1/...`
-10. **Test** - Run `go test -v ./catalog/<provider>/<component>/v1/`
+9. **Verify** - Run `go build ./catalog/<provider>/<component>/...`
+10. **Test** - Run `go test -v ./catalog/<provider>/<component>/...`
 
 ### Step 4: Results
 
@@ -304,7 +304,7 @@ kubernetesmicroservice → kubernetesdeployment
 
 ✅ **Enum value** - Component keeps same registry number (e.g., 810)
 ✅ **Provider** - Provider field unchanged (e.g., `kubernetes`)
-✅ **Version** - Version remains `v1`
+✅ **Version** - Version metadata unchanged (e.g., `"v1alpha1"`)
 ✅ **Flags** - Special flags like `is_service_kind` preserved
 ✅ **Kubernetes metadata** - Category and namespace_prefix unchanged
 ✅ **All functionality** - Zero behavioral changes
@@ -361,8 +361,8 @@ Proceeding with rename...
 **Rename stops on first failure:**
 
 1. `make protos` fails → Stop, show error
-2. `go build ./catalog/<provider>/<component>/v1/...` fails → Stop, show error
-3. `go test -v ./catalog/<provider>/<component>/v1/` fails → Stop, show error
+2. `go build ./catalog/<provider>/<component>/...` fails → Stop, show error
+3. `go test -v ./catalog/<provider>/<component>/...` fails → Stop, show error
 
 **Only if all three pass** does the rename complete successfully.
 
@@ -455,7 +455,7 @@ Before renaming:
 
 3. **Tests Pass**
    ```bash
-   go test -v ./catalog/<provider>/<component>/v1/
+   go test -v ./catalog/<provider>/<component>/...
    # Should pass before rename
    ```
 
@@ -524,7 +524,7 @@ If tests pass:
 
 ### Build Fails After Rename
 
-**Symptom**: `go build ./catalog/<provider>/<component>/v1/...` or `go test -v ./catalog/<provider>/<component>/v1/` fails
+**Symptom**: `go build ./catalog/<provider>/<component>/...` or `go test -v ./catalog/<provider>/<component>/...` fails
 
 **Common Causes**:
 1. Missed references in external packages
