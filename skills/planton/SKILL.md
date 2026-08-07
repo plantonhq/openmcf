@@ -259,10 +259,12 @@ moves on (`references/personalization.md`).
    and when to use `metadata.relationships` instead.
 5. **Chart contains any `Kubernetes*` kind?** Read
    `references/kubernetes-on-cluster.md` BEFORE writing those manifests --
-   every Kubernetes workload needs a provider-connection annotation and an
-   ordering relationship, and the build cannot catch their absence (the
-   failure only appears at deploy). This is the most-missed wiring in
-   composed charts.
+   the one decision is whether the cluster is IN this chart. Same chart:
+   every workload needs the provider-connection annotation and an ordering
+   relationship. Cluster elsewhere: no connection wiring at all -- the
+   deployed cluster's connection is the platform's default binding. The
+   build cannot catch connection mistakes either way (the failure only
+   appears at deploy).
 6. Make optional resources conditional with `{% if values.flag | bool %}` …
    `{% endif %}` around the whole document. Read
    `references/templating.md` for the template language subset and its
@@ -382,11 +384,15 @@ shared state and needs the user's explicit go-ahead:
   the user's vocabulary: construct names like InfraChart and InfraProject
   belong in the manifests you write, not in your prose. Explain the
   platform's machinery only when the user explicitly asks.
-- **Never ship a Kubernetes-kind resource without its connection annotation
-  and ordering relationship.** A green build does NOT prove this wiring — the
-  failure appears only at deploy, instantly. Run the self-check in
-  `references/kubernetes-on-cluster.md` whenever a chart contains any
-  `Kubernetes*` kind.
+- **Connection wiring follows one rule: annotate when the cluster is in the
+  chart, write nothing when it is not.** A chart that creates its cluster
+  binds every Kubernetes-kind resource to it with the connection annotation
+  and an ordering relationship; a chart WITHOUT the cluster carries no
+  connection mention at all — no annotation, no param — because the deployed
+  cluster's connection is the platform's default binding. A green build does
+  NOT prove either wiring — the failure appears only at deploy, instantly.
+  Run the self-check in `references/kubernetes-on-cluster.md` whenever a
+  chart contains any `Kubernetes*` kind.
 - **Never put a `planton.dev/provisioner` label on chart resources.** The
   IaC engine choice belongs to the deploying organization, not the chart; a
   hardcoded provisioner breaks deployments on instances that run the other

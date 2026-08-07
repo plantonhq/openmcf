@@ -117,10 +117,14 @@ pipeline node starts):
 No provider connection available for CloudResource creation.
 ```
 
-**Fix:** The Kubernetes resource carries no `planton.dev/connection`
-annotation and the org/env has no default Kubernetes connection. Add the
-annotation to every Kubernetes-kind resource — see `kubernetes-on-cluster.md`
-for the full wiring pattern (in-chart cluster vs existing cluster).
+**Fix:** The resource carries no `planton.dev/connection` annotation and the
+org/env has no default Kubernetes connection. If the cluster is in the SAME
+chart, the annotation is missing — add it to every Kubernetes-kind resource
+(the same-chart pattern in `kubernetes-on-cluster.md`). If the cluster lives
+elsewhere, the organization has no cluster connection yet: a cluster deployed
+through Planton (or connected via the desktop) establishes the default
+binding automatically, so this error means no such cluster exists — deploy or
+connect one; do not paper over it with annotations or params.
 
 ## Connection slug not found at deploy time
 
