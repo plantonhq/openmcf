@@ -1,0 +1,117 @@
+# AWS S3 Object Set
+
+Deploys one or more objects into an existing S3 bucket, supporting inline text content and base64-encoded binary content. The component manages S3 objects declaratively alongside infrastructure, integrating with Planton's Provider Connections for AWS credential management and supporting ValueFromRef wiring to the target bucket.
+
+## What Gets Created
+
+When you deploy this Cloud Resource, the IaC module provisions:
+
+- **S3 Object (one per entry)** -- an S3 object for each item in the `objects` list, uploaded to the target bucket with the specified key, content, content headers (type, caching, encoding, disposition, language), user metadata, website redirect, storage class, per-object encryption override (SSE mode, KMS key, bucket key), integrity checksum, Object Lock retention and legal hold, canned ACL, and tags
+- **Merged Tags** -- each object receives tags merged from three sources in increasing precedence: resource labels, set-level `tags`, and per-object `tags`
+
+## Before You Deploy
+
+### Planton Setup
+
+- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or cross-account trust authentication modes.
+
+### AWS Account
+
+- **An S3 bucket** -- the target bucket must exist. Provide the bucket name directly or reference an AwsS3Bucket Cloud Resource via ValueFromRef.
+- **Bucket region match** -- the `region` field must match the region of the target bucket.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **AWS S3 Object Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Configuration Files** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsS3ObjectSet
+metadata:
+  name: app-config
+  org: acme-corp
+  env: prod
+spec:
+  region: us-east-1
+  bucket:
+    value: "my-app-bucket"
+  objects:
+    - key: config/app.json
+      content: '{"env": "prod", "logLevel": "info"}'
+      contentType: application/json
+```
+
+```shell
+planton apply -f s3-objects.yaml
+```
+
+This uploads a single JSON configuration file to the `config/app.json` key in the target bucket. A Stack Job tracks the upload in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the object set to an S3 bucket deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: app-assets
+      fieldPath: status.outputs.bucket_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the S3 bucket first, then uploads the objects with the resolved bucket name.
+
+## Key Configuration
+
+These are the most important decisions when configuring an S3 object set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Content source** -- Each object requires exactly one of `content` (inline UTF-8 text) or `contentBase64` (base64-encoded binary). Use `content` for configuration files, JSON, YAML, and HTML. Use `contentBase64` for images, compiled assets, or pre-compressed data.
+
+**Content type** -- Defaults to `application/octet-stream`. Set appropriate MIME types (`application/json`, `text/html`, `image/png`) for downstream consumers and CDN serving. Incorrect content types can cause browsers to download files instead of rendering them.
+
+**Object keys** -- The `key` field determines the object's path within the bucket (e.g., `config/app.json`, `assets/logo.png`). Organize keys with prefix-based directory structures for clean bucket navigation and prefix-filtered lifecycle rules.
+
+**Caching and encoding** -- Set `cacheControl` for CDN and browser caching behavior (e.g., `max-age=86400` for immutable assets, `no-cache` for configuration). Set `contentEncoding` (e.g., `gzip`) when uploading pre-compressed content.
+
+**Per-object security overrides** -- Uniform posture belongs on the bucket: default encryption, versioning, and ownership controls are AwsS3Bucket settings that S3 applies to every upload automatically. The per-object `serverSideEncryption`, `kmsKey`, `bucketKeyEnabled`, and `acl` fields are overrides for individual objects that must diverge -- if every object carries the same override, move the setting to the bucket.
+
+**Object Lock and integrity** -- `objectLockMode` plus `objectLockRetainUntilDate` (always set together) make an object version undeletable until the date passes; COMPLIANCE mode cannot be shortened by anyone, and destroy fails until then. Both require the bucket to have been created with Object Lock enabled -- as does `forceDestroy`, which bypasses GOVERNANCE retention during delete. `checksumAlgorithm` stores an additional object checksum retrievable via GetObjectAttributes.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsS3Bucket** | `bucket` | `status.outputs.bucket_id` |
+| **AwsKmsKey** | `objects[].kmsKey` | `status.outputs.key_arn` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `bucket_id` | The bucket the objects were uploaded to | Downstream references, E2E verification |
+| `object_arns` | Map of object key to ARN (`arn:aws:s3:::bucket/key`) | IAM policy Resource lists granting access to exactly these objects |
+| `object_etags` | Map of object key to ETag (content hash) | Cache invalidation, change detection |
+| `object_version_ids` | Map of object key to version ID (versioned buckets only) | Version-specific object access |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Configuration files** -- Upload application configuration files (JSON, YAML) to an S3 bucket for applications that read config from S3 at startup. Proper MIME content types set for downstream consumers. Start from the **Configuration Files** preset.
+
+## Works With
+
+- [**Storage Bucket on AWS S3**](/cloud-catalog/aws-s3-bucket) -- provides the target bucket for object uploads
+- [**KMS Key on AWS**](/cloud-catalog/aws-kms-key) -- customer-managed key for per-object SSE-KMS encryption overrides

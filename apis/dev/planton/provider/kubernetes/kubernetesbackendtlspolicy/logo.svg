@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="681"
+   height="661"
+   viewBox="0 0 681 661"
+   version="1.1"
+   xml:space="preserve"
+   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
+   xmlns="http://www.w3.org/2000/svg">
+  <!-- Gateway API family base mark (shared Kubernetes-blue septagon).
+       BackendTLSPolicy is distinguished by a padlock sitting on the SECOND hop
+       of the traffic path: the arrow enters from the gateway on the left and
+       the lock guards the gateway-to-backend leg, which is exactly what this
+       policy secures (the client-to-gateway leg is somebody else's concern).
+       Distinct from the Gateway doorway, the ListenerSet merged doorways, the
+       GatewayClass routing wheel, and the ReferenceGrant shield.
+       Per the _shared/gateway-api README icon note. -->
+  <g
+     inkscape:label="base"
+     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
+     transform="translate(-34.717245,-44.527423)"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <path
+       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
+       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
+       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
+  </g>
+  <!-- The secured backend hop: an arrow from the gateway into the backend,
+       with a padlock closed over it. -->
+  <g inkscape:label="backend-tls-policy" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- Gateway node (left). -->
+    <path
+       d="M196 396 L 196 336 A 30 30 0 0 1 256 336 L 256 396 L 240 396 L 240 340 A 14 14 0 0 0 212 340 L 212 396 Z"
+       style="fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:8;stroke-linejoin:round" />
+    <!-- Backend node (right). -->
+    <rect x="428" y="336" width="60" height="60" rx="10"
+       style="fill:#ffffff;stroke:#ffffff;stroke-width:8;stroke-linejoin:round" />
+    <!-- The hop between them. -->
+    <path d="M268 366 L 404 366"
+       style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
+    <path d="M396 350 L 424 366 L 396 382 Z"
+       style="fill:#ffffff;stroke:#ffffff;stroke-width:6;stroke-linejoin:round" />
+    <!-- Padlock guarding that hop: shackle over a body, centred on the arrow. -->
+    <path d="M316 300 A 24 24 0 0 1 364 300 L 364 322 L 346 322 L 346 302 A 6 6 0 0 0 334 302 L 334 322 L 316 322 Z"
+       style="fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:6;stroke-linejoin:round" />
+    <rect x="304" y="318" width="72" height="56" rx="10"
+       style="fill:#ffffff;stroke:#326ce5;stroke-width:8;stroke-linejoin:round" />
+    <circle cx="340" cy="346" r="9" style="fill:#326ce5" />
+  </g>
+</svg>

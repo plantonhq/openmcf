@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Istio">
+  <title>Istio</title>
+  <!-- Istio sail mark: large sail with concave (billowing) leading edge -->
+  <path fill="#466BB0" d="M168 24 L168 198 L78 198 C118 150 154 92 168 24 Z"/>
+  <!-- Hull: small triangle beneath the sail, separated by a gap -->
+  <path fill="#466BB0" d="M92 210 L168 210 L168 232 Z"/>
+</svg>

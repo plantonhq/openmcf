@@ -20,6 +20,14 @@ author a chart correctly.
   path whenever no catalog pack is reachable — it is compiled into the CLI
   and works fully offline.
 
+**Research never justifies leaving your filesystem boundary.** Probe for
+the catalog pack only inside the tree you were given — the workspace and
+whatever your session already mounts. Never hunt the wider machine for pack
+files: no searching home directories, tool install paths, or other
+checkouts that happen to exist on the host. A pack that is not reachable
+inside the boundary IS the no-pack case — take the explain path without
+commentary and move on.
+
 ## The explain toolchain
 
 | Step | Command | When |

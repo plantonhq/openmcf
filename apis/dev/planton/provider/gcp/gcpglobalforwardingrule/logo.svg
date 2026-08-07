@@ -1,0 +1,12 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The VIP: an IP node at the edge -->
+  <circle cx="3.2" cy="8" r="2" stroke="#EA4335" stroke-width="1.2"/>
+  <text x="3.2" y="9.1" font-family="monospace" font-size="3.2" fill="#EA4335" text-anchor="middle">IP</text>
+  <!-- Link into the target proxy -->
+  <path d="M 5.4 8 L 8.2 8" stroke="#4285F4" stroke-width="1.3" stroke-linecap="round"/>
+  <!-- The proxy binding -->
+  <rect x="8.2" y="5.8" width="4.2" height="4.4" rx="1" stroke="#4285F4" stroke-width="1.2"/>
+  <path d="M 9.2 8 L 11.2 8 M 10.6 7.2 L 11.4 8 L 10.6 8.8" stroke="#4285F4" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Out toward the rest of the LB chain -->
+  <path d="M 12.6 8 L 14.6 8" stroke="#34A853" stroke-width="1.3" stroke-linecap="round"/>
+</svg>

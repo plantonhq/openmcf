@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MLflow">
+  <!-- Outer flow ring: an open circular sweep -->
+  <path fill="#0194E2" d="M64 10C34.2 10 10 34.2 10 64s24.2 54 54 54c11.6 0 22.4-3.7 31.2-9.9L92.4 94.9C84.4 100.6 74.6 104 64 104 41.9 104 24 86.1 24 64S41.9 24 64 24c20.4 0 37.2 15.2 39.7 34.9l14-.1C115.1 31.9 92 10 64 10z"/>
+  <!-- Inward arrow notch: the flow turning back on itself -->
+  <path fill="#43C9ED" d="M117.7 58.8 84.3 58.6l16.9 20.2 16.5-20z"/>
+</svg>

@@ -1,0 +1,17 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       PodDisruptionBudget is distinguished by the umbrella glyph: an
+       umbrella sheltering pod dots - protection against voluntary
+       disruption (drains, upgrades) for the pods underneath. -->
+
+  <g inkscape:label="poddisruptionbudget" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The umbrella canopy + handle. -->
+    <path d="M236 340 C236 282.562 282.562 236 340 236 C397.438 236 444 282.562 444 340 L236 340"
+       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linejoin:round" />
+    <path d="M340 236 L340 216" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
+    <!-- The sheltered pods. -->
+    <circle cx="288" cy="404" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
+    <circle cx="340" cy="428" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
+    <circle cx="392" cy="404" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
+  </g>
+</svg>

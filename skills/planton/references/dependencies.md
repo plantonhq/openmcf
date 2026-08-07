@@ -70,8 +70,11 @@ When no catalog pack is reachable, or to drill one leaf's exact contract:
 1. Run `planton explain <ProducerKind> -o json`.
 2. Read the `outputs` array — each entry's `name` is the leaf under
    `status.outputs.`.
-3. Cross-check against the chart fleet: grep for `valueFrom` with that kind
-   in `github.com/plantonhq/planton/tree/main/charts`.
+3. When a charts fleet is reachable inside your filesystem boundary (a
+   checkout or workspace you were given carries a `charts/` tree),
+   cross-check by grepping its `valueFrom` blocks for that kind. Never go
+   looking for a fleet beyond the boundary — the explain report alone is
+   sufficient.
 
 Build errors for bad references are explicit: `Invalid valueFrom references:
 Field 'no_such_output' not found in …StackOutputs for kind: …` — fix the
@@ -215,5 +218,5 @@ charts.
 | Hardcoded AWS account ID or VPC ID | valueFrom to the creating resource |
 | A param collecting another resource's output (`vpc_id`, `gateway_host`) | The references-before-params check above — wire it, in-chart or cross-chart |
 | Mismatched name between producer and consumer | Same template expression on both sides |
-| Wrong output leaf (`vpc_id` vs `vpcId`) | Schema report + fleet grep |
+| Wrong output leaf (`vpc_id` vs `vpcId`) | Schema report (fleet grep only when a fleet is in your boundary) |
 | Referencing a conditionally omitted resource | Wrap the consumer in the same `{% if %}` or ensure the producer always renders |

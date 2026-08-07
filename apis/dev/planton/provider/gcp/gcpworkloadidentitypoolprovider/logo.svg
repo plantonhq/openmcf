@@ -1,0 +1,22 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pool boundary (partial): the trust perimeter the provider feeds -->
+  <circle cx="10.5" cy="8" r="4.8" fill="#4285F4" opacity="0.9"/>
+  <circle cx="10.5" cy="8" r="4.8" stroke="#1967D2" stroke-width="0.5" fill="none"/>
+
+  <!-- The external issuer: a token document outside the boundary -->
+  <rect x="1" y="4.5" width="4.4" height="6" rx="0.8" fill="#4285F4" opacity="0.45"/>
+  <g stroke="#FFFFFF" stroke-width="0.8" stroke-linecap="round">
+    <line x1="2" y1="6.2" x2="4.4" y2="6.2"/>
+    <line x1="2" y1="7.6" x2="4.4" y2="7.6"/>
+    <line x1="2" y1="9" x2="3.4" y2="9"/>
+  </g>
+
+  <!-- The exchange arrow: issuer token in, Google credential out -->
+  <g stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" fill="none">
+    <line x1="5.9" y1="8" x2="8.6" y2="8"/>
+    <path d="M 7.8 7.2 L 8.6 8 L 7.8 8.8" stroke-linejoin="round"/>
+  </g>
+
+  <!-- The verification check inside the boundary -->
+  <path d="M 9.6 8 L 10.7 9.1 L 12.7 6.9" stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

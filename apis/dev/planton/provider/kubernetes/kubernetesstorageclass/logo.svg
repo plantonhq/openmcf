@@ -1,0 +1,17 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       StorageClass is distinguished by the storage-menu glyph: a disk
+       cylinder beside menu rows - the cluster'\''s menu of storage tiers
+       that claims order from by name. -->
+
+  <g inkscape:label="storageclass" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The disk cylinder. -->
+    <ellipse cx="296" cy="272" rx="60" ry="26" style="fill:none;stroke:#ffffff;stroke-width:15" />
+    <path d="M236 272 L236 396 C236 410.359 262.863 422 296 422 C329.137 422 356 410.359 356 396 L356 272"
+       style="fill:none;stroke:#ffffff;stroke-width:15;stroke-linecap:round" />
+    <!-- The menu rows (the class list). -->
+    <path d="M392 300 L448 300" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
+    <path d="M392 348 L448 348" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
+    <path d="M392 396 L448 396" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
+  </g>
+</svg>

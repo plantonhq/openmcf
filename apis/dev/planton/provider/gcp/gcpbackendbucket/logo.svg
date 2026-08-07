@@ -1,0 +1,11 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The origin bucket: static objects -->
+  <path d="M 3.5 6.5 L 4.5 13 Q 4.6 13.8 5.4 13.8 L 8.2 13.8 Q 9 13.8 9.1 13 L 10.1 6.5 Z" fill="#34A853" opacity="0.85"/>
+  <rect x="3" y="5" width="7.6" height="1.7" rx="0.85" fill="#34A853"/>
+  <!-- The edge: cached delivery fanning out from the bucket -->
+  <path d="M 10.8 8.6 L 13.2 6.4 M 10.8 9.6 L 13.6 9.6 M 10.8 10.6 L 13.2 12.6"
+        stroke="#4285F4" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Edge cache node -->
+  <circle cx="13.2" cy="3.6" r="1.6" stroke="#4285F4" stroke-width="1.1"/>
+  <path d="M 13.2 2.9 L 13.2 3.7 L 13.8 4.1" stroke="#4285F4" stroke-width="0.9" stroke-linecap="round"/>
+</svg>

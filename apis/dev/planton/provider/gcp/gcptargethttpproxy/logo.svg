@@ -1,0 +1,12 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Plaintext in from the VIP -->
+  <path d="M 1.6 8 L 5 8" stroke="#4285F4" stroke-width="1.3" stroke-linecap="round"/>
+  <!-- The proxy: a pass-through node -->
+  <rect x="5.2" y="5.8" width="4.4" height="4.4" rx="1" stroke="#4285F4" stroke-width="1.2"/>
+  <path d="M 6.4 8 L 8.4 8 M 7.8 7.2 L 8.6 8 L 7.8 8.8" stroke="#4285F4" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Out to the URL map (routing) -->
+  <path d="M 9.8 8 L 12.4 8" stroke="#34A853" stroke-width="1.3" stroke-linecap="round"/>
+  <rect x="12.4" y="6.6" width="2.6" height="2.8" rx="0.6" fill="#34A853" opacity="0.85"/>
+  <!-- 80: the plaintext port -->
+  <text x="7.4" y="13.9" font-family="monospace" font-size="3.4" fill="#5F6368" text-anchor="middle">:80</text>
+</svg>

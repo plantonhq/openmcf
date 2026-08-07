@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="681"
+   height="661"
+   viewBox="0 0 681 661"
+   version="1.1"
+   xml:space="preserve"
+   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
+   xmlns="http://www.w3.org/2000/svg">
+  <!-- Gateway API family base mark (shared Kubernetes-blue septagon).
+       TCPRoute is distinguished from the other Gateway API kinds by two white
+       port sockets on the left feeding parallel forwarding arrows to the right:
+       a raw layer-4 connection (no SNI, no matching) forwarded straight through
+       to a backend. Distinct from the TLSRoute padlock, the Gateway portal, the
+       GatewayClass routing wheel, and the ReferenceGrant shield.
+       Per the _shared/gateway-api README icon note. -->
+  <g
+     inkscape:label="base"
+     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
+     transform="translate(-34.717245,-44.527423)"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <path
+       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
+       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
+       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
+  </g>
+  <!-- TCP layer-4 forwarding: two port sockets feeding parallel arrows. -->
+  <g inkscape:label="tcp-route" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- Two port sockets (the listener ports raw connections arrive on). -->
+    <circle cx="276" cy="320" r="20" style="fill:none;stroke:#ffffff;stroke-width:16" />
+    <circle cx="276" cy="320" r="5" style="fill:#ffffff" />
+    <circle cx="276" cy="400" r="20" style="fill:none;stroke:#ffffff;stroke-width:16" />
+    <circle cx="276" cy="400" r="5" style="fill:#ffffff" />
+    <!-- Parallel forwarding arrows (the raw connections passing straight through). -->
+    <path
+       d="M304 320 L388 320 L388 308 L420 326 L388 344 L388 332 L304 332 Z"
+       style="fill:#ffffff;fill-rule:nonzero;stroke:#ffffff;stroke-width:4;stroke-linejoin:round" />
+    <path
+       d="M304 400 L388 400 L388 388 L420 406 L388 424 L388 412 L304 412 Z"
+       style="fill:#ffffff;fill-rule:nonzero;stroke:#ffffff;stroke-width:4;stroke-linejoin:round" />
+  </g>
+</svg>

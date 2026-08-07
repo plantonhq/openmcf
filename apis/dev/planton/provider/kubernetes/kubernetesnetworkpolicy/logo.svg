@@ -1,0 +1,15 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       NetworkPolicy is distinguished by the firewall glyph: a shield with
+       one arrow passing THROUGH it - allowed traffic crossing the
+       in-cluster firewall while everything else is denied. -->
+
+  <g inkscape:label="networkpolicy" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The shield. -->
+    <path d="M340 232 L428 264 L428 356 C428 408 388 440 340 456 C292 440 252 408 252 356 L252 264 Z"
+       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linejoin:round" />
+    <!-- The allowed flow passing through. -->
+    <path d="M212 344 L436 344" style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round" />
+    <path d="M412 316 L444 344 L412 372" style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round;stroke-linejoin:round" />
+  </g>
+</svg>

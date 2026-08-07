@@ -1,0 +1,20 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       ResourceQuota is distinguished by the gauge glyph: a half-dial with
+       its needle near the cap - the namespace'\''s consumption metered
+       against its aggregate budget. -->
+
+  <g inkscape:label="resourcequota" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The gauge dial. -->
+    <path d="M240 408 C240 352.772 284.772 308 340 308 C395.228 308 440 352.772 440 408"
+       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round" />
+    <path d="M240 408 L440 408" style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round" />
+    <!-- Tick marks. -->
+    <path d="M264 356 L282 370" style="fill:none;stroke:#ffffff;stroke-width:12;stroke-linecap:round" />
+    <path d="M340 324 L340 346" style="fill:none;stroke:#ffffff;stroke-width:12;stroke-linecap:round" />
+    <path d="M416 356 L398 370" style="fill:none;stroke:#ffffff;stroke-width:12;stroke-linecap:round" />
+    <!-- The needle, near the cap. -->
+    <path d="M340 408 L404 352" style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round" />
+    <circle cx="340" cy="408" r="14" style="fill:#ffffff;stroke:none" />
+  </g>
+</svg>

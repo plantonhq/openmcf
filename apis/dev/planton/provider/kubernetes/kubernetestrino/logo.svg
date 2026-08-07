@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Trino bunny">
+  <!-- Hand-authored simplified Trino bunny mark: white ears and face on
+       a squircle in the Trino brand magenta. -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#DD00A1"/>
+  <ellipse cx="24" cy="18" rx="5" ry="11" fill="#FFFFFF" transform="rotate(-12 24 18)"/>
+  <ellipse cx="40" cy="18" rx="5" ry="11" fill="#FFFFFF" transform="rotate(12 40 18)"/>
+  <circle cx="32" cy="38" r="14" fill="#FFFFFF"/>
+  <circle cx="26.5" cy="36" r="2.2" fill="#DD00A1"/>
+  <circle cx="37.5" cy="36" r="2.2" fill="#DD00A1"/>
+  <path d="M32 41v3m0 0c-1.2 2-3.8 2-5 .2M32 44c1.2 2 3.8 2 5 .2" stroke="#DD00A1" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 16C0 7.16344 7.16344 0 16 0H48C56.8366 0 64 7.16344 64 16V48C64 56.8366 56.8366 64 48 64H16C7.16344 64 0 56.8366 0 48V16Z" fill="#D50C2D"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M48 2H16C8.26801 2 2 8.26801 2 16V48C2 55.732 8.26801 62 16 62H48C55.732 62 62 55.732 62 48V16C62 8.26801 55.732 2 48 2ZM16 0C7.16344 0 0 7.16344 0 16V48C0 56.8366 7.16344 64 16 64H48C56.8366 64 64 56.8366 64 48V16C64 7.16344 56.8366 0 48 0H16Z" fill="#D50C2D"/>
+<rect x="24" y="12" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="30.5" y="12" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="37" y="12" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="24" y="43" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="30.5" y="43" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="37" y="43" width="3" height="9" rx="1.5" fill="white"/>
+<rect x="12" y="24" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="12" y="30.5" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="12" y="37" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="43" y="24" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="43" y="30.5" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="43" y="37" width="9" height="3" rx="1.5" fill="white"/>
+<rect x="21" y="21" width="22" height="22" rx="3" fill="white"/>
+<rect x="27" y="27" width="10" height="10" rx="2" fill="#D50C2D"/>
+</svg>

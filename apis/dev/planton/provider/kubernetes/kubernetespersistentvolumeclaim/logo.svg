@@ -1,0 +1,15 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       PersistentVolumeClaim is distinguished by the claimed-disk glyph: a
+       storage cylinder with a claim check mark - durable storage requested
+       from the cluster and bound to its claimant. -->
+
+  <g inkscape:label="persistentvolumeclaim" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The disk cylinder. -->
+    <ellipse cx="340" cy="272" rx="88" ry="34" style="fill:none;stroke:#ffffff;stroke-width:16" />
+    <path d="M252 272 L252 404 C252 422.778 291.407 438 340 438 C388.593 438 428 422.778 428 404 L428 272"
+       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round" />
+    <!-- The claim check. -->
+    <path d="M308 356 L332 380 L376 328" style="fill:none;stroke:#ffffff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round" />
+  </g>
+</svg>

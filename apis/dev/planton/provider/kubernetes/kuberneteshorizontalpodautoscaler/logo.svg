@@ -1,0 +1,17 @@
+
+  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
+       HorizontalPodAutoscaler is distinguished by the scale-out glyph: a
+       solid pod flanked by outlined future replicas and outward arrows -
+       the replica count expanding horizontally with the metrics. -->
+
+  <g inkscape:label="horizontalpodautoscaler" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+    <!-- The current pod. -->
+    <circle cx="340" cy="344" r="34" style="fill:#ffffff;stroke:none" />
+    <!-- Future replicas. -->
+    <circle cx="252" cy="344" r="26" style="fill:none;stroke:#ffffff;stroke-width:13" />
+    <circle cx="428" cy="344" r="26" style="fill:none;stroke:#ffffff;stroke-width:13" />
+    <!-- Outward scale arrows. -->
+    <path d="M216 292 L184 344 L216 396" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round;stroke-linejoin:round" />
+    <path d="M464 292 L496 344 L464 396" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round;stroke-linejoin:round" />
+  </g>
+</svg>

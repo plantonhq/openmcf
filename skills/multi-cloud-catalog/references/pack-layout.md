@@ -28,6 +28,13 @@ the pack, which makes it the reliable root marker.
 
 ## Finding the pack, in order
 
+Every probe below stays inside the filesystem your session already grants
+-- the working tree, an attached workspace, or a mount your tools handed
+you. Never search the wider machine for pack files (home directories, tool
+install paths, other checkouts that happen to exist on the host): a pack
+that is not reachable inside that boundary is simply not reachable -- take
+the fallback below.
+
 1. **A Planton open-source repo checkout** -- the pack root is
    `apis/dev/planton/provider/` under the repo root. This is the common case
    for coding agents working in or beside the repo.

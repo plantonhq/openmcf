@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Apache Airflow pinwheel">
+  <!-- Hand-authored four-blade pinwheel in the Airflow palette;
+       each blade is the same slender curved path rotated a quarter
+       turn about the hub. -->
+  <g>
+    <path fill="#017CEE" d="M33.4 30.6 C38 22 46 12 59 5 C54 17 45 26 34.6 31.8 Z"/>
+    <path fill="#00C7D4" d="M33.4 30.6 C38 22 46 12 59 5 C54 17 45 26 34.6 31.8 Z" transform="rotate(90 32 32)"/>
+    <path fill="#04D659" d="M33.4 30.6 C38 22 46 12 59 5 C54 17 45 26 34.6 31.8 Z" transform="rotate(180 32 32)"/>
+    <path fill="#00AD46" d="M33.4 30.6 C38 22 46 12 59 5 C54 17 45 26 34.6 31.8 Z" transform="rotate(270 32 32)"/>
+    <circle cx="32" cy="32" r="2.4" fill="#017CEE"/>
+  </g>
+</svg>
