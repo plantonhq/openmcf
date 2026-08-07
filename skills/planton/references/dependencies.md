@@ -57,6 +57,16 @@ routes:
 
 ## Finding output field paths
 
+The multi-cloud-catalog skill answers this class fastest: the producer
+kind's reference page lists every output leaf in its `## Outputs` table,
+and its `## References` / `## Referenced By` tables answer the wiring
+question in BOTH directions — what this kind can point at, and what can
+point at it — a class no schema dump carries (`reference-graph.yaml` for
+catalog-wide edges). One or two file reads usually settle both the leaf
+and the wiring direction.
+
+When no catalog pack is reachable, or to drill one leaf's exact contract:
+
 1. Run `planton explain <ProducerKind> -o json`.
 2. Read the `outputs` array — each entry's `name` is the leaf under
    `status.outputs.`.
