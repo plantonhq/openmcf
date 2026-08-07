@@ -65,6 +65,19 @@ by name, up front:
   `values.env` differentiates the deployments so one chart serves every
   environment.
 
+**Placement doctrine — operators follow the cluster, never the app.**
+Cluster-scoped, shared-by-design components — the Gateway API CRDs, Istio,
+the GatewayClass, cert-manager, external-dns, any operator or controller —
+live in the shared-infrastructure chart, exactly once. A per-environment app
+chart never installs one: the same app chart deployed into dev and prod
+would install a cluster-wide singleton twice, and the platform components'
+lifecycle belongs with the cluster they serve, not with any one app. The
+environment chart carries only namespace-scoped concerns: the namespace,
+its gateway/route, the workload. When the environment chart needs a VALUE
+the shared chart's resources produce (a gateway name, a zone id), it wires
+a cross-chart `valueFrom` reference — never a param the user must fill
+(`dependencies.md`, "References cross chart boundaries").
+
 **The placeholder-first philosophy:** the goal is the fastest *validated
 base*. A placeholder answering on the real hostname proves the entire road —
 cluster, gateway, DNS, TLS — and the user's CI/CD then updates the image to

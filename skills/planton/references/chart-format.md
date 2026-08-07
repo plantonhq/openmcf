@@ -87,9 +87,16 @@ params:
 
 Design guidance:
 
-- A param earns its place when a real user would change it per deployment
-  (region, CIDRs, sizes, names, toggles). Internal wiring never becomes a
-  param.
+- A param earns its place when the person DEPLOYING genuinely decides it
+  (image, hostname, region, CIDRs, sizes, toggles). Internal wiring never
+  becomes a param -- an id, ARN, or endpoint another resource produces is a
+  `valueFrom` reference, even when the producer lives in a different chart
+  (`dependencies.md`, the cross-boundary check).
+- Fewer params is a feature: every exposed knob is a question the user must
+  answer before they can deploy. Default everything that has a sane default
+  and name the default in the description; lead the list with the
+  developer-facing values (image, port, hostname) so what matters most
+  reads first.
 - Every bool param should gate something real -- a whole resource or a
   meaningful behavior change -- and the chart must build validly with the
   toggle in BOTH positions.

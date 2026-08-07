@@ -72,6 +72,22 @@ postures:
   files are the user's: when they ask, copy anything to a destination they
   name (`cp`/`mv` -- a path the user gives you is an invitation under the
   boundary above).
+
+  **A chart is for an architecture; a single one-off resource is a loose
+  manifest.** When the request names one thing ("an S3 bucket for our
+  assets") rather than an architecture, a chart is ceremony: write ONE
+  manifest at the workspace root, check it with `planton validate <file>`,
+  and offer the next step -- apply it now (`planton apply -f <file>`, a
+  mutation with the usual one confirmation) or grow it into a chart when
+  the request grows. Compose a chart when the request calls for several
+  resources wired together, parameterized reuse, or per-environment
+  deployment.
+
+  **The canvas follows your writes.** When several charts exist and the
+  user asks to look at or change "the chart" without naming one, confirm
+  which they mean before writing -- writing into the wrong chart drags
+  their view there. When you move your own work between charts, say so in
+  one line first.
 - **`.planton/project.yaml` exists -- the working copy of a DEPLOYED
   project.** The folder is bound to a running deployment: your edits target
   THAT project, saving starts a real deployment pipeline, and the workflow
@@ -165,10 +181,16 @@ taken is a bug; an assumption named is an invitation to refine.
    When the user mentions environments (dev/prod/staging), read
    `references/environments.md` BEFORE proposing cluster counts — one
    cluster serving many environments is the default.
-2. Map each resource to its cloud resource kind. Discover kinds with
-   `planton explain --list` (offline; 400+ kinds, PascalCase
-   like `AwsVpc`, `AwsEksCluster`, `KubernetesCertManager`).
-3. Ground every kind you are not certain about BEFORE writing YAML:
+2. Map each resource to its cloud resource kind. The multi-cloud-catalog
+   skill is your research layer here: its provider indexes answer what
+   exists (400+ kinds, PascalCase like `AwsVpc`, `AwsEksCluster`,
+   `KubernetesCertManager`), its per-component pages answer what a kind
+   requires and exports, and its reference graph answers what can wire to
+   what — usually in one or two file reads. `planton explain --list` is the
+   offline fallback when no pack is reachable.
+3. Ground every kind you are not certain about BEFORE writing YAML — the
+   component's reference page first (the catalog skill names the reading
+   order), and `planton explain` for the drill-down:
 
    ```
    planton explain AwsVpc
@@ -178,13 +200,21 @@ taken is a bug; an assumption named is an invitation to refine.
    name to write in YAML, which fields are required, validation constraints
    in plain words, each enum's legal values, and the outputs other resources
    can reference; drill into one field with a dotted path
-   (`planton explain aws-vpc.spec.instanceTenancy`). Read
-   `references/component-grounding.md` for how to read the explain report and
-   for deeper grounding options.
-4. Decide the parameters: anything a user would want to change (region,
-   CIDRs, names, sizes, feature toggles) becomes a values.yaml param;
-   everything else is hardcoded in the template. Prefer few, meaningful
-   params with safe defaults over exhaustive knobs.
+   (`planton explain aws-vpc.spec.instanceTenancy`). It is the recovery
+   oracle for build errors and the complete grounding path when the catalog
+   pack is not reachable. Read `references/component-grounding.md` for how
+   to read the explain report and how the two instruments divide the work.
+4. Decide the parameters — references first, then the developer test.
+   Before ANY param whose value is an id, ARN, endpoint, or name that
+   infrastructure produces, run the cross-boundary check in
+   `references/dependencies.md`: the producer may be in this chart, in a
+   sibling chart of this workspace, or already deployed in the org — wire
+   `valueFrom` and that param never exists. What remains a param is only
+   what the person deploying genuinely decides (image, hostname, region,
+   CIDRs, sizing, feature toggles); everything else is hardcoded or
+   defaulted in the template. Prefer few, meaningful params with safe
+   defaults over exhaustive knobs — every exposed knob is a question the
+   user must answer before they can deploy.
 5. This plan is YOURS to execute, not a checkpoint: proceed straight to
    Phase 2 and build it. Present the plan first ONLY when the user
    explicitly asked to review before you write ("walk me through it first",
@@ -221,9 +251,12 @@ moves on (`references/personalization.md`).
    `name: "{{ values.env }}-vpc"`. The variables `values.env` and
    `values.org` are always available -- users never define them.
 4. Wire dependencies with `valueFrom` references -- never paste literal IDs
-   between resources. Read `references/dependencies.md` for the reference
-   syntax, how to find valid output field paths, and when to use
-   `metadata.relationships` instead.
+   between resources, and never expose a param for a value another resource
+   produces. References cross chart boundaries: a producer in a sibling
+   chart of this workspace, or already deployed in the org, is wired with
+   the same block. Read `references/dependencies.md` for the reference
+   syntax, the cross-boundary check, how to find valid output field paths,
+   and when to use `metadata.relationships` instead.
 5. **Chart contains any `Kubernetes*` kind?** Read
    `references/kubernetes-on-cluster.md` BEFORE writing those manifests --
    every Kubernetes workload needs a provider-connection annotation and an
@@ -333,6 +366,22 @@ shared state and needs the user's explicit go-ahead:
 - **Never guess field names, enum values, or nesting.** The schema is one
   offline command away. Every guessed field is a build error at best and a
   silent misconfiguration at worst.
+- **Never expose a param for a value another resource produces.** An id,
+  ARN, endpoint, or name that infrastructure creates is wired with
+  `valueFrom` — from this chart, a sibling chart in the workspace, or the
+  org's deployed estate (`references/dependencies.md`, the cross-boundary
+  check). A `vpc_id`-shaped param asks the user to hand-copy what the
+  platform already knows; that hand-off is the failure, not a convenience.
+- **Cluster-scoped, shared-by-design components live in the shared chart.**
+  Operators, CRDs, and controllers (Istio, cert-manager, external-dns, the
+  gateway CRDs) belong in the shared-infrastructure chart, exactly once —
+  never in a per-environment app chart, where every environment deploying
+  the chart would fight over a cluster-wide singleton
+  (`references/kubernetes-architecture.md`, the placement doctrine).
+- **Platform constructs are building blocks, never curriculum.** Deliver in
+  the user's vocabulary: construct names like InfraChart and InfraProject
+  belong in the manifests you write, not in your prose. Explain the
+  platform's machinery only when the user explicitly asks.
 - **Never ship a Kubernetes-kind resource without its connection annotation
   and ordering relationship.** A green build does NOT prove this wiring — the
   failure appears only at deploy, instantly. Run the self-check in
@@ -370,7 +419,7 @@ shared state and needs the user's explicit go-ahead:
 |------|-----------|
 | `references/chart-format.md` | Writing Chart.yaml or values.yaml; naming things |
 | `references/templating.md` | Writing template expressions, conditionals, loops |
-| `references/dependencies.md` | Wiring resources together; valueFrom or relationships |
+| `references/dependencies.md` | Wiring resources together, in-chart and ACROSS charts; the references-before-params check; valueFrom or relationships |
 | `references/kubernetes-on-cluster.md` | The chart has Kubernetes-kind resources; wiring workloads to a cluster |
 | `references/discovery.md` | Starting a conversation; learning the person, their Planton, and the motive |
 | `references/personalization.md` | A profile fact sheet is present; shaping ANY explanation — the explain-after, refinement answers, live narration |

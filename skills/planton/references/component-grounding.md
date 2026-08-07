@@ -5,11 +5,26 @@ validation rules, and stack outputs before writing a single line of template
 YAML. Grounding is offline-first: you never need a control plane or login to
 author a chart correctly.
 
-## The agent toolchain (use these, in this order)
+## Two instruments, one division of work
+
+- **The multi-cloud-catalog skill is the research layer.** For discovery
+  ("what exists for this provider?"), component depth (required fields,
+  outputs, a validated example), wiring questions in BOTH directions ("what
+  can reference this?"), and per-component judgment, read the catalog
+  skill's reference pack — its own SKILL.md names which file answers which
+  question and in what order. Whole-catalog questions that would take a
+  dozen serial lookups resolve there in one or two file reads.
+- **`planton explain` is the drill-down and recovery oracle.** Reach for it
+  to drill one field's exact contract, to match a BUILD ERROR's field path
+  to the schema (never guess a correction), and as the complete grounding
+  path whenever no catalog pack is reachable — it is compiled into the CLI
+  and works fully offline.
+
+## The explain toolchain
 
 | Step | Command | When |
 |------|---------|------|
-| Discover kinds | `planton explain --list` | You need to find the PascalCase kind name (e.g. `AwsVpc`) |
+| Discover kinds | `planton explain --list` | You need a PascalCase kind name (e.g. `AwsVpc`) and the pack is not reachable |
 | Read a kind's schema | `planton explain AwsVpc` | Before writing or fixing any manifest of that kind |
 | Drill into one field | `planton explain aws-vpc.spec.instanceTenancy` | You need a field's allowed values or exact contract |
 | JSON for parsing | `planton explain AwsVpc -o json` | When you need to programmatically scan fields or outputs |
@@ -108,18 +123,13 @@ explain report alone is sufficient for correct composition.
 
 ## Composition doctrine (per-component knowledge)
 
-You do **not** install hundreds of component skills. One workflow skill (this
-one) is enough. When you need depth on a specific kind:
-
-1. If a component skill is installed in your agent (e.g. from
-   `planton skills pull`), read its SKILL.md — it holds wiring knowledge that
-   no generic schema can provide.
-2. Otherwise, fetch on demand: explain report + preset + fleet example for
-   that kind. That is sufficient to compose correctly today.
-
-Per-component skills will ship from the open-source repo over time; until then,
-the offline explain command plus presets and fleet examples is the complete
-grounding path.
+You do **not** install hundreds of component skills — one workflow skill
+(this one) plus the multi-cloud-catalog research skill cover the whole
+catalog. Component facts and per-component wisdom live in the catalog
+skill's pack and are READ AT ANSWER TIME, never recalled from memory —
+whatever you remember about a component's schema is stale by construction.
+When no pack is reachable, the explain report plus a preset and a fleet
+example for the kind is the complete degradation path.
 
 ## What not to use
 
