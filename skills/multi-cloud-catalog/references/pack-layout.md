@@ -30,7 +30,10 @@ the pack, which makes it the reliable root marker.
 
 Every probe below stays inside the filesystem your session already grants
 -- the working tree, an attached workspace, or a mount your tools handed
-you. Never search the wider machine for pack files (home directories, tool
+you. Your skill mount (the `.stigmer/` folder beside your workspace) holds
+skill files only: the pack never lives inside it, and finding it is never
+an invitation to search the HOST's `.stigmer` home. Never search the wider
+machine for pack files (home directories -- `~/.stigmer` included -- tool
 install paths, other checkouts that happen to exist on the host): a pack
 that is not reachable inside that boundary is simply not reachable -- take
 the fallback below.
