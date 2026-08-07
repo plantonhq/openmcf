@@ -7,10 +7,11 @@ Classic provider (`pulumi-azure` v6). It creates a
 `containerservice.Registry` -- the managed, private OCI registry the
 platform's workloads pull their images from -- covering the full surface:
 SKU, admin account, network posture (public access, IP rule set, bypass
-option, data endpoints), policies (quarantine, retention, content trust,
-export), geo-replications, managed identity, and customer-managed-key
-encryption. The module behaves identically to the Terraform module: same
-inputs, same defaults, same outputs.
+option, data endpoints), policies (quarantine, retention, export),
+geo-replications, managed identity, and customer-managed-key encryption.
+Docker Content Trust is deliberately not modeled: the ACR service retired
+it. The module behaves identically to the Terraform module: same inputs,
+same defaults, same outputs.
 
 The SKU is the registry's feature gate; the Premium-only fields
 (geo-replication, zone redundancy, network rules, policies, CMK) are
@@ -51,11 +52,11 @@ The module receives an `AzureContainerRegistryStackInput` containing:
 - `target.spec.zone_redundancy_enabled` -- home replica across availability zones (Premium; fixed at creation)
 - `target.spec.anonymous_pull_enabled` -- unauthenticated pulls (Standard/Premium)
 - `target.spec.data_endpoint_enabled` -- dedicated regional data endpoints for exact firewall allowlisting (Premium)
-- `target.spec.quarantine_policy_enabled` / `target.spec.retention_policy_in_days` / `target.spec.trust_policy_enabled` -- the quarantine, untagged-manifest retention, and content-trust policies (all Premium)
+- `target.spec.quarantine_policy_enabled` / `target.spec.retention_policy_in_days` -- the quarantine and untagged-manifest retention policies (both Premium)
 - `target.spec.export_policy_enabled` -- default true; disabling requires Premium + public access off
 - `target.spec.network_rule_bypass_option` -- AZURE_SERVICES (Azure's default) or NONE; only an explicit choice is sent
 - `target.spec.network_rule_set` -- default action plus IPv4 CIDR allowlist (Premium)
-- `target.spec.georeplications` -- additional regions with per-replica zone redundancy, regional endpoint, and tags (Premium; must not contain the home region)
+- `target.spec.georeplications` -- additional regions with per-replica zone redundancy, global endpoint routing, and tags (Premium; must not contain the home region); the classic v6 SDK still names the routing argument `regional_endpoint_enabled` -- same ARM property azurerm 5 calls `global_endpoint_routing_enabled`
 - `target.spec.identity` -- SYSTEM_ASSIGNED / USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED plus resolved user-assigned-identity ARM IDs
 - `target.spec.encryption` -- CMK: the unwrapping identity's client id and the Key Vault key ID (Premium; fixed at creation)
 - `target.spec.tags` -- user tags, merged over the metadata-derived tags (user wins)

@@ -56,9 +56,6 @@ variable "spec" {
         # PHP runtime version.
         php_version = optional(string)
 
-        # Ruby runtime version (legacy).
-        ruby_version = optional(string)
-
         # Go runtime version (legacy).
         go_version = optional(string)
 

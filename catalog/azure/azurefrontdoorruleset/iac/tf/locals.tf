@@ -1,7 +1,10 @@
 locals {
   # Enums arrive as the spec enum's FULL value names; ARM wants its own
   # casing. One shared operator vocabulary serves every condition type
-  # (which subset a condition accepts is spec-enforced).
+  # (which subset a condition accepts is spec-enforced). These are the
+  # BASE operator names: the provider expresses negation as a "Not"
+  # prefix on the operator value (NotEqual, NotIPMatch, ...), which
+  # main.tf composes from each condition's negate_condition flag.
   operator_map = {
     "ANY"                   = "Any"
     "EQUAL"                 = "Equal"

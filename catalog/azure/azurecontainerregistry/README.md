@@ -7,7 +7,7 @@ The **Azure Container Registry API Resource** provides a consistent and standard
 We developed this API resource to streamline the deployment of production container registries on Azure. The spec mirrors Azure's own SKU tiering rather than hiding it, enabling:
 
 - **Fail-Fast Configuration**: Spec-level validation enforces the same SKU gates ARM does, so a misconfigured manifest (e.g. geo-replication on a Standard registry) fails at validation, not at apply
-- **Full Premium Surface**: Geo-replication, zone redundancy, network isolation, content-trust/quarantine/retention policies, and customer-managed-key encryption — all declared in one spec
+- **Full Premium Surface**: Geo-replication, zone redundancy, network isolation, quarantine/retention policies, and customer-managed-key encryption — all declared in one spec. Docker Content Trust is deliberately not modeled: the ACR service retired it (sign images with the Notation/ORAS artifact flow instead)
 - **Secure Defaults**: Admin account off by default; Microsoft Entra ID (managed identities, service principals) is the production authentication path
 - **Composition by Reference**: The identities and grants the registry works with are first-class catalog resources, never bundled
 
@@ -15,7 +15,7 @@ We developed this API resource to streamline the deployment of production contai
 
 - **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure across multiple providers
 - **SKU as the Feature Gate**: `BASIC` for dev/test, `STANDARD` as the production baseline (applied when the SKU is left unspecified), `PREMIUM` for the enterprise surface — with every Premium-only field validated against the chosen tier
-- **Geo-Replication**: Per-replica configuration (region, zone redundancy, regional endpoint, tags); the home region is implicit and excluded from the list
+- **Geo-Replication**: Per-replica configuration (region, zone redundancy, global endpoint routing, tags); the home region is implicit and excluded from the list
 - **Network Isolation Options**: IP allowlisting via `networkRuleSet`, fully private via `publicNetworkAccessEnabled: false`, and dedicated data endpoints for exact firewall allowlisting
 - **CMK Encryption**: Customer-managed-key encryption through a referenced first-class `AzureUserAssignedIdentity` that unwraps the Key Vault key
 - **AKS Integration**: AKS clusters reference the registry via its `container_registry_id` output; `AcrPull`/`AcrPush` grants are composed with the standalone `AzureRoleAssignment` resource

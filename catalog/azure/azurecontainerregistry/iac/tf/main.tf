@@ -37,7 +37,6 @@ resource "azurerm_container_registry" "main" {
   # (including 0 = purge immediately) turns the retention policy on.
   retention_policy_in_days = var.spec.retention_policy_in_days
 
-  trust_policy_enabled  = var.spec.trust_policy_enabled
   export_policy_enabled = var.spec.export_policy_enabled
 
   # null lets Azure apply its default (AzureServices); mapped in locals.
@@ -66,10 +65,12 @@ resource "azurerm_container_registry" "main" {
   dynamic "georeplications" {
     for_each = { for g in var.spec.georeplications : g.location => g }
     content {
-      location                  = georeplications.value.location
-      zone_redundancy_enabled   = georeplications.value.zone_redundancy_enabled
-      regional_endpoint_enabled = georeplications.value.regional_endpoint_enabled
-      tags                      = georeplications.value.tags
+      location                = georeplications.value.location
+      zone_redundancy_enabled = georeplications.value.zone_redundancy_enabled
+      # Required by the provider -- every replica makes an explicit
+      # global-routing choice; the spec's default is false.
+      global_endpoint_routing_enabled = georeplications.value.global_endpoint_routing_enabled
+      tags                            = georeplications.value.tags
     }
   }
 

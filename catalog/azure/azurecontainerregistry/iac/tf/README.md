@@ -7,8 +7,10 @@ This Terraform module provisions an Azure Container Registry using the
 -- the managed, private OCI registry the platform's workloads pull their
 images from -- covering the full surface: SKU, admin account, network
 posture (public access, IP rule set, bypass option, data endpoints),
-policies (quarantine, retention, content trust, export), geo-replications,
-managed identity, and customer-managed-key encryption.
+policies (quarantine, retention, export), geo-replications, managed
+identity, and customer-managed-key encryption. Docker Content Trust is
+deliberately not modeled: the ACR service retired it, and azurerm 5
+dropped the argument.
 
 The SKU is the registry's feature gate; the Premium-only fields
 (geo-replication, zone redundancy, network rules, policies, CMK) are
@@ -60,11 +62,10 @@ Key spec fields:
 | `data_endpoint_enabled` | no | Dedicated `{name}.{region}.data.azurecr.io` endpoints for exact firewall allowlisting (Premium) |
 | `quarantine_policy_enabled` | no | Hold pushed images until scanning tooling passes them (Premium) |
 | `retention_policy_in_days` | no | Purge untagged manifests after N days, 0-365; unset keeps them forever (Premium) |
-| `trust_policy_enabled` | no | Docker Content Trust / image signing (Premium) |
 | `export_policy_enabled` | no | Default true; disabling requires Premium + public access off |
 | `network_rule_bypass_option` | no | `AZURE_SERVICES` (Azure's default) or `NONE` |
 | `network_rule_set` | no | Default action (`ALLOW`/`DENY`) plus IPv4 CIDR allowlist (Premium) |
-| `georeplications` | no | Additional regions with per-replica zone redundancy, regional endpoint, tags (Premium; must not contain the home region) |
+| `georeplications` | no | Additional regions with per-replica zone redundancy, global endpoint routing, tags (Premium; must not contain the home region) |
 | `identity` | no | `SYSTEM_ASSIGNED` / `USER_ASSIGNED` / `SYSTEM_AND_USER_ASSIGNED` plus resolved identity ARM IDs |
 | `encryption` | no | CMK: unwrapping identity's client id + Key Vault key ID (Premium; fixed at creation) |
 | `tags` | no | User tags, merged over metadata-derived tags (user wins) |

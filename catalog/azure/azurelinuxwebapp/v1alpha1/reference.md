@@ -38,9 +38,9 @@ Premium (P*v2/P*v3/P*v4):
 **Application stack**:
 
 The application_stack within site_config selects the runtime. Exactly one
-runtime must be chosen: .NET, Node.js, Python, PHP, Ruby, Go, Java
+runtime must be chosen: .NET, Node.js, Python, PHP, Go, Java
 (with server selection), or Docker container. Web Apps support a broader
-set of runtimes compared to Function Apps, including PHP, Ruby, Go, and
+set of runtimes compared to Function Apps, including PHP, Go, and
 Java with configurable application servers (Tomcat, JBoss EAP).
 
 **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
@@ -169,7 +169,6 @@ spec:
 | `spec.siteConfig.applicationStack.nodeVersion` | `string` |  |  |  |
 | `spec.siteConfig.applicationStack.pythonVersion` | `string` |  |  |  |
 | `spec.siteConfig.applicationStack.phpVersion` | `string` |  |  |  |
-| `spec.siteConfig.applicationStack.rubyVersion` | `string` |  |  |  |
 | `spec.siteConfig.applicationStack.goVersion` | `string` |  |  |  |
 | `spec.siteConfig.applicationStack.javaVersion` | `string` |  |  |  |
 | `spec.siteConfig.applicationStack.javaServer` | `enum` |  |  |  |
@@ -461,7 +460,7 @@ networking behavior, auto-heal rules, and operational configuration.
 
 The application stack defines the runtime for the Web App.
 Exactly one runtime must be specified: dotnet_version, node_version,
-python_version, php_version, ruby_version, go_version, java_version
+python_version, php_version, go_version, java_version
 (with java_server + java_server_version), or docker.
 
 - rule: java_version, java_server, and java_server_version must be set together
@@ -507,20 +506,6 @@ PHP runtime version.
 Valid values: "7.4", "8.0", "8.1", "8.2", "8.3", "8.4"
 
 - rule: php_version must be one of: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4
-
-### spec.siteConfig.applicationStack.rubyVersion
-
-`string`
-
-Ruby runtime version.
-
-**Deprecated**: Ruby support on Azure App Service is limited and
-not recommended for new deployments. Consider containerized deployment
-via the docker block instead.
-
-Valid values: "2.6", "2.7"
-
-- rule: ruby_version must be one of: 2.6, 2.7
 
 ### spec.siteConfig.applicationStack.goVersion
 

@@ -83,7 +83,6 @@ resource "azurerm_linux_web_app" "main" {
         java_server              = application_stack.value.java_server != null ? local.java_server_map[application_stack.value.java_server] : null
         java_server_version      = application_stack.value.java_server_version
         php_version              = application_stack.value.php_version
-        ruby_version             = application_stack.value.ruby_version
         go_version               = application_stack.value.go_version
         docker_image_name        = application_stack.value.docker != null ? "${application_stack.value.docker.image_name}:${application_stack.value.docker.image_tag}" : null
         docker_registry_url      = application_stack.value.docker != null ? application_stack.value.docker.registry_url : null

@@ -285,14 +285,14 @@ enum AzureFrontDoorRuleTransform {
 
 // Match on the client's IP address or geo-located country.
 message AzureFrontDoorRuleRemoteAddressCondition {
-  // IP_MATCH (default when unspecified), GEO_MATCH, or ANY. IP_MATCH
-  // compares against CIDR ranges; GEO_MATCH against two-letter country
-  // codes; ANY matches every request that carries a client address.
+  // IP_MATCH (default when unspecified) or GEO_MATCH -- the only
+  // comparisons Azure's delivery-rule engine supports on client
+  // addresses. IP_MATCH compares against CIDR ranges; GEO_MATCH against
+  // two-letter country codes.
   AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
     defined_only: true
     in: [
       0,
-      1,
       12,
       13
     ]
@@ -302,7 +302,7 @@ message AzureFrontDoorRuleRemoteAddressCondition {
   // operator.
   bool negate_condition = 2;
 
-  // Up to 25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
+  // 1-25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
   // "203.0.113.0/24"), two-letter uppercase ISO 3166-1 country codes
   // for GEO_MATCH (e.g. "US"). Values OR together. Azure additionally
   // rejects duplicate and overlapping CIDRs at apply time.
@@ -310,8 +310,8 @@ message AzureFrontDoorRuleRemoteAddressCondition {
 
   option (buf.validate.message).cel = {
     id: "front_door_remote_address_operator_values"
-    message: "match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)"
-    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+    message: "match_values must carry at least one CIDR range or country code"
+    expression: "this.match_values.size() > 0"
   };
   option (buf.validate.message).cel = {
     id: "front_door_remote_address_geo_country_codes"
@@ -819,13 +819,13 @@ message AzureFrontDoorRuleIsDeviceCondition {
 // Match on the socket address the connection arrived from (the TCP
 // peer, ignoring X-Forwarded-For).
 message AzureFrontDoorRuleSocketAddressCondition {
-  // IP_MATCH (default when unspecified) or ANY. No geo-matching on
-  // socket addresses.
+  // IP_MATCH (the default when unspecified) is the only comparison
+  // Azure supports on socket addresses -- no geo-matching, no other
+  // operators.
   AzureFrontDoorRuleOperator operator = 1 [(buf.validate.field).enum = {
     defined_only: true
     in: [
       0,
-      1,
       13
     ]
   }];
@@ -833,14 +833,14 @@ message AzureFrontDoorRuleSocketAddressCondition {
   // Invert the condition.
   bool negate_condition = 2;
 
-  // Up to 25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
+  // 1-25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
   // duplicate and overlapping CIDRs at apply time.
   repeated string match_values = 3 [(buf.validate.field).repeated.max_items = 25];
 
   option (buf.validate.message).cel = {
     id: "front_door_socket_address_operator_values"
-    message: "match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)"
-    expression: "this.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0"
+    message: "match_values must carry at least one CIDR range"
+    expression: "this.match_values.size() > 0"
   };
 }
 
@@ -983,10 +983,13 @@ message AzureFrontDoorRuleSslProtocolCondition {
 // AzureFrontDoorRuleActions holds the actions a rule applies when its
 // conditions match: at most one redirect OR one rewrite (never both --
 // they contradict), any number of header edits, and at most one
-// route-configuration override -- at most 5 actions total (Azure's cap).
+// route-configuration override (which a redirect also excludes -- a
+// redirected request never reaches the route) -- at most 5 actions
+// total (Azure's cap).
 message AzureFrontDoorRuleActions {
   // Answer the request with an HTTP redirect instead of forwarding it
-  // to the origin. Mutually exclusive with url_rewrite.
+  // to the origin. Mutually exclusive with url_rewrite and with
+  // route_configuration_override.
   AzureFrontDoorRuleUrlRedirectAction url_redirect = 1;
 
   // Rewrite the request path before forwarding it to the origin (the
@@ -1005,6 +1008,9 @@ message AzureFrontDoorRuleActions {
   // Override the route's own forwarding and caching configuration for
   // requests this rule matches -- e.g. send matched traffic to a
   // different origin group, or disable caching for authenticated paths.
+  // Mutually exclusive with url_redirect: a redirected request is
+  // answered at the edge and never forwards, so there is nothing for
+  // the override to configure.
   AzureFrontDoorRuleRouteConfigurationOverrideAction route_configuration_override = 5;
 
   option (buf.validate.message).cel = {
@@ -1021,6 +1027,11 @@ message AzureFrontDoorRuleActions {
     id: "front_door_rule_actions_redirect_xor_rewrite"
     message: "url_redirect and url_rewrite cannot both be set on one rule -- a redirect answers the client directly while a rewrite forwards to the origin, so the two contradict"
     expression: "!(has(this.url_redirect) && has(this.url_rewrite))"
+  };
+  option (buf.validate.message).cel = {
+    id: "front_door_rule_actions_redirect_excludes_override"
+    message: "url_redirect and route_configuration_override cannot both be set on one rule -- a redirected request is answered at the edge and never forwards, so there is nothing for the override to configure"
+    expression: "!(has(this.url_redirect) && has(this.route_configuration_override))"
   };
 }
 

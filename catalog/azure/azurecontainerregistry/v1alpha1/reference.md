@@ -16,8 +16,8 @@ tiering rather than hiding it:
   allows anonymous pull).
 - PREMIUM unlocks the enterprise surface: geo-replication, zone
   redundancy, network isolation (network_rule_set, disabling public
-  access, dedicated data endpoints), content-trust/quarantine/retention
-  policies, and customer-managed-key encryption.
+  access, dedicated data endpoints), quarantine/retention policies,
+  and customer-managed-key encryption.
 Spec-level validation enforces the same SKU gates ARM does, so a
 misconfigured manifest fails at validation, not at apply.
 
@@ -78,7 +78,7 @@ spec:
     - location: westeurope
       zoneRedundancyEnabled: true
     - location: southeastasia
-      regionalEndpointEnabled: true
+      globalEndpointRoutingEnabled: true
 
   # User tags merged over the metadata-derived tags.
   tags:
@@ -100,7 +100,6 @@ spec:
 | `spec.dataEndpointEnabled` | `bool` |  |  |  |
 | `spec.quarantinePolicyEnabled` | `bool` |  |  |  |
 | `spec.retentionPolicyInDays` | `int32` |  |  |  |
-| `spec.trustPolicyEnabled` | `bool` |  |  |  |
 | `spec.exportPolicyEnabled` | `bool` |  | `true` |  |
 | `spec.networkRuleBypassOption` | `enum` |  |  |  |
 | `spec.networkRuleSet` | `AzureContainerRegistryNetworkRuleSet` |  |  |  |
@@ -110,7 +109,7 @@ spec:
 | `spec.georeplications` | `[]AzureContainerRegistryGeoreplication` |  |  |  |
 | `spec.georeplications[].location` | `string` | yes |  |  |
 | `spec.georeplications[].zoneRedundancyEnabled` | `bool` |  |  |  |
-| `spec.georeplications[].regionalEndpointEnabled` | `bool` |  |  |  |
+| `spec.georeplications[].globalEndpointRoutingEnabled` | `bool` |  |  |  |
 | `spec.georeplications[].tags` | `map<string, string>` |  |  |  |
 | `spec.identity` | `AzureContainerRegistryIdentity` |  |  |  |
 | `spec.identity.type` | `enum` | yes |  |  |
@@ -175,7 +174,7 @@ Allowed values (use exactly as shown):
 - `azure_container_registry_sku_unspecified` -- Not specified: STANDARD.
 - `BASIC` -- Cost-optimized dev/test tier: full API surface, low storage and throughput limits, no premium features.
 - `STANDARD` -- The production baseline: 100 GiB included storage, webhooks, anonymous pull available.
-- `PREMIUM` -- The enterprise tier: geo-replication, zone redundancy, network isolation, content-trust/quarantine/retention policies, CMK encryption, highest throughput.
+- `PREMIUM` -- The enterprise tier: geo-replication, zone redundancy, network isolation, quarantine/retention policies, CMK encryption, highest throughput.
 
 ### spec.adminUserEnabled
 
@@ -251,14 +250,6 @@ default). This is the built-in hygiene lever that stops CI push churn
 from growing storage without bound. Updatable in place.
 
 - rule: {"int32":{"lte":365,"gte":0}}
-
-### spec.trustPolicyEnabled
-
-`bool`
-
-Whether Docker Content Trust (image signing) is enabled: clients with
-content trust enabled can push signed images and verify signatures at
-pull. PREMIUM only; Azure's default is false. Updatable in place.
 
 ### spec.exportPolicyEnabled
 
@@ -360,14 +351,16 @@ Whether this replica's data is spread across the region's availability
 zones. Changing it replaces the underlying replication (a re-sync, not
 a registry replacement).
 
-### spec.georeplications[].regionalEndpointEnabled
+### spec.georeplications[].globalEndpointRoutingEnabled
 
 `bool`
 
-Whether the replica gets its own regional endpoint clients can address
-directly ({name}.{region}.data.azurecr.io). Off, clients always use
-the registry's global endpoint and Azure routes to the nearest
-replica.
+Whether this replica participates in global endpoint routing for the
+registry's geo-replicated login server: on, Azure may route pulls
+addressed to the global endpoint ({name}.azurecr.io) to this replica;
+off, the replica still syncs data but is excluded from global
+routing. The provider requires an explicit choice; unset deploys
+false.
 
 ### spec.georeplications[].tags
 
@@ -473,7 +466,6 @@ groups by them. Updatable in place.
 - `acr_data_endpoint_premium_only`: data_endpoint_enabled requires the PREMIUM SKU
 - `acr_quarantine_premium_only`: quarantine_policy_enabled requires the PREMIUM SKU
 - `acr_retention_premium_only`: retention_policy_in_days requires the PREMIUM SKU
-- `acr_trust_policy_premium_only`: trust_policy_enabled requires the PREMIUM SKU
 - `acr_export_disable_premium_and_private`: disabling export_policy_enabled requires the PREMIUM SKU and public_network_access_enabled explicitly false
 - `acr_network_rule_set_premium_only`: network_rule_set requires the PREMIUM SKU
 - `acr_encryption_premium_only`: encryption (customer-managed keys) requires the PREMIUM SKU

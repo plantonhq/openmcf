@@ -16,8 +16,8 @@ import "shared/options/options.proto";
 //   allows anonymous pull).
 // - PREMIUM unlocks the enterprise surface: geo-replication, zone
 //   redundancy, network isolation (network_rule_set, disabling public
-//   access, dedicated data endpoints), content-trust/quarantine/retention
-//   policies, and customer-managed-key encryption.
+//   access, dedicated data endpoints), quarantine/retention policies,
+//   and customer-managed-key encryption.
 // Spec-level validation enforces the same SKU gates ARM does, so a
 // misconfigured manifest fails at validation, not at apply.
 //
@@ -26,6 +26,13 @@ import "shared/options/options.proto";
 // first-class AzureUserAssignedIdentity, and an AKS cluster pulls from the
 // registry by referencing its container_registry_id output.
 message AzureContainerRegistrySpec {
+  // Docker Content Trust was retired by the ACR service; the field that
+  // carried it is permanently reserved so the slot is never reused.
+  // Image signing on ACR is now the Notation/ORAS artifact flow, which
+  // needs no registry-level toggle.
+  reserved 12;
+  reserved "trust_policy_enabled";
+
   // The Azure region the registry's home replica lives in, e.g. "eastus",
   // "westeurope". Additional regions are geo-replications, not a region
   // change. Changing the region replaces the registry.
@@ -116,11 +123,6 @@ message AzureContainerRegistrySpec {
     gte: 0
     lte: 365
   }];
-
-  // Whether Docker Content Trust (image signing) is enabled: clients with
-  // content trust enabled can push signed images and verify signatures at
-  // pull. PREMIUM only; Azure's default is false. Updatable in place.
-  bool trust_policy_enabled = 12;
 
   // Whether registry artifacts can be exported (e.g. imported into another
   // registry or transferred out). Azure's default is true. Disabling
@@ -217,12 +219,6 @@ message AzureContainerRegistrySpec {
   };
 
   option (buf.validate.message).cel = {
-    id: "acr_trust_policy_premium_only"
-    message: "trust_policy_enabled requires the PREMIUM SKU"
-    expression: "!this.trust_policy_enabled || this.sku == 3"
-  };
-
-  option (buf.validate.message).cel = {
     id: "acr_export_disable_premium_and_private"
     message: "disabling export_policy_enabled requires the PREMIUM SKU and public_network_access_enabled explicitly false"
     expression: "!has(this.export_policy_enabled) || this.export_policy_enabled || (this.sku == 3 && has(this.public_network_access_enabled) && this.public_network_access_enabled == false)"
@@ -261,11 +257,13 @@ message AzureContainerRegistryGeoreplication {
   // a registry replacement).
   bool zone_redundancy_enabled = 2;
 
-  // Whether the replica gets its own regional endpoint clients can address
-  // directly ({name}.{region}.data.azurecr.io). Off, clients always use
-  // the registry's global endpoint and Azure routes to the nearest
-  // replica.
-  bool regional_endpoint_enabled = 3;
+  // Whether this replica participates in global endpoint routing for the
+  // registry's geo-replicated login server: on, Azure may route pulls
+  // addressed to the global endpoint ({name}.azurecr.io) to this replica;
+  // off, the replica still syncs data but is excluded from global
+  // routing. The provider requires an explicit choice; unset deploys
+  // false.
+  bool global_endpoint_routing_enabled = 3;
 
   // Tags applied to this replication (each replication is its own tracked
   // ARM resource); independent of the registry's tags.
@@ -359,8 +357,8 @@ enum AzureContainerRegistrySku {
   STANDARD = 2;
 
   // The enterprise tier: geo-replication, zone redundancy, network
-  // isolation, content-trust/quarantine/retention policies, CMK
-  // encryption, highest throughput.
+  // isolation, quarantine/retention policies, CMK encryption, highest
+  // throughput.
   PREMIUM = 3;
 }
 

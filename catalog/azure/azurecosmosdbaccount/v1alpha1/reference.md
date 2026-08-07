@@ -118,8 +118,9 @@ spec:
   # on the wire).
   accessKeyMetadataWritesEnabled: false
   localAuthenticationEnabled: true
-  # Exercises the TLS-floor enum seam (a non-default legacy value).
-  minimalTlsVersion: TLS_1_1
+  # Exercises the TLS-floor enum seam. Tls12 is the only value the
+  # provider accepts (the legacy Tls/Tls11 floors were retired).
+  minimalTlsVersion: TLS_1_2
   burstCapacityEnabled: true
   partitionMergeEnabled: true
   # Exercises the CORS block rendering.

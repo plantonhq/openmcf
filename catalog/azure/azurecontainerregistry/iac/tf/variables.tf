@@ -59,10 +59,6 @@ variable "spec" {
     # them forever, Azure's default).
     retention_policy_in_days = optional(number)
 
-    # Whether Docker Content Trust (image signing) is enabled (Premium;
-    # Azure defaults to false).
-    trust_policy_enabled = optional(bool, false)
-
     # Whether artifacts can be exported out of the registry (Azure
     # defaults to true; disabling requires Premium + public access off).
     export_policy_enabled = optional(bool, true)
@@ -84,10 +80,10 @@ variable "spec" {
     # Additional regions the registry replicates to (Premium; must not
     # contain the home region).
     georeplications = optional(list(object({
-      location                  = string
-      zone_redundancy_enabled   = optional(bool, false)
-      regional_endpoint_enabled = optional(bool, false)
-      tags                      = optional(map(string), {})
+      location                        = string
+      zone_redundancy_enabled         = optional(bool, false)
+      global_endpoint_routing_enabled = optional(bool, false)
+      tags                            = optional(map(string), {})
     })), [])
 
     # The registry's managed identity: type is the spec enum's name string

@@ -38,9 +38,9 @@ import "shared/options/options.proto";
 // **Application stack**:
 //
 // The application_stack within site_config selects the runtime. Exactly one
-// runtime must be chosen: .NET, Node.js, Python, PHP, Ruby, Go, Java
+// runtime must be chosen: .NET, Node.js, Python, PHP, Go, Java
 // (with server selection), or Docker container. Web Apps support a broader
-// set of runtimes compared to Function Apps, including PHP, Ruby, Go, and
+// set of runtimes compared to Function Apps, including PHP, Go, and
 // Java with configurable application servers (Tomcat, JBoss EAP).
 //
 // **Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
@@ -325,7 +325,7 @@ message AzureLinuxWebAppSpec {
 message AzureLinuxWebAppSiteConfig {
   // The application stack defines the runtime for the Web App.
   // Exactly one runtime must be specified: dotnet_version, node_version,
-  // python_version, php_version, ruby_version, go_version, java_version
+  // python_version, php_version, go_version, java_version
   // (with java_server + java_server_version), or docker.
   AzureLinuxWebAppApplicationStack application_stack = 1;
 
@@ -541,18 +541,26 @@ message AzureLinuxWebAppSiteConfig {
 // optional semantics for this pattern.
 //
 // Web Apps support a broader set of runtimes compared to Function Apps,
-// including PHP, Ruby, Go, and Java with configurable application servers.
+// including PHP, Go, and Java with configurable application servers.
 //
 // Runtime options:
 // - .NET: dotnet_version
 // - Node.js: node_version
 // - Python: python_version
 // - PHP: php_version
-// - Ruby: ruby_version (deprecated, limited support)
 // - Go: go_version (deprecated, limited support)
 // - Java: java_version + java_server + java_server_version
 // - Container: docker (registry_url + image_name + image_tag)
+//
+// Ruby is deliberately not modeled: Azure retired Ruby on App Service,
+// and the provider no longer accepts a Ruby runtime. Run Ruby apps as
+// custom containers via the docker block.
 message AzureLinuxWebAppApplicationStack {
+  // Azure retired the Ruby runtime; the field that carried it is
+  // permanently reserved so the slot is never reused.
+  reserved 5;
+  reserved "ruby_version";
+
   // .NET runtime version.
   //
   // Valid values: "3.1", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0"
@@ -589,19 +597,6 @@ message AzureLinuxWebAppApplicationStack {
     id: "php_version_valid"
     message: "php_version must be one of: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4"
     expression: "this == '' || this in ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']"
-  }];
-
-  // Ruby runtime version.
-  //
-  // **Deprecated**: Ruby support on Azure App Service is limited and
-  // not recommended for new deployments. Consider containerized deployment
-  // via the docker block instead.
-  //
-  // Valid values: "2.6", "2.7"
-  string ruby_version = 5 [(buf.validate.field).cel = {
-    id: "ruby_version_valid"
-    message: "ruby_version must be one of: 2.6, 2.7"
-    expression: "this == '' || this in ['2.6', '2.7']"
   }];
 
   // Go runtime version.

@@ -47,7 +47,7 @@ spec:
     - location: westeurope
       zoneRedundancyEnabled: true
     - location: southeastasia
-      regionalEndpointEnabled: true
+      globalEndpointRoutingEnabled: true
 
   # User tags merged over the metadata-derived tags.
   tags:

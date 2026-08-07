@@ -354,18 +354,19 @@ Match on the client's IP address (IP_MATCH against CIDR ranges) or
 the country Azure geo-locates it to (GEO_MATCH against two-letter
 ISO 3166-1 codes).
 
-- rule: match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)
+- rule: match_values must carry at least one CIDR range or country code
 - rule: with the GEO_MATCH operator every match value must be a two-letter uppercase ISO 3166-1 country code, e.g. "US" or "DE"
 
 ### spec.rules[].conditions.remoteAddress[].operator
 
 `enum`
 
-IP_MATCH (default when unspecified), GEO_MATCH, or ANY. IP_MATCH
-compares against CIDR ranges; GEO_MATCH against two-letter country
-codes; ANY matches every request that carries a client address.
+IP_MATCH (default when unspecified) or GEO_MATCH -- the only
+comparisons Azure's delivery-rule engine supports on client
+addresses. IP_MATCH compares against CIDR ranges; GEO_MATCH against
+two-letter country codes.
 
-- rule: {"enum":{"definedOnly":true,"in":[0,1,12,13]}}
+- rule: {"enum":{"definedOnly":true,"in":[0,12,13]}}
 
 Allowed values (use exactly as shown):
 
@@ -395,7 +396,7 @@ operator.
 
 `[]string`
 
-Up to 25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
+1-25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
 "203.0.113.0/24"), two-letter uppercase ISO 3166-1 country codes
 for GEO_MATCH (e.g. "US"). Values OR together. Azure additionally
 rejects duplicate and overlapping CIDRs at apply time.
@@ -1111,16 +1112,17 @@ Match on the socket address the connection actually arrived from
 front of Front Door: remote_address honors X-Forwarded-For; the
 socket address is the proxy itself.
 
-- rule: match_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)
+- rule: match_values must carry at least one CIDR range
 
 ### spec.rules[].conditions.socketAddress[].operator
 
 `enum`
 
-IP_MATCH (default when unspecified) or ANY. No geo-matching on
-socket addresses.
+IP_MATCH (the default when unspecified) is the only comparison
+Azure supports on socket addresses -- no geo-matching, no other
+operators.
 
-- rule: {"enum":{"definedOnly":true,"in":[0,1,13]}}
+- rule: {"enum":{"definedOnly":true,"in":[0,13]}}
 
 Allowed values (use exactly as shown):
 
@@ -1149,7 +1151,7 @@ Invert the condition.
 
 `[]string`
 
-Up to 25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
+1-25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
 duplicate and overlapping CIDRs at apply time.
 
 - rule: {"repeated":{"maxItems":"25"}}
@@ -1346,13 +1348,15 @@ most five per rule (Azure's cap).
 - rule: a rule must carry at least one action -- a rule with conditions but no actions does nothing and Azure rejects it
 - rule: a rule may carry at most 5 actions in total -- split the policy into additional rules if you need more
 - rule: url_redirect and url_rewrite cannot both be set on one rule -- a redirect answers the client directly while a rewrite forwards to the origin, so the two contradict
+- rule: url_redirect and route_configuration_override cannot both be set on one rule -- a redirected request is answered at the edge and never forwards, so there is nothing for the override to configure
 
 ### spec.rules[].actions.urlRedirect
 
 `AzureFrontDoorRuleUrlRedirectAction`
 
 Answer the request with an HTTP redirect instead of forwarding it
-to the origin. Mutually exclusive with url_rewrite.
+to the origin. Mutually exclusive with url_rewrite and with
+route_configuration_override.
 
 ### spec.rules[].actions.urlRedirect.redirectType
 
@@ -1553,6 +1557,9 @@ removing a header).
 Override the route's own forwarding and caching configuration for
 requests this rule matches -- e.g. send matched traffic to a
 different origin group, or disable caching for authenticated paths.
+Mutually exclusive with url_redirect: a redirected request is
+answered at the edge and never forwards, so there is nothing for
+the override to configure.
 
 - rule: forwarding_protocol must be set when origin_group_id is set (it qualifies the overriding origin), and must be left unspecified when there is no origin override
 - rule: with cache_behavior DISABLED nothing caches, so cache_duration, query_string_caching_behavior, and query_string_parameters must stay unset

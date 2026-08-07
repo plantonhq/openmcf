@@ -502,9 +502,6 @@ func buildApplicationStack(stack *azurelinuxwebappv1alpha1.AzureLinuxWebAppAppli
 	if stack.PhpVersion != "" {
 		appStack.PhpVersion = pulumi.StringPtr(stack.PhpVersion)
 	}
-	if stack.RubyVersion != "" {
-		appStack.RubyVersion = pulumi.StringPtr(stack.RubyVersion)
-	}
 	if stack.GoVersion != "" {
 		appStack.GoVersion = pulumi.StringPtr(stack.GoVersion)
 	}

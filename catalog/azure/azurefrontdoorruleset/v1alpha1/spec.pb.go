@@ -983,14 +983,15 @@ func (x *AzureFrontDoorRuleConditions) GetSslProtocol() []*AzureFrontDoorRuleSsl
 // Match on the client's IP address or geo-located country.
 type AzureFrontDoorRuleRemoteAddressCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// IP_MATCH (default when unspecified), GEO_MATCH, or ANY. IP_MATCH
-	// compares against CIDR ranges; GEO_MATCH against two-letter country
-	// codes; ANY matches every request that carries a client address.
+	// IP_MATCH (default when unspecified) or GEO_MATCH -- the only
+	// comparisons Azure's delivery-rule engine supports on client
+	// addresses. IP_MATCH compares against CIDR ranges; GEO_MATCH against
+	// two-letter country codes.
 	Operator AzureFrontDoorRuleOperator `protobuf:"varint,1,opt,name=operator,proto3,enum=dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperator" json:"operator,omitempty"`
 	// Invert the condition -- match when the address does NOT satisfy the
 	// operator.
 	NegateCondition bool `protobuf:"varint,2,opt,name=negate_condition,json=negateCondition,proto3" json:"negate_condition,omitempty"`
-	// Up to 25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
+	// 1-25 values: IPv4/IPv6 CIDR ranges for IP_MATCH (e.g.
 	// "203.0.113.0/24"), two-letter uppercase ISO 3166-1 country codes
 	// for GEO_MATCH (e.g. "US"). Values OR together. Azure additionally
 	// rejects duplicate and overlapping CIDRs at apply time.
@@ -1978,12 +1979,13 @@ func (x *AzureFrontDoorRuleIsDeviceCondition) GetMatchValue() string {
 // peer, ignoring X-Forwarded-For).
 type AzureFrontDoorRuleSocketAddressCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// IP_MATCH (default when unspecified) or ANY. No geo-matching on
-	// socket addresses.
+	// IP_MATCH (the default when unspecified) is the only comparison
+	// Azure supports on socket addresses -- no geo-matching, no other
+	// operators.
 	Operator AzureFrontDoorRuleOperator `protobuf:"varint,1,opt,name=operator,proto3,enum=dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperator" json:"operator,omitempty"`
 	// Invert the condition.
 	NegateCondition bool `protobuf:"varint,2,opt,name=negate_condition,json=negateCondition,proto3" json:"negate_condition,omitempty"`
-	// Up to 25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
+	// 1-25 IPv4/IPv6 CIDR ranges, OR'd together. Azure rejects
 	// duplicate and overlapping CIDRs at apply time.
 	MatchValues   []string `protobuf:"bytes,3,rep,name=match_values,json=matchValues,proto3" json:"match_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2303,11 +2305,14 @@ func (x *AzureFrontDoorRuleSslProtocolCondition) GetMatchValues() []string {
 // AzureFrontDoorRuleActions holds the actions a rule applies when its
 // conditions match: at most one redirect OR one rewrite (never both --
 // they contradict), any number of header edits, and at most one
-// route-configuration override -- at most 5 actions total (Azure's cap).
+// route-configuration override (which a redirect also excludes -- a
+// redirected request never reaches the route) -- at most 5 actions
+// total (Azure's cap).
 type AzureFrontDoorRuleActions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Answer the request with an HTTP redirect instead of forwarding it
-	// to the origin. Mutually exclusive with url_rewrite.
+	// to the origin. Mutually exclusive with url_rewrite and with
+	// route_configuration_override.
 	UrlRedirect *AzureFrontDoorRuleUrlRedirectAction `protobuf:"bytes,1,opt,name=url_redirect,json=urlRedirect,proto3" json:"url_redirect,omitempty"`
 	// Rewrite the request path before forwarding it to the origin (the
 	// client never sees the rewritten path). Mutually exclusive with
@@ -2322,6 +2327,9 @@ type AzureFrontDoorRuleActions struct {
 	// Override the route's own forwarding and caching configuration for
 	// requests this rule matches -- e.g. send matched traffic to a
 	// different origin group, or disable caching for authenticated paths.
+	// Mutually exclusive with url_redirect: a redirected request is
+	// answered at the edge and never forwards, so there is nothing for
+	// the override to configure.
 	RouteConfigurationOverride *AzureFrontDoorRuleRouteConfigurationOverrideAction `protobuf:"bytes,5,opt,name=route_configuration_override,json=routeConfigurationOverride,proto3" json:"route_configuration_override,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
@@ -2801,13 +2809,12 @@ const file_catalog_azure_azurefrontdoorruleset_v1alpha1_spec_proto_rawDesc = "" 
 	"serverPort\x12r\n" +
 	"\thost_name\x18\x12 \x03(\v2U.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleHostNameConditionR\bhostName\x12{\n" +
 	"\fssl_protocol\x18\x13 \x03(\v2X.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleSslProtocolConditionR\vsslProtocol:\xb2\x05\xbaH\xae\x05\x1a\xab\x05\n" +
-	"\"front_door_rule_conditions_max_ten\x12\x82\x01a rule may carry at most 10 match conditions across all condition types -- split the policy into additional rules if you need more\x1a\xff\x03this.remote_address.size() + this.request_method.size() + this.query_string.size() + this.post_args.size() + this.request_uri.size() + this.request_header.size() + this.request_body.size() + this.request_scheme.size() + this.url_path.size() + this.url_file_extension.size() + this.url_filename.size() + this.http_version.size() + this.cookies.size() + this.is_device.size() + this.socket_address.size() + this.client_port.size() + this.server_port.size() + this.host_name.size() + this.ssl_protocol.size() <= 10\"\xed\x05\n" +
-	"(AzureFrontDoorRuleRemoteAddressCondition\x12z\n" +
-	"\boperator\x18\x01 \x01(\x0e2L.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperatorB\x10\xbaH\r\x82\x01\n" +
-	"\x10\x01\x18\x00\x18\x01\x18\f\x18\rR\boperator\x12)\n" +
+	"\"front_door_rule_conditions_max_ten\x12\x82\x01a rule may carry at most 10 match conditions across all condition types -- split the policy into additional rules if you need more\x1a\xff\x03this.remote_address.size() + this.request_method.size() + this.query_string.size() + this.post_args.size() + this.request_uri.size() + this.request_header.size() + this.request_body.size() + this.request_scheme.size() + this.url_path.size() + this.url_file_extension.size() + this.url_filename.size() + this.http_version.size() + this.cookies.size() + this.is_device.size() + this.socket_address.size() + this.client_port.size() + this.server_port.size() + this.host_name.size() + this.ssl_protocol.size() <= 10\"\x83\x05\n" +
+	"(AzureFrontDoorRuleRemoteAddressCondition\x12x\n" +
+	"\boperator\x18\x01 \x01(\x0e2L.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperatorB\x0e\xbaH\v\x82\x01\b\x10\x01\x18\x00\x18\f\x18\rR\boperator\x12)\n" +
 	"\x10negate_condition\x18\x02 \x01(\bR\x0fnegateCondition\x12+\n" +
-	"\fmatch_values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x19R\vmatchValues:\xec\x03\xbaH\xe8\x03\x1a\xf2\x01\n" +
-	")front_door_remote_address_operator_values\x12rmatch_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)\x1aQthis.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0\x1a\xf0\x01\n" +
+	"\fmatch_values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x19R\vmatchValues:\x84\x03\xbaH\x80\x03\x1a\x8a\x01\n" +
+	")front_door_remote_address_operator_values\x12?match_values must carry at least one CIDR range or country code\x1a\x1cthis.match_values.size() > 0\x1a\xf0\x01\n" +
 	"+front_door_remote_address_geo_country_codes\x12wwith the GEO_MATCH operator every match value must be a two-letter uppercase ISO 3166-1 country code, e.g. \"US\" or \"DE\"\x1aHthis.operator != 12 || this.match_values.all(v, v.matches('^[A-Z]{2}$'))\"\xc1\x02\n" +
 	"(AzureFrontDoorRuleRequestMethodCondition\x12)\n" +
 	"\x10negate_condition\x18\x01 \x01(\bR\x0fnegateCondition\x12\xe9\x01\n" +
@@ -2913,12 +2920,12 @@ const file_catalog_azure_azurefrontdoorruleset_v1alpha1_spec_proto_rawDesc = "" 
 	"\x10negate_condition\x18\x01 \x01(\bR\x0fnegateCondition\x12\x8c\x01\n" +
 	"\vmatch_value\x18\x02 \x01(\tBk\xbaHh\xba\x01b\n" +
 	"\x1afront_door_is_device_value\x12%match_value must be Desktop or Mobile\x1a\x1dthis in ['Desktop', 'Mobile']\xc8\x01\x01R\n" +
-	"matchValue\"\xf8\x03\n" +
-	"(AzureFrontDoorRuleSocketAddressCondition\x12x\n" +
-	"\boperator\x18\x01 \x01(\x0e2L.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperatorB\x0e\xbaH\v\x82\x01\b\x10\x01\x18\x00\x18\x01\x18\rR\boperator\x12)\n" +
+	"matchValue\"\xfb\x02\n" +
+	"(AzureFrontDoorRuleSocketAddressCondition\x12v\n" +
+	"\boperator\x18\x01 \x01(\x0e2L.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperatorB\f\xbaH\t\x82\x01\x06\x10\x01\x18\x00\x18\rR\boperator\x12)\n" +
 	"\x10negate_condition\x18\x02 \x01(\bR\x0fnegateCondition\x12+\n" +
-	"\fmatch_values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x19R\vmatchValues:\xf9\x01\xbaH\xf5\x01\x1a\xf2\x01\n" +
-	")front_door_socket_address_operator_values\x12rmatch_values must be empty when the operator is ANY, and non-empty otherwise (unspecified operator means IP_MATCH)\x1aQthis.operator == 1 ? this.match_values.size() == 0 : this.match_values.size() > 0\"\xdb\x03\n" +
+	"\fmatch_values\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x19R\vmatchValues:\x7f\xbaH|\x1az\n" +
+	")front_door_socket_address_operator_values\x12/match_values must carry at least one CIDR range\x1a\x1cthis.match_values.size() > 0\"\xdb\x03\n" +
 	"%AzureFrontDoorRuleClientPortCondition\x12\x86\x01\n" +
 	"\boperator\x18\x01 \x01(\x0e2L.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleOperatorB\x1c\xbaH\x19\x82\x01\x16\x10\x01\x18\x01\x18\x02\x18\x03\x18\x04\x18\x05\x18\x06\x18\a\x18\b\x18\t\x18\n" +
 	"R\boperator\x12)\n" +
@@ -2943,17 +2950,18 @@ const file_catalog_azure_azurefrontdoorruleset_v1alpha1_spec_proto_rawDesc = "" 
 	"&AzureFrontDoorRuleSslProtocolCondition\x12)\n" +
 	"\x10negate_condition\x18\x01 \x01(\bR\x0fnegateCondition\x12\xb3\x01\n" +
 	"\fmatch_values\x18\x02 \x03(\tB\x8f\x01\xbaH\x8b\x01\x92\x01\x87\x01\b\x01\x10\x03\x18\x01\"\x7f\xba\x01|\n" +
-	"\x1dfront_door_ssl_protocol_value\x122each value must be one of: TLSv1, TLSv1.1, TLSv1.2\x1a'this in ['TLSv1', 'TLSv1.1', 'TLSv1.2']R\vmatchValues\"\xc4\f\n" +
+	"\x1dfront_door_ssl_protocol_value\x122each value must be one of: TLSv1, TLSv1.1, TLSv1.2\x1a'this in ['TLSv1', 'TLSv1.1', 'TLSv1.2']R\vmatchValues\"\x85\x0f\n" +
 	"\x19AzureFrontDoorRuleActions\x12x\n" +
 	"\furl_redirect\x18\x01 \x01(\v2U.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleUrlRedirectActionR\vurlRedirect\x12u\n" +
 	"\vurl_rewrite\x18\x02 \x01(\v2T.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleUrlRewriteActionR\n" +
 	"urlRewrite\x12y\n" +
 	"\x0frequest_headers\x18\x03 \x03(\v2P.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleHeaderActionR\x0erequestHeaders\x12{\n" +
 	"\x10response_headers\x18\x04 \x03(\v2P.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleHeaderActionR\x0fresponseHeaders\x12\xa6\x01\n" +
-	"\x1croute_configuration_override\x18\x05 \x01(\v2d.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleRouteConfigurationOverrideActionR\x1arouteConfigurationOverride:\x94\a\xbaH\x90\a\x1a\xbb\x02\n" +
+	"\x1croute_configuration_override\x18\x05 \x01(\v2d.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleRouteConfigurationOverrideActionR\x1arouteConfigurationOverride:\xd5\t\xbaH\xd1\t\x1a\xbb\x02\n" +
 	"$front_door_rule_actions_at_least_one\x12pa rule must carry at least one action -- a rule with conditions but no actions does nothing and Azure rejects it\x1a\xa0\x01has(this.url_redirect) || has(this.url_rewrite) || this.request_headers.size() > 0 || this.response_headers.size() > 0 || has(this.route_configuration_override)\x1a\xc4\x02\n" +
 	" front_door_rule_actions_max_five\x12fa rule may carry at most 5 actions in total -- split the policy into additional rules if you need more\x1a\xb7\x01(has(this.url_redirect) ? 1 : 0) + (has(this.url_rewrite) ? 1 : 0) + this.request_headers.size() + this.response_headers.size() + (has(this.route_configuration_override) ? 1 : 0) <= 5\x1a\x88\x02\n" +
-	",front_door_rule_actions_redirect_xor_rewrite\x12\xa3\x01url_redirect and url_rewrite cannot both be set on one rule -- a redirect answers the client directly while a rewrite forwards to the origin, so the two contradict\x1a2!(has(this.url_redirect) && has(this.url_rewrite))\"\xda\x06\n" +
+	",front_door_rule_actions_redirect_xor_rewrite\x12\xa3\x01url_redirect and url_rewrite cannot both be set on one rule -- a redirect answers the client directly while a rewrite forwards to the origin, so the two contradict\x1a2!(has(this.url_redirect) && has(this.url_rewrite))\x1a\xbe\x02\n" +
+	"2front_door_rule_actions_redirect_excludes_override\x12\xc2\x01url_redirect and route_configuration_override cannot both be set on one rule -- a redirected request is answered at the edge and never forwards, so there is nothing for the override to configure\x1aC!(has(this.url_redirect) && has(this.route_configuration_override))\"\xda\x06\n" +
 	"#AzureFrontDoorRuleUrlRedirectAction\x12\x81\x01\n" +
 	"\rredirect_type\x18\x01 \x01(\x0e2P.dev.planton.azure.azurefrontdoorruleset.v1alpha1.AzureFrontDoorRuleRedirectTypeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\fredirectType\x12\x8d\x01\n" +
